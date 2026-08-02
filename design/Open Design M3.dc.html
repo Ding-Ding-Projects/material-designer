@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="app">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0" rel="stylesheet">
+<style>
+  :root {
+    --md-sys-color-primary:#8F4C34; --md-sys-color-on-primary:#FFFFFF;
+    --md-sys-color-primary-container:#FFDBCF; --md-sys-color-on-primary-container:#3A0B00;
+    --md-sys-color-secondary:#77574C; --md-sys-color-on-secondary:#FFFFFF;
+    --md-sys-color-secondary-container:#FFDBCF; --md-sys-color-on-secondary-container:#2C160D;
+    --md-sys-color-tertiary:#6C5D2F; --md-sys-color-on-tertiary:#FFFFFF;
+    --md-sys-color-tertiary-container:#F5E0A7; --md-sys-color-on-tertiary-container:#231B00;
+    --md-sys-color-error:#BA1A1A; --md-sys-color-on-error:#FFFFFF;
+    --md-sys-color-error-container:#FFDAD6; --md-sys-color-on-error-container:#410002;
+    --md-sys-color-surface:#FFF8F6; --md-sys-color-on-surface:#221A17;
+    --md-sys-color-on-surface-variant:#53433E;
+    --md-sys-color-surface-container-lowest:#FFFFFF;
+    --md-sys-color-surface-container-low:#FFF1EC;
+    --md-sys-color-surface-container:#FCEAE4;
+    --md-sys-color-surface-container-high:#F6E4DE;
+    --md-sys-color-surface-container-highest:#F1DED8;
+    --md-sys-color-surface-dim:#E8D6D0; --md-sys-color-surface-bright:#FFF8F6;
+    --md-sys-color-outline:#85736D; --md-sys-color-outline-variant:#D8C2BB;
+    --md-sys-color-inverse-surface:#382E2B; --md-sys-color-inverse-on-surface:#FFEDE8;
+    --md-sys-color-inverse-primary:#FFB59B;
+    --md-sys-color-success:#1F6B3C; --md-sys-color-success-container:#B8F0C8;
+    --md-sys-color-scrim:rgba(0,0,0,.32);
+    --md-sys-shape-corner-xs:4px; --md-sys-shape-corner-s:8px; --md-sys-shape-corner-m:12px;
+    --md-sys-shape-corner-l:16px; --md-sys-shape-corner-xl:28px; --md-sys-shape-corner-xxl:32px;
+    --md-sys-shape-corner-full:9999px;
+    --md-sys-motion-emphasized:cubic-bezier(.2,0,0,1);
+    --md-sys-motion-emphasized-decel:cubic-bezier(.05,.7,.1,1);
+    --md-sys-motion-spring:linear(0,.4 8%,.87 17%,1.05 23%,1.1 27%,1.05 35%,.99 47%,1 62%,1);
+    --sp:8px; --gap:16px; --pad:24px; --row:48px; --card:14px;
+    --ripple:rgba(0,0,0,.08);
+    color-scheme:light;
+  }
+  [data-theme="dark"] {
+    --md-sys-color-primary:#FFB59B; --md-sys-color-on-primary:#56200A;
+    --md-sys-color-primary-container:#72331C; --md-sys-color-on-primary-container:#FFDBCF;
+    --md-sys-color-secondary:#E7BEAF; --md-sys-color-on-secondary:#442A20;
+    --md-sys-color-secondary-container:#5D4035; --md-sys-color-on-secondary-container:#FFDBCF;
+    --md-sys-color-tertiary:#D8C48D; --md-sys-color-on-tertiary:#3A2F05;
+    --md-sys-color-tertiary-container:#52461A; --md-sys-color-on-tertiary-container:#F5E0A7;
+    --md-sys-color-error:#FFB4AB; --md-sys-color-on-error:#690005;
+    --md-sys-color-error-container:#93000A; --md-sys-color-on-error-container:#FFDAD6;
+    --md-sys-color-surface:#1A120F; --md-sys-color-on-surface:#F1DED8;
+    --md-sys-color-on-surface-variant:#D8C2BB;
+    --md-sys-color-surface-container-lowest:#140C0A;
+    --md-sys-color-surface-container-low:#221A17;
+    --md-sys-color-surface-container:#271E1B;
+    --md-sys-color-surface-container-high:#322825;
+    --md-sys-color-surface-container-highest:#3D3330;
+    --md-sys-color-surface-dim:#1A120F; --md-sys-color-surface-bright:#423734;
+    --md-sys-color-outline:#A08D87; --md-sys-color-outline-variant:#53433E;
+    --md-sys-color-inverse-surface:#F1DED8; --md-sys-color-inverse-on-surface:#382E2B;
+    --md-sys-color-inverse-primary:#8F4C34;
+    --md-sys-color-success:#7DDB9C; --md-sys-color-success-container:#0C4A25;
+    --ripple:rgba(255,255,255,.10);
+    color-scheme:dark;
+  }
+  [data-seed="violet"] {
+    --md-sys-color-primary:#65558F; --md-sys-color-primary-container:#E9DDFF;
+    --md-sys-color-on-primary-container:#211047; --md-sys-color-secondary:#625B71;
+    --md-sys-color-secondary-container:#E8DEF8; --md-sys-color-on-secondary-container:#1E192B;
+    --md-sys-color-tertiary:#7E5260; --md-sys-color-tertiary-container:#FFD9E3;
+    --md-sys-color-on-tertiary-container:#31101D; --md-sys-color-inverse-primary:#CFBDFE;
+  }
+  [data-theme="dark"][data-seed="violet"] {
+    --md-sys-color-primary:#CFBDFE; --md-sys-color-on-primary:#36275D;
+    --md-sys-color-primary-container:#4D3D75; --md-sys-color-on-primary-container:#E9DDFF;
+    --md-sys-color-secondary:#CBC2DB; --md-sys-color-on-secondary:#332D41;
+    --md-sys-color-secondary-container:#4A4458; --md-sys-color-on-secondary-container:#E8DEF8;
+    --md-sys-color-tertiary:#EFB8C8; --md-sys-color-tertiary-container:#633B48;
+    --md-sys-color-on-tertiary-container:#FFD9E3; --md-sys-color-inverse-primary:#65558F;
+  }
+  [data-seed="teal"] {
+    --md-sys-color-primary:#00696D; --md-sys-color-primary-container:#6FF6FB;
+    --md-sys-color-on-primary-container:#002021; --md-sys-color-secondary:#4A6363;
+    --md-sys-color-secondary-container:#CCE8E7; --md-sys-color-on-secondary-container:#051F20;
+    --md-sys-color-tertiary:#4B607C; --md-sys-color-tertiary-container:#D3E4FF;
+    --md-sys-color-on-tertiary-container:#041C35; --md-sys-color-inverse-primary:#4CD9DF;
+  }
+  [data-theme="dark"][data-seed="teal"] {
+    --md-sys-color-primary:#4CD9DF; --md-sys-color-on-primary:#003738;
+    --md-sys-color-primary-container:#004F51; --md-sys-color-on-primary-container:#6FF6FB;
+    --md-sys-color-secondary:#B0CCCB; --md-sys-color-on-secondary:#1B3535;
+    --md-sys-color-secondary-container:#324B4B; --md-sys-color-on-secondary-container:#CCE8E7;
+    --md-sys-color-tertiary:#B3C8E8; --md-sys-color-tertiary-container:#334863;
+    --md-sys-color-on-tertiary-container:#D3E4FF; --md-sys-color-inverse-primary:#00696D;
+  }
+  [data-seed="lime"] {
+    --md-sys-color-primary:#4C6700; --md-sys-color-primary-container:#CDEF85;
+    --md-sys-color-on-primary-container:#141F00; --md-sys-color-secondary:#5A6147;
+    --md-sys-color-secondary-container:#DEE6C5; --md-sys-color-on-secondary-container:#171E09;
+    --md-sys-color-tertiary:#3A6660; --md-sys-color-tertiary-container:#BCECE4;
+    --md-sys-color-on-tertiary-container:#00201C; --md-sys-color-inverse-primary:#B2D26C;
+  }
+  [data-theme="dark"][data-seed="lime"] {
+    --md-sys-color-primary:#B2D26C; --md-sys-color-on-primary:#243600;
+    --md-sys-color-primary-container:#374E00; --md-sys-color-on-primary-container:#CDEF85;
+    --md-sys-color-secondary:#C2CAAA; --md-sys-color-on-secondary:#2C331C;
+    --md-sys-color-secondary-container:#424931; --md-sys-color-on-secondary-container:#DEE6C5;
+    --md-sys-color-tertiary:#A1CFC8; --md-sys-color-tertiary-container:#214E48;
+    --md-sys-color-on-tertiary-container:#BCECE4; --md-sys-color-inverse-primary:#4C6700;
+  }
+  [data-density="compact"] { --gap:10px; --pad:16px; --row:40px; --card:12px; }
+  [data-density="comfortable"] { --gap:20px; --pad:32px; --row:56px; --card:18px; }
+  html, body { margin:0; padding:0; height:100%; background:var(--md-sys-color-surface-container-lowest); }
+  body {
+    font-family:'Roboto Flex','Roboto',system-ui,sans-serif;
+    color:var(--md-sys-color-on-surface);
+    -webkit-font-smoothing:antialiased;
+  }
+  * { box-sizing:border-box; }
+  a { color:var(--md-sys-color-primary); text-decoration:none; }
+  a:hover { color:var(--md-sys-color-on-primary-container); text-decoration:underline; }
+  button { font-family:inherit; }
+  ::selection { background:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container); }
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:var(--md-sys-color-outline-variant); border-radius:99px; border:3px solid transparent; background-clip:content-box; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .msr { font-family:'Material Symbols Rounded'; font-weight:400; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; direction:ltr; -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; user-select:none; }
+  .fill { font-variation-settings:'FILL' 1; }
+  .no-sb { scrollbar-width:none; }
+  .no-sb::-webkit-scrollbar { width:0; height:0; }
+  @keyframes od-rise { from { opacity:0; transform:translateY(14px) scale(.985); } to { opacity:1; transform:none; } }
+  @keyframes od-pulse { 0%,100% { opacity:.45; } 50% { opacity:1; } }
+  @keyframes od-sweep { from { transform:translateX(-100%); } to { transform:translateX(280%); } }
+</style>
+</helmet>
+
+<div style="width:100%;height:100vh;overflow:hidden;display:flex;flex-direction:column;background:var(--md-sys-color-surface-container-lowest);font-family:'Roboto Flex',sans-serif;{{ rootVars }}" data-theme="{{ theme }}" data-seed="{{ seed }}" data-density="{{ density }}">
+
+  <div style="display:flex;align-items:center;height:40px;flex:none;padding-left:12px;background:var(--md-sys-color-surface-container);border-bottom:1px solid var(--md-sys-color-outline-variant);user-select:none;">
+    <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+      <svg width="20" height="20" viewBox="0 0.726562 82 82" fill="none" aria-hidden="true" style="display:block;color:var(--md-sys-color-primary);"><path d="M41 0.726562C76.5753 0.726562 82 6.15121 82 41.7266C82 77.3019 76.5753 82.7266 41 82.7266C5.42465 82.7266 0 77.3019 0 41.7266C0 6.15121 5.42465 0.726562 41 0.726562ZM40.8906 16.4258C26.9164 16.4258 15.5879 27.7543 15.5879 41.7285C15.5879 46.7757 15.5879 58.0219 15.5879 63.665C15.588 65.5281 17.091 67.0312 18.9541 67.0312H40.8906C54.8647 67.0311 66.1932 55.7026 66.1934 41.7285C66.1934 27.7544 54.8647 16.4259 40.8906 16.4258ZM40.8906 21.4863C52.0699 21.4864 61.1328 30.5492 61.1328 41.7285C61.1327 52.9078 52.0699 61.9706 40.8906 61.9707C29.7113 61.9707 20.6485 52.9078 20.6484 41.7285C20.6484 30.5491 29.7113 21.4863 40.8906 21.4863ZM32.6445 32.2549C31.9921 32.0027 31.3503 32.6469 31.5996 33.3037L39.3145 53.6045C39.6345 54.4468 40.877 54.2162 40.877 53.3145V41.6836H52.665C53.5605 41.6836 53.7908 40.4368 52.9551 40.1133L32.6445 32.2549Z" fill="currentColor"></path></svg>
+      <span style="font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--md-sys-color-on-surface-variant);">Open Design</span>
+      <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);opacity:.7;">— Material 3 Expressive · Windows</span>
+    </div>
+    <div style="display:flex;align-items:stretch;height:40px;">
+      <button type="button" style="width:46px;border:0;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:default;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:16px;">minimize</span></button>
+      <button type="button" style="width:46px;border:0;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:default;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:15px;">crop_square</span></button>
+      <button type="button" style="width:46px;border:0;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:default;display:grid;place-items:center;" style-hover="background:#C42B1C;color:#fff"><span class="msr" style="font-size:17px;">close</span></button>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:flex-end;gap:2px;height:42px;flex:none;padding:0 8px;background:var(--md-sys-color-surface-container);">
+    <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="2">
+      <button type="button" onClick="{{ tab.select }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 14px;border:0;border-radius:12px 12px 0 0;cursor:pointer;font-size:13px;font-weight:500;max-width:260px;transition:background 180ms cubic-bezier(.2,0,0,1);{{ tab.style }}">
+        <span class="msr" style="font-size:16px;">{{ tab.icon }}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ tab.title }}</span>
+        <span class="msr" style="font-size:16px;opacity:.55;border-radius:99px;padding:2px;" style-hover="background:var(--ripple);opacity:1">close</span>
+      </button>
+    </sc-for>
+    <button type="button" onClick="{{ addTab }}" title="New tab" style="width:32px;height:32px;margin-bottom:2px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">add</span></button>
+    <div style="flex:1;"></div>
+    <div style="display:flex;align-items:center;gap:6px;height:36px;padding-bottom:4px;">
+      <span style="font-size:11px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);background:var(--md-sys-color-surface-container-high);border-radius:99px;padding:4px 10px;">settings repo · 7f3a91c</span>
+    </div>
+  </div>
+
+  <div style="flex:1;min-height:0;display:flex;background:var(--md-sys-color-surface);">
+
+    <nav aria-label="Primary" style="flex:none;width:88px;display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:12px 8px;background:var(--md-sys-color-surface);border-right:1px solid var(--md-sys-color-outline-variant);overflow:hidden;transition:width 400ms cubic-bezier(.2,0,0,1);{{ railStyle }}">
+      <div style="display:flex;align-items:center;gap:4px;flex:none;height:56px;padding-left:8px;">
+        <button type="button" onClick="{{ goHome }}" aria-label="Open Design" title="Open Design" style="width:56px;height:56px;flex:none;border:0;border-radius:99px;background:transparent;cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)">
+          <svg width="26" height="26" viewBox="0 0.726562 82 82" fill="none" aria-hidden="true" style="display:block;color:var(--md-sys-color-primary);"><path d="M41 0.726562C76.5753 0.726562 82 6.15121 82 41.7266C82 77.3019 76.5753 82.7266 41 82.7266C5.42465 82.7266 0 77.3019 0 41.7266C0 6.15121 5.42465 0.726562 41 0.726562ZM40.8906 16.4258C26.9164 16.4258 15.5879 27.7543 15.5879 41.7285C15.5879 46.7757 15.5879 58.0219 15.5879 63.665C15.588 65.5281 17.091 67.0312 18.9541 67.0312H40.8906C54.8647 67.0311 66.1932 55.7026 66.1934 41.7285C66.1934 27.7544 54.8647 16.4259 40.8906 16.4258ZM40.8906 21.4863C52.0699 21.4864 61.1328 30.5492 61.1328 41.7285C61.1327 52.9078 52.0699 61.9706 40.8906 61.9707C29.7113 61.9707 20.6485 52.9078 20.6484 41.7285C20.6484 30.5491 29.7113 21.4863 40.8906 21.4863ZM32.6445 32.2549C31.9921 32.0027 31.3503 32.6469 31.5996 33.3037L39.3145 53.6045C39.6345 54.4468 40.877 54.2162 40.877 53.3145V41.6836H52.665C53.5605 41.6836 53.7908 40.4368 52.9551 40.1133L32.6445 32.2549Z" fill="currentColor"></path></svg>
+        </button>
+        <button type="button" onClick="{{ toggleRail }}" aria-label="Collapse sidebar" title="Collapse sidebar" style="width:48px;height:48px;flex:none;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;{{ railLabelStyle }}" style-hover="background:var(--ripple)">
+          <span class="msr" style="font-size:22px;">left_panel_close</span>
+        </button>
+      </div>
+      <button type="button" onClick="{{ toggleRail }}" aria-label="Expand sidebar" title="Expand sidebar" style="width:56px;height:56px;flex:none;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;margin-left:8px;{{ railCollapsedOnly }}" style-hover="background:var(--ripple)">
+        <span class="msr" style="font-size:24px;">menu</span>
+      </button>
+      <button type="button" onClick="{{ goHome }}" style="display:flex;align-items:center;gap:16px;height:56px;flex:none;margin:4px 0 12px;padding:0 16px;border:0;border-radius:16px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:box-shadow 200ms,transform 200ms;" style-hover="box-shadow:0 4px 10px rgba(0,0,0,.22);transform:translateY(-1px)">
+        <span class="msr" style="font-size:24px;">add</span>
+        <span style="font-size:14px;font-weight:600;white-space:nowrap;{{ railLabelStyle }}">New project</span>
+      </button>
+
+      <div class="no-sb" style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:4px;">
+      <sc-for list="{{ destinations }}" as="d" hint-placeholder-count="7">
+        <button type="button" onClick="{{ d.select }}" aria-label="{{ d.label }}" style="display:flex;align-items:center;gap:12px;height:var(--row);flex:none;border:0;background:transparent;cursor:pointer;border-radius:99px;padding:0 8px;transition:background 200ms cubic-bezier(.2,0,0,1);{{ d.style }}">
+          <span style="width:56px;height:32px;flex:none;border-radius:99px;display:grid;place-items:center;transition:background 250ms cubic-bezier(.2,0,0,1);{{ d.pillStyle }}">
+            <span class="msr" style="font-size:22px;{{ d.iconStyle }}">{{ d.icon }}</span>
+          </span>
+          <span style="font-size:13px;font-weight:600;white-space:nowrap;{{ d.labelStyle }}">{{ d.label }}</span>
+        </button>
+      </sc-for>
+      </div>
+
+      <div style="height:1px;background:var(--md-sys-color-outline-variant);margin:8px 12px;"></div>
+      <button type="button" onClick="{{ openSettings }}" aria-label="Settings" style="display:flex;align-items:center;gap:12px;height:var(--row);flex:none;border:0;background:transparent;cursor:pointer;border-radius:99px;padding:0 8px;color:var(--md-sys-color-on-surface-variant);" style-hover="background:var(--ripple)">
+        <span style="width:56px;height:32px;flex:none;display:grid;place-items:center;"><span class="msr" style="font-size:22px;">settings</span></span>
+        <span style="font-size:13px;font-weight:600;white-space:nowrap;{{ railLabelStyle }}">Settings</span>
+      </button>
+      <button type="button" aria-label="Help" style="display:flex;align-items:center;gap:12px;height:var(--row);flex:none;border:0;background:transparent;cursor:pointer;border-radius:99px;padding:0 8px;color:var(--md-sys-color-on-surface-variant);" style-hover="background:var(--ripple)">
+        <span style="width:56px;height:32px;flex:none;display:grid;place-items:center;"><span class="msr" style="font-size:22px;">help</span></span>
+        <span style="font-size:13px;font-weight:600;white-space:nowrap;{{ railLabelStyle }}">Help &amp; docs</span>
+      </button>
+    </nav>
+
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;background:var(--md-sys-color-surface);">
+
+      <header style="flex:none;display:flex;align-items:center;gap:12px;padding:10px var(--pad);background:var(--md-sys-color-surface);">
+        <h1 style="margin:0;font-size:22px;font-weight:500;letter-spacing:0;color:var(--md-sys-color-on-surface);white-space:nowrap;">{{ screenTitle }}</h1>
+        <div style="flex:1;"></div>
+
+        <div style="display:flex;align-items:center;gap:4px;height:48px;padding:0 6px 0 16px;border-radius:99px;background:var(--md-sys-color-surface-container-high);min-width:380px;transition:box-shadow 250ms cubic-bezier(.2,0,0,1);" style-hover="box-shadow:0 2px 8px rgba(0,0,0,.14)">
+          <span class="msr" style="font-size:22px;color:var(--md-sys-color-on-surface-variant);">search</span>
+          <input value="{{ query }}" onChange="{{ setQuery }}" placeholder="Search projects, plugins, design systems…" style="flex:1;min-width:0;height:44px;border:0;outline:none;background:transparent;font-size:15px;font-family:inherit;color:var(--md-sys-color-on-surface);padding:0 8px;">
+          <button type="button" onClick="{{ toggleRegex }}" title="Regex mode" style="width:36px;height:36px;border:0;border-radius:99px;cursor:pointer;display:grid;place-items:center;font-family:'Roboto Mono',monospace;font-size:13px;font-weight:600;transition:background 200ms;{{ regexToggleStyle }}">.*</button>
+          <button type="button" onClick="{{ openRegex }}" title="Regex builder" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">construction</span></button>
+        </div>
+
+        <button type="button" onClick="{{ openPalette }}" title="Command palette — Ctrl+K" aria-label="Open command palette" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">
+          <span class="msr" style="font-size:20px;">keyboard_command_key</span>
+          <span style="font-family:'Roboto Mono',monospace;font-size:11px;">Ctrl K</span>
+        </button>
+        <button type="button" onClick="{{ toggleNotifications }}" aria-label="Open message center" style="position:relative;width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)">
+          <span class="msr" style="font-size:24px;">notifications</span>
+          <span style="position:absolute;top:9px;right:9px;min-width:16px;height:16px;padding:0 4px;border-radius:99px;background:var(--md-sys-color-error);color:var(--md-sys-color-on-error);font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid var(--md-sys-color-surface);">3</span>
+        </button>
+        <button type="button" onClick="{{ toggleTheme }}" aria-label="Toggle theme" style="width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)">
+          <span class="msr" style="font-size:24px;">{{ themeIcon }}</span>
+        </button>
+        <button type="button" onClick="{{ openSettings }}" aria-label="Account" style="width:40px;height:40px;margin-left:4px;border:0;border-radius:99px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);cursor:pointer;font-size:14px;font-weight:700;display:grid;place-items:center;" style-hover="box-shadow:0 0 0 4px var(--ripple)">CM</button>
+      </header>
+
+      <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;">
+
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+        <div style="max-width:1180px;margin:0 auto;padding:8px var(--pad) 64px;animation:od-rise 460ms cubic-bezier(.05,.7,.1,1) both;">
+          <div style="text-align:center;padding:32px 0 8px;">
+            <h2 style="margin:0 0 10px;font-size:44px;line-height:1.1;font-weight:600;letter-spacing:-.5px;color:var(--md-sys-color-on-surface);text-wrap:pretty;">What will you design with your agent today?</h2>
+            <p style="margin:0;font-size:16px;color:var(--md-sys-color-on-surface-variant);">The open-source Claude Design alternative.</p>
+          </div>
+
+          <div style="margin:28px 0 0;padding:18px 18px 12px;border-radius:28px;background:var(--md-sys-color-surface-container-high);box-shadow:0 1px 3px rgba(0,0,0,.10);transition:box-shadow 300ms cubic-bezier(.2,0,0,1);" style-hover="box-shadow:0 6px 20px rgba(0,0,0,.14)">
+            <textarea value="{{ prompt }}" onChange="{{ setPrompt }}" placeholder="Describe what you want to generate…" style="width:100%;min-height:76px;resize:none;border:0;outline:none;background:transparent;font-family:inherit;font-size:17px;line-height:1.55;color:var(--md-sys-color-on-surface);"></textarea>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;">
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:500;cursor:pointer;transition:background 200ms;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">palette</span>Style · Auto<span class="msr" style="font-size:18px;">arrow_drop_down</span></button>
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:500;cursor:pointer;transition:background 200ms;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">bolt</span>Skills</button>
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:500;cursor:pointer;transition:background 200ms;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">add</span>Add context</button>
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:13px;font-weight:500;cursor:pointer;transition:background 200ms;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">folder</span>Local storage</button>
+              <div style="flex:1;"></div>
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:99px;border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.04)">Claude Opus 4.8<span class="msr" style="font-size:18px;">expand_more</span></button>
+              <button type="button" onClick="{{ run }}" aria-label="Run" style="width:56px;height:56px;border:0;border-radius:18px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);cursor:pointer;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.2);transition:transform 320ms var(--md-sys-motion-spring),border-radius 300ms,box-shadow 250ms;" style-hover="transform:scale(1.06);border-radius:28px;box-shadow:0 6px 16px rgba(0,0,0,.28)" style-active="transform:scale(.94)">
+                <span class="msr" style="font-size:26px;">arrow_upward</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:baseline;gap:12px;margin:36px 0 12px;">
+            <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">Start a scenario</h3>
+            <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">Pick a project category or starter shortcut</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--gap);">
+            <sc-for list="{{ scenarios }}" as="s" hint-placeholder-count="12">
+              <button type="button" onClick="{{ s.select }}" style="text-align:left;display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:20px;cursor:pointer;transition:transform 300ms var(--md-sys-motion-spring),background 220ms,box-shadow 220ms;{{ s.style }}" style-hover="transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.14)">
+                <span style="width:40px;height:40px;border-radius:14px;display:grid;place-items:center;{{ s.iconWrap }}">
+                  <span class="msr" style="font-size:22px;">{{ s.icon }}</span>
+                </span>
+                <span style="font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ s.label }}</span>
+                <span style="font-size:12px;line-height:1.4;color:var(--md-sys-color-on-surface-variant);">{{ s.desc }}</span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin:40px 0 12px;">
+            <h3 style="margin:0;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">Recent projects</h3>
+            <div style="flex:1;"></div>
+            <button type="button" onClick="{{ goProjects }}" style="height:36px;padding:0 16px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-primary);font-size:14px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">View all</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--gap);">
+            <sc-for list="{{ recents }}" as="p" hint-placeholder-count="4">
+              <button type="button" onClick="{{ p.open }}" style="text-align:left;padding:0;border:1px solid var(--md-sys-color-outline-variant);border-radius:20px;background:var(--md-sys-color-surface-container-low);cursor:pointer;overflow:hidden;transition:transform 300ms var(--md-sys-motion-spring),box-shadow 220ms;" style-hover="transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.16)">
+                <span style="display:block;height:104px;position:relative;overflow:hidden;{{ p.cover }}">
+                  <span style="position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.22) 50%,transparent 60%);animation:od-sweep 3.6s linear infinite;"></span>
+                </span>
+                <span style="display:block;padding:12px 14px 14px;">
+                  <span style="display:block;font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.name }}</span>
+                  <span style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+                    <span class="msr" style="font-size:14px;">{{ p.icon }}</span>{{ p.meta }}
+                  </span>
+                </span>
+              </button>
+            </sc-for>
+          </div>
+
+          <div style="margin:44px 0 12px;">
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">Community</h3>
+            <p style="margin:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);max-width:720px;">Ready-to-use Open Design workflows bundled with this runtime. Pick one to load a starter prompt, or browse the registry for more.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--gap);">
+            <sc-for list="{{ community }}" as="c" hint-placeholder-count="4">
+              <div style="display:flex;gap:12px;padding:16px;border-radius:20px;background:var(--md-sys-color-surface-container);transition:background 220ms,transform 300ms var(--md-sys-motion-spring);" style-hover="transform:translateY(-2px);background:var(--md-sys-color-surface-container-high)">
+                <span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);display:grid;place-items:center;"><span class="msr" style="font-size:22px;">{{ c.icon }}</span></span>
+                <span style="display:block;min-width:0;">
+                  <span style="display:block;font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ c.name }}</span>
+                  <span style="display:block;margin-top:4px;font-size:12px;line-height:1.45;color:var(--md-sys-color-on-surface-variant);">{{ c.desc }}</span>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isProjects }}">
+        <div style="max-width:1280px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <sc-if value="{{ selectMode }}">
+            <div style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;height:64px;margin-bottom:12px;padding:0 12px 0 8px;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);box-shadow:0 4px 14px rgba(0,0,0,.18);animation:od-rise 260ms cubic-bezier(.05,.7,.1,1) both;">
+              <button type="button" onClick="{{ exitSelect }}" aria-label="Cancel selection" style="width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:24px;">close</span></button>
+              <span style="font-size:18px;font-weight:600;">{{ selectedCount }} selected</span>
+              <div style="flex:1;"></div>
+              <button type="button" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:0;border-radius:99px;background:var(--md-sys-color-surface-container-lowest);color:var(--md-sys-color-on-surface);font-size:14px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(.97)"><span class="msr" style="font-size:20px;">download</span>Export<span class="msr" style="font-size:18px;">expand_more</span></button>
+              <button type="button" aria-label="Duplicate" style="width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">content_copy</span></button>
+              <button type="button" aria-label="Archive" style="width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:inherit;cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">archive</span></button>
+              <button type="button" aria-label="Delete" style="width:48px;height:48px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-error);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">delete</span></button>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:10px;padding:4px 0 12px;">
+            <button type="button" onClick="{{ toggleFilters }}" aria-expanded="{{ filtersExpanded }}" style="display:flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 10px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)" style-focus="outline:3px solid var(--md-sys-color-primary);outline-offset:2px">
+              <span class="msr" style="font-size:20px;">{{ filtersChevron }}</span>Filters &amp; stats
+            </button>
+            <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ filtersSummary }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 0 20px;{{ filtersDisplay }}">
+            <sc-for list="{{ projectFilters }}" as="f" hint-placeholder-count="5">
+              <button type="button" onClick="{{ f.select }}" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:99px;cursor:pointer;font-size:14px;font-weight:500;transition:background 200ms cubic-bezier(.2,0,0,1);{{ f.style }}">
+                <sc-if value="{{ f.on }}"><span class="msr" style="font-size:18px;">check</span></sc-if>
+                {{ f.label }}
+              </button>
+            </sc-for>
+            <div style="flex:1;"></div>
+            <button type="button" onClick="{{ toggleSelect }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:14px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">checklist</span>Select</button>
+            <div style="display:flex;height:40px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+              <button type="button" style="display:flex;align-items:center;gap:6px;padding:0 16px;border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:14px;font-weight:600;cursor:pointer;"><span class="msr" style="font-size:18px;">check</span>Grid</button>
+              <button type="button" style="display:flex;align-items:center;gap:6px;padding:0 16px;border:0;border-left:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);font-size:14px;font-weight:500;cursor:pointer;" style-hover="background:var(--ripple)">List</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--gap);">
+            <sc-for list="{{ projects }}" as="p" hint-placeholder-count="8">
+              <div onContextMenu="{{ p.contextMenu }}" style="position:relative;border:1px solid var(--md-sys-color-outline-variant);border-radius:20px;background:var(--md-sys-color-surface-container-low);overflow:hidden;transition:transform 300ms var(--md-sys-motion-spring),box-shadow 220ms;" style-hover="transform:translateY(-3px);box-shadow:0 10px 24px rgba(0,0,0,.16)">
+                <sc-if value="{{ selectMode }}">
+                  <button type="button" onClick="{{ p.toggle }}" aria-label="Select project" style="position:absolute;top:10px;left:10px;z-index:2;width:28px;height:28px;border-radius:8px;border:2px solid var(--md-sys-color-outline);cursor:pointer;display:grid;place-items:center;{{ p.checkStyle }}">
+                    <span class="msr" style="font-size:18px;">{{ p.checkIcon }}</span>
+                  </button>
+                </sc-if>
+                <div style="height:132px;position:relative;overflow:hidden;{{ p.cover }}">
+                  <span style="position:absolute;right:10px;top:10px;height:24px;padding:0 10px;border-radius:99px;background:rgba(0,0,0,.28);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;">{{ p.kind }}</span>
+                </div>
+                <div style="padding:14px 14px 12px;">
+                  <div style="font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ p.name }}</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+                    <span class="msr" style="font-size:15px;">{{ p.icon }}</span>{{ p.meta }}
+                    <div style="flex:1;"></div>
+                    <span class="msr" style="font-size:18px;border-radius:99px;padding:3px;cursor:pointer;" style-hover="background:var(--ripple)">more_vert</span>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isDesignSystems }}">
+        <div style="max-width:1280px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <p style="margin:0 0 20px;font-size:14px;line-height:1.55;color:var(--md-sys-color-on-surface-variant);max-width:720px;">Distill a brand contract once and reuse it everywhere. Generated prototypes, decks and images follow these colors, type styles and product language.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--gap);">
+            <sc-for list="{{ designSystems }}" as="d" hint-placeholder-count="6">
+              <div style="border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);overflow:hidden;transition:transform 300ms var(--md-sys-motion-spring),box-shadow 220ms;" style-hover="transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.16)">
+                <div style="display:flex;height:64px;">
+                  <sc-for list="{{ d.swatches }}" as="sw" hint-placeholder-count="5">
+                    <span style="flex:1;{{ sw.style }}"></span>
+                  </sc-for>
+                </div>
+                <div style="padding:16px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ d.name }}</span>
+                    <sc-if value="{{ d.isDefault }}"><span style="height:22px;padding:0 8px;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:11px;font-weight:700;display:grid;place-items:center;">DEFAULT</span></sc-if>
+                  </div>
+                  <div style="margin-top:10px;font-size:24px;line-height:1.15;color:var(--md-sys-color-on-surface);{{ d.typeStyle }}">{{ d.typeSample }}</div>
+                  <div style="margin-top:6px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ d.meta }}</div>
+                  <div style="display:flex;gap:8px;margin-top:14px;">
+                    <button type="button" style="height:36px;padding:0 16px;border:0;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.04)">Open</button>
+                    <button type="button" style="height:36px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Set default</button>
+                    <div style="flex:1;"></div>
+                    <button type="button" aria-label="More" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">more_vert</span></button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isLibrary }}">
+        <div style="max-width:1280px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <div style="display:flex;align-items:center;gap:10px;padding:0 0 18px;">
+            <p style="margin:0;flex:1;font-size:14px;line-height:1.55;color:var(--md-sys-color-on-surface-variant);max-width:640px;">Reusable assets — logos, photography, fonts and icon sets — that any chat can reference with <span style="font-family:'Roboto Mono',monospace;">@</span>.</p>
+            <button type="button" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">checklist</span>Select</button>
+            <button type="button" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.06)"><span class="msr" style="font-size:20px;">upload</span>Upload</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--gap);">
+            <sc-for list="{{ libraryAssets }}" as="la" hint-placeholder-count="8">
+              <div style="border-radius:18px;overflow:hidden;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);transition:transform 300ms var(--md-sys-motion-spring),box-shadow 220ms;" style-hover="transform:translateY(-3px);box-shadow:0 10px 22px rgba(0,0,0,.16)">
+                <div style="height:120px;display:grid;place-items:center;{{ la.cover }}"><span class="msr" style="font-size:32px;color:var(--md-sys-color-on-surface-variant);">{{ la.icon }}</span></div>
+                <div style="padding:10px 12px 12px;">
+                  <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ la.name }}</div>
+                  <div style="margin-top:4px;font-size:11px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ la.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isSettings }}">
+        <div style="max-width:1180px;margin:0 auto;padding:8px var(--pad) 96px;display:flex;gap:24px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <aside style="flex:none;width:280px;">
+            <div style="display:flex;align-items:center;gap:8px;height:44px;padding:0 8px 0 14px;border-radius:99px;background:var(--md-sys-color-surface-container-high);margin-bottom:12px;">
+              <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">search</span>
+              <input value="{{ settingsQuery }}" onChange="{{ setSettingsQuery }}" placeholder="Search settings" style="flex:1;min-width:0;height:40px;border:0;outline:none;background:transparent;font-size:14px;font-family:inherit;color:var(--md-sys-color-on-surface);">
+              <button type="button" onClick="{{ openRegex }}" title="Regex builder" style="width:32px;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">construction</span></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <sc-for list="{{ settingsSections }}" as="sec" hint-placeholder-count="8">
+                <button type="button" onClick="{{ sec.select }}" style="display:flex;align-items:center;gap:12px;height:52px;padding:0 20px;border:0;border-radius:99px;cursor:pointer;font-size:14px;font-weight:600;text-align:left;transition:background 220ms cubic-bezier(.2,0,0,1);{{ sec.style }}">
+                  <span class="msr" style="font-size:22px;">{{ sec.icon }}</span>{{ sec.label }}
+                </button>
+              </sc-for>
+            </div>
+          </aside>
+
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;">
+
+            <sc-if value="{{ isAppearance }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Theme</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Tonal surfaces follow the seed color across light and dark.</p>
+                <div style="display:inline-flex;height:44px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+                  <button type="button" onClick="{{ setLight }}" style="display:flex;align-items:center;gap:6px;padding:0 20px;border:0;font-size:14px;font-weight:600;cursor:pointer;{{ lightBtnStyle }}"><span class="msr" style="font-size:18px;">light_mode</span>Light</button>
+                  <button type="button" onClick="{{ setDark }}" style="display:flex;align-items:center;gap:6px;padding:0 20px;border:0;border-left:1px solid var(--md-sys-color-outline);font-size:14px;font-weight:600;cursor:pointer;{{ darkBtnStyle }}"><span class="msr" style="font-size:18px;">dark_mode</span>Dark</button>
+                </div>
+                <div style="margin-top:20px;font-size:14px;font-weight:600;">Seed color</div>
+                <p style="margin:4px 0 12px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Set the palette seed in Tweaks — the whole scheme regenerates from it.</p>
+                <div style="display:flex;gap:12px;">
+                  <span style="width:44px;height:44px;border-radius:99px;background:#C96442;border:3px solid var(--md-sys-color-on-surface);"></span>
+                  <span style="width:44px;height:44px;border-radius:99px;background:#65558F;border:3px solid transparent;"></span>
+                  <span style="width:44px;height:44px;border-radius:99px;background:#00696D;border:3px solid transparent;"></span>
+                  <span style="width:44px;height:44px;border-radius:99px;background:#4C6700;border:3px solid transparent;"></span>
+                </div>
+              </div>
+
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Sizing</h3>
+                <p style="margin:0 0 18px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">UI scale 50–200% and density are user-configurable and persist per account.</p>
+                <div style="display:flex;align-items:center;gap:16px;">
+                  <span style="font-size:13px;width:96px;color:var(--md-sys-color-on-surface-variant);">UI scale</span>
+                  <input type="range" min="50" max="200" step="5" value="{{ scaleValue }}" onChange="{{ setScale }}" style="flex:1;accent-color:var(--md-sys-color-primary);height:24px;">
+                  <span style="font-size:13px;font-family:'Roboto Mono',monospace;width:56px;text-align:right;">{{ scaleLabel }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+                  <span style="font-size:13px;width:96px;color:var(--md-sys-color-on-surface-variant);">Density</span>
+                  <div style="display:inline-flex;height:40px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+                    <sc-for list="{{ densityOptions }}" as="d" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ d.select }}" style="padding:0 18px;border:0;border-left:1px solid var(--md-sys-color-outline);font-size:13px;font-weight:600;cursor:pointer;{{ d.style }}">{{ d.label }}</button>
+                    </sc-for>
+                  </div>
+                  <div style="flex:1;"></div>
+                  <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">Auto-fit to window</span>
+                  <span style="width:52px;height:32px;border-radius:99px;background:var(--md-sys-color-primary);position:relative;display:inline-block;"><span style="position:absolute;top:4px;left:24px;width:24px;height:24px;border-radius:99px;background:var(--md-sys-color-on-primary);"></span></span>
+                </div>
+              </div>
+
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Tab title styling</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Per-tab title formatting — double-click a tab to rename it inline.</p>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <div style="display:flex;height:40px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+                    <button type="button" style="width:44px;border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-weight:700;cursor:pointer;">B</button>
+                    <button type="button" style="width:44px;border:0;border-left:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);font-style:italic;cursor:pointer;" style-hover="background:var(--ripple)">I</button>
+                    <button type="button" style="width:44px;border:0;border-left:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);text-decoration:underline;cursor:pointer;" style-hover="background:var(--ripple)">U</button>
+                  </div>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Roboto Flex<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">13 px<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <div style="display:flex;height:40px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+                    <button type="button" aria-label="Align left" style="width:44px;border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);cursor:pointer;"><span class="msr" style="font-size:18px;">format_align_left</span></button>
+                    <button type="button" aria-label="Align center" style="width:44px;border:0;border-left:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">format_align_center</span></button>
+                  </div>
+                  <span style="width:40px;height:40px;border-radius:99px;background:var(--md-sys-color-primary);border:2px solid var(--md-sys-color-outline-variant);"></span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isLanguage }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Language mode</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">English, playful Hong Kong-style Cantonese, or both side by side. Applies to every surface, docs included.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <sc-for list="{{ languageOptions }}" as="l" hint-placeholder-count="3">
+                    <button type="button" onClick="{{ l.select }}" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:18px;cursor:pointer;text-align:left;transition:background 220ms;{{ l.style }}">
+                      <span style="width:20px;height:20px;flex:none;border-radius:99px;border:2px solid var(--md-sys-color-primary);display:grid;place-items:center;">
+                        <sc-if value="{{ l.on }}"><span style="width:10px;height:10px;border-radius:99px;background:var(--md-sys-color-primary);"></span></sc-if>
+                      </span>
+                      <span style="display:block;">
+                        <span style="display:block;font-size:14px;font-weight:600;">{{ l.label }}</span>
+                        <span style="display:block;margin-top:3px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ l.sample }}</span>
+                      </span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Funny level</h3>
+                <p style="margin:0 0 18px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Independent 1–5 sliders per language. 1 is deadpan, 5 roasts the code.</p>
+                <div style="display:flex;align-items:center;gap:16px;">
+                  <span style="font-size:13px;width:120px;color:var(--md-sys-color-on-surface-variant);">English</span>
+                  <input type="range" min="1" max="5" step="1" value="{{ funnyEn }}" onChange="{{ setFunnyEn }}" style="flex:1;accent-color:var(--md-sys-color-primary);height:24px;">
+                  <span style="font-size:13px;font-family:'Roboto Mono',monospace;width:24px;text-align:right;">{{ funnyEn }}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:16px;margin-top:14px;">
+                  <span style="font-size:13px;width:120px;color:var(--md-sys-color-on-surface-variant);">粵語 Cantonese</span>
+                  <input type="range" min="1" max="5" step="1" value="{{ funnyYue }}" onChange="{{ setFunnyYue }}" style="flex:1;accent-color:var(--md-sys-color-tertiary);height:24px;">
+                  <span style="font-size:13px;font-family:'Roboto Mono',monospace;width:24px;text-align:right;">{{ funnyYue }}</span>
+                </div>
+                <div style="margin-top:18px;padding:14px 16px;border-radius:16px;background:var(--md-sys-color-surface-container);font-size:13px;line-height:1.6;">
+                  <div style="color:var(--md-sys-color-on-surface);">{{ funnySampleEn }}</div>
+                  <div style="margin-top:6px;color:var(--md-sys-color-on-surface-variant);">{{ funnySampleYue }}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:18px;">
+                  <span style="font-size:14px;font-weight:600;flex:1;">Dim-sum surprise</span>
+                  <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">One steamer basket per release</span>
+                  <span style="width:52px;height:32px;border-radius:99px;background:var(--md-sys-color-primary);position:relative;display:inline-block;"><span style="position:absolute;top:4px;left:24px;width:24px;height:24px;border-radius:99px;background:var(--md-sys-color-on-primary);"></span></span>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isVersions }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="flex:1;">
+                    <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Local version history</h3>
+                    <p style="margin:0;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Every tabs/settings change auto-commits to the per-account settings repo.</p>
+                  </div>
+                  <button type="button" style="display:flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">undo</span>Undo</button>
+                  <button type="button" style="display:flex;align-items:center;gap:6px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">redo</span>Redo</button>
+                </div>
+                <div style="margin-top:18px;display:flex;flex-direction:column;">
+                  <sc-for list="{{ commits }}" as="c" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+                      <span style="font-family:'Roboto Mono',monospace;font-size:12px;padding:4px 10px;border-radius:99px;background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface-variant);">{{ c.sha }}</span>
+                      <span style="flex:1;min-width:0;font-size:13px;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.message }}</span>
+                      <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ c.time }}</span>
+                      <button type="button" style="height:32px;padding:0 14px;border:0;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:12px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.05)">Restore</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isChangelog }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+                  <h3 style="margin:0;font-size:18px;font-weight:600;flex:1;">Changelog</h3>
+                  <button type="button" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">content_copy</span>Copy view</button>
+                  <button type="button" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">download</span>Export .md</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+                  <div style="display:flex;align-items:center;gap:4px;flex:1;min-width:260px;height:44px;padding:0 6px 0 14px;border-radius:99px;background:var(--md-sys-color-surface-container-high);">
+                    <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">search</span>
+                    <input value="{{ changelogQuery }}" onChange="{{ setChangelogQuery }}" placeholder="Search changelog text" style="flex:1;min-width:0;height:40px;border:0;outline:none;background:transparent;font-size:14px;font-family:inherit;color:var(--md-sys-color-on-surface);">
+                    <button type="button" onClick="{{ toggleChangelogRegex }}" title="Regex mode — opt-in" style="width:32px;height:32px;border:0;border-radius:99px;cursor:pointer;display:grid;place-items:center;font-family:'Roboto Mono',monospace;font-size:12px;font-weight:600;{{ changelogRegexStyle }}">.*</button>
+                    <button type="button" onClick="{{ openRegex }}" title="Regex builder" style="width:32px;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">construction</span></button>
+                  </div>
+                  <div style="position:relative;">
+                    <button type="button" onClick="{{ toggleCalendar }}" style="display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">calendar_month</span>{{ changelogRangeLabel }}<span class="msr" style="font-size:18px;">expand_more</span></button>
+                    <sc-if value="{{ calendarOpen }}">
+                      <div style="position:absolute;right:0;top:52px;z-index:20;width:320px;max-height:60vh;overflow-y:auto;padding:16px;border-radius:20px;background:var(--md-sys-color-surface-container-high);border:1px solid var(--md-sys-color-outline-variant);box-shadow:0 16px 40px rgba(0,0,0,.32);">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+                          <button type="button" aria-label="Previous month" style="width:32px;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">chevron_left</span></button>
+                          <button type="button" style="flex:1;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">August 2026 <span class="msr" style="font-size:16px;vertical-align:middle;">expand_more</span></button>
+                          <button type="button" aria-label="Next month" style="width:32px;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">chevron_right</span></button>
+                        </div>
+                        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
+                          <sc-for list="{{ calendarCells }}" as="cell" hint-placeholder-count="35">
+                            <span style="height:34px;display:grid;place-items:center;border-radius:99px;font-size:12px;{{ cell.style }}">{{ cell.label }}</span>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;">
+                          <sc-for list="{{ datePresets }}" as="dp" hint-placeholder-count="4">
+                            <button type="button" onClick="{{ dp.select }}" style="height:32px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;{{ dp.style }}">{{ dp.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="margin-top:14px;">
+                          <input value="{{ typedDate }}" onChange="{{ setTypedDate }}" placeholder="Type a date — 2026-07-24 or 24/07/2026" style="width:100%;height:44px;padding:0 14px;border-radius:12px;border:2px solid {{ typedDateBorder }};outline:none;background:transparent;font-size:13px;font-family:inherit;color:var(--md-sys-color-on-surface);">
+                          <div style="margin-top:6px;font-size:11px;color:{{ typedDateColor }};">{{ typedDateHint }}</div>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-bottom:6px;">{{ changelogSummary }}</div>
+                <sc-for list="{{ changelogFiltered }}" as="r" hint-placeholder-count="3">
+                  <div style="display:flex;gap:16px;padding:14px 0;border-top:1px solid var(--md-sys-color-outline-variant);">
+                    <span style="flex:none;width:104px;">
+                      <span style="display:inline-grid;place-items:center;height:24px;padding:0 10px;border-radius:99px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:11px;font-weight:700;font-family:'Roboto Mono',monospace;">{{ r.version }}</span>
+                      <span style="display:block;margin-top:6px;font-size:11px;color:var(--md-sys-color-on-surface-variant);">{{ r.date }}</span>
+                      <a href="#{{ r.sha }}" style="display:inline-block;margin-top:6px;font-size:11px;font-family:'Roboto Mono',monospace;">{{ r.shaShort }}</a>
+                    </span>
+                    <span style="display:block;flex:1;font-size:13px;line-height:1.6;color:var(--md-sys-color-on-surface-variant);">{{ r.body }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ changelogEmpty }}">
+                  <div style="padding:28px 0;text-align:center;font-size:13px;color:var(--md-sys-color-on-surface-variant);">No changelog entries match this search and date range.</div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isExecution }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Execution mode</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Choose Local CLI or BYOK. Local CLI runs prompts through a code-agent on this machine.</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <sc-for list="{{ runtimes }}" as="rt" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:18px;{{ rt.style }}">
+                      <span style="width:36px;height:36px;flex:none;border-radius:12px;background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);display:grid;place-items:center;"><span class="msr" style="font-size:20px;">{{ rt.icon }}</span></span>
+                      <span style="display:block;flex:1;min-width:0;">
+                        <span style="display:block;font-size:14px;font-weight:600;">{{ rt.name }}</span>
+                        <span style="display:block;margin-top:2px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ rt.detail }}</span>
+                      </span>
+                      <span style="height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;display:grid;place-items:center;{{ rt.statusStyle }}">{{ rt.status }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isNotificationSettings }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Notifications</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Non-blocking only — completion notices land in the message center and a snackbar, never a modal.</p>
+                <sc-for list="{{ notificationPrefs }}" as="np" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--md-sys-color-outline-variant);">
+                    <span style="display:block;flex:1;">
+                      <span style="display:block;font-size:14px;font-weight:600;">{{ np.name }}</span>
+                      <span style="display:block;margin-top:2px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ np.detail }}</span>
+                    </span>
+                    <span style="width:52px;height:32px;border-radius:99px;position:relative;display:inline-block;{{ np.track }}"><span style="position:absolute;top:4px;width:24px;height:24px;border-radius:99px;{{ np.thumb }}"></span></span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAccounts }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Accounts</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Each account keeps its own tabs, repositories, and settings repo. Switch from the rail avatar.</p>
+                <sc-for list="{{ accounts }}" as="ac" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--md-sys-color-outline-variant);">
+                    <span style="width:40px;height:40px;flex:none;border-radius:99px;display:grid;place-items:center;font-size:14px;font-weight:700;{{ ac.avatar }}">{{ ac.initials }}</span>
+                    <span style="display:block;flex:1;min-width:0;">
+                      <span style="display:block;font-size:14px;font-weight:600;">{{ ac.name }}</span>
+                      <span style="display:block;margin-top:2px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ ac.detail }}</span>
+                    </span>
+                    <span style="height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;display:grid;place-items:center;{{ ac.statusStyle }}">{{ ac.status }}</span>
+                  </div>
+                </sc-for>
+                <div style="display:flex;gap:10px;margin-top:16px;">
+                  <button type="button" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">person_add</span>Add account</button>
+                  <button type="button" onClick="{{ openClone }}" style="display:flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">download_for_offline</span>Clone repositories…</button>
+                </div>
+              </div>
+
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Sign in to a self-hosted forge</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">GitLab or another self-hosted instance. The token is requested once and stored in the Windows credential vault — never in a file.</p>
+                <div style="display:flex;flex-direction:column;gap:12px;max-width:520px;">
+                  <label style="display:block;">
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">Endpoint</span>
+                    <input value="https://gitlab.internal.example/api/v4" style="width:100%;height:52px;padding:0 16px;border-radius:12px;border:1px solid var(--md-sys-color-outline);background:transparent;font-size:14px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface);outline:none;">
+                  </label>
+                  <label style="display:block;">
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:4px;">Personal access token</span>
+                    <input type="password" value="glpat-000000000000" style="width:100%;height:52px;padding:0 16px;border-radius:12px;border:1px solid var(--md-sys-color-outline);background:transparent;font-size:14px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface);outline:none;">
+                  </label>
+                  <button type="button" style="align-self:flex-start;height:40px;padding:0 20px;border:0;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:14px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.06)">Sign in</button>
+                </div>
+              </div>
+
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Publish to a forge</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Choose the account and the owner. Where forking is unavailable, copy-and-push is offered instead — the route taken is always reported.</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Account: codingmachineedge<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Owner: Ding-Ding-Projects<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.04)">Copy &amp; push</button>
+                  <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">Fork unavailable on this instance — copy-and-push is the route that works here.</span>
+                </div>
+              </div>
+
+              <sc-if value="{{ pushFailed }}">
+                <div style="padding:20px 22px;border-radius:24px;background:var(--md-sys-color-error-container);color:var(--md-sys-color-on-error-container);border:1px solid var(--md-sys-color-error);">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="msr" style="font-size:22px;">error</span>
+                    <span style="font-size:15px;font-weight:600;flex:1;">Push rejected — insufficient scope for Ding-Ding-Projects/desktop-material</span>
+                  </div>
+                  <p style="margin:10px 0 14px;font-size:13px;line-height:1.55;">The stored token is missing <span style="font-family:'Roboto Mono',monospace;">write:packages</span>. Recovery is offered here, beside the control that failed — nothing was rewritten and no commits were dropped.</p>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <button type="button" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-error);color:var(--md-sys-color-on-error);font-size:13px;font-weight:600;cursor:pointer;">Re-authenticate</button>
+                    <button type="button" style="height:40px;padding:0 18px;border:1px solid currentColor;border-radius:99px;background:transparent;color:inherit;font-size:13px;font-weight:600;cursor:pointer;">Change remote URL</button>
+                    <button type="button" onClick="{{ dismissPushFailure }}" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:transparent;color:inherit;font-size:13px;font-weight:600;cursor:pointer;">Hand to local agent</button>
+                  </div>
+                </div>
+              </sc-if>
+            </sc-if>
+
+            <sc-if value="{{ isMemory }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Memory profile</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Preferences, project facts, and recurring rules the agent reuses on every task.</p>
+                <sc-for list="{{ memoryEntries }}" as="m" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--md-sys-color-outline-variant);">
+                    <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">{{ m.icon }}</span>
+                    <span style="display:block;flex:1;min-width:0;">
+                      <span style="display:block;font-size:13px;font-weight:600;">{{ m.title }}</span>
+                      <span style="display:block;margin-top:2px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ m.body }}</span>
+                    </span>
+                    <button type="button" aria-label="Edit" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:19px;">edit</span></button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isCloud }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Open Design Cloud</h3>
+                <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">One recharge to use 20+ flagship models, billed by real token usage.</p>
+                <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                  <div style="flex:1;min-width:200px;padding:18px;border-radius:20px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);">
+                    <div style="font-size:12px;font-weight:600;opacity:.8;">Wallet balance</div>
+                    <div style="margin-top:6px;font-size:32px;font-weight:700;letter-spacing:-1px;">$42.80</div>
+                    <div style="margin-top:4px;font-size:11px;opacity:.75;">Updated 3 min ago</div>
+                  </div>
+                  <div style="flex:1;min-width:200px;padding:18px;border-radius:20px;background:var(--md-sys-color-surface-container);">
+                    <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);">Plan</div>
+                    <div style="margin-top:6px;font-size:20px;font-weight:600;">Pro</div>
+                    <button type="button" style="margin-top:12px;height:36px;padding:0 16px;border:0;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.06)">Upgrade</button>
+                  </div>
+                </div>
+                <div style="margin-top:16px;font-size:14px;font-weight:600;">Bring your own key</div>
+                <p style="margin:4px 0 12px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">BYOK can't read, write, or edit project files. Use Local CLI when you need code changes.</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">OpenAI compatible<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Test connection</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isAccessibility }}">
+              <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Accessibility</h3>
+                <p style="margin:0 0 8px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Contrast level, motion, focus rings, and minimum hit targets. These apply to every surface, the docs site included.</p>
+                <sc-for list="{{ accessibilityPrefs }}" as="ap" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--md-sys-color-outline-variant);">
+                    <span style="display:block;flex:1;">
+                      <span style="display:block;font-size:14px;font-weight:600;">{{ ap.name }}</span>
+                      <span style="display:block;margin-top:2px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ ap.detail }}</span>
+                    </span>
+                    <span style="width:52px;height:32px;border-radius:99px;position:relative;display:inline-block;{{ ap.track }}"><span style="position:absolute;top:4px;width:24px;height:24px;border-radius:99px;{{ ap.thumb }}"></span></span>
+                  </div>
+                </sc-for>
+                <div style="margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--md-sys-color-surface-container);font-size:12px;color:var(--md-sys-color-on-surface-variant);">Every interactive target in this build is at least 48×48 px; text contrast is checked at 4.5:1 and UI boundaries at 3:1.</div>
+              </div>
+            </sc-if>
+
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isHandoff }}">
+        <div style="max-width:1180px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <button type="button" onClick="{{ openSettings }}" style="display:flex;align-items:center;gap:8px;height:40px;margin-bottom:14px;padding:0 18px 0 12px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">arrow_back</span>Back to settings</button>
+          <div style="padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+            <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Token sheet — MD3 → app CSS variables</h3>
+            <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Drop-in mapping for <span style="font-family:'Roboto Mono',monospace;">apps/web/src/styles/tokens.css</span>. Left is the MD3 role, right is the variable the codebase already consumes.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;">
+              <sc-for list="{{ tokenMap }}" as="tk" hint-placeholder-count="12">
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--md-sys-color-surface-container);font-size:12px;font-family:'Roboto Mono',monospace;">
+                  <span style="width:18px;height:18px;flex:none;border-radius:6px;border:1px solid var(--md-sys-color-outline-variant);{{ tk.swatch }}"></span>
+                  <span style="flex:1;min-width:0;color:var(--md-sys-color-on-surface);overflow:hidden;text-overflow:ellipsis;">{{ tk.md3 }}</span>
+                  <span class="msr" style="font-size:14px;color:var(--md-sys-color-on-surface-variant);">arrow_forward</span>
+                  <span style="color:var(--md-sys-color-on-surface-variant);">{{ tk.app }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;padding:22px;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+            <h3 style="margin:0 0 16px;font-size:18px;font-weight:600;">Component inventory — before → after</h3>
+            <div style="display:flex;flex-direction:column;">
+              <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;padding:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--md-sys-color-on-surface-variant);">
+                <span>SOURCE COMPONENT</span><span>TODAY</span><span>MATERIAL 3</span>
+              </div>
+              <sc-for list="{{ inventory }}" as="iv" hint-placeholder-count="10">
+                <div style="display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;padding:12px 0;border-top:1px solid var(--md-sys-color-outline-variant);font-size:13px;align-items:center;">
+                  <span style="font-family:'Roboto Mono',monospace;font-size:12px;color:var(--md-sys-color-on-surface);">{{ iv.file }}</span>
+                  <span style="color:var(--md-sys-color-on-surface-variant);">{{ iv.before }}</span>
+                  <span style="color:var(--md-sys-color-on-surface);font-weight:500;">{{ iv.after }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPlugins }}">
+        <div style="max-width:1280px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 0 20px;">
+            <sc-for list="{{ pluginFilters }}" as="f" hint-placeholder-count="5">
+              <button type="button" onClick="{{ f.select }}" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:99px;cursor:pointer;font-size:14px;font-weight:500;transition:background 200ms cubic-bezier(.2,0,0,1);{{ f.style }}">
+                <sc-if value="{{ f.on }}"><span class="msr" style="font-size:18px;">check</span></sc-if>
+                {{ f.label }}
+              </button>
+            </sc-for>
+            <div style="flex:1;"></div>
+            <span style="font-size:13px;color:var(--md-sys-color-on-surface-variant);">{{ pluginCount }}</span>
+            <button type="button" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">sort</span>Trending</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--gap);">
+            <sc-for list="{{ plugins }}" as="p" hint-placeholder-count="6">
+              <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:22px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);transition:transform 300ms var(--md-sys-motion-spring),box-shadow 220ms;" style-hover="transform:translateY(-3px);box-shadow:0 12px 26px rgba(0,0,0,.16)">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <span style="width:44px;height:44px;flex:none;border-radius:14px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);display:grid;place-items:center;"><span class="msr" style="font-size:24px;">{{ p.icon }}</span></span>
+                  <span style="display:block;min-width:0;flex:1;">
+                    <span style="display:flex;align-items:center;gap:6px;">
+                      <span style="font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ p.name }}</span>
+                      <sc-if value="{{ p.official }}"><span style="height:20px;padding:0 8px;border-radius:99px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);font-size:10px;font-weight:700;display:grid;place-items:center;">OFFICIAL</span></sc-if>
+                    </span>
+                    <span style="display:block;margin-top:3px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ p.id }}</span>
+                  </span>
+                </div>
+                <div style="font-size:13px;line-height:1.5;color:var(--md-sys-color-on-surface-variant);">{{ p.desc }}</div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:auto;">
+                  <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--md-sys-color-on-surface-variant);"><span class="msr" style="font-size:16px;">download</span>{{ p.installs }}</span>
+                  <div style="flex:1;"></div>
+                  <button type="button" onClick="{{ p.openDetail }}" style="height:36px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Details</button>
+                  <button type="button" style="height:36px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.06)">Use</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isIntegrations }}">
+        <div style="max-width:1000px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <p style="margin:0 0 20px;font-size:14px;line-height:1.55;color:var(--md-sys-color-on-surface-variant);max-width:760px;">Connect external systems, bring MCP tools into your agent loop, and use Open Design from other IDEs, scripts, and automations.</p>
+          <div style="display:inline-flex;height:44px;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;margin-bottom:24px;">
+            <sc-for list="{{ integrationTabs }}" as="t" hint-placeholder-count="3">
+              <button type="button" onClick="{{ t.select }}" style="display:flex;align-items:center;gap:6px;padding:0 20px;border:0;border-left:1px solid var(--md-sys-color-outline);font-size:14px;font-weight:600;cursor:pointer;transition:background 220ms;{{ t.style }}">
+                <sc-if value="{{ t.on }}"><span class="msr" style="font-size:18px;">check</span></sc-if>
+                {{ t.label }}
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ integrationRows }}" as="r" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:16px;padding:14px 18px;border-radius:18px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);">
+                <span style="width:40px;height:40px;flex:none;border-radius:12px;background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);display:grid;place-items:center;"><span class="msr" style="font-size:22px;">{{ r.icon }}</span></span>
+                <span style="display:block;flex:1;min-width:0;">
+                  <span style="display:block;font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ r.name }}</span>
+                  <span style="display:block;margin-top:3px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.detail }}</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:99px;font-size:12px;font-weight:600;flex:none;{{ r.statusStyle }}">
+                  <span style="width:7px;height:7px;border-radius:99px;background:currentColor;"></span>{{ r.status }}
+                </span>
+                <button type="button" style="height:36px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;flex:none;" style-hover="background:var(--ripple)">Configure</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isStudio }}">
+        <div style="height:100%;display:flex;gap:12px;padding:0 var(--pad) var(--pad);animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <section style="flex:none;width:220px;display:flex;flex-direction:column;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:6px;padding:12px 8px 12px 16px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+              <span style="flex:1;font-size:13px;font-weight:600;">Conversations</span>
+              <button type="button" aria-label="New conversation" style="width:32px;height:32px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">add</span></button>
+            </div>
+            <div style="flex:1;min-height:0;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:2px;">
+              <sc-for list="{{ conversations }}" as="cv" hint-placeholder-count="4">
+                <button type="button" style="text-align:left;padding:10px 12px;border:0;border-radius:12px;cursor:pointer;{{ cv.style }}" style-hover="background:var(--ripple)">
+                  <span style="display:block;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ cv.title }}</span>
+                  <span style="display:block;margin-top:3px;font-size:11px;color:var(--md-sys-color-on-surface-variant);">{{ cv.time }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="padding:10px 12px;border-top:1px solid var(--md-sys-color-outline-variant);">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--md-sys-color-on-surface-variant);margin-bottom:6px;">DESIGN FILES</div>
+              <sc-for list="{{ designFiles }}" as="df" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:11px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">
+                  <span class="msr" style="font-size:15px;">{{ df.icon }}</span>
+                  <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ df.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="flex:none;width:400px;display:flex;flex-direction:column;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;padding:12px 12px 12px 18px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+              <span style="font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">Orders dashboard</span>
+              <span style="height:22px;padding:0 10px;border-radius:99px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:11px;font-weight:600;display:grid;place-items:center;">Prototype</span>
+              <div style="flex:1;"></div>
+              <button type="button" aria-label="Conversations" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">forum</span></button>
+              <button type="button" aria-label="New conversation" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">add_comment</span></button>
+            </div>
+            <div style="flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;">
+              <div style="align-self:flex-end;max-width:86%;padding:12px 16px;border-radius:20px 20px 6px 20px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:14px;line-height:1.5;">Prototype a dashboard for tracking orders. Use the Open Design system and keep the table density compact.</div>
+              <div style="align-self:flex-start;max-width:92%;display:flex;flex-direction:column;gap:10px;">
+                <div style="padding:12px 16px;border-radius:20px 20px 20px 6px;background:var(--md-sys-color-surface-container-high);font-size:14px;line-height:1.55;color:var(--md-sys-color-on-surface);">Built the shell with a navigation rail, a filterable orders table, and four summary cards. The table uses the compact density token so 12 rows fit above the fold.</div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:var(--md-sys-color-surface-container);font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);"><span class="msr" style="font-size:16px;color:var(--md-sys-color-success);">check_circle</span>write · orders-dashboard.html<div style="flex:1;"></div>+412</div>
+                  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;background:var(--md-sys-color-surface-container);font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);"><span class="msr" style="font-size:16px;color:var(--md-sys-color-success);">check_circle</span>read · DESIGN.md<div style="flex:1;"></div>42 lines</div>
+                </div>
+              </div>
+              <div style="align-self:flex-start;display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:20px;background:var(--md-sys-color-surface-container-high);font-size:13px;color:var(--md-sys-color-on-surface-variant);">
+                <span style="display:flex;gap:4px;">
+                  <span style="width:6px;height:6px;border-radius:99px;background:var(--md-sys-color-primary);animation:od-pulse 1.2s ease-in-out infinite;"></span>
+                  <span style="width:6px;height:6px;border-radius:99px;background:var(--md-sys-color-primary);animation:od-pulse 1.2s ease-in-out .2s infinite;"></span>
+                  <span style="width:6px;height:6px;border-radius:99px;background:var(--md-sys-color-primary);animation:od-pulse 1.2s ease-in-out .4s infinite;"></span>
+                </span>
+                Refining the empty state…
+              </div>
+            </div>
+            <div style="padding:12px;border-top:1px solid var(--md-sys-color-outline-variant);">
+              <div style="border-radius:22px;background:var(--md-sys-color-surface-container-high);padding:12px 14px;">
+                <textarea placeholder="Ask Open Design to change orders-dashboard.html…" style="width:100%;min-height:52px;resize:none;border:0;outline:none;background:transparent;font-family:inherit;font-size:14px;line-height:1.5;color:var(--md-sys-color-on-surface);"></textarea>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <button type="button" aria-label="Attach" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">attach_file</span></button>
+                  <button type="button" aria-label="Add context" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">alternate_email</span></button>
+                  <span style="font-size:11px;color:var(--md-sys-color-on-surface-variant);">⌘/Ctrl + Enter to send</span>
+                  <div style="flex:1;"></div>
+                  <button type="button" aria-label="Send" style="width:44px;height:44px;border:0;border-radius:16px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);cursor:pointer;display:grid;place-items:center;transition:border-radius 260ms,transform 300ms var(--md-sys-motion-spring);" style-hover="border-radius:22px;transform:scale(1.05)"><span class="msr" style="font-size:22px;">arrow_upward</span></button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section style="flex:1;min-width:0;display:flex;flex-direction:column;border-radius:24px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+              <sc-for list="{{ fileTabs }}" as="ft" hint-placeholder-count="3">
+                <button type="button" onClick="{{ ft.select }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:0;border-radius:99px;cursor:pointer;font-size:13px;font-weight:500;font-family:'Roboto Mono',monospace;transition:background 200ms;{{ ft.style }}">
+                  <span class="msr" style="font-size:16px;">{{ ft.icon }}</span>{{ ft.name }}
+                </button>
+              </sc-for>
+              <div style="flex:1;"></div>
+              <div style="display:flex;height:34px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;overflow:hidden;">
+                <button type="button" aria-label="Desktop preview" style="width:38px;border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);cursor:pointer;display:grid;place-items:center;"><span class="msr" style="font-size:18px;">desktop_windows</span></button>
+                <button type="button" aria-label="Tablet preview" style="width:38px;border:0;border-left:1px solid var(--md-sys-color-outline-variant);background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">tablet_mac</span></button>
+                <button type="button" aria-label="Mobile preview" style="width:38px;border:0;border-left:1px solid var(--md-sys-color-outline-variant);background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">smartphone</span></button>
+              </div>
+              <button type="button" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:18px;">download</span>Export<span class="msr" style="font-size:16px;">expand_more</span></button>
+              <button type="button" aria-label="Open in editor" style="width:34px;height:34px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:19px;">open_in_new</span></button>
+            </div>
+            <div style="flex:1;min-height:0;display:grid;place-items:center;background:repeating-linear-gradient(45deg,var(--md-sys-color-surface-container) 0 10px,var(--md-sys-color-surface-container-low) 10px 20px);">
+              <div style="text-align:center;padding:32px;border-radius:20px;background:var(--md-sys-color-surface-container-lowest);border:1px dashed var(--md-sys-color-outline);max-width:420px;">
+                <span class="msr" style="font-size:40px;color:var(--md-sys-color-on-surface-variant);">preview</span>
+                <div style="margin-top:10px;font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);">Sandboxed artifact preview</div>
+                <div style="margin-top:6px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">orders-dashboard.html · live reload on write</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;height:40px;padding:0 16px;border-top:1px solid var(--md-sys-color-outline-variant);font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+              <span style="display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:99px;background:var(--md-sys-color-primary);animation:od-pulse 1.6s ease-in-out infinite;"></span>Run in progress · 00:42</span>
+              <div style="flex:1;height:4px;border-radius:99px;background:var(--md-sys-color-surface-container-highest);overflow:hidden;">
+                <span style="display:block;width:64%;height:100%;background:var(--md-sys-color-primary);border-radius:99px;"></span>
+              </div>
+              <span style="font-family:'Roboto Mono',monospace;">14 files · 3 tools</span>
+            </div>
+          </section>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isAutomations }}">
+        <div style="max-width:1100px;margin:0 auto;padding:8px var(--pad) 96px;animation:od-rise 380ms cubic-bezier(.05,.7,.1,1) both;">
+          <p style="margin:0 0 20px;font-size:14px;line-height:1.55;color:var(--md-sys-color-on-surface-variant);max-width:760px;">Scheduled automations that run unattended. Routines keep them around, schedules decide when they fire, and live artifacts show what changed.</p>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <sc-for list="{{ automations }}" as="a" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:20px;background:var(--md-sys-color-surface-container-low);border:1px solid var(--md-sys-color-outline-variant);transition:background 220ms;" style-hover="background:var(--md-sys-color-surface-container)">
+                <span style="width:44px;height:44px;flex:none;border-radius:14px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);display:grid;place-items:center;"><span class="msr" style="font-size:24px;">{{ a.icon }}</span></span>
+                <span style="display:block;flex:1;min-width:0;">
+                  <span style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:15px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ a.name }}</span>
+                    <span style="height:22px;padding:0 10px;border-radius:99px;font-size:11px;font-weight:600;display:grid;place-items:center;{{ a.stateStyle }}">{{ a.state }}</span>
+                  </span>
+                  <span style="display:block;margin-top:5px;font-size:13px;color:var(--md-sys-color-on-surface-variant);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.prompt }}</span>
+                  <span style="display:flex;gap:14px;margin-top:7px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">
+                    <span>{{ a.schedule }}</span><span>next: {{ a.next }}</span><span>{{ a.target }}</span>
+                  </span>
+                </span>
+                <button type="button" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);font-size:13px;font-weight:600;cursor:pointer;flex:none;" style-hover="filter:brightness(1.04)">Run now</button>
+                <button type="button" aria-label="History" style="width:40px;height:40px;flex:none;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">history</span></button>
+                <button type="button" onClick="{{ a.toggle }}" aria-label="Pause or resume" style="width:52px;height:32px;flex:none;border:2px solid var(--md-sys-color-outline);border-radius:99px;cursor:pointer;padding:0;position:relative;transition:background 250ms cubic-bezier(.2,0,0,1),border-color 250ms;{{ a.switchTrack }}">
+                  <span style="position:absolute;top:50%;width:24px;height:24px;border-radius:99px;transform:translateY(-50%);transition:left 280ms var(--md-sys-motion-spring),background 250ms;{{ a.switchThumb }}"></span>
+                </button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+      </div>
+    </main>
+
+    <sc-if value="{{ notificationsOpen }}">
+      <aside style="flex:none;width:380px;display:flex;flex-direction:column;background:var(--md-sys-color-surface-container-low);border-left:1px solid var(--md-sys-color-outline-variant);animation:od-rise 320ms cubic-bezier(.05,.7,.1,1) both;">
+        <div style="display:flex;align-items:center;gap:8px;padding:16px 12px 12px 20px;">
+          <div style="flex:1;">
+            <div style="font-size:18px;font-weight:600;color:var(--md-sys-color-on-surface);">Message center</div>
+            <div style="font-size:12px;color:var(--md-sys-color-on-surface-variant);margin-top:2px;">Open Design updates and account notices.</div>
+          </div>
+          <button type="button" onClick="{{ toggleNotifications }}" aria-label="Close message center" style="width:40px;height:40px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">close</span></button>
+        </div>
+        <div style="display:flex;gap:8px;padding:0 20px 12px;">
+          <span style="height:32px;padding:0 14px;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:13px;font-weight:600;display:grid;place-items:center;">All</span>
+          <span style="height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--md-sys-color-outline-variant);color:var(--md-sys-color-on-surface-variant);font-size:13px;display:grid;place-items:center;">Unread</span>
+          <span style="height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--md-sys-color-outline-variant);color:var(--md-sys-color-on-surface-variant);font-size:13px;display:grid;place-items:center;">Read</span>
+          <div style="flex:1;"></div>
+          <button type="button" style="height:32px;padding:0 12px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-primary);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Mark all read</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:0 12px 16px;display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ notifications }}" as="n" hint-placeholder-count="3">
+            <div style="display:flex;gap:12px;padding:14px;border-radius:16px;background:var(--md-sys-color-surface-container);">
+              <span style="width:36px;height:36px;flex:none;border-radius:99px;display:grid;place-items:center;{{ n.iconWrap }}"><span class="msr" style="font-size:20px;">{{ n.icon }}</span></span>
+              <span style="display:block;min-width:0;flex:1;">
+                <span style="display:block;font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ n.title }}</span>
+                <span style="display:block;margin-top:3px;font-size:12px;line-height:1.45;color:var(--md-sys-color-on-surface-variant);">{{ n.body }}</span>
+                <span style="display:block;margin-top:6px;font-size:11px;color:var(--md-sys-color-on-surface-variant);opacity:.75;">{{ n.time }}</span>
+              </span>
+              <sc-if value="{{ n.unread }}"><span style="width:8px;height:8px;flex:none;margin-top:6px;border-radius:99px;background:var(--md-sys-color-primary);"></span></sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </aside>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ paletteOpen }}">
+    <div style="position:fixed;inset:0;z-index:60;background:var(--md-sys-color-scrim);display:flex;align-items:flex-start;justify-content:center;padding:{{ palettePad }};">
+      <div style="width:100%;display:flex;flex-direction:column;border-radius:28px;background:var(--md-sys-color-surface-container-high);box-shadow:0 24px 64px rgba(0,0,0,.4);overflow:hidden;animation:od-rise 260ms cubic-bezier(.05,.7,.1,1) both;{{ paletteBox }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 10px 0 20px;height:64px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+          <span class="msr" style="font-size:22px;color:var(--md-sys-color-on-surface-variant);">search</span>
+          <input value="{{ paletteQuery }}" onChange="{{ setPaletteQuery }}" placeholder="Type a command, setting, or destination…" style="flex:1;min-width:0;height:60px;border:0;outline:none;background:transparent;font-size:17px;font-family:inherit;color:var(--md-sys-color-on-surface);">
+          <button type="button" onClick="{{ togglePaletteRegex }}" title="Regex mode" style="width:36px;height:36px;border:0;border-radius:99px;cursor:pointer;display:grid;place-items:center;font-family:'Roboto Mono',monospace;font-size:13px;font-weight:600;{{ paletteRegexStyle }}">.*</button>
+          <button type="button" onClick="{{ openRegex }}" title="Regex builder" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">construction</span></button>
+          <button type="button" onClick="{{ togglePaletteSize }}" title="{{ paletteSizeLabel }}" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">{{ paletteSizeIcon }}</span></button>
+          <button type="button" onClick="{{ closePalette }}" aria-label="Close command palette" style="width:36px;height:36px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:20px;">close</span></button>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:8px;">
+          <sc-for list="{{ paletteGroups }}" as="g" hint-placeholder-count="3">
+            <div style="padding:12px 14px 6px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--md-sys-color-on-surface-variant);">{{ g.label }}</div>
+            <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:14px;min-height:56px;padding:8px 14px;border-radius:16px;cursor:pointer;transition:background 160ms;" style-hover="background:var(--ripple)">
+                <span class="msr" style="font-size:22px;color:var(--md-sys-color-on-surface-variant);">{{ r.icon }}</span>
+                <span onClick="{{ r.go }}" style="display:block;flex:1;min-width:0;">
+                  <span style="display:block;font-size:14px;font-weight:600;color:var(--md-sys-color-on-surface);">{{ r.label }}</span>
+                  <span style="display:block;margin-top:2px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ r.where }}</span>
+                </span>
+                <sc-if value="{{ r.isSwitch }}">
+                  <button type="button" onClick="{{ r.action }}" aria-label="{{ r.label }}" style="width:52px;height:32px;flex:none;border-radius:99px;cursor:pointer;padding:0;position:relative;border:2px solid var(--md-sys-color-outline);{{ r.track }}">
+                    <span style="position:absolute;top:50%;width:24px;height:24px;border-radius:99px;transform:translateY(-50%);{{ r.thumb }}"></span>
+                  </button>
+                </sc-if>
+                <sc-if value="{{ r.isSlider }}">
+                  <input type="range" min="50" max="200" step="5" value="{{ r.value }}" onChange="{{ r.action }}" style="width:180px;flex:none;accent-color:var(--md-sys-color-primary);">
+                </sc-if>
+                <sc-if value="{{ r.isSelect }}">
+                  <span style="display:flex;height:36px;flex:none;border:1px solid var(--md-sys-color-outline);border-radius:99px;overflow:hidden;">
+                    <sc-for list="{{ r.options }}" as="o" hint-placeholder-count="3">
+                      <button type="button" onClick="{{ o.select }}" style="padding:0 14px;border:0;border-left:1px solid var(--md-sys-color-outline);font-size:12px;font-weight:600;cursor:pointer;{{ o.style }}">{{ o.label }}</button>
+                    </sc-for>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ r.shortcut }}">
+                  <span style="flex:none;font-family:'Roboto Mono',monospace;font-size:11px;padding:4px 8px;border-radius:6px;background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);">{{ r.shortcut }}</span>
+                </sc-if>
+              </div>
+            </sc-for>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;height:40px;padding:0 18px;border-top:1px solid var(--md-sys-color-outline-variant);font-size:11px;color:var(--md-sys-color-on-surface-variant);">
+          <span>Ctrl + K to toggle</span><span>Enter teleports to the control</span><span>Esc closes</span>
+          <div style="flex:1;"></div>
+          <span>Size preference saved · {{ paletteSizeLabel }}</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ contextMenu }}">
+    <div style="position:fixed;z-index:55;min-width:260px;padding:8px;border-radius:16px;background:var(--md-sys-color-surface-container-high);border:1px solid var(--md-sys-color-outline-variant);box-shadow:0 16px 40px rgba(0,0,0,.34);max-height:60vh;overflow-y:auto;animation:od-rise 180ms cubic-bezier(.05,.7,.1,1) both;{{ contextMenuPos }}">
+      <sc-for list="{{ contextItems }}" as="ci" hint-placeholder-count="6">
+        <button type="button" onClick="{{ ci.run }}" style="display:flex;align-items:center;gap:12px;width:100%;height:44px;padding:0 12px;border:0;border-radius:10px;background:transparent;cursor:pointer;text-align:left;{{ ci.style }}" style-hover="background:var(--ripple)">
+          <span class="msr" style="font-size:20px;">{{ ci.icon }}</span>
+          <span style="flex:1;font-size:14px;">{{ ci.label }}</span>
+          <span aria-keyshortcuts="{{ ci.shortcut }}" style="font-family:'Roboto Mono',monospace;font-size:11px;color:var(--md-sys-color-on-surface-variant);">{{ ci.shortcut }}</span>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ cloneOpen }}">
+    <div style="position:fixed;right:32px;top:96px;z-index:45;width:520px;border-radius:28px;background:var(--md-sys-color-surface-container-high);box-shadow:0 20px 52px rgba(0,0,0,.36);overflow:hidden;animation:od-rise 300ms cubic-bezier(.05,.7,.1,1) both;">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 10px 14px 20px;background:var(--md-sys-color-surface-container-highest);cursor:move;">
+        <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">drag_indicator</span>
+        <span style="flex:1;font-size:16px;font-weight:600;">Clone repositories</span>
+        <span style="font-size:11px;padding:4px 10px;border-radius:99px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);font-weight:600;">non-modal</span>
+        <button type="button" onClick="{{ closeClone }}" aria-label="Close" style="width:40px;height:40px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">close</span></button>
+      </div>
+      <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;gap:8px;">
+          <span style="height:32px;padding:0 14px;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:12px;font-weight:600;display:grid;place-items:center;">3 selected</span>
+          <span style="height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--md-sys-color-outline-variant);color:var(--md-sys-color-on-surface-variant);font-size:12px;display:grid;place-items:center;">Parallel</span>
+          <span style="height:32px;padding:0 14px;border-radius:99px;border:1px solid var(--md-sys-color-outline-variant);color:var(--md-sys-color-on-surface-variant);font-size:12px;display:grid;place-items:center;">One by one</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ cloneRepos }}" as="cr" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:var(--md-sys-color-surface-container);">
+              <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">{{ cr.icon }}</span>
+              <span style="display:block;flex:1;min-width:0;">
+                <span style="display:block;font-size:13px;font-weight:600;">{{ cr.name }}</span>
+                <span style="display:block;margin-top:3px;height:4px;border-radius:99px;background:var(--md-sys-color-surface-container-highest);overflow:hidden;">
+                  <span style="display:block;height:100%;border-radius:99px;background:var(--md-sys-color-primary);transition:width 240ms linear;{{ cr.bar }}"></span>
+                </span>
+              </span>
+              <span style="font-size:11px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);width:120px;text-align:right;">{{ cr.phase }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <label style="display:flex;align-items:center;gap:12px;font-size:13px;color:var(--md-sys-color-on-surface-variant);cursor:pointer;">
+          <input type="checkbox" checked="{{ cloneSubmodules }}" onChange="{{ toggleSubmodules }}" style="width:18px;height:18px;accent-color:var(--md-sys-color-primary);">
+          Fetch submodules (slower — skipping leaves nested repositories empty)
+        </label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="flex:1;font-size:12px;color:var(--md-sys-color-on-surface-variant);">{{ cloneStatus }}</span>
+          <button type="button" onClick="{{ closeClone }}" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-primary);font-size:14px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Cancel</button>
+          <button type="button" onClick="{{ startCloneRun }}" disabled="{{ cloneRunning }}" style="height:40px;padding:0 20px;border:0;border-radius:99px;font-size:14px;font-weight:600;cursor:pointer;{{ cloneBtnStyle }}">{{ cloneBtnLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ pluginDetail }}">
+    <aside style="position:fixed;right:0;top:82px;bottom:28px;z-index:44;width:460px;display:flex;flex-direction:column;background:var(--md-sys-color-surface-container-low);border-left:1px solid var(--md-sys-color-outline-variant);box-shadow:-12px 0 32px rgba(0,0,0,.22);animation:od-rise 280ms cubic-bezier(.05,.7,.1,1) both;">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 12px 16px 20px;border-bottom:1px solid var(--md-sys-color-outline-variant);">
+        <span style="width:44px;height:44px;flex:none;border-radius:14px;background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);display:grid;place-items:center;"><span class="msr" style="font-size:24px;">{{ pluginDetail.icon }}</span></span>
+        <span style="display:block;flex:1;min-width:0;">
+          <span style="display:block;font-size:17px;font-weight:600;">{{ pluginDetail.name }}</span>
+          <span style="display:block;margin-top:2px;font-size:12px;font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">{{ pluginDetail.id }}</span>
+        </span>
+        <button type="button" onClick="{{ closePluginDetail }}" aria-label="Close" style="width:40px;height:40px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">close</span></button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--md-sys-color-on-surface-variant);margin-bottom:8px;">README — rendered, not printed</div>
+          <div style="padding:16px;border-radius:16px;background:var(--md-sys-color-surface-container);">
+            <h4 style="margin:0 0 8px;font-size:16px;font-weight:700;">{{ pluginDetail.name }}</h4>
+            <p style="margin:0 0 10px;font-size:13px;line-height:1.6;color:var(--md-sys-color-on-surface-variant);">{{ pluginDetail.desc }}</p>
+            <ul style="margin:0;padding-left:20px;font-size:13px;line-height:1.7;color:var(--md-sys-color-on-surface-variant);">
+              <li>Ships <code style="font-family:'Roboto Mono',monospace;font-size:12px;background:var(--md-sys-color-surface-container-highest);padding:1px 5px;border-radius:4px;">assets/template.html</code></li>
+              <li>Paste-ready layouts in <code style="font-family:'Roboto Mono',monospace;font-size:12px;background:var(--md-sys-color-surface-container-highest);padding:1px 5px;border-radius:4px;">references/layouts.md</code></li>
+              <li>P0 / P1 / P2 review checklist</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--md-sys-color-on-surface-variant);margin-bottom:8px;">INPUTS</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:12px;border:1px solid var(--md-sys-color-outline);"><span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);width:96px;">fidelity</span><span style="font-size:13px;">high-fidelity</span></div>
+            <div style="display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:12px;border:1px solid var(--md-sys-color-outline);"><span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);width:96px;">audience</span><span style="font-size:13px;">product evaluators</span></div>
+            <div style="display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:12px;border:1px solid var(--md-sys-color-outline);"><span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);width:96px;">designSystem</span><span style="font-size:13px;">the active project design system</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--md-sys-color-outline-variant);">
+        <button type="button" style="flex:1;height:44px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:14px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Share</button>
+        <button type="button" style="flex:1;height:44px;border:0;border-radius:99px;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-size:14px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.06)">Use plugin</button>
+      </div>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{ regexOpen }}">
+    <div style="position:fixed;right:32px;bottom:72px;z-index:40;width:460px;border-radius:28px;background:var(--md-sys-color-surface-container-high);box-shadow:0 18px 48px rgba(0,0,0,.34);overflow:hidden;animation:od-rise 320ms cubic-bezier(.05,.7,.1,1) both;">
+      <div style="display:flex;align-items:center;gap:8px;padding:14px 10px 14px 20px;cursor:move;background:var(--md-sys-color-surface-container-highest);">
+        <span class="msr" style="font-size:20px;color:var(--md-sys-color-on-surface-variant);">drag_indicator</span>
+        <span style="font-size:16px;font-weight:600;flex:1;">Regex builder</span>
+        <span style="font-size:11px;padding:4px 10px;border-radius:99px;background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);font-weight:600;">non-modal</span>
+        <button type="button" onClick="{{ closeRegex }}" aria-label="Close regex builder" style="width:40px;height:40px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);cursor:pointer;display:grid;place-items:center;" style-hover="background:var(--ripple)"><span class="msr" style="font-size:22px;">close</span></button>
+      </div>
+      <div style="padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px;">
+        <div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;border-radius:14px;border:2px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface-container-lowest);">
+          <span style="font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">/</span>
+          <input value="{{ regexPattern }}" onChange="{{ setRegexPattern }}" placeholder="pattern" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font-family:'Roboto Mono',monospace;font-size:14px;color:var(--md-sys-color-on-surface);">
+          <span style="font-family:'Roboto Mono',monospace;color:var(--md-sys-color-on-surface-variant);">/{{ regexFlagString }}</span>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <sc-for list="{{ regexFlags }}" as="fl" hint-placeholder-count="6">
+            <button type="button" onClick="{{ fl.toggle }}" title="{{ fl.title }}" style="width:36px;height:36px;border-radius:99px;cursor:pointer;font-family:'Roboto Mono',monospace;font-size:14px;font-weight:600;transition:background 200ms;{{ fl.style }}">{{ fl.flag }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <sc-for list="{{ regexTokens }}" as="tk" hint-placeholder-count="10">
+            <button type="button" onClick="{{ tk.insert }}" title="{{ tk.title }}" style="height:32px;padding:0 12px;border:1px solid var(--md-sys-color-outline-variant);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface-variant);font-family:'Roboto Mono',monospace;font-size:12px;cursor:pointer;transition:background 180ms;" style-hover="background:var(--ripple)">{{ tk.token }}</button>
+          </sc-for>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:6px;">Live tester</div>
+          <div style="padding:12px 14px;border-radius:14px;background:var(--md-sys-color-surface-container-lowest);border:1px solid var(--md-sys-color-outline-variant);font-family:'Roboto Mono',monospace;font-size:12px;line-height:1.7;color:var(--md-sys-color-on-surface);">{{ regexSample }}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--md-sys-color-on-surface-variant);">
+            <span class="msr" style="font-size:16px;color:{{ regexStatusColor }}">{{ regexStatusIcon }}</span>{{ regexStatus }}
+            <div style="flex:1;"></div>
+            <a href="#how-regex-works">How regex works</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ snackbar }}">
+    <div style="position:fixed;left:104px;bottom:44px;z-index:35;display:flex;align-items:center;gap:16px;min-height:48px;padding:0 12px 0 18px;border-radius:14px;background:var(--md-sys-color-inverse-surface);color:var(--md-sys-color-inverse-on-surface);box-shadow:0 8px 24px rgba(0,0,0,.32);font-size:14px;animation:od-rise 400ms cubic-bezier(.05,.7,.1,1) both;">
+      <span class="msr" style="font-size:20px;">check_circle</span>
+      <span>Settings committed to the account repo — 7f3a91c</span>
+      <button type="button" onClick="{{ dismissSnack }}" style="height:36px;padding:0 12px;border:0;border-radius:99px;background:transparent;color:var(--md-sys-color-inverse-primary);font-size:14px;font-weight:600;cursor:pointer;" style-hover="background:rgba(255,255,255,.12)">Undo</button>
+    </div>
+  </sc-if>
+
+  <div style="flex:none;display:flex;align-items:center;gap:14px;height:28px;padding:0 16px;background:var(--md-sys-color-surface-container);border-top:1px solid var(--md-sys-color-outline-variant);font-size:11px;color:var(--md-sys-color-on-surface-variant);">
+    <span style="display:flex;align-items:center;gap:6px;"><span style="width:7px;height:7px;border-radius:99px;background:var(--md-sys-color-success);animation:od-pulse 2.4s ease-in-out infinite;"></span>Daemon live</span>
+    <span>Claude Opus 4.8 · Local CLI</span>
+    <span>Design system: Open Design</span>
+    <div style="flex:1;"></div>
+    <span>{{ scaleLabel }} UI scale</span>
+    <span>{{ densityLabel }} density</span>
+    <span style="font-family:'Roboto Mono',monospace;">v0.10.0</span>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;seedColor&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sunset&quot;,&quot;violet&quot;,&quot;teal&quot;,&quot;lime&quot;],&quot;default&quot;:&quot;sunset&quot;,&quot;tsType&quot;:&quot;'sunset'|'violet'|'teal'|'lime'&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;compact&quot;,&quot;default&quot;,&quot;comfortable&quot;],&quot;default&quot;:&quot;default&quot;,&quot;tsType&quot;:&quot;'compact'|'default'|'comfortable'&quot;,&quot;section&quot;:&quot;Theme&quot;},&quot;uiScale&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:50,&quot;max&quot;:200,&quot;step&quot;:5,&quot;default&quot;:100,&quot;unit&quot;:&quot;%&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  state = {
+    screen: 'home',
+    theme: 'light',
+    railOpen: false,
+    notificationsOpen: false,
+    regexOpen: false,
+    query: '',
+    regexMode: false,
+    prompt: '',
+    activeScenario: 'web-clone',
+    activeTab: 0,
+    selectMode: false,
+    selected: ['Orders dashboard'],
+    projectFilter: 'all',
+    pausedAutomations: ['Weekly changelog digest'],
+    pluginFilter: 'all',
+    integrationTab: 'mcp',
+    activeFile: 'orders-dashboard.html',
+    settingsSection: 'appearance',
+    language: 'bilingual',
+    funnyEn: 3,
+    funnyYue: 4,
+    settingsQuery: '',
+    regexPattern: '\\.(html|md)$',
+    regexFlagList: ['g', 'i'],
+    snackbar: true,
+    paletteOpen: false,
+    paletteFull: false,
+    paletteQuery: '',
+    paletteRegex: false,
+    contextMenu: null,
+    cloneOpen: false,
+    cloneRunning: false,
+    cloneProgress: 0,
+    cloneSubmodules: true,
+    pushFailed: true,
+    pluginDetail: null,
+    filtersCollapsed: false,
+    changelogQuery: '',
+    changelogRegex: false,
+    changelogRange: 'all',
+    calendarOpen: false,
+    typedDate: '',
+    onboardingOpen: false,
+    tabs: [
+      { title: 'Home', icon: 'home' },
+      { title: 'Orders dashboard — Studio', icon: 'dashboard' },
+    ],
+  };
+
+  set(patch) { this.setState(patch); }
+
+  componentDidMount() {
+    this.snackTimer = window.setTimeout(() => this.setState({ snackbar: false }), 6000);
+    this.onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        this.setState((st) => ({ paletteOpen: !st.paletteOpen }));
+      }
+      if (e.key === 'Escape') {
+        this.setState({ paletteOpen: false, contextMenu: null, calendarOpen: false });
+      }
+    };
+    window.addEventListener('keydown', this.onKey);
+  }
+
+  componentWillUnmount() {
+    window.clearTimeout(this.snackTimer);
+    window.clearInterval(this.cloneTimer);
+    window.removeEventListener('keydown', this.onKey);
+  }
+
+  startClone() {
+    if (this.state.cloneRunning) return;
+    this.setState({ cloneRunning: true, cloneProgress: 0 });
+    window.clearInterval(this.cloneTimer);
+    this.cloneTimer = window.setInterval(() => {
+      this.setState((st) => {
+        const next = Math.min(100, st.cloneProgress + 7);
+        if (next >= 100) window.clearInterval(this.cloneTimer);
+        return { cloneProgress: next, cloneRunning: next < 100 };
+      });
+    }, 260);
+  }
+
+  destinationsData() {
+    return [
+      { id: 'home', label: 'Home', icon: 'home' },
+      { id: 'projects', label: 'Projects', icon: 'folder' },
+      { id: 'design-systems', label: 'Design systems', icon: 'palette' },
+      { id: 'library', label: 'Library', icon: 'layers' },
+      { id: 'automations', label: 'Automations', icon: 'schedule' },
+      { id: 'plugins', label: 'Plugins', icon: 'extension' },
+      { id: 'integrations', label: 'Integrations', icon: 'link' },
+    ];
+  }
+
+  titleFor(id) {
+    const map = {
+      home: 'Home', projects: 'Projects', 'design-systems': 'Design systems', library: 'Library',
+      automations: 'Automations', plugins: 'Plugins', integrations: 'Integrations',
+      studio: 'Studio', settings: 'Settings', handoff: 'Handoff',
+    };
+    return map[id] || 'Home';
+  }
+
+  renderVals() {
+    const s = this.state;
+    const seed = this.props.seedColor ?? 'sunset';
+    const density = this.props.density ?? 'default';
+    const scale = this.props.uiScale ?? 100;
+    const railW = s.railOpen ? 260 : 88;
+
+    const scenarios = [
+      { id: 'web-clone', label: 'Website clone', desc: 'Source-first site reproduction', icon: 'language' },
+      { id: 'deck', label: 'Slide deck', desc: 'Presentations & pitch decks', icon: 'co_present' },
+      { id: 'prototype', label: 'Prototype', desc: 'Interactive app mockups', icon: 'palette' },
+      { id: 'wireframe', label: 'Wireframe', desc: 'Lo-fi screens & flows', icon: 'dashboard_customize' },
+      { id: 'mobile', label: 'Mobile app', desc: 'iOS & Android screens', icon: 'smartphone' },
+      { id: 'document', label: 'Document', desc: 'Resumes, reports & PDFs', icon: 'description' },
+      { id: 'hyperframes', label: 'HyperFrames', desc: 'Motion graphics & loops', icon: 'animation' },
+      { id: 'webgl', label: 'WebGL experience', desc: 'Shaders, 3D & GPU visuals', icon: 'deployed_code' },
+      { id: 'live-artifact', label: 'Live artifact', desc: 'Data-backed live dashboards', icon: 'autorenew' },
+      { id: 'image', label: 'Image', desc: 'Posters, graphics & art', icon: 'image' },
+      { id: 'video', label: 'Video', desc: 'Clips, reels & promos', icon: 'play_circle' },
+      { id: 'audio', label: 'Audio', desc: 'Voiceovers, music & SFX', icon: 'mic' },
+    ].map((c) => {
+      const on = s.activeScenario === c.id;
+      return {
+        ...c,
+        select: () => this.set({ activeScenario: c.id }),
+        style: on
+          ? 'border:1px solid transparent;background:var(--md-sys-color-secondary-container);box-shadow:0 2px 8px rgba(0,0,0,.12);'
+          : 'border:1px solid var(--md-sys-color-outline-variant);background:var(--md-sys-color-surface-container-low);',
+        iconWrap: on
+          ? 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+          : 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);',
+      };
+    });
+
+    const covers = [
+      'background:linear-gradient(135deg,var(--md-sys-color-primary-container),var(--md-sys-color-tertiary-container));',
+      'background:linear-gradient(135deg,var(--md-sys-color-secondary-container),var(--md-sys-color-primary-container));',
+      'background:linear-gradient(135deg,var(--md-sys-color-tertiary-container),var(--md-sys-color-secondary-container));',
+      'background:linear-gradient(135deg,var(--md-sys-color-surface-container-highest),var(--md-sys-color-primary-container));',
+    ];
+    const recents = [
+      { name: 'Orders dashboard', meta: 'Prototype · 2h ago', icon: 'dashboard' },
+      { name: 'Series B pitch deck', meta: 'Deck · yesterday', icon: 'co_present' },
+      { name: 'Acme brand kit', meta: 'Design system · 3d ago', icon: 'palette' },
+      { name: 'Launch teaser loop', meta: 'HyperFrames · 5d ago', icon: 'animation' },
+    ].map((p, i) => ({ ...p, cover: covers[i % covers.length], open: () => this.set({ screen: 'studio' }) }));
+
+    const community = [
+      { name: 'Web prototype seed', desc: 'High-fidelity clickable web prototype with a P0 checklist.', icon: 'palette' },
+      { name: 'Simple deck', desc: '1920×1080 scale-to-fit deck framework with 8 paste-ready layouts.', icon: 'co_present' },
+      { name: 'Figma migration', desc: 'Migrate a Figma frame into the active design system.', icon: 'move_down' },
+      { name: 'Live artifact', desc: 'Refreshable artifact backed by connector or local data.', icon: 'autorenew' },
+    ];
+
+    const notifications = [
+      { title: 'Release v0.10.0 published', body: 'Windows installer and portable ZIP attached to the tagged release.', time: '4 min ago', unread: true, icon: 'rocket_launch', iconWrap: 'background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container);' },
+      { title: 'Automation finished', body: 'Morning briefing wrote 3 files to Orders dashboard.', time: '38 min ago', unread: true, icon: 'schedule', iconWrap: 'background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);' },
+      { title: 'Settings committed', body: 'Per-account settings repo committed 7f3a91c — tab title styling.', time: '1h ago', unread: true, icon: 'commit', iconWrap: 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);' },
+      { title: 'Design system extracted', body: 'Acme brand kit ready: 12 colors, 3 type styles, 24 tokens.', time: 'Yesterday', unread: false, icon: 'palette', iconWrap: 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);' },
+    ];
+
+    const projectFilters = [
+      { id: 'all', label: 'All' },
+      { id: 'prototype', label: 'Prototypes' },
+      { id: 'deck', label: 'Decks' },
+      { id: 'media', label: 'Image & video' },
+      { id: 'document', label: 'Documents' },
+    ].map((f) => {
+      const on = s.projectFilter === f.id;
+      return {
+        ...f, on,
+        select: () => this.set({ projectFilter: f.id }),
+        style: on
+          ? 'border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+          : 'border:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      };
+    });
+
+    const projectRows = [
+      { name: 'Orders dashboard', kind: 'Prototype', meta: 'Edited 2h ago · 14 files', icon: 'dashboard' },
+      { name: 'Series B pitch deck', kind: 'Deck', meta: 'Edited yesterday · 18 slides', icon: 'co_present' },
+      { name: 'Acme marketing site clone', kind: 'Prototype', meta: 'Edited 2d ago · 31 files', icon: 'language' },
+      { name: 'Signup flow wireframes', kind: 'Wireframe', meta: 'Edited 3d ago · 9 screens', icon: 'dashboard_customize' },
+      { name: 'Launch teaser loop', kind: 'HyperFrames', meta: 'Edited 5d ago · 6 scenes', icon: 'animation' },
+      { name: 'Quarterly report', kind: 'Document', meta: 'Edited 1w ago · 12 pages', icon: 'description' },
+      { name: 'Product hero renders', kind: 'Image', meta: 'Edited 1w ago · 24 assets', icon: 'image' },
+      { name: 'Onboarding walkthrough', kind: 'Video', meta: 'Edited 2w ago · 1 clip', icon: 'play_circle' },
+    ].map((p, i) => {
+      const on = s.selected.includes(p.name);
+      return {
+        ...p,
+        cover: covers[i % covers.length],
+        toggle: () => this.set({ selected: on ? s.selected.filter((n) => n !== p.name) : [...s.selected, p.name] }),
+        checkStyle: on
+          ? 'background:var(--md-sys-color-primary);border-color:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+          : 'background:var(--md-sys-color-surface-container-lowest);color:transparent;',
+        checkIcon: 'check',
+        contextMenu: (e) => {
+          e.preventDefault();
+          this.set({ contextMenu: { x: Math.min(e.clientX, window.innerWidth - 280), y: Math.min(e.clientY, window.innerHeight - 300) } });
+        },
+      };
+    });
+
+    const sw = (c) => ({ style: `background:${c};` });
+    const designSystems = [
+      { name: 'Open Design', isDefault: true, typeSample: 'Aa Roboto Flex', typeStyle: "font-family:'Roboto Flex',sans-serif;font-weight:600;", meta: '18 colors · 6 type styles · 42 tokens', swatches: ['#C96442', '#8F4C34', '#FFDBCF', '#221A17', '#FFF8F6'].map(sw) },
+      { name: 'Acme brand kit', isDefault: false, typeSample: 'Aa Söhne Grotesk', typeStyle: 'font-weight:700;letter-spacing:-.5px;', meta: '12 colors · 3 type styles · 24 tokens', swatches: ['#123F6D', '#2F7BD1', '#DCEAFB', '#0A1622', '#F7FAFF'].map(sw) },
+      { name: 'Editorial mono', isDefault: false, typeSample: 'Aa Roboto Mono', typeStyle: "font-family:'Roboto Mono',monospace;", meta: '8 colors · 4 type styles · 19 tokens', swatches: ['#1C1B1A', '#4C4A46', '#B9B4AC', '#E9E5DD', '#FBFAF7'].map(sw) },
+      { name: 'Neon arcade', isDefault: false, typeSample: 'Aa Display Bold', typeStyle: 'font-weight:800;letter-spacing:-1px;', meta: '14 colors · 5 type styles · 31 tokens', swatches: ['#12002E', '#6A00FF', '#00E5FF', '#FF2E88', '#F5F0FF'].map(sw) },
+      { name: 'Clinic calm', isDefault: false, typeSample: 'Aa Humanist', typeStyle: 'font-weight:500;', meta: '10 colors · 4 type styles · 22 tokens', swatches: ['#0F4C43', '#3E9C8E', '#CFEDE6', '#12211E', '#F5FBF9'].map(sw) },
+      { name: 'Print house', isDefault: false, typeSample: 'Aa Serif Text', typeStyle: 'font-family:Georgia,serif;font-weight:600;', meta: '9 colors · 5 type styles · 26 tokens', swatches: ['#3A2B1F', '#7A5C43', '#E4D3BE', '#1A130D', '#FAF6F0'].map(sw) },
+    ];
+
+    const automations = [
+      { name: 'Morning briefing', prompt: 'Pull yesterday’s GitHub + Linear activity and summarize what changed.', schedule: 'daily 07:30', next: 'tomorrow 07:30', target: '→ new project each run', icon: 'wb_twilight' },
+      { name: 'Weekly changelog digest', prompt: 'Draft the release changelog from merged pull requests and open issues.', schedule: 'weekly Mon 09:00', next: 'Mon 09:00', target: '→ Release notes', icon: 'article' },
+      { name: 'Live artifact refresh', prompt: 'Refresh the orders dashboard artifact from the connector data source.', schedule: 'hourly :15', next: 'in 22 min', target: '→ Orders dashboard', icon: 'autorenew' },
+      { name: 'Design system audit', prompt: 'Audit the active design system against the MD3 compliance checklist.', schedule: 'weekly Fri 16:00', next: 'Fri 16:00', target: '→ new project each run', icon: 'fact_check' },
+    ].map((a) => {
+      const paused = s.pausedAutomations.includes(a.name);
+      return {
+        ...a,
+        state: paused ? 'Paused' : 'Active',
+        stateStyle: paused
+          ? 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);'
+          : 'background:var(--md-sys-color-success-container);color:var(--md-sys-color-success);',
+        switchTrack: paused
+          ? 'background:var(--md-sys-color-surface-container-highest);border-color:var(--md-sys-color-outline);'
+          : 'background:var(--md-sys-color-primary);border-color:var(--md-sys-color-primary);',
+        switchThumb: paused
+          ? 'left:2px;background:var(--md-sys-color-outline);'
+          : 'left:22px;background:var(--md-sys-color-on-primary);',
+        toggle: () => this.set({
+          pausedAutomations: paused
+            ? s.pausedAutomations.filter((n) => n !== a.name)
+            : [...s.pausedAutomations, a.name],
+        }),
+      };
+    });
+
+    const pluginFilters = [
+      { id: 'all', label: 'All plugins' },
+      { id: 'official', label: 'Official' },
+      { id: 'mine', label: 'My plugins' },
+      { id: 'saved', label: 'Saved' },
+      { id: 'registry', label: 'Registry' },
+    ].map((f) => {
+      const on = s.pluginFilter === f.id;
+      return {
+        ...f, on,
+        select: () => this.set({ pluginFilter: f.id }),
+        style: on
+          ? 'border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+          : 'border:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      };
+    });
+
+    const plugins = [
+      { name: 'Web prototype', id: 'example-web-prototype', official: true, installs: '12.4k', icon: 'palette', desc: 'Single-file HTML prototype seed with paste-ready section layouts and a P0 checklist.' },
+      { name: 'Simple deck', id: 'example-simple-deck', official: true, installs: '9.8k', icon: 'co_present', desc: '1920×1080 scale-to-fit deck framework, 8 layouts, and an overflow checklist at 1280×800.' },
+      { name: 'Website clone', id: 'example-web-clone', official: true, installs: '7.1k', icon: 'language', desc: 'Source-first reconnaissance and reproduction of an existing site, then a clone audit.' },
+      { name: 'HyperFrames', id: 'example-hyperframes', official: true, installs: '4.3k', icon: 'animation', desc: 'HTML-based motion: captions, audio-reactive visuals, and scene transitions.' },
+      { name: 'Figma migration', id: 'od-figma-migration', official: true, installs: '3.6k', icon: 'move_down', desc: 'Migrate a Figma frame into the active design system with real components.' },
+      { name: 'WebGL experience', id: 'example-webgl-experience', official: false, installs: '1.2k', icon: 'deployed_code', desc: 'Full-screen real-time WebGL2 shader or 3D scene running live on the GPU.' },
+    ].map((p) => ({ ...p, openDetail: () => this.set({ pluginDetail: p }) }));
+
+    const integrationTabs = [
+      { id: 'mcp', label: 'MCP' },
+      { id: 'connectors', label: 'Connectors' },
+      { id: 'skills', label: 'Skills' },
+    ].map((t) => {
+      const on = s.integrationTab === t.id;
+      return {
+        ...t, on,
+        select: () => this.set({ integrationTab: t.id }),
+        style: on
+          ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+          : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      };
+    });
+
+    const ok = 'background:var(--md-sys-color-success-container);color:var(--md-sys-color-success);';
+    const off = 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);';
+    const integrationRowsByTab = {
+      mcp: [
+        { name: 'lowlevel-computer-use', detail: 'http://127.0.0.1:8765/mcp · headless', status: 'Connected', statusStyle: ok, icon: 'precision_manufacturing' },
+        { name: 'filesystem', detail: 'stdio · npx @modelcontextprotocol/server-filesystem', status: 'Connected', statusStyle: ok, icon: 'folder_open' },
+        { name: 'github', detail: 'stdio · gh auth token', status: 'Connected', statusStyle: ok, icon: 'code' },
+        { name: 'postgres', detail: 'stdio · not configured', status: 'Disabled', statusStyle: off, icon: 'database' },
+      ],
+      connectors: [
+        { name: 'Google Drive', detail: 'composio · 2 scopes granted', status: 'Connected', statusStyle: ok, icon: 'cloud' },
+        { name: 'Linear', detail: 'composio · issues.read, issues.write', status: 'Connected', statusStyle: ok, icon: 'task_alt' },
+        { name: 'Slack', detail: 'composio · not connected', status: 'Disabled', statusStyle: off, icon: 'chat' },
+      ],
+      skills: [
+        { name: 'material-3', detail: 'skills/material-3 · tokens, components, audit', status: 'Enabled', statusStyle: ok, icon: 'design_services' },
+        { name: 'agent-global-memory', detail: 'skills/agent-global-memory · shared instructions', status: 'Enabled', statusStyle: ok, icon: 'psychology' },
+        { name: 'encrypted-public-builder', detail: 'private release pipeline', status: 'Enabled', statusStyle: ok, icon: 'lock' },
+      ],
+    };
+
+    const fileTabs = [
+      { name: 'orders-dashboard.html', icon: 'code' },
+      { name: 'DESIGN.md', icon: 'description' },
+      { name: 'data.json', icon: 'data_object' },
+    ].map((ft) => ({
+      ...ft,
+      select: () => this.set({ activeFile: ft.name }),
+      style: s.activeFile === ft.name
+        ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+    }));
+
+    const settingsSections = [
+      { id: 'appearance', label: 'Appearance', icon: 'palette' },
+      { id: 'language', label: 'Language & tone', icon: 'translate' },
+      { id: 'execution', label: 'Execution', icon: 'terminal' },
+      { id: 'accounts', label: 'Accounts', icon: 'account_circle' },
+      { id: 'cloud', label: 'Cloud & keys', icon: 'cloud' },
+      { id: 'memory', label: 'Memory', icon: 'psychology' },
+      { id: 'notifications', label: 'Notifications', icon: 'notifications' },
+      { id: 'accessibility', label: 'Accessibility', icon: 'accessibility_new' },
+      { id: 'versions', label: 'Version history', icon: 'history' },
+      { id: 'changelog', label: 'Changelog', icon: 'receipt_long' },
+      { id: 'handoff', label: 'Handoff & tokens', icon: 'inventory_2' },
+    ].map((sec) => ({
+      ...sec,
+      select: () => this.set(sec.id === 'handoff'
+        ? { screen: 'handoff' }
+        : { screen: 'settings', settingsSection: sec.id }),
+      style: (sec.id === 'handoff' ? s.screen === 'handoff' : s.screen === 'settings' && s.settingsSection === sec.id)
+        ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+    }));
+
+    const densityOptions = [
+      { id: 'compact', label: 'Compact' },
+      { id: 'default', label: 'Default' },
+      { id: 'comfortable', label: 'Comfortable' },
+    ].map((d) => ({
+      ...d,
+      select: () => {},
+      style: density === d.id
+        ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+    }));
+
+    const languageOptions = [
+      { id: 'en', label: 'English', sample: 'Release published. Installer attached.' },
+      { id: 'yue', label: '粵語 · playful Hong Kong Cantonese', sample: '出咗版喇，安裝檔跟埋落去。' },
+      { id: 'bilingual', label: 'Bilingual — English + 粵語', sample: 'Release published. · 出咗版喇。' },
+    ].map((l) => {
+      const on = s.language === l.id;
+      return {
+        ...l, on,
+        select: () => this.set({ language: l.id }),
+        style: on
+          ? 'border:2px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface-container);'
+          : 'border:1px solid var(--md-sys-color-outline-variant);background:transparent;',
+      };
+    });
+
+    const funnyEnSamples = [
+      'Fixed the crash on empty input.',
+      'Fixed the crash on empty input — it deserved it.',
+      'Empty input used to take the whole window down. It does not any more.',
+      'The parser saw an empty string and staged a walkout. Negotiations concluded.',
+      'Empty input crashed the app, which is a bold interpretation of "handle gracefully". Fixed.',
+    ];
+    const funnyYueSamples = [
+      '修好咗空白輸入嘅問題。',
+      '空白輸入唔會再拉閘。',
+      '之前入空白直頭閂咗成個窗，家陣乖曬。',
+      '個 parser 見到空字串就話唔撈，傾掂數返咗工。',
+      '空白輸入炸咗成個 app，講句「優雅處理」都面紅，而家真係修好。',
+    ];
+
+    const commits = [
+      { sha: '7f3a91c', message: 'Tab title styling: bold + 13px on the Studio tab', time: '2 min ago' },
+      { sha: 'b21ce40', message: 'Appearance: UI scale 100% → 115%', time: '18 min ago' },
+      { sha: '9de7f12', message: 'Language mode set to bilingual, funny level 3/4', time: '1h ago' },
+      { sha: '4a0c8b6', message: 'Automation paused: Weekly changelog digest', time: 'Yesterday' },
+      { sha: '1c55e93', message: 'Account added: work profile', time: '2d ago' },
+    ];
+
+    const changelog = [
+      { version: 'v0.10.0', date: '2 Aug 2026', days: 0, sha: 'd41c8e2af9b7364a1f0c5e83b26d90ac7715fe38', body: 'Material 3 Expressive shell across every surface: navigation rail, tonal app bars, expressive FABs, and spring motion. Regex builder available beside every search field.' },
+      { version: 'v0.9.4', date: '24 Jul 2026', days: 9, sha: '7a2f19c40bd85e6317ac2f4b90de1c85a03b6d21', body: 'Per-account settings repository with undo, redo and restore-to-commit. Browser-style tabs gain inline rename and per-tab title styling.' },
+      { version: 'v0.9.1', date: '11 Jul 2026', days: 22, sha: '1c55e9370ab24df8156e0c9b7a3f42d081ce6b4f', body: 'UI scaling 50–200% with auto-fit to window. Message center replaces blocking completion dialogs.' },
+      { version: 'v0.8.7', date: '3 Jun 2026', days: 60, sha: '9de7f1284c6b03a5ef21740d9c8b6153ea0f27d6', body: 'Command palette covering every command, destination, and setting, with inline live controls and a persisted size preference.' },
+    ];
+    const rangeDays = { all: 9999, '7d': 7, '30d': 30, '90d': 90, quarter: 120 };
+    const changelogFiltered = changelog.filter((r) => {
+      if (r.days > (rangeDays[s.changelogRange] ?? 9999)) return false;
+      const q = s.changelogQuery.trim();
+      if (!q) return true;
+      const hay = `${r.version} ${r.date} ${r.body}`;
+      if (s.changelogRegex) {
+        try { return new RegExp(q, 'i').test(hay); } catch { return false; }
+      }
+      return hay.toLowerCase().includes(q.toLowerCase());
+    }).map((r) => ({ ...r, shaShort: r.sha.slice(0, 7) }));
+
+    const datePresets = [
+      { id: 'all', label: 'All time' },
+      { id: '7d', label: 'Last 7 days' },
+      { id: '30d', label: 'Last 30 days' },
+      { id: '90d', label: 'Last 90 days' },
+    ].map((dp) => ({
+      ...dp,
+      select: () => this.set({ changelogRange: dp.id }),
+      style: s.changelogRange === dp.id
+        ? 'border:0;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'border:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);',
+    }));
+
+    const calendarCells = [];
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach((d) => calendarCells.push({ label: d, style: 'color:var(--md-sys-color-on-surface-variant);font-weight:700;' }));
+    for (let i = 0; i < 5; i += 1) calendarCells.push({ label: '', style: '' });
+    for (let d = 1; d <= 31; d += 1) {
+      const inRange = d >= 24 && d <= 31;
+      calendarCells.push({
+        label: String(d),
+        style: inRange
+          ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-weight:600;'
+          : 'color:var(--md-sys-color-on-surface);',
+      });
+    }
+
+    const typed = s.typedDate.trim();
+    const typedValid = typed === '' || /^\d{4}-\d{2}-\d{2}$/.test(typed) || /^\d{2}\/\d{2}\/\d{4}$/.test(typed);
+    const typedPartial = typed !== '' && !typedValid;
+
+    const runtimes = [
+      { name: 'Claude Code', detail: 'claude · PATH · v2.4.1', status: 'Active', icon: 'terminal', statusStyle: ok, style: 'border:2px solid var(--md-sys-color-primary);background:var(--md-sys-color-surface-container);' },
+      { name: 'Codex', detail: 'codex · PATH · v1.9.0', status: 'Available', icon: 'terminal', statusStyle: off, style: 'border:1px solid var(--md-sys-color-outline-variant);' },
+      { name: 'OpenCode', detail: 'opencode · PATH · v0.6.2', status: 'Available', icon: 'terminal', statusStyle: off, style: 'border:1px solid var(--md-sys-color-outline-variant);' },
+      { name: 'BYOK — OpenAI compatible', detail: 'https://api.example.com/v1 · key saved', status: 'Draft', statusStyle: off, icon: 'key', style: 'border:1px solid var(--md-sys-color-outline-variant);' },
+    ];
+
+    const prefOn = 'background:var(--md-sys-color-primary);';
+    const prefOff = 'background:var(--md-sys-color-surface-container-highest);border:2px solid var(--md-sys-color-outline);';
+    const thumbOn = 'left:24px;background:var(--md-sys-color-on-primary);';
+    const thumbOff = 'left:4px;background:var(--md-sys-color-outline);';
+    const notificationPrefs = [
+      { name: 'Task completion', detail: 'Snackbar plus a message-center entry when a run finishes.', track: prefOn, thumb: thumbOn },
+      { name: 'System notifications', detail: 'Windows toast when the app is in the background.', track: prefOn, thumb: thumbOn },
+      { name: 'Completion sound', detail: 'Short chime on success, muted on failure.', track: prefOff, thumb: thumbOff },
+      { name: 'Automation digests', detail: 'One grouped notice per scheduled run instead of per file.', track: prefOn, thumb: thumbOn },
+    ];
+
+    const accounts = [
+      { name: 'codingmachineedge', initials: 'CM', detail: 'primary · 12 tabs · settings repo clean', status: 'Active', statusStyle: ok, avatar: 'background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);' },
+      { name: 'work profile', initials: 'WP', detail: 'gitlab self-hosted · 4 tabs · 2 uncommitted', status: 'Signed in', statusStyle: off, avatar: 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);' },
+    ];
+
+    const tokenMap = [
+      { md3: '--md-sys-color-surface', app: '--bg-app', swatch: 'background:var(--md-sys-color-surface);' },
+      { md3: '--md-sys-color-surface-container-low', app: '--bg-panel', swatch: 'background:var(--md-sys-color-surface-container-low);' },
+      { md3: '--md-sys-color-surface-container', app: '--bg-subtle', swatch: 'background:var(--md-sys-color-surface-container);' },
+      { md3: '--md-sys-color-surface-container-high', app: '--bg-muted', swatch: 'background:var(--md-sys-color-surface-container-high);' },
+      { md3: '--md-sys-color-surface-container-highest', app: '--bg-elevated', swatch: 'background:var(--md-sys-color-surface-container-highest);' },
+      { md3: '--md-sys-color-on-surface', app: '--text', swatch: 'background:var(--md-sys-color-on-surface);' },
+      { md3: '--md-sys-color-on-surface-variant', app: '--text-muted', swatch: 'background:var(--md-sys-color-on-surface-variant);' },
+      { md3: '--md-sys-color-outline-variant', app: '--border', swatch: 'background:var(--md-sys-color-outline-variant);' },
+      { md3: '--md-sys-color-outline', app: '--border-strong', swatch: 'background:var(--md-sys-color-outline);' },
+      { md3: '--md-sys-color-primary', app: '--accent', swatch: 'background:var(--md-sys-color-primary);' },
+      { md3: '--md-sys-color-primary-container', app: '--accent-tint', swatch: 'background:var(--md-sys-color-primary-container);' },
+      { md3: '--md-sys-color-secondary-container', app: '--selected-soft', swatch: 'background:var(--md-sys-color-secondary-container);' },
+      { md3: '--md-sys-color-error', app: '--red', swatch: 'background:var(--md-sys-color-error);' },
+      { md3: '--md-sys-color-success', app: '--green', swatch: 'background:var(--md-sys-color-success);' },
+      { md3: '--md-sys-shape-corner-m (12px)', app: '--radius-lg', swatch: 'background:var(--md-sys-color-surface-container-high);' },
+      { md3: '--md-sys-shape-corner-full', app: '--radius-pill', swatch: 'background:var(--md-sys-color-surface-container-high);' },
+      { md3: 'emphasized cubic-bezier(.2,0,0,1)', app: '--ease-out', swatch: 'background:var(--md-sys-color-surface-container-high);' },
+      { md3: 'emphasized decelerate 400ms', app: '--dur-enter', swatch: 'background:var(--md-sys-color-surface-container-high);' },
+    ];
+
+    const inventory = [
+      { file: 'EntryNavRail.tsx', before: 'Icon-only 64px rail, tooltip labels', after: 'Navigation rail — 88px collapsed, 260px drawer, active pill indicator' },
+      { file: 'AppChromeHeader.tsx', before: 'Flat header with drag region', after: 'Top app bar (small) + Windows caption controls' },
+      { file: 'HomeHero.tsx', before: 'Card composer + chip rail', after: 'Expressive prompt surface (28dp) + scenario cards + primary FAB' },
+      { file: 'HomeView.tsx recents', before: 'Bordered project tiles', after: 'Filled cards with tonal covers and spring lift' },
+      { file: 'PluginsHomeSection.tsx', before: 'Search + category pills', after: 'Filter chips + outlined cards + tonal Use button' },
+      { file: 'DesignSystemsTab.tsx', before: 'Preview tiles with swatch row', after: 'Elevated cards, 64dp palette band, default badge' },
+      { file: 'RoutinesSection.tsx', before: 'Rows with text buttons', after: 'List items with M3 switch, tonal Run now, state chip' },
+      { file: 'IntegrationsView.tsx', before: 'Tab strip', after: 'Segmented button + list items with status chips' },
+      { file: 'ChatPane.tsx / ChatComposer.tsx', before: 'Bubbles + bordered composer', after: 'Tonal bubbles, tool cards, 22dp composer, morphing send FAB' },
+      { file: 'SettingsDialog.tsx', before: 'Modal dialog', after: 'Full-page settings with searchable section list — non-blocking' },
+      { file: 'MessageCenter.tsx', before: 'Popover list', after: 'Standard side sheet with filter chips and unread dots' },
+      { file: 'CustomSelect / pills', before: 'Ad-hoc radii 6–10px', after: 'Shape scale: 8 / 12 / 16 / 28 / full' },
+    ];
+
+    const flagTitles = { g: 'global', i: 'ignore case', m: 'multiline', s: 'dotAll', u: 'unicode', y: 'sticky' };
+    const regexFlags = ['g', 'i', 'm', 's', 'u', 'y'].map((flag) => {
+      const on = s.regexFlagList.includes(flag);
+      return {
+        flag, title: flagTitles[flag],
+        toggle: () => this.set({ regexFlagList: on ? s.regexFlagList.filter((f) => f !== flag) : [...s.regexFlagList, flag] }),
+        style: on
+          ? 'border:0;background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+          : 'border:1px solid var(--md-sys-color-outline);background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      };
+    });
+    const regexTokens = [
+      { token: '^', title: 'Start anchor' }, { token: '$', title: 'End anchor' },
+      { token: '\\d', title: 'Digit' }, { token: '\\w', title: 'Word character' },
+      { token: '\\s', title: 'Whitespace' }, { token: '[a-z]', title: 'Character class' },
+      { token: '+', title: 'One or more' }, { token: '*', title: 'Zero or more' },
+      { token: '?', title: 'Optional' }, { token: '{n,m}', title: 'Range quantifier' },
+      { token: '(…)', title: 'Capture group' }, { token: '(?:…)', title: 'Non-capturing group' },
+      { token: 'a|b', title: 'Alternation' }, { token: '(?=…)', title: 'Lookahead' },
+      { token: '(?<=…)', title: 'Lookbehind' },
+    ].map((tk) => ({ ...tk, insert: () => this.set({ regexPattern: s.regexPattern + tk.token }) }));
+
+    let regexStatus = 'Pattern is empty — matching everything.';
+    let regexStatusIcon = 'info';
+    let regexStatusColor = 'var(--md-sys-color-on-surface-variant)';
+    const regexSample = 'orders-dashboard.html · DESIGN.md · data.json · pitch-deck.html';
+    if (s.regexPattern) {
+      try {
+        const re = new RegExp(s.regexPattern, s.regexFlagList.join('') || 'g');
+        const matches = regexSample.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'));
+        const n = matches ? matches.length : 0;
+        regexStatus = `${n} match${n === 1 ? '' : 'es'} in the sample`;
+        regexStatusIcon = n > 0 ? 'check_circle' : 'search_off';
+        regexStatusColor = n > 0 ? 'var(--md-sys-color-success)' : 'var(--md-sys-color-on-surface-variant)';
+      } catch (err) {
+        regexStatus = `Invalid pattern — ${err.message}`;
+        regexStatusIcon = 'error';
+        regexStatusColor = 'var(--md-sys-color-error)';
+      }
+    }
+
+    const teleport = (screen, section) => () => this.set({
+      screen, ...(section ? { settingsSection: section } : {}), paletteOpen: false,
+    });
+    const trackOn = 'background:var(--md-sys-color-primary);border-color:var(--md-sys-color-primary);';
+    const trackOff = 'background:var(--md-sys-color-surface-container-highest);';
+    const paletteGroups = [
+      {
+        label: 'DESTINATIONS',
+        rows: this.destinationsData().map((d) => ({
+          icon: d.icon, label: d.label, where: 'Navigation rail', shortcut: '',
+          go: teleport(d.id), action: () => {}, isSwitch: false, isSlider: false, isSelect: false,
+        })),
+      },
+      {
+        label: 'COMMANDS',
+        rows: [
+          { icon: 'add', label: 'New project', where: 'Home · rail FAB', shortcut: 'Ctrl+N', go: teleport('home'), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'download_for_offline', label: 'Clone repositories…', where: 'Long operation · reports progress in place', shortcut: 'Ctrl+Shift+C', go: () => this.set({ cloneOpen: true, paletteOpen: false }), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'construction', label: 'Open regex builder', where: 'Beside every search field', shortcut: 'Ctrl+R', go: () => this.set({ regexOpen: true, paletteOpen: false }), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'publish', label: 'Publish to a forge…', where: 'Settings · Accounts', shortcut: 'Ctrl+Shift+P', go: teleport('settings', 'accounts'), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'rocket_launch', label: 'Run onboarding again', where: 'First-run flow', shortcut: '', go: () => this.set({ onboardingOpen: true, paletteOpen: false }), isSwitch: false, isSlider: false, isSelect: false },
+        ],
+      },
+      {
+        label: 'SETTINGS — LIVE CONTROLS',
+        rows: [
+          {
+            icon: 'dark_mode', label: 'Dark theme', where: 'Settings · Appearance', shortcut: '',
+            isSwitch: true, isSlider: false, isSelect: false,
+            go: teleport('settings', 'appearance'),
+            action: () => this.set({ theme: s.theme === 'dark' ? 'light' : 'dark' }),
+            track: s.theme === 'dark' ? trackOn : trackOff,
+            thumb: s.theme === 'dark' ? 'left:24px;background:var(--md-sys-color-on-primary);' : 'left:4px;background:var(--md-sys-color-outline);',
+          },
+          {
+            icon: 'zoom_in', label: 'UI scale', where: `Settings · Appearance — ${scale}%`, shortcut: '',
+            isSlider: true, isSwitch: false, isSelect: false, value: scale,
+            go: teleport('settings', 'appearance'), action: () => {},
+          },
+          {
+            icon: 'density_medium', label: 'Density', where: 'Settings · Appearance', shortcut: '',
+            isSelect: true, isSwitch: false, isSlider: false,
+            go: teleport('settings', 'appearance'),
+            options: ['compact', 'default', 'comfortable'].map((id) => ({
+              label: id[0].toUpperCase() + id.slice(1),
+              select: () => {},
+              style: density === id
+                ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+                : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+            })),
+          },
+          {
+            icon: 'notifications_active', label: 'Task completion notifications', where: 'Settings · Notifications', shortcut: '',
+            isSwitch: true, isSlider: false, isSelect: false,
+            go: teleport('settings', 'notifications'), action: () => {},
+            track: trackOn, thumb: 'left:24px;background:var(--md-sys-color-on-primary);',
+          },
+          { icon: 'translate', label: 'Language mode & funny levels', where: 'Settings · Language & tone', shortcut: '', go: teleport('settings', 'language'), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'history', label: 'Local version history', where: 'Settings · Version history', shortcut: '', go: teleport('settings', 'versions'), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'receipt_long', label: 'Changelog viewer', where: 'Settings · Changelog', shortcut: '', go: teleport('settings', 'changelog'), isSwitch: false, isSlider: false, isSelect: false },
+          { icon: 'inventory_2', label: 'Handoff & token sheet', where: 'Settings · Handoff', shortcut: '', go: teleport('handoff'), isSwitch: false, isSlider: false, isSelect: false },
+        ],
+      },
+    ].map((g) => ({
+      ...g,
+      rows: g.rows.filter((r) => {
+        const q = s.paletteQuery.trim();
+        if (!q) return true;
+        const hay = `${r.label} ${r.where}`;
+        if (s.paletteRegex) {
+          try { return new RegExp(q, 'i').test(hay); } catch { return false; }
+        }
+        return hay.toLowerCase().includes(q.toLowerCase());
+      }),
+    })).filter((g) => g.rows.length > 0);
+
+    const contextItems = [
+      { icon: 'open_in_new', label: 'Open', shortcut: 'Enter' },
+      { icon: 'edit', label: 'Rename', shortcut: 'F2' },
+      { icon: 'content_copy', label: 'Duplicate', shortcut: 'Ctrl+D' },
+      { icon: 'download', label: 'Export as HTML / PDF / PPTX', shortcut: 'Ctrl+E' },
+      { icon: 'folder_open', label: 'Show in file manager', shortcut: 'Ctrl+Shift+O' },
+      { icon: 'delete', label: 'Delete', shortcut: 'Del', style: 'color:var(--md-sys-color-error);' },
+    ].map((ci) => ({ ...ci, style: ci.style || 'color:var(--md-sys-color-on-surface);', run: () => this.set({ contextMenu: null }) }));
+
+    const clonePhases = ['queued', 'counting objects', 'receiving 62%', 'resolving deltas', 'done'];
+    const cloneRepos = ['open-design', 'desktop-material', 'agent-global-memory'].map((name, i) => {
+      const pct = Math.max(0, Math.min(100, s.cloneProgress - i * 12));
+      return {
+        name, icon: 'source',
+        bar: `width:${pct}%;`,
+        phase: pct >= 100 ? 'done' : pct === 0 ? 'queued' : clonePhases[Math.min(3, Math.floor(pct / 30))],
+      };
+    });
+
+    return {
+      paletteOpen: s.paletteOpen,
+      paletteQuery: s.paletteQuery,
+      setPaletteQuery: (e) => this.set({ paletteQuery: e.target.value }),
+      togglePaletteRegex: () => this.set({ paletteRegex: !s.paletteRegex }),
+      paletteRegexStyle: s.paletteRegex
+        ? 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      paletteGroups,
+      palettePad: s.paletteFull ? '0' : '96px 24px 24px',
+      paletteBox: s.paletteFull ? 'max-width:none;height:100%;border-radius:0;' : 'max-width:720px;max-height:70vh;',
+      paletteSizeIcon: s.paletteFull ? 'close_fullscreen' : 'open_in_full',
+      paletteSizeLabel: s.paletteFull ? 'Full window' : 'Bounded card',
+      togglePaletteSize: () => this.set({ paletteFull: !s.paletteFull }),
+      closePalette: () => this.set({ paletteOpen: false }),
+      openPalette: () => this.set({ paletteOpen: true }),
+      contextMenu: s.contextMenu,
+      contextMenuPos: s.contextMenu ? `left:${s.contextMenu.x}px;top:${s.contextMenu.y}px;` : '',
+      contextItems,
+      cloneOpen: s.cloneOpen,
+      cloneRepos,
+      cloneRunning: s.cloneRunning,
+      cloneSubmodules: s.cloneSubmodules,
+      toggleSubmodules: () => this.set({ cloneSubmodules: !s.cloneSubmodules }),
+      openClone: () => this.set({ cloneOpen: true }),
+      closeClone: () => this.set({ cloneOpen: false }),
+      startCloneRun: () => this.startClone(),
+      cloneStatus: s.cloneRunning
+        ? `Cloning — ${s.cloneProgress}% overall`
+        : s.cloneProgress >= 100 ? '3 of 3 repositories cloned' : 'Ready to clone 3 repositories',
+      cloneBtnLabel: s.cloneRunning ? 'Cloning…' : s.cloneProgress >= 100 ? 'Done' : 'Clone 3 repositories',
+      cloneBtnStyle: s.cloneRunning
+        ? 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);cursor:not-allowed;'
+        : 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);',
+      pluginDetail: s.pluginDetail,
+      closePluginDetail: () => this.set({ pluginDetail: null }),
+      settingsSections,
+      settingsQuery: s.settingsQuery,
+      setSettingsQuery: (e) => this.set({ settingsQuery: e.target.value }),
+      isAppearance: s.settingsSection === 'appearance',
+      isLanguage: s.settingsSection === 'language',
+      isExecution: s.settingsSection === 'execution',
+      isAccounts: s.settingsSection === 'accounts',
+      isNotificationSettings: s.settingsSection === 'notifications',
+      isVersions: s.settingsSection === 'versions',
+      isMemory: s.settingsSection === 'memory',
+      isCloud: s.settingsSection === 'cloud',
+      isAccessibility: s.settingsSection === 'accessibility',
+      pushFailed: s.pushFailed,
+      dismissPushFailure: () => this.set({ pushFailed: false }),
+      memoryEntries: [
+        { icon: 'badge', title: 'Role — design engineer', body: 'Tailors output to product and design reviewers.' },
+        { icon: 'palette', title: 'Prefers Material 3 Expressive', body: 'Applies MD3 tokens and shape scale unless told otherwise.' },
+        { icon: 'translate', title: 'Bilingual reports', body: 'English plus playful Hong Kong Cantonese, funny level 3/4.' },
+        { icon: 'rule', title: 'Never force-push', body: 'Recovery routes must preserve history and unmerged work.' },
+      ],
+      accessibilityPrefs: [
+        { name: 'High contrast', detail: 'Switches the scheme to the high-contrast tonal set.', track: prefOff, thumb: thumbOff },
+        { name: 'Reduce motion', detail: 'Replaces spring transitions with instant state changes.', track: prefOff, thumb: thumbOff },
+        { name: 'Always show focus rings', detail: 'Focus indicators stay visible for pointer users too.', track: prefOn, thumb: thumbOn },
+        { name: 'Large hit targets', detail: 'Raises every target to 56 px, above the 48 px minimum.', track: prefOn, thumb: thumbOn },
+      ],
+      isChangelog: s.settingsSection === 'changelog',
+      densityOptions, languageOptions, commits, changelog, runtimes,
+      changelogFiltered,
+      changelogEmpty: changelogFiltered.length === 0,
+      changelogQuery: s.changelogQuery,
+      setChangelogQuery: (e) => this.set({ changelogQuery: e.target.value }),
+      toggleChangelogRegex: () => this.set({ changelogRegex: !s.changelogRegex }),
+      changelogRegexStyle: s.changelogRegex
+        ? 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      changelogRangeLabel: (datePresets.find((d) => d.id === s.changelogRange) || {}).label || 'All time',
+      changelogSummary: `${changelogFiltered.length} of ${changelog.length} entries · search and date filter compose`,
+      calendarOpen: s.calendarOpen,
+      toggleCalendar: () => this.set({ calendarOpen: !s.calendarOpen }),
+      calendarCells, datePresets,
+      typedDate: s.typedDate,
+      setTypedDate: (e) => this.set({ typedDate: e.target.value }),
+      typedDateBorder: typedPartial ? 'var(--md-sys-color-error)' : 'var(--md-sys-color-outline)',
+      typedDateColor: typedPartial ? 'var(--md-sys-color-error)' : 'var(--md-sys-color-on-surface-variant)',
+      typedDateHint: typedPartial
+        ? 'Incomplete date — keep typing. ISO (2026-07-24) or DD/MM/YYYY.'
+        : 'Accepts ISO (2026-07-24) or the locale format (24/07/2026).',
+      notificationPrefs, accounts, tokenMap, inventory,
+      funnyEn: s.funnyEn,
+      funnyYue: s.funnyYue,
+      funnySampleEn: funnyEnSamples[s.funnyEn - 1],
+      funnySampleYue: funnyYueSamples[s.funnyYue - 1],
+      setFunnyEn: (e) => this.set({ funnyEn: Number(e.target.value) }),
+      setFunnyYue: (e) => this.set({ funnyYue: Number(e.target.value) }),
+      scaleValue: scale,
+      setScale: () => {},
+      setLight: () => this.set({ theme: 'light' }),
+      setDark: () => this.set({ theme: 'dark' }),
+      lightBtnStyle: s.theme === 'light'
+        ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      darkBtnStyle: s.theme === 'dark'
+        ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      regexFlags,
+      regexTokens,
+      regexPattern: s.regexPattern,
+      regexFlagString: s.regexFlagList.join(''),
+      setRegexPattern: (e) => this.set({ regexPattern: e.target.value }),
+      regexSample, regexStatus, regexStatusIcon, regexStatusColor,
+      snackbar: s.snackbar,
+      dismissSnack: () => this.set({ snackbar: false }),
+      pluginFilters,
+      plugins,
+      pluginCount: `${plugins.length} of 214 in catalog`,
+      integrationTabs,
+      integrationRows: integrationRowsByTab[s.integrationTab] || integrationRowsByTab.mcp,
+      fileTabs,
+      projectFilters,
+      projects: projectRows,
+      designSystems,
+      automations,
+      toggleFilters: () => this.set({ filtersCollapsed: !s.filtersCollapsed }),
+      filtersExpanded: !s.filtersCollapsed,
+      filtersChevron: s.filtersCollapsed ? 'chevron_right' : 'expand_more',
+      filtersDisplay: s.filtersCollapsed ? 'display:none;' : '',
+      filtersSummary: s.projectFilter === 'all'
+        ? '8 projects · no filter active'
+        : `8 projects · filter active: ${s.projectFilter}`,
+      selectMode: s.selectMode,
+      selectedCount: s.selected.length,
+      toggleSelect: () => this.set({ selectMode: !s.selectMode }),
+      exitSelect: () => this.set({ selectMode: false }),
+      rootVars: `--od-scale:${scale / 100};zoom:${scale / 100};`,
+      theme: s.theme,
+      seed,
+      density,
+      densityLabel: density === 'compact' ? 'Compact' : density === 'comfortable' ? 'Comfortable' : 'Default',
+      scaleLabel: `${scale}%`,
+      themeIcon: s.theme === 'dark' ? 'light_mode' : 'dark_mode',
+      screenTitle: this.titleFor(s.screen),
+      isHome: s.screen === 'home',
+      isProjects: s.screen === 'projects',
+      isDesignSystems: s.screen === 'design-systems',
+      isAutomations: s.screen === 'automations',
+      isPlugins: s.screen === 'plugins',
+      isIntegrations: s.screen === 'integrations',
+      isStudio: s.screen === 'studio',
+      isLibrary: s.screen === 'library',
+      conversations: [
+        { title: 'Compact table density', time: '2 min ago', active: true },
+        { title: 'Empty state copy', time: '1h ago' },
+        { title: 'Initial dashboard build', time: 'Yesterday' },
+        { title: 'Connector data wiring', time: '3d ago' },
+      ].map((cv) => ({
+        ...cv,
+        style: cv.active
+          ? 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);'
+          : 'background:transparent;color:var(--md-sys-color-on-surface);',
+      })),
+      designFiles: [
+        { name: 'orders-dashboard.html', icon: 'code' },
+        { name: 'DESIGN.md', icon: 'description' },
+        { name: 'data.json', icon: 'data_object' },
+        { name: 'assets/logo.svg', icon: 'image' },
+      ],
+      libraryAssets: [
+        { name: 'acme-logo.svg', meta: 'SVG · 12 KB', icon: 'image', cover: covers[0] },
+        { name: 'hero-render-01.png', meta: 'PNG · 2.4 MB', icon: 'photo', cover: covers[1] },
+        { name: 'Söhne Grotesk', meta: 'Font · 4 weights', icon: 'font_download', cover: covers[2] },
+        { name: 'product-shots.zip', meta: 'Archive · 18 files', icon: 'folder_zip', cover: covers[3] },
+        { name: 'icon-set-line', meta: 'Icons · 240 glyphs', icon: 'grid_view', cover: covers[1] },
+        { name: 'brand-voice.md', meta: 'Doc · 3 KB', icon: 'description', cover: covers[2] },
+        { name: 'launch-teaser.mp4', meta: 'Video · 24 s', icon: 'movie', cover: covers[0] },
+        { name: 'palette-tokens.json', meta: 'Tokens · 42 keys', icon: 'data_object', cover: covers[3] },
+      ],
+      isSettings: s.screen === 'settings',
+      isHandoff: s.screen === 'handoff',
+      notificationsOpen: s.notificationsOpen,
+      regexOpen: s.regexOpen,
+      query: s.query,
+      prompt: s.prompt,
+      railStyle: `width:${railW}px;`,
+      railLabelStyle: s.railOpen ? 'opacity:1;' : 'opacity:0;pointer-events:none;',
+      railCollapsedOnly: s.railOpen ? 'display:none;' : '',
+      regexToggleStyle: s.regexMode
+        ? 'background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);'
+        : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      tabs: s.tabs.map((t, i) => ({
+        ...t,
+        select: () => this.set({ activeTab: i, screen: i === 0 ? 'home' : 'studio' }),
+        style: i === s.activeTab
+          ? 'background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);'
+          : 'background:transparent;color:var(--md-sys-color-on-surface-variant);',
+      })),
+      addTab: () => this.set({ tabs: [...s.tabs, { title: 'New tab', icon: 'add_circle' }], activeTab: s.tabs.length }),
+      destinations: this.destinationsData().map((d) => {
+        const on = s.screen === d.id;
+        return {
+          ...d,
+          select: () => this.set({ screen: d.id }),
+          style: 'color:' + (on ? 'var(--md-sys-color-on-surface)' : 'var(--md-sys-color-on-surface-variant)') + ';',
+          pillStyle: on ? 'background:var(--md-sys-color-secondary-container);' : 'background:transparent;',
+          iconStyle: on
+            ? "font-variation-settings:'FILL' 1;color:var(--md-sys-color-on-secondary-container);"
+            : 'color:var(--md-sys-color-on-surface-variant);',
+          labelStyle: (s.railOpen ? 'opacity:1;' : 'opacity:0;pointer-events:none;') + (on ? 'color:var(--md-sys-color-on-surface);' : ''),
+        };
+      }),
+      scenarios, recents, community, notifications,
+      toggleRail: () => this.set({ railOpen: !s.railOpen }),
+      toggleTheme: () => this.set({ theme: s.theme === 'dark' ? 'light' : 'dark' }),
+      toggleNotifications: () => this.set({ notificationsOpen: !s.notificationsOpen }),
+      toggleRegex: () => this.set({ regexMode: !s.regexMode }),
+      openRegex: () => this.set({ regexOpen: true }),
+      closeRegex: () => this.set({ regexOpen: false }),
+      openSettings: () => this.set({ screen: 'settings' }),
+      goHome: () => this.set({ screen: 'home' }),
+      goProjects: () => this.set({ screen: 'projects' }),
+      setQuery: (e) => this.set({ query: e.target.value }),
+      setPrompt: (e) => this.set({ prompt: e.target.value }),
+      run: () => this.set({ screen: 'studio' }),
+    };
+  }
+}
+</script>
+</body>
+</html>
