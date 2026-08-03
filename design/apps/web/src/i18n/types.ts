@@ -4592,11 +4592,6 @@ export interface Dict {
 
   // Changelog viewer: every recorded version, the typed/calendar date filter, the scope
   // sentence and the export.
-  // The dim sum surprise's surrounding copy. The dish's own name and its
-  // alt text come from the bundled catalog, not from here, so they stay
-  // correct at every funny level and in every locale.
-  'dimSum.blurb': string;
-
   // The in-app changelog viewer: releases, the date-range picker, the
   // search/date scope line, and the commit reference carried by every
   // entry. `changelog.datePlaceholder` is a format mask rather than
@@ -4705,6 +4700,173 @@ export interface Dict {
   'workspaceTabs.bulkCloseTooLong': string;
   'workspaceTabs.bulkCloseNoMatches': string;
   'workspaceTabs.bulkCloseConfirm': string;
+
+  // Non-blocking notifications: the corner stack and the centre that keeps every
+  // record a toast dropped. `notifications.severity*` are reached indirectly
+  // through `SEVERITY_LABEL_KEYS` rather than by a literal `t()` call, so they
+  // are as load-bearing as the rest even though nothing here names them.
+  // `{count}` is a number of records; `{label}` is the action a spent
+  // notification was offering.
+  'notifications.title': string;
+  'notifications.open': string;
+  'notifications.unread': string;
+  'notifications.searchLabel': string;
+  'notifications.searchPlaceholder': string;
+  'notifications.markAllRead': string;
+  'notifications.markRead': string;
+  'notifications.clear': string;
+  'notifications.dismiss': string;
+  'notifications.empty': string;
+  'notifications.noMatches': string;
+  'notifications.actionOffered': string;
+  'notifications.stackOverflow': string;
+  'notifications.severityInfo': string;
+  'notifications.severitySuccess': string;
+  'notifications.severityProgress': string;
+  'notifications.severityWarning': string;
+  'notifications.severityError': string;
+
+  // Destructive-action super confirmation: the two keys, the slider, the running
+  // status and the emergency exit. Every string here has to stay unambiguous at
+  // every funny level and in every language — what is destroyed, and whether it
+  // comes back, are facts the gate exists to state. `{action}` is the real verb
+  // and target the host passed in; `{percent}` is how far the slider has moved.
+  'destructive.affects': string;
+  'destructive.irreversible': string;
+  'destructive.reversible': string;
+  'destructive.keysLabel': string;
+  'destructive.keyFirst': string;
+  'destructive.keyFirstHint': string;
+  'destructive.keySecond': string;
+  'destructive.keySecondHint': string;
+  'destructive.sliderLabel': string;
+  'destructive.sliderValue': string;
+  'destructive.statusLocked': string;
+  'destructive.statusArmed': string;
+  'destructive.statusReady': string;
+  'destructive.statusRunning': string;
+  'destructive.statusDone': string;
+  'destructive.statusFailed': string;
+  'destructive.emergencyExit': string;
+  'destructive.emergencyExitHint': string;
+  'destructive.emergencyExitRunning': string;
+
+  // Bulk actions: the selection bar, the preview that says what will happen
+  // before it happens, and the outcome toast afterwards. The counts are
+  // deliberately separate placeholders — `{selected}` and `{willChange}` are
+  // allowed to disagree, and collapsing them into one number is the failure the
+  // preview exists to prevent.
+  'bulk.barLabel': string;
+  'bulk.selected': string;
+  'bulk.selectedOnPage': string;
+  'bulk.selectedEveryMatch': string;
+  'bulk.selectPage': string;
+  'bulk.selectEveryMatch': string;
+  'bulk.invert': string;
+  'bulk.clear': string;
+  'bulk.previewCounts': string;
+  'bulk.previewWillChange': string;
+  'bulk.previewMore': string;
+  'bulk.previewNothing': string;
+  'bulk.previewSkipped': string;
+  'bulk.previewMissing': string;
+  'bulk.previewMissingNote': string;
+  'bulk.progress': string;
+  'bulk.progressFailed': string;
+  'bulk.progressCurrent': string;
+  'bulk.stop': string;
+  'bulk.resultDone': string;
+  'bulk.resultNothing': string;
+  'bulk.resultPartial': string;
+  'bulk.resultFailed': string;
+  'bulk.resultCancelled': string;
+  'bulk.resultSkipped': string;
+
+  // Design files in bulk: the confirm labels, the preview titles, and the
+  // sentence each skip reason turns into. `{n}` is a file count everywhere
+  // except `bulkSkipOverTabLimit`, where it is the tab limit itself.
+  'designFiles.bulkOpen': string;
+  'designFiles.bulkOpenTitle': string;
+  'designFiles.bulkDeleteTitle': string;
+  'designFiles.bulkDownloadTitle': string;
+  'designFiles.bulkCopyPaths': string;
+  'designFiles.bulkCopyPathsTitle': string;
+  'designFiles.bulkSkipBusy': string;
+  'designFiles.bulkSkipNoLocalPath': string;
+  'designFiles.bulkSkipOverTabLimit': string;
+
+  // What the destructive gate lists when a project or a live artifact is being
+  // deleted. These are the "what goes" lines, so they name the thing by its own
+  // name (`{name}`, `{title}`) rather than describing it.
+  'designs.deleteGateProjectItem': string;
+  'designs.deleteGateProjectDetail': string;
+  'designs.deleteGateArtifactItem': string;
+
+  // The same, for the privacy screen's "delete my data". `{id}` is the real
+  // installation id, printed so the user can read the value being discarded.
+  'privacy.deleteGateIdItem': string;
+  'privacy.deleteGateSharingItem': string;
+  'privacy.deleteGateDone': string;
+
+  // The infinite colour picker and its translator: the continuous field, the
+  // axes, typed entry, and an honest account of what each representation costs.
+  // `{components}` lists the channels that were clipped, `{format}` is a format
+  // name (HEX, RGB) left untranslated, `{ratio}` is a formatted contrast ratio
+  // and `{rating}` is its WCAG level.
+  'appearance.color.fieldLabel': string;
+  'appearance.color.fieldHint': string;
+  'appearance.color.hue': string;
+  'appearance.color.saturation': string;
+  'appearance.color.brightness': string;
+  'appearance.color.alpha': string;
+  'appearance.color.alphaDropped': string;
+  'appearance.color.entryLabel': string;
+  'appearance.color.entryInvalid': string;
+  'appearance.color.clipped': string;
+  'appearance.color.swatches': string;
+  'appearance.color.recents': string;
+  'appearance.color.spaceSrgb': string;
+  'appearance.color.noName': string;
+  'appearance.color.contrast': string;
+  'appearance.color.ratingFail': string;
+  'appearance.color.compositedNote': string;
+  'appearance.color.copyValue': string;
+  'appearance.color.lossAlpha': string;
+  'appearance.color.lossRounding': string;
+  'appearance.color.lossNotCss': string;
+  'appearance.color.lossUnmanaged': string;
+
+  // Names of the built-in appearance presets. Reached through `BuiltInPreset.
+  // nameKey` rather than a literal `t()` call.
+  'appearance.preset.sunset': string;
+  'appearance.preset.violet': string;
+  'appearance.preset.teal': string;
+  'appearance.preset.lime': string;
+  'appearance.preset.compact': string;
+  'appearance.preset.readable': string;
+
+  // The optional spoken narrator: its settings panel, the three language
+  // choices (reached through `LANGUAGE_LABEL`), and the line the "speak a
+  // sample" button says. `{voice}` is the platform voice actually chosen.
+  'narrator.title': string;
+  'narrator.hint': string;
+  'narrator.enable': string;
+  'narrator.enableHint': string;
+  'narrator.language': string;
+  'narrator.languageEnglish': string;
+  'narrator.languageCantonese': string;
+  'narrator.languageBoth': string;
+  'narrator.languageBothHint': string;
+  'narrator.quiet': string;
+  'narrator.quietHint': string;
+  'narrator.screenReader': string;
+  'narrator.screenReaderHint': string;
+  'narrator.noSpeechEngine': string;
+  'narrator.noCantoneseVoice': string;
+  'narrator.cantoneseVoice': string;
+  'narrator.speakSample': string;
+  'narrator.stop': string;
+  'narrator.sample': string;
 }
 
 // How many languages a rendered string carries. 'single' is the historical
