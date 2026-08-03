@@ -1,0 +1,272 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": "Hong Kong dim sum and dish catalog",
+  "note": "Images are copied byte-for-byte from the source catalog and verified by sha256. They are never generated, resized or re-encoded here.",
+  "total": 24,
+  "dishes": [
+    {
+      "id": "hk-dish-0296",
+      "slug": "beef-with-black-bean-and-peppers",
+      "name": { "en": "Beef with Black Bean and Peppers", "zhHant": "豉椒炒牛肉" },
+      "jyutping": "si6 ziu1 caau2 ngau4 juk6",
+      "category": "Beef",
+      "image": "images/hk-dish-0296-beef-with-black-bean-and-peppers.png",
+      "bytes": 2628037,
+      "sha256": "ae29785c43704169f4176aa502aeeef99a8a649a63daccf49ca83c244e841167",
+      "alt": { "en": "Close catalog photograph of Beef with Black Bean and Peppers served on Hong Kong restaurant tableware.", "yue": "港式「豉椒炒牛肉」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0297",
+      "slug": "beef-with-oyster-sauce",
+      "name": { "en": "Beef with Oyster Sauce", "zhHant": "蠔油牛肉" },
+      "jyutping": "hou4 jau4 ngau4 juk6",
+      "category": "Beef",
+      "image": "images/hk-dish-0297-beef-with-oyster-sauce.png",
+      "bytes": 2592428,
+      "sha256": "97f7857b6181a13cb8f4cbd1964a741bc0dcc5640a50f4f1d1f3bdd858d3fccf",
+      "alt": { "en": "Close catalog photograph of Beef with Oyster Sauce served on Hong Kong restaurant tableware.", "yue": "港式「蠔油牛肉」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0551",
+      "slug": "cha-chaan-teng-baked-pork-chop-rice",
+      "name": { "en": "Cha Chaan Teng Baked Pork Chop Rice", "zhHant": "茶記焗豬扒飯" },
+      "jyutping": "caa4 gei3 guk6 zyu1 paa2 faan6",
+      "category": "Cha Chaan Teng",
+      "image": "images/hk-dish-0551-cha-chaan-teng-baked-pork-chop-rice.png",
+      "bytes": 2168471,
+      "sha256": "666367becf0f231e864dde3f8f7d67859dc1c2bebf91cc6d443a499f231ee9af",
+      "alt": { "en": "A single serving of Cha Chaan Teng Baked Pork Chop Rice, a pork chop over rice under tangy tomato sauce and browned melted cheese.", "yue": "一份擺喺懷舊香港茶餐廳入面嘅綠邊枱嘅茶記焗豬扒飯。" }
+    },
+    {
+      "id": "hk-dish-0552",
+      "slug": "cha-chaan-teng-baked-seafood-rice",
+      "name": { "en": "Cha Chaan Teng Baked Seafood Rice", "zhHant": "茶記焗海鮮飯" },
+      "jyutping": "caa4 gei3 guk6 hoi2 sin1 faan6",
+      "category": "Cha Chaan Teng",
+      "image": "images/hk-dish-0552-cha-chaan-teng-baked-seafood-rice.png",
+      "bytes": 2415770,
+      "sha256": "690547423ed6a90e29c3aae8a92047161bdde6e04953b7dc7c3ec779c88b48dc",
+      "alt": { "en": "A single serving of Cha Chaan Teng Baked Seafood Rice, mixed seafood and rice under bubbling white sauce and a bronzed cheese crust.", "yue": "一份擺喺懷舊香港茶餐廳入面嘅綠邊枱嘅茶記焗海鮮飯。" }
+    },
+    {
+      "id": "hk-dish-0260",
+      "slug": "chocolate-lava-egg-tart",
+      "name": { "en": "Chocolate Lava Egg Tart", "zhHant": "朱古力流心蛋撻" },
+      "jyutping": "zyu1 gu2 lik1 lau4 sam1 daan6 taat1",
+      "category": "Chocolate dim sum",
+      "image": "images/hk-dish-0260-chocolate-lava-egg-tart.png",
+      "bytes": 2297490,
+      "sha256": "8fdb5a46ac8b325893c72fed9dcb8c3ea09c442b210cfbc78749d30be51de80b",
+      "alt": { "en": "Close catalog photograph of chocolate-filled Chocolate Lava Egg Tart served on Hong Kong restaurant tableware.", "yue": "朱古力餡「朱古力流心蛋撻」用港式餐廳器皿上枱嘅近鏡點心相。" }
+    },
+    {
+      "id": "hk-dish-0280",
+      "slug": "dark-chocolate-sesame-puff",
+      "name": { "en": "Dark Chocolate Sesame Puff", "zhHant": "黑朱古力芝麻酥" },
+      "jyutping": "hak1 zyu1 gu2 lik1 zi1 maa4 sou1",
+      "category": "Chocolate dim sum",
+      "image": "images/hk-dish-0280-dark-chocolate-sesame-puff.png",
+      "bytes": 2411245,
+      "sha256": "8809aa61d141835ffb68735914e76c134b4fdec01dbf140b253208432ac9b745",
+      "alt": { "en": "Close catalog photograph of chocolate-filled Dark Chocolate Sesame Puff served on Hong Kong restaurant tableware.", "yue": "朱古力餡「黑朱古力芝麻酥」用港式餐廳器皿上枱嘅近鏡點心相。" }
+    },
+    {
+      "id": "hk-dish-0406",
+      "slug": "claypot-rice-with-chinese-sausage",
+      "name": { "en": "Claypot Rice with Chinese Sausage", "zhHant": "臘腸臘肉煲仔飯" },
+      "jyutping": "laap6 coeng2 laap6 juk6 bou1 zai2 faan6",
+      "category": "Claypot and banquet",
+      "image": "images/hk-dish-0406-claypot-rice-with-chinese-sausage.png",
+      "bytes": 2626126,
+      "sha256": "b37d52b2e7fd98f1e7ca72bed402ded70a9be133a05704fd0f771c950f41395d",
+      "alt": { "en": "Close catalog photograph of Claypot Rice with Chinese Sausage served on Hong Kong restaurant tableware.", "yue": "港式「臘腸臘肉煲仔飯」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0407",
+      "slug": "claypot-rice-with-chicken-and-shiitake",
+      "name": { "en": "Claypot Rice with Chicken and Shiitake", "zhHant": "冬菇滑雞煲仔飯" },
+      "jyutping": "dung1 gu1 waat6 gai1 bou1 zai2 faan6",
+      "category": "Claypot and banquet",
+      "image": "images/hk-dish-0407-claypot-rice-with-chicken-and-shiitake.png",
+      "bytes": 2579508,
+      "sha256": "f150dd4ac85561a5bef46ec65a61b5b521f73a9ce74c8fc3dec069b9f55eb17f",
+      "alt": { "en": "Close catalog photograph of Claypot Rice with Chicken and Shiitake served on Hong Kong restaurant tableware.", "yue": "港式「冬菇滑雞煲仔飯」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0526",
+      "slug": "dai-pai-dong-style-dry-fried-beef-ho-fun",
+      "name": { "en": "Dai Pai Dong-Style Dry-Fried Beef Ho Fun", "zhHant": "大牌檔式乾炒牛河" },
+      "jyutping": "daai6 paai2 dong3 sik1 gon1 caau2 ngau4 ho2",
+      "category": "Dai Pai Dong",
+      "image": "images/hk-dish-0526-dai-pai-dong-style-dry-fried-beef-ho-fun.png",
+      "bytes": 2412386,
+      "sha256": "6da771f5e11d626c4317c4abaa13da3c373eb4c2eb848af8e002e6f5a949aa88",
+      "alt": { "en": "A single serving of Dai Pai Dong-Style Dry-Fried Beef Ho Fun, wok-charred wide rice noodles tangled with sliced beef bean sprouts and chives.", "yue": "一份擺喺香港大牌檔嘅舊雲石枱嘅大牌檔式乾炒牛河。" }
+    },
+    {
+      "id": "hk-dish-0527",
+      "slug": "dai-pai-dong-style-black-bean-chilli-clams",
+      "name": { "en": "Dai Pai Dong-Style Black Bean Chilli Clams", "zhHant": "大牌檔式豉椒炒蜆" },
+      "jyutping": "daai6 paai2 dong3 sik1 si6 ziu1 caau2 hin2",
+      "category": "Dai Pai Dong",
+      "image": "images/hk-dish-0527-dai-pai-dong-style-black-bean-chilli-clams.png",
+      "bytes": 2518946,
+      "sha256": "9516b9fa6e62113d38fbd7be109384b4ba12053d014b2ae4a1002fc6237ffa9a",
+      "alt": { "en": "A single serving of Dai Pai Dong-Style Black Bean Chilli Clams, opened clams glossed with black-bean sauce and green pepper pieces.", "yue": "一份擺喺香港大牌檔嘅舊雲石枱嘅大牌檔式豉椒炒蜆。" }
+    },
+    {
+      "id": "hk-dish-0560",
+      "slug": "chocolate-filled-sesame-balls",
+      "name": { "en": "Chocolate-Filled Sesame Balls", "zhHant": "巧克力流心煎堆" },
+      "jyutping": "haau2 haak1 lik6 lau4 sam1 zin1 deoi1",
+      "category": "Festival Food",
+      "image": "images/hk-dish-0560-chocolate-filled-sesame-balls.png",
+      "bytes": 2186744,
+      "sha256": "40305ade70523ae74ffdf9f88bca386ae03846321748e6e23c7ddd81999f9046",
+      "alt": { "en": "A single serving of Chocolate-Filled Sesame Balls, golden sesame-coated rice balls with one split to show a thick dark-chocolate filling.", "yue": "一份喺香港農曆新年家庭聚會嘅紅色佈置餐枱上擺好嘅巧克力流心煎堆。" }
+    },
+    {
+      "id": "hk-dish-0651",
+      "slug": "hong-kong-festive-pan-fried-turnip-cake",
+      "name": { "en": "Hong Kong Festive Pan-Fried Turnip Cake", "zhHant": "香港應節香煎蘿蔔糕" },
+      "jyutping": "hoeng1 gong2 jing3 zit3 hoeng1 zin1 lo4 baak6 gou1",
+      "category": "Festival Food",
+      "image": "images/hk-dish-0651-hong-kong-festive-pan-fried-turnip-cake.png",
+      "bytes": 2187425,
+      "sha256": "e4579e0aa925e6118246e8f003ec09768f2a833bf04c0f3effdac31f3fdbc812",
+      "alt": { "en": "A single serving of Hong Kong Festive Pan-Fried Turnip Cake, rectangular turnip-cake slices pan-fried golden with visible sausage and shrimp flecks.", "yue": "一份喺香港農曆新年家庭聚會嘅紅色佈置餐枱上擺好嘅香港應節香煎蘿蔔糕。" }
+    },
+    {
+      "id": "hk-dish-0600",
+      "slug": "chocolate-lava-ma-lai-go",
+      "name": { "en": "Chocolate Lava Ma Lai Go", "zhHant": "巧克力流心馬拉糕" },
+      "jyutping": "haau2 haak1 lik6 lau4 sam1 maa5 laai1 gou1",
+      "category": "Hong Kong Bakery",
+      "image": "images/hk-dish-0600-chocolate-lava-ma-lai-go.png",
+      "bytes": 2464527,
+      "sha256": "c605af6ab05c77b989248af1f33b20240daa8ed0d8a744f51e74ee7ea7ad460e",
+      "alt": { "en": "A single serving of Chocolate Lava Ma Lai Go, a tall steamed brown-sugar sponge cake cut open around a warm dark-chocolate core.", "yue": "一份擺喺傳統香港餅店入面嘅玻璃面陳列盤嘅巧克力流心馬拉糕。" }
+    },
+    {
+      "id": "hk-dish-0601",
+      "slug": "hong-kong-bakery-pineapple-bun",
+      "name": { "en": "Hong Kong Bakery Pineapple Bun", "zhHant": "港式餅店菠蘿包" },
+      "jyutping": "gong2 sik1 beng2 dim3 bo1 lo4 baau1",
+      "category": "Hong Kong Bakery",
+      "image": "images/hk-dish-0601-hong-kong-bakery-pineapple-bun.png",
+      "bytes": 2164636,
+      "sha256": "108fd2e7687baa64ece59f814f8fe1bd4b1bd02dfc26cc390d0b3d36a95fb0cf",
+      "alt": { "en": "A single serving of Hong Kong Bakery Pineapple Bun, a round soft bun crowned with a golden crackled cookie crust.", "yue": "一份擺喺傳統香港餅店入面嘅玻璃面陳列盤嘅港式餅店菠蘿包。" }
+    },
+    {
+      "id": "hk-dish-0626",
+      "slug": "hong-kong-dessert-shop-mango-pomelo-sago",
+      "name": { "en": "Hong Kong Dessert-Shop Mango Pomelo Sago", "zhHant": "香港甜品舖楊枝甘露" },
+      "jyutping": "hoeng1 gong2 tim4 ban2 pou3 joeng4 zi1 gam1 lou6",
+      "category": "Hong Kong Dessert",
+      "image": "images/hk-dish-0626-hong-kong-dessert-shop-mango-pomelo-sago.png",
+      "bytes": 2024379,
+      "sha256": "4b98c60cca5cd0175662de616c4b4dd102f0652854d03e906c5fb1b6ef1652b3",
+      "alt": { "en": "A single serving of Hong Kong Dessert-Shop Mango Pomelo Sago, a chilled golden mango cream with sago pearls pomelo sacs and mango cubes.", "yue": "一份喺溫暖嘅香港糖水舖大理石枱上擺好嘅香港甜品舖楊枝甘露。" }
+    },
+    {
+      "id": "hk-dish-0627",
+      "slug": "hong-kong-dessert-shop-black-sesame-sweet-soup",
+      "name": { "en": "Hong Kong Dessert-Shop Black Sesame Sweet Soup", "zhHant": "香港糖水舖芝麻糊" },
+      "jyutping": "hoeng1 gong2 tong4 seoi2 pou2 zi1 maa4 wu2",
+      "category": "Hong Kong Dessert",
+      "image": "images/hk-dish-0627-hong-kong-dessert-shop-black-sesame-sweet-soup.png",
+      "bytes": 2106024,
+      "sha256": "cad56935e2580c40e821fecf78e0bb4113168f265e790fdb1d24f70e0997548f",
+      "alt": { "en": "A single serving of Hong Kong Dessert-Shop Black Sesame Sweet Soup, a smooth thick charcoal-black sesame soup in a small porcelain bowl.", "yue": "一份喺溫暖嘅香港糖水舖大理石枱上擺好嘅香港糖水舖芝麻糊。" }
+    },
+    {
+      "id": "hk-dish-0676",
+      "slug": "hong-kong-milk-tea",
+      "name": { "en": "Hong Kong Milk Tea", "zhHant": "港式奶茶" },
+      "jyutping": "gong2 sik1 naai5 caa4",
+      "category": "Hong Kong Drinks",
+      "image": "images/hk-dish-0676-hong-kong-milk-tea.png",
+      "bytes": 2173311,
+      "sha256": "1d7749477def44031f10cc760ae521b56b917cfffcc60d9965444815602c8b1c",
+      "alt": { "en": "A single serving of Hong Kong Milk Tea, strong copper-brown milk tea in a thick white ceramic cup and saucer.", "yue": "一份擺喺懷舊香港茶餐廳入面嘅綠邊枱嘅港式奶茶。" }
+    },
+    {
+      "id": "hk-dish-0677",
+      "slug": "yuenyeung-coffee-tea",
+      "name": { "en": "Yuenyeung Coffee Tea", "zhHant": "鴛鴦" },
+      "jyutping": "jyun1 joeng1",
+      "category": "Hong Kong Drinks",
+      "image": "images/hk-dish-0677-yuenyeung-coffee-tea.png",
+      "bytes": 2099481,
+      "sha256": "266e1208c11d7187bb8adcbb4a1d8ddb0208bff77d4b05d0c39b4d70ab7f1e07",
+      "alt": { "en": "A single serving of Yuenyeung Coffee Tea, a smooth tan coffee-and-tea drink in a heavy ribbed glass.", "yue": "一份擺喺懷舊香港茶餐廳入面嘅綠邊枱嘅鴛鴦。" }
+    },
+    {
+      "id": "hk-dish-0446",
+      "slug": "wonton-noodles",
+      "name": { "en": "Wonton Noodles", "zhHant": "雲吞麵" },
+      "jyutping": "wan4 tan1 min6",
+      "category": "Noodles",
+      "image": "images/hk-dish-0446-wonton-noodles.png",
+      "bytes": 2470773,
+      "sha256": "8b4940630951da60aef6b18aff49c39bd7cf094c7b3f763f2bd314ba8296fe89",
+      "alt": { "en": "Close catalog photograph of Wonton Noodles served on Hong Kong restaurant tableware.", "yue": "港式「雲吞麵」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0447",
+      "slug": "shrimp-roe-tossed-noodles",
+      "name": { "en": "Shrimp Roe Tossed Noodles", "zhHant": "蝦子撈麵" },
+      "jyutping": "haa1 zi2 lou1 min6",
+      "category": "Noodles",
+      "image": "images/hk-dish-0447-shrimp-roe-tossed-noodles.png",
+      "bytes": 2663955,
+      "sha256": "e675caf56b80208e2fdea76c359fef186e24b18c769095c49a891f366a2fbfe4",
+      "alt": { "en": "Close catalog photograph of Shrimp Roe Tossed Noodles served on Hong Kong restaurant tableware.", "yue": "港式「蝦子撈麵」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0701",
+      "slug": "haw-flake-discs",
+      "name": { "en": "Haw Flake Discs", "zhHant": "山楂餅" },
+      "jyutping": "saan1 zaa1 beng2",
+      "category": "Nostalgic Hong Kong",
+      "image": "images/hk-dish-0701-haw-flake-discs.png",
+      "bytes": 2320899,
+      "sha256": "48fd35810463dcdcfc9f2c52a1a7dbc24879731fddc649cc94c9c9d116bc0b7e",
+      "alt": { "en": "A single serving of Haw Flake Discs, thin rust-red haw flakes stacked into neat coin-shaped discs without branded wrapping.", "yue": "一份擺喺懷舊香港街坊舖入面嘅斑點櫃枱嘅山楂餅。" }
+    },
+    {
+      "id": "hk-dish-0702",
+      "slug": "ding-ding-maltose-candy",
+      "name": { "en": "Ding Ding Maltose Candy", "zhHant": "叮叮糖" },
+      "jyutping": "ding1 ding1 tong2",
+      "category": "Nostalgic Hong Kong",
+      "image": "images/hk-dish-0702-ding-ding-maltose-candy.png",
+      "bytes": 2208791,
+      "sha256": "9c670a13dfa54f98c9efeead77ff823934451b18edaf52dfd4fa70335779c36e",
+      "alt": { "en": "A single serving of Ding Ding Maltose Candy, irregular ivory maltose shards freshly chipped from a large brittle slab.", "yue": "一份擺喺懷舊香港糖果小販車嘅叮叮糖。" }
+    },
+    {
+      "id": "hk-dish-0271",
+      "slug": "sweet-and-sour-pork-with-pineapple",
+      "name": { "en": "Sweet and Sour Pork with Pineapple", "zhHant": "菠蘿咕嚕肉" },
+      "jyutping": "bo1 lo4 gu1 lou1 juk6",
+      "category": "Pork",
+      "image": "images/hk-dish-0271-sweet-and-sour-pork-with-pineapple.png",
+      "bytes": 2335342,
+      "sha256": "8ce9e9fb1de108ae0912fe1604cd2590b79075c9f80a97bd0fcdfa02a4136b7b",
+      "alt": { "en": "Close catalog photograph of Sweet and Sour Pork with Pineapple served on Hong Kong restaurant tableware.", "yue": "港式「菠蘿咕嚕肉」用餐廳器皿上枱嘅近鏡菜式相。" }
+    },
+    {
+      "id": "hk-dish-0272",
+      "slug": "pork-chop-with-peking-sauce",
+      "name": { "en": "Pork Chop with Peking Sauce", "zhHant": "京都豬扒" },
+      "jyutping": "ging1 dou1 zyu1 paa2",
+      "category": "Pork",
+      "image": "images/hk-dish-0272-pork-chop-with-peking-sauce.png",
+      "bytes": 2782688,
+      "sha256": "2a82ef5a88522b010fc4987ed2758bb7291e3cfe4761c69c56930fc3653665dd",
+      "alt": { "en": "Close catalog photograph of Pork Chop with Peking Sauce served on Hong Kong restaurant tableware.", "yue": "港式「京都豬扒」用餐廳器皿上枱嘅近鏡菜式相。" }
+    }
+  ]
+}
