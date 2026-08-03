@@ -137,6 +137,16 @@ jobs:
           OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
         run: pnpm install --frozen-lockfile
 
+      - name: Build the packages the tests import
+        working-directory: design
+        # postinstall builds the shared packages and the tools, but not the
+        # desktop app — and the packaged app's tests import `@open-design/desktop/main`,
+        # which is the built `dist/`, not the source. Without this the suite dies
+        # with ERR_MODULE_NOT_FOUND before running a single assertion.
+        run: |
+          pnpm --filter @open-design/daemon run build
+          pnpm --filter @open-design/desktop run build
+
       - name: Test the packages that carry product identity
         working-directory: design
         shell: bash

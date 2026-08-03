@@ -409,6 +409,20 @@ wants a Project board can grant the scope (`gh auth refresh -s read:project`) an
 create one; until then, the rolling Discussion and this file carry the status that
 a board would have carried. Do not treat the absent board as missing work.
 
+### External-state limitation: the wiki has no first page
+
+The wiki is **enabled** on the repository, but GitHub does not create the wiki's
+underlying git repository until a first page is saved through the web interface,
+and there is no API that will do it. Cloning
+`…/material-designer.wiki.git` therefore returns *Repository not found*, and no
+amount of retrying changes that.
+
+*Mitigation:* create any page once through the web interface; the wiki repository
+then exists and can be cloned and pushed to like any other. Until then this is not
+a documentation gap — the categorized documentation lives in [`docs/`](docs/) and
+is the canonical copy either way, with the site as its published form. A wiki would
+be a third surface, not the only one.
+
 ### Native module compilation on Windows
 
 The daemon depends on a native SQLite binding that has **no prebuilt binary** for
