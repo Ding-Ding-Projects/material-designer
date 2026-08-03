@@ -1,0 +1,90 @@
+name: Verify
+
+# The fast gate. It runs on everything, so it must stay cheap: no dependency
+# install, no build. It answers one question — is design/ still an exact copy of
+# the upstream tree, with every intentional difference declared?
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify port integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # No submodule. verify-port.sh falls back to the committed manifest of
+          # upstream blob ids, which answers exactly the same question without
+          # cloning a 1.7 GB object store on every push. When the submodule IS
+          # present the script cross-checks the manifest against it, so the
+          # shortcut cannot drift from the thing it stands in for.
+          fetch-depth: 0
+
+      - name: Verify design/ against the pinned upstream tree
+        shell: bash
+        run: bash scripts/verify-port.sh
+
+      - name: Report port integrity
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          json=$(bash scripts/verify-port.sh --json 2>/dev/null | tail -1)
+          if [ -z "$json" ]; then
+            echo "### ❌ Port integrity" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The verifier produced no output." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          get() { printf '%s' "$json" | sed -n "s/.*\"$1\":\([0-9]*\).*/\1/p"; }
+          pinned=$(printf '%s' "$json" | sed -n 's/.*"pinned":"\([^"]*\)".*/\1/p')
+          gaps=$(get gaps)
+          {
+            if [ "${gaps:-1}" = "0" ]; then
+              echo "### ✅ Port integrity — 0 gaps"
+            else
+              echo "### ❌ Port integrity — ${gaps} gap(s)"
+            fi
+            echo ""
+            echo "Compared against upstream \`${pinned}\`."
+            echo ""
+            echo "| Measure | Count |"
+            echo "|---|---:|"
+            echo "| Files expected | $(get expected) |"
+            echo "| Files tracked | $(get tracked) |"
+            echo "| Declared differences | $(get declared) |"
+            echo "| Missing | $(get missing) |"
+            echo "| Bytes differ | $(get bytesDiffer) |"
+            echo "| Mode mismatch | $(get modeMismatch) |"
+            echo "| Blob id mismatch | $(get oidMismatch) |"
+            echo "| Extra | $(get extra) |"
+            echo "| Untracked | $(get untracked) |"
+            echo "| Stale notices | $(get staleNotice) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Node
+        if: ${{ always() }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Count lines
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ ! -f scripts/line-count.mjs ]; then
+            echo "scripts/line-count.mjs is not present yet; skipping." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          node scripts/line-count.mjs >> "$GITHUB_STEP_SUMMARY" || {
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The line counter failed; see the step log." >> "$GITHUB_STEP_SUMMARY"
+          }

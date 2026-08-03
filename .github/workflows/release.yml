@@ -1,0 +1,348 @@
+name: Release
+
+# Builds the Windows application and publishes it.
+#
+# The build steps here deliberately mirror the recipe the upstream project uses
+# for its own Windows releases — same pnpm setup, same NSIS guard, same
+# tools-pack invocation — because that recipe is known to work and this is not
+# the place to find out whether a different one does. What is stripped out is
+# everything specific to upstream's infrastructure: its release storage, its
+# updater feed, its signing identity, and a build flag that requires a package
+# this fork cannot resolve.
+#
+# Nothing is built on a contributor machine. This workflow is the supported
+# path, and its logs are the evidence.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: Run the packaged smoke test (installs, launches and uninstalls the built app)
+        type: boolean
+        default: true
+      publish:
+        description: Publish a GitHub Release with the installer attached
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Windows application
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      # Namespace and channel are literals here. Upstream derives them from a
+      # release-metadata job wired to infrastructure this fork does not have,
+      # and an empty --namespace or --app-version fails the packer outright.
+      PACK_NAMESPACE: release-stable-win
+      PACK_CHANNEL: stable
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The build needs design/, not the provenance submodule.
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        # Before setup-node, which needs pnpm on PATH to resolve the store for
+        # its cache. Not corepack: it fails with EPERM on Windows.
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: design/pnpm-lock.yaml
+
+      - name: Read application version
+        id: version
+        working-directory: design
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace($pkg.version)) { throw "design/package.json has no version" }
+          "app_version=$($pkg.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=v$($pkg.version)-r${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "version $($pkg.version), tag v$($pkg.version)-r${{ github.run_number }}"
+
+      - name: Install dependencies
+        working-directory: design
+        # postinstall also builds the workspace packages and tools, and compiles
+        # the native modules from source. It is the long pole of this job.
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: design
+        # The daemon and desktop declaration files have to exist before the
+        # packaged app can typecheck against them, which a fresh clone has not
+        # done yet.
+        run: |
+          pnpm --filter @open-design/daemon run build
+          pnpm --filter @open-design/desktop run build
+          pnpm -r --workspace-concurrency=4 --if-present run typecheck
+
+      - name: Test the packages that carry product identity
+        working-directory: design
+        # The rebrand changed what these suites assert. If the identity logic and
+        # its four independent copies ever disagree again, this is where it shows
+        # up — before an installer is built, not after a user runs it.
+        run: |
+          pnpm --filter @open-design/tools-pack run test
+          pnpm --filter @open-design/packaged run test
+          pnpm --filter @open-design/desktop run test
+
+      - name: Set up NSIS
+        run: |
+          if ((Get-Command makensis.exe -ErrorAction SilentlyContinue) -or (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
+            Write-Host "makensis already available"
+            exit 0
+          }
+          choco install nsis -y --no-progress
+
+      - name: Build the Windows installer
+        id: pack
+        working-directory: design
+        run: |
+          $ErrorActionPreference = "Stop"
+          $toolsPackDir = "${{ runner.temp }}/tools-pack"
+          $cacheDir = "${{ runner.temp }}/tools-pack-cache"
+          $buildJsonPath = Join-Path "${{ runner.temp }}" "windows-tools-pack-build.json"
+
+          pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
+
+          $buildOutput = pnpm.cmd exec tools-pack win build `
+            --dir $toolsPackDir `
+            --cache-dir $cacheDir `
+            --namespace "$env:PACK_NAMESPACE" `
+            --portable `
+            --app-version "${{ steps.version.outputs.app_version }}" `
+            --to all `
+            --json
+          if ($LASTEXITCODE -ne 0) { throw "tools-pack win build exited with code $LASTEXITCODE" }
+
+          $buildOutput | Set-Content -Path $buildJsonPath
+          $build = $buildOutput | ConvertFrom-Json
+
+          pnpm.cmd exec tools-pack win validate-payload `
+            --namespace "$env:PACK_NAMESPACE" `
+            --payload-path $build.payloadPath `
+            --expected-version "${{ steps.version.outputs.app_version }}" `
+            --json
+          if ($LASTEXITCODE -ne 0) { throw "tools-pack win validate-payload exited with code $LASTEXITCODE" }
+
+          if ([string]::IsNullOrWhiteSpace($build.installerPath) -or -not (Test-Path -LiteralPath $build.installerPath)) {
+            throw "the build reported no installer at '$($build.installerPath)'"
+          }
+
+          $installer = Get-Item -LiteralPath $build.installerPath
+          $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          # Give the asset a name that says what it is outside this repository.
+          $staged = Join-Path "${{ runner.temp }}" "release-assets"
+          New-Item -ItemType Directory -Force -Path $staged | Out-Null
+          $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
+          "$hash  $assetName" | Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding utf8
+
+          if (-not [string]::IsNullOrWhiteSpace($build.portableZipPath) -and (Test-Path -LiteralPath $build.portableZipPath)) {
+            Copy-Item -LiteralPath $build.portableZipPath -Destination (Join-Path $staged "material-designer-${{ steps.version.outputs.app_version }}-win-x64-portable.zip") -Force
+          }
+
+          "build_json=$buildJsonPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
+
+      - name: Upload the installer as a workflow artifact
+        # Always, so a failed smoke test still leaves something to inspect.
+        if: ${{ always() && steps.pack.outputs.staged_dir != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-designer-win-x64
+          path: ${{ steps.pack.outputs.staged_dir }}
+          if-no-files-found: error
+
+      - name: Smoke test the packaged application
+        id: smoke
+        # On a push there are no inputs, and an empty value compares equal to
+        # false in an expression — so test the event explicitly rather than
+        # letting the default silently skip the step that proves the app runs.
+        if: ${{ steps.pack.outputs.build_json != '' && (github.event_name != 'workflow_dispatch' || inputs.smoke) }}
+        working-directory: design/e2e
+        env:
+          OD_PACKAGED_E2E_BUILD_JSON_PATH: ${{ steps.pack.outputs.build_json }}
+          OD_PACKAGED_E2E_WIN: "1"
+          OD_PACKAGED_E2E_NAMESPACE: release-stable-win
+          OD_PACKAGED_E2E_RELEASE_CHANNEL: stable
+          OD_PACKAGED_E2E_RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
+          OD_PACKAGED_E2E_REPORT_DIR: ${{ runner.temp }}/release-report/win
+          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ runner.temp }}/tools-pack
+          # `core` installs the app, launches it, proves the running process
+          # answers its own health endpoint, then uninstalls and checks nothing
+          # was left behind. `full` additionally exercises the auto-updater,
+          # which this fork deliberately does not ship a feed for.
+          OD_PACKAGED_E2E_WIN_SMOKE_PROFILE: core
+        run: |
+          $ErrorActionPreference = "Stop"
+          pnpm exec tsx scripts/release-smoke.ts win specs/win.spec.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload the smoke test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-designer-win-smoke-report
+          path: ${{ runner.temp }}/release-report/win
+          if-no-files-found: warn
+
+      - name: Upload build logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-designer-build-logs
+          path: |
+            design/.tmp/**/*.log
+            design/.tmp/**/logs/**
+            ${{ runner.temp }}/tools-pack/**/*.log
+          if-no-files-found: warn
+
+      - name: Count lines
+        id: lines
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          out="${RUNNER_TEMP}/line-count.md"
+          if [ -f scripts/line-count.mjs ] && node scripts/line-count.mjs > "$out" 2>/dev/null; then
+            echo "path=$out" >> "$GITHUB_OUTPUT"
+          else
+            echo "_The line count was not available for this build._" > "$out"
+            echo "path=$out" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Choose the release code name
+        id: codename
+        if: ${{ success() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          # A dish is used once. Read the spent ones out of the existing
+          # releases rather than from a counter a re-run would repeat.
+          used=$(gh release list --limit 200 --json tagName --jq '.[].tagName' 2>/dev/null \
+            | while read -r tag; do
+                gh release view "$tag" --json body --jq '.body' 2>/dev/null \
+                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
+              done | sort -u | paste -sd, -)
+          bash scripts/release-codename.sh --used "${used:-}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the release
+        if: ${{ success() && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
+          ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          INSTALLER_SHA: ${{ steps.pack.outputs.installer_sha256 }}
+          STAGED: ${{ steps.pack.outputs.staged_dir }}
+          CODENAME: ${{ steps.codename.outputs.codename }}
+          DISH_ID: ${{ steps.codename.outputs.id }}
+          DISH_IMAGE: ${{ steps.codename.outputs.image }}
+          DISH_ALT: ${{ steps.codename.outputs.alt_en }}
+          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+        run: |
+          set -euo pipefail
+          notes="${RUNNER_TEMP}/release-notes.md"
+          {
+            echo "## Material Designer ${APP_VERSION}"
+            if [ -n "${CODENAME:-}" ]; then
+              echo ""
+              echo "**Code name: ${CODENAME}**"
+            fi
+            echo ""
+            echo "A Material Design 3 build of a local-first design tool."
+            echo ""
+            echo "### Install"
+            echo ""
+            echo "Download \`${ASSET_NAME}\` below and run it. The installer does not require administrator rights."
+            echo ""
+            echo "\`\`\`"
+            echo "SHA-256  ${INSTALLER_SHA}"
+            echo "\`\`\`"
+            echo ""
+            echo "> [!NOTE]"
+            echo "> The installer is not code-signed, so Windows SmartScreen will warn on first run."
+            echo "> Choose **More info** then **Run anyway**."
+            echo ""
+            echo "### Verification"
+            echo ""
+            case "${SMOKE_RESULT:-skipped}" in
+              success) echo "- Packaged smoke test: **passed** — the built application installs, launches, answers its own health check, and uninstalls without residue." ;;
+              failure) echo "- Packaged smoke test: **failed** — see the workflow run." ;;
+              *)       echo "- Packaged smoke test: **not run** for this build." ;;
+            esac
+            echo "- Built from \`${GITHUB_SHA}\` by [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+            echo ""
+            echo "### Lines of code"
+            echo ""
+            cat "${{ steps.lines.outputs.path }}"
+            echo ""
+            echo "### Provenance"
+            echo ""
+            echo "Contains Open Design v0.16.1 (\`517f39acde402c1a7af2189167a8d6957a3dac71\`), Apache-2.0."
+            echo "Changes to the imported work are listed in \`MODIFICATIONS.md\`."
+            echo "This build is not produced by, endorsed by, or affiliated with that project."
+            if [ -n "${DISH_ID:-}" ]; then
+              echo ""
+              echo "<!-- dim-sum-id: ${DISH_ID} -->"
+            fi
+          } > "$notes"
+
+          assets=("$STAGED"/*)
+          if [ -n "${DISH_IMAGE:-}" ] && [ -f "$DISH_IMAGE" ]; then
+            cp "$DISH_IMAGE" "$STAGED/codename-${DISH_ID}.png"
+            assets=("$STAGED"/*)
+          fi
+
+          gh release create "$TAG" \
+            --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" \
+            --notes-file "$notes" \
+            --latest \
+            "${assets[@]}"
+
+          echo "Published $TAG"
+
+      - name: Summarise
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### Windows build"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Version | ${{ steps.version.outputs.app_version }} |"
+            echo "| Tag | ${{ steps.version.outputs.tag }} |"
+            echo "| Installer | ${{ steps.pack.outputs.asset_name || 'not produced' }} |"
+            echo "| Smoke test | ${{ steps.smoke.outcome || 'not run' }} |"
+            echo "| Code name | ${{ steps.codename.outputs.codename || 'none' }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
