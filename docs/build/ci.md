@@ -1,0 +1,318 @@
+# Building in continuous integration
+
+Three workflows live at the repository root: **`Verify`**, a cheap gate that runs
+on everything; **`Release`**, which builds the Windows application and publishes
+it; and **`Pages`**, which deploys `site/` and enforces the bundled-assets rule at
+publish time. `Pages` is documented in full under
+[../site/](../site/) — this page covers the two build workflows and summarises
+where `Pages` fits.
+
+> [!IMPORTANT]
+> **No run outcome is recorded here.** The workflows exist and are readable at
+> `.github/workflows/`, but this documentation does not claim any of them has
+> been executed, passed, or produced a release — nothing has been observed
+> running. Where this page describes what a workflow does, it is describing the
+> committed definition. Where it describes a result, it says so explicitly, and
+> there are none yet.
+>
+> The 48 workflow files under `design/.github/workflows/` are the vendored
+> upstream project's. Workflow definitions are only read from the repository
+> root, so all 48 remain inert.
+
+## Behaviour
+
+### Why builds happen here and not on a developer's machine
+
+**The install is heavy and the environment is fragile.** A cold install resolves
+a large workspace, runs a chain of workspace builds, and on Windows compiles a
+native SQLite binding from source because no prebuilt binary exists for that
+platform and runtime pair. The release workflow's own comment calls that step
+"the long pole of this job". A runner created for one build and destroyed
+afterwards absorbs that cost without leaving anything behind.
+
+**A build should be a fact about the code.** When every build starts from an
+identical, disposable image, a failure means the code is broken. When builds
+happen on whichever machine is nearest, a failure means *something* is broken and
+the first hour goes on finding out which machine.
+
+**Release artifacts should be produced by the thing that tested them.** The
+installer a user downloads must be the artifact the passing run built, at the
+commit it claims. That is only enforceable when the build, the tests and the
+publish are steps of one run.
+
+## `Verify` — the fast gate
+
+```yaml
+on: [push, pull_request, workflow_dispatch]
+runs-on: ubuntu-latest
+permissions: contents: read
+```
+
+It runs on everything, so it stays cheap: **no dependency install, no build.** It
+answers one question — is `design/` still an exact copy of the upstream tree,
+with every intentional difference declared?
+
+### What it does
+
+| Step | Purpose |
+| --- | --- |
+| Checkout | `fetch-depth: 0`, **no submodule** — see below. |
+| Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
+| Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
+| Set up Node | Node 24, for the counter. |
+| Count lines | `node scripts/line-count.mjs` appended to the run summary. Skips gracefully if the script is absent. |
+
+### Why it checks out without the submodule
+
+The submodule's object store is roughly 1.7 GB, and cloning it on every push to
+answer a question about file hashes is a poor trade. Instead the verifier falls
+back to `scripts/upstream-manifest.tsv`, a committed table of upstream blob ids.
+
+The shortcut cannot drift, because **when the submodule *is* present the script
+cross-checks the manifest against it** and refuses to run if they disagree. A
+local run with the submodule proves the manifest; continuous integration then
+trusts the proven manifest. Both self-tests for that guard are recorded in
+[../porting/verification.md](../porting/verification.md).
+
+Running on Linux also avoids the line-ending trap described there — no
+conversion happens, so no spurious byte differences appear.
+
+### Reading its result
+
+The summary table names every counter. The number that matters is **gaps**;
+`declared` moves as rebranding work lands and is not itself a problem.
+
+## `Release` — build and publish
+
+```yaml
+on:
+  push: branches: [main]
+  workflow_dispatch:
+    inputs: { smoke: boolean = true, publish: boolean = true }
+runs-on: windows-latest
+timeout-minutes: 120
+permissions: contents: write
+concurrency: release-<ref>, cancel-in-progress: false
+```
+
+The build steps deliberately mirror the recipe upstream uses for its own Windows
+releases — same package-manager setup, same installer-toolchain guard, same
+packaging invocation — because that recipe is known to work. What is stripped out
+is everything specific to upstream's infrastructure: its release storage, its
+updater feed, its signing identity, and a build flag requiring a package this
+fork cannot resolve.
+
+`cancel-in-progress: false` matters: a release run that is cancelled halfway can
+leave a tag without its assets.
+
+<details>
+<summary><b>Step by step</b> — checkout through publish</summary>
+
+**1 — Checkout.** `fetch-depth: 0`, no submodule. The build needs `design/`, not
+the provenance pin.
+
+**2 — Package manager, then Node.** pnpm 10.33.2 is set up *before* Node,
+because the Node setup action needs pnpm on the path to resolve the store for its
+cache. The cache key is `design/pnpm-lock.yaml`. The workflow notes explicitly
+that the Node package-manager shim is not used, because it fails with a
+permission error on Windows.
+
+**3 — Read the application version.** Parsed from `design/package.json`, failing
+loudly if absent. The release tag is `v<version>-r<run number>`, which is what
+makes every tag unique and monotonic without a counter to maintain.
+
+**4 — Install.** `pnpm install --frozen-lockfile`. The post-install step builds
+the workspace packages and tools and compiles the native modules from source.
+
+**5 — Typecheck.** The daemon and desktop are built first, because their
+declaration files must exist before the packaged application can typecheck
+against them — a fresh clone has not produced them. Then a recursive typecheck at
+concurrency 4.
+
+**6 — Test the packages that carry product identity.** The packaging tools, the
+packaged launcher, and the desktop shell. The workflow's comment states the
+reason precisely: the rebrand changed what these suites assert, and if the
+identity logic and its four independent copies ever disagree again, this is where
+it surfaces — before an installer is built, not after a user runs one.
+
+**7 — Installer toolchain.** Checks for the NSIS compiler and installs it only if
+absent.
+
+**8 — Build the installer.** Cleanup, then `tools-pack win build` with an
+explicit output directory, cache directory, namespace, `--portable`, the app
+version, `--to all` and `--json`. Then:
+
+- `tools-pack win validate-payload` against the expected version;
+- an explicit existence check on the reported installer path, failing if the
+  build reported one that is not there;
+- a SHA-256 computed over the installer;
+- assets staged under names that mean something outside this repository —
+  `material-designer-<version>-win-x64-setup.exe`, a matching `.sha256` file, and
+  the portable archive when one was produced.
+
+The namespace and channel are literals in the workflow environment, because
+upstream derives them from a metadata job wired to infrastructure this fork does
+not have, and an empty namespace or version fails the packer outright.
+
+**9 — Upload the installer as a workflow artifact.** With `always()`, so a failed
+smoke test still leaves something to inspect, and `if-no-files-found: error`.
+
+**10 — Smoke test the packaged application.** Installs the built application,
+launches it, proves the running process answers its own health endpoint, then
+uninstalls and checks nothing was left behind. That is the `core` profile; the
+`full` profile additionally exercises the auto-updater, which this fork
+deliberately ships no feed for.
+
+The condition is worth noting as a correctness detail: on a push there are no
+workflow inputs, and an empty input compares equal to false, so the step tests
+the event name explicitly rather than letting a default silently skip the step
+that proves the application runs.
+
+**11 — Reports and logs.** The smoke report always uploads; build logs upload on
+failure.
+
+**12 — Count lines.** `node scripts/line-count.mjs` into a file, with an honest
+fallback line if it fails, so the release notes never carry a fabricated number.
+
+**13 — Choose the code name.** `scripts/release-codename.sh`, given the dishes
+already spent. Those are read out of the **existing releases** — each release
+body carries a `dim-sum-id` marker — rather than from a counter that a re-run
+would repeat.
+
+**14 — Publish.** `gh release create` with a generated notes file, `--latest`,
+and every staged asset plus the code name's image.
+
+</details>
+
+### What the release notes carry
+
+| Section | Contents |
+| --- | --- |
+| Title | `Material Designer <version> — <code name>` |
+| Code name | The dish in English and Traditional Chinese |
+| Install | The asset name and the SHA-256, plus an explicit SmartScreen warning |
+| Verification | The smoke-test outcome as **passed**, **failed** or **not run** — read from the step's actual outcome, never predicted — and a link to the run |
+| Lines of code | The counter's table, or an honest "not available for this build" |
+| Provenance | The upstream project, version, pinned commit, licence, a pointer to `MODIFICATIONS.md`, and a statement of non-affiliation |
+| Marker | An HTML comment recording the code name's id, so the next run can tell it is spent |
+
+The smoke-test line is the honest-evidence mechanism: it reports what the step
+actually did rather than assuming success, and a skipped smoke test says "not
+run" instead of implying a pass.
+
+## Configuration
+
+### Triggers
+
+| Workflow | Triggers |
+| --- | --- |
+| `Verify` | every push, every pull request, manual dispatch |
+| `Release` | pushes to the default branch, manual dispatch |
+| `Pages` | pushes to the default branch that touch `site/**` or the workflow itself, manual dispatch — see [../site/](../site/) |
+
+Manual dispatch of `Release` takes two inputs, both defaulting to true: whether
+to run the smoke test, and whether to publish. Turning publish off is how you
+exercise the build without creating a release.
+
+### Secrets and tokens
+
+| Name | Purpose | Status |
+| --- | --- | --- |
+| Release token | Publishing releases and reading prior ones for the code name | Resolved as a repository-scoped token, then an organisation token, then the run's own token as the last fallback |
+| Code-signing certificate | Signing the installer | **Not configured.** See below. |
+| Telemetry key | Analytics destination | **Not configured, and must not be added silently.** |
+
+Tokens are passed only through the environment convention the tooling expects,
+and never printed.
+
+### Unsigned installers
+
+No code-signing certificate is configured. An unsigned Windows installer triggers
+the operating system's reputation screen, which reports an unknown publisher and
+hides the proceed button behind a **More info** link.
+
+The release notes state this explicitly, which is the right place for it: a user
+who expects it will click through, and a user who does not will reasonably assume
+the download is malicious.
+
+### Runner selection
+
+Both workflows use standard hosted runners — Linux for verification, Windows for
+the build. Do not introduce a self-hosted runner without a stated, measured
+reason. On a public repository a self-hosted runner is an accepted attack path:
+anyone who can cause a workflow to run can execute code on that machine. If one
+is ever added it must never carry a `pull_request` trigger — note that `Verify`
+currently has one, which is safe only because it runs on a hosted runner.
+
+## Failure modes
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Verification fails with thousands of `bytes-differ` | Line-ending conversion on checkout | Only possible on a Windows runner. Set `core.autocrlf=false` **before** checkout, or keep verification on Linux as it is now. |
+| Verification exits `2` — "no upstream reference available" | Neither submodule nor manifest present | Restore `scripts/upstream-manifest.tsv`, or check out the submodule. Exit `2` is "did not run", not "passed". |
+| Verification exits `2` — manifest disagrees with the submodule | The pin moved without regenerating the manifest | `scripts/verify-port.sh --write-manifest` |
+| Install fails compiling the database binding | C++ build tools or Python missing | Present on the standard Windows image; check the image did not change. |
+| Typecheck fails in packages that were not touched | The daemon and desktop builds were skipped | They run first for exactly this reason. |
+| The packer exits immediately | An empty `--namespace` or `--app-version` | Both are set explicitly for this reason; check the version parse step. |
+| The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
+| Smoke test fails | The built application does not install, launch, answer its health check, or uninstall cleanly | A real defect in the artifact. The installer still uploads as an artifact for inspection. |
+| A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
+| The same code name twice | The prior release's `dim-sum-id` marker was missing or unreadable | The marker is what makes the pick idempotent across re-runs. |
+| No code name chosen | Every dish spent, or no catalogue | The script exits `0` with an empty id and the release ships with its version alone. A code name never blocks a release. |
+
+## Security considerations
+
+- **The vendored workflows must stay inert.** Promoting
+  `design/.github/workflows/` to the root would enable 48 unreviewed workflow
+  definitions in one commit.
+- **`Release` has `contents: write`; `Verify` has `contents: read`.** That split
+  is deliberate — the gate that runs on pull requests cannot write anything.
+- **Public runners run public code.** Anything a workflow prints is public. Never
+  echo a token or a value derived from one.
+- **Verification runs before anything is installed** in the sense that matters:
+  it is a separate, cheaper workflow with no install step at all, so the question
+  "is this tree what it claims to be" is answered without executing any of the
+  tree's install scripts.
+- **No telemetry key is configured.** The vendored analytics code is a no-op
+  without destination credentials. Baking one in at packaging time would change
+  what shipped builds do and must be disclosed, not done quietly.
+- **The release artifact must be the tested artifact.** Never attach an installer
+  from a different run, a local build, or a re-run that skipped the tests.
+
+## Verification
+
+**No run outcome is recorded.** What has been verified from the tree while
+writing this page: that all three workflow files exist at `.github/workflows/`;
+that `scripts/verify-port.sh`, `scripts/line-count.mjs`,
+`scripts/release-codename.sh` and `scripts/import-dim-sum.sh` exist; that
+`scripts/upstream-manifest.tsv` records 11,799 entries at the pinned commit; and
+that the dim sum catalogue indexes 24 dishes with 24 images present.
+
+The verifier's own result is deliberately **not** quoted here — it moves with
+every rebrand commit, and six copies of a moving number guarantee five wrong ones.
+The invariant is `gaps == 0`; see
+[../porting/verification.md](../porting/verification.md#reading-a-run) for the one
+annotated transcript, and the `Verify` job summary for the value at any push.
+
+The pipeline will be considered proven when a single run demonstrates all of:
+
+- [ ] `Verify` passing with `gaps: 0` and its summary table rendered
+- [ ] `Verify` failing on a deliberately undeclared change to `design/`
+- [ ] install completing with the native binding compiled
+- [ ] typecheck and the three identity suites passing
+- [ ] an installer produced, its reported path present, its payload validated
+- [ ] the smoke test installing, launching, health-checking and uninstalling
+- [ ] a non-draft release under a fresh `v<version>-r<run>` tag with the
+      installer, its checksum file and the code name image attached
+- [ ] the line-count table present in the notes
+- [ ] a second release picking a **different** code name
+
+The failing case matters as much as the passing one. A gate that has never been
+observed rejecting anything is not known to be a gate.
+
+## Suggested reading
+
+- [from-source.md](from-source.md) — the same commands, run locally
+- [../porting/verification.md](../porting/verification.md) — what the fast gate checks, and its manifest shortcut
+- [../standards/releases.md](../standards/releases.md) — what a release must carry
+- [../site/pages-deployment.md](../site/pages-deployment.md) — the third workflow, and the self-contained-assets gate it enforces

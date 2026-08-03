@@ -50,11 +50,35 @@ jobs:
       PACK_CHANNEL: stable
 
     steps:
+      - name: Keep the checkout byte-exact
+        shell: bash
+        # Git for Windows ships core.autocrlf=true in its system configuration,
+        # and the root .gitattributes says `* text=auto` — so an unguarded
+        # checkout here would write every text file under design/ with CRLF.
+        # That is a different tree from the one the verifier attests to, and
+        # design/.gitattributes pins eol=lf on three files, so those would stay
+        # LF while everything around them flipped. The installer must be built
+        # from the bytes the provenance claim is about.
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           # The build needs design/, not the provenance submodule.
           fetch-depth: 0
+
+      - name: Verify design/ against the pinned upstream tree
+        shell: bash
+        # Verify and Release are separate workflows on the same trigger, so a
+        # red Verify does not stop a release. The release notes published by
+        # this job assert what design/ contains, so this job is where that
+        # claim is checked — before the long install, so drift fails fast.
+        # The checkout carries no submodule; the verifier falls back to the
+        # committed manifest of upstream blob ids, which answers the same
+        # question.
+        run: bash scripts/verify-port.sh
 
       - name: Set up pnpm
         # Before setup-node, which needs pnpm on PATH to resolve the store for
@@ -76,14 +100,28 @@ jobs:
         run: |
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
           if ([string]::IsNullOrWhiteSpace($pkg.version)) { throw "design/package.json has no version" }
+          # The attempt is part of the tag because run_number does not change
+          # when a run is re-run — only run_attempt does. Without it, re-running
+          # a run that already published rebuilds for an hour and then dies on
+          # `gh release create` because the tag exists.
           "app_version=$($pkg.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "tag=v$($pkg.version)-r${{ github.run_number }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "version $($pkg.version), tag v$($pkg.version)-r${{ github.run_number }}"
+          "tag=v$($pkg.version)-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "version $($pkg.version), tag v$($pkg.version)-r${{ github.run_number }}.${{ github.run_attempt }}"
 
       - name: Install dependencies
         working-directory: design
         # postinstall also builds the workspace packages and tools, and compiles
         # the native modules from source. It is the long pole of this job.
+        #
+        # The postinstall build is serial unless it is told otherwise, and it
+        # already knows the dependency order between its targets, so raising the
+        # concurrency only overlaps targets that do not depend on each other.
+        # better-sqlite3 has no prebuilt binary for this platform and Node
+        # version, so node-gyp compiles it here; that is why the timeout is
+        # generous rather than optimistic.
+        timeout-minutes: 45
+        env:
+          OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
@@ -91,20 +129,39 @@ jobs:
         # The daemon and desktop declaration files have to exist before the
         # packaged app can typecheck against them, which a fresh clone has not
         # done yet.
+        #
+        # Every command is gated on its own exit code. $ErrorActionPreference
+        # does not make a native command's non-zero exit terminating — that is
+        # $PSNativeCommandUseErrorActionPreference, which is $false by default —
+        # and the runner's wrapper propagates only the LAST exit code. Without
+        # these guards a failed build would still pass the step as long as the
+        # command after it succeeded.
         run: |
+          $ErrorActionPreference = "Stop"
           pnpm --filter @open-design/daemon run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/desktop run build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm -r --workspace-concurrency=4 --if-present run typecheck
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test the packages that carry product identity
         working-directory: design
         # The rebrand changed what these suites assert. If the identity logic and
         # its four independent copies ever disagree again, this is where it shows
         # up — before an installer is built, not after a user runs it.
+        #
+        # Gated per command for the same reason as the typecheck above: an
+        # ungated block reports the last suite's result and nothing else, so a
+        # failing test would still ship an installer.
         run: |
+          $ErrorActionPreference = "Stop"
           pnpm --filter @open-design/tools-pack run test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/packaged run test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/desktop run test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Set up NSIS
         run: |
@@ -227,15 +284,29 @@ jobs:
         id: lines
         if: ${{ always() }}
         shell: bash
+        # --blame is what produces the agent-versus-human surviving-line
+        # attribution the release notes carry; without it the table publishes
+        # "not computed". --blame-paths keeps that pass to this repository's own
+        # files: the counter spawns one `git blame` per counted file, and the
+        # imported upstream tree is ~11,800 of them. The counter reports the
+        # scope it used, so the published table says what it covers rather than
+        # implying the whole tree.
+        #
+        # stderr is not discarded. When this counter exits non-zero it is
+        # because its own accounting self-check or its attribution invariant
+        # tripped — the reason belongs in the step log, not in a bit bucket.
         run: |
           set -uo pipefail
           out="${RUNNER_TEMP}/line-count.md"
-          if [ -f scripts/line-count.mjs ] && node scripts/line-count.mjs > "$out" 2>/dev/null; then
-            echo "path=$out" >> "$GITHUB_OUTPUT"
-          else
+          blame_paths='scripts/**,mockups/**,assets/**,docs/**,site/**,.github/**,*.md,.git*'
+          if [ ! -f scripts/line-count.mjs ]; then
             echo "_The line count was not available for this build._" > "$out"
-            echo "path=$out" >> "$GITHUB_OUTPUT"
+          elif ! node scripts/line-count.mjs --blame --blame-paths "$blame_paths" > "$out"; then
+            echo "line-count: the attribution pass failed (reason above); counting without it" >&2
+            node scripts/line-count.mjs > "$out" \
+              || echo "_The line count was not available for this build._" > "$out"
           fi
+          echo "path=$out" >> "$GITHUB_OUTPUT"
 
       - name: Choose the release code name
         id: codename

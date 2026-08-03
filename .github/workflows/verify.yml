@@ -17,6 +17,17 @@ jobs:
     name: Verify port integrity
     runs-on: ubuntu-latest
     steps:
+      - name: Keep the checkout byte-exact
+        # verify-port.sh compares the bytes on disk against upstream blob ids with
+        # `git hash-object --no-filters`. The root .gitattributes says `* text=auto`,
+        # so a checkout that translates line endings would rewrite every text file
+        # under design/ and report thousands of false differences. Linux never does
+        # that, which is why this job runs here — this makes the requirement
+        # explicit rather than an unstated property of the runner.
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - name: Checkout
         uses: actions/checkout@v4
         with:

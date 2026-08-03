@@ -1,0 +1,384 @@
+# Material Design 3 and appearance customization
+
+**Status: not started in code, specified in full by the mockup.** Every colour
+role, the shape and motion scales, the density system, the window chrome and ten
+screens are designed. No implementation exists.
+
+## The requirement
+
+### Conformance
+
+Every user-facing surface conforms fully to Material Design 3 in its expressive
+form — design tokens, typography, shape, elevation, motion and component anatomy
+— with **zero legacy or original design elements remaining**.
+
+One exemption: **functional data colours**. Chart series, data-encoding swatches
+and status palettes are data, not chrome, and are not required to come from the
+theme's colour roles.
+
+### Runtime appearance customization
+
+Persisted, live-applied controls for:
+
+- **Theme** — light and dark
+- **Density** — at least three steps
+- **Accent / seed colour** — the scheme regenerates from it
+- **Full font control** — family chosen from installed *and* bundled faces, size
+  scale, weight, with a live preview and a fallback that keeps Chinese, Japanese
+  and Korean text legible
+
+Changes apply to the live interface wherever feasible, not only after a restart.
+
+### The per-element editor
+
+Every rendered element gets an appearance editor. **No app, control, picker,
+menu, dialog, tab, toolbar, surface, state or pseudo-state is exempt.** A global
+theme alone, a handful of hand-picked controls, or an editor that cannot target
+its own interface does not satisfy this.
+
+Each element exposes **Edit appearance…** from its context menu plus a keyboard
+equivalent. The editor opens as a **non-modal anchored** dialog beside the exact
+element being edited, tracks that anchor while open, handles viewport-edge
+collision without becoming visually detached, and returns focus to the
+originating element on close.
+
+For tabs specifically: ordinary right-click keeps the full tab-management menu
+and adds **Edit tab appearance…**; a modifier-click opens the editor directly
+where the platform can distinguish the modifier. Where it cannot, the
+context-menu command and the keyboard path remain mandatory.
+
+### The pickers are themselves customizable, to word-processor depth
+
+**Colour** — an **infinite** picker: a continuous spectrum, wheel or
+two-dimensional field plus numeric entry. Never a swatch-only chooser. It carries
+a **colour translator** converting bidirectionally among named colours, hex and
+hex-with-alpha, RGB/RGBA, HSL/HSLA, HSV, HWB, CIELAB and LCH, OKLab and OKLCH,
+and CMYK; preserves alpha; identifies the active colour space and gamut; warns
+before clipping; shows the accessible contrast against the relevant
+foreground/background; and lets the user copy any representation. Swatches,
+recent colours, eyedroppers and palettes are conveniences layered on top of the
+continuous picker, not replacements for it.
+
+**Typography** — every installed and bundled font searchable and selectable, each
+name rendered in its own face, with a CJK-safe fallback. Controls for stepped and
+free-entry size, variable-font axes where available, weight and bold, italic and
+oblique, underline style and colour, single and double strikethrough, overline,
+capitalization and small caps, superscript and subscript, text colour, highlight,
+outline, shadow, glow where supported, character spacing, word spacing, line
+height, baseline offset, direction and alignment. A property the platform cannot
+support stays **visible** with a clear explanation rather than disappearing or
+silently dropping a saved value.
+
+**These apply to the pickers' own chrome**, not only to the document. The
+picker's dialog, the settings surface, tabs, toolbars, menus, notifications and
+the appearance editor itself all obey the same system. A theming feature that
+cannot theme its own dialog is incomplete.
+
+### And the rest
+
+Every appearance control carries the project's search bar wired to the pattern
+builder ([regex-builder.md](regex-builder.md)), keyboard operation with visible
+focus, screen-reader names and values, persistence across restarts, per-element
+reset and a global reset. Named presets and user-saved themes export and import
+as a file, so a customized appearance survives a reinstall and can be shared.
+**A customization surface never silently drops a value it cannot represent** — it
+says so and keeps the user's input.
+
+### Assets are local
+
+No third-party network origin for scripts, stylesheets, fonts or images, and no
+analytics or third-party tracking. This applies to the landing page and the
+documentation site as much as to the application.
+
+### Window chrome
+
+Windows desktop builds use a **frameless window with a custom Material Design 3
+title bar and window controls**. The operating system's default title bar is
+never product chrome.
+
+## Current implementation status
+
+| Requirement | Status |
+| --- | --- |
+| MD3 token layer in the application | **Not started.** The interface has its own token set with different names. |
+| MD3 component anatomy | **Not started.** |
+| Theme light/dark | Upstream has a theme; conformance to MD3 roles is **not started**. |
+| Density control | **Not started.** |
+| Seed colour with scheme regeneration | **Not started.** |
+| Full font control | **Not started.** |
+| Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
+| Infinite colour picker + translator | **Not started, and not designed.** The mockup offers four fixed swatches. |
+| Word-depth typography editor | **Not started.** The mockup's tab-title card offers bold/italic/underline, one family button, one size button, two alignments and one colour swatch — far short. |
+| Named presets, export/import, per-element and global reset | **Not started, and not designed.** |
+| Frameless window with custom title bar | **Not started in code.** Fully specified by the mockup. |
+| Assets bundled locally | **Not met.** The mockup loads three font families from a third-party network origin. |
+| Command palette | **Designed, not built.** |
+
+### The token contract is already a drop-in
+
+The most encouraging fact available: the mockup's handoff sheet maps 18 Material
+Design 3 tokens onto 18 variables that **already exist** in the interface's
+stylesheet at `design/apps/web/src/styles/tokens.css`. Every one of the 18 target
+variables was confirmed present in the tree, and every one of the 12 source files
+in the mockup's component inventory was confirmed to exist.
+
+That makes the first implementation step unusually cheap: redefine 18 existing
+variables in terms of MD3 roles, and the whole interface moves at once.
+
+<details>
+<summary><b>The 18-token handoff map</b> — Material Design 3 role → existing interface variable</summary>
+
+| MD3 token | Interface variable |
+| --- | --- |
+| `--md-sys-color-surface` | `--bg-app` |
+| `--md-sys-color-surface-container-low` | `--bg-panel` |
+| `--md-sys-color-surface-container` | `--bg-subtle` |
+| `--md-sys-color-surface-container-high` | `--bg-muted` |
+| `--md-sys-color-surface-container-highest` | `--bg-elevated` |
+| `--md-sys-color-on-surface` | `--text` |
+| `--md-sys-color-on-surface-variant` | `--text-muted` |
+| `--md-sys-color-outline-variant` | `--border` |
+| `--md-sys-color-outline` | `--border-strong` |
+| `--md-sys-color-primary` | `--accent` |
+| `--md-sys-color-primary-container` | `--accent-tint` |
+| `--md-sys-color-secondary-container` | `--selected-soft` |
+| `--md-sys-color-error` | `--red` |
+| `--md-sys-color-success` | `--green` |
+| shape corner medium (12px) | `--radius-lg` |
+| shape corner full | `--radius-pill` |
+| emphasized easing | `--ease-out` |
+| emphasized-decelerate duration | `--dur-enter` |
+
+**Verified:** all 18 interface variables exist in the stylesheet today, and all
+12 component files named in the mockup's inventory exist under
+`design/apps/web/src/components/`.
+
+**Not verified:** that redefining them produces a correct result at runtime.
+Nothing has been built.
+
+</details>
+
+<details>
+<summary><b>Component inventory</b> — the 12 components the redesign changes, and what each becomes</summary>
+
+| Component | Today | Material Design 3 |
+| --- | --- | --- |
+| Navigation rail | Icon-only 64px rail with tooltip labels | Navigation rail — 88px collapsed, 260px drawer, active pill indicator |
+| Application header | Flat header with a drag region | Small top app bar plus platform caption controls |
+| Home hero | Card composer with a chip rail | Expressive prompt surface at 28dp, scenario cards, primary floating action button |
+| Home recents | Bordered project tiles | Filled cards with tonal covers and spring lift |
+| Plugins section | Search plus category pills | Filter chips, outlined cards, tonal action button |
+| Design systems tab | Preview tiles with a swatch row | Elevated cards, 64dp palette band, default badge |
+| Routines section | Rows with text buttons | List items with a switch, tonal run action, state chip |
+| Integrations view | Tab strip | Segmented button plus list items with status chips |
+| Chat pane and composer | Bubbles with a bordered composer | Tonal bubbles, tool cards, 22dp composer, morphing send button |
+| Settings dialog | Modal dialog | Full-page settings with a searchable section list — **non-modal** |
+| Message centre | Popover list | Standard side sheet with filter chips and unread dots |
+| Selects and pills | Ad-hoc radii between 6 and 10px | Normalised shape scale: 8 / 12 / 16 / 28 / full |
+
+</details>
+
+## The design specification
+
+The mockup at `mockups/open-design-m3/` defines the target precisely.
+
+<details>
+<summary><b>Colour roles</b> — 33 roles, four seeds, light and dark</summary>
+
+**33 colour roles**: the 31 canonical Material Design 3 roles used by the design,
+plus two non-standard extensions, `success` and `success-container`, for states
+the canonical set has no role for.
+
+Roles the mockup does **not** define, and which the implementation will need to
+decide about: `surface-tint`, `shadow`, the outline fixed and dim variants, and
+every `*-fixed` role.
+
+**Four seeds**: sunset (default), violet, teal, lime. Each non-default seed
+overrides 10 roles in light and 12 in dark — the primary, secondary and tertiary
+families plus the inverse primary. **All surface, outline, error and success
+roles stay on the sunset ramp in every seed**, which is a deliberate simplification
+worth being aware of: switching seeds re-tints the accents, not the surfaces.
+
+Dark does not redefine the scrim; it inherits the light value.
+
+> [!WARNING]
+> **The seed swatch and the primary role are different values and must not be
+> conflated.** The sunset swatch shown in settings is `#C96442`; the sunset
+> primary role is `#8F4C34`. The swatch is the seed *input*; the role is the
+> tone-40 *output* derived from it. A port that uses the swatch value as the
+> primary role will produce a scheme that fails contrast where the real one
+> passes.
+
+</details>
+
+<details>
+<summary><b>Shape, motion and density scales</b> — and the fact that most of them are declared but never used</summary>
+
+**Shape corner scale**: 4 / 8 / 12 / 16 / 28 / 32 / full (9999px).
+
+> [!IMPORTANT]
+> These variables are **declared and never consumed** in the mockup — the
+> variable is referenced zero times. Every radius in the markup is a literal, and
+> 162 of them are the same pill value. The intended normalisation, stated in the
+> handoff sheet, is a five-step scale: **8 / 12 / 16 / 28 / full**.
+>
+> The port must wire the token layer, not copy the literals. Copying the literals
+> reproduces the appearance and none of the customizability, which is the entire
+> point of the exercise.
+
+**Motion**: an emphasized easing, an emphasized-decelerate easing, and a spring
+curve. Only the spring is actually referenced through a variable; the two easings
+appear as literals 19 and 12 times respectively. Same problem, same fix.
+
+Observed durations, for calibration: navigation rail width 400ms · screen
+entrance 380ms (home 460ms) · command palette 260ms · context menu 180ms · side
+sheet 320ms · notification 400ms · switch thumb 280ms on the spring curve ·
+floating-action-button morph 320ms on the spring curve.
+
+**Density**: three steps changing gap, padding, row height and card radius. Two
+of the five declared density variables are never referenced.
+
+**Interface scale**: 50–200% in steps of 5, default 100. Implemented in the
+mockup entirely through a non-standard CSS zoom property, with the declared scale
+variable never read. The port needs a real approach here, not this one — zoom
+behaves inconsistently and interacts badly with layout at extremes.
+
+**Typography**: a variable sans for body text, a monospace face for every
+technical identifier — hashes, paths, identifiers, flags, counters — and an icon
+face. Sizes run from 44px for the hero down to 10px for badges.
+
+</details>
+
+<details>
+<summary><b>Window chrome</b> — the frameless title bar in full</summary>
+
+**Bar**: 40px tall, 12px left padding with the right edge flush so the caption
+buttons reach the corner, background on the surface-container role, a 1px
+outline-variant bottom border, selection disabled.
+
+**Left cluster**: a 20×20 brand mark tinted with the primary role and marked
+decorative for assistive technology; the product name at 12px/600 with 0.02em
+letter spacing on the on-surface-variant role; a subtitle at 11px, same role, 70%
+opacity.
+
+**Caption controls**: three buttons, each 46px wide and full bar height with no
+margin and no gap between them.
+
+| Button | Icon size | Base | Hover |
+| --- | --- | --- | --- |
+| Minimise | 16px | transparent, on-surface-variant | ripple overlay |
+| Maximise | 15px | transparent, on-surface-variant | ripple overlay |
+| Close | 17px | transparent, on-surface-variant | `#C42B1C`, white icon |
+
+Three details that are easy to lose and worth keeping: the icon sizes are
+**deliberately unequal** (16/15/17) so the three glyphs read optically the same;
+all three use the default cursor rather than a pointer, matching native caption
+behaviour; and the close-button red is the one hard-coded, theme-independent
+colour in the whole bar, because it is the platform's convention rather than a
+theme decision.
+
+Below the bar sit a 42px tab strip ([tabs.md](tabs.md)) and, at the bottom of the
+window, a 28px status bar carrying a pulsing daemon indicator, the active model,
+the active design system, the interface scale, the density and the version.
+
+</details>
+
+<details>
+<summary><b>The command palette</b> — designed, and it meets the standard on paper</summary>
+
+Toggled with a single shortcut, dismissed with the escape key (which also clears
+the context menu and any open calendar).
+
+**Two persisted sizes**: a bounded card and a full-window view, with the bounded
+card as the default — a search box that swallows the entire window is
+overwhelming on an ordinary display, and a full-screen surface a user lands in
+accidentally is worse than one they opted into. The footer states which size
+preference is saved.
+
+**Three groups**: all seven navigation destinations; commands with their keyboard
+shortcuts; and live settings controls. Empty groups are dropped as the query
+filters.
+
+**Rows are live controls, not labels.** A row that *is* a setting renders that
+setting's actual control inline — a switch for the theme toggle and for
+notification settings, a range slider for interface scale, a segmented control
+for density — and changing it there changes the setting. The footer states that
+pressing enter teleports to the control.
+
+It carries its own search with a regex opt-in and a builder affordance, like
+every other search surface.
+
+</details>
+
+## Failure modes
+
+| Failure | Consequence |
+| --- | --- |
+| Copying the mockup's literal radii and easings instead of wiring tokens | The appearance is reproduced and the customizability is not — which is the whole requirement. Also guarantees drift the first time one literal is edited. |
+| Using the seed swatch value as the primary colour role | A scheme with different contrast from the designed one. `#C96442` is an input; `#8F4C34` is the output. |
+| Leaving fonts on a third-party network origin | Fails the local-assets requirement, leaks a request per user, and breaks the product offline — for a local-first application. |
+| A global theme presented as satisfying the per-element editor requirement | It does not. The requirement is explicitly *every rendered element*. |
+| A swatch grid presented as the colour picker | The requirement is a continuous picker with a colour-space translator. Swatches layer on top of it. |
+| An anchored editor that detaches at a viewport edge | Specified as a failure: it must handle collision while staying visually attached. |
+| A customization surface silently dropping an unrepresentable value | Explicitly forbidden. Say so and keep the input. |
+| Exposing the operating system title bar on Windows | Frameless with custom chrome is the requirement. |
+| The landing page or documentation site skipped | Every surface individually, documentation included. |
+| Editing files under `design/` without a notice entry | Port verification fails the build. See [../porting/verification.md](../porting/verification.md). |
+
+## Security considerations
+
+- **Local assets are a privacy control, not a performance one.** A font request
+  to a third-party origin discloses a user's address and interface usage to that
+  origin on every launch. For a product whose selling point is that everything
+  stays on the machine, that is a contradiction, not an optimisation.
+- **Imported themes are untrusted input.** Theme export/import means accepting a
+  file from elsewhere. Parse it strictly, validate every value against its
+  expected type and range, never evaluate anything in it, and never let it inject
+  markup, style text or a URL that is fetched.
+- **A font family name is user input.** Rendering it into a style context without
+  escaping is an injection route. Enumerating installed fonts also discloses
+  something about the machine; keep the enumeration inside the application.
+- **Contrast is a safety property.** The picker reports contrast because a
+  customization system that lets a user make a destructive-action warning
+  unreadable has created a safety problem, not an aesthetic one.
+
+## Verification
+
+**Nothing is verified.** No build exists. The claims about the token map and the
+component inventory were checked against the file tree — the variables and the
+files exist — but nothing has been run.
+
+Conformance requires all of:
+
+- [ ] every colour role defined as a token and consumed through the token, with
+      zero literal colours in component styles outside the functional-data exemption
+- [ ] shape and motion consumed through tokens — a search for literal radius and
+      easing values in component styles returns nothing
+- [ ] light and dark verified for every screen, at every seed
+- [ ] density verified at all three steps
+- [ ] interface scale verified at 50%, 100%, 125%, 150%, 200% with no clipping
+- [ ] **Edit appearance…** present on every rendered element, reachable by
+      context menu and by keyboard, opening an anchored non-modal editor that
+      tracks its anchor and returns focus on close
+- [ ] the colour picker continuous, with every listed colour space converting in
+      both directions, alpha preserved, gamut identified and contrast reported
+- [ ] the typography editor covering every listed property, with unsupported ones
+      visible and explained rather than hidden
+- [ ] presets saved, exported, imported, and surviving a reinstall
+- [ ] per-element and global reset both working
+- [ ] a request audit of a running build showing **zero** third-party origins
+- [ ] the frameless window with custom title bar on Windows, with all three
+      caption controls operating and the close button carrying the platform red
+- [ ] the same appearance system present on the landing page and the
+      documentation site, verified individually
+
+The request audit is the cheapest check on the list and the one most likely to
+catch a real regression. Run it on every build.
+
+## Suggested reading
+
+- [accessibility.md](accessibility.md) — contrast, focus and scale, which this standard cannot be met without
+- [regex-builder.md](regex-builder.md) — the search bar every appearance control carries
+- [tabs.md](tabs.md) — the strip that sits directly below the title bar
+- [notifications.md](notifications.md) — the non-modal surfaces this design depends on
+- [../porting/verification.md](../porting/verification.md) — how to change a file under `design/` legitimately
