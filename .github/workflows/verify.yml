@@ -147,6 +147,20 @@ jobs:
           pnpm --filter @open-design/daemon run build
           pnpm --filter @open-design/desktop run build
 
+      - name: Typecheck
+        working-directory: design
+        shell: bash
+        # This runs HERE, on Linux, and not only in the release job, because a
+        # type error is the cheapest failure in the build to find and the most
+        # expensive one to find late. The web app's translation dictionary is a
+        # typed interface: a component using a key that no locale declares is a
+        # type error, and discovering that at the end of a forty-minute Windows
+        # packaging run rather than five minutes into a Linux one wastes most of
+        # an hour for a one-line cause.
+        run: |
+          set -euo pipefail
+          pnpm -r --workspace-concurrency=4 --if-present run typecheck
+
       - name: Test the packages that carry product identity
         working-directory: design
         shell: bash
