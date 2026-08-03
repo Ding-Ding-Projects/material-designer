@@ -101,6 +101,19 @@ export interface ProjectLocationPrefs {
   path: string;
 }
 
+// Persisted "open in external editor" choice (GET /api/editor/detect,
+// POST /api/editor/open). `command` is an absolute executable path and only
+// meaningful for the `custom` id — the editor the user added themselves. It is
+// always spawned with an argument vector and never through a shell, so it is a
+// path and not a command line: no flags, no arguments, no metacharacters are
+// interpreted out of it.
+export interface ExternalEditorPrefs {
+  id: string;
+  command?: string | null;
+  label?: string | null;
+  supportsFolders?: boolean;
+}
+
 export interface AppConfigPrefs {
   onboardingCompleted?: boolean;
   agentId?: string | null;
@@ -124,6 +137,11 @@ export interface AppConfigPrefs {
   // `metadata.linkedDirs` (read-only `--add-dir` awareness, no Design Files
   // import). Stored most-recent-first; capped at RECENT_LINKED_DIRS_MAX.
   recentLinkedDirs?: string[];
+  // Which external editor "Open in…" uses. Null/absent means the user has not
+  // chosen, so the daemon auto-picks (VS Code first). An explicit choice that
+  // is no longer installed is reported as missing rather than silently
+  // replaced with whatever else happens to be on the machine.
+  externalEditor?: ExternalEditorPrefs | null;
 }
 
 // Cap on how many recent working directories we remember. Keeps the picker's
@@ -149,6 +167,7 @@ const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'projectLocations',
   'defaultProjectLocationId',
   'recentLinkedDirs',
+  'externalEditor',
 ] as const);
 
 function configFile(dataDir: string): string {
@@ -502,6 +521,54 @@ function inferAgentCliEnvIntentForExplicitEnvWrite(prefs: AppConfigPrefs): AppCo
   return { ...prefs, agentCliEnvIntent: nextAgentCliEnvIntent };
 }
 
+// A NUL byte truncates an argv element and every other C0/DEL character is
+// noise no real executable path carries, so a stored editor command containing
+// one is dropped rather than persisted.
+const EDITOR_COMMAND_CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/;
+
+// The stored editor choice is an id plus, for the user-added `custom` entry,
+// the absolute executable to spawn. Deliberately narrow: no argument template,
+// no working directory, no environment. The daemon builds the argument vector
+// itself (see external-editors.ts), so a stored value can never smuggle in a
+// flag or a second command — it is a path, and paths are data.
+export function validateExternalEditor(raw: unknown): ExternalEditorPrefs | null | undefined {
+  if (raw === null) return null;
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const value = raw as Record<string, unknown>;
+  const id = typeof value.id === 'string' ? value.id.trim() : '';
+  if (!id || id.length > 64) return undefined;
+  const rawCommand = typeof value.command === 'string' ? value.command.trim() : '';
+  // A NUL byte truncates an argv element, and a control character in a stored
+  // path is never a real executable — reject rather than persist either.
+  //
+  // Absoluteness is checked here for the same reason `assertEditorPathArg`
+  // checks it on the argument vector, and it matters more here: this is the one
+  // string in the request that BECOMES the spawned binary. Nothing downstream
+  // re-checks it — `resolveCustomEntry` hands it to a bare `stat` — so a stored
+  // `tools/mine` or `code` would resolve against the daemon's own working
+  // directory and then be spawned. A relative value is dropped rather than
+  // persisted, which for `id === 'custom'` falls into the "no usable
+  // executable" branch below.
+  const command = rawCommand
+    && !EDITOR_COMMAND_CONTROL_CHARS_RE.test(rawCommand)
+    && path.isAbsolute(rawCommand)
+    ? rawCommand
+    : '';
+  // `custom` without a usable executable is not a choice, it is a broken one.
+  if (id === 'custom' && !command) return undefined;
+  const rawLabel = typeof value.label === 'string' ? value.label.trim() : '';
+  const label = rawLabel.slice(0, 120);
+  return {
+    id,
+    ...(command ? { command } : {}),
+    ...(label ? { label } : {}),
+    ...(typeof value.supportsFolders === 'boolean'
+      ? { supportsFolders: value.supportsFolders }
+      : {}),
+  };
+}
+
 function applyConfigValue(
   target: Record<string, unknown>,
   key: keyof AppConfigPrefs,
@@ -632,6 +699,19 @@ function applyConfigValue(
       target[key] = cleaned;
     } else {
       delete target[key];
+    }
+    return;
+  }
+  if (key === 'externalEditor') {
+    const validated = validateExternalEditor(value);
+    // `null` is the user clearing their choice, which must persist as an
+    // explicit null so the daemon goes back to auto-picking rather than
+    // rereading a stale id. `undefined` is a value that failed validation —
+    // drop it instead of writing something the open route cannot launch.
+    if (validated === undefined) {
+      delete target[key];
+    } else {
+      target[key] = validated;
     }
     return;
   }

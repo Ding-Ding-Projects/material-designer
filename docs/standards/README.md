@@ -4,49 +4,102 @@ The requirements Material Designer holds itself to, and an honest account of how
 far each one has got.
 
 > [!IMPORTANT]
-> **Almost nothing here is implemented in the product.** The vendored upstream
-> product satisfies a few of these requirements incidentally; release machinery
-> exists as committed scripts and workflows; the rest are not started. The
-> application has not been built or run, so every entry below is assessed by
-> reading source, scripts and the design mockup — never by using a running
-> application.
+> **Almost nothing here is implemented in the application.** The vendored
+> upstream product satisfies a few of these requirements incidentally; the
+> Material Design 3 token layer and the Windows title bar have landed; release
+> machinery exists and has published releases. The rest are not started.
 >
-> Every file in this category states the requirement, its status, and how
-> conformance will be verified. Where the answer is "not started", it says so.
+> **No standard has been audited in a running interface.** The application
+> builds, installs, launches and passes an automated health check, and its unit
+> suites pass — but nobody has sat in front of it and checked a single
+> requirement below. Every status here is assessed by reading source, scripts and
+> the design mockup. Where a file says "verified", it names the command that
+> produced the result.
+>
+> Every file in this category states the requirement, **why the requirement
+> exists**, its status, and how conformance will be verified. Where the answer is
+> "not started", it says so.
 
 ## Files in this category
+
+### The sixteen numbered standards
 
 | File | Standard |
 | --- | --- |
 | [language-modes.md](language-modes.md) | English, playful Hong Kong Cantonese, and a bilingual mode; two independent 1–5 tone sliders that restyle voice without changing facts. |
-| [material-design-3.md](material-design-3.md) | Full Material Design 3 conformance, and the runtime appearance customization that goes with it. |
+| [material-design-3.md](material-design-3.md) | Full Material Design 3 conformance — tokens, typography, shape, elevation, motion, component anatomy and window chrome. |
+| [appearance-customization.md](appearance-customization.md) | An appearance editor on every rendered element, an infinite colour picker with a colour translator, word-processor-depth typography, named presets and resets. |
 | [regex-builder.md](regex-builder.md) | A pattern builder anchored beside every search field, with plain text as the default. |
 | [tabs.md](tabs.md) | Browser-style tabs everywhere: overflow, reordering, pinning, grouping, four discovery searches, bulk close, persistence. |
-| [notifications.md](notifications.md) | Non-blocking notifications, a notification centre, and the super-confirmation gate that destructive actions must pass. |
-| [accessibility.md](accessibility.md) | Keyboard reachability, visible focus, roles and names, contrast, reduced motion, and no clipping at any scale — as completion blockers, not polish. |
+| [notifications.md](notifications.md) | Non-blocking notifications anchored in a corner, a notification centre, and no nagging. |
+| [super-confirmation.md](super-confirmation.md) | The gate every destructive action passes: two independent keys, a full-range slider, and an always-available emergency exit. |
+| [command-palette.md](command-palette.md) | One shortcut over every command, setting and destination, with live inline controls and a teleport to where each thing lives. |
+| [changelog-viewer.md](changelog-viewer.md) | Every released version readable in-app, with a commit link per entry, a date filter, a search, and export. |
+| [version-history.md](version-history.md) | A local Git-backed history of documents, records **and** settings, where restoring is a new revision and never a rewrite. |
 | [export-and-bulk-actions.md](export-and-bulk-actions.md) | Everything exportable in every format that can faithfully represent it, saying what would be lost before it runs; multi-select and the full action set in bulk on every list. |
+| [dim-sum-surprise.md](dim-sum-surprise.md) | One launch in ten shows a dish, in both languages, from a bundled catalogue — non-blocking, and with no off switch. |
 | [releases.md](releases.md) | What every release must carry: an installer, a code name, a line-count table, and honest continuous-integration evidence. |
+| [accessibility.md](accessibility.md) | Keyboard reachability, visible focus, roles and names, contrast, reduced motion, and no clipping at any scale — as completion blockers, not polish. |
+| [local-assets.md](local-assets.md) | No script, stylesheet, font or image fetched from a third-party origin, and no tracking — on every surface individually. |
+| [documentation-currency.md](documentation-currency.md) | Documentation, changelog and roadmap brought current in the same task that changes the project. |
+
+### Interface-quality rules with their own file
+
+These are not numbered standards. They are rules that apply to every surface, and
+each has its own article because each guards a distinct failure.
+
+| File | Rule |
+| --- | --- |
+| [overlays.md](overlays.md) | Every popover, menu and anchored panel paints its own surface, is bounded by the viewport, and scrolls rather than hiding what does not fit. |
+| [context-menu-shortcuts.md](context-menu-shortcuts.md) | Every context-menu item shows the shortcut that actually works in that context, derived from the binding registry — and every context menu carries its own search. |
+| [long-operations.md](long-operations.md) | A long operation reports real progress in the surface that started it, guards against re-entry in the handler, and offers its recovery route where the failure appeared. |
+| [external-editor.md](external-editor.md) | Detect installed editors, persist the choice, degrade clearly — and open every export in one action, as a workspace root. |
+
+[accessibility.md](accessibility.md) summarises the first three of these
+alongside the accessibility matrix, because they are checked at the same time.
+The dedicated files own the detail.
 
 ## Status at a glance
 
+**Read at commit `dea6b0a`, on 2026-08-03.** A status table is a point-in-time
+observation, so it carries the commit it was taken at — see
+[documentation-currency.md](documentation-currency.md) for why. For the current
+state of any row, read that row's own file and re-run the checks its verification
+section names.
+
 | # | Standard | Status | File |
 | --- | --- | --- | --- |
-| 1 | Language modes + two tone sliders | **Not started.** 19 locales ship; Cantonese is not one of them. No tone slider exists. | [language-modes.md](language-modes.md) |
-| 2 | Material Design 3 conformance | **Not started.** Specified in full by the mockup; no code written. | [material-design-3.md](material-design-3.md) |
-| 3 | Runtime appearance customization | **Not started.** No per-element editor, no continuous colour picker, no presets. | [material-design-3.md](material-design-3.md) |
-| 4 | Regex builder on every search bar | **Not started.** Designed in the mockup as one shared panel, which does not yet meet the anchored-per-field requirement. | [regex-builder.md](regex-builder.md) |
-| 5 | Browser-style tabs everywhere | **Partial in design only.** A tab strip is drawn; overflow, pinning, grouping and the four searches are absent. | [tabs.md](tabs.md) |
-| 6 | Non-blocking notifications + centre | **Designed, not built.** Both surfaces appear in the mockup. | [notifications.md](notifications.md) |
-| 7 | Super-confirmation for destructive actions | **Not started, and not yet designed.** Absent from the mockup entirely. | [notifications.md](notifications.md) |
-| 8 | Command palette | **Designed, not built.** Meets the requirement on paper, including inline live controls. | [material-design-3.md](material-design-3.md) |
-| 9 | Changelog viewer | **Designed, not built.** Meets the requirement on paper, commit links included. | [releases.md](releases.md) |
-| 10 | Local version history | **Designed, not built.** Shown for settings only; documents and records are not covered yet. | [releases.md](releases.md) |
+| 1 | Language modes + two tone sliders | **Not started in the application.** 19 locales ship; Cantonese is not one of them, and no tone slider exists. Implemented on the documentation site. | [language-modes.md](language-modes.md) |
+| 2 | Material Design 3 conformance | **Partial.** The token sheet and its mapping layer landed at `dea6b0a`, as did the Windows frameless window and custom title bar. Component anatomy is not started. | [material-design-3.md](material-design-3.md) |
+| 3 | Runtime appearance customization | **Not started in the application.** No per-element editor, no continuous picker, no presets. The site implements theme, density, seed and scale, plus a partial colour translator. | [appearance-customization.md](appearance-customization.md) |
+| 4 | Regex builder on every search bar | **Not started in the application.** Designed in the mockup as one shared panel, which does not meet the anchored-per-field requirement. Implemented per field on the site. | [regex-builder.md](regex-builder.md) |
+| 5 | Browser-style tabs everywhere | **Partial in design only.** A tab strip is drawn; overflow, pinning, grouping and the four searches are absent from the application. | [tabs.md](tabs.md) |
+| 6 | Non-blocking notifications + centre | **Designed, not built** in the application. Implemented on the site. | [notifications.md](notifications.md) |
+| 7 | Super confirmation for destructive actions | **Not started, and not yet designed.** Absent from the mockup entirely — the largest undesigned gap in the set. | [super-confirmation.md](super-confirmation.md) |
+| 8 | Command palette | **Not started in the application.** Designed in the mockup, including inline live controls. Implemented on the site. | [command-palette.md](command-palette.md) |
+| 9 | Changelog viewer | **Not started in the application.** Designed in the mockup, commit links included. Releases now exist, so the viewer would have content on its first run. | [changelog-viewer.md](changelog-viewer.md) |
+| 10 | Local version history | **Partial upstream, and narrower than the requirement.** Project files are versioned and a restore is recorded as a new version; it is not Git-backed, and records and settings are not covered. | [version-history.md](version-history.md) |
 | 11 | Export everything, bulk actions everywhere | **Partial upstream.** The product exports several formats already; the full matrix, the archive options, the say-what-will-be-lost rule and universal bulk actions are not done. | [export-and-bulk-actions.md](export-and-bulk-actions.md) |
-| 12 | Startup dim sum surprise | **Not started** in the application. Drawn in the mockup with an off switch, which the standard forbids. A 24-dish catalogue with local images is bundled. | [releases.md](releases.md) |
-| 13 | Release code name + line count | **Machinery built, no release observed.** A committed counter, a code-name picker and the release workflow all exist. | [releases.md](releases.md) |
-| 14 | Accessibility and sizing | **Not started.** Stated as an intent in the mockup; unverified in code. | [accessibility.md](accessibility.md) |
-| 15 | All assets bundled locally | **Not met.** The mockup loads fonts from a third-party network origin. | [material-design-3.md](material-design-3.md) |
-| 16 | Docs, changelog and roadmap current each task | **In force from now.** This documentation tree is the first instance. | this file |
+| 12 | Startup dim sum surprise | **Not present in the application.** The bundled catalogue is complete and verified — 24 dishes, 24 images. The mockup draws the surprise with a forbidden off switch. | [dim-sum-surprise.md](dim-sum-surprise.md) |
+| 13 | Release code name + line count | **Machinery built, and releases have been published.** The release workflow now runs the counter with attribution enabled. Whether a published release's notes carried the resulting table has not been checked here. | [releases.md](releases.md) |
+| 14 | Accessibility and sizing | **Not started.** Stated as an intent in the mockup; never measured, because no interface has been audited. | [accessibility.md](accessibility.md) |
+| 15 | All assets bundled locally | **Not met in the application.** The interface stylesheet imports a font family from a third-party origin, and the preview runtime fetches a framework and a compiler at runtime. Met on the documentation site. | [local-assets.md](local-assets.md) |
+| 16 | Docs, changelog and roadmap current each task | **In force.** This documentation tree is the first instance. | [documentation-currency.md](documentation-currency.md) |
+
+| Rule | Status | File |
+| --- | --- | --- |
+| Overlays paint their own surface | **Designed correctly, not audited in code.** | [overlays.md](overlays.md) |
+| Context-menu shortcuts and menu search | **Shortcut labels designed and not built; the per-menu search is neither.** | [context-menu-shortcuts.md](context-menu-shortcuts.md) |
+| Long operations report progress | **Designed, not built.** | [long-operations.md](long-operations.md) |
+| External editor integration | **Partial upstream.** Editors are detected and a project opens in one; exports have no hand-off. | [external-editor.md](external-editor.md) |
+
+> [!NOTE]
+> **Some sibling files carry status text written before commit `dea6b0a`**, which
+> landed the token sheet and the Windows title bar, and before the first releases
+> were published. Where a per-file status table disagrees with the table above,
+> the table above is the more recent reading — and bringing the older files
+> current is exactly what [documentation-currency.md](documentation-currency.md)
+> requires of the next task that touches them.
 
 ## How to read a status
 
@@ -55,12 +108,17 @@ far each one has got.
 | **Not started** | No code, and possibly no design. |
 | **Not yet designed** | Not even specified by the mockup. These carry the most risk, because the shape of the work is unknown. |
 | **Designed, not built** | The mockup specifies it completely enough to implement. Nothing runs. |
-| **Partial** | Something exists upstream that covers part of the requirement. The gap is named in the file. |
+| **Partial** | Something exists that covers part of the requirement. The gap is named in the file. |
 | **Met** | Implemented, and verified by something a reader can re-run. **Nothing is at this status yet.** |
 
 Nothing may be promoted to **Met** on the strength of code existing. Promotion
 requires the verification described in that standard's own file to have actually
 been run, with its result recorded.
+
+**"Implemented on the site" is not the same as "Met".** Every rule applies to
+every surface individually, so a requirement satisfied on the documentation site
+and absent from the application is a requirement that is half done — and the
+site's own implementation has not been audited against its checklist either.
 
 ## The two constraints every standard is implemented under
 
@@ -89,5 +147,19 @@ nothing in it is wired into the application.
 Where a standard is met by the mockup but not by code, its file says **designed,
 not built** and points at the specific part of the mockup that specifies it.
 Where the mockup itself falls short of the standard, the file says that too —
-there are eleven such gaps, and they are recorded in the relevant files rather
-than quietly fixed later.
+and where the mockup does something the standard forbids, the file says that
+loudest, because a faithful port carries the violation in with the design.
+
+Three such traps are recorded in this category and are worth knowing before
+porting anything: the surprise's off switch
+([dim-sum-surprise.md](dim-sum-surprise.md)), the third-party font links
+([local-assets.md](local-assets.md)), and hard-coded context-menu shortcut labels
+([context-menu-shortcuts.md](context-menu-shortcuts.md)).
+
+## Suggested reading
+
+- [../README.md](../README.md) — the house convention every article in this tree follows
+- [../porting/verification.md](../porting/verification.md) — the verifier that constrains how any of this gets implemented
+- [../build/from-source.md](../build/from-source.md) — how to build the application these standards apply to
+- [../site/](../site/) — the documentation site, which is held to every standard here in its own right
+- `ROADMAP.md` — the phased plan, with a tracked work item behind each status above

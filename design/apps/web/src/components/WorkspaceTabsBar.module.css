@@ -1,0 +1,229 @@
+/* Surfaces the tab strip grew rather than inherited: the sticky pinned region,
+   the tab context menu, the pin toggle in the searchable tab list, and the
+   bulk-close panel.
+
+   The tab *anatomy* stays in `styles/shell.css` and `styles/viewer/routines.css`
+   where the rest of it lives — a compact pinned tab has to outrank rules those
+   sheets already declare, and a CSS Module cannot win that fight without
+   specificity games. Everything here is new markup with no competing rules, so
+   it belongs beside the component instead of in another global sheet. */
+
+/* Sticky so the pinned tabs stay on screen once the rest of the strip scrolls.
+   The permanent Home tab lives inside it too, and keeps its own `is-pinned`
+   sticky rule: a sticky child of an always-flush-left sticky parent computes to
+   the same position, so the two do not fight.
+
+   The background is the project shell's own tab-bar colour when that variable
+   is in scope (routines.css declares it on the chrome header, which is an
+   ancestor) and the entry shell's panel mix otherwise. Opaque either way, or
+   the scrolled tabs would read through the pinned ones. */
+.pinnedRegion {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  background: var(
+    --workspace-tab-bar-bg,
+    color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle))
+  );
+  -webkit-app-region: no-drag;
+}
+
+/* -------- Pin toggle in the searchable tab list ---------------------- */
+
+.listPin {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.listPin:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.listPin[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+/* -------- Tab context menu ------------------------------------------- */
+
+.contextMenu {
+  position: fixed;
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  max-height: min(320px, calc(100vh - 16px));
+  /* Bounded AND scrollable: capping the height without this would delete the
+     last items with no scrollbar to say anything was missing. */
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.contextMenuItem:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: transparent;
+}
+
+.contextMenuNote {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* -------- Bulk close ------------------------------------------------- */
+
+.bulkClose {
+  border-top: 1px solid var(--border-soft);
+  padding: 6px 8px 8px;
+}
+
+.bulkCloseToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.bulkCloseToggle:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.bulkCloseBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 6px 0;
+}
+
+.bulkCloseInput {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bulkCloseInput:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.bulkCloseRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bulkCloseChip {
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.bulkCloseChip:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.bulkCloseChipActive,
+.bulkCloseChipActive:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.bulkCloseStatus {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.bulkClosePreview {
+  margin: 0;
+  padding: 0 0 0 14px;
+  max-height: 132px;
+  overflow-y: auto;
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.bulkClosePreview li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulkCloseMore,
+.bulkCloseExcluded {
+  color: var(--text-muted);
+  font-size: 11.5px;
+}
+
+.bulkCloseExcluded {
+  margin: 0;
+}
+
+.bulkCloseConfirm {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-strong);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.bulkCloseConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

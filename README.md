@@ -11,12 +11,16 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.16.1-lightgrey)
 
 > [!NOTE]
-> **There is no release and no installer yet.** Continuous integration has verified
-> the port, installed the workspace, typechecked it and run its unit suites — all
-> observed, all green — and has published the documentation site. What it has *not*
-> yet done is produce an installer or start the application. Everything claimed as
-> verified below says exactly how it was verified; everything else is stated as not
-> yet done. See [Status](#status).
+> **There is an installer, and the application has been launched.** Continuous
+> integration has verified the port, installed the workspace, typechecked it, run its
+> unit suites, built Windows installers and published two releases — and its packaged
+> smoke test has installed a built application, launched it, had the running process
+> answer its own health endpoint and uninstalled it. All observed. The documentation
+> site is published. What the application does **not** have yet is the Cantonese
+> locale, the tone sliders, the in-app regex builder, the startup surprise and the
+> changelog viewer — the site demonstrates those, the application does not carry them.
+> Everything claimed as verified below says exactly how it was verified; everything
+> else is stated as not yet done. See [Status](#status).
 
 ## What this is
 
@@ -40,8 +44,8 @@ but an allowlist a script enforces.
 
 | Section | What is in it |
 | --- | --- |
-| [Status](#status) | What is verified, what has never been run |
-| [Install](#install) | Release link when one exists; building from source until then |
+| [Status](#status) | What continuous integration has proven, and what it has not |
+| [Install](#install) | The published Windows installer, and building from source as the alternative |
 | [Repository layout](#repository-layout) | What each top-level directory holds |
 | [Building from source](#building-from-source) | Exact commands, toolchain versions, Windows prerequisites |
 | [Verifying the port](#verifying-the-port) | Running the verifier, what each counter means |
@@ -81,33 +85,53 @@ predictions:
 | Unit suites for `tools-pack`, `packaged`, `desktop` | *Verify*, Linux | ✅ |
 | Windows identity, paths, build targets, launcher payload | *Release*, Windows | ✅ 20 files, 121 tests |
 | Site deployment | *Pages* | ✅ published and serving |
-| **Windows installer build** | *Release*, Windows | ⏳ **not yet observed** |
-| **Packaged smoke test — install, launch, health check, uninstall** | *Release*, Windows | ⏳ **not yet observed** |
+| Windows installer build | *Release*, Windows | ✅ two installers built and attached |
+| Packaged smoke test — install, launch, health check, uninstall | *Release*, Windows | ✅ passed |
+| Release publication | *Release* | ✅ `v0.16.1-r7.1` and `v0.16.1-r8.1` |
 
-**The application itself has still never been run.** Everything above proves it compiles,
-that its logic tests hold, and that the port has not drifted. None of it starts the program.
-Any statement about runtime behaviour in this repository is read from source or inherited
-from upstream's documentation — not observed.
+**What that does and does not prove.** The smoke test starts a real installed build, so the
+application has been launched and has answered for itself. It does not prove the application
+is *finished*: it exercises install, launch, a health check and uninstall, not the product's
+features. Statements about feature behaviour in this repository are still read from source or
+inherited from upstream's documentation unless they say otherwise. The Material Design 3
+redesign is **in progress**: the token layer and the Windows title bar have landed, and no
+component has been rewritten — see [Standards](#standards).
 
 Separately, upstream ships 48 workflow files under `design/.github/workflows/`. GitHub
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There is no release.** No tag, no installer, no artifact, no code-signing certificate. The
-pieces a release is required to carry do exist as committed files — `scripts/line-count.mjs`
-for the per-release line count, `scripts/release-codename.sh` for the code name, and the
-bundled catalogue under `assets/dim-sum/` the code name is drawn from — and not one of them
-has yet run in a release.
+**There are releases, and no code-signing certificate.** Two tags have been published, each
+carrying the installer its own run built, a portable archive, a checksum and a dim sum code
+name. The pieces a release is required to carry are committed files that have now run in a
+release — `scripts/line-count.mjs` for the per-release line count, `scripts/release-codename.sh`
+for the code name, and the bundled catalogue under `assets/dim-sum/` the code name is drawn
+from. What is still absent is a signing certificate, so every installer published from here
+trips SmartScreen on first run.
 
 ## Install
 
-Once CI publishes a release, the download button for the signed-or-not Windows installer
-goes here, with its version and the exact release asset. **That has not happened yet**, so
-there is deliberately no download link — a link to a release that does not exist is worse
-than no link.
+**Windows, 64-bit — `v0.16.1-r8.1`**
 
-Until then, build from source. Short path (details and prerequisites in
-[Building from source](#building-from-source)):
+[**Download the Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe)
+· [portable archive](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-portable.zip)
+· [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe.sha256)
+· [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
+
+That link points at one specific published build rather than at whatever is newest, so the
+checksum beside it describes exactly the file it hands you. The installer was built and
+attached by the same run that published the tag, and the packaged smoke test installed,
+launched, health-checked and uninstalled that build.
+
+> [!WARNING]
+> **The installer is not code-signed**, so Windows SmartScreen warns on first run
+> ("Windows protected your PC", publisher unknown) and the **Run anyway** button is hidden
+> behind **More info**. This repository has no certificate; that is why, and it will keep
+> happening until one is obtained.
+
+### Or build from source
+
+Short path (details and prerequisites in [Building from source](#building-from-source)):
 
 ```bash
 # 1. Toolchain: Node 24 and pnpm 10.33.2 must already be installed.
@@ -127,10 +151,16 @@ pnpm tools-pack win build --to nsis
 ```
 
 > [!IMPORTANT]
-> These commands are transcribed from the ported project's own documentation and its
-> `package.json` scripts. **They have not been executed from this repository.** Treat the
-> first run as a real build, not a formality, and expect to spend time on native
-> compilation (see prerequisites below).
+> **What has actually been run from this repository, and what has not.** Steps 1, 2 and 4
+> have run on Windows in the *Release* workflow: `pnpm install --frozen-lockfile` compiled
+> the native modules from source, the workspace typechecked, and `tools-pack win build`
+> produced the installers now attached to the releases (the workflow passes `--to all` plus
+> the packaging flags rather than the bare `--to nsis` above). **Step 3, development mode,
+> has not been run from this repository** — it is transcribed from the ported project's own
+> documentation and its `package.json` scripts. Expect the first local install to spend real
+> time on native compilation (see prerequisites below).
+
+### Repository layout
 
 <details>
 <summary><b>Repository layout</b> — what each top-level directory holds</summary>
@@ -180,18 +210,26 @@ vendor/
 docs/              Categorized feature documentation (one file per feature, one
                    index per category).
 
+postman/           The daemon's HTTP API as a Postman collection, plus its own
+                   README: how to import it, which requests are destructive, and
+                   what about it is unverified. Documented in docs/api/.
+
 MODIFICATIONS.md   Apache-2.0 section 4(b) notice AND the enforced allowlist of
                    every path in design/ that differs from upstream.
-README.md          This file. AGENTS.md, ROADMAP.md and HANDOFF.md sit beside it.
+README.md          This file. AGENTS.md, ROADMAP.md, HANDOFF.md and CHANGELOG.md
+                   sit beside it.
 ```
 
-`.gitattributes` and `.gitmodules` complete the root. There is **no root `package.json`** —
+`.gitattributes` and `.gitmodules` are the remaining root files. There is **no root
+`package.json`** —
 the workspace root is `design/`, and every `pnpm` command runs from there. This block is a
 guide, not a manifest: `git ls-files | grep -v '^design/'` prints the authoritative list of
 what is tracked outside the imported tree, and some of the paths above are still untracked
 working files at the time of writing.
 
 </details>
+
+### Building from source
 
 <details>
 <summary><b>Building from source</b> — exact commands, toolchain versions and Windows prerequisites</summary>
@@ -297,9 +335,14 @@ each package's `src/`.
 Upstream states that macOS, Linux and WSL2 are its primary supported paths and that
 **Windows native is best-effort**. This project's target is Windows, which means the
 Windows-native rough edges are this project's problem to fix rather than a caveat to pass
-along. None of them has been encountered yet, because nothing has been built.
+along. Several have already been hit and fixed while getting the Windows build green — suites
+asserting a Unix executable bit a Windows filesystem does not store, and a build-tool property
+that moved between major versions and now fails schema validation on sight among them. Each is
+written up under [`docs/troubleshooting/`](docs/troubleshooting/).
 
 </details>
+
+### Verifying the port
 
 <details>
 <summary><b>Verifying the port</b> — running the verifier and reading its counters</summary>
@@ -376,6 +419,8 @@ the same list the machine checks.
 
 </details>
 
+### Privacy and network defaults
+
 <details>
 <summary><b>Privacy and network defaults</b> — telemetry, binding, and what this build does and does not send</summary>
 
@@ -403,6 +448,8 @@ upstream project and are not this project's channels; this file is the one that 
 this repository.
 
 </details>
+
+### Standards
 
 <details>
 <summary><b>Standards</b> — the 16 requirements this project holds itself to, and which the roadmap burns down</summary>
@@ -472,6 +519,8 @@ forbids. Those gaps are recorded rather than papered over.
 
 </details>
 
+### Provenance and licence
+
 <details>
 <summary><b>Provenance and licence</b> — upstream, the pinned commit, Apache-2.0 and trademarks</summary>
 
@@ -485,10 +534,10 @@ same licence.
 **The section 4(b) notice.** [`MODIFICATIONS.md`](MODIFICATIONS.md) is the prominent notice
 Apache-2.0 requires for changed files, kept in one place so a reader sees the whole delta
 without diffing two repositories — and it is the machine-checked allowlist described under
-[Verifying the port](#verifying-the-port). It declares the rebrand paths as they land — 52
-of them at the commit noted under [Status](#status), with further rebrand edits still
-undeclared at that moment. The current count comes from `scripts/verify-port.sh`, not from
-this sentence.
+[Verifying the port](#verifying-the-port). It declares the rebrand paths as they land, so the
+count in it moves as more of the rebrand lands. **The current count comes from
+`scripts/verify-port.sh`, not from this sentence** — the figure quoted under
+[Status](#status) is the reading at one commit, not a standing fact.
 
 **The submodule.** [`vendor/open-design`](vendor/open-design) stays checked in as a pinned
 submodule. It is not built and nothing imports from it; it exists so the provenance claim has
@@ -523,8 +572,8 @@ Alongside it in the repository root:
 - [`MODIFICATIONS.md`](MODIFICATIONS.md) — the licence notice and the enforced allowlist.
 
 - [`CHANGELOG.md`](CHANGELOG.md) — every notable change, each linking the commit that made
-  it. All of it sits under `[Unreleased]`, because nothing has been released yet, and it
-  carries a "Not done yet" section so the shape of the remaining work is visible too.
+  it, with a section per published release and one for unreleased work. It carries a
+  "Not done yet" section too, so the shape of the remaining work is visible.
 
 The project's documentation site is published at
 **<https://ding-ding-projects.github.io/material-designer/>**, which is also the repository's
@@ -533,8 +582,14 @@ standards the application does: three language modes, two funny-level sliders, M
 Design 3 tokens, appearance customization, a regex builder on every search field, browser-style
 tabs, and the dish surprise.
 
-The download button on its Install page is honest about there being nothing to download yet —
-no release has been published, so it says so rather than linking at a file that does not exist.
+Its Install page links one specific published build — the immutable release-asset URL of a
+named tag, never a "latest" redirect — so the checksum shown beside it describes exactly the
+file the button hands you.
+
+A caveat the site states and this file repeats: the Cantonese locale, the tone sliders, the
+in-app regex builder, the startup surprise and the changelog viewer are demonstrated **on the
+site**. They are not in the application yet. [`docs/standards/`](docs/standards/) records the
+honest position for each.
 
 ---
 

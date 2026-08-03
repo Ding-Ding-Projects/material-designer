@@ -309,6 +309,17 @@
   background: var(--bg-subtle);
   color: var(--text-strong);
 }
+/* Menu items that open a surface this app owns are buttons, not links. This
+   only undoes the user-agent button chrome so they sit flush with the anchors
+   beside them; every other rule is shared. */
+.entry-help-popover__item--button {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: start;
+}
 .entry-help-popover__icon {
   width: 18px;
   display: inline-flex;

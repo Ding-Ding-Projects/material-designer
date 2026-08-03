@@ -16,11 +16,20 @@
 
   HONESTY
   -------
-  Nothing has been built from this repository: no installer, no release, no
-  observed continuous-integration run. This page says so where a download
-  button would otherwise be, and never implies otherwise anywhere else. The
-  ported upstream functionality and the work this project is doing are kept in
-  separate, labelled sections for the same reason.
+  Continuous integration has published Windows installers, and a packaged
+  smoke test installed one, launched it, saw it answer its own health check
+  and uninstalled it. That is what the download links here point at, and it is
+  the whole of what has been proven: the smoke test never touches the
+  interface, so it says nothing about whether any given feature works.
+
+  The standards this project holds itself to are a different matter. Several
+  are implemented on THIS PAGE and are still in progress in the application —
+  the language modes, the funny levels, the pattern builder, the dim sum draw.
+  The Standards panel keeps two status columns for exactly that reason, and no
+  claim about the site may be read as a claim about the application.
+
+  The ported upstream functionality and the work this project is doing are
+  likewise kept in separate, labelled sections.
 
   Text inside a [data-i18n] element is the English fallback. i18n.js replaces
   it on load with the active language mode and funny level, so the page is
@@ -31,7 +40,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Material Designer — a local-first design workspace</title>
-<meta name="description" content="Material Designer is a Material Design 3 rebuild of a local-first design workspace. Nothing has been built from this repository yet: there is no release and no installer.">
+<meta name="description" content="Material Designer is a Material Design 3 rebuild of a local-first design workspace. A Windows installer is published and smoke-tested; the standards work is in progress and this page says which parts are done.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FFF8F6">
 
@@ -68,7 +77,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 
 <!--
   With scripting disabled, tabs.js never runs, so nothing would ever unhide the
-  seven panels this document ships collapsed. This rule turns the site back
+  nine panels this document ships collapsed. This rule turns the site back
   into one readable scrolling page in exactly that case, and does nothing at
   all when scripting works.
 -->
@@ -210,7 +219,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
   <div class="hero">
     <span class="hero__eyebrow">
       <svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#i-build"/></svg>
-      <span class="i18n-text" data-i18n="ov.eyebrow" data-i18n-inline>In progress — nothing released</span>
+      <span class="i18n-text" data-i18n="ov.eyebrow" data-i18n-inline>Installer published — the redesign is in progress</span>
     </span>
     <h2 class="hero__title" data-i18n="hero.headline">Design artifacts, generated on your own machine.</h2>
     <p class="hero__lede" data-i18n="hero.tagline">A local daemon detects the coding-agent command-line tool you already have installed and drives it. Projects, files and database stay on local disk.</p>
@@ -233,22 +242,29 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 
   <!-- The honest status band. This is the single most important block on the
        site: it appears above everything else that could be mistaken for a
-       shipping product. -->
+       shipping product, and it is the block that must be corrected first when
+       what is true changes. The version and the tag are deliberately not
+       written here — they belong on the Releases panel, which is one link away
+       and does not have to be edited in two places to stay right. -->
   <section class="section" aria-labelledby="ov-status-title">
-    <div class="md-empty" id="ov-status">
-      <span class="md-empty__icon">
+    <div class="md-card md-card--filled" id="ov-status">
+      <span class="md-card__icon">
         <svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg>
       </span>
-      <h2 class="md-empty__title" id="ov-status-title" data-i18n="release.none.title">No release yet</h2>
-      <p class="md-empty__body" data-i18n="release.none.body">Nothing has been built from this repository, so there is no installer and no version number. A release will appear here once continuous integration publishes one.</p>
-      <p class="md-empty__body md-body-small" data-i18n="release.none.note">Until then, the only way to run this is to build it from source. The exact commands, toolchain versions and Windows prerequisites are in the documentation.</p>
-      <div class="row" style="justify-content:center">
+      <h2 class="md-title-large" id="ov-status-title" data-i18n="release.now.title">There is an installer, and it was tested before it was published</h2>
+      <p class="md-body-medium" data-i18n="release.now.body">Continuous integration builds the Windows application, runs its tests, then installs the result, launches it, checks that the running process answers its own health endpoint, and uninstalls it again. Only then does it publish. A run that fails any of that publishes nothing, so a release existing means those steps passed.</p>
+      <p class="md-body-small on-surface-variant" data-i18n="release.now.note">What that does not prove is that any particular feature works. The smoke test starts the application and stops it; it never touches the interface. The Standards section says, one requirement at a time, what is built and what is not.</p>
+      <div class="row" style="margin-top:0.75rem">
+        <button type="button" class="md-btn md-btn--filled" data-goto-tab="releases">
+          <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+          <span class="i18n-text" data-i18n="ov.cta.releases" data-i18n-inline>Get the installer</span>
+        </button>
         <button type="button" class="md-btn md-btn--tonal" data-goto-tab="building">
           <svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg>
           <span class="i18n-text" data-i18n="release.buildFromSource" data-i18n-inline>Build from source</span>
         </button>
         <button type="button" class="md-btn md-btn--text" data-goto-tab="install">
-          <span class="i18n-text" data-i18n="ov.cta.releaseDetail" data-i18n-inline>What a release will contain</span>
+          <span class="i18n-text" data-i18n="ov.cta.releaseDetail" data-i18n-inline>What a release contains</span>
         </button>
       </div>
     </div>
@@ -272,7 +288,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <article class="md-card md-card--outlined">
         <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-palette"/></svg></span>
         <h3 class="md-title-medium" data-i18n="ov.add.md3.title">A Material Design 3 redesign</h3>
-        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.md3.body">The product's own interface, rebuilt on the M3 colour-role tokens, type scale, shape scale, elevation and motion easing. Specified by the mockup in this repository; not yet implemented in the application.</p>
+        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.md3.body">The product's own interface, rebuilt on the M3 colour-role tokens, type scale, shape scale, elevation and motion easing. The token layer and the custom window chrome are in the released build; the components have not been rebuilt on them yet.</p>
         <p><span class="md-status md-status--progress" data-i18n="status.inprogress" data-i18n-inline>In progress</span></p>
       </article>
       <article class="md-card md-card--outlined">
@@ -323,24 +339,24 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
             <td data-i18n="ov.row.notice.how">Same run. The licence notice is the allowlist the script reads, so an undeclared change fails and a declaration for an unchanged file fails too.</td>
           </tr>
           <tr>
-            <th scope="row" data-i18n="ov.row.build">The application builds and runs</th>
-            <td><span class="md-status md-status--none" data-i18n="status.neverrun" data-i18n-inline>Never run</span></td>
-            <td data-i18n="ov.row.build.how">No dependency installed, no package compiled, no test executed, no installer produced, no screenshot taken from a real build.</td>
+            <th scope="row" data-i18n="ov.row.build">The application builds, installs and starts</th>
+            <td><span class="md-status md-status--shipped" data-i18n="status.verified" data-i18n-inline>Verified</span></td>
+            <td data-i18n="ov.row.build.how">A release run installed the Windows package it had just built, launched it, saw the running process answer its own health endpoint, and uninstalled it without residue.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.ci">Continuous integration passes</th>
-            <td><span class="md-status md-status--none" data-i18n="status.norun" data-i18n-inline>No run observed</span></td>
-            <td data-i18n="ov.row.ci.how">Three workflows exist at the repository root and are readable. That is a statement about committed files; this repository has recorded no run outcome for any of them.</td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.verified" data-i18n-inline>Verified</span></td>
+            <td data-i18n="ov.row.ci.how">The gate, the release run and the site deployment have all completed. The release run publishes only after its tests pass, so every published release is itself the receipt for the run behind it.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.release">A release exists</th>
-            <td><span class="md-status md-status--none" data-i18n="status.none" data-i18n-inline>None</span></td>
-            <td data-i18n="ov.row.release.how">No tag, no installer, no artifact, and no code-signing certificate.</td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.published" data-i18n-inline>Published</span></td>
+            <td data-i18n="ov.row.release.how">With an installer, its checksum, a portable archive and a dim sum code name. Still unsigned: there is no code-signing certificate, so a SmartScreen warning stands in front of every first run.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.md3">The application follows Material Design 3</th>
-            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
-            <td data-i18n="ov.row.md3.how">The mockup in this repository specifies the token set, the screens and the components. No application code has been written against it.</td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span></td>
+            <td data-i18n="ov.row.md3.how">The token sheet transcribed from the mockup is in the released build, and Windows now draws the application's own title bar instead of the operating system's. The component inventory has not been rebuilt on those tokens, and no screenshot of the running application appears on this site.</td>
           </tr>
           <tr>
             <th scope="row" data-i18n="ov.row.site">This site meets the project's own standards</th>
@@ -410,7 +426,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
       <p>
         <strong class="md-callout__title" data-i18n="ft.today.caveat.title">Read from source, not from a running application</strong>
-        <span data-i18n="ft.today.caveat.body">Everything above is inherited from the imported upstream release and described from its own documentation and source. This repository has never built or run the application, so none of it has been observed working here.</span>
+        <span data-i18n="ft.today.caveat.body">Everything above is inherited from the imported upstream release and described from its own documentation and source. The packaged build has been installed, started and uninstalled by a smoke test, which proves the application runs — it does not exercise any of these features, so none of them has been observed working here.</span>
       </p>
     </div>
   </section>
@@ -432,15 +448,15 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
   <section class="section" aria-labelledby="ft-building-title">
     <div class="section__head">
       <h2 class="section__title" id="ft-building-title" data-i18n="section.building.heading">What this project is building</h2>
-      <span class="md-status md-status--progress" data-i18n="status.notshipped" data-i18n-inline>Not shipped</span>
+      <span class="md-status md-status--progress" data-i18n="status.inprogress" data-i18n-inline>In progress</span>
     </div>
-    <p class="prose" data-i18n="section.building.intro">The Material Design 3 redesign and the standards work are in progress. None of it is implemented yet.</p>
+    <p class="prose" data-i18n="section.building.intro">The Material Design 3 redesign and the standards work are in progress. The token layer and the window chrome have landed in the application; everything else below is specified and not built.</p>
 
     <div class="card-grid" style="margin-top:1rem">
       <article class="md-card md-card--outlined">
         <h3 class="md-title-medium" data-i18n="standard.md3.title">Material Design 3 conformance</h3>
         <p class="md-body-medium on-surface-variant" data-i18n="standard.md3.body">The colour-role tokens, type scale, shape scale, elevation and motion easing, with no legacy or ad-hoc design elements left behind.</p>
-        <p><span class="md-status md-status--progress" data-i18n="status.app.notstarted" data-i18n-inline>Not started in the application</span></p>
+        <p><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span></p>
       </article>
       <article class="md-card md-card--outlined">
         <h3 class="md-title-medium" data-i18n="standard.language.title">Language modes and funny levels</h3>
@@ -525,50 +541,56 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <h2 class="section__title" id="in-title" data-i18n="release.heading">Download</h2>
     </div>
 
-    <!-- Where the download button belongs. There is no link here, because a
-         link to a release that does not exist is worse than no link. -->
-    <div class="md-empty">
-      <span class="md-empty__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
-      <h3 class="md-empty__title" data-i18n="release.none.title">No release yet</h3>
-      <p class="md-empty__body" data-i18n="release.none.body">Nothing has been built from this repository, so there is no installer and no version number. A release will appear here once continuous integration publishes one.</p>
-      <p class="md-empty__body md-body-small" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
-      <p>
-        <button type="button" class="md-btn md-btn--filled" disabled aria-disabled="true">
+    <!-- The download link is the immutable release-asset URL of a specific
+         published tag, never a "latest" redirect. A moving link makes the
+         checksum printed beside it meaningless, because the file behind it can
+         change without the page changing. -->
+    <div class="md-card md-card--filled">
+      <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
+      <h3 class="md-title-medium" data-i18n="in.download.title">Windows, 64-bit</h3>
+      <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
+      <div class="row" style="margin-top:0.75rem">
+        <a class="md-btn md-btn--filled"
+           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
-          <span class="i18n-text" data-i18n="in.button.disabled" data-i18n-inline>Download — unavailable</span>
+          <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
+        </a>
+        <span class="md-chip md-chip--mono">0.16.1 · x64 · 305 MB</span>
+        <button type="button" class="md-btn md-btn--text" data-goto-tab="releases">
+          <span class="i18n-text" data-i18n="in.cta.releases" data-i18n-inline>Checksum, code name and full notes</span>
         </button>
-      </p>
-      <p class="md-body-small on-surface-variant" data-i18n="in.button.why">The button is disabled rather than hidden so it is obvious that a download belongs here and that there is genuinely nothing behind it.</p>
+      </div>
+      <p class="md-body-small on-surface-variant" style="margin-top:0.75rem" data-i18n="in.download.pinned">This link points at one specific published build rather than at whatever is newest, so the checksum on the Releases section describes exactly the file it hands you. Newer builds are on the releases page.</p>
     </div>
   </section>
 
   <section class="section" aria-labelledby="in-will-title">
     <div class="section__head">
-      <h2 class="section__title" id="in-will-title" data-i18n="in.will.heading">What the release will contain when it exists</h2>
-      <p class="section__sub" data-i18n="in.will.sub">This describes the committed release machinery, not an observed run.</p>
+      <h2 class="section__title" id="in-will-title" data-i18n="in.will.heading">What a release contains</h2>
+      <p class="section__sub" data-i18n="in.will.sub">Summarised here; the Releases section covers each item, and is the one that gets corrected.</p>
     </div>
     <div class="prose">
       <ul>
-        <li data-i18n="in.will.installer">A Windows installer, built by electron-builder on Electron 41, produced by the same run that published it. The packer also offers a portable archive and an unpacked directory.</li>
-        <li data-i18n="in.will.tag">Its own unique tag. No prior release is recycled or overwritten.</li>
-        <li data-i18n="in.will.linecount">A line-count table for the exact released commit, produced by a committed counter that continuous integration runs, broken down by category and by human or agent authorship.</li>
+        <li data-i18n="in.will.installer">A Windows installer produced by the same run that published it, together with its checksum and a portable archive for running the application without installing it.</li>
+        <li data-i18n="in.will.tag">Its own unique tag. No prior release is recycled or overwritten, so a downloaded file can always be traced back to one commit.</li>
+        <li data-i18n="in.will.linecount">A line-count table for the exact released commit, produced by a committed counter that continuous integration runs, broken down by category and by whether a person or an agent wrote the surviving line.</li>
         <li data-i18n="in.will.codename">A dim sum code name drawn from the catalogue bundled in this repository, with the dish's photograph — chosen only from dishes whose image is actually present.</li>
-        <li data-i18n="in.will.evidence">Evidence recorded as it really is: running, failed, or verified. Never predicted.</li>
+        <li data-i18n="in.will.evidence">Evidence recorded as it really is: passed, failed, or not run. Never predicted.</li>
       </ul>
     </div>
 
     <div class="md-callout md-callout--warn" style="margin-top:1rem">
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
       <p>
-        <strong class="md-callout__title" data-i18n="in.signing.title">An unsigned installer will trip SmartScreen</strong>
-        <span data-i18n="in.signing.body">This repository has no code-signing certificate. Any installer it eventually publishes will make Windows show "Windows protected your PC" with an unknown publisher, and the Run anyway button will be hidden behind More info. That will stay true until a certificate is obtained.</span>
+        <strong class="md-callout__title" data-i18n="in.signing.title">An unsigned installer trips SmartScreen</strong>
+        <span data-i18n="in.signing.body">This repository has no code-signing certificate. Windows shows "Windows protected your PC" with an unknown publisher on first run, and the button that continues is hidden behind More info. That stays true until a certificate is obtained, so verify the published checksum against the file you downloaded before you go past it.</span>
       </p>
     </div>
   </section>
 
   <section class="section" aria-labelledby="in-until-title">
     <div class="section__head">
-      <h2 class="section__title" id="in-until-title" data-i18n="in.until.heading">Until then: build it from source</h2>
+      <h2 class="section__title" id="in-until-title" data-i18n="in.until.heading">Or build it from source</h2>
     </div>
     <p class="prose" data-i18n="in.until.body">The exact commands, the toolchain versions and the Windows prerequisites are in the Building section. Expect the first run to be a real build rather than a formality — one native dependency compiles from source.</p>
     <p>
@@ -581,7 +603,222 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 </section>
 
 <!-- ==========================================================================
-     PANEL 4 — BUILDING
+     PANEL 4 — RELEASES
+
+     Every identifier on this panel — tag, asset filename, checksum, commit —
+     is written directly into the markup rather than into the string catalogue.
+     A catalogue entry has five funny-level variants in two languages, and a
+     checksum that is right in nine of those ten places is a checksum nobody
+     can use. Facts live in the markup; only the prose around them is
+     translated.
+
+     The figures below are a point-in-time record of the releases that existed
+     when this page was written. The releases page linked from here is the
+     authority, and it is linked from every block that names a version.
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="releases" id="tab-panel-releases" hidden>
+
+  <section class="section" aria-labelledby="rl-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-title" data-i18n="rl.heading">Releases</h2>
+      <span class="md-status md-status--shipped" data-i18n="status.published" data-i18n-inline>Published</span>
+    </div>
+
+    <p class="prose" data-i18n="rl.intro">Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.</p>
+
+    <!-- The download button the standards require: a real, immutable release
+         asset URL, with the version and the platform on the control itself. -->
+    <div class="md-card md-card--filled" style="margin-top:1rem">
+      <h3 class="md-title-medium" data-i18n="rl.latest.heading">The most recent release</h3>
+      <p class="md-body-medium on-surface-variant" data-i18n="rl.latest.body">Downloading this runs the installer that this run actually built and then smoke-tested. It does not need administrator rights.</p>
+
+      <div class="table-wrap" style="margin-top:0.75rem">
+        <table>
+          <caption class="visually-hidden" data-i18n="rl.latest.caption">The most recent published release and its assets</caption>
+          <tbody>
+            <tr><th scope="row" data-i18n="rl.f.tag">Tag</th><td><code class="mono">v0.16.1-r8.1</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.version">Application version</th><td><code class="mono">0.16.1</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.codename">Code name</th><td>Beef with Oyster Sauce · <span lang="zh-HK">蠔油牛肉</span></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.commit">Built from</th><td><code class="mono">dea6b0a</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.installer">Installer</th><td><code class="mono">material-designer-0.16.1-win-x64-setup.exe</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.sha">SHA-256</th><td><code class="mono" style="word-break:break-all">0d852fc264fde10ecdeb84cfb896d85366e893845de2174776cee045ec7126e5</code></td></tr>
+            <tr>
+              <th scope="row" data-i18n="rl.f.smoke">Packaged smoke test</th>
+              <td>
+                <span class="md-status md-status--shipped" data-i18n="status.passed" data-i18n-inline>Passed</span>
+                <span data-i18n="rl.f.smoke.detail">— the built application installed, launched, answered its own health check, and uninstalled without leaving anything behind.</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="row" style="margin-top:1rem">
+        <a class="md-btn md-btn--filled"
+           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe">
+          <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+          <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
+        </a>
+        <span class="md-chip md-chip--mono">0.16.1 · x64 · 305 MB</span>
+      </div>
+
+      <div class="row" style="margin-top:0.5rem">
+        <a class="md-btn md-btn--outlined"
+           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-portable.zip">
+          <svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg>
+          <span class="i18n-text" data-i18n="rl.download.portable" data-i18n-inline>Download the portable archive</span>
+        </a>
+        <span class="md-chip md-chip--mono">0.16.1 · x64 · 350 MB</span>
+      </div>
+
+      <p style="margin-top:0.75rem">
+        <a href="https://github.com/Ding-Ding-Projects/material-designer/releases" rel="noopener noreferrer" target="_blank">
+          <span data-i18n="rl.link.all">Every release, with its full notes</span>
+          <span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span>
+        </a>
+      </p>
+    </div>
+
+    <div class="md-callout md-callout--warn" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="rl.signing.title">The installer is not code-signed, and Windows will say so</strong>
+        <span data-i18n="rl.signing.body">This repository has no code-signing certificate, so SmartScreen shows "Windows protected your PC" with an unknown publisher on first run. The button that continues is hidden behind More info. Check the published SHA-256 against the file you downloaded before you do that — an unsigned installer is exactly the case where the checksum is worth the minute it costs.</span>
+      </p>
+    </div>
+
+    <div class="md-callout md-callout--info" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="rl.update.title">There is no automatic update feed</strong>
+        <span data-i18n="rl.update.body">Builds from this repository deliberately ship without one. The upstream project's feed was removed rather than inherited, because an application that polls somebody else's feed will eventually replace itself with somebody else's application. New versions are installed by downloading them from the releases page.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="rl-contains-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-contains-title" data-i18n="rl.contains.heading">What every release contains</h2>
+      <p class="section__sub" data-i18n="rl.contains.sub">The same set every time, produced by the run that published it.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden" data-i18n="rl.contains.caption">Each asset a release carries, and what it is for</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="rl.contains.col.asset">Asset</th>
+            <th scope="col" data-i18n="rl.contains.col.what">What it is</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><code class="mono">…-win-x64-setup.exe</code></th>
+            <td data-i18n="rl.asset.installer">The Windows installer, built by the packer on Electron 41 during the same run that published it. It is the artifact the smoke test then installed and launched.</td>
+          </tr>
+          <tr>
+            <th scope="row"><code class="mono">…-win-x64-setup.exe.sha256</code></th>
+            <td data-i18n="rl.asset.sha">The checksum of that exact file, computed by the run after the build. It is also printed in the release notes, so the two have to agree.</td>
+          </tr>
+          <tr>
+            <th scope="row"><code class="mono">…-win-x64-portable.zip</code></th>
+            <td data-i18n="rl.asset.portable">A portable archive of the unpacked application, for running it without an installer. Published when the packer produced one.</td>
+          </tr>
+          <tr>
+            <th scope="row"><code class="mono">codename-…png</code></th>
+            <td data-i18n="rl.asset.dish">The photograph of the dim sum dish this release is named after, taken from the catalogue bundled in this repository. No image is fetched, generated or re-encoded at publish time.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="prose" style="margin-top:1rem" data-i18n="rl.contains.notes">The notes carry the rest: how to install, the checksum, the smoke-test outcome, the line count, and the provenance statement naming the upstream project, its licence and the pinned commit this fork was taken from.</p>
+  </section>
+
+  <section class="section" aria-labelledby="rl-tag-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-tag-title" data-i18n="rl.tag.heading">How a release is tagged</h2>
+    </div>
+    <pre class="code-block"><code>v&lt;application version&gt;-r&lt;run number&gt;.&lt;attempt&gt;
+
+v0.16.1-r7.1
+v0.16.1-r8.1</code></pre>
+    <p class="prose" data-i18n="rl.tag.body">The run number climbs on its own and never repeats, so every tag is unique and in order without anybody maintaining a counter. The attempt number is part of it because a re-run of a failed job keeps the same run number — without it, the second attempt would try to create a tag that already exists and the publish would fail at the very last step, after the whole build had succeeded.</p>
+    <p class="prose" data-i18n="rl.tag.norecycle">No tag is ever reused and no release is overwritten. A published release is a permanent record of one commit, and editing one in place would quietly change what a reader already downloaded.</p>
+  </section>
+
+  <section class="section" aria-labelledby="rl-codename-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-codename-title" data-i18n="rl.codename.heading">The code name</h2>
+    </div>
+    <p class="prose" data-i18n="rl.codename.body">Every release is also named after a dim sum dish, in English and Traditional Chinese, and carries that dish's photograph. It sits beside the version rather than replacing it: a version number is what a machine identifies a build by, and a code name is what a person remembers it as.</p>
+    <p class="prose" data-i18n="rl.codename.once">A dish is used once. The picker reads the dishes already spent out of the existing release notes rather than from a counter, so a re-run cannot hand out the same dish twice — two builds sharing a name would defeat the one job a code name has. It also skips any dish whose image is not actually present, because a code name that renders as a broken image is worse than none.</p>
+
+    <div class="table-wrap" style="margin-top:1rem">
+      <table>
+        <caption class="visually-hidden" data-i18n="rl.published.caption">The releases published so far and the dish each one is named after</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="rl.published.col.tag">Tag</th>
+            <th scope="col" data-i18n="rl.published.col.dish">Code name</th>
+            <th scope="col" data-i18n="rl.published.col.when">Published</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><code class="mono">v0.16.1-r8.1</code></th>
+            <td>Beef with Oyster Sauce · <span lang="zh-HK">蠔油牛肉</span></td>
+            <td><time datetime="2026-08-03">2026-08-03</time></td>
+          </tr>
+          <tr>
+            <th scope="row"><code class="mono">v0.16.1-r7.1</code></th>
+            <td>Beef with Black Bean and Peppers · <span lang="zh-HK">豉椒炒牛肉</span></td>
+            <td><time datetime="2026-08-03">2026-08-03</time></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="rl.published.note">This table was written by hand and does not update itself. Where it disagrees with the releases page, the releases page is right.</p>
+  </section>
+
+  <section class="section" aria-labelledby="rl-lines-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-lines-title" data-i18n="rl.lines.heading">The line count</h2>
+    </div>
+    <p class="prose" data-i18n="rl.lines.body">Each release states how many lines of code the project had at the exact commit it was built from. Continuous integration runs the committed counter during the release run, so the number belongs to the released commit rather than to whenever somebody last thought to measure.</p>
+    <p class="prose" data-i18n="rl.lines.split">It is never one total. The table separates this repository's own source, its tests, its styles and markup, its documentation and its generated files, and it names what was excluded — the vendored upstream tree is not this project's code, and folding it in would flatter the number by a factor nobody could see. It also splits the surviving lines by whether a person or an agent wrote them, which is stated without spin in either direction.</p>
+  </section>
+
+  <section class="section" aria-labelledby="rl-evidence-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-evidence-title" data-i18n="rl.evidence.heading">How the evidence is recorded</h2>
+    </div>
+    <div class="prose">
+      <ul>
+        <li data-i18n="rl.evidence.smoke">The smoke-test line reports what the step actually did — passed, failed, or not run — read from the step's own outcome. A skipped smoke test says so rather than implying a pass.</li>
+        <li data-i18n="rl.evidence.exists">The installer path the build reported is checked to exist before anything is published. A packer that reports a file it did not write fails the run instead of producing a release with nothing behind its download link.</li>
+        <li data-i18n="rl.evidence.count">If the line counter fails, the notes say the count is not available for that build. They never carry a number that was guessed.</li>
+        <li data-i18n="rl.evidence.run">Every release links the run that produced it, so the build log behind any of these claims can be read rather than taken on trust.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="rl-caveat-title">
+    <div class="section__head">
+      <h2 class="section__title" id="rl-caveat-title" data-i18n="rl.caveat.heading">What a release does not yet prove</h2>
+    </div>
+    <div class="prose">
+      <ul>
+        <li data-i18n="rl.caveat.ui">The released build carries the Material Design 3 token sheet and the custom Windows title bar. The component inventory has not been rebuilt on them, and no screenshot of the running application appears anywhere on this site.</li>
+        <li data-i18n="rl.caveat.standards">The language modes, the two funny-level sliders, the regex builder, the dim sum surprise and the changelog viewer are implemented on this site and are still in progress in the application. The Standards section states each one separately for exactly that reason.</li>
+        <li data-i18n="rl.caveat.smoke">The smoke test proves the application installs, starts, answers its own health check and uninstalls cleanly. It does not exercise the interface, and nobody should read it as a statement that any particular feature works.</li>
+        <li data-i18n="rl.caveat.signing">The installer is unsigned. Until a certificate is obtained, every first run has a SmartScreen warning in front of it.</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 5 — BUILDING
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="building" id="tab-panel-building" hidden>
 
@@ -593,8 +830,8 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
     <div class="md-callout md-callout--warn">
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
       <p>
-        <strong class="md-callout__title" data-i18n="bd.caveat.title">These commands have not been executed from this repository</strong>
-        <span data-i18n="bd.caveat.body">They are transcribed from the ported project's own documentation and its package scripts. Treat the first run as a real build, and expect to spend time on native compilation.</span>
+        <strong class="md-callout__title" data-i18n="bd.caveat.title">Some of these run in continuous integration; the rest are transcribed</strong>
+        <span data-i18n="bd.caveat.body">Installing, typechecking, testing and packaging are what the release run does on a Windows runner, so those are known to work there. The development-orchestrator commands have not been exercised from this repository and are transcribed from the ported project's own package scripts. Treat the first local run as a real build, and expect to spend time on native compilation.</span>
       </p>
     </div>
 
@@ -676,14 +913,14 @@ pnpm --filter @open-design/contracts test</code></pre>
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
       <p>
         <strong class="md-callout__title" data-i18n="bd.platform.title">Windows native is upstream's best-effort tier</strong>
-        <span data-i18n="bd.platform.body">Upstream states that macOS, Linux and WSL2 are its primary supported paths. This project targets Windows, which makes those rough edges this project's problem to fix rather than a caveat to pass along. None has been encountered yet, because nothing has been built.</span>
+        <span data-i18n="bd.platform.body">Upstream states that macOS, Linux and WSL2 are its primary supported paths. This project targets Windows, which makes those rough edges this project's problem to fix rather than a caveat to pass along. The release run builds and packages on Windows, so the ones that break a build have been dealt with; the ones that only show up in daily use have not been looked for.</span>
       </p>
     </div>
   </section>
 </section>
 
 <!-- ==========================================================================
-     PANEL 5 — VERIFYING THE PORT
+     PANEL 6 — VERIFYING THE PORT
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="verifying" id="tab-panel-verifying" hidden>
 
@@ -778,7 +1015,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
 </section>
 
 <!-- ==========================================================================
-     PANEL 6 — STANDARDS
+     PANEL 7 — STANDARDS
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="standards" id="tab-panel-standards" hidden>
 
@@ -808,7 +1045,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r2">Material Design 3 conformance</th>
-            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span> <span data-i18n="st.r2.app">— specified in full by the mockup; no application code written against it.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r2.app">— the token sheet and the custom window chrome are in the released build; the component inventory has not been rebuilt on them.</span></td>
             <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r2.site">— the token sheet is transcribed from that same mockup.</span></td>
           </tr>
           <tr>
@@ -824,7 +1061,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           <tr>
             <th scope="row" data-i18n="st.r5">Browser-style tabs everywhere</th>
             <td><span class="md-status md-status--progress" data-i18n="status.app.partial" data-i18n-inline>Partial in design only</span></td>
-            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r5.site">— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has eight permanent sections with nothing to group and nothing safe to close.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r5.site">— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has ten permanent sections with nothing to group and nothing safe to close.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r6">Non-blocking notifications and a centre</th>
@@ -844,7 +1081,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           <tr>
             <th scope="row" data-i18n="st.r9">An in-app changelog viewer</th>
             <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
-            <td><span class="md-status md-status--none" data-i18n="status.notyet" data-i18n-inline>Not here yet</span> <span data-i18n="st.r9.site">— there is no released version for it to describe, and inventing entries is forbidden.</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r9.site">— the releases published so far are listed with their code names, but a filterable, searchable viewer is not built here.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r10">Local version history for documents, records and settings</th>
@@ -863,8 +1100,8 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r13">A release code name and a line count</th>
-            <td><span class="md-status md-status--progress" data-i18n="status.machinery" data-i18n-inline>Machinery built, no release observed</span></td>
-            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r13.site">— it will appear here as soon as there is a release to name.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.published" data-i18n-inline>Published</span> <span data-i18n="st.r13.app">— every release so far carries a dish name and a line-count table produced at the released commit.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r13.site">— the Releases section names each published build's dish and links its notes.</span></td>
           </tr>
           <tr>
             <th scope="row" data-i18n="st.r14">Accessibility and sizing as completion blockers</th>
@@ -889,7 +1126,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       <table>
         <tbody>
           <tr><th scope="row" data-i18n="status.notstarted">Not started</th><td data-i18n="st.def.notstarted">No code, and possibly no design.</td></tr>
-          <tr><th scope="row" data-i18n="status.undesigned">Not yet designed</th><td data-i18n="st.def.undesigned">Not even specified by the mockup. These carry the most risk, because the shape of the work is unknown.</td></tr>
+          <tr><th scope="row" data-i18n="status.undesigned">Not started, not yet designed</th><td data-i18n="st.def.undesigned">Not even specified by the mockup. These carry the most risk, because the shape of the work is unknown.</td></tr>
           <tr><th scope="row" data-i18n="status.designed">Designed, not built</th><td data-i18n="st.def.designed">The mockup specifies it completely enough to implement. Nothing runs.</td></tr>
           <tr><th scope="row" data-i18n="status.partial">Partly</th><td data-i18n="st.def.partial">Some of it exists. The gap is named beside it rather than left for the reader to discover.</td></tr>
           <tr><th scope="row" data-i18n="status.here">Implemented here</th><td data-i18n="st.def.here">Built on this site and exercisable in this browser right now. It says nothing about the application.</td></tr>
@@ -908,7 +1145,405 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
 </section>
 
 <!-- ==========================================================================
-     PANEL 7 — PROVENANCE
+     PANEL 8 — DOCUMENTATION
+
+     This panel is an INDEX, not a mirror. The reference documentation lives in
+     the repository as Markdown and is read on GitHub; copying it here would
+     produce two copies that disagree within a week, and the copy nobody edits
+     is the one that is confidently wrong. So every article is linked at its
+     source, and the category indexes are named as the authority because they
+     are what a new article gets added to.
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="docs" id="tab-panel-docs" hidden>
+
+  <section class="section" aria-labelledby="dc-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-title" data-i18n="dc.heading">Documentation</h2>
+    </div>
+
+    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 41 articles. This panel indexes it and links every article at its source. It is not a copy: two copies of the same document drift apart, and the one nobody remembers to edit is the one a reader believes.</p>
+
+    <p>
+      <a class="md-btn md-btn--filled" href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs" rel="noopener noreferrer" target="_blank">
+        <svg aria-hidden="true" focusable="false"><use href="#i-book"/></svg>
+        <span class="i18n-text" data-i18n="dc.open" data-i18n-inline>Open the documentation</span>
+        <span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span>
+      </a>
+    </p>
+  </section>
+
+  <section class="section" aria-labelledby="dc-start-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-start-title" data-i18n="dc.start.heading">Start here</h2>
+      <p class="section__sub" data-i18n="dc.start.sub">The question you arrived with, and the page that answers it.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden" data-i18n="dc.start.caption">Common questions and the documentation page that answers each one</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="dc.start.col.want">If you want to…</th>
+            <th scope="col" data-i18n="dc.start.col.read">Read</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" data-i18n="dc.start.what">Understand what the product actually is</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/overview.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/overview.md</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.trust">Know how the upstream copy got here, and why it can be trusted</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/porting/verification.md" rel="noopener noreferrer" target="_blank"><code class="mono">porting/verification.md</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.build">Build an installer, or read what the release run does</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/build/ci.md" rel="noopener noreferrer" target="_blank"><code class="mono">build/ci.md</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.local">Build it locally instead</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/build/from-source.md" rel="noopener noreferrer" target="_blank"><code class="mono">build/from-source.md</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.release">Understand how a release is produced, and what proves it works</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/release" rel="noopener noreferrer" target="_blank"><code class="mono">release/</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.trouble">Diagnose a failure somebody here has already hit</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/troubleshooting" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.standards">Know what this project holds itself to</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/standards" rel="noopener noreferrer" target="_blank"><code class="mono">standards/</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.site">Publish or change this site</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/site" rel="noopener noreferrer" target="_blank"><code class="mono">site/</code></a></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="dc.start.api">Call the local daemon over HTTP</th>
+            <td><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/api" rel="noopener noreferrer" target="_blank"><code class="mono">api/</code></a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="dc-cat-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-cat-title" data-i18n="dc.cat.heading">The eight categories</h2>
+      <p class="section__sub" data-i18n="dc.cat.sub">Each category has an index that lists its own articles. The index is the authority — a new article is added to it, and to nothing else.</p>
+    </div>
+    <div class="card-grid">
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/porting" rel="noopener noreferrer" target="_blank"><code class="mono">porting/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.porting">How the upstream tree was imported byte-for-byte, and the verifier plus licence-notice contract that proves it stayed that way. The verification article is the longest and most careful page in the tree, and the one to read if you only read one.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/architecture" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.architecture">The daemon, the web interface, the desktop shell, the packaged application and this site: how the pieces connect, which ports they bind, what configures them, and how they fail.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/build" rel="noopener noreferrer" target="_blank"><code class="mono">build/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.build">Why builds run in continuous integration rather than on somebody's laptop, what each workflow does step by step, and the exact commands for building locally including the Windows prerequisites that catch people out.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/release" rel="noopener noreferrer" target="_blank"><code class="mono">release/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.release">How a release is produced end to end, what the packaged smoke test actually proves and what it does not, how the line count is produced and what its scopes mean, how a dim sum code name is chosen and spent exactly once, and what each published file is.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-warning"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/troubleshooting" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.troubleshooting">Failures this project actually hit, never hypothetical ones: the symptom as it appeared in a log, the cause, the fix, and how to avoid reintroducing it. Plus a table of signals — what thousands of even differences usually mean, what zero tests executed usually means.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/standards" rel="noopener noreferrer" target="_blank"><code class="mono">standards/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.standards">The requirements this product is being brought up to, one article per standard, each stating the requirement, its honest implementation status, and how conformance will be checked once it exists. This is where the gap between the site and the application is written down.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-palette"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/site" rel="noopener noreferrer" target="_blank"><code class="mono">site/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.site">This page: what it is built from, the workflow that deploys it, the publish-time check that refuses to ship it if any asset would be fetched from somewhere else, and the base-path trap that makes a green deployment serve nothing but 404s.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-code"/></svg></span>
+        <h3 class="md-title-medium">
+          <a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs/api" rel="noopener noreferrer" target="_blank"><code class="mono">api/</code></a>
+        </h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="dc.cat.api">The local daemon's HTTP surface, grouped by route file, with its authentication and origin posture and the security notes that go with binding a local service to anything wider than loopback.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="dc-articles-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-articles-title" data-i18n="dc.articles.heading">Every article</h2>
+      <p class="section__sub" data-i18n="dc.articles.sub">Written by hand, so it lags the tree. Where this list and a category index disagree, the index is right.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden" data-i18n="dc.articles.caption">Every documentation article, its category, and what it covers</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="dc.articles.col.file">Article</th>
+            <th scope="col" data-i18n="dc.articles.col.covers">What it covers</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/porting/verbatim-import.md" rel="noopener noreferrer" target="_blank"><code class="mono">porting/verbatim-import.md</code></a></th>
+            <td data-i18n="dc.a.verbatim">How the copy was made: raw blob extraction with every filter disabled, the four separate ways an ordinary working-tree copy fails, restoring the executable bit, and the files that had to be force-added.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/porting/verification.md" rel="noopener noreferrer" target="_blank"><code class="mono">porting/verification.md</code></a></th>
+            <td data-i18n="dc.a.verification">The verifier in full: its two independent checks, every counter, the exit codes and why "the check failed" and "the check did not happen" are different numbers, the licence notice as a machine-read allowlist, its self-tests, and the line-ending trap.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/overview.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/overview.md</code></a></th>
+            <td data-i18n="dc.a.overview">The processes and what each one is responsible for, the shared packages, the ports and bind addresses, the environment variables, the runtime requirements, the failure modes and the security posture.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/daemon.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/daemon.md</code></a></th>
+            <td data-i18n="dc.a.daemon">The only stateful process: what it owns, its startup order, the three probe endpoints, the command-line entry point, every network and path variable, and why reaching its API is equivalent to shell access.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/web-runtime.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/web-runtime.md</code></a></th>
+            <td data-i18n="dc.a.webruntime">The single-page interface and the three genuinely different ways it reaches the daemon — development rewrites, static export, packaged server-side rendering — plus the locales, the boundary it may not cross, and the Material Design 3 token layer as it currently stands.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/desktop-shell.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/desktop-shell.md</code></a></th>
+            <td data-i18n="dc.a.desktopshell">The desktop main process: why it never guesses the web port, the sidecar control channel that doubles as the test harness, the frameless Windows window and its renderer-drawn title bar, the window-control channels, and the preload trust boundary.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/packaged-runtime.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/packaged-runtime.md</code></a></th>
+            <td data-i18n="dc.a.packagedruntime">What actually launches when somebody runs the installed application: the launcher, the custom URL scheme and its retry, sidecar stamps and namespaces, the child-environment allowlist, the namespace-scoped path layout, and a packaged-versus-development comparison.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/architecture/data-directory.md" rel="noopener noreferrer" target="_blank"><code class="mono">architecture/data-directory.md</code></a></th>
+            <td data-i18n="dc.a.datadirectory">The single most important invariant in the codebase: one process, one data root, resolved once. What derives from it, how it propagates to child processes and packaged builds, the sanctioned exceptions, the known escape patterns, and what actually breaks when it is violated.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/build/ci.md" rel="noopener noreferrer" target="_blank"><code class="mono">build/ci.md</code></a></th>
+            <td data-i18n="dc.a.ci">The verification gate and the release run, step by step: why the gate checks out without the submodule, what the release notes carry, the triggers, the tokens, and the unsigned-installer position.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/build/from-source.md" rel="noopener noreferrer" target="_blank"><code class="mono">build/from-source.md</code></a></th>
+            <td data-i18n="dc.a.fromsource">Building locally: the prerequisites, the package manager on Windows, the line endings to fix before cloning rather than after, installing, running, typechecking, testing, packaging, and what goes wrong at each step.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/release-pipeline.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/release-pipeline.md</code></a></th>
+            <td data-i18n="dc.a.pipeline">The whole release run, step by step: the line-ending guard, port verification inside the release job, install, typecheck, the Windows-only identity suites, the installer build with its explicit existence check, the smoke test, the notes, and publication.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/packaged-smoke-test.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/packaged-smoke-test.md</code></a></th>
+            <td data-i18n="dc.a.smoketest">The only step that checks the product works: it installs the built installer, launches it, makes the running process answer its own health endpoint, screenshots it, uninstalls it and asserts zero residue. Assertion by assertion — with an explicit list of what it does not prove.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/line-count.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/line-count.md</code></a></th>
+            <td data-i18n="dc.a.linecount">How the published figure is produced by a committed script at the released commit, what its two scopes and three totals mean, how authorship is attributed per surviving line rather than by summing added lines, and why nobody ever counts by hand.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/code-names.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/code-names.md</code></a></th>
+            <td data-i18n="dc.a.codenames">How the dim sum code name is chosen from the bundled catalogue, why the spent dishes are read out of prior releases rather than a counter, why a dish is spent exactly once, and why a missing dish never blocks a release.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/release-assets.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/release-assets.md</code></a></th>
+            <td data-i18n="dc.a.assets">What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature, no updater feed, no non-Windows artifacts.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/line-endings.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/line-endings.md</code></a></th>
+            <td data-i18n="dc.a.lineendings">A byte comparison reporting thousands of differing files against a tree nobody had touched, because the checkout translated line endings on the way to disk — and why the guard has to come before the checkout step rather than after it.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/platform-specific-tests.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/platform-specific-tests.md</code></a></th>
+            <td data-i18n="dc.a.platformtests">Tests asserting a Unix executable bit on a filesystem that has none, and tests building a symlinked layout a runner may not be permitted to create. Both fixed by splitting the suites by what each platform can answer — a split, not a skip.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/unbuilt-package-imports.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/unbuilt-package-imports.md</code></a></th>
+            <td data-i18n="dc.a.unbuilt">Three suites dying at import time with a missing module, because they import built output that the install step does not build. Zero tests executed and no failures reported means nothing loaded — look for an import error, not an assertion.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/test-timeouts.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/test-timeouts.md</code></a></th>
+            <td data-i18n="dc.a.timeouts">Two platform-gated specs doing real filesystem work, inheriting a five-second default budget written for a fast local disk — and how to tell a budget failure from a hang before assuming either.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/packaging-schema-drift.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/packaging-schema-drift.md</code></a></th>
+            <td data-i18n="dc.a.schemadrift">An installer build rejected before packing anything, because a configuration property moved between major versions of the build tool and now fails schema validation on sight. Nothing was attempted, so nothing was tested.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/language-modes.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/language-modes.md</code></a></th>
+            <td data-i18n="dc.a.language">The three language modes and the two tone sliders, the rule that voice changes and facts never do, and what registering a Cantonese locale in the application actually requires.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/material-design-3.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/material-design-3.md</code></a></th>
+            <td data-i18n="dc.a.md3">Material Design 3 conformance and appearance customization: the token handoff map, the component inventory, the colour roles, the shape and motion scales, and the window chrome.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/regex-builder.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/regex-builder.md</code></a></th>
+            <td data-i18n="dc.a.regex">What the pattern builder must offer, why it has to be anchored beside the field it belongs to rather than shared, which engine and dialect it names, and the guards that keep a pasted pattern from freezing the interface.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/tabs.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/tabs.md</code></a></th>
+            <td data-i18n="dc.a.tabs">Tabbed navigation: overflow, reordering, pinning, grouping, the four tab-discovery searches, the two bulk-close actions, and why persistence needs a stable identity rather than an index.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/notifications.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/notifications.md</code></a></th>
+            <td data-i18n="dc.a.notifications">Non-blocking notifications and the notification centre, then the super-confirmation gate for destructive actions — which this tree flags as the largest undesigned gap in the whole set, because it guards the actions where getting it wrong destroys someone's work.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/accessibility.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/accessibility.md</code></a></th>
+            <td data-i18n="dc.a.a11y">Keyboard reach, visible focus, roles and names, contrast, reduced motion, the no-clipping matrix, element sizing, and the rule that anything drawn to look operable must actually be operable.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/export-and-bulk-actions.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/export-and-bulk-actions.md</code></a></th>
+            <td data-i18n="dc.a.export">Export as a property of every surface rather than a feature of a few, the format matrix, the archive options, multi-select and bulk actions, and saying what will be lost before an export runs instead of truncating quietly.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/releases.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/releases.md</code></a></th>
+            <td data-i18n="dc.a.releases">The installer requirement, the line-count rules, the code names, the in-app changelog viewer, local version history, the startup surprise, and how the dim sum catalogue is assembled.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/appearance-customization.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/appearance-customization.md</code></a></th>
+            <td data-i18n="dc.a.appearance">An appearance editor on every rendered element rather than a global theme alone, an infinite colour picker with a colour-space translator, word-processor-depth typography, named presets that export and import, and per-element and global resets.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/command-palette.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/command-palette.md</code></a></th>
+            <td data-i18n="dc.a.palette">One shortcut over every command, setting and destination, with live inline controls in the rows rather than labels alone, and a teleport that opens the surface and reveals the exact control instead of dropping the user on the right tab.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/changelog-viewer.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/changelog-viewer.md</code></a></th>
+            <td data-i18n="dc.a.changelogviewer">Every released version readable in the application itself, with a commit link on every entry, an advanced date filter that also accepts typed dates, a search that composes with it rather than overriding it, and export that honours both.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/version-history.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/version-history.md</code></a></th>
+            <td data-i18n="dc.a.versionhistory">A local version history covering documents, records and settings — not documents alone — where restoring is recorded as a new revision so an undo can itself be undone, and history is append-only rather than rewritten.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/super-confirmation.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/super-confirmation.md</code></a></th>
+            <td data-i18n="dc.a.superconfirm">The gate every destructive action passes: two independently operated keys, then a full-range slider, an always-available emergency exit, and focus returned to the control that started it. The largest undesigned gap in the whole set.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/dim-sum-surprise.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/dim-sum-surprise.md</code></a></th>
+            <td data-i18n="dc.a.surprise">One launch in ten shows a dish, named in both languages, from a catalogue bundled in the repository — non-blocking, auto-dismissing, never gating startup, and with no off switch at all.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/local-assets.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/local-assets.md</code></a></th>
+            <td data-i18n="dc.a.localassets">No script, stylesheet, font or image fetched from a third-party origin and no tracking, on every surface individually — with the publish-time gate that reads the built output and refuses to ship anything that would reach off-origin.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/external-editor.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/external-editor.md</code></a></th>
+            <td data-i18n="dc.a.externaleditor">Detecting installed editors, persisting the choice, degrading with a clear message when none is found — and opening every export in one action, as a workspace root rather than a single file with no context around it.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/overlays.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/overlays.md</code></a></th>
+            <td data-i18n="dc.a.overlays">Every popover, menu and anchored panel paints its own background, border and elevation, stays bounded by the viewport, and scrolls inside that bound rather than silently hiding the content past a height cap.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/context-menu-shortcuts.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/context-menu-shortcuts.md</code></a></th>
+            <td data-i18n="dc.a.menushortcuts">Every context-menu item showing the shortcut that actually works in that context, derived from the same registry that binds it so the two cannot drift — and every context menu carrying its own search field.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/long-operations.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/long-operations.md</code></a></th>
+            <td data-i18n="dc.a.longops">A long operation reporting real progress in the surface that started it rather than a bare spinner, guarding against re-entry in the handler and not only by disabling a button, and offering its recovery route where the failure was discovered.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/standards/documentation-currency.md" rel="noopener noreferrer" target="_blank"><code class="mono">standards/documentation-currency.md</code></a></th>
+            <td data-i18n="dc.a.doccurrency">Documentation, changelog and roadmap brought current in the same task that changes the project — because stale documentation is worse than none, being confidently wrong with no way for the reader to tell.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/site/pages-deployment.md" rel="noopener noreferrer" target="_blank"><code class="mono">site/pages-deployment.md</code></a></th>
+            <td data-i18n="dc.a.pages">How this page is deployed, the publish-time gate that reads the built output for any reference to a third-party origin, the base-path trap, and the rule about what a download button may point at.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/api/README.md" rel="noopener noreferrer" target="_blank"><code class="mono">api/README.md</code></a></th>
+            <td data-i18n="dc.a.api">The daemon's HTTP surface grouped by route file, its base URL, its authentication and origin posture, and the security notes that apply before exposing it beyond the local machine.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="dc.articles.indexes">Each category also has its own index, listing every article in that category with a one-line description and stating what is implemented and what is not. Those are linked from the cards above.</p>
+  </section>
+
+  <section class="section" aria-labelledby="dc-convention-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-convention-title" data-i18n="dc.convention.heading">The convention every article follows</h2>
+      <p class="section__sub" data-i18n="dc.convention.sub">Stated here because a convention whose reason is unwritten gets tidied away by the next person.</p>
+    </div>
+    <div class="prose">
+      <ul>
+        <li data-i18n="dc.convention.one">One file per feature, where a feature is something a person can do or something an operator has to configure — never one file per source file and never one per package.</li>
+        <li data-i18n="dc.convention.five">Every article answers the same questions in the same order: what it does, how it is configured, how it breaks, what it exposes, and how somebody else can check that all of that is true. An article with no failure-modes section is an incomplete article rather than a simple feature.</li>
+        <li data-i18n="dc.convention.details">Long reference material is folded into collapsible blocks, so a page is navigated rather than scrolled. What a first-time reader needs is never collapsed.</li>
+        <li data-i18n="dc.convention.honest">Work that is not implemented is described as not implemented. An article states the requirement, says plainly how far along it is, and describes how conformance will be verified once it exists. It never uses the present tense for something that does not run.</li>
+        <li data-i18n="dc.convention.suggested">Every article ends by pointing at related ones — prerequisites, neighbours, and the natural next step — so a reader is never left at a dead end.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="dc-outside-title">
+    <div class="section__head">
+      <h2 class="section__title" id="dc-outside-title" data-i18n="dc.outside.heading">Documented things that live outside the documentation</h2>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden" data-i18n="dc.outside.caption">Files elsewhere in the repository and what each one is</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="dc.outside.col.path">Path</th>
+            <th scope="col" data-i18n="dc.outside.col.what">What it is</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/MODIFICATIONS.md" rel="noopener noreferrer" target="_blank"><code class="mono">MODIFICATIONS.md</code></a></th>
+            <td data-i18n="dc.o.modifications">The change notice the licence requires, and at the same time the machine-read allowlist of files permitted to differ from upstream. One file, two jobs, which is what keeps the notice and the code from drifting apart.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/CHANGELOG.md" rel="noopener noreferrer" target="_blank"><code class="mono">CHANGELOG.md</code></a></th>
+            <td data-i18n="dc.o.changelog">What has changed, each entry linked to the commit that made it, so a claim can be followed to the code rather than taken on trust.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/ROADMAP.md" rel="noopener noreferrer" target="_blank"><code class="mono">ROADMAP.md</code></a></th>
+            <td data-i18n="dc.o.roadmap">What is done, what is committed but unproven, and what has not been started, kept as three distinct states rather than two.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/scripts" rel="noopener noreferrer" target="_blank"><code class="mono">scripts/</code></a></th>
+            <td data-i18n="dc.o.scripts">The verifier, the upstream manifest it falls back to, the line counter continuous integration runs at a released commit, the code-name picker, and the importer that brings dim sum images in byte-for-byte.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/postman" rel="noopener noreferrer" target="_blank"><code class="mono">postman/</code></a></th>
+            <td data-i18n="dc.o.postman">A request collection for the daemon's HTTP surface, for exercising it without writing a client first.</td>
+          </tr>
+          <tr>
+            <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/site" rel="noopener noreferrer" target="_blank"><code class="mono">site/</code></a></th>
+            <td data-i18n="dc.o.site">The source of this page. Static files with no build step — what is committed is what is served.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 9 — PROVENANCE
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="provenance" id="tab-panel-provenance" hidden>
 
@@ -954,7 +1589,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
 </section>
 
 <!-- ==========================================================================
-     PANEL 8 — SETTINGS
+     PANEL 10 — SETTINGS
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="settings" id="tab-panel-settings" hidden>
 
@@ -1158,7 +1793,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
     <span class="app-statusbar__dot" aria-hidden="true"></span>
     <span data-i18n="chrome.status.offline" data-i18n-inline>No network requests</span>
     <span class="spacer"></span>
-    <span data-i18n="chrome.status.norelease" data-i18n-inline>No release yet</span>
+    <span data-i18n="chrome.status.release" data-i18n-inline>Installer published</span>
     <span id="status-lang"></span>
     <span id="status-appearance"></span>
   </footer>

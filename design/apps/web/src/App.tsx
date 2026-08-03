@@ -28,6 +28,8 @@ import type { CreateInput, ImportClaudeDesignOutcome } from './components/NewPro
 import { MemoryToast } from './components/MemoryToast';
 import { UpdateDialog } from './components/UpdateDialog';
 import { Toast } from './components/Toast';
+import { DimSumSurprise } from './components/DimSumSurprise';
+import { ChangelogDialog } from './components/changelog/ChangelogDialog';
 import { CenteredLoader } from './components/Loading';
 import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
 import { buildPetTaskCenter } from './components/pet/taskCenter';
@@ -53,6 +55,8 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
+import { CommandPalette } from './components/command-palette/CommandPalette';
+import { requestSettingsReveal } from './components/command-palette/reveal';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -460,6 +464,7 @@ function AppInner() {
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -2330,6 +2335,34 @@ function AppInner() {
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [openSettings]);
 
+  // Cmd/Ctrl+Shift+P opens the command palette. Deliberately one modifier away
+  // from the quick switcher's Cmd/Ctrl+P: the two are different surfaces
+  // answering different questions, and the file palette keeps the shorter
+  // shortcut because it is the one people hit dozens of times an hour. Capture
+  // phase for the same reason the quick switcher uses it — the browser's own
+  // print dialog is bound next door.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const primary = isMacPlatform() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+      if (!primary || !e.shiftKey || e.altKey) return;
+      if (e.key.toLowerCase() !== 'p') return;
+      if (e.isComposing) return;
+      e.preventDefault();
+      setCommandPaletteOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, []);
+
+  // Disarm any leftover reveal request when the palette OPENS, never when it
+  // closes. A stale anchor would flash a control nobody asked about on the next
+  // unrelated visit to Settings — but clearing on close would race the request
+  // the user just made, since choosing a settings row arms the anchor and
+  // closes the palette in the same commit.
+  useEffect(() => {
+    if (commandPaletteOpen) requestSettingsReveal(null);
+  }, [commandPaletteOpen]);
+
   // Explicit enabled toggle — true = wake, false = tuck. Persists to
   // localStorage so the overlay state survives across reloads. We keep
   // `adopted` untouched so the entry-view CTA does not regress to
@@ -2662,6 +2695,11 @@ function AppInner() {
       )}
       <TooltipLayer />
       <UpdateDialog />
+      {/* Mounted once for the whole app. It renders nothing until a surface
+          that offers the changelog — Settings → About, and any other version
+          surface later — dispatches CHANGELOG_OPEN_EVENT, so no panel has to
+          own its own copy of the viewer. */}
+      <ChangelogDialog />
       <AmrArtifactUpgradeGate
         homeVisible={route.kind === 'home' && route.view === 'home'}
         activeProjectId={route.kind === 'project' ? route.projectId : null}
@@ -2683,6 +2721,18 @@ function AppInner() {
             : setAmrArtifactUpgradeHomeOffer
         }
       />
+      <AnimatePresence>
+        {commandPaletteOpen ? (
+          <CommandPalette
+            config={config}
+            // The same autosave path Settings writes through, so a switch
+            // flipped in the palette is the setting changing, not a copy of it.
+            onConfigChange={(next) => { void handleConfigPersist(next); }}
+            onOpenSettings={openSettings}
+            onClose={() => setCommandPaletteOpen(false)}
+          />
+        ) : null}
+      </AnimatePresence>
       <AnimatePresence>
       {settingsOpen ? (
         <SettingsDialog
@@ -2733,6 +2783,25 @@ function AppInner() {
       ) : null}
       </AnimatePresence>
       <MemoryToast onOpenMemory={() => openSettings('memory')} />
+      {/* One launch in ten shows a dish. It is deliberately the last thing
+          allowed to speak: the daemon config has to have hydrated (so a first
+          run is knowable rather than assumed), onboarding and the privacy
+          disclosure have to be done, the first-run loader has to be gone, and
+          no app-level error toast may be on screen. The component itself adds
+          the update check and the settle delay; it never blocks, never takes
+          focus, and there is no setting that turns it off. */}
+      <DimSumSurprise
+        eligible={
+          daemonConfigLoaded
+          && !pendingFirstRunOnboardingRoute
+          && config.onboardingCompleted === true
+          && !showPrivacyConsent
+          && !settingsWelcome
+          && workingDirError == null
+          && projectOpenError == null
+          && legacyByokMigrationErrorView == null
+        }
+      />
       {workingDirError ? (
         <Toast
           message={workingDirError}

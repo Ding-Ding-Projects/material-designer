@@ -272,7 +272,12 @@ export function applicableForPlatform(entry: CatalogueEntry, platform: Platform)
   return true;
 }
 
-function projectHostOpenDir(
+// Exported so the editor hand-off (routes/editor.ts) resolves a project's
+// on-disk root through the exact same rule as "open in <local app>" — imported
+// folders keep their external baseDir, managed projects derive from
+// PROJECTS_DIR. Two surfaces disagreeing about where a project lives is a bug
+// that only shows up on someone else's machine.
+export function projectHostOpenDir(
   projectsRoot: string,
   project: { id: string; metadata?: { baseDir?: unknown } | null },
   resolveProjectDir: (

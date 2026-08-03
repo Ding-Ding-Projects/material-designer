@@ -228,6 +228,41 @@
   z-index: 2;
   background: color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle));
 }
+/* User-pinned tabs. They sit inside the sticky pinned region declared in
+   `components/WorkspaceTabsBar.module.css`, so they stay on screen once the
+   rest of the strip scrolls — the guarantee the permanent Home tab always had,
+   extended to the tabs the user asked to keep. They render icon-only so a row
+   of them costs little width, and drop the close column so a pinned tab cannot
+   be closed by a mis-aimed click; unpinning is one right-click away.
+
+   The label is CLIPPED, not removed. The main button carries the full title as
+   its `aria-label` and its tooltip, so the compact form loses nothing to a
+   screen reader, the keyboard or a pointer — only to the pixels. */
+.workspace-tab.is-user-pinned {
+  width: 34px;
+  flex: 0 0 34px;
+  min-width: 34px;
+  max-width: 34px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.workspace-tab.is-user-pinned .workspace-tab__main {
+  justify-content: center;
+  padding: 0;
+}
+.workspace-tab.is-user-pinned .workspace-tab__icon {
+  opacity: 1;
+}
+.workspace-tab.is-user-pinned .workspace-tab__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+  border: 0;
+}
 .workspace-tab.is-dragging {
   opacity: 0.88;
   transform: translateY(-2px) scale(1.015);
@@ -429,6 +464,24 @@
   grid-template-columns: minmax(0, 1fr) 26px;
   align-items: center;
   contain: layout style;
+}
+/* The popover gained a bulk-close panel below the list, so the list can no
+   longer assume it owns the whole 620px. It shrinks to whatever is left and
+   keeps its own scrollbar, rather than pushing the panel past the popover's
+   bounded height — where it would be clipped away with no scrollbar to say
+   anything was missing. The 500px above stays as the upper bound. */
+.workspace-tabs-popover .workspace-tabs-list {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Every non-permanent row in the searchable tab list now carries a pin toggle
+   as well as a close button, so it has three cells rather than two. Declared as
+   its own rule, immediately after the original, so the two-column intent above
+   stays readable and the reason for the third column is recorded next to it.
+   The permanent entry-tab row renders neither button and simply occupies the
+   first cell. */
+.workspace-tabs-list__item {
+  grid-template-columns: minmax(0, 1fr) 22px 26px;
 }
 .workspace-tabs-list__item:hover,
 .workspace-tabs-list__item.is-active {

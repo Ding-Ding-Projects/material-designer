@@ -615,6 +615,7 @@ import { registerDaemonRoutes } from './routes/daemon.js';
 import { registerGenuiRoutes } from './routes/genui.js';
 import { registerDesignSystemRoutes } from './routes/design-systems.js';
 import { registerHostToolsRoutes } from './routes/host-tools.js';
+import { registerEditorRoutes } from './routes/editor.js';
 import { registerPluginAssetRoutes } from './routes/plugins/assets.js';
 import { registerPluginMarketplaceRoutes } from './routes/plugins/marketplaces.js';
 import { registerPluginEventRoutes, registerPluginRoutes, registerProjectPluginRoutes } from './routes/plugins/index.js';
@@ -627,6 +628,7 @@ import { registerMediaRoutes } from './routes/media.js';
 import { registerProjectRoutes, registerProjectArtifactRoutes, registerProjectFileRoutes, registerProjectUploadRoutes } from './routes/project/index.js';
 import { registerVelaRoutes } from './routes/vela.js';
 import { registerFinalizeRoutes, registerImportRoutes, registerProjectExportRoutes } from './import-export-routes.js';
+import { registerDataExportRoutes } from './routes/data-export.js';
 import { registerHandoffRoutes } from './routes/handoff.js';
 import { EmptyTranscriptError, synthesizeHandoffPrompt } from './design/index.js';
 import { TranscriptExportLockedError } from './transcript-export.js';
@@ -638,6 +640,10 @@ import { createTerminalService } from './terminals.js';
 import { registerSocialShareRoutes } from './routes/social-share.js';
 import { registerOpenDesignPublicMetadataRoutes } from './routes/open-design-public-metadata.js';
 import { registerWhatsNewRoutes } from './routes/whats-new.js';
+import { registerHistoryRoutes } from './routes/history.js';
+import { createHistoryService } from './history/service.js';
+import { defaultHistoryDomains } from './history/domains.js';
+import { createSqliteTableDomain } from './history/sqlite-domain.js';
 import { registerMemoryRoutes } from './routes/memory.js';
 import { registerTelemetryRoutes } from './routes/telemetry.js';
 import {
@@ -936,6 +942,10 @@ const designSystemGenerationJobs = createDesignSystemGenerationJobStore({
   root: USER_DESIGN_SYSTEMS_DIR,
 });
 let routineService = null;
+// Local, Git-backed version history for every record and setting the daemon
+// owns. Created once the db is open (it snapshots SQLite-backed record tables
+// too) and stopped with the rest of the background work on shutdown.
+let historyService = null;
 
 // In-memory OAuth state cache. Lives for the daemon process's lifetime.
 // Maps the OAuth `state` parameter we generated in /api/mcp/oauth/start
@@ -2379,6 +2389,52 @@ export async function startServer({
     },
     getLatestRun: (routineId) => getLatestRoutineRun(db, routineId),
   });
+
+  // Local, Git-backed version history. Every daemon-owned record and setting
+  // snapshots into an append-only repository under the resolved data root, so
+  // an accidental deletion — of a connector account as much as of a document —
+  // can be undone, and that undo undone in turn.
+  //
+  // Only tables with a stable TEXT primary key and no inbound foreign keys are
+  // registered as SQLite domains: a restored row must keep the identity it was
+  // captured with. Documents are absent on purpose — project files already
+  // carry their own per-file history in project-file-versions.ts.
+  historyService = createHistoryService({
+    dataRoot: RUNTIME_DATA_DIR,
+    domains: [
+      ...defaultHistoryDomains(),
+      createSqliteTableDomain({
+        // Distinct from the file-backed `automations` domain above, which
+        // holds the automation library (templates, proposals, source packets).
+        // This one is the scheduled routines themselves.
+        id: 'routines',
+        label: 'Scheduled automations',
+        noun: 'automation',
+        nounPlural: 'automations',
+        table: 'routines',
+        labelColumn: 'name',
+        getDb: () => db,
+        // Timers are rebuilt from the restored rows; without this a restored
+        // schedule would sit in the database and never fire.
+        afterRestore: () => { routineService?.rescheduleAll(); },
+      }),
+      createSqliteTableDomain({
+        id: 'templates',
+        label: 'Project templates',
+        noun: 'template',
+        nounPlural: 'templates',
+        table: 'templates',
+        labelColumn: 'name',
+        getDb: () => db,
+      }),
+    ],
+    logger: (message, error) => {
+      // A history write must never fail the operation the user asked for.
+      console.warn(`[history] ${message}`, error ?? '');
+    },
+  });
+  historyService.start();
+
   let daemonUrl = `http://127.0.0.1:${port}`;
 
   // Boot reconcile: any critique_runs row left in 'running' state by a prior
@@ -2769,6 +2825,15 @@ export async function startServer({
     whatsNew: createWhatsNewService(),
   });
 
+  // /api/history — list, show, restore, prune. The routes gate themselves
+  // behind requireLocalDaemonRequest: the snapshot repository mirrors
+  // credential stores, so it sits in the same threat tier as the diagnostics
+  // export and must stay unreachable on a non-loopback bind.
+  registerHistoryRoutes(app, {
+    history: historyService,
+    http: { requireLocalDaemonRequest },
+  });
+
   registerPluginEventRoutes(app, {
     http: { requireLocalDaemonRequest },
   });
@@ -3012,6 +3077,18 @@ export async function startServer({
     projectStore: projectStoreDeps,
     projectFiles: projectFileDeps,
   });
+  // "Open in external editor" — detection, the persisted choice, and the
+  // folder-as-workspace-root launch. Sibling of host-tools rather than part of
+  // it: this one carries a stored preference and takes arbitrary absolute
+  // paths so an export is openable in one action.
+  registerEditorRoutes(app, {
+    db,
+    http: httpDeps,
+    paths: pathDeps,
+    projectStore: projectStoreDeps,
+    projectFiles: projectFileDeps,
+    appConfig: appConfigDeps,
+  });
   // OD Library — global asset registry (clipper ingest, grid, pairing, apply).
   registerLibraryRoutes(app, {
     db,
@@ -3066,6 +3143,9 @@ export async function startServer({
   registerProjectRoutes(app, {
     db,
     design,
+    // Project templates are a SQLite-backed history domain, so the write paths
+    // have to say what changed; nothing watches that table on disk.
+    history: historyService,
     http: httpDeps,
     paths: pathDeps,
     projectStore: projectStoreDeps,
@@ -3247,6 +3327,18 @@ export async function startServer({
     exports: projectExportDeps,
     projectFiles: projectFileDeps,
     validation: validationDeps,
+  });
+  // `/api/export/*` — data export (records, lists, settings) as distinct from
+  // the artifact rasterizer above. Same DTOs as the web Export panel and
+  // `od export data …`.
+  registerDataExportRoutes(app, {
+    db,
+    http: httpDeps,
+    ids: idDeps,
+    paths: pathDeps,
+    projectStore: projectStoreDeps,
+    projectFiles: projectFileDeps,
+    appConfig: appConfigDeps,
   });
   registerProjectFileRoutes(app, {
     db,
@@ -9023,6 +9115,7 @@ export async function startServer({
   assertServerContextSatisfiesRoutes({
     db,
     design,
+    history: historyService,
     http: httpDeps,
     paths: pathDeps,
     ids: idDeps,
@@ -9080,6 +9173,9 @@ export async function startServer({
 
   registerRoutineRoutes(app, {
     db,
+    // Scheduled automations are a SQLite-backed history domain, so the write
+    // paths have to say what changed; nothing watches that table on disk.
+    history: historyService,
     paths: { RUNTIME_DATA_DIR },
     routines: { routineService },
   });
@@ -9121,6 +9217,9 @@ export async function startServer({
       composioConnectorProvider.stopCatalogRefreshLoop();
       orbitService.stop();
       routineService?.stop();
+      // Closes the record watchers and lets the pending snapshot finish; a
+      // rejection here must not derail shutdown.
+      void historyService?.stop().catch(() => undefined);
     };
     const shutdownDaemonRuns = async () => {
       if (daemonShutdownStarted) return;

@@ -12,6 +12,8 @@ import {
 } from '../providers/registry';
 import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { Icon } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import { orderDesignSystemGroups } from './design-system-group-order';
 import { AnimatePresence } from 'motion/react';
 
@@ -51,6 +53,9 @@ export function DesignSystemsSection({
   const cardRefs = useRef(new Map<string, HTMLDivElement>());
   const [designSystems, setDesignSystems] = useState<DesignSystemSummary[]>([]);
   const [search, setSearch] = useState('');
+  // This settings field's own regex controller — independent of the Skills
+  // section's field sitting one nav entry away.
+  const searchRegex = useRegexSearch(search, setSearch);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [previewSystem, setPreviewSystem] = useState<DesignSystemSummary | null>(null);
   const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
@@ -91,20 +96,14 @@ export function DesignSystemsSection({
     return ['All', ...Array.from(cats).sort()];
   }, [designSystems]);
 
+  const matchesSearch = searchRegex.matches;
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
     return designSystems.filter((d) => {
       if (showOnlyHidden && !disabledDS.has(d.id)) return false;
       if (categoryFilter !== 'All' && d.category !== categoryFilter) return false;
-      if (
-        q &&
-        !d.title.toLowerCase().includes(q) &&
-        !d.summary.toLowerCase().includes(q)
-      )
-        return false;
-      return true;
+      return matchesSearch(`${d.title} ${d.summary}`);
     });
-  }, [designSystems, categoryFilter, disabledDS, search, showOnlyHidden]);
+  }, [designSystems, categoryFilter, disabledDS, matchesSearch, showOnlyHidden]);
 
   const grouped = useMemo(() => {
     const groups = new Map<string, DesignSystemSummary[]>();
@@ -471,12 +470,13 @@ export function DesignSystemsSection({
       </div>
 
       <div className="library-toolbar library-toolbar-row">
-        <input
-          type="search"
+        <RegexSearchField
+          search={searchRegex}
+          fieldLabel={t('settings.designSystems')}
           className="library-search"
           placeholder={t('settings.librarySearch')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          ariaLabel={t('settings.librarySearch')}
+          testId="design-systems-settings-search"
         />
         <label className="library-filter-select">
           <select

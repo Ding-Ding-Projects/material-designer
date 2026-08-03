@@ -1,7 +1,10 @@
 # Accessibility and sizing
 
 **Status: not started.** The design mockup states the intent and applies parts of
-it. Nothing has been implemented or measured, because nothing has been built.
+it. Nothing here has been implemented or measured. The application now builds,
+installs and launches, so it *could* be audited — but nobody has sat in front of a
+running interface and checked a single requirement below, so every statement here
+is read from source and the mockup rather than observed.
 
 ## The requirement
 

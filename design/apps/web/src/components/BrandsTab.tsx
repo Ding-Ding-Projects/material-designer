@@ -13,6 +13,8 @@ import type { BrandReference } from '../runtime/brand-references';
 import { BrandLogo, BrandPreviewCard, hostnameOf } from './BrandPreviewCard';
 import { BrandReferencePicker } from './BrandReferencePicker';
 import { NewBrandModal } from './NewBrandModal';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import styles from './BrandsTab.module.css';
 
 export interface BrandsTabProps {
@@ -44,6 +46,9 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject, onDesignSystemsR
   const isBrandsView = route.kind === 'home' && route.view === 'brands';
   const [brands, setBrands] = useState<BrandSummary[] | null>(null);
   const [query, setQuery] = useState('');
+  // This field's own regex controller; the brands list is the only thing it
+  // filters, and no other search bar can see its state.
+  const searchRegex = useRegexSearch(query, setQuery);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null);
   const { state: extractState, run: runExtract } = useBrandExtract();
@@ -92,16 +97,15 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject, onDesignSystemsR
     return () => window.removeEventListener(NEW_BRAND_KIT_INTENT_EVENT, openModal);
   }, []);
 
+  const matchesSearch = searchRegex.matches;
   const filtered = useMemo(() => {
     const list = brands ?? [];
-    const q = query.trim().toLowerCase();
-    if (!q) return list;
     return list.filter((b) => {
       const name = b.brand?.name ?? '';
       const host = hostnameOf(b.meta.sourceUrl);
-      return name.toLowerCase().includes(q) || host.toLowerCase().includes(q);
+      return matchesSearch(`${name} ${host}`);
     });
-  }, [brands, query]);
+  }, [brands, matchesSearch]);
 
   // Resolve which brand the preview shows. A routed brand id (deep-link / rail
   // selection) wins when it exists; otherwise keep the current pick valid as
@@ -172,13 +176,13 @@ export function BrandsTab({ onApplyDesignSystem, onOpenProject, onDesignSystemsR
 
         <div className={styles.searchWrap}>
           <SearchGlyph />
-          <input
-            type="search"
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('brand.libraryTitle')}
             className={styles.search}
             placeholder={t('brand.searchPlaceholder')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            data-testid="brands-search"
+            ariaLabel={t('brand.searchPlaceholder')}
+            testId="brands-search"
           />
         </div>
 

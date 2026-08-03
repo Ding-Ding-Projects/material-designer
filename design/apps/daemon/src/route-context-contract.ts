@@ -2,7 +2,9 @@ import type { ServerContext } from './server-context.js';
 import type { RegisterActiveContextRoutesDeps } from './routes/active-context.js';
 import type { RegisterAutomationRoutesDeps } from './routes/automation.js';
 import type { RegisterChatRoutesDeps } from './routes/chat.js';
+import type { RegisterDataExportRoutesDeps } from './routes/data-export.js';
 import type { RegisterDeployRoutesDeps, RegisterDeploymentCheckRoutesDeps } from './routes/deploy.js';
+import type { RegisterEditorRoutesDeps } from './routes/editor.js';
 import type { RegisterFinalizeRoutesDeps, RegisterImportRoutesDeps, RegisterProjectExportRoutesDeps } from './import-export-routes.js';
 import type { RegisterGenuiRoutesDeps } from './routes/genui.js';
 import type { RegisterHandoffRoutesDeps } from './routes/handoff.js';
@@ -20,12 +22,24 @@ import type { RegisterStaticResourceRoutesDeps } from './routes/static-resource.
 import type { RegisterVelaRoutesDeps } from './routes/vela.js';
 import type { RegisterXaiRoutesDeps } from './routes/xai.js';
 
+// Every route registrar whose deps are a `RouteDeps<…>` slice of ServerContext
+// belongs here. This file is the only compile-time proof that ServerContext
+// actually satisfies them: `server.ts` carries `// @ts-nocheck`, so none of its
+// `register*Routes(app, {…})` call sites typecheck. A registrar missing from
+// this list breaks silently at runtime instead of failing `pnpm typecheck`.
+//
+// `RegisterHistoryRoutesDeps` is deliberately NOT here and must not be added:
+// it is a hand-rolled interface rather than a Pick of ServerContext, and it
+// wants `history: HistoryService` where ServerContext carries the narrower
+// `HistoryRecorder | null`. Adding it would make the assertion below fail.
 type AllRegisteredRouteDeps =
   & RegisterActiveContextRoutesDeps
   & RegisterAutomationRoutesDeps
   & RegisterChatRoutesDeps
+  & RegisterDataExportRoutesDeps
   & RegisterDeployRoutesDeps
   & RegisterDeploymentCheckRoutesDeps
+  & RegisterEditorRoutesDeps
   & RegisterFinalizeRoutesDeps
   & RegisterGenuiRoutesDeps
   & RegisterHandoffRoutesDeps

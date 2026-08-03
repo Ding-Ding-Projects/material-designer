@@ -202,10 +202,12 @@ Three consequences follow.
   copy verified against a pinned commit is only as trustworthy as the decision to
   trust that commit; re-pointing the pin is a supply-chain change and should be
   reviewed as one.
-- **Nothing has been installed.** No dependency in the vendored lockfiles has
-  been resolved or executed in this repository. See [../build/ci.md](../build/ci.md)
-  for why installation is deliberately confined to ephemeral continuous-integration
-  runners.
+- **Nothing from the vendored tree is installed or executed outside ephemeral
+  continuous-integration runners.** The release job does resolve the vendored
+  lockfile and run its allowlisted install scripts, compiling the native modules
+  from source, on a runner created for that build and destroyed afterwards. No
+  dependency in those lockfiles is resolved or executed anywhere that persists.
+  See [../build/ci.md](../build/ci.md) for why the confinement is deliberate.
 
 ## Verification
 

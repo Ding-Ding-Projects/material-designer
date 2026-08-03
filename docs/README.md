@@ -6,16 +6,25 @@ work of this repository is the branding, the MD3 redesign, and the governance
 that keeps the copy provably faithful to its source.
 
 > [!IMPORTANT]
-> **The application has not been installed, built, run, or tested.** The script
-> that has actually been executed is `scripts/verify-port.sh` — and nothing else.
-> Its output moves as rebranding work lands, so it is quoted **once**, annotated
-> and labelled with the commit it was taken at, in
+> **What has actually been observed, and what has not.** Continuous integration
+> has verified the port on a clean checkout, installed the workspace with native
+> modules compiled from source, typechecked it, run its unit suites, built Windows
+> installers, published releases, and — through the packaged smoke test —
+> installed a built application, launched it, had the running process answer its
+> own health endpoint, screenshotted it and uninstalled it with zero residue. The
+> documentation site is published.
+>
+> **The application is not finished.** It does not yet have the Cantonese locale,
+> the tone sliders, an in-app regex builder, the startup surprise or the changelog
+> viewer; the documentation site demonstrates those, the application does not have
+> them. The Material Design 3 redesign is in progress: the token layer and the
+> Windows title bar have landed, no component has been rewritten.
+>
+> The verifier's own output moves as rebranding work lands, so it is quoted
+> **once**, annotated and labelled with the commit it was taken at, in
 > [porting/verification.md](porting/verification.md#reading-a-run); no other page
-> pastes a copy. Three workflows exist at `.github/workflows/` — `Verify`,
-> `Release` and `Pages` — but **no run outcome is recorded anywhere in this
-> tree**, and no installer, release or published site is claimed. Every page here
-> says plainly which statements are verified, which describe a committed
-> definition, and which describe intent.
+> pastes a copy. Every page here says plainly which statements are observed, which
+> describe a committed definition, and which describe intent.
 
 ## Start here
 
@@ -23,8 +32,11 @@ that keeps the copy provably faithful to its source.
 | --- | --- |
 | Understand what the product actually is | [architecture/overview.md](architecture/overview.md) |
 | Know how the upstream copy got here and why you can trust it | [porting/](porting/) |
+| Add code that writes anything to disk | [architecture/data-directory.md](architecture/data-directory.md) — **before** writing it |
 | Build an installer | [build/ci.md](build/ci.md) |
 | Build locally instead | [build/from-source.md](build/from-source.md) |
+| Understand how a release is produced and what proves it works | [release/](release/) |
+| Diagnose a failure somebody here has already hit | [troubleshooting/](troubleshooting/) |
 | Know what this project holds itself to | [standards/](standards/) |
 | Publish or change the documentation site | [site/](site/) |
 | Call the local daemon over HTTP | [api/](api/) |
@@ -34,8 +46,10 @@ that keeps the copy provably faithful to its source.
 | Category | What it covers |
 | --- | --- |
 | [porting/](porting/) | How `design/` was imported byte-for-byte, and the verifier plus licence-notice contract that proves it stayed that way. |
-| [architecture/](architecture/) | The daemon / web / desktop / packaged / landing-page split, how the pieces connect, which ports they use, and the role of the command-line entry point. |
-| [build/](build/) | Why builds run in continuous integration, what the release workflow is expected to do, and the exact commands for building locally. |
+| [architecture/](architecture/) | The daemon / web / desktop / packaged / landing-page split, plus a page for each runnable piece and one for the data-directory contract — the single most important invariant in the codebase. |
+| [build/](build/) | Why builds run in continuous integration, what each workflow does, and the exact commands for building locally. |
+| [release/](release/) | How a release is produced end to end, what the packaged smoke test actually proves, how the line count is produced and what its scopes mean, how a dim sum code name is chosen and spent, and what each published asset is. |
+| [troubleshooting/](troubleshooting/) | Failures this project actually hit — line-ending translation, tests on a platform that cannot satisfy them, an unbuilt import, a timeout written for a fast disk, a build-tool property that moved between major versions — each with its symptom, cause and fix. |
 | [standards/](standards/) | The requirements this product is being brought up to — language modes, Material Design 3, the regex builder, tabs, notifications, export and bulk actions, accessibility, releases — each with an honest implementation status. |
 | [site/](site/) | The documentation and landing site: what `site/` is built from, the `Pages` workflow that deploys it, its publish-time bundled-assets gate, and the base-path trap that makes a green deployment 404. |
 | [api/](api/) | The local daemon's HTTP surface, grouped by route file, and the state of the request-collection artifact. |
@@ -70,6 +84,13 @@ questions a reader arrives with are always the same:
    Exact commands where they exist. Where a claim is *not* currently verifiable,
    the file says which claim and why.
 
+**One category is deliberately shaped differently.** Articles under
+[troubleshooting/](troubleshooting/) use **Symptom / Cause / Fix / How to avoid
+reintroducing it / Verification / Security considerations** instead, because the
+whole article *is* a failure mode — a separate failure-modes section inside one
+would restate its own subject. Those pages are conformant; every other category
+follows the five headings above.
+
 **Long reference material goes inside `<details>` blocks.** GitHub renders those
 natively, so a page is navigated rather than scrolled. The `<summary>` line
 describes what is inside well enough to find with the browser's own text search.
@@ -88,11 +109,13 @@ never uses the present tense for something that does not run.
 | `MODIFICATIONS.md` | The Apache-2.0 §4(b) change notice **and** the machine-read allowlist of files permitted to differ from upstream. | [porting/verification.md](porting/verification.md) |
 | `scripts/verify-port.sh` | The verifier that enforces the above. Pure `git` and POSIX shell, so it runs without a toolchain. | [porting/verification.md](porting/verification.md) |
 | `scripts/upstream-manifest.tsv` | The committed table of upstream blob ids the verifier falls back to when the submodule is not checked out, so continuous integration need not clone it. | [porting/verification.md](porting/verification.md) |
-| `scripts/line-count.mjs` | The committed line counter continuous integration runs at a released commit, broken down by scope and attributed per surviving line. | [standards/releases.md](standards/releases.md) |
-| `scripts/release-codename.sh` | Picks a release's dim sum code name, reading the spent dishes out of prior release bodies and skipping any dish whose image is absent. | [standards/releases.md](standards/releases.md) |
-| `scripts/import-dim-sum.sh` | Copies dishes into `assets/dim-sum/` byte-for-byte from a verified catalogue and writes the index. Images are never generated, downloaded or re-encoded. | [standards/releases.md](standards/releases.md) |
-| `assets/dim-sum/` | The bundled catalogue — `index.json` plus its images — used for release code names and the startup surprise. Local assets only. | [standards/releases.md](standards/releases.md) |
+| `scripts/line-count.mjs` | The committed line counter continuous integration runs at a released commit, broken down by scope and attributed per surviving line. | [release/line-count.md](release/line-count.md) |
+| `scripts/release-codename.sh` | Picks a release's dim sum code name, reading the spent dishes out of prior release bodies and skipping any dish whose image is absent. | [release/code-names.md](release/code-names.md) |
+| `scripts/import-dim-sum.sh` | Copies dishes into `assets/dim-sum/` byte-for-byte from a verified catalogue and writes the index. Images are never generated, downloaded or re-encoded. | [release/code-names.md](release/code-names.md), [standards/releases.md](standards/releases.md) |
+| `assets/dim-sum/` | The bundled catalogue — `index.json` plus its images — used for release code names and the startup surprise. Local assets only. | [release/code-names.md](release/code-names.md), [standards/releases.md](standards/releases.md) |
+| `design/e2e/specs/win.spec.ts` | The packaged smoke test: installs the built installer, launches it, health-checks the running process, screenshots it, uninstalls it and asserts zero residue. | [release/packaged-smoke-test.md](release/packaged-smoke-test.md) |
 | `.github/workflows/` | This project's three workflows: `verify.yml`, `release.yml` and `pages.yml`. The 48 under `design/.github/workflows/` are upstream's and inert. | [build/ci.md](build/ci.md), [site/pages-deployment.md](site/pages-deployment.md) |
+| `postman/` | The daemon's HTTP API as a Postman collection — 368 requests in 28 folders — plus its own README covering import, folders, destructive and streaming requests. Committed and **unexercised**: no request in it has been sent. | [api/](api/) |
 | `site/` | The static source of the documentation and landing site. No build step. | [site/](site/) |
 | `design/LICENSE` | Apache License 2.0, the licence of the vendored work. | [porting/](porting/) |
 | `mockups/open-design-m3/` | The Material Design 3 redesign mockup that specifies the intended interface. Not wired into any build. | [standards/material-design-3.md](standards/material-design-3.md) |

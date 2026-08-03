@@ -29,6 +29,588 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — A command palette, and tabs you can pin and close in bulk
+
+**Reason:** two gaps that look unrelated and are the same gap. The app had a
+quick switcher for files and a tab strip that could reorder and overflow, and
+in both cases the thing a user actually wanted — "take me to that setting",
+"keep these four tabs and close the other thirty" — was not reachable from
+either. This adds the surface that answers the first and the two tab
+operations that answer the second.
+
+#### The palette is a second surface, not a bigger quick switcher
+
+`components/QuickSwitcher.tsx` is untouched. It keeps Cmd/Ctrl+P, its own
+overlay, its own recents and its own scoring, because it is the one people hit
+dozens of times an hour and it is already good at its job. The palette takes
+**Cmd/Ctrl+Shift+P** and exposes the quick switcher as one *scope* inside it,
+by borrowing rather than copying: `command-palette/quickSwitcherScope.ts`
+imports `scoreMatch` and `scoreWorkspaceContextMatch` from the quick switcher
+itself, so the two surfaces cannot rank the same query differently.
+
+The file list reaches the palette through a small publish store rather than a
+prop. `FileWorkspace` is the only component that knows the project's files, the
+palette mounts at the app shell above every route, and threading the list up
+would have meant a prop drilled through every view that does not care. The
+workspace publishes while mounted and withdraws on unmount; the palette says so
+honestly when nothing is published instead of showing an empty list. The two
+openers travel in a ref rather than the dependency array — publishing every
+render would churn every subscriber for no new data, and capturing them once
+would open files against a stale snapshot of the workspace.
+
+#### The settings index, and the drift it is designed to fail on
+
+`SettingsDialog.tsx` renders nineteen sections as nineteen bespoke JSX trees.
+There is no declarative table to walk, so `command-palette/settingsIndex.ts` is
+that table, written by hand — and the risk a hand-written index carries is that
+a section added next month is never indexed, leaving a palette that swears a
+setting does not exist. Two guards, at two different times:
+
+- **Compile time** — `SETTINGS_SECTION_TOKENS` is a `Record<SettingsSection, true>`.
+  A new token that is not listed fails typecheck; a listed token that no longer
+  exists fails too.
+- **Test time** — `tests/components/CommandPalette.settings-index.test.ts`
+  asserts every token in that record has at least one index entry. The record
+  can be kept exhaustive by rote; that test is what makes someone actually
+  write the entry.
+
+The same suite also pins every `titleKey`/`hintKey` to a key that exists in the
+English dictionary, so an index entry can never render a key name back at the
+user.
+
+#### A row that is a setting renders the setting
+
+Ten index entries carry a `control`, and those rows render the real control
+inline — a `<select>` for the theme, the accent and the locale, a `role="switch"`
+for the notification, pet and telemetry booleans, a range input for each
+funny-level slider. They are not copies: config-backed controls write through
+the same `handleConfigPersist` autosave path the Settings dialog uses, and the
+i18n-backed ones call the provider's own setters. The `SettingsControlId` union
+is switched exhaustively with a `never` fallthrough, so adding an id to the
+index without teaching the component about it is a typecheck error rather than
+a row that quietly renders nothing.
+
+#### Selecting a destination finishes the journey
+
+`command-palette/reveal.ts` is the part that makes "teleport" mean something.
+The palette records an anchor, the dialog opens, and the reveal scrolls the
+exact control into view, moves focus to it and flashes it for 1.6s
+(`.od-reveal-flash`, declared in `styles/primitives.css` because the targets are
+arbitrary controls all over the app that the applying module does not own; an
+`outline` rather than a border or shadow, so flashing a control cannot nudge the
+form around it by a pixel).
+
+Three details are load-bearing:
+
+1. **The request is made before the surface opens**, because the control does
+   not exist yet — the dialog mounts a frame later and the section's content
+   later still. So `revealAnchor` polls for the node with a 2s deadline instead
+   of assuming one frame is enough, and gives up quietly rather than throwing.
+2. **Two consumers, one request.** A `[activeSection]` effect covers "the dialog
+   was closed and is opening now"; a `SETTINGS_REVEAL_EVENT` listener covers
+   "the dialog is already open on another section", which would otherwise do
+   nothing visible — the worst failure mode, because it looks broken exactly
+   when the user is already on the right screen. `takePendingSettingsReveal`
+   consumes once, so whichever runs first wins and the other finds nothing.
+3. **The reveal is armed on a `requestAnimationFrame`**, after the section's own
+   `scrollTop = 0` reset, or the reset would scroll the revealed control away
+   the instant it arrived.
+
+Anchors are `data-od-setting` attributes. Section-level entries anchor on
+`section:<token>`, stamped **once** on `.settings-content` from the live section
+rather than nineteen times, so those cannot drift one attribute at a time;
+individual controls carry their own and take precedence. Two of them live
+outside `SettingsDialog.tsx` because the controls do (`pet/PetSettings.tsx`,
+and `PrivacySection.tsx` where `ToggleRow` gained an optional `anchor` prop
+rather than have the anchor land on a container holding two toggles).
+
+App clears any leftover reveal request when the palette **opens**, never when it
+closes: choosing a settings row arms the anchor and closes the palette in the
+same commit, so clearing on close would race the request the user just made.
+
+#### Size, focus and the keyboard
+
+The palette opens as a **bounded card** and offers a **full-window** mode, and
+the choice is persisted (`open-design:command-palette:display-mode`). The card
+is the default because a search box that swallows the whole window is startling
+on a large display and worse when opened by accident.
+
+Focus returns where it came from on Escape — and the previously-focused element
+is captured in the `useRef` **initializer**, during the first render, not in an
+effect: the input's ref callback focuses it and ref callbacks run before passive
+effects, so an effect would faithfully record the palette's own input as "where
+focus came from". An action that navigates somewhere deliberately does *not*
+restore focus, because the reveal has just moved it onto the control the user
+asked for.
+
+Scopes are reachable from chips, from a one-character prefix (`>` commands,
+`@` settings, `/` destinations, `#` files) and from Cmd/Ctrl+Tab. Plain Tab is
+deliberately not intercepted: it has to reach the highlighted row's live
+control, which is why only the highlighted row's control is tabbable.
+
+#### Tabs: pinning
+
+Pinned tabs get a **sticky region** rather than a sticky class per tab, because
+several `position: sticky; left: 0` siblings all stack at the same coordinate
+and overlap. The region holds the permanent entry tab plus the user-pinned ones
+and is `role="presentation"`, so the tablist still owns the tabs directly in the
+accessibility tree. A sticky child of an always-flush-left sticky parent
+computes to the same position, so the entry tab's existing `.is-pinned` rule
+needed no override.
+
+User-pinned tabs render **icon-only** — 34px in the entry shell, 36px in the
+project shell — and the label is *clipped*, not removed: the main button carries
+the full title as its `aria-label` and its tooltip, so the compact form loses
+nothing to a screen reader, the keyboard or a pointer. The width is restated in
+`styles/viewer/routines.css` for the same reason `.is-pinned` already is —
+`.workspace-shell .workspace-tab` sets it at equal specificity from a stylesheet
+imported later.
+
+Dragging is now confined to its own region (permanent / pinned / flow). A
+cross-region target is *skipped* rather than coerced, so the live drop indicator
+says exactly what the drop will do; `normalizeTabsState` would re-sort a
+cross-region drop straight back, and an indicator that promises a move which
+then does not happen is worse than no indicator. This subsumes the old "never
+drop before the entry tab" coercion, since that tab is now the only member of
+its region.
+
+#### Tabs: bulk close, as one predicate
+
+`workspace-tabs/bulkClose.ts` exists so that "close tabs containing text" and
+"close tabs NOT containing text" cannot drift. Written as two matchers they do:
+one lowercases and the other forgets, one compiles with `i` and the other does
+not, and a user who runs the second expecting the complement of the first loses
+tabs the preview said were safe. So `compileBulkCloseMatcher` produces exactly
+one `test`, and `planBulkClose` picks with
+`direction === 'containing' ? test(label) : !test(label)`. There is no second
+call site where a flag could diverge, and the test asserts the partition
+property directly: for every query, the two directions' selections union to the
+whole tab list and intersect to nothing.
+
+It never runs on an empty query (which would match everything in "not
+containing" mode — a way to close the workspace by pressing a button twice), on
+a pattern past 200 characters, or on one that does not compile; the reason comes
+back as a token so the component owns the copy. Matching reads the tab's visible
+label and nothing else, because a bulk close that matched on data the user
+cannot see would be unreviewable by construction.
+
+`selected` and `close` are separate fields on purpose: "42 selected" and "42
+will close" are different claims, and a preview that showed only the second
+would hide the pinned tabs the action is about to skip. Pinned tabs are excluded
+by default with an explicit opt-in, the permanent entry tab is never closable,
+and both exclusions are reported by count under the preview rather than dropped.
+
+Closing runs through one `closeTabs` call rather than a loop of `closeTab`:
+sequential calls each read the render-time `state` snapshot, so the second would
+resurrect the tab the first removed.
+
+#### Tabs: persistence that tolerates the shape it finds
+
+Pins live in the **same** localStorage payload as the tabs, not a second key. A
+workspace that restored its tabs but lost its pins (or the reverse) is worse
+than one that lost both, because the strip then looks right and behaves wrong.
+`workspace-tabs/tabPinning.ts` reads a v1 payload (no `pinnedTabIds`) and a v2
+payload through one total function, and trusts nothing in either: non-strings,
+duplicates, blanks and ids for tabs that no longer exist are all dropped rather
+than thrown on. Reconciliation runs on every `normalizeTabsState`, not only on
+load, so a pin survives a tab being closed in another window — and it runs
+*after* the existing duplicate-id rewrite, so a pin can never point at an id
+that was just regenerated.
+
+That change also required auditing every `setState` in the strip: five of them
+rebuilt `{ tabs, activeTabId }` as a fresh literal, which would have unpinned
+the workspace on the next tab switch, navigation or close. They now spread the
+normalized state. `pinnedTabIds` is optional on `WorkspaceTabsState` precisely
+so the remaining literals stay valid.
+
+**Not changed, deliberately:** the tab strip's hardcoded English chrome
+("Search tabs", "Open tabs", "New tab", "No tabs found") is pre-existing and out
+of scope for this entry; the new controls beside it are translated.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/PrivacySection.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/command-palette/quickSwitcherScope.ts`
+- `apps/web/src/components/command-palette/reveal.ts`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/components/pet/PetSettings.tsx`
+- `apps/web/src/components/workspace-tabs/bulkClose.ts`
+- `apps/web/src/components/workspace-tabs/tabPinning.ts`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/components/CommandPalette.settings-index.test.ts`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.bulkClose.test.ts`
+- `apps/web/tests/components/WorkspaceTabsBar.pinning.test.ts`
+
+### 2026-08-04 — A regex builder, and search bars that can actually use it
+
+**Reason:** the app had twenty-odd search bars and every one of them did
+`haystack.toLowerCase().includes(needle)`. That is the right default and it is
+also the only thing they could do. There was no way to anchor a match, no way
+to say "any of these three", and nothing anywhere in the product that would
+help someone write a pattern if there had been.
+
+**`apps/web/src/components/regex/` is the whole feature**, and it is built so
+that one fact holds end to end: **the engine is `new RegExp(source, flags)`,
+and the interface says so.** `REGEX_ENGINE_LABEL` is rendered in the builder's
+header and in its error heading. The regex the preview matches with is the same
+object the wired search bar filters with — there is no second dialect, no
+server round trip, and no translation step where a `\d` could come to mean
+something different in the two places. A builder that implied PCRE while the
+search ran JavaScript would be worse than shipping no builder at all.
+
+**Two editors, one pattern, and an honest refusal between them.** The raw
+pattern editor and the guided parts list write to the same string, which is
+also the search field's own value — so there is no third copy to reconcile.
+`parse.ts` turns a typed pattern back into parts, and it is deliberately
+narrow: it recognises exactly what `renderParts` emits plus the plainest
+hand-written equivalents, and it **refuses** everything else rather than
+approximating. Lookarounds, backreferences, `\n`, `\p{L}`, top-level `|` and an
+unterminated class all come back as "unsupported", and the builder then says
+which token at which position defeated it, keeps the pattern *exactly* as
+typed, and disables the guided controls until the user explicitly asks to
+rebuild from parts. The alternative — mapping `(?=foo)` onto a capturing group
+because it is roughly parenthesis-shaped — would silently rewrite someone's
+working pattern the moment they touched an unrelated dropdown. A test asserts
+the property this buys: everything the parser accepts round-trips to byte-
+identical source.
+
+**Guided construction covers literals, classes, anchors, groups, alternation
+and quantifiers**, each with the regex it emits shown next to it. Literals are
+escaped for the user, and a multi-character literal with a quantifier is
+wrapped — `ab` repeated is `(?:ab)+`, never `ab+`, which would repeat only the
+`b`. Custom character classes are deliberately *not* escaped as text, because
+`a-z0-9_` has to stay a range set; only a `]` that would close the class early
+and a leading `^` that would negate it behind the user's back are handled, and
+the hint under the field says which of the two it is. Quantifiers include the
+lazy variants, and the lazy checkbox is hidden for `{n}` where it would mean
+nothing.
+
+**Safety is three bounds and one honest disclaimer.** Pattern length, sample
+length and `{n,m}` counts are capped before anything reaches the engine;
+`runSample` checks a wall-clock deadline *between* `exec` calls and stops at a
+match cap; and the list predicate adds up its own time across a filtering pass
+and, once over budget, stops evaluating and starts returning `true` for
+everything. Giving up by matching everything rather than nothing is deliberate:
+an unfiltered list is a visible, recoverable state, whereas silently hiding
+rows is indistinguishable from data loss. What none of that covers is stated in
+a comment at the top of `evaluate.ts` and in the builder's own footer: this
+bounds how *many* evaluations happen, not how long *one* takes. A single
+`exec` cannot be interrupted, so a genuinely catastrophic pattern on a subject
+that survives the length caps still blocks the main thread until the engine
+returns. `looksCatastrophic` warns about the nested-quantifier shape behind
+most real blow-ups and is labelled a heuristic, with a test pinning a case it
+cannot see. Real interruptibility needs a worker or a non-backtracking engine;
+neither is here, and nothing in the file claims otherwise.
+
+**An invalid pattern never breaks the list.** The last pattern that compiled is
+kept, and a half-typed `[` leaves the search running on it while the engine's
+own error message — verbatim, not a paraphrase — appears under the field.
+
+**`RegexSearchField` is the wiring, and every field owns its own.** The
+controller is created by the *host* component and handed down, so mode, flags,
+parts, sample text and compiled pattern are per-field; there is no module state
+and no context, and two fields on one screen cannot see each other. The field
+renders the original `<input>` with its original class inside a thin flex host,
+so every existing CSS rule that targeted that input still matches, and puts one
+`.*` affordance beside it. The popover is portalled and positioned from the
+host's measured rect rather than absolutely positioned — that is what lets a
+field inside a modal or an `overflow: hidden` toolbar open a builder that is
+not clipped. It closes on Escape and returns focus to the field, closes on an
+outside pointer or focus, bounds its height to the room available and scrolls
+inside that bound.
+
+**Plain text stays the default in every wired field; regex is a per-field
+opt-in.** Until the user turns it on, the builder shows the plain-text notice
+and the switch and nothing else — there is no pattern editor to accidentally
+type into. Turning it on reads whatever is in the field as a pattern and never
+silently rewrites it; "escape this text so it matches literally" is a separate,
+explicit button.
+
+**Eight search bars are wired**, chosen for breadth and including three inside
+Settings: Examples, Settings → Skills, Settings → Design systems, Settings →
+MCP server templates, Brands, the design-systems library, the reference-a-
+project modal, and the plugin marketplace. Each keeps its existing behaviour in
+plain-text mode — the marketplace's every-word-must-appear matching is
+preserved and only bypassed for a pattern, because splitting a regex on spaces
+would break it. **The settings dialog itself has no global settings search to
+wire**; the three settings-surface fields above are its per-section ones.
+
+**Changed files:**
+
+- `apps/web/src/components/BrandsTab.tsx`
+- `apps/web/src/components/DesignSystemsSection.tsx`
+- `apps/web/src/components/DesignSystemsTab.tsx`
+- `apps/web/src/components/ExamplesTab.tsx`
+- `apps/web/src/components/McpClientSection.tsx`
+- `apps/web/src/components/PluginsView.tsx`
+- `apps/web/src/components/ProjectReferenceModal.tsx`
+- `apps/web/src/components/SkillsSection.tsx`
+- `apps/web/src/components/regex/RegexBuilder.module.css`
+- `apps/web/src/components/regex/RegexBuilder.tsx`
+- `apps/web/src/components/regex/RegexPartRow.tsx`
+- `apps/web/src/components/regex/RegexSamplePanel.tsx`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/components/regex/evaluate.ts`
+- `apps/web/src/components/regex/index.ts`
+- `apps/web/src/components/regex/parse.ts`
+- `apps/web/src/components/regex/parts-ops.ts`
+- `apps/web/src/components/regex/pattern.ts`
+- `apps/web/src/components/regex/useRegexSearch.ts`
+- `apps/web/tests/components/regex/RegexSearchField.test.tsx`
+- `apps/web/tests/components/regex/evaluate.test.ts`
+- `apps/web/tests/components/regex/parse.test.ts`
+- `apps/web/tests/components/regex/pattern.test.ts`
+
+### 2026-08-04 — A dish at startup, and a changelog you can read inside the app
+
+**Reason:** two of the four things the changelog's own "Not done yet" list
+admitted the application lacked. Neither existed in any form; both are built
+here out of what the repository already holds rather than out of anything new
+invented for them.
+
+**The dim sum surprise.** One launch in ten shows a dish: its photograph, its
+name in English and Traditional Chinese, and a line of copy the funny-level
+sliders style. Twelve photographs — one per category, the lowest id in each —
+are copied byte-for-byte out of `assets/dim-sum/` into `apps/web/public/dim-sum/`
+and re-verified by SHA-256 at generation time, so the packaged app ships them
+locally and fetches nothing. `scripts/generate-dim-sum-catalog.mjs` does the
+copying and writes the typed module the app imports; `--check` proves the
+committed outputs still match the catalogue.
+
+The surprise is a non-blocking toast through the app's existing `Toast`, which
+gained one optional `media` slot for a picture and nothing else. It is bounded
+hard: the draw is spent once per launch whether it wins or loses, so no
+remount, route change or development double-invoke can re-roll it; and it is
+only offered once the daemon config has hydrated, onboarding and the privacy
+disclosure are done, no app-level error toast is up, and no update is in
+flight. There is no setting that turns it off — what makes that polite is that
+it never gates startup, never takes focus and never delays the app becoming
+usable.
+
+**The changelog viewer.** Every version the repository records, with its
+categorized changes, read from `CHANGELOG.md` and `docs/CHANGELOG/v*/en.md`.
+`scripts/generate-changelog.mjs` writes the build-time module: the source
+markdown, plus every commit those sources reference resolved against git to a
+full object id and an author date, with the link taken verbatim from the source
+rather than assembled from a guessed origin. An abbreviation this repository
+does not have is recorded as unresolved and **never** linked — the entry says
+so instead, as does an entry whose source names no commit at all. The shape of
+a release is derived from that markdown by `lib/changelog/parse.ts`, which is
+deliberately the only parser: the one the tests exercise and the one the app
+runs.
+
+Three details the sources forced. No source records a release date, so a
+release is dated by the newest change in it and the viewer labels that as what
+it is rather than dressing it up as a publication date. A release written
+entirely in prose (0.14.1) is still a release, so paragraphs under a category
+heading are entries. And an undated entry cannot be shown to fall inside a date
+range, so a set range excludes it and the viewer says how many it excluded —
+silently keeping them would make the range a suggestion, silently dropping them
+would hide a change.
+
+The filter is a search and an anchored calendar with month and year jumps and
+range selection, over two fields you can type into. A half-typed date is
+reported as unfinished and an impossible one as impossible, and in neither case
+is the field rewritten or cleared underneath the user. Copy and export render
+exactly what the filter kept, in Markdown or plain text, and state the range in
+the file. It opens from Settings → About, directly under the version.
+
+**Changed files:**
+
+- `apps/web/public/dim-sum/hk-dish-0260-chocolate-lava-egg-tart.png`
+- `apps/web/public/dim-sum/hk-dish-0271-sweet-and-sour-pork-with-pineapple.png`
+- `apps/web/public/dim-sum/hk-dish-0296-beef-with-black-bean-and-peppers.png`
+- `apps/web/public/dim-sum/hk-dish-0406-claypot-rice-with-chinese-sausage.png`
+- `apps/web/public/dim-sum/hk-dish-0446-wonton-noodles.png`
+- `apps/web/public/dim-sum/hk-dish-0526-dai-pai-dong-style-dry-fried-beef-ho-fun.png`
+- `apps/web/public/dim-sum/hk-dish-0551-cha-chaan-teng-baked-pork-chop-rice.png`
+- `apps/web/public/dim-sum/hk-dish-0560-chocolate-filled-sesame-balls.png`
+- `apps/web/public/dim-sum/hk-dish-0600-chocolate-lava-ma-lai-go.png`
+- `apps/web/public/dim-sum/hk-dish-0626-hong-kong-dessert-shop-mango-pomelo-sago.png`
+- `apps/web/public/dim-sum/hk-dish-0676-hong-kong-milk-tea.png`
+- `apps/web/public/dim-sum/hk-dish-0701-haw-flake-discs.png`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/DimSumSurprise.module.css`
+- `apps/web/src/components/DimSumSurprise.tsx`
+- `apps/web/src/components/EntryHelpMenu.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/Toast.tsx`
+- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
+- `apps/web/src/components/changelog/ChangelogDateRange.tsx`
+- `apps/web/src/components/changelog/ChangelogDialog.module.css`
+- `apps/web/src/components/changelog/ChangelogDialog.tsx`
+- `apps/web/src/components/changelog/open-changelog.ts`
+- `apps/web/src/lib/changelog/dates.ts`
+- `apps/web/src/lib/changelog/filter.ts`
+- `apps/web/src/lib/changelog/generated.ts`
+- `apps/web/src/lib/changelog/index.ts`
+- `apps/web/src/lib/changelog/parse.ts`
+- `apps/web/src/lib/dim-sum/catalog.ts`
+- `apps/web/src/lib/dim-sum/surprise.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/changelog-filter.test.ts`
+- `apps/web/tests/changelog-parse.test.ts`
+- `apps/web/tests/dim-sum.test.ts`
+
+### 2026-08-04 — Cantonese, a bilingual mode, and two funny-level sliders
+
+**Reason:** the product shipped nineteen locales and no way to read two at
+once, no Cantonese at all, and no control over how its copy sounds. All three
+are now settings, and all three land in one place — `t()` — because that
+function is the single point every component already goes through.
+
+**`zh-HK` (廣東話) is a real locale, not a `zh-TW` alias.** It joins the
+`Locale` union, `LOCALES`, `LOCALE_LABEL` and the `DICTS` map. The dictionary
+is the one locale file in the tree that satisfies `Dict` by spreading another
+(`...zhTW`) and then overriding what has actually been rewritten. That shape
+was chosen deliberately over pasting 4,291 near-duplicate lines:
+
+1. It keeps the file honest about its own coverage. 639 keys below the spread
+   have been rewritten into spoken Cantonese — 係/嘅/唔/仲/咗/喇 particles,
+   spoken word order — covering `common.*`, the chat chrome and every
+   `chat.runError.*`, the workspace and tab strip, conversations, the question
+   form, onboarding, the tool cards, the updater, the preview/share menus and
+   the parts of `settings.*` a user actually opens. Everything else is visibly
+   still the seeded Traditional text: correct, readable Chinese that a Hong
+   Kong reader understands, just not yet how they speak.
+2. A key added to `zh-TW` reaches `zh-HK` for free, so the twentieth locale
+   cannot become the one that always breaks the typecheck gate.
+
+Two groups are deliberately left seeded rather than Cantonese-ified, and the
+file says so: strings sent to a *model* rather than read by a person
+(`chat.contextPrompt.*`, `nextStep.*Prompt`, `home.starter.*.firstPrompt`),
+where a register game buys nothing and can cost instruction-following; and
+brand proper nouns, which stay verbatim in every locale (the
+`plugins.availableDetails.integrity` lock passes through the spread unchanged).
+
+**`resolveSystemLocale` now lets region beat script.** It inspected only the
+second subtag, so `zh-Hant-HK` — what macOS reports for a Hong Kong user —
+matched `hant` and landed on `zh-TW`. It now scans every subtag: `hk`/`mo`
+anywhere wins, `hant`/`tw` otherwise, `zh-CN` as before. The existing
+`zh-Hant-HK → zh-TW` assertion in `tests/i18n/locales.test.ts` was the encoded
+form of the old behaviour and is replaced by a case that pins all eight tags.
+
+**Bilingual mode needed no component changes at all.** A persisted
+`languageMode` of `'single' | 'bilingual'` sits in the provider; in bilingual
+mode `t()` renders the key twice and joins the two. English pairs with 廣東話
+and every other locale pairs with English, so the pair always holds the
+language the reader picked plus one they are likely to read. `composeBilingual`
+declines in three cases that would produce noise rather than a translation: an
+empty side, two sides that are already the same string (untranslated keys,
+brand names), and values whose whole lexical content is one or two characters
+or carries no letter — `{n}m`, `⤢`, `·` are units and glyphs, and doubling
+them makes a timestamp chip unreadable. A value that already spans lines joins
+on a newline instead of the middot.
+
+**Two funny-level sliders, 1–5, one per language, persisted separately.**
+Level 1 is the neutral base dictionary, which is also the default: an install
+that never opens the setting reads exactly as it did before. Levels 2–5 come
+from sparse override maps in `apps/web/src/i18n/funny/{en,zh-HK}.ts` — 216
+keys each, 881 variants in total, curated onto the copy a user actually
+collides with (errors, empty states, destructive confirmations, toasts,
+onboarding) rather than pretending to five full dictionaries of 4,291 keys.
+The two maps cover the same key set, so a bilingual reader gets the same energy
+on both sides of the separator. A key with no entry renders its base string at
+every level; a key that defines only 3 and 5 falls *down* to the nearest
+defined step rather than snapping back to neutral.
+
+**The level changes voice, never facts — and that is enforced, not promised.**
+`keepsTheFacts` compares each override against its neutral base and discards
+any candidate that lost a `{placeholder}` or a number the base carried (a
+version, a count, a percentage, a file count); the base string renders in its
+place. So a joke that would cost the reader a fact degrades to a silent no-op
+rather than shipping. The mechanism cannot catch a line that quietly drops the
+word "permanently", so the destructive confirmations were written level by
+level with every fact — what is deleted, from where, and that messages go with
+it — identical from 1 to 5, and `settings.funnyFactsNotice` is deliberately the
+one string that is never funny-levelled, because it is the promise the levels
+are made under.
+
+**Settings → Language grew a mode control, the two sliders, and a one-time
+disclosure**, following that file's existing `seg-control` / `field` / `hint`
+patterns rather than inventing a fourth. The disclosure fires there rather than
+at first run because that is the surface that can act on it — the dial it
+describes is the next thing on the page — and its dismissal is persisted, so it
+is genuinely one-time. Only English and 廣東話 get a slider: a third slider
+that moved nothing would be a lie in the shape of a control.
+
+Adding the locale surfaced three places that would otherwise have failed
+typecheck or silently served English, and one that would have mixed scripts:
+
+- **Home hero** — its `HOME_PROMPT_EXAMPLES` table is an exhaustive
+  `Record<Locale, …>`, and its guard test requires four *non-English* examples
+  for all six chips in every locale, so `zh-HK` gets its own Cantonese set.
+- **Sketch editor** — its Excalidraw language map is likewise exhaustive.
+  Excalidraw ships no `zh-HK` bundle, so Cantonese rides the Traditional one —
+  right script, and the closest thing that actually exists upstream. The DOM
+  text overrides follow for the same reason.
+- **Plugin preset seeding** — it classified only `zh-CN`/`zh-TW` as `'zh'`,
+  which would have seeded a Cantonese user's plugin prompts in English.
+- **Update dialog** — it picks full-width parentheses for CJK locales and
+  would have printed ASCII ones inside Chinese copy.
+
+Nineteen new `Dict` keys carry the settings surface and are declared in all
+twenty locale files, since a key missing from any one of them fails typecheck.
+`AGENTS.md`'s i18n section named nineteen locale files and described `t()` as a
+plain lookup; both are now true again.
+
+Not changed, deliberately: `i18n/content.ts` already routes any `zh*` locale to
+the `zh-CN` content bundle, so `hasLocalizedContent('zh-HK')` is true with no
+edit; and `tools/pack`'s `NSIS_INSTALLER_LANGUAGE_BY_WEB_LOCALE` is a partial
+map that already omits most locales, NSIS ships no `zh_HK`, and its values are
+passed to electron-builder as a list — adding `zh-HK → zh_TW` would have
+emitted a duplicate installer language for no gain.
+
+**Changed files:**
+
+- `AGENTS.md`
+- `apps/web/src/components/HomeHero.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/SketchEditor.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/plugins-home/presetSeedPrompt.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/styles/workspace/artifacts.css`
+- `apps/web/tests/i18n/detect-initial-locale.test.ts`
+- `apps/web/tests/i18n/language-modes.test.ts`
+- `apps/web/tests/i18n/locales.test.ts`
+
 ### 2026-08-04 — The accent actually becomes Material Design 3, and motion stops being half-ported
 
 **Reason:** a fidelity review of the token mapping found three places where the
@@ -569,6 +1151,84 @@ tracks the product.
 - `tools/release/scripts/build-platform.ps1`
 - `tools/release/scripts/prepare-platform-assets.ps1`
 - `tools/release/scripts/prepare-platform-assets.sh`
+
+### 2026-08-03 — Local version history, export in every faithful format, and open-in-editor
+
+
+**Reason:** three capabilities the project's standards require of any application
+that owns user data, none of which the imported work had.
+
+**Version history.** Every record the application manages — not only documents,
+but accounts, connected services, rules and settings — is snapshotted into a Git
+repository kept beside the daemon's own data directory, never inside a user's
+own project folder. The decision that matters is that **history is append-only:
+restoring is itself recorded as a new revision**, so an undo can be undone and
+that undo undone in turn. A restore that discarded the state it replaced would
+make the whole feature unsafe to use, because nobody could experiment without
+risking what they started from. A failed history write can never fail the
+operation the user actually asked for.
+
+Two hazards were found and closed while building it. Restoring a table with
+inbound foreign keys had been delete-all-then-reinsert, which cascaded and wiped
+dependent rows belonging to records the restore was not touching; it now
+reconciles, deleting only rows the snapshot genuinely omits. And a restore now
+captures the current state first, so the thing being replaced is always
+recoverable.
+
+**Export.** Every dataset the daemon owns, in every format that can carry it
+faithfully — JSON, JSONL, YAML, TOML, XML, CSV, TSV, Markdown, HTML — plus ZIP
+and 7z archives exposing the compression, encryption and split-volume options 7z
+actually offers rather than one hard-coded default. Where a format cannot carry a
+field the export says so **before** it runs rather than truncating quietly, and
+an archive is never presented as protected while leaving its filenames readable.
+
+**External editor.** Detection of installed editors including portable and
+Insiders builds, a persisted choice, and an open action that opens a folder as a
+workspace root rather than a single file with no context. Paths are passed as an
+argument vector, never interpolated into a shell string.
+
+All three follow this codebase's dual-surface rule — an HTTP endpoint, a shared
+DTO and an `od` subcommand — so an external agent can drive them without the UI.
+
+**Changed files:**
+
+- `apps/daemon/src/app-config.ts`
+- `apps/daemon/src/data-export-cli.ts`
+- `apps/daemon/src/data-export/archive.ts`
+- `apps/daemon/src/data-export/datasets.ts`
+- `apps/daemon/src/data-export/serialize.ts`
+- `apps/daemon/src/external-editors.ts`
+- `apps/daemon/src/history/domains.ts`
+- `apps/daemon/src/history/git.ts`
+- `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/history/sqlite-domain.ts`
+- `apps/daemon/src/history/store.ts`
+- `apps/daemon/src/route-context-contract.ts`
+- `apps/daemon/src/routes/data-export.ts`
+- `apps/daemon/src/routes/editor.ts`
+- `apps/daemon/src/routes/history.ts`
+- `apps/daemon/src/routes/host-tools.ts`
+- `apps/daemon/src/routes/project/index.ts`
+- `apps/daemon/src/routes/routine.ts`
+- `apps/daemon/src/server-context.ts`
+- `apps/daemon/src/server.ts`
+- `apps/daemon/tests/app-config-external-editor.test.ts`
+- `apps/daemon/tests/data-export-archive.test.ts`
+- `apps/daemon/tests/data-export-cli.test.ts`
+- `apps/daemon/tests/data-export-routes.test.ts`
+- `apps/daemon/tests/data-export-serialize.test.ts`
+- `apps/daemon/tests/editor-routes.test.ts`
+- `apps/daemon/tests/external-editors-args.test.ts`
+- `apps/daemon/tests/external-editors-detect.test.ts`
+- `apps/daemon/tests/history.test.ts`
+- `docs/external-editor.md`
+- `packages/contracts/src/api/app-config.ts`
+- `packages/contracts/src/api/data-export.ts`
+- `packages/contracts/src/api/editor.ts`
+- `packages/contracts/src/api/history.ts`
+- `packages/contracts/src/errors.ts`
+- `packages/contracts/src/index.ts`
+- `packages/contracts/tests/data-export.test.ts`
 
 <!--
 Format for entries, newest first:

@@ -92,6 +92,18 @@ export const API_ERROR_CODES = [
   'TOOL_TOKEN_EXPIRED',
   'TOOL_ENDPOINT_DENIED',
   'TOOL_OPERATION_DENIED',
+  // `POST /api/editor/open`: no external editor resolved on this host — either
+  // nothing at all is installed, or the editor the user explicitly chose is
+  // gone. The daemon never falls back to a different editor here, because
+  // launching something the user did not pick is worse than reporting the
+  // miss. `details` carries `EditorNotFoundDetails` (download URL plus every
+  // command name and absolute location that was probed) so the client can
+  // offer the install instead of a dead end.
+  'EDITOR_NOT_FOUND',
+  // `POST /api/editor/open`: the editor resolved but the OS refused the
+  // launch (missing binary behind a stale shim, quarantine, EACCES). The
+  // spawn's own `error` event message is surfaced verbatim.
+  'EDITOR_LAUNCH_FAILED',
   'MEDIA_EXECUTION_DISABLED',
   'MEDIA_SURFACE_DENIED',
   'MEDIA_MODEL_DENIED',
@@ -107,6 +119,20 @@ export const API_ERROR_CODES = [
   'OUTPUT_TOO_LARGE',
   'TEMPLATE_BINDING_INVALID',
   'REDACTION_REQUIRED',
+  // Data export (`/api/export/*`). The caller asked for a dataset or a format
+  // the daemon does not own.
+  'EXPORT_DATASET_NOT_FOUND',
+  'EXPORT_FORMAT_UNSUPPORTED',
+  // The requested (dataset, format) pair would lose a value — a null in TOML,
+  // a control character in XML. The daemon returns the plan with the exact
+  // fields at risk instead of writing a quietly-damaged file; the caller
+  // re-sends with `acknowledgeLossy` once it has seen what it costs.
+  'EXPORT_LOSSY_UNACKNOWLEDGED',
+  // A 7z archive was requested but no 7-Zip binary is reachable. Never falls
+  // back to an unencrypted ZIP: an archive the user believes is protected and
+  // is not is worse than no archive.
+  'EXPORT_ARCHIVE_UNAVAILABLE',
+  'EXPORT_ARCHIVE_FAILED',
   // Connector catalog, connection, safety, and execution failures.
   'CONNECTOR_NOT_FOUND',
   'CONNECTOR_AUTH_CONFIG_REQUIRED',

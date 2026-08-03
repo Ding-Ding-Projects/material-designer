@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import type { SkillInfo } from './skills.js';
 import type { DesignSystemSummary } from './design-systems/index.js';
+import type { HistoryService } from './history/service.js';
 import type { RoutineRoutesService } from './routes/routine.js';
 import type { OpenDesignPublicMetadataService } from './services/open-design-public-metadata.js';
 
@@ -61,6 +62,20 @@ export interface RoutineDeps {
   routineService: RoutineRoutesService;
 }
 
+/**
+ * The one thing a write path needs from local version history: say what the
+ * user just did, so the debounced snapshot carries an honest label.
+ *
+ * Only the record stores that live in SQLite have to call in. File-backed
+ * domains are watched on disk, but a SQLite table changes without any watched
+ * file moving, so without an explicit call a created-then-deleted automation
+ * leaves no revision in between and its deletion cannot be undone.
+ *
+ * `recordMutation` never throws and never awaits — safe to call from inside the
+ * operation the user actually asked for.
+ */
+export type HistoryRecorder = Pick<HistoryService, 'recordMutation'>;
+
 export interface ProjectPreviewScopeDeps {
   mint: (projectId: string) => string;
   validate: (projectId: string, scope: string) => boolean;
@@ -101,6 +116,8 @@ export interface TelemetryDeps {
 export interface ServerContext {
   db: any;
   design: any;
+  /** Null when the daemon could not start local version history at all. */
+  history: HistoryRecorder | null;
   http: HttpDeps;
   paths: PathDeps;
   ids: any;

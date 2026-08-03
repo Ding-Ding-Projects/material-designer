@@ -8,12 +8,20 @@ publish time. `Pages` is documented in full under
 where `Pages` fits.
 
 > [!IMPORTANT]
-> **No run outcome is recorded here.** The workflows exist and are readable at
-> `.github/workflows/`, but this documentation does not claim any of them has
-> been executed, passed, or produced a release — nothing has been observed
-> running. Where this page describes what a workflow does, it is describing the
-> committed definition. Where it describes a result, it says so explicitly, and
-> there are none yet.
+> **All three workflows have run.** `Verify` has passed on a clean checkout with
+> zero gaps; `Release` has installed the workspace with native modules compiled
+> from source, typechecked it, run the Windows identity suites, built an
+> installer, validated its payload, put it through the packaged smoke test and
+> published it; `Pages` has deployed the site. Two releases exist,
+> `v0.16.1-r7.1` and `v0.16.1-r8.1`.
+>
+> **What has not been observed is any of them failing.** No run has been seen
+> rejecting a bad tree, and a gate that has only ever been watched passing is not
+> known to be a gate. The unticked boxes under [Verification](#verification) are
+> exactly those cases.
+>
+> Where this page describes what a workflow does, it is describing the committed
+> definition; where it states a result, it says so.
 >
 > The 48 workflow files under `design/.github/workflows/` are the vendored
 > upstream project's. Workflow definitions are only read from the repository
@@ -281,9 +289,20 @@ currently has one, which is safe only because it runs on a hosted runner.
 
 ## Verification
 
-**No run outcome is recorded.** What has been verified from the tree while
-writing this page: that all three workflow files exist at `.github/workflows/`;
-that `scripts/verify-port.sh`, `scripts/line-count.mjs`,
+**Observed from runs.** `Verify` has passed on a clean checkout at zero gaps and
+rendered its summary table. `Release` has installed the workspace — with the
+native database binding compiled from source — typechecked it, passed the three
+Windows identity suites, produced an installer whose reported path existed and
+whose payload validated, put that installer through the packaged smoke test
+(install, launch, health check, screenshot, uninstall, zero residue) and
+published two non-draft releases under fresh tags, each carrying its installer,
+its checksum file and its code name's photograph, and each picking a *different*
+dish. `Pages` has deployed the site. The per-step detail is in
+[../release/release-pipeline.md](../release/release-pipeline.md#verification),
+which is the authority on release runs; this page does not restate its numbers.
+
+**Verified from the tree:** that all three workflow files exist at
+`.github/workflows/`; that `scripts/verify-port.sh`, `scripts/line-count.mjs`,
 `scripts/release-codename.sh` and `scripts/import-dim-sum.sh` exist; that
 `scripts/upstream-manifest.tsv` records 11,799 entries at the pinned commit; and
 that the dim sum catalogue indexes 24 dishes with 24 images present.
@@ -294,21 +313,27 @@ The invariant is `gaps == 0`; see
 [../porting/verification.md](../porting/verification.md#reading-a-run) for the one
 annotated transcript, and the `Verify` job summary for the value at any push.
 
-The pipeline will be considered proven when a single run demonstrates all of:
+What the published runs have demonstrated:
 
-- [ ] `Verify` passing with `gaps: 0` and its summary table rendered
-- [ ] `Verify` failing on a deliberately undeclared change to `design/`
-- [ ] install completing with the native binding compiled
-- [ ] typecheck and the three identity suites passing
-- [ ] an installer produced, its reported path present, its payload validated
-- [ ] the smoke test installing, launching, health-checking and uninstalling
-- [ ] a non-draft release under a fresh `v<version>-r<run>` tag with the
+- [x] `Verify` passing with `gaps: 0` and its summary table rendered
+- [x] install completing with the native binding compiled
+- [x] typecheck and the three identity suites passing
+- [x] an installer produced, its reported path present, its payload validated
+- [x] the smoke test installing, launching, health-checking and uninstalling
+- [x] a non-draft release under a fresh `v<version>-r<run>` tag with the
       installer, its checksum file and the code name image attached
-- [ ] the line-count table present in the notes
-- [ ] a second release picking a **different** code name
+- [x] the line-count table present in the notes
+- [x] a second release picking a **different** code name
+
+What no run has demonstrated:
+
+- [ ] `Verify` failing on a deliberately undeclared change to `design/`
+- [ ] a release whose smoke test failed, publishing notes that say so
 
 The failing case matters as much as the passing one. A gate that has never been
-observed rejecting anything is not known to be a gate.
+observed rejecting anything is not known to be a gate — and both remaining boxes
+are about the pipeline behaving correctly when something goes wrong, which is the
+only thing a pipeline is actually for.
 
 ## Suggested reading
 

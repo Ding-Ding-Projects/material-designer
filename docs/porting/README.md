@@ -61,3 +61,10 @@ adding an entry to `MODIFICATIONS.md` naming the reason and listing the changed
 paths. Until that entry exists, the verifier fails and so does any workflow that
 runs it. This is not a style preference — Apache-2.0 §4(b) requires prominent
 notices on changed files, and an unenforced notice is a notice that goes stale.
+
+## Suggested reading
+
+- [../architecture/overview.md](../architecture/overview.md) — what the imported tree actually is, once you trust that it is intact
+- [../troubleshooting/line-endings.md](../troubleshooting/line-endings.md) — the failure this category produces most often: thousands of differences against a tree nobody touched
+- [../standards/README.md](../standards/README.md) — what is being changed in the verbatim copy, and the honest status of each requirement
+- [../build/ci.md](../build/ci.md) — where the verifier runs in continuous integration, and why the gate checks out without the submodule

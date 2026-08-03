@@ -37,6 +37,8 @@ import { fetchAgents } from '../providers/registry';
 import type { AgentInfo } from '../types';
 import { isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { Icon } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import { useT } from '../i18n';
 
 interface Props {
@@ -270,14 +272,11 @@ const CATEGORY_ORDER: ReadonlyArray<{
   },
 ];
 
-function templateMatchesQuery(tpl: McpTemplate, q: string): boolean {
-  if (!q) return true;
-  const needle = q.toLowerCase();
-  return (
-    tpl.label.toLowerCase().includes(needle) ||
-    tpl.id.toLowerCase().includes(needle) ||
-    (tpl.description?.toLowerCase().includes(needle) ?? false) ||
-    (tpl.example?.toLowerCase().includes(needle) ?? false)
+// `matches` is the picker field's own predicate, so plain text and a regex
+// pattern are checked against exactly the same haystack.
+function templateMatchesQuery(tpl: McpTemplate, matches: (text: string) => boolean): boolean {
+  return matches(
+    `${tpl.label} ${tpl.id} ${tpl.description ?? ''} ${tpl.example ?? ''}`,
   );
 }
 
@@ -603,6 +602,10 @@ function PickerPanel({
     return buckets;
   }, [templates]);
 
+  // The picker's own regex controller. It lives here rather than in the parent
+  // so the template filter cannot share state with any other search bar.
+  const searchRegex = useRegexSearch(query, onQueryChange);
+  const matchesSearch = searchRegex.matches;
   const trimmed = query.trim();
   const hasQuery = trimmed.length > 0;
 
@@ -611,7 +614,7 @@ function PickerPanel({
   let visibleTotal = 0;
   const renderGroups = CATEGORY_ORDER.map((cat) => {
     const all = grouped.get(cat.id) ?? [];
-    const matched = all.filter((t) => templateMatchesQuery(t, trimmed));
+    const matched = all.filter((t) => templateMatchesQuery(t, matchesSearch));
     visibleTotal += matched.length;
     if (all.length === 0) return null;
     if (hasQuery && matched.length === 0) return null;
@@ -664,13 +667,13 @@ function PickerPanel({
         <span className="hint">
           Pre-fills the form. You can still edit any field after.
         </span>
-        <input
-          type="search"
+        <RegexSearchField
+          search={searchRegex}
+          fieldLabel="MCP server templates"
           className="mcp-picker-search"
           placeholder="Filter by name, transport, capability…"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          spellCheck={false}
+          ariaLabel="Filter MCP server templates"
+          testId="mcp-picker-search"
           autoFocus
         />
       </div>

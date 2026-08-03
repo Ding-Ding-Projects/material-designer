@@ -1,0 +1,173 @@
+.wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.input {
+  width: 11ch;
+  min-width: 9ch;
+  max-width: 100%;
+}
+
+.trigger {
+  flex: 0 0 auto;
+}
+
+.clear {
+  flex: 0 0 auto;
+}
+
+.hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.message {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--md-sys-color-error, var(--danger, #ba1a1a));
+}
+
+/* The popover paints its own surface. An anchored overlay that inherits a
+   transparent background lets the list behind it read straight through the
+   calendar, which is the fastest way to make a working control look broken. */
+.popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  /* Bounded by the viewport and scrollable inside that bound: capping the
+     height without an overflow rule would silently delete the last week. */
+  max-height: min(420px, calc(100vh - 120px));
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  border-radius: var(--md-sys-shape-corner-m, 12px);
+  background: var(--md-sys-color-surface-container-high, var(--bg));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jump {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.jump select {
+  width: 100%;
+  min-width: 0;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weekdays,
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.weekday {
+  padding: 2px 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.cell,
+.blank {
+  display: block;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s, 8px);
+  background: transparent;
+  color: var(--md-sys-color-on-surface, var(--text));
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.day:hover {
+  background: var(--md-sys-color-surface-container-highest, rgba(127, 127, 127, 0.16));
+}
+
+.day:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, currentColor);
+  outline-offset: 1px;
+}
+
+.dayInRange {
+  background: var(--md-sys-color-secondary-container, rgba(127, 127, 127, 0.2));
+  color: var(--md-sys-color-on-secondary-container, var(--text));
+}
+
+.dayEdge {
+  background: var(--md-sys-color-primary, #8f4c34);
+  color: var(--md-sys-color-on-primary, #fff);
+  font-weight: 700;
+}
+
+.popoverHint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    transition: none;
+  }
+}

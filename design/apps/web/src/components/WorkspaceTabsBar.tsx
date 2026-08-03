@@ -4,6 +4,21 @@ import { useT } from '../i18n';
 import { navigate, type EntryHomeView, type Route } from '../router';
 import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
+import styles from './WorkspaceTabsBar.module.css';
+import {
+  compileBulkCloseMatcher,
+  planBulkClose,
+  type BulkCloseDirection,
+  type BulkCloseMatchMode,
+} from './workspace-tabs/bulkClose';
+import {
+  isTabPinned,
+  orderTabsWithPinnedFirst,
+  parseStoredWorkspaceTabsPayload,
+  reconcilePinnedTabIds,
+  serializeWorkspaceTabsPayload,
+  togglePinnedTabId,
+} from './workspace-tabs/tabPinning';
 
 type WorkspaceChromeTab =
   | {
@@ -33,6 +48,13 @@ type WorkspaceChromeTab =
 interface WorkspaceTabsState {
   tabs: WorkspaceChromeTab[];
   activeTabId: string;
+  /**
+   * Ids the user pinned, in pin order. Optional so the many `{ tabs, activeTabId }`
+   * literals in this file stay valid; `normalizeTabsState` always returns it
+   * reconciled against the tabs that actually exist, so every value that leaves
+   * that function has one.
+   */
+  pinnedTabIds?: readonly string[];
 }
 
 interface DisplayTab {
@@ -272,9 +294,17 @@ function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
     if (wasActive) activeTabId = id;
     return id === tab.id ? tab : { ...tab, id };
   });
+
+  // Pins last, and after the id rewrite above, so a pin can never point at an
+  // id that was just regenerated. Reconciling here rather than only on load is
+  // what makes a stored pin list survive a tab being closed in another window,
+  // a project disappearing, or a hand-edited payload.
+  const pinnedTabIds = reconcilePinnedTabIds(state.pinnedTabIds, tabs.map((tab) => tab.id));
+  const ordered = orderTabsWithPinnedFirst(tabs, pinnedTabIds, (tab) => tab.kind === 'entry');
   return {
-    tabs,
-    activeTabId: activeTabId || tabs[0]!.id,
+    tabs: ordered,
+    activeTabId: activeTabId || ordered[0]!.id,
+    pinnedTabIds,
   };
 }
 
@@ -320,21 +350,26 @@ function initialTabsState(route: Route): WorkspaceTabsState {
     return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
   }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed === null || typeof parsed !== 'object') {
-      return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
-    }
-    const record = parsed as Record<string, unknown>;
-    const tabs = Array.isArray(record.tabs)
-      ? record.tabs.map(reviveTab).filter((tab): tab is WorkspaceChromeTab => tab !== null)
-      : [];
-    const activeTabId = typeof record.activeTabId === 'string' ? record.activeTabId : '';
+    // Parsing and shape-tolerance live in `workspace-tabs/tabPinning.ts`, which
+    // reads a v1 payload (tabs + activeTabId, no pins) and a v2 payload (with
+    // pins) through the same total function — an upgrade restores every tab and
+    // simply starts with nothing pinned.
+    const stored = parseStoredWorkspaceTabsPayload(window.localStorage.getItem(STORAGE_KEY));
+    if (!stored) return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
+    const tabs = stored.tabs
+      .map(reviveTab)
+      .filter((tab): tab is WorkspaceChromeTab => tab !== null);
     if (tabs.length === 0) {
       return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
     }
-    return syncStateToRoute({ tabs, activeTabId: activeTabId || tabs[0]!.id }, route);
+    return syncStateToRoute(
+      {
+        tabs,
+        activeTabId: stored.activeTabId || tabs[0]!.id,
+        pinnedTabIds: stored.pinnedTabIds,
+      },
+      route,
+    );
   } catch {
     return syncStateToRoute({ tabs: [fallback], activeTabId: fallback.id }, route);
   }
@@ -364,6 +399,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     }
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
+      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -398,6 +434,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     if (currentActive && currentActive.kind === 'entry') {
       const nextTab = tabFromRoute(route, timestamp);
       return normalizeTabsState({
+        ...current,
         tabs: [...current.tabs, nextTab],
         activeTabId: nextTab.id,
       });
@@ -407,6 +444,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   if (!currentActive) {
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
+      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -420,7 +458,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   const nextTabs = current.tabs.map((tab) =>
     tab.id === currentActive.id ? replacement : tab,
   );
-  return normalizeTabsState({ tabs: nextTabs, activeTabId: replacement.id });
+  return normalizeTabsState({ ...current, tabs: nextTabs, activeTabId: replacement.id });
 }
 
 function normalizeSearch(value: string): string {
@@ -435,7 +473,16 @@ interface HoverPreviewState {
   anchorWidth: number;
 }
 
+interface TabContextMenuState {
+  tabId: string;
+  x: number;
+  y: number;
+}
+
 const HOVER_PREVIEW_DELAY_MS = 380;
+const TAB_CONTEXT_MENU_WIDTH = 208;
+/** Rows a bulk-close preview shows before it says "and N more". */
+const BULK_CLOSE_PREVIEW_LIMIT = 12;
 
 export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false }: Props) {
   const t = useT();
@@ -444,9 +491,17 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   const [query, setQuery] = useState('');
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
   const [tabsOverflowing, setTabsOverflowing] = useState(false);
+  const [tabContextMenu, setTabContextMenu] = useState<TabContextMenuState | null>(null);
+  const [bulkCloseOpen, setBulkCloseOpen] = useState(false);
+  const [bulkCloseQuery, setBulkCloseQuery] = useState('');
+  const [bulkCloseMode, setBulkCloseMode] = useState<BulkCloseMatchMode>('text');
+  const [bulkCloseCaseSensitive, setBulkCloseCaseSensitive] = useState(false);
+  const [bulkCloseIncludePinned, setBulkCloseIncludePinned] = useState(false);
+  const [bulkCloseDirection, setBulkCloseDirection] = useState<BulkCloseDirection>('containing');
   const stripRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const previousOnboardingCompletedRef = useRef(onboardingCompleted);
@@ -520,6 +575,57 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
       .sort((a, b) => b.tab.lastActiveAt - a.tab.lastActiveAt)
       .slice(0, MAX_SEARCH_RESULTS);
   }, [displayTabs, query]);
+
+  // The strip's two regions. `normalizeTabsState` has already ordered
+  // `state.tabs` as permanent → pinned → rest, so this is a partition, not a
+  // sort: the sticky container simply takes the leading run.
+  const stickyTabs = useMemo(
+    () => state.tabs.filter(
+      (tab) => tab.kind === 'entry' || isTabPinned(state.pinnedTabIds, tab.id),
+    ),
+    [state.tabs, state.pinnedTabIds],
+  );
+  const flowTabs = useMemo(
+    () => state.tabs.filter(
+      (tab) => tab.kind !== 'entry' && !isTabPinned(state.pinnedTabIds, tab.id),
+    ),
+    [state.tabs, state.pinnedTabIds],
+  );
+
+  // ---- bulk close ----------------------------------------------------------
+  // One matcher, two directions. `planBulkClose` is where the negation lives,
+  // so "containing" and "not containing" cannot end up with different casing,
+  // different flags, or a different idea of which tabs were even considered.
+  const bulkCloseCandidates = useMemo(
+    () => displayTabs.map((display) => ({
+      id: display.id,
+      // The visible label, and only the visible label. A bulk close that
+      // matched on hidden data would be unreviewable by construction.
+      label: display.title,
+      pinned: isTabPinned(state.pinnedTabIds, display.id),
+      permanent: display.tab.kind === 'entry',
+      display,
+    })),
+    [displayTabs, state.pinnedTabIds],
+  );
+
+  const bulkCloseMatcher = useMemo(
+    () => compileBulkCloseMatcher({
+      query: bulkCloseQuery,
+      mode: bulkCloseMode,
+      caseSensitive: bulkCloseCaseSensitive,
+    }),
+    [bulkCloseQuery, bulkCloseMode, bulkCloseCaseSensitive],
+  );
+
+  const bulkClosePlan = useMemo(
+    () => (bulkCloseMatcher.ok
+      ? planBulkClose(bulkCloseCandidates, bulkCloseMatcher, bulkCloseDirection, {
+          includePinned: bulkCloseIncludePinned,
+        })
+      : null),
+    [bulkCloseCandidates, bulkCloseMatcher, bulkCloseDirection, bulkCloseIncludePinned],
+  );
 
   useEffect(() => {
     setState((current) => syncStateToRoute(current, route));
@@ -615,6 +721,7 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         }
         const nextTab = tabFromRoute(nextRoute);
         return normalizeTabsState({
+          ...normalized,
           tabs: [...normalized.tabs, nextTab],
           activeTabId: nextTab.id,
         });
@@ -665,7 +772,7 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      window.localStorage.setItem(STORAGE_KEY, serializeWorkspaceTabsPayload(state));
     } catch {
       // Best-effort browser chrome state. Navigation itself remains URL-driven.
     }
@@ -707,6 +814,43 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [tabsMenuOpen]);
+
+  // The tab context menu dismisses on Escape, on any outside press, and on a
+  // scroll or resize — it is positioned from a pointer event, so leaving it
+  // anchored to a coordinate the layout has moved out from under would leave it
+  // floating over unrelated chrome.
+  useEffect(() => {
+    if (!tabContextMenu) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (contextMenuRef.current?.contains(target)) return;
+      setTabContextMenu(null);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setTabContextMenu(null);
+    }
+    const dismiss = () => setTabContextMenu(null);
+    document.addEventListener('mousedown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', dismiss);
+    window.addEventListener('blur', dismiss);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('blur', dismiss);
+    };
+  }, [tabContextMenu]);
+
+  // Move focus into the menu when it opens so it is operable from the keyboard
+  // the moment it appears, and not only by pointer.
+  useEffect(() => {
+    if (!tabContextMenu) return;
+    const frame = window.requestAnimationFrame(() => {
+      contextMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [tabContextMenu]);
 
   useEffect(() => {
     function onWorkspaceTabShortcut(event: KeyboardEvent) {
@@ -772,12 +916,19 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   }, [state]);
 
   function activateTab(tab: WorkspaceChromeTab) {
-    setState((current) => ({
-      tabs: normalizeTabsState(current).tabs.map((item) =>
-        item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
-      ),
-      activeTabId: tab.id,
-    }));
+    // Spread the normalized state rather than rebuilding two of its three
+    // fields: dropping `pinnedTabIds` here would unpin the workspace every time
+    // the user changed tab.
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return {
+        ...normalized,
+        tabs: normalized.tabs.map((item) =>
+          item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
+        ),
+        activeTabId: tab.id,
+      };
+    });
     setTabsMenuOpen(false);
     dismissHoverPreview();
     navigate(routeForTab(tab));
@@ -829,6 +980,7 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     } else {
       const tab = createEntryTab('home');
       setState({
+        ...normalized,
         tabs: [...normalized.tabs, tab],
         activeTabId: tab.id,
       });
@@ -858,7 +1010,7 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     } else {
       const replacement = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? nextTabs[0]!;
       nextRoute = routeForTab(replacement);
-      nextState = { tabs: nextTabs, activeTabId: replacement.id };
+      nextState = { ...normalized, tabs: nextTabs, activeTabId: replacement.id };
     }
     setState(nextState);
     if (nextRoute) navigate(nextRoute);
@@ -882,22 +1034,29 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     const strip = stripRef.current;
     if (!strip) return null;
 
-    // The single entry tab is pinned leftmost: never expose a drop target that
-    // would place another tab before it. Coerce any 'before entry' edge to
-    // 'after entry' so the live drag indicator and persisted order keep it first.
-    const entryTabId = state.tabs.find((tab) => tab.kind === 'entry')?.id;
-    const resolveTarget = (target: TabDragTarget): TabDragTarget =>
-      target.tabId === entryTabId && target.edge === 'before'
-        ? { tabId: target.tabId, edge: 'after' }
-        : target;
+    // A drag may only reorder WITHIN its own region. The strip has three, in
+    // this order: the permanent entry tab, the pinned tabs, then the rest. A
+    // target in another region is skipped rather than coerced, so the live drop
+    // indicator says exactly what the drop will do — `normalizeTabsState` would
+    // re-sort a cross-region drop straight back, and an indicator that promises
+    // a move which then does not happen is worse than no indicator.
+    //
+    // This also subsumes the old "never drop before the entry tab" rule: the
+    // entry tab is the only member of its region, so nothing can target it.
+    const regionOf = (tabId: string): 'permanent' | 'pinned' | 'flow' => {
+      if (state.tabs.find((tab) => tab.id === tabId)?.kind === 'entry') return 'permanent';
+      return isTabPinned(state.pinnedTabIds, tabId) ? 'pinned' : 'flow';
+    };
+    const sourceRegion = regionOf(sourceId);
+    const sameRegion = (tabId: string) => regionOf(tabId) === sourceRegion;
 
     const eventTarget = event.target;
     if (eventTarget instanceof HTMLElement) {
       const tabElement = eventTarget.closest<HTMLElement>('[data-workspace-tab-id]');
       if (tabElement && strip.contains(tabElement)) {
         const tabId = tabElement.dataset.workspaceTabId;
-        if (tabId && tabId !== sourceId) {
-          return resolveTarget({ tabId, edge: tabDropEdgeFromElement(event, tabElement) });
+        if (tabId && tabId !== sourceId && sameRegion(tabId)) {
+          return { tabId, edge: tabDropEdgeFromElement(event, tabElement) };
         }
       }
     }
@@ -905,13 +1064,56 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     let lastTarget: TabDragTarget | null = null;
     for (const tabElement of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
       const tabId = tabElement.dataset.workspaceTabId;
-      if (!tabId || tabId === sourceId) continue;
+      if (!tabId || tabId === sourceId || !sameRegion(tabId)) continue;
       const rect = tabElement.getBoundingClientRect();
-      if (event.clientX <= rect.left + rect.width / 2) return resolveTarget({ tabId, edge: 'before' });
-      if (event.clientX <= rect.right) return resolveTarget({ tabId, edge: 'after' });
+      if (event.clientX <= rect.left + rect.width / 2) return { tabId, edge: 'before' };
+      if (event.clientX <= rect.right) return { tabId, edge: 'after' };
       lastTarget = { tabId, edge: 'after' };
     }
     return lastTarget;
+  }
+
+  function setTabPinned(tabId: string, pinned: boolean) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      const tab = normalized.tabs.find((item) => item.id === tabId);
+      // The entry tab is already permanent and already leftmost; pinning it
+      // would put it in a second region and duplicate its own guarantee.
+      if (!tab || tab.kind === 'entry') return normalized;
+      const pinnedTabIds = togglePinnedTabId(normalized.pinnedTabIds ?? [], tabId, pinned);
+      if (pinnedTabIds === normalized.pinnedTabIds) return normalized;
+      return normalizeTabsState({ ...normalized, pinnedTabIds });
+    });
+    dismissHoverPreview();
+    setTabContextMenu(null);
+  }
+
+  /**
+   * Close a reviewed set of tabs in one gesture.
+   *
+   * Sequential `closeTab` calls would each read `state` — the render-time
+   * snapshot, not the accumulating result — so the second call would resurrect
+   * the tab the first removed. This computes the whole next state once.
+   */
+  function closeTabs(tabIds: readonly string[]) {
+    const doomed = new Set(tabIds);
+    if (doomed.size === 0) return;
+    dismissHoverPreview();
+    const normalized = normalizeTabsState(state);
+    const survivors = normalized.tabs.filter(
+      (tab) => tab.kind === 'entry' || !doomed.has(tab.id),
+    );
+    if (survivors.length === normalized.tabs.length) return;
+    const activeSurvives = survivors.some((tab) => tab.id === normalized.activeTabId);
+    const replacement = activeSurvives
+      ? survivors.find((tab) => tab.id === normalized.activeTabId)!
+      : survivors[survivors.length - 1]!;
+    setState(normalizeTabsState({
+      ...normalized,
+      tabs: survivors,
+      activeTabId: replacement.id,
+    }));
+    if (!activeSurvives) navigate(routeForTab(replacement));
   }
 
   function handleTabDragStart(tabId: string, event: DragEvent<HTMLDivElement>) {
@@ -984,6 +1186,300 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     }, 0);
   }
 
+  function openTabContextMenu(tabId: string, event: React.MouseEvent) {
+    event.preventDefault();
+    dismissHoverPreview();
+    setTabContextMenu({ tabId, x: event.clientX, y: event.clientY });
+  }
+
+  function renderTabContextMenu(menu: TabContextMenuState) {
+    const tab = state.tabs.find((item) => item.id === menu.tabId);
+    if (!tab) return null;
+    const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
+    const pinned = isTabPinned(state.pinnedTabIds, tab.id);
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    return (
+      <div
+        className={styles.contextMenu}
+        style={{
+          left: Math.max(4, Math.min(viewportWidth - TAB_CONTEXT_MENU_WIDTH - 4, menu.x)),
+          top: Math.max(4, Math.min(viewportHeight - 160, menu.y)),
+          width: TAB_CONTEXT_MENU_WIDTH,
+        }}
+        role="menu"
+        aria-label={display.title}
+        ref={contextMenuRef}
+      >
+        {tab.kind === 'entry' ? (
+          <p className={styles.contextMenuNote}>{t('workspaceTabs.permanentTab')}</p>
+        ) : (
+          <>
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.contextMenuItem}
+              onClick={() => setTabPinned(tab.id, !pinned)}
+            >
+              <Icon name="star" size={13} aria-hidden />
+              <span>{pinned ? t('workspaceTabs.unpin') : t('workspaceTabs.pin')}</span>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.contextMenuItem}
+              onClick={() => {
+                setTabContextMenu(null);
+                closeTab(tab.id);
+              }}
+            >
+              <Icon name="close" size={13} aria-hidden />
+              <span>{t('common.close')}</span>
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          onClick={() => {
+            setTabContextMenu(null);
+            setTabsMenuOpen(true);
+            setBulkCloseOpen(true);
+          }}
+        >
+          <Icon name="search" size={13} aria-hidden />
+          <span>{t('workspaceTabs.bulkCloseTitle')}</span>
+        </button>
+      </div>
+    );
+  }
+
+  /**
+   * Close-by-text, with its review step.
+   *
+   * The panel never runs on an empty query or a pattern that does not compile —
+   * both would be a way to close the whole workspace by pressing a button twice
+   * — and the button says exactly how many tabs it will close, next to a list of
+   * which ones. Anything the predicate selected but the plan refuses to close
+   * (a pinned tab, the permanent entry tab) is named underneath rather than
+   * quietly dropped, so the count and the outcome cannot disagree.
+   */
+  function renderBulkClosePanel() {
+    const plan = bulkClosePlan;
+    const previewRows = plan ? plan.close.slice(0, BULK_CLOSE_PREVIEW_LIMIT) : [];
+    const hiddenCount = plan ? plan.close.length - previewRows.length : 0;
+    const pinnedExcluded = plan
+      ? plan.excluded.filter((entry) => entry.reason === 'pinned').length
+      : 0;
+    const permanentExcluded = plan
+      ? plan.excluded.filter((entry) => entry.reason === 'permanent').length
+      : 0;
+    const canRun = plan !== null && plan.close.length > 0;
+
+    let status: string;
+    if (!bulkCloseMatcher.ok) {
+      status = bulkCloseMatcher.reason === 'empty'
+        ? t('workspaceTabs.bulkCloseEmptyQuery')
+        : bulkCloseMatcher.reason === 'tooLong'
+          ? t('workspaceTabs.bulkCloseTooLong')
+          : t('workspaceTabs.bulkCloseInvalidPattern', {
+              detail: bulkCloseMatcher.detail ?? '',
+            });
+    } else if (!plan || plan.close.length === 0) {
+      status = t('workspaceTabs.bulkCloseNoMatches');
+    } else {
+      status = t('workspaceTabs.bulkClosePreview', { count: plan.close.length });
+    }
+
+    return (
+      <div className={styles.bulkClose}>
+        <button
+          type="button"
+          className={styles.bulkCloseToggle}
+          aria-expanded={bulkCloseOpen}
+          onClick={() => setBulkCloseOpen((open) => !open)}
+        >
+          <Icon name={bulkCloseOpen ? 'chevron-down' : 'chevron-right'} size={13} aria-hidden />
+          <span>{t('workspaceTabs.bulkCloseTitle')}</span>
+        </button>
+        {bulkCloseOpen ? (
+          <div className={styles.bulkCloseBody}>
+            <input
+              className={styles.bulkCloseInput}
+              value={bulkCloseQuery}
+              onChange={(event) => setBulkCloseQuery(event.target.value)}
+              placeholder={t('workspaceTabs.bulkCloseQueryLabel')}
+              aria-label={t('workspaceTabs.bulkCloseQueryLabel')}
+              aria-describedby="workspace-tabs-bulk-close-status"
+              spellCheck={false}
+            />
+            <div className={styles.bulkCloseRow} role="group" aria-label={t('workspaceTabs.matchMode')}>
+              {(['text', 'regex'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`${styles.bulkCloseChip}${bulkCloseMode === mode ? ` ${styles.bulkCloseChipActive}` : ''}`}
+                  aria-pressed={bulkCloseMode === mode}
+                  onClick={() => setBulkCloseMode(mode)}
+                >
+                  {mode === 'text'
+                    ? t('workspaceTabs.bulkCloseModeText')
+                    : t('workspaceTabs.bulkCloseModeRegex')}
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`${styles.bulkCloseChip}${bulkCloseCaseSensitive ? ` ${styles.bulkCloseChipActive}` : ''}`}
+                aria-pressed={bulkCloseCaseSensitive}
+                onClick={() => setBulkCloseCaseSensitive((value) => !value)}
+              >
+                {t('workspaceTabs.bulkCloseCaseSensitive')}
+              </button>
+              <button
+                type="button"
+                className={`${styles.bulkCloseChip}${bulkCloseIncludePinned ? ` ${styles.bulkCloseChipActive}` : ''}`}
+                aria-pressed={bulkCloseIncludePinned}
+                onClick={() => setBulkCloseIncludePinned((value) => !value)}
+              >
+                {t('workspaceTabs.bulkCloseIncludePinned')}
+              </button>
+            </div>
+            <div
+              className={styles.bulkCloseRow}
+              role="group"
+              aria-label={t('workspaceTabs.bulkCloseTitle')}
+            >
+              {(['containing', 'notContaining'] as const).map((direction) => (
+                <button
+                  key={direction}
+                  type="button"
+                  className={`${styles.bulkCloseChip}${bulkCloseDirection === direction ? ` ${styles.bulkCloseChipActive}` : ''}`}
+                  aria-pressed={bulkCloseDirection === direction}
+                  onClick={() => setBulkCloseDirection(direction)}
+                >
+                  {direction === 'containing'
+                    ? t('workspaceTabs.bulkCloseContaining')
+                    : t('workspaceTabs.bulkCloseNotContaining')}
+                </button>
+              ))}
+            </div>
+            <p
+              className={styles.bulkCloseStatus}
+              id="workspace-tabs-bulk-close-status"
+              aria-live="polite"
+            >
+              {status}
+            </p>
+            {previewRows.length > 0 ? (
+              <ul className={styles.bulkClosePreview}>
+                {previewRows.map((candidate) => (
+                  <li key={candidate.id}>{candidate.label}</li>
+                ))}
+                {hiddenCount > 0 ? (
+                  <li className={styles.bulkCloseMore}>
+                    {t('workspaceTabs.bulkCloseMore', { count: hiddenCount })}
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
+            {pinnedExcluded > 0 ? (
+              <p className={styles.bulkCloseExcluded}>
+                {t('workspaceTabs.bulkCloseExcludedPinned', { count: pinnedExcluded })}
+              </p>
+            ) : null}
+            {permanentExcluded > 0 ? (
+              <p className={styles.bulkCloseExcluded}>
+                {t('workspaceTabs.bulkCloseExcludedPermanent', { count: permanentExcluded })}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className={styles.bulkCloseConfirm}
+              disabled={!canRun}
+              onClick={() => {
+                if (!plan) return;
+                closeTabs(plan.close.map((candidate) => candidate.id));
+                setBulkCloseQuery('');
+              }}
+            >
+              {t('workspaceTabs.bulkCloseConfirm', { count: plan?.close.length ?? 0 })}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  /**
+   * One tab. Extracted from the strip's map so the pinned region and the
+   * scrolling region render the same element rather than two drifting copies —
+   * the difference between them is `userPinned`, and nothing else.
+   */
+  function renderTab(tab: WorkspaceChromeTab, userPinned: boolean) {
+    const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
+    const active = tab.id === state.activeTabId;
+    // The single entry tab is permanent and pinned leftmost: it cannot be
+    // closed or dragged out of the first slot, whatever section it shows.
+    const isPinned = tab.kind === 'entry';
+    const dragOverClass =
+      dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
+        ? ` is-drag-over-${dragOverTarget.edge}`
+        : '';
+    // A user-pinned tab renders compact — icon only — so a row of them costs
+    // little of the strip. The full name is still the button's accessible name
+    // and its tooltip, so nothing is lost to anyone reading it with the
+    // keyboard, a screen reader or a pointer.
+    const compactClass = userPinned ? ' is-user-pinned' : '';
+    return (
+      <div
+        key={tab.id}
+        className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}${compactClass}`}
+        data-workspace-tab-id={tab.id}
+        data-workspace-tab-pinned={userPinned ? 'true' : undefined}
+        role="tab"
+        aria-selected={active}
+        aria-describedby={hoverPreview?.tabId === tab.id ? 'workspace-tab-preview' : undefined}
+        draggable={!isPinned && state.tabs.length > 1}
+        onDragStart={(event) => handleTabDragStart(tab.id, event)}
+        onDragEnd={handleTabDragEnd}
+        onContextMenu={(event) => openTabContextMenu(tab.id, event)}
+        onMouseEnter={(event) => scheduleHoverPreview(tab.id, event.currentTarget)}
+        onMouseLeave={dismissHoverPreview}
+      >
+        <button
+          type="button"
+          className="workspace-tab__main od-tooltip"
+          onClick={() => openTab(tab)}
+          aria-label={userPinned ? display.title : undefined}
+          title={userPinned ? display.title : undefined}
+          data-tooltip={userPinned ? display.title : undefined}
+          data-tooltip-placement="bottom"
+          onFocus={(event) => scheduleHoverPreview(tab.id, event.currentTarget.parentElement ?? event.currentTarget)}
+          onBlur={dismissHoverPreview}
+        >
+          <span className="workspace-tab__icon" aria-hidden>
+            <Icon name={display.icon} size={14} />
+          </span>
+          <span className="workspace-tab__label">{display.title}</span>
+        </button>
+        {isPinned || userPinned ? null : (
+          <button
+            type="button"
+            className="workspace-tab__close od-tooltip"
+            aria-label={t('common.close')}
+            title={t('common.close')}
+            data-tooltip={t('common.close')}
+            data-tooltip-placement="bottom"
+            onClick={() => closeTab(tab.id)}
+          >
+            <Icon name="close" size={10} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <header className="app-chrome-header workspace-tabs-chrome" aria-label="Workspace tabs">
       <div className="app-chrome-traffic-space workspace-tabs-traffic" aria-hidden />
@@ -996,65 +1492,22 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         onDrop={handleStripDrop}
         onDragLeave={handleStripDragLeave}
       >
-        {/* Render every open tab — the strip itself scrolls horizontally
-            when the tabs exceed the available chrome width. Previous
-            behaviour sliced to `visibleChromeTabs(...)` and squeezed
-            the rest behind a "+N more" chip, which squished the entire
-            chrome horizontally. The search-tabs popover still acts as
-            a keyboard surface for finding a tab that's scrolled out of
-            view. */}
-        {state.tabs.map((tab) => {
-          const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
-          const active = tab.id === state.activeTabId;
-          // The single entry tab is permanent and pinned leftmost: it cannot be
-          // closed or dragged out of the first slot, whatever section it shows.
-          const isPinned = tab.kind === 'entry';
-          const dragOverClass =
-            dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
-              ? ` is-drag-over-${dragOverTarget.edge}`
-              : '';
-          return (
-            <div
-              key={tab.id}
-              className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
-              data-workspace-tab-id={tab.id}
-              role="tab"
-              aria-selected={active}
-              aria-describedby={hoverPreview?.tabId === tab.id ? 'workspace-tab-preview' : undefined}
-              draggable={!isPinned && state.tabs.length > 1}
-              onDragStart={(event) => handleTabDragStart(tab.id, event)}
-              onDragEnd={handleTabDragEnd}
-              onMouseEnter={(event) => scheduleHoverPreview(tab.id, event.currentTarget)}
-              onMouseLeave={dismissHoverPreview}
-            >
-              <button
-                type="button"
-                className="workspace-tab__main"
-                onClick={() => openTab(tab)}
-                onFocus={(event) => scheduleHoverPreview(tab.id, event.currentTarget.parentElement ?? event.currentTarget)}
-                onBlur={dismissHoverPreview}
-              >
-                <span className="workspace-tab__icon" aria-hidden>
-                  <Icon name={display.icon} size={14} />
-                </span>
-                <span className="workspace-tab__label">{display.title}</span>
-              </button>
-              {isPinned ? null : (
-                <button
-                  type="button"
-                  className="workspace-tab__close od-tooltip"
-                  aria-label={t('common.close')}
-                  title={t('common.close')}
-                  data-tooltip={t('common.close')}
-                  data-tooltip-placement="bottom"
-                  onClick={() => closeTab(tab.id)}
-                >
-                  <Icon name="close" size={10} />
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {/* Two regions. The pinned one is a sticky container so its tabs stay
+            on screen once the rest overflow into horizontal scroll — the same
+            guarantee the permanent entry tab always had, extended to the tabs
+            the user asked to keep. It is `role="presentation"` so the tablist
+            still owns the tabs directly in the accessibility tree.
+
+            Everything else renders in place: the strip scrolls horizontally
+            when the tabs exceed the available chrome width. Previous behaviour
+            sliced to `visibleChromeTabs(...)` and squeezed the rest behind a
+            "+N more" chip, which squished the entire chrome horizontally. The
+            search-tabs popover still acts as a keyboard surface for finding a
+            tab that's scrolled out of view. */}
+        <div className={styles.pinnedRegion} role="presentation">
+          {stickyTabs.map((tab) => renderTab(tab, tab.kind !== 'entry'))}
+        </div>
+        {flowTabs.map((tab) => renderTab(tab, false))}
         <button
           type="button"
           className="workspace-tabs-new-btn od-tooltip"
@@ -1137,6 +1590,29 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
                           {display.tab.kind === 'entry' ? null : (
                             <button
                               type="button"
+                              className={`${styles.listPin} od-tooltip`}
+                              onClick={() => setTabPinned(
+                                display.id,
+                                !isTabPinned(state.pinnedTabIds, display.id),
+                              )}
+                              aria-pressed={isTabPinned(state.pinnedTabIds, display.id)}
+                              title={isTabPinned(state.pinnedTabIds, display.id)
+                                ? t('workspaceTabs.unpin')
+                                : t('workspaceTabs.pin')}
+                              data-tooltip={isTabPinned(state.pinnedTabIds, display.id)
+                                ? t('workspaceTabs.unpin')
+                                : t('workspaceTabs.pin')}
+                              data-tooltip-placement="left"
+                              aria-label={isTabPinned(state.pinnedTabIds, display.id)
+                                ? t('workspaceTabs.unpin')
+                                : t('workspaceTabs.pin')}
+                            >
+                              <Icon name="star" size={12} />
+                            </button>
+                          )}
+                          {display.tab.kind === 'entry' ? null : (
+                            <button
+                              type="button"
                               className="workspace-tabs-list__close od-tooltip"
                               onClick={() => closeTab(display.id)}
                               title={t('common.close')}
@@ -1154,11 +1630,15 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
                     <div className="workspace-tabs-empty">No tabs found</div>
                   )}
                 </div>
+                {renderBulkClosePanel()}
               </div>,
               document.body,
             )
           : null}
       </div>
+      {tabContextMenu && typeof document !== 'undefined'
+        ? createPortal(renderTabContextMenu(tabContextMenu), document.body)
+        : null}
       {hoverPreview && typeof document !== 'undefined' && !tabsMenuOpen
         ? createPortal(
             (() => {

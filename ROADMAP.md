@@ -3,20 +3,24 @@
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
 
-Almost nothing here is done. This document exists so that the size of the
+Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
 
 > [!IMPORTANT]
-> **Nothing in this repository has been installed, built, run, or tested.**
-> The only thing that has ever been executed against this tree is
-> `scripts/verify-port.sh`. There is no installer and no release. Three
-> workflows *are* committed at the repository root — `verify.yml`, `release.yml`
-> and `pages.yml` — but **no run outcome has been observed for any of them**, so
-> there is still no CI evidence of any kind: a committed workflow is a
-> definition, not a result. Every "Verified by" line below describes a check that
-> *will* exist, not one that has already passed, unless it is written under
-> Phase 0.
+> **Phase 1 has produced results; almost nothing after it has.** All three
+> workflows at the repository root have run: the port verifies at zero gaps on a
+> clean checkout, two Windows installers were built and published under their own
+> tags, the packaged smoke test installed one of those builds and launched it,
+> and the documentation site is deployed. A "Verified by" line under Phase 0 or
+> Phase 1 now generally names something that happened.
+>
+> **From Phase 2 onward it usually does not.** A "Verified by" line there
+> describes a check that will exist, unless it names the commit or the run that
+> satisfied it. Two things in particular are worth carrying into every section
+> below: **no workflow has been observed failing**, so every gate is known to pass
+> and not yet known to gate; and **nobody has looked at the running interface**,
+> so no claim about how anything renders is evidence of anything.
 
 ---
 
@@ -25,15 +29,18 @@ imported upstream tree for a shipping product.
 | Marker | Meaning |
 | --- | --- |
 | `[x]` | Done, and verified by evidence named on the line |
-| `[~]` | **Machinery committed, no result observed.** The file that does the work exists and can be read; nothing has been produced by it |
+| `[~]` | **Genuinely partial**, in one of two ways: the machinery is committed but has produced no result, or part of the item has landed and the line says exactly which part has not |
 | `[ ]` | Not started |
 
-The middle marker is load-bearing and is not a softer `[x]`. A workflow that
-would build an installer is not an installer; a committed counter is not a
-published line count. Everything marked `[~]` becomes `[x]` when — and only
-when — a run link, an artifact or an output exists to name on the line. Items are
-ordered by dependency, not by importance: an item near the top is usually one
-that other items cannot begin without.
+The middle marker is load-bearing and is not a softer `[x]`. A workflow that would
+build an installer is not an installer; a committed counter is not a published
+line count; a token defined is not a token consumed. Everything marked `[~]`
+becomes `[x]` when — and only when — the line can name the run, the artifact, the
+output or the commit that closed the remaining part. A `[~]` line that does not
+say what is missing is a defect in this document.
+
+Items are ordered by dependency, not by importance: an item near the top is
+usually one that other items cannot begin without.
 
 Two constraints shape every phase and are repeated here because they change what
 "do the work" means:
@@ -57,7 +64,17 @@ mockup describing the intended redesign of its interface, a verifier that proves
 the import has not drifted, a rebrand being written on top of it, and the
 scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
-None of it has produced a build.
+All three workflows have now run: the port verifies at zero gaps on a clean
+checkout, the release pipeline has built two Windows installers and published
+them under their own tags, and the documentation site is deployed. The packaged
+smoke test has installed one of those builds, launched it, made the running
+process answer its own health endpoint and uninstalled it.
+
+That is the machinery working, and it is worth separating from the product. What
+those runs prove is that this project can build and ship the imported application
+under its own identity. They prove almost nothing about the redesign, which has a
+token layer and a Windows title bar and no rewritten components — Phase 2 onward
+is still the great majority of the work in this document.
 
 <details>
 <summary><strong>What actually exists right now</strong> — tracked files, verifier output, and what is still provably absent</summary>
@@ -88,13 +105,22 @@ pasted transcript in the repository lives in
 [`docs/porting/verification.md`](docs/porting/verification.md), so figures do not
 go stale in five places at once.
 
-**Still provably absent:** no installer, no release, no observed CI run, no
-published line count, no published documentation site, no `CONTRIBUTING.md`,
-`LICENSE` at the repository root, `SECURITY.md`, `CODE_OF_CONDUCT.md` or
-`CHANGELOG.md`, and no Cantonese locale. Note the distinction that the rest of
-this document depends on: the machinery for several of these is committed (the
-counter, the code-name picker, the catalogue, the site source, the workflows) —
-what is absent is any *result* produced by it.
+**Still provably absent:** `CONTRIBUTING.md`, `LICENSE` at the repository root,
+`SECURITY.md` and `CODE_OF_CONDUCT.md` — four files, none of which exists. Also
+absent from the *application*: the Cantonese locale, the two funny-level sliders,
+the in-app regex builder, the startup dish surprise and the changelog viewer. The
+documentation site demonstrates all five; the installed build carries none of
+them, and the difference between those two sentences is the one this document
+exists to keep visible.
+
+**No longer absent, and worth naming because earlier revisions of this file said
+otherwise:** installers, releases, observed workflow runs, a published line count
+and a published documentation site all exist, and `CHANGELOG.md` sits at the
+repository root. The machinery that produced them — the counter, the code-name
+picker, the catalogue, the site source, the workflows — was committed well before
+any of it ran, and the gap between "the machinery is committed" and "the machinery
+has produced a result" is exactly the distinction the rest of this document
+depends on. It is now closed for Phase 1 and wide open for everything after it.
 
 **A trap worth naming early:** `design/.github/workflows/` contains 48 workflow
 files inherited from upstream. Continuous integration only reads
@@ -155,30 +181,33 @@ Not by a local build — local builds do not happen here.
 
 ### 1.1 Continuous integration
 
-- [~] **Create the root `.github/workflows/` directory.** It holds three
+- [x] **Create the root `.github/workflows/` directory.** It holds three
       workflows written for this project — `verify.yml` (*Verify*),
       `release.yml` (*Release*) and `pages.yml` (*Pages*). The 48 upstream
       workflow files under `design/` stay where they are and stay inert; they
       were not a starting point, because they assume upstream's secrets,
       environments, and release targets.
-      *Verified by:* reading the three files at `.github/workflows/`. The
-      definitions exist; **no run of any of them has been observed**, which is
-      why this is `[~]` and not `[x]`.
-- [~] **Install job on a hosted Windows runner.** `release.yml` runs on
+      *Verified by:* all three having run — *Verify* on a clean checkout,
+      *Release* through to publication, *Pages* through to deployment.
+- [x] **Install job on a hosted Windows runner.** `release.yml` runs on
       `windows-latest` and installs the package manager through its own setup
       action rather than through the shim-based enabler, which fails with a
       permissions error on Windows. The install compiles a native SQLite binding
       from source because no prebuilt binary exists for this platform/runtime
       pair, so expect it to take minutes rather than seconds — and expect the
       first real run to be where that assumption is actually tested.
-      *Written; never executed.*
-- [~] **Set the working directory to `design/`.** Every install, typecheck, test
+      *Verified by:* the install completing on a hosted Windows runner with the
+      native binding compiled from source. The assumption held — it is minutes,
+      not seconds, and it is the long pole of that job.
+- [x] **Set the working directory to `design/`.** Every install, typecheck, test
       and build step in `release.yml` carries `working-directory: design`,
       because the repository root has no `package.json`. This is the single most
       likely cause of a first CI attempt failing for a reason that has nothing to
       do with the code, which is why it is written down rather than assumed.
-      *Written; never executed.*
-- [~] **Run the port verifier in CI, with line endings forced to LF.**
+      *Verified by:* every one of those steps running from that directory without
+      a path failure. The prediction was never tested the hard way, because it was
+      written down before the first attempt rather than after it.
+- [x] **Run the port verifier in CI, with line endings forced to LF.**
       `verify.yml` runs `scripts/verify-port.sh` on `ubuntu-latest`, on every
       push, pull request and manual dispatch. The Linux runner is the
       line-ending answer: the verifier hashes on-disk bytes, and a Windows
@@ -186,7 +215,11 @@ Not by a local build — local builds do not happen here.
       differences on a tree that is perfectly fine. The committed
       `scripts/upstream-manifest.tsv` is the fallback when the pinned submodule
       is not checked out, so a missing submodule no longer exits early.
-      *Written; no run outcome observed.*
+      *Verified by:* the gate passing on a clean Linux checkout at 11,799 files
+      and zero gaps. **It has never been observed failing**, so the line-ending
+      reasoning above is still an argument rather than a demonstrated result —
+      deliberately introducing an undeclared change and watching the gate go red
+      is the outstanding half of this item.
 - [ ] **Typecheck and lint.** `release.yml` runs the workspace-wide typecheck,
       after building the daemon and desktop declaration files it depends on. The
       guard script, the translation-coverage check and the craft lint are **not
@@ -210,73 +243,90 @@ Not by a local build — local builds do not happen here.
       coverage is visible without opening logs. The `Summarise` step reports
       version, tag, installer name, smoke-test outcome and code name — not test
       counts.
-- [~] **Build the Windows installer.** `release.yml` sets up NSIS, builds the
+- [x] **Build the Windows installer.** `release.yml` sets up NSIS, builds the
       packaging tool and invokes the installer target, then uploads the result as
       a workflow artifact even when a later step fails, so a bad run still leaves
-      something to inspect. *Written; no installer has been produced.*
-- [~] **Publish exactly one release per successful run**, with a unique
+      something to inspect.
+      *Verified by:* two installers built and attached to their own releases, each
+      with an explicit existence check on the reported path and its payload
+      validated before the run continued.
+- [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
       publishes nothing — that is correct. A run that publishes a release with no
       installer, or an installer it did not build, would not be.
-      *Written; nothing has been published.*
-- [~] **Do not sign the installer yet, and say so in the release notes.** The
+      *Verified by:* `v0.16.1-r7.1` and `v0.16.1-r8.1`, each non-draft, each under
+      a tag no earlier release used, each carrying the installer its own run
+      built. **The gating half is unproved**: no run has failed, so nothing has
+      demonstrated that a failing run publishes nothing.
+- [x] **Do not sign the installer yet, and say so in the release notes.** The
       generated notes say it outright: the installer is not code-signed, so the
       operating system's reputation prompt appears on first run, and its "run
       anyway" affordance is hidden behind a "more info" link. Users will hit
       this. Documenting it is not optional politeness; it is the difference
       between a confused user and an abandoned install.
-      *Written into the notes template; no notes have been published.*
-- [~] **Commit a line-count script and have CI run it at the released commit.**
-      `scripts/line-count.mjs` is written and both workflows invoke it
+      *Verified by:* both published releases carrying that warning in their notes,
+      directly beneath the download instruction rather than buried at the bottom.
+- [x] **Commit a line-count script and have CI run it at the released commit.**
+      `scripts/line-count.mjs` is written, tracked, and invoked by both workflows
       (`release.yml` into the release notes, `verify.yml` into the job summary).
-      Two things are still outstanding, and neither is cosmetic: the file was
-      **still untracked** at `65e288f`, so it is not committed yet; and both
-      workflows call it **without `--blame`**, which is the flag that turns on
-      authorship attribution — without it the script emits an Authorship table
-      reading "not computed". It must break the count down by category —
-      application source, tests, styles and markup — with both total and
-      non-blank lines, and report authorship per *surviving* line rather than by
-      summing additions, because churn is not authorship.
-- [ ] **Enable authorship attribution in the release workflow.** Add `--blame`
+      It must break the count down by category — application source, tests, styles
+      and markup — with both total and non-blank lines, and report authorship per
+      *surviving* line rather than by summing additions, because churn is not
+      authorship.
+      *Verified by:* the published notes of both releases, each carrying a line
+      table split by category and by subproject, measured at the released commit
+      and stating the exact command to reproduce it.
+- [x] **Enable authorship attribution in the release workflow.** Add `--blame`
       to the counter invocation, scoped with `--blame-paths` so it does not
-      blame the 11,799-file vendored tree file by file. Until this lands, no
-      release can carry the human/agent split that
-      [`docs/standards/releases.md`](docs/standards/releases.md) requires.
-- [~] **Report the vendored tree as a separate, visible row.** The counter
+      blame the 11,799-file vendored tree file by file.
+      *Verified by:* the published notes carrying an authorship table attributed
+      per surviving line, stating the rule used to classify a commit as
+      agent-authored so the figure can be checked rather than taken on trust, and
+      confirming the attributed total equals the counted line total for the same
+      scope.
+- [x] **Report the vendored tree as a separate, visible row.** The counter
       reports the imported `design/` tree separately from this repository's own
       code, prints excluded paths as visible rows with their own numbers rather
       than dropping them silently, and buckets every tracked file into exactly
       one row behind a mandatory catch-all. The 11,799 imported files are not
       this project's code, and folding them into a total would misrepresent the
-      project by roughly two orders of magnitude. *Implemented in the script —
-      see its tracking status in the line-count item above; never published.*
-- [~] **Make the counter's arithmetic agree with itself** before any figure is
+      project by roughly two orders of magnitude.
+      *Verified by:* the published notes, which give this repository's own code
+      its own table and keep the imported tree visible beside it rather than
+      silently dropping it or silently absorbing it.
+- [x] **Make the counter's arithmetic agree with itself** before any figure is
       published. The script fails loudly when the authorship rows do not sum to
       the line rows, rather than printing two numbers that contradict each other.
-      *Implemented; never exercised on a release, which is the only place the
-      check matters.*
-- [~] **Assign each release a dim sum code name** drawn from a bundled catalog,
+      *Verified by:* the published authorship table stating that the attributed
+      total equals the counted line total for the same scope — which is the check
+      passing rather than merely being present.
+- [x] **Assign each release a dim sum code name** drawn from a bundled catalog,
       in English and Traditional Chinese, used once per project and recorded so
       the mapping is auditable. The catalogue exists —
       `assets/dim-sum/index.json` declares 24 dishes and 24 PNGs are tracked
       under `assets/dim-sum/images/` — and `scripts/release-codename.sh` picks
-      from it. No release has consumed a name, so the once-per-project mapping
-      is still empty. A release must never be delayed for this: if no name can
-      be resolved, ship with the version alone and say so.
+      from it. A release must never be delayed for this: if no name can be
+      resolved, ship with the version alone and say so.
+      *Verified by:* the two published releases carrying **different** dishes,
+      each named in English and Traditional Chinese with its photograph attached
+      as a release asset. Spending a dish exactly once is the whole job of a code
+      name, and two releases is the smallest sample that can show it working.
 
 ### 1.2 Governance documents
 
 - [x] **`README.md`** — tabbed rather than scrolled: a compact index at the top
       (what this is, how to install, where the docs are), with long reference
       sections folded into collapsible blocks. It must state plainly that this
-      is a rebranded fork, that nothing has been verified by a build yet, and
-      what the upstream project's trademarks are.
+      is a rebranded fork, what a build has and has not verified, and what the
+      upstream project's trademarks are.
       *Verified by:* `README.md` — a Contents table followed by `<details>`
       blocks for the layout, build, verification, privacy, standards and
-      provenance sections; a Status section that names what has never been run;
-      and a Trademarks paragraph under Provenance. No CI run outcome is claimed
-      anywhere in it.
+      provenance sections; a Status section carrying a table of what each workflow
+      actually did, with the download link for the current release beside it; and
+      a Trademarks paragraph under Provenance. Every run outcome it claims is one
+      that happened, and the five standards the application does not have yet are
+      named there rather than left to be inferred.
 - [x] **Carry the honest warnings into the README**, specifically: the unsigned
       installer's reputation prompt; the native compile requirement and its
       build-tools prerequisite; that native Windows support is best-effort
@@ -314,20 +364,23 @@ Not by a local build — local builds do not happen here.
       *Genuinely absent* — none of the three exists at the repository root.
 - [ ] **`LICENSE`** at the root, matching the imported Apache-2.0 licence.
       *Genuinely absent* at the root; the licence text ships at `design/LICENSE`.
-- [ ] **`CHANGELOG.md`**, started now rather than at the first release, with
+- [x] **`CHANGELOG.md`**, started now rather than at the first release, with
       every entry carrying its commit reference.
-      *Genuinely absent.* Until the file exists, `README.md` must **not** link to
-      it — a link in the section that tells a first-time reader where the
-      project's records live is a 404 at the worst possible place. The README
-      currently says the changelog is not written yet; that sentence becomes the
-      link on the same commit that creates the file, and not before.
+      *Verified by:* `CHANGELOG.md` at the repository root — a section per
+      published tag plus `[Unreleased]`, every entry carrying a link to the commit
+      that made it, and a "Not done yet" section so the file records the shape of
+      the work rather than only its progress. Each referenced object id was
+      checked against the object store; a link to a commit that does not exist is
+      worse than no link, because it sends a doubting reader somewhere
+      confidently irrelevant.
 - [x] **`HANDOFF.md`**, recording what changed, what evidence exists, what
       remains, and every external dependency — with no claim of unverified
       success.
-      *Verified by:* `HANDOFF.md` — a status-at-a-glance table, a verification
-      section quoting a real verifier run with its exit code, a "what is not
-      verified" section, and ordered next steps. No run outcome is claimed for
-      any workflow.
+      *Verified by:* `HANDOFF.md` — a status-at-a-glance table, a "what is not
+      verified" section that leads with what *is*, so the gaps are read against
+      something, and ordered next steps. Every run outcome it claims is one that
+      happened, and the sections describing the first working session are marked
+      as a historical record rather than a current state.
 - [x] **`docs/` with a categorized index**, one Markdown file per feature
       covering behaviour, configuration, failure modes, security
       considerations, and verification.
@@ -335,13 +388,16 @@ Not by a local build — local builds do not happen here.
       `architecture/`, `build/`, `standards/`, `site/` and `api/` — each listing
       its files with an honest implementation status. Each standard in
       `docs/standards/` resolves to a file; none is left as a dash.
-- [ ] **Set the repository's homepage field to the documentation site** once it
+- [x] **Set the repository's homepage field to the documentation site** once it
       publishes, so the link renders in the sidebar where every visitor looks
-      first. Blocked on the site publishing — see 1.3.
+      first.
+      *Verified by:* the repository's website field, which now resolves to the
+      published site rather than to a branch or a raw file. It was blocked on 1.3
+      and stopped being blocked the moment the site deployed.
 
 ### 1.3 Documentation site
 
-- [ ] **Publish a landing page and documentation site**, using the imported
+- [x] **Publish a landing page and documentation site**, using the imported
       static-site application or a replacement. It is a user-facing surface and
       therefore carries every standard the application carries — Material
       Design 3, the three language modes, both funny-level sliders, tabbed
@@ -350,20 +406,45 @@ Not by a local build — local builds do not happen here.
       accessibility rules, and the dim sum surprise. "It is only docs" is not an
       exemption, and the settings page is not exempt from having its own search
       either.
-- [ ] **Enable the publishing surface in the repository settings** before the
+      *Verified by:* the `Pages` workflow deploying, then the published URL
+      checked by request — the page, both stylesheets, `main.js`, the staged dish
+      catalogue and a dish photograph each returned 200, and the served markup
+      carried no unresolved translation keys. **What that check did not do is
+      drive anything.** The controls listed above are known to be in the served
+      markup; none has been operated in a browser. See
+      [`docs/site/pages-deployment.md`](docs/site/pages-deployment.md), which
+      keeps that distinction and lists the behaviour still unproved.
+- [x] **Enable the publishing surface in the repository settings** before the
       first docs run. A missing site setting fails the deployment in a way that
       looks like a broken build and is actually one checkbox.
-- [ ] **Make the site's base path configurable and verify the built output
+      *Verified by:* the first deployment failing exactly that way — a 404 from
+      the publishing API before anything was uploaded — and succeeding once the
+      setting was turned on. The prediction in this line was correct, which is
+      the only reason it is worth leaving written down.
+- [~] **Make the site's base path configurable and verify the built output
       carries it.** A fork publishing under a repository-scoped path with a
       hardcoded root will emit absolute asset URLs: the build goes green, the
       deployment succeeds, and every page returns a 404. Never conclude the site
       works because its workflow passed — open a page.
-- [ ] **Add an installer download button to the site's home page**, using the
+      *Partly done:* the site references its assets relatively, so no base path
+      has to be configured, and the by-request check confirmed every asset
+      resolves under the repository-scoped path. The trap is avoided rather than
+      solved, which is fine while the site stays a single page — it becomes a
+      real problem the moment a second directory level exists.
+- [x] **Add an installer download button to the site's home page**, using the
       immutable release asset URL from a verified release, showing version and
       platform, and absent entirely until a real release exists rather than
       pointing at a guessed URL.
-- [ ] **Bundle every site asset locally.** No CDN scripts, stylesheets, fonts,
+      *Verified by:* the install section linking the immutable asset URL of the
+      published tag `v0.16.1-r8.1` rather than a `latest` redirect, which is what
+      lets the checksum printed beside it mean anything.
+- [x] **Bundle every site asset locally.** No CDN scripts, stylesheets, fonts,
       or remote images, and no third-party analytics.
+      *Verified by:* the `Pages` workflow's six-check gate over `site/**`, which
+      passes on every deployment. **The gate has never been observed rejecting
+      anything**, so it is known to permit this site and not yet known to catch a
+      violation — recorded as outstanding in
+      [`docs/site/pages-deployment.md`](docs/site/pages-deployment.md).
 
 ---
 
@@ -386,37 +467,79 @@ in a browser is not evidence; a capture from the installed artifact is.
 
 ### 2.1 Windows frameless window and custom title bar
 
-Confirmed by reading the imported desktop main process: the frameless chrome
-configuration is applied only when the platform is macOS, and is an empty object
-otherwise. On Windows the main window therefore renders the operating system's
-default title bar today. Two other windows are already frameless — a startup
-splash and a small always-on-top companion window — but neither is the main
-window.
+**This section landed at `dea6b0a`**, the commit `v0.16.1-r8.1` was built from.
+Before it, the imported desktop main process applied its frameless chrome only
+when the platform was macOS and an empty object otherwise, so the Windows main
+window rendered the operating system's default title bar. It no longer does.
 
-- [ ] **Make the main window frameless on Windows** and mount a custom title bar
+A caveat, because the boxes below are ticked from reading the tree and from the
+unit suites rather than from looking at a window. **Nobody has looked at this
+bar.** The packaged smoke test does launch the built application and does capture a
+screenshot of it — but it asserts only that the file is non-zero, saves it into the
+run's report, and inspects nothing about what is in the image. No capture has been
+reviewed, posted, or taken at more than one display scale. The verification bar
+stated at the top of this phase — captures from the installed artifact, at
+100/125/150/200% and at narrow widths — is therefore **not met** by anything in
+this section, and reviewing that existing screenshot is the cheapest step toward
+meeting it.
+
+- [x] **Make the main window frameless on Windows** and mount a custom title bar
       in the application's own chrome. Both files are under `design/` and need
       allowlist entries.
-- [ ] **Build the title bar to the mockup's measurements:** 40px tall, 12px of
+      *Verified by:* the desktop main process setting a hidden title-bar style on
+      Windows, the renderer mounting the bar in the application shell, and both
+      paths declared in [`MODIFICATIONS.md`](MODIFICATIONS.md). The hidden style
+      was chosen over a fully frameless window deliberately: the latter also
+      discards the platform's rounded corners, drop shadow, window menu shortcut
+      and snap behaviour, none of which is worth reimplementing.
+- [x] **Build the title bar to the mockup's measurements:** 40px tall, 12px of
       left padding with the right edge flush so the caption buttons run into the
       corner, a surface-container background, and a one-pixel outline-variant
       bottom border.
-- [ ] **Left cluster:** a 20×20 brand mark tinted with the primary role, the
+      *Verified by:* the component's stylesheet, which carries each of those four
+      values as a token reference rather than a literal, except the height and
+      padding which are the measurements themselves.
+- [~] **Left cluster:** a 20×20 brand mark tinted with the primary role, the
       product name at 12px/600 with 0.02em tracking in the on-surface-variant
       role, and a lighter subtitle at 11px.
-- [ ] **Caption controls:** three 46×40 buttons stretched to full bar height
+      *Mark and name done to the measurement; the subtitle is deliberately not
+      rendered.* The mockup's subtitle describes the mockup rather than the
+      product, so shipping it would have put a false description in the window
+      chrome. Recorded as a departure rather than silently dropped — if a subtitle
+      is wanted later it needs copy that is true of this application.
+- [x] **Caption controls:** three 46×40 buttons stretched to full bar height
       with no margin or gap between them, hover filled with the ripple token,
       and a default cursor rather than a pointer to match native behaviour. Icon
       sizes are deliberately unequal — 16px, 15px, 17px — so the three glyphs
       read optically the same size. The close button's hover is the literal
       Windows red `#C42B1C` with white glyph; it is the one hard-coded,
       theme-independent colour in the whole bar, and it should stay that way.
-- [ ] **Wire minimize, maximize/restore, and close to the real window
+      *Verified by:* the component and its stylesheet — the three sizes, the
+      default cursor, the ripple hover and the literal red are all present. Two
+      departures: the icons come from the application's existing set rather than
+      the mockup's webfont, which is not bundled and was not worth adding for
+      three glyphs; and the focus ring is inset rather than offset outward,
+      because these buttons sit flush against two window edges and an outward ring
+      would be clipped on both.
+- [x] **Wire minimize, maximize/restore, and close to the real window
       operations**, including the maximize/restore icon swap. A caption control
       that looks right and does nothing is worse than the native bar it
       replaced.
-- [ ] **Set the drag region correctly**, so the bar moves the window but the
+      *Verified by:* the desktop-side window-control suite, which runs in CI. The
+      maximized state is seeded from the window's real state and then follows a
+      subscription rather than the last button press, because the platform changes
+      it behind the application's back — a snap layout, a keyboard shortcut, a drag
+      off the top edge. The control channel checks the sender is the main window:
+      the webview tag is enabled and child frames share the preload, so without
+      that check an embedded frame could close the application.
+- [x] **Set the drag region correctly**, so the bar moves the window but the
       buttons do not.
-- [~] **Apply the minimal rebrand at the same time:** the product name string,
+      *Verified by:* the stylesheet — the strip is a drag region and the buttons
+      opt back out of it, so a click on a caption button fires instead of starting
+      a window drag. Double-clicking the drag region toggles maximize the way a
+      native caption bar does, and the buttons sit outside it so a double-click on
+      Close cannot also maximize the window.
+- [x] **Apply the minimal rebrand at the same time:** the product name string,
       the window title, the installer's product name, and the application
       identity. Package names, the command-line tool's name, environment
       variable prefixes, and storage keys stay as they are — the rebrand is
@@ -425,11 +548,14 @@ window.
       identity* entry in [`MODIFICATIONS.md`](MODIFICATIONS.md), which covers the
       packaging tool's Windows, Linux and macOS builders, the release package's
       channel definitions, the packaged launcher, the daemon and the web shell.
-      It is `[~]` because **none of it has been compiled, packaged or launched**:
-      no window title has been read off a window and no installer entry has been
-      seen. The frameless-window work above is genuinely still `[ ]` — the
-      desktop main process applies its frameless chrome only on macOS, so the
-      Windows main window still renders the operating system's title bar.
+      It has now been compiled, packaged, installed and launched. The packaged
+      smoke test asserts the installed product's identity directly: the uninstaller
+      is named after the product's display name, the registry entries carry both
+      that name and the expected application id, and the running process reports
+      the release version the run was building. That is the rebrand proved as
+      *installed identity* rather than as text in files, which is what this item
+      was waiting for. The one part still unproved is the window title itself — no
+      title has been read off a window, because nothing inspects the window.
 - [ ] **Add the tab strip and status bar beneath the title bar** as the mockup
       specifies — a 42px strip of 36px bottom-rounded tabs with a 250px cap and
       leading/close icons, and a 28px status bar carrying live daemon state,
@@ -466,41 +592,94 @@ first line of its main stylesheet. It must be bundled too.
 ### 2.3 Token sheet and mapping layer
 
 The mockup's handoff sheet is a genuine drop-in contract: all 18 of its target
-variables already exist in the web application's token stylesheet, and all 12
-source files in its component inventory exist at the paths it names. This is
-what makes a mapping layer viable — existing components can inherit the new
-scheme without being rewritten first.
+variables already existed in the web application's token stylesheet, and all 12
+source files in its component inventory existed at the paths it named. That is
+what made a mapping layer viable — existing components inherit the new scheme
+without being rewritten first.
 
-- [ ] **Transcribe the Material Design 3 token sheet from the mockup:** 33
+**This section landed at `dea6b0a`.** The token layer is now two files:
+`md3-tokens.css` is the contract, and the application's existing token file
+became the mapping layer that redefines the product's own vocabulary in terms of
+it. That split is the reason a reskin edits one file and a token rename edits the
+other. What it does *not* do is rewrite a single component — that is 2.4, and it
+is untouched.
+
+- [x] **Transcribe the Material Design 3 token sheet from the mockup:** 33
       colour roles in light, the dark overrides, the seven-step shape scale, the
       three motion tokens, and the density variables.
-- [ ] **Add the mapping layer**, redefining the application's existing ~147
-      custom properties in terms of the new roles, so every current component
-      inherits the scheme with no changes of its own. The 18 documented mappings
-      are the starting set, not the complete one.
-- [ ] **Actually consume the tokens.** In the mockup the shape and easing
+      *Verified by:* `md3-tokens.css` — 119 distinct `--md-sys-*` tokens across
+      287 declarations, the repeats being the explicit dark block, the three
+      alternate seeds and the system-preference block. The seven-step corner
+      scale, the three motion curves and the density steps are all present.
+      Colour values are copied verbatim from the mockup, uppercase included, so a
+      diff against the contract stays readable.
+- [x] **Add the mapping layer**, redefining the application's existing custom
+      properties in terms of the new roles, so every current component inherits
+      the scheme with no changes of its own. The 18 documented mappings are the
+      starting set, not the complete one.
+      *Verified by:* the token file, which now resolves the product's colour,
+      surface, text, border and radius vocabulary to `--md-sys-*` roles while
+      keeping every product token's own name — so nothing that consumes them had
+      to change. Three groups stay deliberately unmapped and each says why at its
+      own declaration: the **functional data colours**, which standard 2 exempts
+      because remapping chart series onto theme roles makes different series
+      indistinguishable; **elevation shadows**, which no colour role can express;
+      and the **selection indicator**, which is theme-invariant on purpose. The
+      dark restatements collapsed at the same time — an M3 role flips itself, so a
+      token defined as a role needs no dark override.
+- [~] **Actually consume the tokens.** In the mockup the shape and easing
       variables are declared and referenced zero times — every radius and easing
       is written as a literal, and three further variables are declared and never
       read. The port must wire the token layer rather than copying the literals,
       or the appearance controls in 2.5 will have nothing to drive.
-- [ ] **Normalise the radius sprawl to the documented scale** — 8 / 12 / 16 / 28
+      *Shape is wired; motion is only partly.* The radius vocabulary now resolves
+      through the corner scale, so every component already asking for a radius
+      receives one from the contract. The motion side is mixed: some easing maps
+      to a motion curve, but the interface's duration values are still literals in
+      the mapping layer. Finish that before 2.5, or an animation-speed control has
+      nothing to drive.
+- [~] **Normalise the radius sprawl to the documented scale** — 8 / 12 / 16 / 28
       / full. The mockup uses more than a dozen distinct literal radii, over 160
       of them the pill value; the handoff sheet itself states the intended
       normalisation.
-- [ ] **Do not conflate the seed with its output.** The default seed's *swatch*
+      *Half done, and the remaining half is a sweep rather than a decision.* The
+      product's radius tokens are now defined from the corner scale, two of them
+      as the midpoint between adjacent steps — so the scale is the source even
+      where the product wanted an intermediate value. What has not happened is the
+      sweep for literal radii still written directly into component styles; until
+      that runs, the scale is authoritative for everything that asks for a token
+      and irrelevant to everything that does not.
+- [x] **Do not conflate the seed with its output.** The default seed's *swatch*
       is `#C96442` and its *primary role* is `#8F4C34`. The first is the input
       colour, the second is the generated tone. Treating them as the same value
       produces a scheme that is subtly wrong everywhere and very hard to debug.
-- [ ] **Implement the three additional seeds** as documented — each overrides
+      *Verified by:* the contract sheet's baseline primary role, which is the
+      generated tone and not the swatch. The trap was avoided rather than hit,
+      which is worth recording — a scheme built on the swatch is wrong everywhere
+      by a small amount and reads as a rendering bug rather than a token bug.
+- [x] **Implement the three additional seeds** as documented — each overrides
       ten roles in light and twelve in dark, covering the primary, secondary and
       tertiary families plus the inverse primary, while every surface, outline,
       error and success role stays on the default ramp.
-- [ ] **Keep the two non-standard success roles** the mockup adds, and document
+      *Verified by:* the three alternate seed blocks in the contract sheet, each
+      with a light form and a dark form, and each ordered so the dark seed
+      outranks the light one and the system-preference block outranks both. That
+      ordering is load-bearing: get it wrong and choosing a seed silently
+      un-darkens the interface for anyone on system theme.
+- [x] **Keep the two non-standard success roles** the mockup adds, and document
       them as an intentional extension rather than letting a future reader take
       them for canonical roles.
-- [ ] **Add the roles the mockup omits** — surface tint, shadow, and the fixed
+      *Verified by:* both roles present under the names the contract wrote, with
+      the sheet's own header stating plainly that they are inventions of this
+      contract rather than canonical Material Design 3 roles.
+- [~] **Add the roles the mockup omits** — surface tint, shadow, and the fixed
       role family — or record in the feature documentation which are
       deliberately unused and why. A silent gap reads as an oversight.
+      *Recorded, but in the wrong place.* The contract sheet's header names each
+      omitted role and states it is deliberately not invented here, which is the
+      substance of this item. The requirement says *feature documentation*, and
+      [`docs/standards/material-design-3.md`](docs/standards/material-design-3.md)
+      does not carry it yet — a reader of the docs still sees a silent gap.
 
 ### 2.4 Component anatomy waves
 
@@ -866,7 +1045,7 @@ true one row at a time, visibly.
 | # | Standard | Phase | Status |
 | --- | --- | --- | --- |
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | Not implemented — no Hong Kong Chinese locale exists at all |
-| 2 | Full Material Design 3 conformance | 2.1–2.4 | Not implemented — mockup only, nothing ported |
+| 2 | Full Material Design 3 conformance | 2.1–2.4 | **Partial.** The token sheet, its mapping layer and the Windows frameless window with its custom title bar landed at `dea6b0a`. No component has been rewritten, so component anatomy is untouched — and nobody has looked at the result |
 | 3 | Runtime appearance customization | 2.5, 4.10–4.12 | Not implemented |
 | 4 | Regex builder on every search bar | 3.3 | Not implemented |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | Not implemented |
@@ -877,10 +1056,10 @@ true one row at a time, visibly.
 | 10 | Local version history | 4.4 | Not implemented |
 | 11 | Export everything, bulk actions | 4.5, 4.6 | Not implemented |
 | 12 | Dim sum surprise | 3.4 | Not implemented in the application. A 24-dish catalogue with bundled local images exists under `assets/dim-sum/` |
-| 13 | Release code name and line count | 1.1 | Machinery built, no release observed — a committed counter, a code-name picker and the release workflow all exist; none has produced anything |
-| 14 | Accessibility and sizing as blockers | Every phase | Not implemented — no build exists to audit |
-| 15 | All assets bundled locally | 2.2, 1.3 | Not implemented — one CDN font import in the shipping app, three in the mockup |
-| 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | Partially in place — this file, the notice file and `docs/` are kept honest; three workflows exist and no run outcome has been observed, which is what there is to be honest about. No `CHANGELOG.md` yet |
+| 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
+| 14 | Accessibility and sizing as blockers | Every phase | Not implemented — a build exists now, and nothing has been audited against it. The smoke test captures one screenshot and asserts only that the file is non-zero |
+| 15 | All assets bundled locally | 2.2, 1.3 | **Partial.** The site is bundled and its deployment enforces that at publish time; the application still has one CDN font import, and the mockup three |
+| 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 
 </details>
 
@@ -939,11 +1118,13 @@ verbatim and describe it as a fork with a recorded delta. That decision is not
 made here, but it should be revisited when the allowlist passes a few dozen
 paths.
 
-**An unverified drop-in contract.** The mockup's handoff sheet maps 18 tokens
-onto variables that all exist today, and names 12 component files that all
-exist today. That has been checked against the tree. Whether the mapping
-produces a correct-looking interface at runtime has *not* been checked, because
-nothing has been run. Treat the contract as promising, not proven.
+**A drop-in contract that is now wired but still unseen.** The mockup's handoff
+sheet maps 18 tokens onto variables that all existed, and names 12 component
+files that all existed. The mapping layer landed at `dea6b0a`, so those variables
+now resolve to Material Design 3 roles and the components consuming them inherit
+the scheme. Whether that produces a *correct-looking* interface has still not been
+checked, because nobody has looked at one. The contract has gone from promising to
+built; it has not gone to proven.
 
 **Upstream Windows support is best-effort.** The imported project treats macOS,
 Linux and a Linux compatibility layer as its primary platforms and Windows as

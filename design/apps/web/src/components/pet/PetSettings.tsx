@@ -626,6 +626,9 @@ export function PetSettings({ cfg, setCfg }: Props) {
             <button
               type="button"
               className={`seg-btn small${pet.enabled ? ' active' : ''}`}
+              // Reveal target for the command palette's `pet.enabled` row; the
+              // palette renders this same wake/tuck switch inline.
+              data-od-setting="pet.enabled"
               onClick={() => {
                 trackSettingsPetsClick(analytics.track, {
                   page_name: 'settings',

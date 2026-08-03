@@ -1,7 +1,8 @@
 # Daemon HTTP API
 
-The local daemon's HTTP surface: **38 route files registering 351 route handlers
-across 304 distinct path patterns**, plus several server-sent event streams.
+The local daemon's HTTP surface: roughly **38 route files registering 351 route
+handlers across 304 distinct path patterns**, plus several server-sent event
+streams.
 
 > [!IMPORTANT]
 > **Nothing here has been called.** No daemon has been started in this
@@ -9,6 +10,25 @@ across 304 distinct path patterns**, plus several server-sent event streams.
 > answering a request. Prefixes and ownership are accurate transcriptions;
 > request and response shapes are **not** documented here because they have not
 > been verified.
+
+### The counts in the heading
+
+They are a floor, not a measurement, and the word "roughly" is doing real work.
+
+The daemon registers routes two ways. Most call the web framework's method
+functions directly, which a source sweep finds easily. A few are declared as
+route objects and mounted through a shared JSON-route helper, which the same
+sweep misses entirely — `GET` and `POST /api/active` were missed exactly that way
+and were absent from every table on this page until they were added back. Finding
+one such gap is good evidence there is no reason to trust the total to the unit.
+
+Two consequences worth stating rather than leaving a reader to infer:
+
+- **Read the counts as "at least this many".** They are not wrong in a direction
+  that overstates the surface; they undercount it.
+- **The only way to make them exact is to enumerate the routing table from a
+  running daemon**, which nobody has done here. That is the same missing step that
+  leaves the request collection unexercised, and it would settle both at once.
 
 ## Base URL and defaults
 
@@ -41,25 +61,45 @@ privileges. Treat exposing it as equivalent to granting shell access.
 
 ## Postman collection
 
-**Status: pending. `postman/` does not exist yet.**
+**Status: committed, and unexercised.** The collection lives at
+[`postman/`](../../postman/README.md) — **368 requests in 28 folders**, derived
+from the same route definitions this page inventories.
 
 There is **no OpenAPI, Swagger or Postman artifact anywhere in the vendored
-tree** — the collection is new work, hand-derived from the route table below.
-
-When written it will live at `postman/` with:
+tree**, so the collection is new work rather than a re-export of something
+upstream ships.
 
 | File | Contents |
 | --- | --- |
-| `postman/material-designer.postman_collection.json` | The full collection, foldered to match the route groups below. |
-| `postman/material-designer.postman_environment.json` | Base URL, port and token variables. |
-| `postman/README.md` | How to import it, what each folder covers, and which requests are destructive. |
+| [`postman/material-designer-daemon.postman_collection.json`](../../postman/material-designer-daemon.postman_collection.json) | The collection itself: Postman Collection v2.1.0, one folder per capability area, `{{baseUrl}}` as a collection variable, path parameters as Postman variables, and a JSON example body on every write request. |
+| [`postman/README.md`](../../postman/README.md) | How to import it, how to get a daemon to talk to, what each of the 28 folders covers, which of the 43 destructive requests to know about before clicking, the 17 streaming endpoints, and how to re-derive the route surface. |
 
-Two rules for whoever writes it. **Every request must be exercised against a
-running daemon before the collection is committed** — a hand-derived collection
-that has never been run is a list of guesses, and the request and response shapes
-in it would be fiction. And **destructive requests must be marked as such** in
-their folder and name: this collection will contain project deletion, database
-vacuum, and daemon shutdown.
+**There is no environment file.** The collection needs exactly one variable and
+carries it as a collection variable, so importing the single JSON file is
+sufficient. An environment file is also the obvious place somebody would save a
+token value into version control, which is the outcome the Security section below
+exists to prevent.
+
+> [!WARNING]
+> **The rule this page used to state was not met, and the collection shipped
+> anyway.** The standing rule was that every request must be exercised against a
+> running daemon before the collection is committed. **No request in it has been
+> sent.** Methods, paths and path parameters are accurate transcriptions of the
+> registered routes; request bodies are derived from what each handler reads off
+> the request and from the shared contract types, and are **unverified examples,
+> not a proven wire format**. No response example is recorded — every request's
+> response array is empty.
+>
+> That was a deliberate trade, and it is recorded here rather than quietly
+> dropped: a route inventory that a reader can import and run against their own
+> daemon is worth more than no artifact at all, provided it never claims to be
+> verified. It is labelled unverified in the collection's own README, and it stays
+> labelled that way until somebody runs it. **Exercising it against a live daemon
+> and recording real responses is outstanding work**, not a settled question.
+
+**Destructive requests are marked**, as the rule also required: 43 of them carry
+`[destructive]` in the request name and a warning in the description, project
+deletion, database vacuum and daemon shutdown among them.
 
 ## Route groups
 
@@ -88,8 +128,18 @@ Grouped by the source file that owns them. All paths are relative to the base UR
 | `routes/project/conversations.ts` | `/api/projects/:id/conversations`, `…/:cid`, `…/:cid/messages`, `…/:cid/messages/:mid` |
 | `routes/project/comments.ts` | `/api/projects/:id/conversations/:cid/comments` |
 | `routes/terminal.ts` | `/api/projects/:id/terminals`, `…/:tid`, and `kill`, `resize`, `stdin`, `stream` |
+| `routes/active-context.ts` | `/api/active` — `GET` and `POST` |
 
 `/api/projects/:id/events` is a server-sent event stream for project file changes.
+
+`/api/active` is a soft "what is the user looking at right now" channel: the
+interface posts the current project and file on every navigation, and the
+tool-facing surface reads it so an agent working in another directory can resolve
+"the design I have open" without the user pasting an id. It is **in-memory only**
+and expires — a daemon restart clears it, and a stale entry is discarded on read
+rather than returned. Both directions require a same-origin request. This is the
+route pair an earlier revision of this page reported as not existing; the request
+collection files it under **Projects** for the same reason it sits here.
 
 </details>
 
@@ -197,7 +247,11 @@ database file. Both are destructive and must be marked as such in any collection
 </details>
 
 > [!NOTE]
-> `routes/active-context.ts` exists but registers **no** routes.
+> `routes/active-context.ts` registers **two** routes, `GET` and `POST /api/active`,
+> mounted through the shared JSON-route helper rather than by calling the
+> framework's method functions directly. That is why an earlier revision of this
+> page reported it as registering none, and why the count in the heading above is
+> an under-count rather than a measurement — see [The counts in the heading](#the-counts-in-the-heading).
 >
 > The last group's routes reach **upstream project services** — its release
 > metadata, its community endpoint, and its account and wallet integrations.
@@ -248,12 +302,16 @@ curl -sf http://127.0.0.1:7456/api/daemon/status
 curl -sf http://127.0.0.1:7456/api/metrics
 ```
 
-Before the Postman collection can be committed, every request in it must have
-been run against a live daemon, with its real response recorded. Requests that
-were never executed do not go in.
+The Postman collection is the same situation, one layer up: it is committed and
+**every request in it is unexercised**. Running a folder against a live daemon and
+recording the real responses is the work that would turn its request shapes from
+derived examples into facts. Until that happens, both this page and the
+collection's own README label them unverified rather than implying otherwise — see
+[Postman collection](#postman-collection) for why it shipped that way.
 
 ## Suggested reading
 
+- [../../postman/README.md](../../postman/README.md) — the collection itself: importing it, its folders, its destructive and streaming requests, and its drift caveats
 - [../architecture/overview.md](../architecture/overview.md) — what serves this API and how it fits together
 - [../build/from-source.md](../build/from-source.md) — how to get a daemon running to test against
 - [../standards/releases.md](../standards/releases.md) — the honesty rules that apply to documenting unverified things

@@ -4,10 +4,11 @@ What every release must carry, what the in-app changelog must show, and how
 version history works.
 
 **Status: mixed.** The release machinery — workflow, line counter, code-name
-picker and dish catalogue — now exists and is committed. **No release has been
-observed being published**, and the in-application surfaces (changelog viewer,
-version-history panel, startup surprise) are designed in the mockup and not
-built.
+picker and dish catalogue — exists, is committed, and **has published releases**:
+`v0.16.1-r7.1` and `v0.16.1-r8.1`, each carrying the installer its own run built,
+a portable archive, a checksum and a dim sum code name. The **in-application**
+surfaces (changelog viewer, version-history panel, startup surprise) are designed
+in the mockup and **not built**.
 
 ## Requirement 1 — every release ships a real installer
 
@@ -246,10 +247,10 @@ user actually asked for; log it and carry on.
 
 | Requirement | Status |
 | --- | --- |
-| Release workflow | **Exists** at `.github/workflows/release.yml`. Builds, validates the payload, smoke-tests and publishes. No run outcome recorded. |
+| Release workflow | **Implemented and run** at `.github/workflows/release.yml`. Builds, validates the payload, smoke-tests and publishes. A *failing* run has not been observed. |
 | Unique monotonic tag | **Implemented** as `v<version>-r<run number>`, so no tag can be recycled. |
 | Installer attached | **Implemented** — the installer, a `.sha256` file and a portable archive are staged and attached, with an explicit existence check that fails the build if the packer reports a path that is not there. |
-| Any release at all | **None observed.** |
+| Any release at all | **Two published** — `v0.16.1-r7.1` and `v0.16.1-r8.1`, each by the run that built its installer, each named after a different dish. |
 | Line-counting script | **Exists** at `scripts/line-count.mjs`. Discovers files via `git ls-files`, forces every file into exactly one row with a mandatory catch-all, self-checks that rows sum to the tracked-file count, reports excluded paths as visible rows, separates the imported tree into its own scope, and attributes per surviving line with blame behind `--blame`. It fails loudly if the attribution total and the line total disagree. |
 | Line count in release notes | **Implemented** in both workflows, with an honest fallback line when the counter fails. |
 | Release code name | **Implemented** at `scripts/release-codename.sh`. Reads spent dishes from prior release bodies rather than a counter, skips any dish whose image is indexed but absent, and exits `0` with an empty id when all are spent so a release is never blocked. |
@@ -406,8 +407,8 @@ specifies exactly the date control that this panel needs.
 
 ## Verification
 
-**The machinery exists; no release has been observed.** Ticked boxes below are
-verified from the tree, not from a run.
+**The machinery exists and has published releases.** Boxes ticked below are
+verified either from the tree or from a published release, and each says which.
 
 **Release**
 
@@ -417,9 +418,15 @@ verified from the tree, not from a run.
       build otherwise
 - [x] the provenance line carrying the upstream project, version, pinned commit,
       licence and non-affiliation statement
-- [ ] a passing run publishing exactly one non-draft release under a fresh tag
-- [ ] a failing run publishing nothing — demonstrated, not assumed
-- [ ] the installer attached, downloadable, and installing
+- [x] a passing run publishing exactly one non-draft release under a fresh tag —
+      **observed**: `v0.16.1-r7.1` and `v0.16.1-r8.1`, distinct tags, neither
+      recycled
+- [x] the installer attached and installing — **observed**: each release carries a
+      setup executable, a portable archive and a checksum, and the packaged smoke
+      test installed, launched, health-checked and uninstalled that build
+- [ ] a failing run publishing nothing — not demonstrated. No release-job failure
+      has been observed reaching the publish step, so this remains asserted from
+      the workflow's structure rather than from a run
 
 **Line count**
 
@@ -432,15 +439,16 @@ verified from the tree, not from a run.
 - [x] a catch-all row plus a self-check that rows sum to the tracked-file count
 - [x] attribution by surviving line via blame, not by summing added lines —
       **implemented in the script, behind `--blame`**
-- [ ] **attribution actually enabled in a workflow.** Neither workflow passes
-      `--blame`, so as committed the Authorship table renders "not computed" and
-      **no release would carry the human/agent split requirement 2 asks for**.
-      Fixing it means adding `--blame` to the counter invocation in
-      `release.yml`, scoped with `--blame-paths` so it does not spawn a blame per
-      file across the 11,799-file imported tree
+- [x] **attribution enabled in the release workflow.** `release.yml` invokes the
+      counter with `--blame` and a scoped `--blame-paths`, so it does not spawn a
+      blame per file across the 11,799-file imported tree, and falls back to an
+      unattributed count if the attribution pass fails rather than publishing no
+      table at all. `verify.yml` deliberately runs without attribution: it is a
+      gate, not a release, and never publishes the figure
 - [x] the script failing loudly when the attribution total and the line total
       disagree
-- [ ] the table observed in a published release's notes
+- [ ] the table observed in a published release's notes — **not checked here.**
+      Read a release's notes before claiming a particular one carried it
 
 **Code name and surprise**
 

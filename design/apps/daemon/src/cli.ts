@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // @ts-nocheck
 import { readFileSync, writeFileSync } from 'node:fs';
-import { basename } from 'node:path';
+import { basename, resolve as resolvePath } from 'node:path';
 import { runDaemonCliStartup, startDaemonRuntime } from './daemon-startup.js';
 import { runLiveArtifactsMcpServer } from './mcp-live-artifacts-server.js';
 import { runArtifactsCli } from './artifacts-cli.js';
@@ -17,9 +17,20 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS } from '@open-design/contracts';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, EXTERNAL_EDITOR_IDS } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
 import { exportRoutePath } from './export-cli-routing.js';
+import {
+  DATA_EXPORT_DATASET_IDS,
+  DATA_EXPORT_FORMATS,
+  DATA_EXPORT_FORMAT_DESCRIPTORS,
+  SEVEN_ZIP_LEVELS,
+  SEVEN_ZIP_METHODS,
+} from '@open-design/contracts';
+import {
+  buildDataExportCliRequest,
+  dataExportCliOutputName,
+} from './data-export-cli.js';
 import {
   AGENT_SLUGS,
   isAgentSlug,
@@ -283,6 +294,18 @@ const FIGMA_STRING_FLAGS = new Set([
 const FIGMA_BOOLEAN_FLAGS = new Set([
   'help', 'h', 'json', 'build',
 ]);
+// `od history …` mirrors the local version-history surface against the same
+// /api/history routes the web UI uses. Hoisted with the other dispatch-touched
+// flag sets: runHistory is reachable through the top-of-file SUBCOMMAND_MAP
+// dispatch, which runs during module evaluation, so a const declared further
+// down would still be in TDZ when the handler reads it.
+const HISTORY_STRING_FLAGS = new Set([
+  'daemon-url', 'domain', 'kind', 'since', 'until', 'query', 'limit', 'offset',
+  'path', 'label', 'max-revisions', 'max-age-days',
+]);
+const HISTORY_BOOLEAN_FLAGS = new Set([
+  'help', 'h', 'json', 'regex', 'apply',
+]);
 // `od brand …` mirrors the Brands library + New Brand modal. Same surface,
 // same /api/brands store. The CLI form is the embeddability contract: an
 // external agent (hermes-agent, openclaw, scripted job) can extract, list,
@@ -330,6 +353,19 @@ const PLUGIN_LIST_BOOLEAN_FLAGS = new Set([
   'bundled', 'no-bundled',
 ]);
 
+// `od editor …` mirrors the web "Open in…" affordance against the same two
+// endpoints (GET /api/editor/detect, POST /api/editor/open) plus the shared
+// app-config store for the persisted choice. Hoisted next to the other
+// dispatch-touched flag sets: runEditor is reachable through the top-of-file
+// SUBCOMMAND_MAP dispatch, which runs during module evaluation, so a `const`
+// further down would still be in TDZ when the handler reads it.
+const EDITOR_STRING_FLAGS = new Set([
+  'daemon-url', 'project', 'path', 'folder', 'file', 'editor', 'command', 'label',
+]);
+const EDITOR_BOOLEAN_FLAGS = new Set([
+  'help', 'h', 'json', 'no-workspace-root', 'supports-folders', 'no-supports-folders', 'none',
+]);
+
 const SUBCOMMAND_MAP = {
   artifacts: runArtifacts,
   media: runMedia,
@@ -361,8 +397,10 @@ const SUBCOMMAND_MAP = {
   craft: runCraft,
   diagnostics: runDiagnostics,
   export: runExport,
+  editor: runEditor,
   status: runStatus,
   version: runVersion,
+  history: runHistory,
   'whats-new': runWhatsNew,
   doctor: runDoctor,
   config: runConfig,
@@ -373,9 +411,29 @@ const SUBCOMMAND_MAP = {
 const EXPORT_STRING_FLAGS = new Set([
   'daemon-url', 'project', 'format', 'out', 'output', 'image-format', 'title', 'file',
 ]);
-const EXPORT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'deck', 'page', 'no-deck']);
+// `open` closes the "anything the app can export is openable in VS Code in one
+// action" loop: without it the user is handed a path and left to find the file
+// on disk themselves. See runExport's tail and openExportedFileInEditor.
+const EXPORT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'deck', 'page', 'no-deck', 'open']);
 // EXPORT_FORMATS / EXPORT_IMAGE_FORMATS are the shared contract DTO (single
 // source of truth for the web/daemon/CLI export surface), imported above.
+
+// `od export data …` is the *data* export — the records the app owns, in every
+// text format that can carry them — as opposed to `od export <file>` above,
+// which rasterizes a rendered artifact. Hoisted next to the other
+// dispatch-touched flag sets because runExport is reachable through the
+// top-of-file SUBCOMMAND_MAP dispatch, which runs during module evaluation.
+const DATA_EXPORT_STRING_FLAGS = new Set([
+  'daemon-url', 'datasets', 'dataset', 'format', 'format-for', 'out', 'output',
+  'project', 'conversation', 'since', 'until', 'query', 'regex-flags',
+  'match-fields', 'limit', 'offset', 'archive',
+  '7z-method', '7z-level', '7z-dict', '7z-word-size', '7z-solid-block',
+  '7z-threads', '7z-volume', '7z-password-file',
+]);
+const DATA_EXPORT_BOOLEAN_FLAGS = new Set([
+  'help', 'h', 'json', 'all', 'regex', 'accept-lossy',
+  '7z-solid', 'no-7z-solid', '7z-no-encrypt-headers',
+]);
 
 function printExportHelp() {
   console.log(`Usage:
@@ -396,16 +454,95 @@ Options:
   --deck                   Treat the artifact as a multi-slide deck
   --page, --no-deck        Treat the artifact as a normal scrollable page
   --title <title>          Title used for metadata / default filename
+  --open                   Open the written file in the chosen external editor,
+                           with its folder as the workspace root. Best-effort:
+                           a missing editor prints the download link and leaves
+                           the export successful.
   --json                   Print a machine-readable result envelope
   --daemon-url <url>       Override daemon URL
 
 Examples:
   od export index.html --project p1 --format pdf --out page.pdf
   od export slide.html --project p1 --format image --image-format png --out slide.png
-  od export deck.html --project p1 --format pptx --out deck.pptx`);
+  od export deck.html --project p1 --format pptx --out deck.pptx
+  od export deck.html --project p1 --format pdf --out deck.pdf --open
+
+See also:
+  od export data --help    Export records, lists, logs and settings as data`);
+}
+
+function printDataExportHelp() {
+  console.log(`Usage:
+  od export data <datasets> --format <fmt> [options]
+  od export data list                       Datasets the daemon owns, with a per-format verdict
+  od export data formats                    Format matrix and what each one costs
+  od export data plan --datasets <ids> --format <fmt>   What an export would produce; writes nothing
+
+Exports the records the app owns — projects, conversations, messages, files,
+settings and the rest — in every text format that can carry them faithfully.
+Distinct from \`od export <file>\`, which rasterizes a rendered artifact.
+
+Datasets: ${DATA_EXPORT_DATASET_IDS.join(', ')}
+Formats:  ${DATA_EXPORT_FORMATS.join(', ')}
+
+A format that would lose a value refuses to run until you have seen what it
+costs. Run \`od export data plan …\` first, then re-run with --accept-lossy.
+
+Anything the run itself could not carry — a scan that stopped at the record
+ceiling, a filter key the dataset does not understand, a project whose files
+could not be read — is printed after the write and, where the format can hold
+an envelope, written inside the file too. A filter key a dataset ignores is
+never embedded in that file as though it had scoped the records.
+
+Selection:
+  --datasets <a,b,c>       Dataset ids, comma separated
+  --all                    Every dataset
+  --format <fmt>           Default format for every dataset (required)
+  --format-for <d=f,...>   Per-dataset format, e.g. messages=markdown,files=csv
+
+Filter (composes; "export everything matching this query" is one step):
+  --project <id>           Scope to one project
+  --conversation <id>      Scope to one conversation
+  --since <iso|epoch>      Lower bound on the dataset's timestamp
+  --until <iso|epoch>      Upper bound on the dataset's timestamp
+  --query <text>           Plain-text match (default)
+  --regex                  Treat --query as a regular expression
+  --regex-flags <flags>    Regex flags from: imsu
+  --match-fields <a,b>     Restrict matching to these fields
+  --limit <n> --offset <n> Window the result
+
+Archive:
+  --archive zip            Deflate, universally readable, NOT encrypted
+  --archive 7z             Needs a 7-Zip binary; never silently downgraded to zip
+  --7z-method <m>          ${SEVEN_ZIP_METHODS.join(' | ')}
+  --7z-level <n>           ${SEVEN_ZIP_LEVELS.join(' | ')} (0 store … 9 ultra)
+  --7z-dict <size>         Dictionary, e.g. 64m. LZMA2 wants ~11x this to compress
+  --7z-word-size <n>       Fast bytes, 5-273
+  --7z-solid / --no-7z-solid       Solid blocks: better ratio, slower single-file reads
+  --7z-solid-block <size>  Solid block size, e.g. 4g
+  --7z-threads <n|on|off>  Worker threads
+  --7z-volume <size>       Split into volumes, e.g. 100m (every volume is needed)
+  --7z-password-file <path|->  AES-256 content encryption; read from a file or stdin
+  --7z-no-encrypt-headers  Leave filenames readable without the password (asks you to confirm)
+
+Output:
+  --out <path>             Write here (defaults to the daemon's suggested name)
+  --accept-lossy           Proceed despite a declared loss
+  --json                   Print a machine-readable result envelope
+  --daemon-url <url>       Override daemon URL
+
+Examples:
+  od export data list --json
+  od export data --datasets messages --format jsonl --project p1 --out messages.jsonl
+  od export data --all --format json --archive zip --out everything.zip
+  od export data --datasets messages --format markdown --query 'hero section' --accept-lossy
+  od export data --all --format json --archive 7z --7z-level 9 --7z-password-file secret.txt`);
 }
 
 async function runExport(args) {
+  // `data` is routed before the help check so `od export data --help` reaches
+  // the data-export help rather than the artifact-export one.
+  if (args[0] === 'data') return runExportData(args.slice(1));
   if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     printExportHelp();
     process.exit(args.length === 0 ? 2 : 0);
@@ -495,12 +632,585 @@ async function runExport(args) {
   }
   const { writeFile } = await import('node:fs/promises');
   await writeFile(out, buffer);
+  // One action, not two: the file the user just produced goes straight to their
+  // editor with its containing folder as the workspace root, instead of leaving
+  // them to find it on disk. Best-effort — a missing editor never turns a
+  // successful export into a failed command.
+  const opened = flags.open ? await openExportedFileInEditor(base, out, flags.json === true) : null;
   if (flags.json) {
     return process.stdout.write(
-      JSON.stringify(buildExportCliResultEnvelope({ path: out, bytes: buffer.length, format }), null, 2) + '\n',
+      JSON.stringify(
+        {
+          ...buildExportCliResultEnvelope({ path: out, bytes: buffer.length, format }),
+          ...(opened ? { openedIn: opened } : {}),
+        },
+        null,
+        2,
+      ) + '\n',
     );
   }
   console.log(`wrote ${out} (${buffer.length} bytes)`);
+}
+
+// Hand an exported file to the user's editor through POST /api/editor/open.
+// Deliberately best-effort and non-fatal: the export itself already succeeded
+// and the bytes are on disk, so a missing editor is a note, not a failure. The
+// honest message (and the download link) still comes from the daemon, so the
+// user learns the same thing they would from `od editor open`.
+//
+// `quiet` keeps stdout clean under --json: the outcome travels in the envelope
+// as `openedIn`, and a stray human line here would corrupt the only thing a
+// scripted caller parses. Failures still go to stderr either way.
+async function openExportedFileInEditor(base, outPath, quiet = false) {
+  const absolute = resolvePath(outPath);
+  let resp;
+  try {
+    resp = await fetch(`${base}/api/editor/open`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ file: absolute }),
+    });
+  } catch {
+    console.error(`could not reach the daemon to open ${absolute} in an editor`);
+    return null;
+  }
+  if (!resp.ok) {
+    let parsed = {};
+    try { parsed = await resp.json(); } catch { parsed = {}; }
+    const error = parsed?.error ?? {};
+    const details = error.details ?? {};
+    console.error(error.message ?? `could not open ${absolute} in an editor`);
+    if (details.downloadUrl) console.error(`download: ${details.downloadUrl}`);
+    return null;
+  }
+  const data = await resp.json();
+  if (!quiet) console.log(`opened in ${data?.label}: ${absolute}`);
+  return data?.editorId ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Subcommand: od export data …
+// ---------------------------------------------------------------------------
+//
+// The CLI half of "export everything, in every format that can faithfully
+// represent it". Same endpoints as the web Export panel — GET /api/export/
+// datasets, GET /api/export/formats, POST /api/export/plan, POST /api/export —
+// and the same `DataExportRequest` DTO from packages/contracts, so an external
+// agent can pull the user's records out headlessly without rendering the UI.
+//
+// The one behaviour worth knowing before reading the code: a format that would
+// lose a value comes back as a 409 carrying the plan, not as a quietly damaged
+// file. `--accept-lossy` is how the caller says it has read the plan.
+
+// The 7z password is never a flag value: shell history and the process table
+// are both readable, and a password that has already leaked is not a password.
+// `--7z-password-file -` reads stdin so a pipeline never touches disk either.
+async function readDataExportPasswordFile(flags) {
+  const source = flags['7z-password-file'];
+  if (typeof source !== 'string' || source.length === 0) return undefined;
+  let raw;
+  if (source === '-') {
+    raw = await readStdinUtf8();
+  } else {
+    const { readFile } = await import('node:fs/promises');
+    raw = await readFile(source, 'utf8');
+  }
+  // A trailing newline from `echo`/an editor is not part of the password.
+  const password = raw.replace(/\r?\n$/, '');
+  if (password.length === 0) {
+    throw new Error(`--7z-password-file ${source} is empty`);
+  }
+  return password;
+}
+
+function summarizeDataExportWarnings(warnings) {
+  if (!Array.isArray(warnings) || warnings.length === 0) return;
+  console.error('This export does not carry everything unchanged:');
+  for (const warning of warnings) {
+    const scope = warning?.dataset ? ` [${warning.dataset}/${warning.format ?? '-'}]` : '';
+    const fields = Array.isArray(warning?.fields) && warning.fields.length > 0
+      ? ` (fields: ${warning.fields.join(', ')})`
+      : '';
+    console.error(`  ${String(warning?.severity ?? 'warning').toUpperCase()} ${warning?.code}${scope}${fields}`);
+    console.error(`    ${warning?.message}`);
+  }
+}
+
+async function runExportData(args) {
+  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
+    printDataExportHelp();
+    process.exit(args.length === 0 ? 2 : 0);
+  }
+
+  const sub = args[0] === 'list' || args[0] === 'formats' || args[0] === 'plan' || args[0] === 'run'
+    ? args[0]
+    : 'run';
+  const rest = sub === args[0] ? args.slice(1) : args;
+
+  let flags;
+  try {
+    flags = parseFlags(rest, { string: DATA_EXPORT_STRING_FLAGS, boolean: DATA_EXPORT_BOOLEAN_FLAGS });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(2);
+  }
+
+  // `od export data messages,files --format jsonl` — the bare positional is the
+  // same comma list `--datasets` takes, so the short form and the explicit flag
+  // cannot mean two different things.
+  const positionals = positionalArgs(rest, DATA_EXPORT_STRING_FLAGS);
+  if (!flags.datasets && !flags.dataset && flags.all !== true && positionals[0]) {
+    flags.datasets = positionals[0];
+  }
+
+  const base = await cliDaemonBaseUrl(flags);
+
+  if (sub === 'list' || sub === 'formats') {
+    const path = sub === 'list' ? 'api/export/datasets' : 'api/export/formats';
+    let resp;
+    try {
+      resp = await fetch(`${base}/${path}`);
+    } catch (err) {
+      surfaceFetchError(err, base);
+      process.exit(3);
+    }
+    if (!resp.ok) return structuredHttpFailure(resp);
+    const body = await resp.json();
+    if (flags.json) {
+      return process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+    }
+    if (sub === 'formats') {
+      console.log(`schema v${body.schemaVersion} · ${body.encoding} · ${body.lineEnding} line endings`);
+      for (const format of body.formats ?? []) {
+        console.log(`  ${format.id.padEnd(9)} .${format.extension.padEnd(5)} ${format.note}`);
+      }
+      const sevenZip = body.archives?.['7z'];
+      console.log(`  archives: zip (no encryption), 7z (${sevenZip?.available ? 'available' : 'no binary found'}, AES-256 + encrypted headers)`);
+      return;
+    }
+    for (const dataset of body.datasets ?? []) {
+      const faithful = (dataset.formats ?? [])
+        .filter((entry) => entry.level === 'faithful')
+        .map((entry) => entry.format);
+      const lossy = (dataset.formats ?? [])
+        .filter((entry) => entry.level === 'lossy')
+        .map((entry) => entry.format);
+      console.log(`${dataset.id} — ${dataset.label} (${dataset.shape})`);
+      console.log(`  ${dataset.description}`);
+      console.log(`  faithful: ${faithful.join(', ') || 'none'}`);
+      if (lossy.length > 0) console.log(`  needs --accept-lossy: ${lossy.join(', ')}`);
+    }
+    return;
+  }
+
+  let password;
+  let request;
+  try {
+    password = await readDataExportPasswordFile(flags);
+    request = buildDataExportCliRequest(flags, password === undefined ? {} : { password });
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(2);
+  }
+
+  if (sub === 'plan') {
+    let resp;
+    try {
+      resp = await fetch(`${base}/api/export/plan`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(request),
+      });
+    } catch (err) {
+      surfaceFetchError(err, base);
+      process.exit(3);
+    }
+    if (!resp.ok) return structuredHttpFailure(resp);
+    const plan = await resp.json();
+    if (flags.json) {
+      return process.stdout.write(JSON.stringify(plan, null, 2) + '\n');
+    }
+    console.log(`plan · schema v${plan.schemaVersion} · ${plan.encoding} · LF line endings · ${plan.generatedAt}`);
+    for (const entry of plan.entries ?? []) {
+      console.log(
+        `  ${entry.dataset} → ${entry.fileName} (${entry.format}, ${entry.recordCount ?? '?'} records, ${entry.fidelity?.level})`,
+      );
+      if (Array.isArray(entry.ignoredFilters) && entry.ignoredFilters.length > 0) {
+        console.log(`    ignored filters for this dataset: ${entry.ignoredFilters.join(', ')}`);
+      }
+    }
+    if (plan.archive) {
+      console.log(`  archive: ${plan.archive.kind} → ${plan.archive.fileName}`);
+      if (plan.archive.sevenZipSwitches) {
+        console.log(`    switches: ${plan.archive.sevenZipSwitches.join(' ')}`);
+      }
+      if (plan.archive.cost) {
+        console.log(
+          `    cost: ~${plan.archive.cost.compressMemoryMb} MiB to compress, ~${plan.archive.cost.decompressMemoryMb} MiB to extract, speed ${plan.archive.cost.speedCost}/5`,
+        );
+        for (const note of plan.archive.cost.notes ?? []) console.log(`      ${note}`);
+      }
+    }
+    summarizeDataExportWarnings(plan.warnings);
+    if (plan.requiresAcknowledgement) {
+      console.log('re-run with --accept-lossy once you are satisfied with what this costs');
+    }
+    return;
+  }
+
+  let resp;
+  try {
+    resp = await fetch(`${base}/api/export`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
+
+  if (resp.status === 409) {
+    // The plan travels in the error envelope so the caller sees exactly which
+    // fields are at risk before deciding.
+    const body = await resp.json().catch(() => ({}));
+    const plan = body?.error?.details;
+    if (flags.json) {
+      process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+      process.exit(1);
+    }
+    console.error(body?.error?.message ?? 'this export would lose data in the chosen format');
+    summarizeDataExportWarnings(plan?.warnings);
+    console.error('re-run with --accept-lossy to proceed anyway');
+    process.exit(1);
+  }
+  if (!resp.ok) return structuredHttpFailure(resp);
+
+  // A split 7z archive cannot be one HTTP body, so the daemon answers with a
+  // manifest of per-volume download paths instead of bytes. Detected by the
+  // header, not the content type: a `--format json` export document is also
+  // application/json and must still be written to disk.
+  if (resp.headers.get('x-od-export-volumes')) {
+    const body = await resp.json();
+    if (flags.json) {
+      return process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+    }
+    console.log(`archive split into ${body.archive?.volumes?.length ?? 0} volume(s):`);
+    for (const path of body.downloadPaths ?? []) console.log(`  ${base}${path}`);
+    console.log(body.note ?? '');
+    summarizeDataExportWarnings(body.warnings);
+    return;
+  }
+
+  const buffer = Buffer.from(await resp.arrayBuffer());
+  // The daemon's suggested name already carries the schema version and the
+  // timestamp; the fallback only has to avoid claiming the wrong extension.
+  const fallbackExtension = flags.archive === '7z'
+    ? '7z'
+    : flags.archive === 'zip'
+      ? 'zip'
+      : DATA_EXPORT_FORMAT_DESCRIPTORS[flags.format]?.extension ?? 'txt';
+  const out = flags.out || flags.output || dataExportCliOutputName(
+    resp.headers.get('content-disposition'),
+    `od-export.${fallbackExtension}`,
+  );
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(out, buffer);
+
+  // A CSV, TSV or JSONL export has nowhere inside the file to say that its rows
+  // stopped at the record ceiling, or that a filter never reached the dataset.
+  // The daemon states both in headers; printing them here is what stops the
+  // `wrote …` line from presenting a prefix as the whole dataset.
+  const completeHeader = resp.headers.get('x-od-export-complete');
+  const warningCount = Number(resp.headers.get('x-od-export-warning-count') ?? '0') || 0;
+  let exportWarnings;
+  const rawWarnings = resp.headers.get('x-od-export-warnings');
+  if (rawWarnings) {
+    try {
+      exportWarnings = JSON.parse(rawWarnings);
+    } catch {
+      // A header we cannot parse is reported as such rather than dropped: the
+      // one thing worse than an unreadable warning is a silent one.
+      console.error('the daemon sent an export warning header this build could not parse');
+    }
+  }
+
+  if (flags.json) {
+    return process.stdout.write(
+      JSON.stringify(
+        {
+          ok: true,
+          path: out,
+          bytes: buffer.length,
+          schemaVersion: Number(resp.headers.get('x-od-export-schema-version')) || undefined,
+          encoding: resp.headers.get('x-od-export-encoding') ?? undefined,
+          lineEnding: resp.headers.get('x-od-export-line-ending') ?? undefined,
+          dataset: resp.headers.get('x-od-export-dataset') ?? undefined,
+          format: resp.headers.get('x-od-export-format') ?? undefined,
+          recordCount: Number(resp.headers.get('x-od-export-record-count')) || undefined,
+          complete: completeHeader === null ? undefined : completeHeader === 'true',
+          warningCount,
+          warnings: exportWarnings,
+          generatedAt: resp.headers.get('x-od-export-generated-at') ?? undefined,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
+  summarizeDataExportWarnings(exportWarnings);
+  if (!exportWarnings && warningCount > 0) {
+    // An archive keeps its warnings in README.md and manifest.json rather than
+    // in a header that a twelve-dataset export would blow past. Say where they
+    // are; do not let the count be the whole story.
+    console.error(
+      `${warningCount} warning(s) about this export did not fit in the response headers. ` +
+        'An archive carries them in its README.md and manifest.json; otherwise re-run the same ' +
+        'request through `od export data plan …` to read them.',
+    );
+  }
+  const records = resp.headers.get('x-od-export-record-count');
+  const incomplete = completeHeader === 'false' ? ', INCOMPLETE — see the warnings above' : '';
+  console.log(
+    `wrote ${out} (${buffer.length} bytes${records ? `, ${records} records` : ''}${incomplete})`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Subcommand: od editor …
+// ---------------------------------------------------------------------------
+//
+// The CLI half of "open in external editor". Same endpoints as the web
+// affordance — GET /api/editor/detect, POST /api/editor/open — plus
+// PUT /api/app-config for the persisted choice, so an external agent can hand
+// a folder or an exported file to VS Code without rendering the UI.
+//
+// Two behaviours worth knowing before reading the code:
+//
+//   - Relative paths are resolved HERE, against the CLI's own cwd, because the
+//     CLI is the process that knows what `./out.pdf` means. The daemon only
+//     ever accepts absolute paths and never resolves one against its own
+//     working directory.
+//   - A 409 is not a generic failure. It means no editor was found, so the
+//     command prints what was probed and where to download VS Code instead of
+//     collapsing into a bare status code.
+
+function printEditorHelp() {
+  console.log(`Usage:
+  od editor detect [--json]
+  od editor open [--project <id>] [--path <path>] [options]
+  od editor use <editor-id> [--command <path>] [--label <name>]
+  od editor use --none
+
+Opens a project folder or a file in an external editor. A folder always opens
+as a WORKSPACE ROOT so the editor's file tree is usable, and a file opens with
+its containing directory as that root unless --no-workspace-root says
+otherwise — that is what makes "open this export in VS Code" one action.
+
+Editors: ${EXTERNAL_EDITOR_IDS.join(', ')}
+
+detect:
+  Reports what is installed, which editor is saved, and which one would
+  actually run. Every $PATH name and install location that was probed is
+  listed, so "not found" is an answer you can act on. When no VS Code is
+  present the download link is printed.
+
+open options:
+  --project <id>         Open this project's folder as the workspace root.
+  --path <path>          A folder or a file. Classified on disk, not by suffix.
+  --folder <path>        Workspace root to open (wins over --project).
+  --file <path>          File to open inside the workspace root.
+  --editor <id>          Use this editor for one call, ignoring the saved choice.
+  --no-workspace-root    Open the file alone, with no surrounding folder.
+  --json                 Print the raw EditorOpenResponse.
+
+use options:
+  --command <path>       Executable to run. Required for the \`custom\` editor.
+  --label <name>         Display name for a custom editor.
+  --supports-folders     The custom editor opens a folder as a workspace root.
+  --no-supports-folders  It does not (the default for a custom editor).
+  --none                 Clear the saved choice; the daemon auto-picks again.
+
+Common options:
+  --daemon-url <url>     Open Design daemon HTTP base.
+  --json                 Emit raw JSON.
+
+Examples:
+  od editor detect --json
+  od editor open --project p1
+  od editor open --path ./exports/deck.pdf
+  od editor open --project p1 --file ./index.html
+  od editor use vscode
+  od editor use custom --command /usr/local/bin/mine --label Mine --supports-folders`);
+}
+
+async function runEditor(args) {
+  const sub = args[0];
+  const wantsHelp = sub === 'help' || args.includes('--help') || args.includes('-h');
+  if (!sub || wantsHelp) {
+    printEditorHelp();
+    process.exit(wantsHelp ? 0 : 2);
+  }
+  if (sub !== 'detect' && sub !== 'open' && sub !== 'use') {
+    console.error(`unknown subcommand: od editor ${sub}`);
+    printEditorHelp();
+    process.exit(2);
+  }
+  const rest = args.slice(1);
+  let flags;
+  try {
+    flags = parseFlags(rest, { string: EDITOR_STRING_FLAGS, boolean: EDITOR_BOOLEAN_FLAGS });
+  } catch (err) {
+    console.error(err.message);
+    printEditorHelp();
+    process.exit(2);
+  }
+  const base = await cliDaemonBaseUrl(flags);
+  if (sub === 'detect') return runEditorDetect(base, flags);
+  if (sub === 'use') return runEditorUse(base, flags, rest);
+  return runEditorOpen(base, flags);
+}
+
+async function runEditorDetect(base, flags) {
+  let resp;
+  try {
+    resp = await fetch(`${base}/api/editor/detect`);
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  console.log(`platform\t${data?.platform ?? 'unknown'}`);
+  console.log(`selected\t${data?.selectedEditorId ?? '(none - auto-picking)'}`);
+  console.log(`effective\t${data?.effectiveEditorId ?? '(none)'}`);
+  console.log('');
+  for (const editor of data?.editors ?? []) {
+    console.log(
+      `${editor.id}\t${editor.available ? 'available' : 'not found'}\t${editor.command ?? ''}\t${editor.label}`,
+    );
+  }
+  if (data && data.vscodeAvailable === false) {
+    console.log('');
+    console.log(`Visual Studio Code was not found. Download it: ${data.vscodeDownloadUrl}`);
+    printEditorProbeTrail((data.editors ?? []).find((e) => e.id === 'vscode'), console.log);
+  }
+}
+
+// "Not installed" on its own is unactionable, and a portable or relocated
+// install is the common reason a real editor reads as missing. Print what was
+// actually looked at so the user can see which assumption was wrong.
+function printEditorProbeTrail(probed, write) {
+  if (!probed) return;
+  for (const name of probed.probedCommands ?? []) write(`  probed on PATH: ${name}`);
+  for (const location of probed.probedPaths ?? []) write(`  probed: ${location}`);
+}
+
+async function runEditorOpen(base, flags) {
+  const body = {
+    ...(flags.project ? { projectId: flags.project } : {}),
+    ...(flags.path ? { path: resolvePath(flags.path) } : {}),
+    ...(flags.folder ? { folder: resolvePath(flags.folder) } : {}),
+    ...(flags.file ? { file: resolvePath(flags.file) } : {}),
+    ...(flags.editor ? { editorId: flags.editor } : {}),
+    ...(flags['no-workspace-root'] ? { openWorkspaceRoot: false } : {}),
+  };
+  if (!body.projectId && !body.path && !body.folder && !body.file) {
+    console.error('nothing to open: pass --project, --path, --folder, or --file');
+    process.exit(2);
+  }
+  let resp;
+  try {
+    resp = await fetch(`${base}/api/editor/open`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
+  if (resp.status === 409) {
+    // The one failure this feature promises to handle well: nothing was
+    // launched, and the user is told what was missing and where to get it.
+    let parsed = {};
+    try { parsed = await resp.json(); } catch { parsed = {}; }
+    const error = parsed?.error ?? {};
+    const details = error.details ?? {};
+    console.error(error.message ?? 'no external editor was found on this machine');
+    if (details.downloadUrl) console.error(`download: ${details.downloadUrl}`);
+    printEditorProbeTrail(details, console.error);
+    process.exit(4);
+  }
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  if (data?.folder && data?.file) {
+    console.log(`opened in ${data.label}: ${data.file} (workspace root ${data.folder})`);
+  } else {
+    console.log(`opened in ${data?.label}: ${data?.folder ?? data?.file ?? ''}`);
+  }
+}
+
+async function runEditorUse(base, flags, rest) {
+  if (flags.none) {
+    const cleared = await writeEditorChoice(base, null);
+    if (flags.json) {
+      return process.stdout.write(
+        JSON.stringify({ externalEditor: cleared?.externalEditor ?? null }, null, 2) + '\n',
+      );
+    }
+    console.log('editor choice cleared - the daemon will auto-pick again (VS Code first)');
+    return;
+  }
+  const positional = positionalArgs(rest, EDITOR_STRING_FLAGS);
+  const editorId = flags.editor || positional[0] || '';
+  if (!editorId) {
+    console.error(`editor id required. One of: ${EXTERNAL_EDITOR_IDS.join(', ')}`);
+    process.exit(2);
+  }
+  if (!EXTERNAL_EDITOR_IDS.includes(editorId)) {
+    console.error(`unknown editor: ${editorId} (expected ${EXTERNAL_EDITOR_IDS.join(' | ')})`);
+    process.exit(2);
+  }
+  if (editorId === 'custom' && !flags.command) {
+    console.error('--command <path> is required for the custom editor');
+    process.exit(2);
+  }
+  const next = {
+    id: editorId,
+    ...(flags.command ? { command: resolvePath(flags.command) } : {}),
+    ...(flags.label ? { label: flags.label } : {}),
+    ...(flags['supports-folders'] ? { supportsFolders: true } : {}),
+    ...(flags['no-supports-folders'] ? { supportsFolders: false } : {}),
+  };
+  const saved = await writeEditorChoice(base, next);
+  if (flags.json) {
+    return process.stdout.write(
+      JSON.stringify({ externalEditor: saved?.externalEditor ?? null }, null, 2) + '\n',
+    );
+  }
+  console.log(`editor set to ${saved?.externalEditor?.id ?? editorId}`);
+}
+
+// The persisted choice lives in the shared app-config store, so the CLI and
+// the web surface read and write exactly the same value.
+async function writeEditorChoice(base, value) {
+  let resp;
+  try {
+    resp = await fetch(`${base}/api/app-config`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ externalEditor: value }),
+    });
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  return data?.config ?? {};
 }
 
 if (argv[0] === 'mcp' && argv[1] === 'live-artifacts') {
@@ -697,6 +1407,13 @@ function printRootHelp() {
       Programmatically export an HTML/deck artifact to PDF, image, or PPTX
       (no model/agent calls). Mirrors the web Download menu; rasterization uses
       the desktop runtime's bundled Chromium.
+
+  od editor <detect|open|use> [args]
+      Open a project folder or a file in an external editor. A folder always
+      opens as a workspace root so the file tree is usable, so an export goes
+      to VS Code in one action. \`detect\` reports every location it probed;
+      when nothing is installed it prints the download link rather than
+      launching something you did not pick.
 
   "$OD_NODE_BIN" "$OD_BIN" tools ...
       Recommended agent-runtime form; avoids relying on user PATH for od or node.
@@ -8492,6 +9209,322 @@ async function runWhatsNew(args) {
   } else {
     console.log(`\nNo release highlights right now.`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Subcommand: od history …
+//
+// CLI mirror of the local version-history surface, against the same
+// /api/history routes the web UI uses. The daemon keeps an append-only,
+// Git-backed snapshot of every record and setting it owns, so this is the
+// headless route to "undo that deletion" for an external agent that never
+// renders the UI.
+//
+// Restoring is itself recorded as a new revision, so `od history restore` can
+// be run on the revision it just produced to undo the undo.
+// ---------------------------------------------------------------------------
+
+function printHistoryHelp() {
+  console.log(`Usage:
+  od history list [--domain <id>] [--kind <kind>] [--since <when>] [--until <when>]
+                  [--query <text>] [--regex] [--limit <n>] [--offset <n>] [--json]
+  od history show <revision-id> [--path <records/…>] [--json]
+  od history restore <revision-id> [--domain <id>]… [--label <text>] [--json]
+  od history prune [--max-revisions <n>] [--max-age-days <n>] [--apply] [--json]
+  od history retention [--max-revisions <n>] [--max-age-days <n>] [--json]
+  od history domains [--json]
+
+Local, Git-backed version history for every record and setting the daemon owns
+— app settings, connector accounts, provider profiles, MCP servers, memory,
+automations. It is append-only: a restore writes the old bytes back and records
+that as a NEW revision, so an undo can be undone, and that undo undone again.
+
+Options:
+  --domain <id>         Filter (list) or scope (restore) to one domain.
+                        Repeatable on restore. See \`od history domains\`.
+  --kind <kind>         initial | mutation | restore | prune
+  --since / --until     ISO-8601 timestamp, a plain date, or epoch milliseconds.
+  --query <text>        Match against a revision's label and detail lines.
+  --regex               Treat --query as a regular expression (plain text otherwise).
+  --path <path>         With show: also print one entry's stored bytes. Content
+                        of a sensitive domain is never returned — the response
+                        carries its size and SHA-256 digest instead.
+  --label <text>        Override the generated "Restored …" label.
+  --max-revisions <n>   Retention: keep at most n revisions.
+  --max-age-days <n>    Retention: drop revisions older than n days.
+                        \`od history retention\` writes the whole policy, so a
+                        limit you leave out is cleared, not kept.
+  --apply               With prune: actually remove. Without it, prune only
+                        reports what would go.
+  --json                Machine-readable output.
+  --daemon-url <url>    Override the daemon URL.
+
+Examples:
+  od history list --domain connectors --limit 20
+  od history list --query 'Deleted the connector account' --json
+  od history show 6f1e… --path records/settings/app-config.json --json
+  od history restore 6f1e… --domain connectors
+  od history prune --max-revisions 200 --apply`);
+}
+
+// Accepts an ISO-8601 timestamp, a plain `YYYY-MM-DD` date, or epoch
+// milliseconds, and reports which one it could not read rather than silently
+// dropping the filter.
+function parseHistoryInstant(raw, flagName) {
+  if (raw == null || raw === '') return undefined;
+  if (/^\d+$/.test(String(raw))) return Number(raw);
+  const parsed = Date.parse(String(raw));
+  if (Number.isNaN(parsed)) {
+    console.error(`invalid --${flagName}: ${raw} (expected an ISO date or epoch milliseconds)`);
+    process.exit(2);
+  }
+  return parsed;
+}
+
+function parseHistoryCount(raw, flagName) {
+  if (raw == null || raw === '') return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.error(`invalid --${flagName}: ${raw} (expected a positive integer)`);
+    process.exit(2);
+  }
+  return Math.floor(parsed);
+}
+
+// parseFlags collapses duplicate keys, so scan argv directly for the
+// repeatable `--domain` used by `od history restore`.
+function collectHistoryDomains(args) {
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (typeof arg !== 'string') continue;
+    if (arg === '--domain') {
+      const next = args[i + 1];
+      if (typeof next === 'string' && !next.startsWith('--')) {
+        out.push(next);
+        i++;
+      }
+      continue;
+    }
+    if (arg.startsWith('--domain=')) out.push(arg.slice('--domain='.length));
+  }
+  return out;
+}
+
+function formatHistoryRevisionLine(revision) {
+  const when = new Date(revision.createdAt).toISOString();
+  const restored = revision.restoredFromId ? `  ← ${revision.restoredFromId}` : '';
+  const domains = revision.domainIds?.length ? `  [${revision.domainIds.join(', ')}]` : '';
+  return `${revision.id}  ${when}  ${revision.kind.padEnd(8)}  ${revision.label}${domains}${restored}`;
+}
+
+async function historyRequest(base, path, init) {
+  let resp;
+  try {
+    resp = await fetch(`${base}${path}`, init);
+  } catch (err) {
+    return exitWithStructuredError({
+      code:    'daemon-not-running',
+      message: `Cannot reach daemon at ${base}: ${err?.message ?? err}`,
+    });
+  }
+  if (!resp.ok) return structuredHttpFailure(resp);
+  return resp.json();
+}
+
+async function runHistory(args) {
+  const sub = args.find((a) => !a.startsWith('-')) || '';
+  if (!sub || sub === 'help' || args.includes('--help') || args.includes('-h')) {
+    printHistoryHelp();
+    // No subcommand at all is a usage error; an explicit help request is not.
+    process.exit(sub ? 0 : 2);
+  }
+  const known = ['list', 'show', 'restore', 'prune', 'retention', 'domains'];
+  if (!known.includes(sub)) {
+    console.error(`unknown subcommand: od history ${sub}`);
+    printHistoryHelp();
+    process.exit(2);
+  }
+  const idx = args.indexOf(sub);
+  const rest = [...args.slice(0, idx), ...args.slice(idx + 1)];
+
+  let flags;
+  try {
+    flags = parseFlags(rest, { string: HISTORY_STRING_FLAGS, boolean: HISTORY_BOOLEAN_FLAGS });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(2);
+  }
+  const base = await cliDaemonBaseUrl(flags);
+  const positionals = positionalArgs(rest, HISTORY_STRING_FLAGS);
+
+  if (sub === 'domains') {
+    const data = await historyRequest(base, '/api/history/domains');
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    if (data?.available === false) {
+      console.error(`history unavailable: ${data.unavailableReason ?? 'unknown reason'}`);
+      process.exit(1);
+    }
+    for (const domain of data?.domains ?? []) {
+      const marks = domain.sensitive ? '  (content never returned over HTTP)' : '';
+      console.log(`${domain.id.padEnd(14)} ${domain.label}${marks}`);
+      if (domain.note) console.log(`${' '.repeat(15)}${domain.note}`);
+    }
+    return undefined;
+  }
+
+  if (sub === 'retention') {
+    const hasUpdate = flags['max-revisions'] != null || flags['max-age-days'] != null;
+    const data = hasUpdate
+      ? await historyRequest(base, '/api/history/retention', {
+        method:  'POST',
+        headers: { 'content-type': 'application/json' },
+        body:    JSON.stringify({
+          maxRevisions: parseHistoryCount(flags['max-revisions'], 'max-revisions'),
+          maxAgeDays:   parseHistoryCount(flags['max-age-days'], 'max-age-days'),
+        }),
+      })
+      : await historyRequest(base, '/api/history/retention');
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    const retention = data?.retention ?? {};
+    console.log(`max revisions: ${retention.maxRevisions ?? 'unlimited'}`);
+    console.log(`max age days:  ${retention.maxAgeDays ?? 'unlimited'}`);
+    return undefined;
+  }
+
+  if (sub === 'list') {
+    const params = new URLSearchParams();
+    if (flags.domain) params.set('domainId', flags.domain);
+    if (flags.kind) params.set('kind', flags.kind);
+    const since = parseHistoryInstant(flags.since, 'since');
+    if (since !== undefined) params.set('since', String(since));
+    const until = parseHistoryInstant(flags.until, 'until');
+    if (until !== undefined) params.set('until', String(until));
+    if (flags.query) params.set('query', flags.query);
+    if (flags.regex) params.set('regex', '1');
+    if (flags.limit) params.set('limit', String(flags.limit));
+    if (flags.offset) params.set('offset', String(flags.offset));
+    const suffix = params.toString();
+    const data = await historyRequest(base, `/api/history${suffix ? `?${suffix}` : ''}`);
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    if (data?.available === false) {
+      console.error(`history unavailable: ${data.unavailableReason ?? 'unknown reason'}`);
+      process.exit(1);
+    }
+    const revisions = data?.revisions ?? [];
+    if (revisions.length === 0) {
+      console.log('No revisions match that filter.');
+      return undefined;
+    }
+    for (const revision of revisions) console.log(formatHistoryRevisionLine(revision));
+    console.log(`\n${revisions.length} of ${data?.total ?? revisions.length} revision(s).`);
+    return undefined;
+  }
+
+  if (sub === 'show') {
+    const revisionId = positionals[0];
+    if (!revisionId) {
+      console.error('a revision id is required: od history show <revision-id>');
+      process.exit(2);
+    }
+    const params = new URLSearchParams();
+    if (flags.path) params.set('path', flags.path);
+    const suffix = params.toString();
+    const data = await historyRequest(
+      base,
+      `/api/history/${encodeURIComponent(revisionId)}${suffix ? `?${suffix}` : ''}`,
+    );
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    const revision = data?.revision;
+    if (!revision) {
+      console.error('revision not found');
+      process.exit(1);
+    }
+    console.log(formatHistoryRevisionLine(revision));
+    for (const line of revision.details ?? []) console.log(`  ${line}`);
+    for (const change of revision.changes ?? []) {
+      console.log(`  ${change.status.padEnd(9)} ${change.path}`);
+    }
+    if (data?.entry) {
+      const entry = data.entry;
+      console.log(`\n${entry.path}  ${entry.size} bytes  sha256:${entry.digest}`);
+      if (entry.redacted) {
+        console.log('(content withheld: this domain mirrors credential material)');
+      } else if (entry.encoding === 'utf8') {
+        console.log(entry.content);
+      } else {
+        console.log(`(base64) ${entry.content}`);
+      }
+    }
+    return undefined;
+  }
+
+  if (sub === 'restore') {
+    const revisionId = positionals[0];
+    if (!revisionId) {
+      console.error('a revision id is required: od history restore <revision-id>');
+      process.exit(2);
+    }
+    const domainIds = collectHistoryDomains(rest);
+    const body = { revisionId };
+    if (domainIds.length > 0) body.domainIds = domainIds;
+    if (flags.label) body.label = flags.label;
+    const data = await historyRequest(base, '/api/history/restore', {
+      method:  'POST',
+      headers: { 'content-type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    if (data?.unchanged) {
+      console.log('Nothing to restore: the live state already matches that revision.');
+      console.log('No revision was recorded, because an unchanged state records nothing.');
+      return undefined;
+    }
+    console.log(`Restored “${data?.from?.label ?? revisionId}”.`);
+    if (data?.recorded) {
+      console.log(`Recorded as a new revision: ${data.recorded.id}`);
+      // Nothing was rewound, so the state that was live a moment ago is still
+      // in the log. Undoing this restore means restoring that revision — the
+      // newest one before this record — not this one, which is the state you
+      // are already in.
+      console.log('This restore is append-only: the state it replaced is still in the log.');
+      console.log('Undo it by restoring the newest revision listed before this one:');
+      console.log('  od history list --limit 5');
+    }
+    for (const change of data?.changes ?? []) {
+      console.log(`  ${change.status.padEnd(9)} ${change.path}`);
+    }
+    return undefined;
+  }
+
+  // prune
+  const policy = {
+    maxRevisions: parseHistoryCount(flags['max-revisions'], 'max-revisions'),
+    maxAgeDays:   parseHistoryCount(flags['max-age-days'], 'max-age-days'),
+  };
+  const hasPolicy = policy.maxRevisions !== null || policy.maxAgeDays !== null;
+  const data = await historyRequest(base, '/api/history/prune', {
+    method:  'POST',
+    headers: { 'content-type': 'application/json' },
+    body:    JSON.stringify({
+      ...(hasPolicy ? { policy } : {}),
+      dryRun: flags.apply !== true,
+    }),
+  });
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  const removed = data?.removed ?? [];
+  if (removed.length === 0) {
+    console.log('Nothing falls outside the retention window.');
+    return undefined;
+  }
+  console.log(
+    data?.dryRun
+      ? `${removed.length} revision(s) would be removed, ${data?.keptCount ?? 0} kept:`
+      : `Removed ${removed.length} revision(s), kept ${data?.keptCount ?? 0}:`,
+  );
+  for (const revision of removed) console.log(`  ${formatHistoryRevisionLine(revision)}`);
+  if (data?.dryRun) console.log('\nRe-run with --apply to remove them.');
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------

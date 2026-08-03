@@ -27,6 +27,26 @@ export interface ProjectLocationPrefs {
   path: string;
 }
 
+/**
+ * Persisted "open in external editor" choice. `id` is an `ExternalEditorId`
+ * from `api/editor.ts` (kept as a plain string here so the app-config DTO does
+ * not depend on the editor catalogue's shape).
+ *
+ * `command` is an absolute executable path and only meaningful for the
+ * `custom` id — the user-added editor. It is spawned with an argument vector,
+ * never through a shell, so it is a path and not a command line: no flags, no
+ * arguments, no metacharacters are interpreted from it.
+ */
+export interface ExternalEditorPrefs {
+  id: string;
+  /** Absolute executable path. Required when `id === 'custom'`. */
+  command?: string | null;
+  /** Display label for a user-added editor. */
+  label?: string | null;
+  /** True when this editor opens a directory argument as a workspace root. */
+  supportsFolders?: boolean;
+}
+
 export interface AppConfigPrefs {
   onboardingCompleted?: boolean;
   agentId?: string | null;
@@ -62,6 +82,13 @@ export interface AppConfigPrefs {
    * most-recent-first and capped by the daemon.
    */
   recentLinkedDirs?: string[];
+  /**
+   * Which external editor "Open in…" uses. Null (or absent) means the user has
+   * not chosen, in which case the daemon auto-picks by
+   * `EXTERNAL_EDITOR_AUTO_PREFERENCE`. An explicit choice that is no longer
+   * installed is reported as missing rather than silently replaced.
+   */
+  externalEditor?: ExternalEditorPrefs | null;
 }
 
 export interface AppConfigResponse {

@@ -55,17 +55,26 @@ codebase. Read this file for how work is done *here*.
 | `scripts/import-dim-sum.sh` | Copies catalogue images in byte-for-byte from a verified source and writes `assets/dim-sum/index.json`. |
 | `MODIFICATIONS.md` | Apache-2.0 §4(b) notice **and** the allowlist the verifier reads. |
 
-**Status, stated plainly: nothing in this repository has been installed, built, run, or
-tested.** The only thing that has been executed is `scripts/verify-port.sh`. There is no
-installer, no release, and no CI history. Do not write, imply, or infer otherwise in any
-document, commit message, issue, or release note.
+**Status, stated plainly.** The repository root holds this project's own three workflows —
+`.github/workflows/verify.yml` (*Verify*), `.github/workflows/release.yml` (*Release*) and
+`.github/workflows/pages.yml` (*Pages*) — and **all three have run**. Port verification
+passes at 0 gaps; the workspace has installed with its native modules compiled from source,
+typechecked, and passed the Windows identity suites; Windows installers have been built and
+put through the packaged smoke test, which installed, launched, health-checked and
+uninstalled the application with zero residue; two releases are published; the documentation
+site is deployed.
 
-The repository root holds this project's own three workflows — `.github/workflows/verify.yml`
-(*Verify*), `.github/workflows/release.yml` (*Release*) and `.github/workflows/pages.yml`
-(*Pages*). They are committed definitions and **no run outcome has been observed for any of
-them**. Keep that distinction sharp in everything you write: a workflow that would verify,
-build or deploy is not a verification, a build or a deployment. Never describe a job in them
-as having passed, and never cite one as evidence, until a real run says so.
+**What is emphatically not finished is the application.** The Cantonese locale, the two
+funny-level sliders, the in-app regex builder, the startup surprise and the changelog viewer
+are **in progress** — the documentation site demonstrates them, the application does not have
+them. The Material Design 3 redesign has landed its token layer and the custom Windows title
+bar and no more. Never describe any of those as shipped.
+
+Keep the distinction between a definition and a result sharp in everything you write: a
+workflow that *would* verify, build or deploy is not a verification, a build or a
+deployment. Cite a run, not a file, as evidence — and where no run has demonstrated
+something, say so rather than reasoning from the workflow's contents. No run has yet been
+observed *failing*, so nothing here may be described as a proven gate.
 
 Separately, the 48 workflow files under `design/.github/workflows/` belong to upstream and
 are **inert** — GitHub Actions only reads `.github/workflows/` at the repository root, so
@@ -380,13 +389,19 @@ a line count pinned to a tag is a comparable fact; one floating in prose is stal
 day. It is information, never a boast — do not pad it and do not hide tests to flatter a
 ratio.*
 
-> Both now exist: `scripts/line-count.mjs` is the counter, and both `.github/workflows/release.yml`
-> and `.github/workflows/verify.yml` invoke it. Two gaps remain, so do not treat this as
-> finished. **No release has been published**, so no line count has ever been reported.
-> And both workflows call the counter **without `--blame`**, which is the flag that enables
-> authorship attribution — as committed, the Authorship table renders "not computed". Until
-> `--blame` is added (scoped with `--blame-paths`, so it does not blame the 11,799-file
-> vendored tree), a release cannot carry the human/agent split this requirement asks for.
+> **The machinery is built, and releases have been published carrying the counter's table.**
+> `scripts/line-count.mjs` is the counter, and both `.github/workflows/release.yml` and
+> `.github/workflows/verify.yml` invoke it.
+>
+> The two calls differ deliberately. `release.yml` runs the counter **with `--blame` and a
+> scoped `--blame-paths`**, so authorship is attributed without blaming the 11,799-file
+> vendored tree; if that attribution pass fails it falls back to an unattributed count rather
+> than publishing no table at all. `verify.yml` runs it **without attribution on purpose** —
+> that workflow is a gate, not a release, and the blame pass is expensive for a figure it
+> never publishes.
+>
+> **Not established here:** whether a given published release body actually rendered the
+> Authorship rows. Read the release's notes before claiming a particular one did.
 >
 > Whatever happens, the count comes from the committed script run by CI at the released
 > commit — never from an agent counting by hand.

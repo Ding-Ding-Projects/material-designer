@@ -9,7 +9,7 @@
  * WHAT THIS FILE DELIBERATELY DOES NOT DO
  *   docs/standards/tabs.md also requires tab *grouping* and the two *bulk-close*
  *   actions. Neither applies to this surface, and pretending otherwise would be
- *   worse than saying so: the site has exactly eight permanent sections, so
+ *   worse than saying so: the site has exactly ten permanent sections, so
  *   there is nothing to group them into, and a "close" would make a section of
  *   the documentation unreachable with no way to reopen it. Of the standard's
  *   four tab-discovery searches only #1 (the current strip) exists here, because
@@ -64,9 +64,11 @@ export const DEFAULT_TABS = Object.freeze([
   { id: 'overview',    icon: 'overview',   en: 'Overview',           yue: '總覽' },
   { id: 'features',    icon: 'features',   en: 'Features',           yue: '功能' },
   { id: 'install',     icon: 'install',    en: 'Install',            yue: '安裝' },
+  { id: 'releases',    icon: 'releases',   en: 'Releases',           yue: '發佈版本' },
   { id: 'building',    icon: 'building',   en: 'Building',           yue: '自己砌' },
   { id: 'verifying',   icon: 'verifying',  en: 'Verifying the port', yue: '驗證移植' },
   { id: 'standards',   icon: 'standards',  en: 'Standards',          yue: '標準' },
+  { id: 'docs',        icon: 'docs',       en: 'Documentation',      yue: '文件' },
   { id: 'provenance',  icon: 'provenance', en: 'Provenance',         yue: '出處' },
   { id: 'settings',    icon: 'settings',   en: 'Settings',           yue: '設定' },
 ].map(Object.freeze));
@@ -448,6 +450,8 @@ const ICON_PATHS = {
   building:   '<path d="m12 3.2 8 4v9.6l-8 4-8-4V7.2z"/><path d="m4 7.2 8 4 8-4"/><path d="M12 11.2v9.6"/>',
   verifying:  '<circle cx="12" cy="12" r="8.6"/><path d="m8.2 12.2 2.6 2.6 5-5.4"/>',
   standards:  '<path d="M4 6.4h8.4M4 12h8.4M4 17.6h8.4"/><path d="m16 5.6 1.6 1.6 3-3"/><path d="m16 16.4 1.6 1.6 3-3"/>',
+  releases:   '<path d="M11.4 3.8H4.6a.8.8 0 0 0-.8.8v6.8l8.6 8.6a.8.8 0 0 0 1.2 0l6.6-6.6a.8.8 0 0 0 0-1.2z"/><circle cx="8.2" cy="8.2" r="1.5"/>',
+  docs:       '<path d="M5.6 4.2h7.6l4.4 4.4v11a.8.8 0 0 1-.8.8H5.6a.8.8 0 0 1-.8-.8V5a.8.8 0 0 1 .8-.8z"/><path d="M13 4.4v4.4h4.4"/><path d="M8.2 13.4h7M8.2 16.6h4.6"/>',
   provenance: '<path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3.2 3.8v4.4h4.4"/><path d="M12 7.8v4.6l3.2 1.9"/>',
   settings:   '<path d="M3.6 7.4h9.2M17.6 7.4h2.8M3.6 16.6h2.8M11 16.6h9.4"/><circle cx="15.2" cy="7.4" r="2.6"/><circle cx="8.6" cy="16.6" r="2.6"/>',
   more:       '<circle cx="5" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.8" fill="currentColor" stroke="none"/>',

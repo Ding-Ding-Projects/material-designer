@@ -12,12 +12,12 @@ How Material Designer is built, where that happens, and why.
 ## Status
 
 > [!IMPORTANT]
-> **Three workflows exist at the repository root — `Verify`, `Release` and
-> `Pages` — but no run outcome is recorded in this documentation.** Nothing has
-> been observed building, and no installer or release is claimed here.
-> [ci.md](ci.md) describes the two build workflows and says plainly which of its
-> statements are descriptions and which would be results; `Pages`, which deploys
-> the documentation site, is documented under [../site/](../site/).
+> **All three workflows at the repository root have run.** `Verify` passes at
+> zero gaps, `Release` has built Windows installers and published two releases,
+> and `Pages` has deployed the documentation site. [ci.md](ci.md) records what
+> each run demonstrated and — just as plainly — the failure cases none of them
+> has: no workflow has been observed rejecting a bad tree. `Pages` is documented
+> under [../site/](../site/).
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
 > upstream project and are **inert**, because workflows are only read from the
@@ -47,3 +47,10 @@ machine.
 [from-source.md](from-source.md) exists anyway, because a developer changing the
 interface needs a loop faster than a remote build, and because a build nobody can
 reproduce locally is a build nobody can debug.
+
+## Suggested reading
+
+- [../release/release-pipeline.md](../release/release-pipeline.md) — what happens after a build succeeds: the smoke test, the notes, the assets and publication
+- [../troubleshooting/](../troubleshooting/) — the build failures this project actually hit, each with the symptom as it appeared in a log
+- [../porting/verification.md](../porting/verification.md) — the integrity check every workflow runs first, and the line-ending trap that makes it report thousands of false differences
+- [../architecture/overview.md](../architecture/overview.md) — what the 18 workspace builds are building, and how the pieces connect

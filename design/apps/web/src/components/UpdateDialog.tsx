@@ -365,7 +365,7 @@ export function UpdateDialog() {
     if (model.upToDate) {
       if (status?.currentVersion == null) return t('updater.upToDate');
       const version = `v${status.currentVersion}`;
-      return locale === 'zh-CN' || locale === 'zh-TW'
+      return locale === 'zh-CN' || locale === 'zh-TW' || locale === 'zh-HK'
         ? `${t('updater.upToDate')}（${version}）`
         : `${t('updater.upToDate')} (${version})`;
     }

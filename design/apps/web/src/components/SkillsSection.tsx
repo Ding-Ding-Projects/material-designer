@@ -7,6 +7,8 @@ import {
   localizeSkillName,
 } from '../i18n/content';
 import { Icon } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import type { AppConfig } from '../types';
 import type { SkillSummary } from '@open-design/contracts';
 import {
@@ -78,12 +80,17 @@ function parseTriggers(raw: string): string[] {
     .filter(Boolean);
 }
 
-function skillMatchesSearch(skill: SkillSummary, q: string, locale: Locale): boolean {
-  if (!q) return true;
+// The predicate comes from the search field's own regex controller, so the
+// same haystack is matched whether the user typed plain text or a pattern.
+function skillMatchesSearch(
+  skill: SkillSummary,
+  matches: (text: string) => boolean,
+  locale: Locale,
+): boolean {
   const hay = `${skill.name}\n${localizeSkillName(locale, skill)}\n${skill.description}\n${localizeSkillDescription(locale, skill)}\n${(skill.triggers ?? []).join(
     ' ',
   )}\n${skill.category ?? ''}`;
-  return hay.toLowerCase().includes(q);
+  return matches(hay);
 }
 
 export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }: Props) {
@@ -91,6 +98,9 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
 
   const [skills, setSkills] = useState<SkillSummary[]>([]);
   const [search, setSearch] = useState('');
+  // This settings field's own regex controller — independent of every other
+  // search bar in the dialog.
+  const searchRegex = useRegexSearch(search, setSearch);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [modeFilter, setModeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -148,7 +158,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     [cfg.disabledSkills],
   );
 
-  const searchQuery = search.toLowerCase().trim();
+  const matchesSearch = searchRegex.matches;
 
   const sourceCounts = useMemo(() => {
     const counts = new Map<SourceFilter, number>([
@@ -159,14 +169,14 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     for (const s of skills) {
       if (modeFilter !== 'all' && s.mode !== modeFilter) continue;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) continue;
-      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
+      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
       counts.set('all', (counts.get('all') ?? 0) + 1);
       if (s.source === 'user' || s.source === 'built-in') {
         counts.set(s.source, (counts.get(s.source) ?? 0) + 1);
       }
     }
     return counts;
-  }, [skills, modeFilter, categoryFilter, searchQuery, locale]);
+  }, [skills, modeFilter, categoryFilter, matchesSearch, locale]);
 
   const modeOptions = useMemo(() => {
     const modes = new Set(skills.map((s) => s.mode));
@@ -174,13 +184,13 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     for (const s of skills) {
       if (sourceFilter !== 'all' && s.source !== sourceFilter) continue;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) continue;
-      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
+      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
       counts.set(s.mode, (counts.get(s.mode) ?? 0) + 1);
     }
     return Array.from(modes, (mode) => [mode, counts.get(mode) ?? 0] as const).sort(
       (a, b) => a[0].localeCompare(b[0]),
     );
-  }, [skills, sourceFilter, categoryFilter, searchQuery, locale]);
+  }, [skills, sourceFilter, categoryFilter, matchesSearch, locale]);
 
   const modeAllCount = useMemo(
     () =>
@@ -188,9 +198,9 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
         if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
         if (categoryFilter !== 'all' && s.category !== categoryFilter)
           return false;
-        return skillMatchesSearch(s, searchQuery, locale);
+        return skillMatchesSearch(s, matchesSearch, locale);
       }).length,
-    [skills, sourceFilter, categoryFilter, searchQuery, locale],
+    [skills, sourceFilter, categoryFilter, matchesSearch, locale],
   );
 
   // Categories are optional per-skill metadata (`od.category` in the
@@ -209,22 +219,22 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       if (typeof cat !== 'string' || !cat) continue;
       if (modeFilter !== 'all' && s.mode !== modeFilter) continue;
       if (sourceFilter !== 'all' && s.source !== sourceFilter) continue;
-      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
+      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return Array.from(categories, (cat) => [cat, counts.get(cat) ?? 0] as const).sort(
       (a, b) => a[0].localeCompare(b[0]),
     );
-  }, [skills, modeFilter, sourceFilter, searchQuery, locale]);
+  }, [skills, modeFilter, sourceFilter, matchesSearch, locale]);
 
   const categoryAllCount = useMemo(
     () =>
       skills.filter((s) => {
         if (modeFilter !== 'all' && s.mode !== modeFilter) return false;
         if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
-        return skillMatchesSearch(s, searchQuery, locale);
+        return skillMatchesSearch(s, matchesSearch, locale);
       }).length,
-    [skills, modeFilter, sourceFilter, searchQuery, locale],
+    [skills, modeFilter, sourceFilter, matchesSearch, locale],
   );
 
   const filteredSkills = useMemo(() => {
@@ -233,9 +243,9 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
       if (categoryFilter !== 'all' && s.category !== categoryFilter)
         return false;
-      return skillMatchesSearch(s, searchQuery, locale);
+      return skillMatchesSearch(s, matchesSearch, locale);
     });
-  }, [skills, modeFilter, sourceFilter, categoryFilter, searchQuery, locale]);
+  }, [skills, modeFilter, sourceFilter, categoryFilter, matchesSearch, locale]);
 
   const ensureBody = useCallback(
     async (id: string) => {
@@ -441,12 +451,13 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       <div className="library-toolbar skills-toolbar">
         {/* Row 1: search + New skill button */}
         <div className="skills-toolbar-top">
-          <input
-            type="search"
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('settings.skills')}
             className="library-search"
             placeholder={t('settings.librarySearch')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            ariaLabel={t('settings.librarySearch')}
+            testId="skills-search"
           />
           <button
             type="button"

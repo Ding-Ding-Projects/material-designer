@@ -96,6 +96,13 @@ describe('detectInitialLocale priority chain', () => {
     expect(detectInitialLocale()).toBe('zh-TW');
   });
 
+  it('routes a Hong Kong OS locale to zh-HK rather than zh-TW', () => {
+    installHostWithOsLocale('zh-Hant-HK');
+    setNavigatorLanguages(['en-US']);
+
+    expect(detectInitialLocale()).toBe('zh-HK');
+  });
+
   it('falls back to navigator when host osLocale is missing or not a string', () => {
     installHostWithOsLocale(undefined);
     setNavigatorLanguages(['ko-KR']);

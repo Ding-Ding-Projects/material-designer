@@ -338,3 +338,35 @@ code {
   -webkit-mask: url(/brand-icon.svg) center / contain no-repeat;
   mask: url(/brand-icon.svg) center / contain no-repeat;
 }
+
+/* -------- Reveal flash ------------------------------------------------ */
+/* Applied for ~1.6s by `components/command-palette/reveal.ts` to whatever the
+   palette just navigated to, so the eye lands where the keyboard already did.
+   It is a global class rather than a CSS Module because the targets are
+   arbitrary controls all over the app — the module that applies it never owns
+   the element it lands on.
+
+   `outline` rather than `border` or `box-shadow`: an outline is drawn outside
+   the box and participates in no layout, so flashing a control cannot nudge the
+   surrounding form by a pixel. The ring is what carries the meaning, so it
+   stays put under `prefers-reduced-motion`; only the pulse stops. */
+.od-reveal-flash {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  animation: od-reveal-flash-pulse 800ms var(--ease-out) 2;
+}
+@keyframes od-reveal-flash-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+  }
+  40% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 26%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .od-reveal-flash {
+    animation: none;
+  }
+}

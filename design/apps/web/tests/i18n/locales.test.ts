@@ -7,7 +7,7 @@ import { zhCN } from '../../src/i18n/locales/zh-CN';
 import { zhTW } from '../../src/i18n/locales/zh-TW';
 import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/types';
 
-const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'zh-HK', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -38,11 +38,26 @@ function explicitLocaleKeys(locale: Locale): string[] {
 describe('i18n locales', () => {
   it('resolves the initial locale from browser language preferences', () => {
     expect(resolveSystemLocale(['zh-Hans-CN', 'en-US'])).toBe('zh-CN');
-    expect(resolveSystemLocale(['zh-Hant-HK', 'en-US'])).toBe('zh-TW');
     expect(resolveSystemLocale(['pt-PT', 'en-US'])).toBe('pt-BR');
     expect(resolveSystemLocale(['es-MX', 'en-US'])).toBe('es-ES');
     expect(resolveSystemLocale(['nl-NL', 'en-US'])).toBe('en');
     expect(resolveSystemLocale(['nl-NL'])).toBeNull();
+  });
+
+  // Region beats script for the Chinese tags. `zh-Hant-HK` (what macOS
+  // reports for a Hong Kong user) used to land on zh-TW because only the
+  // second subtag was inspected; now that a Cantonese dictionary exists, a
+  // `hk` / `mo` subtag anywhere in the tag wins, and a tag that only says
+  // Traditional — or says Taiwan — still means zh-TW.
+  it('routes Hong Kong and Macau Chinese tags to zh-HK, and Taiwan/Hant to zh-TW', () => {
+    expect(resolveSystemLocale(['zh-HK'])).toBe('zh-HK');
+    expect(resolveSystemLocale(['zh-Hant-HK', 'en-US'])).toBe('zh-HK');
+    expect(resolveSystemLocale(['zh-MO'])).toBe('zh-HK');
+    expect(resolveSystemLocale(['zh-Hant-MO'])).toBe('zh-HK');
+    expect(resolveSystemLocale(['zh-TW'])).toBe('zh-TW');
+    expect(resolveSystemLocale(['zh-Hant'])).toBe('zh-TW');
+    expect(resolveSystemLocale(['zh-Hant-TW'])).toBe('zh-TW');
+    expect(resolveSystemLocale(['zh'])).toBe('zh-CN');
   });
 
   it('registers every supported locale in the language menu', () => {
@@ -51,6 +66,7 @@ describe('i18n locales', () => {
     expect((LOCALE_LABEL as Record<string, string>).de).toBe('Deutsch');
     expect((LOCALE_LABEL as Record<string, string>).it).toBe('Italiano');
     expect((LOCALE_LABEL as Record<string, string>).ja).toBe('日本語');
+    expect((LOCALE_LABEL as Record<string, string>)['zh-HK']).toBe('廣東話');
   });
 
   it('keeps locale dictionaries aligned with English keys and placeholders', async () => {

@@ -1,0 +1,270 @@
+.dialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(84vh, 860px);
+  overflow: hidden;
+}
+
+.header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 22px 0;
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.searchLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.scopeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 22px 0;
+}
+
+.scope {
+  margin: 0;
+  flex: 1 1 260px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status {
+  margin: 0;
+  padding: 8px 22px 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-sys-color-primary, var(--text));
+}
+
+.body {
+  padding: 14px 22px 22px;
+  overflow-y: auto;
+  gap: 20px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.release {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant, var(--border));
+}
+
+.release:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.releaseHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.version {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.releaseDate,
+.releaseCount,
+.releaseSource {
+  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.releaseTitle {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.releaseSource {
+  margin: 0;
+}
+
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.categoryName {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--md-sys-color-primary, var(--text-muted));
+}
+
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subcategory {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.entryText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface, var(--text));
+  overflow-wrap: anywhere;
+}
+
+.entryTitle {
+  font-weight: 650;
+}
+
+.entryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.commit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--md-sys-shape-corner-s, 8px);
+  background: var(--md-sys-color-surface-container-high, rgba(127, 127, 127, 0.12));
+  color: inherit;
+  text-decoration: none;
+}
+
+.commit:hover {
+  background: var(--md-sys-color-surface-container-highest, rgba(127, 127, 127, 0.2));
+  text-decoration: underline;
+}
+
+.commit:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, currentColor);
+  outline-offset: 1px;
+}
+
+.commitNote,
+.commitMissing {
+  font-style: italic;
+}
+
+.commitMissing {
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.entryDate {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .controls,
+  .scopeRow,
+  .status,
+  .body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

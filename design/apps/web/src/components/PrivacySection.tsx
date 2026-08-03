@@ -83,6 +83,7 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
         <>
           <div className="settings-privacy-toggles">
             <ToggleRow
+              anchor="privacy.metrics"
               label={t('settings.privacyMetrics')}
               hint={t('settings.privacyMetricsHint')}
               checked={telemetry.metrics === true}
@@ -155,18 +156,25 @@ interface ToggleRowProps {
   hint: string;
   checked: boolean;
   onChange: (next: boolean) => void;
+  /**
+   * Reveal target for the command palette's settings index. Optional because
+   * only the rows the index names need one — an unindexed toggle stamping an
+   * anchor nothing points at would be dead weight.
+   */
+  anchor?: string;
 }
 
 // Reuses .toggle-row (label + hint + iOS-style switch) — same control
 // NewProjectPanel uses for "speaker notes" / "animations" toggles, so the
 // Privacy panel reads as native to the rest of the app.
-function ToggleRow({ label, hint, checked, onChange }: ToggleRowProps): JSX.Element {
+function ToggleRow({ label, hint, checked, onChange, anchor }: ToggleRowProps): JSX.Element {
   return (
     <button
       type="button"
       className={`toggle-row${checked ? ' on' : ''}`}
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
+      data-od-setting={anchor}
     >
       <div className="toggle-row-text">
         <span className="toggle-row-label">{label}</span>

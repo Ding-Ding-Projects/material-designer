@@ -1,8 +1,8 @@
 // Supported UI locales. Adding a new locale requires creating a new
 // dictionary in `./locales/` and registering it in `./index.tsx`.
-export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it';
+export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it';
 
-export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'zh-HK', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
 
 export const LOCALE_LABEL: Record<Locale, string> = {
   'en': 'English',
@@ -10,6 +10,7 @@ export const LOCALE_LABEL: Record<Locale, string> = {
   'de': 'Deutsch',
   'zh-CN': '简体中文',
   'zh-TW': '繁體中文',
+  'zh-HK': '廣東話',
   'pt-BR': 'Português (Brasil)',
   'es-ES': 'Español (España)',
   'ru': 'Русский',
@@ -4436,4 +4437,53 @@ export interface Dict {
   'titleBar.maximize': string;
   'titleBar.restore': string;
   'titleBar.close': string;
+  // Language mode (one language / both) and the two funny-level sliders,
+  // all in Settings → Language. `settings.funnyLevelValue` names the
+  // active step; the five level names below are its `{name}` operand.
+  'settings.languageModeTitle': string;
+  'settings.languageModeHint': string;
+  'settings.languageModeSingle': string;
+  'settings.languageModeBilingual': string;
+  'settings.languageModeBilingualHint': string;
+  'settings.funnyTitle': string;
+  'settings.funnyHint': string;
+  'settings.funnyFactsNotice': string;
+  'settings.funnyEnglishLabel': string;
+  'settings.funnyCantoneseLabel': string;
+  'settings.funnyLevel1': string;
+  'settings.funnyLevel2': string;
+  'settings.funnyLevel3': string;
+  'settings.funnyLevel4': string;
+  'settings.funnyLevel5': string;
+  'settings.funnyLevelValue': string;
+  'settings.funnyDisclosureTitle': string;
+  'settings.funnyDisclosureBody': string;
+  'settings.funnyDisclosureDismiss': string;
 }
+
+// How many languages a rendered string carries. 'single' is the historical
+// behaviour — the active locale only. 'bilingual' appends a second language
+// so both read at once; the pairing is English ↔ 廣東話 (see `t()`).
+export type LanguageMode = 'single' | 'bilingual';
+
+export const LANGUAGE_MODES: LanguageMode[] = ['single', 'bilingual'];
+
+// The two languages that carry a funny-level dictionary. Every other locale
+// renders at its neutral base text regardless of the sliders, because no
+// override map has been written for it — saying so is honest, and the
+// slider UI names these two explicitly rather than implying wider coverage.
+export type FunnyLanguage = 'en' | 'zh-HK';
+
+// 1 is the neutral base dictionary; 2–5 progressively pick up voice. A level
+// only ever changes *how* a string reads, never what it states — see the
+// placeholder/number guard in `applyFunny` (i18n/index.tsx), which drops any
+// override that would lose a `{placeholder}` or a digit the base carried.
+export type FunnyLevel = 1 | 2 | 3 | 4 | 5;
+
+export const FUNNY_LEVELS: FunnyLevel[] = [1, 2, 3, 4, 5];
+
+// Sparse per-key override map. Levels are deliberately partial in both
+// dimensions: a key may define only some levels (the missing ones fall back
+// to the nearest lower defined level, then to the base dict), and most keys
+// define none at all.
+export type FunnyOverrides = Partial<Record<keyof Dict, Partial<Record<Exclude<FunnyLevel, 1>, string>>>>;

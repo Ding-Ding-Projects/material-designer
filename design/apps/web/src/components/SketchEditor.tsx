@@ -669,6 +669,10 @@ function excalidrawLangCode(locale: Locale): string {
     'de': 'de-DE',
     'zh-CN': 'zh-CN',
     'zh-TW': 'zh-TW',
+    // Excalidraw ships no zh-HK bundle, so Cantonese users get the
+    // Traditional Chinese one — the right script, and the closest thing
+    // that actually exists upstream.
+    'zh-HK': 'zh-TW',
     'pt-BR': 'pt-BR',
     'es-ES': 'es-ES',
     'ru': 'ru-RU',
@@ -933,7 +937,10 @@ const ZH_TW_SKETCH_TEXT_OVERRIDES: Record<string, string> = {
 
 function sketchTextOverrides(locale: Locale): Record<string, string> | null {
   if (locale === 'zh-CN') return ZH_CN_SKETCH_TEXT_OVERRIDES;
-  if (locale === 'zh-TW') return ZH_TW_SKETCH_TEXT_OVERRIDES;
+  // zh-HK rides the Traditional overrides for the same reason it rides the
+  // Traditional Excalidraw bundle: the script is right and no Cantonese
+  // Excalidraw copy exists to override with.
+  if (locale === 'zh-TW' || locale === 'zh-HK') return ZH_TW_SKETCH_TEXT_OVERRIDES;
   return null;
 }
 

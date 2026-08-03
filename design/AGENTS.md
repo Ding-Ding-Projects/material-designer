@@ -257,7 +257,8 @@ root `pnpm tools-pr` script without a new explicit maintainer decision.
 
 ## i18n keys
 
-- `apps/web/src/i18n/types.ts` is the typed `Dict`; every key must be defined in all 19 locale files under `apps/web/src/i18n/locales/*.ts` (`ar`, `de`, `en`, `es-ES`, `fa`, `fr`, `hu`, `id`, `it`, `ja`, `ko`, `pl`, `pt-BR`, `ru`, `th`, `tr`, `uk`, `zh-CN`, `zh-TW`). Add the key to `types.ts` first; missing translations produce a typecheck error.
+- `apps/web/src/i18n/types.ts` is the typed `Dict`; every key must be defined in all 20 locale files under `apps/web/src/i18n/locales/*.ts` (`ar`, `de`, `en`, `es-ES`, `fa`, `fr`, `hu`, `id`, `it`, `ja`, `ko`, `pl`, `pt-BR`, `ru`, `th`, `tr`, `uk`, `zh-CN`, `zh-HK`, `zh-TW`). Add the key to `types.ts` first; missing translations produce a typecheck error. `zh-HK` (廣東話) is the one locale that satisfies `Dict` by spreading another (`zh-TW`) and overriding the namespaces that have been rewritten into Cantonese, so a new key reaches it automatically once `zh-TW` has it.
+- Rendered copy passes through one interception point, `t()` in `apps/web/src/i18n/index.tsx`, which also applies the persisted language mode (`single` / `bilingual`, pairing English with `zh-HK`) and the two persisted funny-level sliders. The sparse override maps live in `apps/web/src/i18n/funny/{en,zh-HK}.ts`; a level changes voice only, and `keepsTheFacts` discards any override that would drop a `{placeholder}` or a number the neutral base states. No component participates in either feature.
 
 ## UI animation philosophy
 

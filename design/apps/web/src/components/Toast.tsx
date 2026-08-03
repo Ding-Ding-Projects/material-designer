@@ -10,13 +10,17 @@
 // explanation (e.g. Anthropic account-usage-cap reasons) can surface
 // the real upstream message alongside the daemon's category label.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Icon } from './Icon';
 
 export interface ToastProps {
   message: string;
   className?: string;
+  // Optional visual slot rendered above the message — an image, a thumbnail.
+  // The node brings its own styling; the toast only gives it a place to sit,
+  // so no caller inherits a size or a shape it did not ask for.
+  media?: ReactNode;
   details?: string | null;
   actionLabel?: string | null;
   actionAriaLabel?: string;
@@ -61,6 +65,7 @@ const TONE_ICON: Record<
 export function Toast({
   message,
   className,
+  media,
   details,
   actionLabel,
   actionAriaLabel,
@@ -126,6 +131,7 @@ export function Toast({
       role={role}
       aria-live={role === 'alert' ? 'assertive' : 'polite'}
     >
+      {media ? <div className="od-toast-media">{media}</div> : null}
       <div className="od-toast-body">
         {iconName ? (
           <span className="od-toast-icon" aria-hidden>

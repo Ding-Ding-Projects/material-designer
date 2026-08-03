@@ -57,7 +57,7 @@ import { parseOrchestratorWorkspace } from '../../workspace-contract.js';
 import { registerProjectConversationRoutes } from './conversations.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
 
-export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation'> {}
+export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'history' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation'> {}
 
 function projectDetailResolvedDir(
   projectsRoot: string,
@@ -1225,6 +1225,20 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   const { subscribeFileEvents, activeProjectEventSinks } = ctx.events;
   const { randomId } = ctx.ids;
   const { validateProjectDesignSystemId, validateProjectSkillId } = ctx.validation;
+
+  /**
+   * Tell local version history what just happened to a project template.
+   *
+   * Templates live in a SQLite table, which no file watcher can see move, so
+   * without this call the `templates` history domain is only captured at daemon
+   * startup or incidentally when an unrelated file-backed record changes — and
+   * a template created and deleted between two such captures has no revision to
+   * be restored from. `recordMutation` never throws and never awaits, so it is
+   * safe on the request path.
+   */
+  function recordTemplateChange(label: string): void {
+    ctx.history?.recordMutation({ domainId: 'templates', label });
+  }
   async function loadPluginRegistryView() {
     const [skills, designSystems] = await Promise.all([
       listSkills(SKILLS_DIR),
@@ -2440,6 +2454,9 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
           createdAt: Date.now(),
         });
       }
+      recordTemplateChange(
+        `${existing ? 'Updated' : 'Added'} the project template ${trimmedName}`,
+      );
       res.json({ template: t });
     } catch (err: any) {
       res.status(400).json({ error: String(err) });
@@ -2447,7 +2464,11 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   });
 
   app.delete('/api/templates/:id', (req, res) => {
+    // Read the name before the row goes, so the revision says which template
+    // was deleted rather than only that one was.
+    const doomed = getTemplate(db, req.params.id);
     deleteTemplate(db, req.params.id);
+    if (doomed) recordTemplateChange(`Deleted the project template ${doomed.name}`);
     res.json({ ok: true });
   });
 

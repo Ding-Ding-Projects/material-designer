@@ -40,6 +40,9 @@ import {
   uploadPluginZip,
 } from '../state/projects';
 import { Icon } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import regexFieldStyles from './regex/RegexSearchField.module.css';
+import { useRegexSearch, type RegexSearchMode } from './regex/useRegexSearch';
 import { PluginDetailsModal } from './PluginDetailsModal';
 import { PluginsHomeSection } from './PluginsHomeSection';
 import { TrustBadge } from './TrustBadge';
@@ -890,10 +893,21 @@ function AvailablePluginsPanel({
   const [sourceFilter, setSourceFilter] = useState('all');
   const searchTrackedRef = useRef(false);
   const sourceTrackedRef = useRef(false);
+  // This section's own regex controller. The installed-plugins list and the
+  // marketplace list each keep their own; neither can see the other's pattern.
+  const searchRegex = useRegexSearch(query, setQuery);
+  const searchMode = searchRegex.mode;
+  const matchesSearch = searchRegex.matches;
   const sourceOptions = useMemo(() => buildAvailableSourceOptions(plugins), [plugins]);
   const filteredPlugins = useMemo(
-    () => filterAvailablePlugins(plugins, { query, sourceFilter }),
-    [plugins, query, sourceFilter],
+    () =>
+      filterAvailablePlugins(plugins, {
+        query,
+        sourceFilter,
+        mode: searchMode,
+        matches: matchesSearch,
+      }),
+    [plugins, query, sourceFilter, searchMode, matchesSearch],
   );
   const filterActive = query.trim().length > 0 || sourceFilter !== 'all';
 
@@ -914,18 +928,21 @@ function AvailablePluginsPanel({
         <div className="plugins-view__available-controls" aria-label={t('pluginsView.availableFiltersAria')}>
           <div className="plugins-view__search">
             <Icon name="search" size={13} className="plugins-view__search-icon" />
-            <input
+            <RegexSearchField
+              search={searchRegex}
+              fieldLabel={t('pluginsView.availableTitle')}
               id="plugins-available-search"
-              type="search"
-              aria-label={t('pluginsView.searchAvailableAria')}
-              value={query}
+              ariaLabel={t('pluginsView.searchAvailableAria')}
+              placeholder={t('pluginsView.searchAvailablePlaceholder')}
+              testId="plugins-available-search"
+              // The pill parks its clear button at the right edge, so the
+              // builder affordance is inset to sit clear of it.
+              toggleClassName={regexFieldStyles.toggleInset}
               onFocus={() => {
                 if (searchTrackedRef.current) return;
                 searchTrackedRef.current = true;
                 onSearchInput?.();
               }}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t('pluginsView.searchAvailablePlaceholder')}
             />
             {query ? (
               <button
@@ -2020,19 +2037,30 @@ function buildAvailableSourceOptions(plugins: AvailableMarketplacePlugin[]): Ava
 
 function filterAvailablePlugins(
   plugins: AvailableMarketplacePlugin[],
-  filters: { query: string; sourceFilter: string },
+  filters: {
+    query: string;
+    sourceFilter: string;
+    mode: RegexSearchMode;
+    matches: (text: string) => boolean;
+  },
 ): AvailableMarketplacePlugin[] {
-  const terms = filters.query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  // Plain text keeps its existing every-word-must-appear behaviour; a regex is
+  // matched whole, because splitting a pattern on spaces would break it.
+  const terms =
+    filters.mode === 'text'
+      ? filters.query
+          .trim()
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean)
+      : [];
   return plugins.filter((plugin) => {
     if (filters.sourceFilter !== 'all' && plugin.marketplace.id !== filters.sourceFilter) {
       return false;
     }
-    if (terms.length === 0) return true;
     const haystack = availablePluginSearchText(plugin);
+    if (filters.mode === 'regex') return filters.matches(haystack);
+    if (terms.length === 0) return true;
     return terms.every((term) => haystack.includes(term));
   });
 }

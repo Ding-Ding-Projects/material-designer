@@ -32,6 +32,8 @@ import { useDesignKit } from '../runtime/design-kit';
 import { DesignKitView, HeaderActionsMenu, type DesignKitActionFeedbackTone, type HeaderMenuAction } from './DesignKitView';
 import { designSystemLogoHost, isUserSystem } from './design-system-metadata';
 import { Icon } from './Icon';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import { Toast } from './Toast';
 import type { DesignSystemDetail, DesignSystemSummary, ProjectTemplate, Surface } from '../types';
 import styles from './DesignSystemsTab.module.css';
@@ -94,23 +96,19 @@ function mapStatusToTracking(
   }
 }
 
+// `matches` comes from the search field's own regex controller, so plain text
+// and a pattern run over exactly the same haystack.
 function systemMatchesQuery(
   locale: Locale,
   system: DesignSystemSummary,
-  query: string,
+  matches: (text: string) => boolean,
 ): boolean {
-  if (!query) return true;
-  const summary = localizeDesignSystemSummary(locale, system).toLowerCase();
+  const summary = localizeDesignSystemSummary(locale, system);
   const categoryLabel = localizeDesignSystemCategory(
     locale,
     system.category || 'Uncategorized',
-  ).toLowerCase();
-  return (
-    system.title.toLowerCase().includes(query) ||
-    system.summary.toLowerCase().includes(query) ||
-    summary.includes(query) ||
-    categoryLabel.includes(query)
   );
+  return matches(`${system.title} ${system.summary} ${summary} ${categoryLabel}`);
 }
 
 export function DesignSystemsTab({
@@ -168,7 +166,10 @@ export function DesignSystemsTab({
   // sessionStorage exactly once; applied by the effect below once the system
   // actually shows up in the loaded list (which may arrive after a refresh).
   const [pendingFocus, setPendingFocus] = useState<string | null>(() => takeDesignSystemFocus());
-  const q = filter.trim().toLowerCase();
+  // This tab's own regex controller. Owned here so the settings dialog's
+  // design-systems field cannot share its mode, flags or parts.
+  const searchRegex = useRegexSearch(filter, setFilter);
+  const q = searchRegex.matches;
 
   const librarySystems = useMemo(
     () => systems.filter((system) => !isUserSystem(system)),
@@ -589,12 +590,13 @@ export function DesignSystemsTab({
 
         <div className={styles.searchWrap}>
           <SearchGlyph className={styles.searchIcon} />
-          <input
-            type="search"
-            data-testid="design-systems-search"
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('ds.searchPlaceholder')}
+            testId="design-systems-search"
             className={styles.search}
             placeholder={t('ds.searchPlaceholder')}
-            value={filter}
+            ariaLabel={t('ds.searchPlaceholder')}
             onFocus={() => {
               if (searchTrackedRef.current) return;
               searchTrackedRef.current = true;
@@ -604,7 +606,6 @@ export function DesignSystemsTab({
                 element: 'search_input',
               });
             }}
-            onChange={(e) => setFilter(e.target.value)}
           />
         </div>
 

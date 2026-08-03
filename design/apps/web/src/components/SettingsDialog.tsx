@@ -40,8 +40,8 @@ import {
   trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
-import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
-import type { Locale } from '../i18n';
+import { FUNNY_LEVELS, LANGUAGE_MODES, LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
+import type { FunnyLanguage, FunnyLevel, LanguageMode, Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
 import { AgentDiagnosticRow } from './AgentDiagnosticRow';
@@ -177,6 +177,7 @@ import { ByokKeyField } from './byok/ByokKeyField';
 import { ByokModelField } from './byok/ByokModelField';
 import { ByokProviderBaseUrl } from './byok/ByokProviderBaseUrl';
 import { ByokProviderPicker } from './byok/ByokProviderPicker';
+import { openChangelogViewer } from './changelog/open-changelog';
 import { byokPreflightBlockReason } from './byok/preflight';
 import {
   blockingByokDraftFields,
@@ -209,6 +210,11 @@ import {
   requestNotificationPermission,
   showCompletionNotification,
 } from '../utils/notifications';
+import {
+  SETTINGS_REVEAL_EVENT,
+  revealAnchor,
+  takePendingSettingsReveal,
+} from './command-palette/reveal';
 
 export type SettingsSection =
   | 'execution'
@@ -506,7 +512,7 @@ function codexPathStrings(locale: Locale) {
         `已配置的 Codex 路径启动失败：${configuredPath}。本次测试改用 PATH 中的 Codex CLI：${detectedPath}。建议更新 CODEX_BIN 或清空自定义路径。`,
     };
   }
-  if (locale === 'zh-TW') {
+  if (locale === 'zh-TW' || locale === 'zh-HK') {
     return {
       repairHint: '目前儲存的 Codex 路徑不適合繼續使用。',
       useDetected: '使用偵測到的 Codex',
@@ -1467,6 +1473,27 @@ export function switchApiProtocolConfig(
       };
 }
 
+// Labels for the language-mode segmented control and the two funny-level
+// sliders. Both are typed against `Dict` so a renamed key fails typecheck
+// here rather than rendering the key name back at the user.
+const LANGUAGE_MODE_LABEL_KEYS: Record<LanguageMode, keyof Dict> = {
+  single: 'settings.languageModeSingle',
+  bilingual: 'settings.languageModeBilingual',
+};
+
+const FUNNY_LEVEL_LABEL_KEYS: Record<FunnyLevel, keyof Dict> = {
+  1: 'settings.funnyLevel1',
+  2: 'settings.funnyLevel2',
+  3: 'settings.funnyLevel3',
+  4: 'settings.funnyLevel4',
+  5: 'settings.funnyLevel5',
+};
+
+const FUNNY_LANGUAGE_LABEL_KEYS: Record<FunnyLanguage, keyof Dict> = {
+  'en': 'settings.funnyEnglishLabel',
+  'zh-HK': 'settings.funnyCantoneseLabel',
+};
+
 export function SettingsDialog({
   initial,
   agents,
@@ -1495,7 +1522,17 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
-  const { t, locale, setLocale } = useI18n();
+  const {
+    t,
+    locale,
+    setLocale,
+    languageMode,
+    setLanguageMode,
+    funnyLevels,
+    setFunnyLevel,
+    funnyDisclosureSeen,
+    dismissFunnyDisclosure,
+  } = useI18n();
   const analytics = useAnalytics();
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
@@ -2011,6 +2048,44 @@ export function SettingsDialog({
   useEffect(() => {
     const el = settingsContentRef.current;
     if (el) el.scrollTop = 0;
+  }, [activeSection]);
+
+  // Reveal a control the command palette asked for.
+  //
+  // The palette records the anchor before it opens this dialog, because the
+  // control does not exist until the section mounts — so the request is taken
+  // here rather than passed as a prop, and `revealAnchor` polls for the node
+  // instead of assuming one frame is enough. Two entry points, one consumer:
+  // the section effect covers "the dialog was closed and is opening now", the
+  // event covers "the dialog is already open on another section". Whichever
+  // runs first takes the request; the other finds nothing pending.
+  //
+  // The `requestAnimationFrame` is what keeps this from being undone by the
+  // scrollTop reset directly above.
+  useEffect(() => {
+    let cancelled = false;
+    let frame = 0;
+    const consume = () => {
+      const anchor = takePendingSettingsReveal();
+      if (!anchor) return;
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (cancelled) return;
+        // Searched from the document, not from `settingsContentRef`: whole-section
+        // entries anchor on that very element, and `querySelector` only ever
+        // looks at descendants — scoping the search would make every section
+        // anchor silently unresolvable.
+        void revealAnchor(anchor);
+      });
+    };
+    consume();
+    window.addEventListener(SETTINGS_REVEAL_EVENT, consume);
+    return () => {
+      cancelled = true;
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener(SETTINGS_REVEAL_EVENT, consume);
+    };
   }, [activeSection]);
 
   // One-shot AMR-card focus from the failed-run nudge: scroll the card into
@@ -4479,7 +4554,16 @@ export function SettingsDialog({
               </span>
             </button>
           </aside>
-          <div className="settings-content" ref={settingsContentRef}>
+          {/* The reveal anchor every whole-section entry in the palette's
+              settings index points at. Stamped once, from the live section, so
+              nineteen sections cannot drift out of sync one attribute at a
+              time — individual controls carry their own `data-od-setting`
+              below and take precedence when the palette targets one. */}
+          <div
+            className="settings-content"
+            ref={settingsContentRef}
+            data-od-setting={`section:${activeSection}`}
+          >
           {activeSection === 'execution' ? (
             <>
               <div
@@ -5820,7 +5904,12 @@ export function SettingsDialog({
 
           {activeSection === 'language' ? (
           <section className="settings-section">
-            <div className="settings-language-grid" role="radiogroup" aria-label={t('settings.language')}>
+            <div
+              className="settings-language-grid"
+              role="radiogroup"
+              aria-label={t('settings.language')}
+              data-od-setting="language.locale"
+            >
               {LOCALES.map((code) => {
                 const active = locale === code;
                 return (
@@ -5854,6 +5943,103 @@ export function SettingsDialog({
                   </button>
                 );
               })}
+            </div>
+            {/* One-time disclosure. It fires here rather than at first run
+                because this is the surface that can act on it — the dial it
+                describes is the next thing on the page. Dismissal is
+                persisted, so it is genuinely one-time and not a nag. */}
+            {funnyDisclosureSeen ? null : (
+              <div className="settings-language-disclosure" role="note">
+                <Icon name="sparkles" size={16} aria-hidden="true" />
+                <div className="settings-language-disclosure-text">
+                  <strong>{t('settings.funnyDisclosureTitle')}</strong>
+                  <small className="hint">{t('settings.funnyDisclosureBody')}</small>
+                </div>
+                <Button variant="ghost" onClick={dismissFunnyDisclosure}>
+                  {t('settings.funnyDisclosureDismiss')}
+                </Button>
+              </div>
+            )}
+            <div className="settings-subsection">
+              <div className="field">
+                <span className="field-label">{t('settings.languageModeTitle')}</span>
+                <div
+                  className="seg-control"
+                  role="group"
+                  aria-label={t('settings.languageModeTitle')}
+                  data-od-setting="language.mode"
+                  style={{ '--seg-cols': LANGUAGE_MODES.length } as React.CSSProperties}
+                >
+                  {LANGUAGE_MODES.map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={'seg-btn' + (languageMode === mode ? ' active' : '')}
+                      aria-pressed={languageMode === mode}
+                      onClick={() => setLanguageMode(mode)}
+                    >
+                      <span className="seg-title">{t(LANGUAGE_MODE_LABEL_KEYS[mode])}</span>
+                    </button>
+                  ))}
+                </div>
+                <small className="hint">{t('settings.languageModeHint')}</small>
+                <small className="hint">{t('settings.languageModeBilingualHint')}</small>
+              </div>
+            </div>
+            <div className="settings-subsection">
+              <div className="field">
+                <span className="field-label">{t('settings.funnyTitle')}</span>
+                <small className="hint">{t('settings.funnyHint')}</small>
+                {/* One slider per language, persisted independently. Only
+                    English and 廣東話 carry an override dictionary, so only
+                    those two get a slider — a third slider that moved
+                    nothing would be a lie in the shape of a control. */}
+                {(['en', 'zh-HK'] as const).map((language) => {
+                  const level = funnyLevels[language];
+                  const sliderId = `settings-funny-${language}`;
+                  return (
+                    <div
+                      className="settings-funny-row"
+                      key={language}
+                      data-od-setting={
+                        language === 'en' ? 'language.funnyEn' : 'language.funnyZhHk'
+                      }
+                    >
+                      <label className="settings-funny-label" htmlFor={sliderId}>
+                        {t(FUNNY_LANGUAGE_LABEL_KEYS[language])}
+                      </label>
+                      <input
+                        id={sliderId}
+                        type="range"
+                        className="settings-funny-slider"
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={level}
+                        aria-valuetext={t('settings.funnyLevelValue', {
+                          level,
+                          name: t(FUNNY_LEVEL_LABEL_KEYS[level]),
+                        })}
+                        onChange={(e) => {
+                          const next = Number(e.target.value);
+                          const picked = FUNNY_LEVELS.find((candidate) => candidate === next);
+                          if (picked) setFunnyLevel(language, picked);
+                        }}
+                      />
+                      <output className="settings-funny-value" htmlFor={sliderId}>
+                        {t('settings.funnyLevelValue', {
+                          level,
+                          name: t(FUNNY_LEVEL_LABEL_KEYS[level]),
+                        })}
+                      </output>
+                    </div>
+                  );
+                })}
+                {/* The invariant, stated where the control is. This string
+                    is deliberately never funny-levelled — it is the promise
+                    the levels are made under. */}
+                <small className="hint">{t('settings.funnyFactsNotice')}</small>
+              </div>
             </div>
           </section>
           ) : null}
@@ -5900,6 +6086,7 @@ export function SettingsDialog({
                 </div>
                 <textarea
                   className="custom-instructions-input memory-global-rules-input instructions-rules-input"
+                  data-od-setting="instructions.customInstructions"
                   rows={5}
                   maxLength={5000}
                   placeholder={t('settings.customInstructionsPlaceholder')}
@@ -6002,6 +6189,22 @@ export function SettingsDialog({
               ) : (
                 <div className="empty-card">{t('settings.versionUnavailable')}</div>
               )}
+              {/* Directly under the version, because that is the question the
+                  changelog answers: what is in the build I am running. Outside
+                  the `appVersionInfo` branch above so a daemon that cannot
+                  report a version does not also hide the history. */}
+              <div className="settings-about-diagnostics">
+                <div className="settings-about-diagnostics-text">
+                  <h4>{t('changelog.title')}</h4>
+                  <p className="hint">{t('changelog.settingsHint')}</p>
+                </div>
+                <Button
+                  data-testid="settings-open-changelog"
+                  onClick={openChangelogViewer}
+                >
+                  {t('changelog.openButton')}
+                </Button>
+              </div>
               <div className="settings-about-diagnostics settings-about-silent-updates">
                 <label className="settings-about-toggle">
                   <input
@@ -8592,7 +8795,7 @@ function AppearanceSection({
 
   return (
     <section className="settings-section">
-      <div className="seg-control" role="group" aria-label={t('settings.appearance')} style={{ '--seg-cols': THEMES.length } as React.CSSProperties}>
+      <div className="seg-control" role="group" aria-label={t('settings.appearance')} data-od-setting="appearance.theme" style={{ '--seg-cols': THEMES.length } as React.CSSProperties}>
         {THEMES.map(({ value, labelKey, icon }) => (
           <button
             key={value}
@@ -8620,7 +8823,7 @@ function AppearanceSection({
       </div>
       <div className="field">
         <span className="field-label">{accentLabel}</span>
-        <div className="pet-swatches" role="radiogroup" aria-label={accentLabel}>
+        <div className="pet-swatches" role="radiogroup" aria-label={accentLabel} data-od-setting="appearance.accent">
           {ACCENT_SWATCHES.map((color) => {
             const active = currentAccent === color;
             return (
@@ -8864,7 +9067,7 @@ function NotificationsSection({
   return (
     <section className="settings-section">
       <div className="settings-subsection">
-        <div className="settings-notify-card">
+        <div className="settings-notify-card" data-od-setting="notifications.sound">
           <div className="settings-notify-card-header">
             <h4>{t('settings.notifyCompletionSound')}</h4>
             <div className="section-head-actions">
@@ -8943,7 +9146,7 @@ function NotificationsSection({
       </div>
 
       <div className="settings-subsection">
-        <div className="settings-notify-card">
+        <div className="settings-notify-card" data-od-setting="notifications.desktop">
           <div className="settings-notify-card-header">
             <h4>{t('settings.notifyDesktop')}</h4>
             <div className="section-head-actions">

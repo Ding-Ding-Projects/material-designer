@@ -23,7 +23,7 @@ import {
 } from '../routines.js';
 import type { PathDeps, RouteDeps } from '../server-context.js';
 
-export interface RegisterRoutineRoutesDeps extends RouteDeps<'db' | 'routines'> {
+export interface RegisterRoutineRoutesDeps extends RouteDeps<'db' | 'history' | 'routines'> {
   paths: Pick<PathDeps, 'RUNTIME_DATA_DIR'>;
 }
 
@@ -128,6 +128,20 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
   const { db } = ctx;
   const { routineService } = ctx.routines;
 
+  /**
+   * Tell local version history what just happened to a routine.
+   *
+   * Routines live in a SQLite table, which no file watcher can see move, so
+   * without this call the `routines` history domain is only ever captured at
+   * daemon startup or by accident when some unrelated file-backed record
+   * changes — and an automation created and deleted between two such captures
+   * has no revision to be restored from. `recordMutation` never throws and
+   * never awaits, so it is safe on the request path.
+   */
+  function recordRoutineChange(label: string): void {
+    ctx.history?.recordMutation({ domainId: 'routines', label });
+  }
+
   app.get('/api/automation-templates', async (_req, res) => {
     try {
       res.json({
@@ -226,6 +240,7 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
         updatedAt: now,
       });
       routineService?.rescheduleOne(id);
+      recordRoutineChange(`Added the automation ${body.name.trim()}`);
       const routine = routineFromDb(id);
       res.status(201).json({ routine });
     } catch (err: any) {
@@ -259,6 +274,9 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
       if (body.enabled !== undefined) patch.enabled = Boolean(body.enabled);
       updateRoutine(db, req.params.id, patch);
       routineService?.rescheduleOne(req.params.id);
+      // The new name when this call renamed it, the stored one otherwise, so
+      // the revision reads as what the user sees rather than as a stale label.
+      recordRoutineChange(`Updated the automation ${patch.name ?? existing.name}`);
       res.json({ routine: routineFromDb(req.params.id) });
     } catch (err: any) {
       res.status(400).json({ error: String(err?.message ?? err) });
@@ -266,9 +284,13 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
   });
 
   app.delete('/api/routines/:id', (req, res) => {
+    // Read the name before the row goes, so the revision says which automation
+    // was deleted rather than only that one was.
+    const doomed = getRoutine(db, req.params.id);
     routineService?.unschedule(req.params.id);
     const removed = dbDeleteRoutine(db, req.params.id);
     if (!removed) return res.status(404).json({ error: 'routine not found' });
+    recordRoutineChange(`Deleted the automation ${doomed?.name ?? req.params.id}`);
     res.status(204).end();
   });
 

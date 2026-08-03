@@ -4,10 +4,21 @@ The third workflow at the repository root, `.github/workflows/pages.yml`, deploy
 `site/` to GitHub Pages and refuses to publish a site that would reach the
 network for an asset.
 
-> [!IMPORTANT]
-> **No deployment has been observed.** Everything below describes the committed
-> workflow definition, read from the file. No run outcome, no published URL and
-> no page render is claimed anywhere in this repository.
+> [!NOTE]
+> **The site is deployed.** The workflow has run and published the site at the
+> repository-scoped Pages URL recorded in [README.md](README.md). The deployment
+> was checked by request rather than assumed: the page, both stylesheets,
+> `main.js`, the dish catalogue and a dish photograph each returned 200, and the
+> served HTML carried no unresolved translation keys.
+>
+> Two things that run did **not** demonstrate, and which this page therefore does
+> not claim: the self-contained gate has never been observed rejecting anything,
+> and nothing on the published page has been driven — the tab strip, the language
+> modes, the sliders, the appearance controls and the regex builder are known to
+> be in the served markup, not known to work in a browser.
+>
+> Everything else below describes the committed workflow definition, read from
+> the file. Where this page states a run outcome it says so explicitly.
 
 ## Behaviour
 
@@ -21,6 +32,7 @@ artifact and deploys it.
 | --- | --- |
 | Checkout | Plain checkout. No submodule — the site does not read `design/`. |
 | Check the site is self-contained | Six `grep` sweeps over `site/`. Any hit fails the job. |
+| Stage the dish catalogue | Copies `assets/dim-sum/` into `site/assets/dim-sum/`. The catalogue lives at the repository root because the application and the release workflow use it too, and only `site/` is published — a page addressing `../assets/…` would 404 for every visitor. A missing catalogue warns and continues rather than failing the deployment. |
 | Configure Pages | Resolves the site's base URL for the deployment. |
 | Upload site | Uploads `site/` as the Pages artifact. |
 | Deploy | Publishes it and records the resulting URL on the run. |
@@ -84,7 +96,14 @@ labelled installer download button:
   release that does not exist is worse than no button, because it fails after the
   click rather than before it.
 
-No release exists yet, so no button exists yet. See
+**The button is present**, on the site's install section. It is built from the
+immutable release-asset URL of the published tag `v0.16.1-r8.1`, states the
+version, the architecture and the download size beside it, and is a plain
+`<a>` so it is keyboard-operable and named by its own text.
+
+It deliberately does **not** point at a `latest` redirect. A moving link makes
+the checksum printed next to it meaningless, because the file behind it can
+change without the page changing. See
 [../standards/releases.md](../standards/releases.md).
 
 ## Configuration
@@ -109,7 +128,8 @@ broken build and is actually one repository setting.
 | `::error::site/ loads a remote script` (or stylesheet, image, CSS asset, external request) | Standard 15 violated | Bundle the asset locally. Do not weaken the pattern to let it through. |
 | The workflow is green and every page 404s | Absolute asset URLs with a repository-scoped base path | See the base-path trap above. Open a page before believing a deployment. |
 | The deployment step fails before uploading | GitHub Pages not enabled for the repository | Enable it in the repository settings; it is a setting, not a code defect. |
-| The site's root shows a directory listing or a 404 | No `index.html` in `site/` | Present as this was written. The workflow does not check for one, because uploading a partial site during development is legitimate. |
+| The site's root shows a directory listing or a 404 | No `index.html` at the root of `site/` | The workflow does not check for one, because uploading a partial site during development is legitimate. `site/index.html` is present, so this is a hazard to avoid reintroducing rather than a current fault. |
+| The startup dish never appears and the catalogue 404s | The staging step warned instead of copying — no `assets/dim-sum/index.json` at the repository root | Deliberate: a missing dish catalogue is a degraded surprise, not a reason to refuse to publish documentation. Restore the catalogue at the root; do not add a second copy under `site/`. |
 | A file beginning with `_` is not served | Default static-site templating | `.nojekyll` exists to prevent exactly this; do not delete it. |
 
 ## Security considerations
@@ -131,32 +151,44 @@ broken build and is actually one repository setting.
 
 ## Verification
 
-**Verified from the tree while writing this page:** that
-`.github/workflows/pages.yml` exists; that it uploads `site/`; that it runs six
-self-contained checks over `*.html`, `*.css` and `*.js`; that its permissions and
-concurrency are as tabulated above; and that `site/` contains
-`assets/css/{tokens,app}.css`, `assets/js/{i18n,appearance,tabs,regex,ui}.js` and
-`.nojekyll` — **no `index.html`, and in fact no HTML file at all**. A deployment
-today would publish stylesheets and scripts with nothing to load them.
+**Observed from a run:** the workflow deployed, and the published URL was then
+checked by request. The page itself, `assets/css/tokens.css`,
+`assets/css/app.css`, `assets/js/main.js`, the staged dish catalogue and one dish
+photograph each returned 200 under the repository-scoped base path, and the
+served HTML contained no unresolved translation keys. The first attempt failed
+before uploading anything, because GitHub Pages had never been enabled on the
+repository — a one-time repository setting, not something the workflow can do for
+itself.
 
-**Not verified:** anything about a deployment. The workflow has not been observed
-running, no URL has been published, and no page has been rendered from a
-published artifact.
+**Verified from the tree:** that `.github/workflows/pages.yml` exists; that it
+uploads `site/`; that it runs six self-contained checks over `*.html`, `*.css`
+and `*.js`; that its permissions and concurrency are as tabulated above; and that
+`site/` contains `index.html`, `assets/css/{tokens,app}.css`,
+`assets/js/{main,i18n,appearance,tabs,regex,ui}.js` and `.nojekyll`.
 
-The site will be considered proven when a single run demonstrates all of:
+**Not observed:** the gate rejecting anything, and any behaviour of the published
+page. Nothing on the deployed site has been driven in a browser — the controls
+are known to be in the served markup, not known to work — and the page has not
+been rendered at any display scale other than whatever the by-request check used.
+
+What a run has already demonstrated:
+
+- [x] `Pages` passing and deploying
+- [x] the published URL serving its page, with the stylesheets, `main.js`, the
+      staged dish catalogue and a dish photograph all resolving under the
+      repository-scoped base path
+- [x] the installer download button resolving to the immutable asset URL of a
+      published release rather than a `latest` redirect
+
+What is still outstanding, and must not be read as passing:
 
 - [ ] `Pages` failing on a deliberately introduced remote asset — a `<link>` to a
       web font is the realistic case
-- [ ] `Pages` passing on the corrected tree
-- [ ] the published URL loading its home page, with every stylesheet, script,
-      font and image resolving under the repository-scoped base path
 - [ ] the tab strip, the language modes, both funny-level sliders, the appearance
       controls and the anchored regex builder working on the published page, not
       only in the local harness
 - [ ] the page rendering correctly at 100/125/150/200% display scale and at the
       narrowest supported width, in bilingual mode where labels are longest
-- [ ] the installer download button appearing only once a verified release exists,
-      and resolving to that release's immutable asset URL
 
 The failing case matters as much as the passing one: a gate nobody has seen
 reject anything is not known to be a gate.

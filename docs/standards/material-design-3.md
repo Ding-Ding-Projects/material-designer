@@ -1,8 +1,21 @@
 # Material Design 3 and appearance customization
 
-**Status: not started in code, specified in full by the mockup.** Every colour
+**Status: partial.** The token layer and the window chrome exist in code as of
+commit `dea6b0a`; component anatomy does not. The mockup specifies every colour
 role, the shape and motion scales, the density system, the window chrome and ten
-screens are designed. No implementation exists.
+screens — the first three of those and the window chrome have been transcribed
+into the application, and the screens have not been rebuilt on them.
+
+What that means in practice: components now *inherit* Material Design 3 values,
+because the product's own token vocabulary was redefined in terms of M3 roles and
+nothing that consumes it had to change. Not one component has been rewritten to
+M3 anatomy. Inheriting a colour role is not conformance, and this file's tables
+below keep the two apart.
+
+**Nobody has looked at the result.** The packaged smoke test launches the built
+application and captures one screenshot, but asserts only that the file is
+non-zero and inspects nothing in it. Every implementation claim on this page is
+read from the tree or from a unit suite, never from a rendered interface.
 
 ## The requirement
 
@@ -100,18 +113,20 @@ never product chrome.
 
 | Requirement | Status |
 | --- | --- |
-| MD3 token layer in the application | **Not started.** The interface has its own token set with different names. |
-| MD3 component anatomy | **Not started.** |
-| Theme light/dark | Upstream has a theme; conformance to MD3 roles is **not started**. |
-| Density control | **Not started.** |
-| Seed colour with scheme regeneration | **Not started.** |
+| MD3 token layer in the application | **Implemented** at `dea6b0a`. `md3-tokens.css` is the contract — the colour roles in light and dark, four seeds, the seven-step corner scale, three motion curves, the density steps and the state layer. The interface's own token file became a mapping layer onto it, so every product token keeps its name and resolves to an `--md-sys-*` role. |
+| MD3 component anatomy | **Not started.** No component has been rewritten; they inherit the roles through the mapping layer. |
+| Theme light/dark through MD3 roles | **Implemented** at `dea6b0a`. Roles flip themselves between light and dark, so the mapping layer's dark restatements collapsed; the explicit dark choice, the three alternate seeds and the system-preference block are ordered so a seed choice cannot silently un-darken the interface. |
+| Density control | **Token layer only.** Three density steps are declared in the contract; no control exposes them and nothing has been verified at any of them. |
+| Seed colour with scheme regeneration | **Fixed seeds only.** Four seed variants are declared as complete role overrides — the scheme does not *regenerate* from an arbitrary colour, which is what the standard asks for. The default seed's swatch and its generated primary role are deliberately kept apart; conflating them yields a scheme that is subtly wrong everywhere and reads as a rendering bug. |
 | Full font control | **Not started.** |
 | Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
 | Infinite colour picker + translator | **Not started, and not designed.** The mockup offers four fixed swatches. |
 | Word-depth typography editor | **Not started.** The mockup's tab-title card offers bold/italic/underline, one family button, one size button, two alignments and one colour swatch — far short. |
 | Named presets, export/import, per-element and global reset | **Not started, and not designed.** |
-| Frameless window with custom title bar | **Not started in code.** Fully specified by the mockup. |
-| Assets bundled locally | **Not met.** The mockup loads three font families from a third-party network origin. |
+| Frameless window with custom title bar | **Implemented** at `dea6b0a`, on Windows. The main window uses a hidden title-bar style — not a fully frameless one, which would also discard the platform's rounded corners, drop shadow, window-menu shortcut and snap behaviour — and the renderer draws a 40px bar with the brand mark, the product name, a drag region and three caption buttons wired to the real window operations. macOS and Linux keep their native chrome. **Never seen on a screen.** |
+| Shape and motion through tokens | **Partial.** The product's radius vocabulary now resolves through the seven-step corner scale, so anything asking for a radius token gets one from the contract. Literal radii still written directly into component styles have not been swept, and the interface's duration values are still literals in the mapping layer. |
+| Functional data colours left alone | **Deliberately unmapped**, and this is conformance rather than a gap. Chart series, status palettes and elevation shadows keep their own values; remapping series onto theme roles would make different series indistinguishable, which is a data defect wearing a design change's clothes. |
+| Assets bundled locally | **Not met** in the application — one CDN font import remains in its stylesheet, and the mockup loads three font families from a third-party origin. The documentation site *is* fully bundled and its deployment enforces that at publish time. |
 | Command palette | **Designed, not built.** |
 
 ### The token contract is already a drop-in
@@ -153,8 +168,9 @@ variables in terms of MD3 roles, and the whole interface moves at once.
 12 component files named in the mockup's inventory exist under
 `design/apps/web/src/components/`.
 
-**Not verified:** that redefining them produces a correct result at runtime.
-Nothing has been built.
+**Not verified:** that redefining them produces a correct result at runtime. The
+application builds and launches, but nobody has looked at a running interface to
+confirm the remapping renders correctly.
 
 </details>
 
@@ -344,9 +360,36 @@ every other search surface.
 
 ## Verification
 
-**Nothing is verified.** No build exists. The claims about the token map and the
-component inventory were checked against the file tree — the variables and the
-files exist — but nothing has been run.
+**Nothing about how this looks is verified.** A build exists and has been
+launched, but no rendered interface has been inspected: the packaged smoke test
+captures a single screenshot and asserts only that the file is non-zero. Every
+implementation claim above was checked against the file tree or covered by a unit
+suite that runs in CI — the window-control behaviour, for example, is tested; the
+window's appearance is not.
+
+The distinction matters more here than anywhere else in this documentation set,
+because a design standard is exactly the kind of thing that can be entirely
+correct in source and visibly wrong on screen.
+
+### Roles this project deliberately does not define
+
+Recorded here because the requirement asks for it in the feature documentation,
+and because a silent gap reads as an oversight to the next person.
+
+| Role family | Position |
+| --- | --- |
+| `background`, `surface-variant` | Omitted by the mockup's contract and not invented here. The surface-container ramp covers what the interface actually needs. |
+| `surface-tint` | Omitted. Nothing in the interface currently applies an elevation tint, so defining the role would create a token with no consumer. |
+| `shadow` | Omitted as a colour role. Elevation is expressed by the existing shadow tokens, which no colour role can produce, and those stay unmapped for that reason. |
+| The `*-fixed` family | Omitted. These exist for surfaces that must not flip with the theme; the interface has none. |
+
+Two roles run the other way: `success` and `success-container` are **non-standard
+inventions** of this contract, not canonical Material Design 3 roles. They are
+kept under the names the contract wrote and flagged in the token sheet itself, so
+a future reader does not mistake them for part of the specification.
+
+Adding any omitted role later is cheap. Discovering that a token was silently
+absent, after building on the assumption it existed, is not.
 
 Conformance requires all of:
 
@@ -367,8 +410,12 @@ Conformance requires all of:
 - [ ] presets saved, exported, imported, and surviving a reinstall
 - [ ] per-element and global reset both working
 - [ ] a request audit of a running build showing **zero** third-party origins
-- [ ] the frameless window with custom title bar on Windows, with all three
+- [x] the frameless window with custom title bar on Windows, with all three
       caption controls operating and the close button carrying the platform red
+      — *implemented at `dea6b0a`; the caption controls are covered by a
+      desktop-side suite that runs in CI, and the platform red is in the
+      component's stylesheet. **Not** confirmed by looking at a window, which is
+      why the scale and clipping boxes above stay unticked*
 - [ ] the same appearance system present on the landing page and the
       documentation site, verified individually
 

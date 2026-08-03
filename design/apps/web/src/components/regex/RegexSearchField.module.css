@@ -1,0 +1,112 @@
+/* Search field host + the affordance that opens the builder.
+
+   `.host` is a block-level flex row, so it fills a block container (a search
+   band) and flexes inside a toolbar row without either case needing its own
+   rule. The input keeps whatever class the call site already gave it, so every
+   existing style rule that targeted that input still applies. */
+
+.host {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.host input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-quick, 160ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    background var(--dur-quick, 160ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    color var(--dur-quick, 160ms) var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.toggle:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.toggle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Regex is an explicit opt-in, so the affordance has to look different when it
+   is on — otherwise nothing on screen says why a query stopped behaving like
+   text. Colour alone would not carry that, hence the weight change too. */
+.toggleActive {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-strong, var(--accent));
+}
+
+.toggleGlyph {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* For a field whose container already parks an absolutely positioned control
+   at its right edge (a clear button inside a pill), so the two do not stack. */
+.toggleInset {
+  margin-inline-end: 22px;
+}
+
+/* The overlay paints its own surface: an anchored popover that inherited a
+   transparent background would let the list behind it read through the
+   builder's own text. Height is bounded by the caller and the content scrolls
+   inside that bound rather than being clipped away silently. */
+.popover {
+  /* Above every dialog overlay in the app (the highest is 2700), because a
+     field inside a modal must be able to open its builder over that modal.
+     Below the tooltip layer (4000) and select menus (9000), which are the
+     surfaces that legitimately sit on top of a popover. */
+  z-index: 3000;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-lg, 0 16px 48px rgba(0, 0, 0, 0.22));
+  color: var(--text);
+  animation: regexPopoverIn var(--dur-enter, 200ms)
+    var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* Opacity only. An upward-flipped popover carries `translateY(-100%)` as an
+   inline style, and a keyframe that touched `transform` would win for the
+   length of the animation and then hand back — the card would animate in one
+   place and snap to another. */
+@keyframes regexPopoverIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}

@@ -140,6 +140,7 @@ import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
 import { LibraryPicker } from './LibraryPicker';
 import { QuickSwitcher } from './QuickSwitcher';
+import { publishQuickSwitcherScope } from './command-palette/quickSwitcherScope';
 import { SketchEditor } from './SketchEditor';
 import { SketchEnginePrewarm } from './SketchEnginePrewarm';
 import {
@@ -1364,6 +1365,12 @@ export function FileWorkspace({
   const draggedTabNameRef = useRef<string | null>(null);
   const browserTabSequenceRef = useRef(0);
   const openFileRef = useRef<(name: string) => void>(() => {});
+  // Latest openers for the command palette's files-and-tabs scope. See the
+  // `publishQuickSwitcherScope` effect further down for why they live in a ref.
+  const quickSwitcherHandlersRef = useRef<{
+    openFile: (name: string) => void;
+    focusWorkspaceTab: (tabId: string) => void;
+  }>({ openFile: () => {}, focusWorkspaceTab: () => {} });
   const designFilesNavProjectIdRef = useRef(projectId);
   const designFilesNavRef = useRef<DesignFilesNavState>(createDefaultDesignFilesNavState());
   if (designFilesNavProjectIdRef.current !== projectId) {
@@ -3210,6 +3217,32 @@ export function FileWorkspace({
   useEffect(() => {
     onWorkspaceContextsChange?.(workspaceContexts);
   }, [onWorkspaceContextsChange, workspaceContexts]);
+
+  // Publish this workspace as the command palette's "files and tabs" scope.
+  //
+  // The palette mounts at the app shell, above every route, and has no way to
+  // reach the file list from there; threading it up would mean a prop drilled
+  // through every view that does not care. So the workspace announces itself
+  // while it is mounted and withdraws on unmount, and the palette falls back to
+  // an honest "open a project first" when nothing is published.
+  //
+  // `openFile` and `focusWorkspaceTab` are plain function declarations, re-made
+  // every render, so they go through a ref rather than into the dependency
+  // list: publishing on every render would churn the store (and every palette
+  // subscriber) for no new data, while capturing them once would leave the
+  // palette opening files against a stale snapshot of the workspace.
+  quickSwitcherHandlersRef.current = { openFile, focusWorkspaceTab };
+  useEffect(
+    () =>
+      publishQuickSwitcherScope({
+        projectId,
+        files: visibleFiles,
+        workspaceContexts,
+        openFile: (name) => quickSwitcherHandlersRef.current.openFile(name),
+        openTab: (tabId) => quickSwitcherHandlersRef.current.focusWorkspaceTab(tabId),
+      }),
+    [projectId, visibleFiles, workspaceContexts],
+  );
 
   useEffect(() => {
     const tabBar = tabsBarRef.current;

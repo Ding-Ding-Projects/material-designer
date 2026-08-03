@@ -14,12 +14,59 @@ Two rules this file is held to:
 - **Nothing is invented.** No entry, date, version or fix appears here that did not
   happen. A version with no recorded changes says so rather than being padded.
 
-> [!IMPORTANT]
-> **There are no releases yet.** Nothing below has been packaged, published or
-> installed by anybody. The version in `design/package.json` is inherited from the
-> imported upstream work and does not describe a build of this project.
+> [!NOTE]
+> **Tags carry a build suffix, not a version this project chose.** `0.16.1` is
+> inherited from the imported upstream work and does not yet describe a version this
+> project set for itself; the `-rN.N` suffix is what makes each published build
+> uniquely identifiable. Every release below carries a dim sum code name beside its
+> tag, as this project's release rules require.
 
 ## [Unreleased]
+
+Nothing yet. Changes land here as they are committed, each with its commit link, and
+move into a version section when a release carries them.
+
+## [v0.16.1-r8.1] — 2026-08-03
+
+**Code name: Beef with Oyster Sauce · 蠔油牛肉** ·
+[release](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.16.1-r8.1)
+
+Built from [`dea6b0a`](https://github.com/Ding-Ding-Projects/material-designer/commit/dea6b0a).
+The packaged smoke test passed: the built application installed, launched, answered its
+own health endpoint and uninstalled without residue.
+
+### Added
+
+- **The Material Design 3 token layer, and a Windows title bar.** The mockup's token
+  sheet is transcribed as `md3-tokens.css` — 203 colour roles across light and dark,
+  every seed variant, the shape scale, the motion curves and the density steps — and
+  the existing token file became a mapping layer, so every legacy token keeps its name
+  and resolves to an M3 role. Two things were checked because both fail silently: no
+  previously defined token was dropped (a dropped one is an unstyled component, not a
+  compile error), and the functional data colours kept their own values rather than
+  being remapped onto theme roles, which would have made chart series indistinguishable.
+  Windows also gets a frameless window with a custom title bar, using a hidden title-bar
+  style rather than a frameless window so Windows 11 keeps its rounded corners, drop
+  shadow, Alt+Space and snap behaviour; the window-control messages verify the sender is
+  the main window, because embedded frames share the preload
+  ([`dea6b0a`](https://github.com/Ding-Ding-Projects/material-designer/commit/dea6b0a)).
+
+> [!IMPORTANT]
+> **This is a foundation, not the redesign.** The token layer means components inherit
+> M3 values; **no component has been rewritten**. Three departures from the mockup are
+> recorded rather than quietly taken: the mockup's subtitle describes the mockup and not
+> the product, the focus ring is inset because the window-control buttons sit flush
+> against two window edges, and the icon webfont is not bundled — the bar uses the
+> application's existing icon set at the contract's sizes.
+
+## [v0.16.1-r7.1] — 2026-08-03
+
+**Code name: Beef with Black Bean and Peppers · 豉椒炒牛肉** ·
+[release](https://github.com/Ding-Ding-Projects/material-designer/releases/tag/v0.16.1-r7.1)
+
+The first published release, built from
+[`12bfb81`](https://github.com/Ding-Ding-Projects/material-designer/commit/12bfb81). It
+carries everything from the verbatim import forward. The packaged smoke test passed.
 
 ### Added
 
@@ -66,6 +113,19 @@ Two rules this file is held to:
 - The Material Design 3 mockup moved to `mockups/open-design-m3/` so `design/` could
   hold the imported tree
   ([`2567115`](https://github.com/Ding-Ding-Projects/material-designer/commit/2567115)).
+- **The site documentation stopped saying the site was unpublished.** It had been for
+  several runs. The correction also recorded the two things that were actually in the
+  way, because both will catch the next person: the publishing surface had never been
+  enabled on the repository, which no workflow can do for itself, and the dish
+  catalogue lives outside the published directory, so the deployment has to stage it in
+  ([`fb8ba8c`](https://github.com/Ding-Ding-Projects/material-designer/commit/fb8ba8c)).
+- **This file was created**, written from the real commit history rather than from
+  memory, with every object id it references checked against the object store before it
+  was committed. The same commit replaced the README's claim that no
+  continuous-integration outcome had been observed with a table of what each workflow
+  had actually done — keeping the rows that were still unobserved visible in that table
+  rather than omitting them
+  ([`ec46f83`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec46f83)).
 
 ### Fixed
 
@@ -103,17 +163,29 @@ Two rules this file is held to:
   [`217610e`](https://github.com/Ding-Ding-Projects/material-designer/commit/217610e),
   [`d7d3698`](https://github.com/Ding-Ding-Projects/material-designer/commit/d7d3698),
   [`29c1476`](https://github.com/Ding-Ding-Projects/material-designer/commit/29c1476)).
+- **The installer build no longer fails schema validation before packing anything.**
+  A publisher-name property was set so the executable's company field would not be
+  blank; the packaging tool's current major version classes it as a signing input and
+  moved it elsewhere, so setting it where it used to live is rejected on sight. The
+  property is gone and the comment says why — the company field stays empty, the same
+  as upstream, because this build does not sign
+  ([`12bfb81`](https://github.com/Ding-Ding-Projects/material-designer/commit/12bfb81)).
 
-### Not done yet
+## Not done yet
 
 Listed here because a changelog that only records progress misleads about the shape of
-the work. The full burn-down is in [`ROADMAP.md`](ROADMAP.md).
+the work. This is the current position, not a record of any one release. The full
+burn-down is in [`ROADMAP.md`](ROADMAP.md).
 
-- No installer has been published, so there is nothing to install.
-- The application's own interface is **not** Material Design 3 yet. The mockup in
-  `mockups/` specifies the redesign; the site demonstrates the token system; the
-  application still carries the imported design.
-- The application has no Cantonese locale, no funny-level sliders, no regex builder,
-  no dish surprise and no changelog viewer. The site has all of them; the application
-  does not.
-- Windows builds have no frameless window or custom title bar yet.
+- The Material Design 3 redesign is **a foundation, not a finished redesign**. The
+  token layer and the Windows title bar have landed; **no component has been
+  rewritten**, and the interface is still substantially the imported one.
+- The application has no Cantonese locale, no funny-level sliders, no in-app regex
+  builder, no dish surprise and no changelog viewer. The site demonstrates all of
+  them; the application does not have them.
+- No installer is code-signed, so every published one trips SmartScreen on first run.
+- Nothing but Windows is published. There is no macOS or Linux artifact and no
+  updater feed.
+- The daemon's HTTP API has been documented and turned into a request collection, but
+  **no request in that collection has been sent** — the route inventory was read from
+  source, not observed answering.

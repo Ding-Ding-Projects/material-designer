@@ -46,6 +46,7 @@ a site nobody previews before publishing.
 
 | Path | What it is |
 | --- | --- |
+| `site/index.html` | The single page every tab and panel lives in. Each panel is a `<section data-tab-panel="…">` that the tab strip shows and hides, so navigation never costs a request. Its text is marked up with the `data-i18n` contract that `i18n.js` resolves on load; the English wording in the markup is the fallback, not the source of truth. |
 | `site/assets/css/tokens.css` | The Material Design 3 token layer — colour roles, typography, shape and motion scales — as custom properties. |
 | `site/assets/css/app.css` | The component styles, which consume those tokens rather than restating literal values. |
 | `site/assets/js/i18n.js` | Language modes (`en`, `yue`, `bilingual`, bilingual being the default), the two independent 1–5 funny levels, and the string catalogue. Voice changes with the level; facts do not. |
@@ -53,11 +54,14 @@ a site nobody previews before publishing.
 | `site/assets/js/tabs.js` | The tab strip: rendering, reordering, pinning, the overflow surface, the searchable tab list, persistence and the ARIA relationships. |
 | `site/assets/js/regex.js` | The pattern builder, mounted as a popover **anchored beside one specific field**, one instance per field. |
 | `site/assets/js/ui.js` | Toasts, the notification centre, the command palette, and the dim sum draw on load. |
+| `site/assets/js/main.js` | The wiring, and the only module the page loads directly. It introduces the modules above to each other and to the markup, and deliberately holds no feature logic of its own — so a reader asking how the regex builder works goes to `regex.js` rather than finding half the answer here. |
 | `site/.nojekyll` | Disables the publisher's default templating so paths beginning with `_` are served as they are. |
 
-No HTML file appears in that table because none exists — see the note at the top
-of this page. Every stylesheet and script above is present with nothing to load
-it; authoring the pages is outstanding work, not an omission from this table.
+`site/assets/dim-sum/` is not in that table because it is not committed under
+`site/`. The catalogue lives at the repository root, where the application and
+the release workflow also read it, and the `Pages` workflow copies it into the
+artifact at publish time — one copy in git, and a path that still resolves for a
+visitor.
 
 ## Standards this surface cannot fully satisfy, and why
 

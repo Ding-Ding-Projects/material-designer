@@ -1,10 +1,18 @@
 # Architecture overview
 
 > [!IMPORTANT]
-> Read from the vendored source and its own documentation. **Nothing in this
-> repository has been installed, built, or run**, so nothing below has been
-> confirmed against a live process. Versions, ports and defaults are quoted from
-> source; behaviour is quoted from the source's documentation.
+> Read from the vendored source and its own documentation. **Almost nothing below
+> has been confirmed against a live process.** The exception: continuous
+> integration has installed a built Windows application, launched it, had the
+> running process answer its own health endpoint and uninstalled it — so the
+> daemon, the web runtime, the desktop shell and the launcher have all been
+> observed starting, once, together. Everything else — versions, ports, defaults,
+> route counts, the subcommand list, the locales — is quoted from source.
+>
+> Each piece now has a page of its own; this one is the map. See
+> [daemon.md](daemon.md), [web-runtime.md](web-runtime.md),
+> [desktop-shell.md](desktop-shell.md), [packaged-runtime.md](packaged-runtime.md)
+> and [data-directory.md](data-directory.md).
 
 ## Behaviour
 
@@ -128,9 +136,14 @@ screenshot, console, click, shutdown. That channel is how the daemon's export
 pipeline reaches a real browser engine to rasterise PDF, image and slide output,
 and how the development tool inspects a running desktop build headlessly.
 
-This is where the frameless-window and custom title-bar work will land. Every
-such file sits under `design/`, so each one needs a `MODIFICATIONS.md` allowlist
-entry before it can be edited — see [../porting/verification.md](../porting/verification.md).
+This is where the frameless-window and custom title-bar work landed: Windows now
+opens a window with no operating-system caption bar and a renderer-drawn Material
+Design 3 title bar driven over dedicated inter-process channels. Every such file
+sits under `design/`, so each one needed a `MODIFICATIONS.md` allowlist entry
+before it could be edited — see
+[../porting/verification.md](../porting/verification.md). The chrome decisions,
+the two options deliberately rejected, and the one Windows 11 behaviour that does
+not survive are in [desktop-shell.md](desktop-shell.md).
 
 ### Packaged — `@open-design/packaged`
 
@@ -312,10 +325,18 @@ workflows of this project's own while the vendored 48 stay under `design/`.
 address, the subcommand list, the route counts, the dependency versions, and the
 19 locales.
 
-**Not verified at all:** that any of it runs. No install, build, test or launch
-has happened in this repository.
+**Observed once, in continuous integration:** that a built Windows application
+installs, launches, answers its own health endpoint with the expected version, can
+be evaluated and screenshotted through the desktop shell's control channel, and
+uninstalls leaving no residue. That exercises the launcher, the daemon, the web
+runtime and the desktop shell together — see
+[../release/packaged-smoke-test.md](../release/packaged-smoke-test.md) for exactly
+what it asserted, and what it did not.
 
-Once a build exists, the following would confirm the claims on this page:
+**Not verified:** every route but the health probe, every stream, every export
+path, the agent-runtime detection results, and every platform other than Windows.
+
+The following confirm the claims on this page against a running build:
 
 ```bash
 # the daemon answers where it says it does
@@ -333,6 +354,8 @@ pnpm tools-dev status --json
 
 ## Suggested reading
 
+- [daemon.md](daemon.md) — the stateful process, in detail
+- [data-directory.md](data-directory.md) — the invariant every path in the product obeys
 - [../api/README.md](../api/README.md) — the daemon's HTTP surface in full
 - [../build/from-source.md](../build/from-source.md) — the exact commands to make any of this run
 - [../porting/verbatim-import.md](../porting/verbatim-import.md) — why `design/` cannot be edited casually

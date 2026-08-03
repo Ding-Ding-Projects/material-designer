@@ -12,6 +12,8 @@ import { buildSrcdoc } from '../runtime/srcdoc';
 import type { SkillSummary, Surface } from '../types';
 import { Icon } from './Icon';
 import { PreviewModal } from './PreviewModal';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import { AnimatePresence } from 'motion/react';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
@@ -166,6 +168,9 @@ export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
   // can find a known example by typing any associated word ("airbnb",
   // "wireframe", "deck") without having to click through filter pills first.
   const [search, setSearch] = useState('');
+  // This field's own regex controller. Plain text stays the default; the
+  // builder beside the input is where a user opts into a pattern.
+  const searchRegex = useRegexSearch(search, setSearch);
   const [previewSkillId, setPreviewSkillId] = useState<string | null>(null);
 
   const loadPreview = useCallback(
@@ -321,17 +326,16 @@ export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
     [scenarioCounts],
   );
 
+  const matchesSearch = searchRegex.matches;
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     const matched = skills.filter((s) => {
       if (!matchesSurface(s, surfaceFilter) || !matchesMode(s, modeFilter)) return false;
       if (scenarioFilter !== 'all' && (s.scenario || 'general') !== scenarioFilter) return false;
-      if (!q) return true;
       const name = localizeSkillName(locale, s);
       const desc = localizeSkillDescription(locale, s);
       const prompt = localizeSkillPrompt(locale, s) || '';
-      const haystack = `${name} ${s.name} ${desc} ${prompt} ${s.scenario ?? ''}`.toLowerCase();
-      return haystack.includes(q);
+      const haystack = `${name} ${s.name} ${desc} ${prompt} ${s.scenario ?? ''}`;
+      return matchesSearch(haystack);
     });
     // Featured magazine-style examples float to the top (lower priority
     // number wins). Non-featured skills keep their server-side order so
@@ -345,7 +349,7 @@ export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
         return a.idx - b.idx;
       })
       .map(({ s }) => s);
-  }, [skills, surfaceFilter, modeFilter, scenarioFilter, search, locale]);
+  }, [skills, surfaceFilter, modeFilter, scenarioFilter, matchesSearch, locale]);
 
   if (skills.length === 0) {
     return <div className="tab-empty">{t('examples.emptyNoSkills')}</div>;
@@ -358,12 +362,12 @@ export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
           <span className="search-icon" aria-hidden>
             <Icon name="search" size={13} />
           </span>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('examples.searchAria')}
             placeholder={t('examples.searchPlaceholder')}
-            aria-label={t('examples.searchAria')}
+            ariaLabel={t('examples.searchAria')}
+            testId="examples-search"
           />
         </div>
         <div

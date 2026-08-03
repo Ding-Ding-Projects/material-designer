@@ -1,0 +1,212 @@
+// Bounded evaluation for the regex builder and the search bars it feeds.
+//
+// ── HOW THE BOUND WORKS ────────────────────────────────────────────────────
+//
+// Three independent limits, because they fail for different reasons:
+//
+//   1. Input size.  The pattern is capped at MAX_PATTERN_LENGTH and the sample
+//      at MAX_SAMPLE_LENGTH before either reaches the engine. Backtracking
+//      blow-ups grow with the length of the *subject*, so a short subject is
+//      the cheapest protection there is. `{n,m}` counts are clamped in
+//      `pattern.ts` for the same reason.
+//   2. Iteration budget.  `runSample` checks a wall-clock deadline BETWEEN
+//      `exec` calls and stops after MAX_SAMPLE_MATCHES. This bounds the loop —
+//      a pattern that matches ten thousand times cannot lock the frame while
+//      the builder collects them all.
+//   3. Cumulative filter budget.  `createBoundedMatcher` adds up the time its
+//      own `test` calls take across one filtering pass. Once the total passes
+//      the budget it stops evaluating and returns `true` for everything after
+//      that, so a list keeps rendering with nothing filtered out rather than
+//      freezing, and nothing is ever hidden because the matcher gave up.
+//
+// ── WHAT IT DOES NOT COVER ─────────────────────────────────────────────────
+//
+// This is a bound on how MANY evaluations happen, not on how long ONE of them
+// takes. A single `exec`/`test` call cannot be interrupted: JavaScript's RegExp
+// is synchronous and the engine does not yield. If a genuinely catastrophic
+// pattern — the classic `(a+)+$` against a long run of `a` — is handed a
+// subject that survives the length caps, that one call still blocks the main
+// thread until the engine finishes, and every check above only runs afterwards.
+//
+// So: the caps make the blow-up far less likely and far shorter when it
+// happens, and `looksCatastrophic` warns about the shape that causes most of
+// them. None of that is a guarantee. Real interruptibility needs the match to
+// run somewhere it can be killed (a worker with a timeout) or an engine that
+// does not backtrack; neither exists here, and this file should not be read as
+// claiming otherwise.
+
+import { MAX_SAMPLE_LENGTH } from './pattern';
+
+export const MAX_SAMPLE_MATCHES = 200;
+/** Wall-clock budget for collecting matches in the builder preview. */
+export const SAMPLE_BUDGET_MS = 25;
+/** Wall-clock budget for one filtering pass over a list. */
+export const FILTER_BUDGET_MS = 40;
+/** Longest haystack a search bar hands to the engine for a single row. */
+export const MAX_HAYSTACK_LENGTH = 4_000;
+
+export interface SampleMatch {
+  index: number;
+  text: string;
+  /** Capture groups 1..n, `undefined` where a group did not participate. */
+  groups: (string | undefined)[];
+  /** Named groups, or null when the pattern declares none. */
+  named: Record<string, string | undefined> | null;
+}
+
+export interface SampleRun {
+  matches: SampleMatch[];
+  /** Stopped at MAX_SAMPLE_MATCHES — there are more. */
+  truncated: boolean;
+  /** Stopped at the time budget. */
+  timedOut: boolean;
+  /** The sample itself was longer than MAX_SAMPLE_LENGTH and was cut. */
+  sampleTruncated: boolean;
+  /** The subject actually scanned, after truncation. */
+  scanned: string;
+}
+
+/**
+ * Collect matches of `regex` in `sample`, under the budgets above.
+ *
+ * The caller's RegExp is never used directly: scanning mutates `lastIndex`,
+ * and the same object is also the one a live search bar is testing with.
+ */
+export function runSample(regex: RegExp, sample: string): SampleRun {
+  const sampleTruncated = sample.length > MAX_SAMPLE_LENGTH;
+  const scanned = sampleTruncated ? sample.slice(0, MAX_SAMPLE_LENGTH) : sample;
+
+  let flags = regex.flags;
+  // Sticky already advances through the subject; global is what makes a
+  // non-sticky pattern iterate instead of returning match one forever.
+  if (!flags.includes('g') && !flags.includes('y')) flags += 'g';
+
+  let scan: RegExp;
+  try {
+    scan = new RegExp(regex.source, flags);
+  } catch {
+    return { matches: [], truncated: false, timedOut: false, sampleTruncated, scanned };
+  }
+
+  const matches: SampleMatch[] = [];
+  let truncated = false;
+  let timedOut = false;
+  const started = Date.now();
+  scan.lastIndex = 0;
+
+  for (;;) {
+    const found = scan.exec(scanned);
+    if (!found) break;
+    matches.push({
+      index: found.index,
+      text: found[0],
+      groups: found.slice(1),
+      named: found.groups ? { ...found.groups } : null,
+    });
+    // A zero-width match leaves lastIndex where it was; without this the loop
+    // would return the same empty match forever.
+    if (found[0].length === 0) scan.lastIndex += 1;
+    if (matches.length >= MAX_SAMPLE_MATCHES) {
+      truncated = true;
+      break;
+    }
+    if (Date.now() - started > SAMPLE_BUDGET_MS) {
+      timedOut = true;
+      break;
+    }
+    if (scan.lastIndex > scanned.length) break;
+  }
+
+  return { matches, truncated, timedOut, sampleTruncated, scanned };
+}
+
+export interface HighlightSegment {
+  text: string;
+  /** Index into the match list, or null for the text between matches. */
+  match: number | null;
+}
+
+/**
+ * Split `text` into alternating plain and matched runs for rendering.
+ *
+ * Zero-width matches produce no segment — there is nothing to paint — so the
+ * match count can legitimately exceed the number of highlighted runs.
+ */
+export function buildHighlightSegments(
+  text: string,
+  matches: readonly SampleMatch[],
+): HighlightSegment[] {
+  const segments: HighlightSegment[] = [];
+  let cursor = 0;
+  matches.forEach((found, index) => {
+    if (found.index < cursor) return;
+    if (found.index > cursor) {
+      segments.push({ text: text.slice(cursor, found.index), match: null });
+    }
+    if (found.text.length > 0) segments.push({ text: found.text, match: index });
+    cursor = found.index + found.text.length;
+  });
+  if (cursor < text.length) segments.push({ text: text.slice(cursor), match: null });
+  return segments;
+}
+
+export interface BoundedMatcher {
+  test: (text: string) => boolean;
+  /** True once the cumulative budget ran out and filtering stopped. */
+  exhausted: () => boolean;
+}
+
+/**
+ * A predicate over one list row, with the cumulative budget described above.
+ *
+ * Giving up returns `true`, never `false`: showing an unfiltered list is a
+ * visible, recoverable state, whereas silently hiding rows looks exactly like
+ * data loss.
+ */
+export function createBoundedMatcher(
+  regex: RegExp,
+  budgetMs: number = FILTER_BUDGET_MS,
+): BoundedMatcher {
+  let spent = 0;
+  let exhausted = false;
+  let scan: RegExp;
+  try {
+    // A private copy: `lastIndex` is reset per call, and the builder preview
+    // must not be able to move a live search bar's cursor or vice versa.
+    scan = new RegExp(regex.source, regex.flags);
+  } catch {
+    return { test: () => true, exhausted: () => true };
+  }
+
+  return {
+    exhausted: () => exhausted,
+    test(text: string): boolean {
+      if (exhausted) return true;
+      const subject = text.length > MAX_HAYSTACK_LENGTH ? text.slice(0, MAX_HAYSTACK_LENGTH) : text;
+      const started = Date.now();
+      let result: boolean;
+      try {
+        scan.lastIndex = 0;
+        result = scan.test(subject);
+      } catch {
+        exhausted = true;
+        return true;
+      }
+      spent += Date.now() - started;
+      if (spent > budgetMs) exhausted = true;
+      return result;
+    },
+  };
+}
+
+// Nested quantifiers and duplicated alternatives are the shapes behind almost
+// every real-world catastrophic backtrack. This is a heuristic on the pattern
+// text, not an analysis: it has false positives (`(ab*c)+` is usually fine) and
+// false negatives (a blow-up can span several groups). It exists to put a
+// warning in front of the user, never to decide whether a pattern is allowed.
+const NESTED_QUANTIFIER =
+  /\([^()]*[+*}][^()]*\)\s*[+*{]|\([^()]*\|[^()]*\)\s*[+*{]/;
+
+export function looksCatastrophic(source: string): boolean {
+  return NESTED_QUANTIFIER.test(source);
+}

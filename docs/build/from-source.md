@@ -4,15 +4,21 @@ Every command needed to install, run, check, test and package this project on a
 local machine.
 
 > [!IMPORTANT]
-> **None of this has been run in this repository.** Every command below is quoted
-> from the vendored project's own documentation and manifests. They are accurate
-> transcriptions; they are not observed results. The first person to run them
-> should expect to correct this page.
+> **Nobody has run this page's commands on a local developer machine.** They are
+> written for one, and the first person to work through them should expect to
+> correct this page.
 >
-> The supported path for producing releases is continuous integration — see
-> [ci.md](ci.md). This page exists because a developer changing the interface
-> needs a faster loop, and because a build nobody can reproduce locally is a
-> build nobody can debug.
+> That is narrower than it sounds. The install, the typecheck, the three
+> identity-carrying test suites and the packaging invocation are what the
+> release run does on a hosted Windows runner, so those are known to work there
+> — see [ci.md](ci.md). What is transcribed from the vendored project's own
+> documentation and manifests, and has been observed nowhere, is the development
+> tooling: the run and inspect commands, the command-line entry point, and the
+> per-package test invocations the release run does not use.
+>
+> The supported path for producing releases is continuous integration. This page
+> exists because a developer changing the interface needs a faster loop, and
+> because a build nobody can reproduce locally is a build nobody can debug.
 
 ## Prerequisites
 
@@ -348,6 +354,20 @@ button behind a **More info** link. Expect it, and tell users to expect it.
 
 ## Verification
 
+**Observed on a hosted Windows runner, not locally.** The release run performs
+these, so they are known to work — on that image, at that Node and pnpm version,
+from a clean checkout:
+
+- the install, with the native database binding compiled from source (as
+  `pnpm install --frozen-lockfile`, which differs from the plain `pnpm install`
+  above only in refusing to update the lockfile);
+- the recursive typecheck, after the daemon and desktop builds this page tells
+  you to run first — for the same reason;
+- the three identity-carrying suites: the packaging tools, the packaged
+  launcher and the desktop shell;
+- the packaging invocation, `tools-pack win build`, and `validate-payload`
+  against the expected version.
+
 **Verified from the tree:** the workspace layout; the declared Node and pnpm
 constraints; the workspace-root script list including the absence of `dev`,
 `start` and `test`; the install-script allowlist; and that port verification runs
@@ -356,9 +376,11 @@ and exits 0 with every rebrand change declared. See
 what each counter means — that page holds the repository's only pasted verifier
 output, so this one does not duplicate a number that would go stale.
 
-**Transcribed from the vendored documentation, not observed:** every command on
-this page, the 18 post-install targets, the test-suite invocations, and the
-packaging flags.
+**Transcribed from the vendored documentation, and observed nowhere:** the 18
+post-install targets, the development tool's commands (`pnpm tools-dev run web`,
+`inspect desktop` and the rest), the `od` entry point, the browser-driven suites,
+the per-package test invocations beyond the three above, and the packaging flags
+this project does not pass.
 
 When someone runs this successfully, these are the checks worth recording:
 

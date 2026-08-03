@@ -1,14 +1,27 @@
 # Handoff
 
-State of play for whoever picks this up next. Written at the end of the first
-working session, 2026-08-03.
+State of play for whoever picks this up next.
 
 Read this before touching anything. The short version: the source tree was
-imported and *proved* byte-for-byte identical to upstream, the rebrand is now
-being written on top of it, and **nothing has been built**. No dependency has
-been installed, no line has been compiled, no test has run, and no installer
-exists. Three workflows now sit at the repository root, but this repository has
-observed no run of any of them, so there is still no CI evidence of any kind.
+imported and *proved* byte-for-byte identical to upstream, the rebrand was written
+on top of it, and **it builds and ships**. All three workflows have run: the port
+verifies at zero gaps on a clean checkout, two Windows installers were built and
+published under their own tags, the packaged smoke test installed one of those
+builds, launched it, made the running process answer its own health endpoint and
+uninstalled it with no residue, and the documentation site is deployed.
+
+What that does not mean is that the product is finished. Almost nothing of the
+Material Design 3 redesign exists beyond a token layer and a window title bar, and
+**nobody has looked at the running interface** — the one screenshot the smoke test
+captures is asserted to be non-zero bytes and is otherwise uninspected. Read
+[section 4](#4-what-is-not-verified) before repeating any claim from this file.
+
+> [!NOTE]
+> **Sections 1 and 2 describe the first working session and have not been
+> rewritten since.** They are kept as a record of how the repository got its
+> shape, not as a description of where it is now. Where they disagree with the
+> table below or with section 4, the table and section 4 are current and they are
+> not.
 
 ---
 
@@ -17,14 +30,15 @@ observed no run of any of them, so there is still no CI evidence of any kind.
 | Area | State | Evidence |
 |---|---|---|
 | Upstream source imported into `design/` | **Done and proved** | `scripts/verify-port.sh` → 0 gaps across 11,799 files, exit 0 |
-| Apache-2.0 §4(b) notice | **Done, and consistent** | `MODIFICATIONS.md` declares 67 paths; verifier reports 0 stale notices and 0 undeclared differences |
+| Apache-2.0 §4(b) notice | **Done, and consistent** | `MODIFICATIONS.md` declares its paths; verifier reports 0 stale notices and 0 undeclared differences. Run the script for the current count |
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
-| Rebrand to Material Designer | **Edited and declared; never built** | 67 changed paths under `design/`, all declared and verifying clean. Not compiled, packaged or launched |
-| Continuous integration | **Defined, never observed running** | `.github/workflows/{verify,release,pages}.yml` committed; no run outcome recorded |
-| Install / build / typecheck / test | **Never run** | see [What is not verified](#4-what-is-not-verified) |
-| Windows installer | **Does not exist** | nothing has been packaged |
-| Project standards (language modes, regex builder, tabs, …) | **Not started** | upstream code as imported does not implement them |
+| Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
+| Continuous integration | **All three workflows have run** | *Verify* at 0 gaps, *Release* through to publication, *Pages* through to deployment. **None has been observed failing** |
+| Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck, unit suites on Linux, Windows identity suites on Windows |
+| Windows installer | **Two built and published** | `v0.16.1-r7.1` and `v0.16.1-r8.1`, each carrying the installer its own run built, plus a checksum, a portable archive and a code-name photograph |
+| Material Design 3 redesign | **Token layer and title bar only** | landed at `dea6b0a`; no component rewritten, and nothing rendered has been looked at |
+| Project standards (language modes, regex builder, tabs, …) | **Not in the application** | the documentation site demonstrates them; the installed build does not carry them |
 
 ---
 
@@ -45,9 +59,9 @@ The load-bearing pieces:
 4. **`MODIFICATIONS.md` + `scripts/verify-port.sh`** — the licence notice and
    the machine that enforces it. Described in [section 5](#5-constraints-a-successor-must-respect).
 5. **`.github/workflows/`** — this project's own three workflows: `verify.yml`
-   (*Verify*), `release.yml` (*Release*) and `pages.yml` (*Pages*). They exist as
-   committed definitions. **No run of any of them has been observed from this
-   repository**, so they are a plan expressed in YAML, not evidence.
+   (*Verify*), `release.yml` (*Release*) and `pages.yml` (*Pages*). All three have
+   since run — see the table above. At the time this section was written they were
+   a plan expressed in YAML; they are no longer.
 6. **Governance and support files** — `README.md`, `AGENTS.md`, `ROADMAP.md`,
    this file, the `docs/` tree, the bundled dish catalogue under
    `assets/dim-sum/`, the static site source under `site/`, and the rest of
@@ -216,41 +230,58 @@ worst possible failure mode for this kind of tool.
 ## 4. What is **not** verified
 
 Stated plainly, because every one of these is a place where a reader could
-reasonably assume otherwise.
+reasonably assume otherwise. An earlier revision of this section said nothing had
+been installed, built, tested, packaged or run; all five had happened by then, and
+that is the specific failure this section now exists to avoid repeating.
 
-- **Nothing has been installed.** No package manager has run. No dependency tree
-  exists in this checkout.
-- **Nothing has been built.** No compiler, bundler or transpiler has been invoked.
-- **Nothing has been typechecked.** Whether the imported tree typechecks in this
-  environment is unknown — it is upstream's code and presumably did upstream, but
-  that is an assumption, not evidence.
-- **No test has run.** The imported tree carries a large test suite across many
-  packages; not one file of it has been executed here.
-- **Nothing has been packaged.** There is no installer, no archive, no artifact of
-  any kind, and no release.
-- **Nothing has been run.** The daemon has never started, the web application has
-  never rendered, the desktop shell has never opened a window.
-- **No CI run has been observed.** Three workflows of this project's own are
-  committed at `.github/workflows/` — `verify.yml`, `release.yml` and
-  `pages.yml` — but this repository holds no run link, no job log and no green
-  tick for any of them. A committed workflow is a definition, not a result;
-  until a run is recorded, treat every job in them as unexercised.
-  Separately, the 48 workflow files that came in with the upstream tree under
-  `design/.github/workflows/` are **inert here**. Actions only reads workflows
-  from the repository root, they are upstream's, and they are not wired to this
-  repository.
-- **The Material Design 3 handoff contract is unproved at runtime.** The mockup's
-  token map names 18 application-side variables and 12 component source files;
-  all 30 were confirmed to *exist* in the imported tree by reading it. Whether the
-  mapping is correct once rendered is untested, because nothing has rendered.
-- **The rebrand is written and declared, but never proved by a build.** 67 paths
-  under `design/` carry rebrand edits and all 67 are declared in
-  `MODIFICATIONS.md`, so the verifier passes. None of it has been compiled,
-  packaged or launched. The rebrand is therefore verified only as *text in
-  files* — nobody has seen a window title, an installer name or an application
-  identifier produced by it.
+**What is verified, so the list below is read against something.** The workspace
+installs on a hosted Windows runner with the native database binding compiled from
+source; the full workspace typechecks with the rebrand in place; unit suites run on
+Linux and the Windows identity suites run on Windows; two installers were built,
+payload-validated, published, and one of them was installed, launched,
+health-checked and uninstalled by the packaged smoke test with seven residue checks
+clean.
 
-Treat any claim beyond this list as unverified until a run proves it.
+Now the gaps.
+
+- **No workflow has been observed failing.** Every gate has been watched passing
+  and none has been watched rejecting a bad tree, so none of them is yet *known*
+  to be a gate. Deliberately introducing an undeclared change under `design/` and
+  watching the port verifier go red is the cheapest way to close this, and it has
+  not been done.
+- **Nobody has looked at the running interface.** The smoke test captures one
+  screenshot, asserts the file is non-zero and saves it into the run's report; it
+  inspects nothing in the image. No capture has been reviewed, none has been taken
+  at any other display scale, and none exists at a narrow width or in a second
+  language. Every visual claim anywhere in this repository is therefore read from
+  source, not seen.
+- **The test run is a gate on identity, not coverage.** The suites that run were
+  chosen because the rebrand changed what they assert. The imported tree carries
+  roughly 1,150 test files; most of them have never run here, and a green release
+  says nothing about them.
+- **The Material Design 3 contract is built but unproved.** The token sheet and its
+  mapping layer landed, so components inherit M3 roles. Whether that produces a
+  correct-looking interface is untested, for the reason two bullets up.
+- **The window title has never been read off a window.** The rebrand *is* proved as
+  installed identity — the smoke test asserts the uninstaller's name, the registry
+  entries' product name and application id, and the running process's version. What
+  no assertion covers is the window's own chrome, including the custom title bar
+  added at `dea6b0a`.
+- **No request in the daemon's request collection has been sent.** The 368 requests
+  were derived by reading route definitions; no daemon has been started here, and
+  at least one route pair was missed by that reading. See
+  [`docs/api/README.md`](docs/api/README.md).
+- **Nothing but Windows is published.** There is no macOS or Linux artifact, no
+  updater feed, and no code-signing certificate — so every installer trips the
+  operating system's reputation warning on first run.
+
+Separately, and unchanged: the 48 workflow files that came in with the upstream
+tree under `design/.github/workflows/` are **inert here**. Workflows are only read
+from the repository root, those are upstream's, and they are not wired to this
+repository. A reader glancing at the tree will assume they are this project's CI.
+
+Treat any claim beyond what is listed as verified above as unverified until a run
+proves it.
 
 ---
 
@@ -323,75 +354,84 @@ discipline; keep it that way when you update it.
 The ordering matters. Each step is cheap to do after the one before it, and
 expensive before.
 
-1. **Commit the working tree, then get a first *Verify* run recorded.** The
-   workflow already exists (`.github/workflows/verify.yml`, running
-   `scripts/verify-port.sh` on push and manual dispatch) and the verifier already
-   exits 0 locally, so the remaining work is neither authoring nor fixing — it is
-   getting the rebrand edits, the allowlist entries and the untracked governance
-   files committed and pushed, then recording the run's real outcome. **Do this
-   before anything else** — every later step risks `design/`, and this is the
-   guard rail. Note the outstanding work is not small: at `65e288f` the rebrand
-   lived entirely in uncommitted changes.
-   *Watch the line endings.* The repository normalises text, so a runner that
-   checks out with automatic CRLF conversion will smudge `design/` and Check A
-   will report thousands of byte differences on a tree that is perfectly fine.
-   Either run this job on a Linux runner, or disable the conversion before
-   checkout. Submodules are optional — the committed manifest is the fallback.
+<details>
+<summary><b>Steps 1–5 of the original list are done</b> — kept for the record, and because two of them left traps worth knowing about</summary>
 
-2. **Let the Windows build workflow run, and let it fail.** `release.yml` is
-   already written — it installs the toolchain and dependencies, builds the
-   workspace, typechecks and packages — so the work here is running it and
-   reading the log, not authoring it. Expect several rounds: this is the first
-   time this tree has been assembled in this environment, and the first run's job
-   is to *find out what breaks*, not to pass. Record what it says honestly; an
-   accurately written-down red run is worth more than a predicted green one.
+The first five steps were: get a *Verify* run recorded; let the Windows build
+workflow run and expect it to fail; get package-scoped suites running; produce
+the first installer; and prove the rebrand at runtime. All five happened.
 
-3. **Get the package-scoped test suites running in CI**, package by package rather
-   than as one aggregate. Upstream deliberately ships no root aggregate test
-   command; do not invent one. Expect some failures to be *stale expectations*
-   rather than defects — the rebrand changed strings that several suites assert
-   on, and `release.yml` says so in its own comments.
+Two things they left behind that a successor will still meet:
 
-4. **Produce the first Windows installer.** Only attempt this once step 2 is green.
-   It will be unsigned, and it will trigger the operating system's unknown
-   publisher warning — say so in the release notes rather than letting a user
-   discover it.
+- **Line endings are the port verifier's one real hazard.** The repository
+  normalises text, so a runner checking out with automatic CRLF conversion smudges
+  `design/` and the working-tree check reports thousands of byte differences on a
+  tree that is perfectly fine. That is why the gate runs on Linux. Submodules stay
+  optional — the committed manifest is the fallback.
+- **The build did fail first, repeatedly, and the failures were environmental
+  rather than code defects** — suites asserting a Unix executable bit a Windows
+  filesystem does not store, a test budget written for a developer's disk, a
+  package importing output that had not been compiled, and a packaging property
+  that moved between major versions. Each is written up under
+  [`docs/troubleshooting/`](docs/troubleshooting/); read that directory before
+  concluding a red run means the tree is broken.
 
-5. **Prove the rebrand at runtime.** Its source edits have landed — product name,
-   window title, installer name and application identifier, with package names,
-   the command-line tool name, environment variable prefixes and storage keys
-   deliberately left as upstream wrote them. What has *not* happened is any of it
-   being observed: no window title has been read off a window, no installer entry
-   seen in Add/Remove Programs, no side-by-side install attempted. The first
-   packaged build is what turns the identity claims in `MODIFICATIONS.md` into
-   evidence, and it should be checked against them item by item.
+The rebrand is now proved as *installed identity*: the smoke test asserts the
+uninstaller's name, the registry entries' product name and application id, and the
+running process's version. What it does not check is the window's own chrome, so
+the window title still has not been read off a window.
 
-6. **Wire the Material Design 3 token layer**, using the mockup's handoff sheet as
-   the contract. Do the token mapping first and the component work after: the
-   mockup declares shape and easing tokens that it then never consumes, using
-   literal values instead. Copying the literals would reproduce the mockup's own
-   shortcut. Wire the tokens properly.
+</details>
 
-7. **Implement the project standards** against the redesigned surface — language
-   modes and the two per-language tone sliders, the anchored regex builder on every
-   search field, browser-style tabs with overflow/pinning/grouping, the
-   super-confirmation gate on destructive actions, the command palette, the
-   changelog viewer, local version history, bulk actions and export, and the dim
-   sum startup surprise. The mockup already specifies a large share of these; it
-   also **omits** several, and the roadmap records which.
+1. **Watch something fail on purpose.** Every gate in this repository has been
+   observed passing and none has been observed rejecting anything, which means
+   none of them is yet known to work. Introduce an undeclared change under
+   `design/` and confirm the port verifier goes red; introduce a remote asset into
+   the site and confirm the deployment refuses it. Both are cheap, both are
+   reversible, and until they are done the green ticks mean less than they look
+   like they mean.
 
-8. **Run the line counter in a release.** `scripts/line-count.mjs` is committed:
-   it discovers files with `git ls-files`, buckets every tracked file into exactly
-   one row with a mandatory catch-all, reports the imported `design/` tree
-   separately from this repository's own code, and attributes authorship per
-   surviving line with `git blame` behind `--blame`. What has not happened is a
-   release consuming it, so **no line count for this project has been published**.
-   Do not publish a number that did not come out of that script at the released
-   commit.
+2. **Look at the running interface.** The packaged smoke test already captures a
+   screenshot into its report and asserts only that the file is non-zero. Review
+   that capture, then extend the capture path to the display scales and narrow
+   widths the standards require. This is the single largest gap in the project's
+   evidence: a Material Design 3 redesign is exactly the kind of work that can be
+   entirely correct in source and visibly wrong on screen, and nothing here would
+   currently catch that.
 
-9. **Bundle the fonts and icons locally.** The mockup loads its typefaces and icon
-   font from a public font service. The port must ship them as local assets: no
-   remote stylesheets, no remote fonts, no third-party requests at runtime.
+3. **Rewrite components onto Material Design 3 anatomy.** The token layer landed at
+   `dea6b0a`, so components already *inherit* M3 values — that was the cheap half
+   and it is done. The expensive half is the component tree itself, tracked as
+   ordered waves in [`ROADMAP.md`](ROADMAP.md). Two loose ends from the token work
+   belong here too: literal radii still written directly into component styles have
+   not been swept onto the corner scale, and the interface's duration values are
+   still literals rather than motion tokens.
+
+4. **Implement the project standards** in the application — language modes and the
+   two per-language tone sliders, the anchored regex builder on every search field,
+   browser-style tabs with overflow, pinning and grouping, the super-confirmation
+   gate on destructive actions, the command palette, the changelog viewer, local
+   version history, bulk actions and export, and the dim sum startup surprise. The
+   documentation site demonstrates most of these already, which makes it a working
+   reference rather than only a specification — but **none of them is in the
+   application**, and a site that has them is not an application that has them.
+
+5. **Bundle the fonts and icons locally.** The application's stylesheet still
+   carries one font import from a public font service, and the mockup carries
+   three. The site is already fully bundled and its deployment enforces that at
+   publish time; the application has no equivalent gate, so add one rather than
+   relying on review.
+
+6. **Broaden what the release actually tests.** The suites that run were chosen
+   because the rebrand changed what they assert, so the current gate is on product
+   identity rather than coverage. The imported tree carries roughly 1,150 test
+   files. Add them package by package — upstream deliberately ships no root
+   aggregate test command, and one must not be invented.
+
+7. **Send the request collection against a real daemon.** All 368 requests were
+   derived by reading route definitions, and at least one route pair was missed by
+   that reading. Running them would settle both the collection's accuracy and the
+   route counts in [`docs/api/README.md`](docs/api/README.md) at once.
 
 ---
 

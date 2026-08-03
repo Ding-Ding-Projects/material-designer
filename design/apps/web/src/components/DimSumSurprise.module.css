@@ -1,0 +1,34 @@
+/* The photograph inside the dim sum toast.
+   The toast owns its own width and padding; this owns only the picture. */
+.photo {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: var(--md-sys-shape-corner-m, 12px);
+  background: var(--md-sys-color-surface-container-high, rgba(255, 255, 255, 0.08));
+  /* A one-shot reveal so the picture settles in rather than snapping into a
+     toast that has already finished its own entrance. */
+  animation: dim-sum-photo-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes dim-sum-photo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Reduced motion removes the reveal entirely — the picture is simply there.
+   The toast's own entrance and exit are already zeroed under this preference
+   by the shared `.od-toast` rules. */
+@media (prefers-reduced-motion: reduce) {
+  .photo {
+    animation: none;
+  }
+}

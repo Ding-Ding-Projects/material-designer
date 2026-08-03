@@ -230,6 +230,12 @@
   align-items: center;
   gap: 8px;
 }
+/* Optional visual slot above the message (Toast `media`). The slot owns the
+   spacing only; the node inside brings its own size, radius and fit, so one
+   caller's thumbnail cannot silently restyle another's. */
+.od-toast-media {
+  margin-bottom: 10px;
+}
 .od-toast-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -996,6 +1002,20 @@
   left: 0;
   z-index: 3;
   background: var(--workspace-tab-bar-bg);
+}
+/* User-pinned tabs in the project shell. The anatomy is declared once in
+   `styles/shell.css`; this block exists only because `.workspace-shell
+   .workspace-tab` sets the width at the same specificity and this stylesheet
+   is imported later, so the compact size has to be restated to win — the same
+   reason `.is-pinned` above is declared in both files. Declared before
+   `.is-active` so a pinned tab that is also active still picks up the active
+   highlight. */
+.workspace-shell .workspace-tab.is-user-pinned {
+  flex: 0 0 36px;
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  grid-template-columns: minmax(0, 1fr);
 }
 .workspace-shell .workspace-tab.is-active {
   background: color-mix(in srgb, var(--bg-panel) 94%, var(--bg-subtle));
