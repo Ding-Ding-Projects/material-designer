@@ -707,8 +707,8 @@
                 <h3 style="margin:0 0 4px;font-size:18px;font-weight:600;">Publish to a forge</h3>
                 <p style="margin:0 0 16px;font-size:13px;color:var(--md-sys-color-on-surface-variant);">Choose the account and the owner. Where forking is unavailable, copy-and-push is offered instead — the route taken is always reported.</p>
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Account: codingmachineedge<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
-                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Owner: Ding-Ding-Projects<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Account: designer<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
+                  <button type="button" style="height:40px;padding:0 16px;border:1px solid var(--md-sys-color-outline);border-radius:99px;background:transparent;color:var(--md-sys-color-on-surface);font-size:13px;font-weight:600;cursor:pointer;" style-hover="background:var(--ripple)">Owner: example-org<span class="msr" style="font-size:18px;vertical-align:middle;">expand_more</span></button>
                   <button type="button" style="height:40px;padding:0 18px;border:0;border-radius:99px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(1.04)">Copy &amp; push</button>
                   <span style="font-size:12px;color:var(--md-sys-color-on-surface-variant);">Fork unavailable on this instance — copy-and-push is the route that works here.</span>
                 </div>
@@ -718,7 +718,7 @@
                 <div style="padding:20px 22px;border-radius:24px;background:var(--md-sys-color-error-container);color:var(--md-sys-color-on-error-container);border:1px solid var(--md-sys-color-error);">
                   <div style="display:flex;align-items:center;gap:10px;">
                     <span class="msr" style="font-size:22px;">error</span>
-                    <span style="font-size:15px;font-weight:600;flex:1;">Push rejected — insufficient scope for Ding-Ding-Projects/desktop-material</span>
+                    <span style="font-size:15px;font-weight:600;flex:1;">Push rejected — insufficient scope for example-org/sample-app</span>
                   </div>
                   <p style="margin:10px 0 14px;font-size:13px;line-height:1.55;">The stored token is missing <span style="font-family:'Roboto Mono',monospace;">write:packages</span>. Recovery is offered here, beside the control that failed — nothing was rewritten and no commits were dropped.</p>
                   <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -1556,7 +1556,7 @@ class Component extends DCLogic {
     const off = 'background:var(--md-sys-color-surface-container-highest);color:var(--md-sys-color-on-surface-variant);';
     const integrationRowsByTab = {
       mcp: [
-        { name: 'lowlevel-computer-use', detail: 'http://127.0.0.1:8765/mcp · headless', status: 'Connected', statusStyle: ok, icon: 'precision_manufacturing' },
+        { name: 'local-tools', detail: 'stdio · headless', status: 'Connected', statusStyle: ok, icon: 'precision_manufacturing' },
         { name: 'filesystem', detail: 'stdio · npx @modelcontextprotocol/server-filesystem', status: 'Connected', statusStyle: ok, icon: 'folder_open' },
         { name: 'github', detail: 'stdio · gh auth token', status: 'Connected', statusStyle: ok, icon: 'code' },
         { name: 'postgres', detail: 'stdio · not configured', status: 'Disabled', statusStyle: off, icon: 'database' },
@@ -1568,8 +1568,7 @@ class Component extends DCLogic {
       ],
       skills: [
         { name: 'material-3', detail: 'skills/material-3 · tokens, components, audit', status: 'Enabled', statusStyle: ok, icon: 'design_services' },
-        { name: 'agent-global-memory', detail: 'skills/agent-global-memory · shared instructions', status: 'Enabled', statusStyle: ok, icon: 'psychology' },
-        { name: 'encrypted-public-builder', detail: 'private release pipeline', status: 'Enabled', statusStyle: ok, icon: 'lock' },
+        { name: 'shared-notes', detail: 'skills/shared-notes · project conventions', status: 'Enabled', statusStyle: ok, icon: 'psychology' },
       ],
     };
 
@@ -1724,7 +1723,7 @@ class Component extends DCLogic {
     ];
 
     const accounts = [
-      { name: 'codingmachineedge', initials: 'CM', detail: 'primary · 12 tabs · settings repo clean', status: 'Active', statusStyle: ok, avatar: 'background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);' },
+      { name: 'designer', initials: 'DS', detail: 'primary · 12 tabs · settings repo clean', status: 'Active', statusStyle: ok, avatar: 'background:var(--md-sys-color-tertiary-container);color:var(--md-sys-color-on-tertiary-container);' },
       { name: 'work profile', initials: 'WP', detail: 'gitlab self-hosted · 4 tabs · 2 uncommitted', status: 'Signed in', statusStyle: off, avatar: 'background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);' },
     ];
 
@@ -1891,7 +1890,7 @@ class Component extends DCLogic {
     ].map((ci) => ({ ...ci, style: ci.style || 'color:var(--md-sys-color-on-surface);', run: () => this.set({ contextMenu: null }) }));
 
     const clonePhases = ['queued', 'counting objects', 'receiving 62%', 'resolving deltas', 'done'];
-    const cloneRepos = ['open-design', 'desktop-material', 'agent-global-memory'].map((name, i) => {
+    const cloneRepos = ['sample-app', 'docs-site', 'starter-kit'].map((name, i) => {
       const pct = Math.max(0, Math.min(100, s.cloneProgress - i * 12));
       return {
         name, icon: 'source',
