@@ -29,6 +29,96 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The 124 keys the notification, gate, bulk, colour and narrator surfaces were written against
+
+**Reason:** the same gate as the entry below, one merge later. The notification
+centre and its corner stack, the destructive-action super-confirmation gate,
+the bulk-action bar and preview dialog, the infinite colour picker with its
+translator, and the spoken narrator were all built against a dictionary they
+did not write into, for the same reason as before: five agents appending to
+twenty locale files at once produces twenty conflicts and no translations worth
+keeping. This entry lands their keys.
+
+**Fifteen of the 124 are invisible to a `t('…')` grep**, and they fail the
+build exactly as hard as the rest. `SEVERITY_LABEL_KEYS` in
+`notifications/NotificationHost.tsx` is a `Record<NotificationSeverity, …>`
+constrained to the translator's key type, so its five severity labels never
+appear as a literal argument. `LANGUAGE_LABEL` in
+`narrator/NarratorSettingsPanel.tsx` is the same shape for the three spoken
+languages. `BuiltInPreset.nameKey` in `appearance/presets.ts` is a union of six
+preset-name keys. And `narrator.sample` reaches the dictionary through
+`narrate(key: keyof Dict, …)` rather than through `t()`. The scripted check
+reports 109; the real number is 124, and the difference was found by reading
+every dotted string literal in `apps/web/src` and asking which of them are key
+names rather than hostnames, filenames, setting ids or shortcut ids.
+
+**A duplicate that the merge introduced.** `dimSum.blurb` was declared twice in
+the `Dict` interface — TypeScript rejects a repeated property, so this was a
+live build failure independent of the missing keys. The second declaration and
+its redundant comment were removed; the first, and the single entry each locale
+already carried, are untouched.
+
+**Twenty locales, translated rather than seeded.** Each locale uses its own
+conventional software vocabulary — *Sättigung* / *saturation* / *nasycenie* /
+飽和度 for the colour axis, *Notausstieg* / *sortie de secours* / *wyjście
+awaryjne* for the gate's emergency exit, and each language's real term for a
+screen reader, a swatch and a hue. The only strings that match English exactly
+are ones that genuinely are the same word in that language (*Alpha* in German,
+*Saturation* and *Violet* in French, *Info* where the abbreviation is native)
+plus `appearance.color.spaceSrgb`, which is the identifier `sRGB` everywhere.
+
+**The gate's copy states the facts in every language.** `destructive.
+irreversible` says the listed items are destroyed for good, `destructive.
+reversible` says the action can be undone from version history, and
+`designs.deleteGateProjectDetail` says the project folder leaves the disk with
+its history — in all twenty locales, without hedging and without a joke
+standing in for the fact. `privacy.deleteGateIdItem` prints the real
+installation id through `{id}` so the user reads the value being discarded.
+
+**Placeholder parity is checked, not assumed.** Every `{placeholder}` in the
+124 keys was extracted per locale and compared as a set against English: all
+twenty agree exactly on every key. Thirteen strings order their placeholders
+differently from English — `bulk.progress` reads "{total} 件中 {done} 件完了" in
+Japanese — which is a sentence-order choice the named-placeholder interpolator
+handles, not a dropped value.
+
+**`zh-HK` gets all 124 explicitly**, appended after the `...zhTW` spread so its
+own entries win. Letting Cantonese-authored copy arrive through the spread
+would ship Traditional Mandarin phrasing on a brand-new surface. It now holds
+968 of its own entries and inherits the remaining 3,573.
+
+**Verified by reading**, since this tree cannot run a typechecker: the `Dict`
+interface parses to 4,541 unique keys with no duplicates, each of the twenty
+locale dictionaries resolves all 4,541 — nineteen directly, `zh-HK` as 968 own
+plus 3,573 inherited — and no locale file declares any key twice. Each file
+kept its own quote style: single quotes everywhere except `zh-CN`, `zh-TW` and
+`zh-HK`, which use double. `scripts/check-i18n-keys.sh` reports zero
+used-but-undeclared keys and every locale complete.
+
+**Changed files:**
+
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+
 ### 2026-08-04 — The 205 keys the four new surfaces were written against
 
 **Reason:** `i18n/types.ts` declares a flat `Dict`, and a key missing from any
