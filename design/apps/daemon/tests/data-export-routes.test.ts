@@ -310,13 +310,20 @@ describe('POST /api/export', () => {
   });
 
   it('rejects an unknown dataset and an unknown format by name', async () => {
+    // `json()` resolves to `unknown`; the shape is asserted here the same way
+    // every other response in this file does it, rather than reaching into an
+    // unknown and hoping.
+    type ErrorBody = { error: { message: string } };
+
     const unknownDataset = await postExport({ datasets: ['nope'], format: 'json' });
     expect(unknownDataset.status).toBe(400);
-    expect((await unknownDataset.json()).error.message).toContain('nope');
+    expect(((await unknownDataset.json()) as ErrorBody).error.message).toContain('nope');
 
     const unknownFormat = await postExport({ datasets: ['projects'], format: 'parquet' });
     expect(unknownFormat.status).toBe(400);
-    expect((await unknownFormat.json()).error.message).toContain('format must be one of');
+    expect(((await unknownFormat.json()) as ErrorBody).error.message).toContain(
+      'format must be one of',
+    );
   });
 
   it('reports an invalid regular expression instead of returning an empty export', async () => {

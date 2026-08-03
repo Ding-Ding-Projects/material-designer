@@ -23,7 +23,7 @@ import {
   domainIdForRepoPath,
   repoPathForSource,
 } from '../src/history/domains.js';
-import { createSqliteTableDomain } from '../src/history/sqlite-domain.js';
+import { createSqliteTableDomain, type SqliteLike } from '../src/history/sqlite-domain.js';
 import { HistoryService } from '../src/history/service.js';
 import { HistoryStore, historyRepoDir } from '../src/history/store.js';
 import { requireLocalDaemonRequest } from '../src/http/local-daemon-request.js';
@@ -889,7 +889,12 @@ describe.skipIf(!gitAvailable)('SQLite history domains against the real schema',
       nounPlural: 'automations',
       table: 'routines',
       labelColumn: 'name',
-      getDb: () => db,
+      // The driver's `transaction` is generic in a way the port's narrower
+      // signature does not accept, so the handle is adapted at this boundary
+      // rather than the port being widened to whatever one driver happens to
+      // expose. The domain only ever calls `prepare` and `transaction`, both of
+      // which this handle really has.
+      getDb: () => db as unknown as SqliteLike,
     });
   }
 
