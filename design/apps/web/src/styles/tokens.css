@@ -99,10 +99,10 @@
      elevation as literal box-shadows and declares neither a `shadow` color
      role nor an `--md-sys-elevation-*` set, so there is nothing to map onto
      and nothing that would flip on its own. */
-  --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
-  --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
-  --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
-  --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
+  --shadow-xs: var(--md-sys-elevation-1);
+  --shadow-sm: var(--md-sys-elevation-1);
+  --shadow-md: var(--md-sys-elevation-2);
+  --shadow-lg: var(--md-sys-elevation-3);
 
   /* Corner-radius scale — the only radii UI should reach for (Shape
      Consistency Lock), now the M3 shape corner scale. Three steps land on a
@@ -111,10 +111,10 @@
      six distinct rungs and still follows the scale if the scale is retuned.
      Off-scale literals (7px, 9px) remain drift; collapse them to a token. */
   --radius-xs: var(--md-sys-shape-corner-xs);
-  --radius-sm: calc((var(--md-sys-shape-corner-xs) + var(--md-sys-shape-corner-s)) / 2);
-  --radius: var(--md-sys-shape-corner-s);
-  --radius-md: calc((var(--md-sys-shape-corner-s) + var(--md-sys-shape-corner-m)) / 2);
-  --radius-lg: var(--md-sys-shape-corner-m);
+  --radius-sm: var(--md-sys-shape-corner-s);
+  --radius: var(--md-sys-shape-corner-m);
+  --radius-md: var(--md-sys-shape-corner-m);
+  --radius-lg: var(--md-sys-shape-corner-l);
   --radius-pill: var(--md-sys-shape-corner-full);
 
   /* Motion — the UI animation philosophy (see AGENTS.md) is unchanged, and
@@ -193,8 +193,8 @@
   --amber: #e09a40;
   --amber-bg: #2a1a04;
 
-  --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.2);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-xs: var(--md-sys-elevation-1);
+  --shadow-sm: var(--md-sys-elevation-1);
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
 }
@@ -217,8 +217,8 @@
     --amber: #e09a40;
     --amber-bg: #2a1a04;
 
-    --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.2);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-xs: var(--md-sys-elevation-1);
+    --shadow-sm: var(--md-sys-elevation-1);
     --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
   }
