@@ -154,9 +154,17 @@ jobs:
         # Gated per command for the same reason as the typecheck above: an
         # ungated block reports the last suite's result and nothing else, so a
         # failing test would still ship an installer.
+        #
+        # tools-pack is filtered to the Windows-relevant specs by path substring.
+        # Its macOS specs unpack a macOS node-pty prebuild and assert the
+        # spawn-helper kept its executable bit; NTFS cannot represent that bit, so
+        # they fail here for a reason that has nothing to do with the code under
+        # test. They are not skipped — the `test` job in verify.yml runs the full
+        # suite on Linux, where the assertion is meaningful. Between the two jobs
+        # every spec runs somewhere.
         run: |
           $ErrorActionPreference = "Stop"
-          pnpm --filter @open-design/tools-pack run test
+          pnpm --filter @open-design/tools-pack exec vitest run win- launcher- release-workflows config versions resources
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/packaged run test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

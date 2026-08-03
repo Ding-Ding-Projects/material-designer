@@ -95,7 +95,53 @@ jobs:
             echo "scripts/line-count.mjs is not present yet; skipping." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          node scripts/line-count.mjs >> "$GITHUB_STEP_SUMMARY" || {
+          # tee, not a plain redirect: a table that exists only in the job
+          # summary cannot be read back from the logs when something looks wrong.
+          if ! node scripts/line-count.mjs | tee -a "$GITHUB_STEP_SUMMARY"; then
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "The line counter failed; see the step log." >> "$GITHUB_STEP_SUMMARY"
-          }
+          fi
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Separate from the port-integrity job above so that gate stays cheap: this
+    # one installs the whole workspace and compiles native modules.
+    #
+    # It runs on Linux deliberately. Several suites unpack macOS prebuilt
+    # binaries and assert their executable bit survived, which a Windows
+    # filesystem cannot represent — so the Windows release job excludes those
+    # specs and this job is where they actually run. Between the two, every spec
+    # runs somewhere.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: design/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: design
+        timeout-minutes: 40
+        env:
+          OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
+        run: pnpm install --frozen-lockfile
+
+      - name: Test the packages that carry product identity
+        working-directory: design
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter @open-design/tools-pack run test
+          pnpm --filter @open-design/packaged run test
+          pnpm --filter @open-design/desktop run test
