@@ -29,6 +29,84 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The 205 keys the four new surfaces were written against
+
+**Reason:** `i18n/types.ts` declares a flat `Dict`, and a key missing from any
+one locale is a type error rather than a runtime fallback. That gate is the
+reason the surface work above — the regex builder, the dim sum surprise, the
+changelog viewer, the command palette, and tab pinning with bulk close — was
+built without touching the dictionaries: four agents writing into twenty files
+at once would have produced twenty merge conflicts and no translations worth
+having. They reported the keys instead. This entry lands them.
+
+**What the keys were checked against, not just what was reported.** The
+reported list was diffed against every translation lookup in the new and
+changed components, including the ones that never reach a bare `t('…')` call —
+`Record<Flag, keyof Dict>` label maps, `labelKey`/`titleKey`/`hintKey` fields in
+the palette's command registry and settings index, and the sparse
+`FunnyOverrides` maps, all of which are typed as `keyof Dict` and so fail the
+build exactly as hard as a direct call. The two sets agreed exactly: 205 keys
+used, 205 keys reported, none used-but-unreported and none reported-but-unused.
+Nothing was invented to cover a gap, because there was no gap.
+
+**Twenty locales, translated rather than seeded.** Every locale carries a real
+translation in its own language, using that language's conventional term for
+the technical nouns — *reguläres Ausdruck* / *expression régulière* /
+*wyrażenie regularne* / 正規表示式 / 정규식 for the engine's own vocabulary,
+*Erfassungsgruppen* / *groupes de capture* / *grupos de captura* /
+キャプチャグループ for capture groups, and the platform-conventional name for a
+command palette in each. English is the reported copy; `zh-HK` is the reported
+Cantonese. No locale received English text as a placeholder.
+
+**Placeholder parity is checked, not assumed.** Every `{placeholder}` in a
+translated string was compared against the English source before the write, in
+all twenty locales — a missing `{count}` renders a sentence that silently drops
+its number, which is precisely the failure the funny-level rules forbid. Two
+strings are deliberately identical everywhere: `changelog.datePlaceholder` is
+the format mask `YYYY-MM-DD` rather than prose, and `changelog.commitSummarizes`
+keeps its literal `{count}` because the export renderer substitutes it per entry
+instead of through `t()`.
+
+**`zh-HK` gets the 205 keys explicitly**, even though it spreads `zh-TW` and
+would satisfy the `Dict` gate without them. The spread exists to inherit
+Traditional Chinese for keys nobody has rewritten yet, and letting a key that
+*has* Cantonese copy arrive through it would have quietly shipped Mandarin
+phrasing on a brand-new surface. It now holds 844 of its own entries and
+inherits the remaining 3,655.
+
+**Verified by reading**, since this tree cannot run a typechecker: the `Dict`
+interface parses to 4,499 unique keys with no duplicates, and each of the
+twenty locale dictionaries resolves all 4,499 with zero extras — nineteen
+directly, `zh-HK` as 844 own plus 3,655 inherited. Every appended line was then
+tokenised as a JS string literal pair to prove the quoting closes: 4,100 new
+entry lines — 205 keys in each of the twenty locales — plus the 205 matching
+`Dict` declarations, zero malformed. Each file kept its own quote style —
+single quotes everywhere except `zh-CN`, `zh-TW` and `zh-HK`, which use double.
+
+**Changed files:**
+
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+
 ### 2026-08-04 — A command palette, and tabs you can pin and close in bulk
 
 **Reason:** two gaps that look unrelated and are the same gap. The app had a
