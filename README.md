@@ -518,10 +518,15 @@ Alongside it in the repository root:
 tracked as work in [`ROADMAP.md`](ROADMAP.md) §1.2, and this list will link it once the file
 exists rather than pointing at one that does not.
 
-The project's documentation site is **not published yet**, so there is no link here to click.
-When it is published, the repository's website field and this section will both point at it,
-and the site will carry the same feature articles plus the download button for the current
-release.
+The project's documentation site is published at
+**<https://ding-ding-projects.github.io/material-designer/>**, which is also the repository's
+website field. It carries the same material as `docs/`, in a surface that answers to the same
+standards the application does: three language modes, two funny-level sliders, Material
+Design 3 tokens, appearance customization, a regex builder on every search field, browser-style
+tabs, and the dish surprise.
+
+The download button on its Install page is honest about there being nothing to download yet —
+no release has been published, so it says so rather than linking at a file that does not exist.
 
 ---
 

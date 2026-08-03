@@ -3,13 +3,20 @@
 The documentation and landing site: what it publishes, what it is built from,
 and the workflow that deploys it.
 
-> [!IMPORTANT]
-> **The site is not published, and no deployment has been observed.** The
-> `Pages` workflow exists at `.github/workflows/pages.yml` and `site/` holds the
-> modules described below, but no run outcome is recorded anywhere in this
-> repository. As this page was written, `site/` contained the five JavaScript
-> modules, two stylesheets and `.nojekyll` — and **no HTML file whatsoever**.
-> Until pages exist, a deployment would publish assets that nothing loads.
+> [!NOTE]
+> **The site is published** at <https://ding-ding-projects.github.io/material-designer/>,
+> deployed by `.github/workflows/pages.yml`. The deployment was verified by
+> request rather than assumed: the page, both stylesheets, `main.js`, the dish
+> catalogue and a dish photograph all return 200, and the served HTML contains
+> no unresolved translation keys.
+>
+> Two things a reader should know about how it got there. GitHub Pages had never
+> been configured on this repository, so the first deployment failed with a 404
+> from the Pages API — enabling Pages with Actions as its source is a one-time
+> repository setting, not something the workflow can do for itself. And the dish
+> catalogue lives at the repository root, outside what Pages publishes, so the
+> workflow stages it into the artifact; a page addressing `../assets/…` would
+> have 404'd for every visitor.
 
 ## Files in this category
 
