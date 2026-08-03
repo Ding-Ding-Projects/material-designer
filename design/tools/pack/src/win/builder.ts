@@ -225,7 +225,11 @@ async function runElectronBuilderRaw(
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
       icon: paths.winIconPath,
-      publisherName: "Ding Ding Projects",
+      // No `publisherName` here. It reads like general metadata but
+      // electron-builder 26 treats it as a signing input and moved it under
+      // `win.signtoolOptions`, so setting it at this level fails schema
+      // validation before the packer starts. This build does not sign, so the
+      // executable's CompanyName stays empty, exactly as it did upstream.
       target: resolveElectronBuilderWinTargets(config.to).map((target) => ({ arch: ["x64"], target })),
     },
   };
