@@ -164,7 +164,13 @@ jobs:
         # every spec runs somewhere.
         run: |
           $ErrorActionPreference = "Stop"
-          pnpm --filter @open-design/tools-pack exec vitest run win- launcher- release-workflows config versions resources
+          # --testTimeout: two of these specs are `runIf(win32)`, so this job is
+          # the only place they execute, and they do real filesystem work
+          # (syncing launcher runtimes, writing cleanup metadata). vitest's 5s
+          # default is a developer-machine assumption; a hosted runner's disk is
+          # slower and they time out. Raising the budget gives slow I/O room
+          # without weakening a single assertion — the tests still have to pass.
+          pnpm --filter @open-design/tools-pack exec vitest run --testTimeout=30000 win- launcher- release-workflows config versions resources
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/packaged run test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
