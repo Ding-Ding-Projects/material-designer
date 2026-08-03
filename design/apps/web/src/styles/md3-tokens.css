@@ -1,0 +1,457 @@
+/* ============================================================
+   Material Design 3 — system tokens (`--md-sys-*`)
+   ============================================================
+   The design contract, transcribed from this project's own M3 mockup
+   (`mockups/open-design-m3/Open Design M3.dc.html`): colour roles, the
+   four seed variants, the shape corner scale, the motion curves, the
+   density scale, the state layer, and a type scale. This sheet declares
+   tokens and nothing else — it paints no element and owns no component.
+
+   Why the split: `tokens.css` next door is a thin mapping layer. It keeps
+   every historical product name (`--bg`, `--text`, `--radius`, …) that the
+   components already reference and redefines each one in terms of a role
+   declared here, so retheming the product is an edit to this file and no
+   component has to change. Import order is therefore load-bearing: this
+   file must be imported before `tokens.css` in `index.css`.
+
+   Dark is selected exactly the way the app already selects it, so the two
+   routes cannot drift apart:
+     - `[data-theme="dark"]`                      explicit dark choice
+     - `html:not([data-theme])` inside
+       `@media (prefers-color-scheme: dark)`      system mode (no attribute)
+   `[data-theme="light"]` deliberately matches neither, which is what pins
+   an explicit light choice on a dark-OS machine.
+
+   Colour values are copied verbatim from the mockup, uppercase included.
+   Two roles are non-standard M3 inventions of that contract and keep their
+   names as written: `success` and `success-container`. Roles the contract
+   deliberately omits — `background`, `surface-variant`, `surface-tint`,
+   `shadow`, the `*-fixed` family — are not invented here.
+   ============================================================ */
+
+:root {
+  /* ---- Colour roles: light (the `sunset` seed is the baseline) -------- */
+  --md-sys-color-primary: #8F4C34;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #FFDBCF;
+  --md-sys-color-on-primary-container: #3A0B00;
+  --md-sys-color-secondary: #77574C;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #FFDBCF;
+  --md-sys-color-on-secondary-container: #2C160D;
+  --md-sys-color-tertiary: #6C5D2F;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #F5E0A7;
+  --md-sys-color-on-tertiary-container: #231B00;
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+  --md-sys-color-surface: #FFF8F6;
+  --md-sys-color-on-surface: #221A17;
+  --md-sys-color-on-surface-variant: #53433E;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #FFF1EC;
+  --md-sys-color-surface-container: #FCEAE4;
+  --md-sys-color-surface-container-high: #F6E4DE;
+  --md-sys-color-surface-container-highest: #F1DED8;
+  --md-sys-color-surface-dim: #E8D6D0;
+  --md-sys-color-surface-bright: #FFF8F6;
+  --md-sys-color-outline: #85736D;
+  --md-sys-color-outline-variant: #D8C2BB;
+  --md-sys-color-inverse-surface: #382E2B;
+  --md-sys-color-inverse-on-surface: #FFEDE8;
+  --md-sys-color-inverse-primary: #FFB59B;
+  --md-sys-color-success: #1F6B3C;
+  --md-sys-color-success-container: #B8F0C8;
+  --md-sys-color-scrim: rgba(0, 0, 0, .32);
+
+  /* ---- State layer ---------------------------------------------------
+     The contract's only state-layer token, and a full rgba colour rather
+     than an opacity: there is no `--md-sys-state-*` set to transcribe.
+     Pressed is expressed as a transform and focus as an outline, so this
+     one value covers hover across every icon button, list row and menu
+     item in the mockup. */
+  --ripple: rgba(0, 0, 0, .08);
+
+  /* ---- Shape ---------------------------------------------------------
+     Seven steps. The mockup itself writes literal radii and never reads
+     these, so the values below are the scale as declared, not a summary
+     of what the markup uses. */
+  --md-sys-shape-corner-xs: 4px;
+  --md-sys-shape-corner-s: 8px;
+  --md-sys-shape-corner-m: 12px;
+  --md-sys-shape-corner-l: 16px;
+  --md-sys-shape-corner-xl: 28px;
+  --md-sys-shape-corner-xxl: 32px;
+  --md-sys-shape-corner-full: 9999px;
+
+  /* ---- Motion --------------------------------------------------------
+     Curves only. The contract declares no duration tokens — durations live
+     inline at each call site — so nothing here names a time. */
+  --md-sys-motion-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --md-sys-motion-emphasized-decel: cubic-bezier(.05, .7, .1, 1);
+  --md-sys-motion-spring: linear(0, .4 8%, .87 17%, 1.05 23%, 1.1 27%, 1.05 35%, .99 47%, 1 62%, 1);
+
+  /* ---- Density -------------------------------------------------------
+     Applied through `data-density` on the app root. There is no
+     `[data-density="default"]` selector — "default" is this state.
+     `--sp` is declared by the contract but read by nothing; it is kept so
+     the scale is complete rather than because anything consumes it. */
+  --sp: 8px;
+  --gap: 16px;
+  --pad: 24px;
+  --row: 48px;
+  --card: 14px;
+
+  /* ---- UI scale ------------------------------------------------------
+     The mockup exposes a 50–200% control in five-point steps and emits it
+     as `--od-scale`, a unitless factor; 1 is 100%, the default. The name is
+     the contract's, kept verbatim like every other invention it makes, so a
+     control wired to this later writes the property the mockup writes. */
+  --od-scale: 1;
+
+  /* ---- Reference typefaces -------------------------------------------
+     M3 names `brand` and `plain`; `mono` and `serif` are additions this
+     product needs (code listings and long-form reading). Roboto Flex is
+     the contract's face and leads the stack, and the platform chain behind
+     it is the app's existing fallback kept intact — dropping it would
+     strip the CJK, Arabic and Thai faces the localized UI depends on. */
+  --md-ref-typeface-plain: 'Roboto Flex', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --md-ref-typeface-brand: var(--md-ref-typeface-plain);
+  --md-ref-typeface-mono: 'Roboto Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  --md-ref-typeface-serif: 'Source Serif Pro', 'Source Serif 4', 'Iowan Old Style', 'Apple Garamond', Georgia, 'Times New Roman', serif;
+
+  /* ---- Type scale ----------------------------------------------------
+     The contract declares no `--md-sys-typescale-*` tokens; every size in
+     the mockup is written inline. The fifteen M3 roles below are therefore
+     assembled from that mockup's measured vocabulary — sizes drawn from
+     its 11/12/13/14/15/16/18/20/22/26/32/40/44px ramp, weights from its
+     400/500/600 set, line-heights and letter-spacings from the values it
+     actually uses — so no number here is invented. Per M3, display and
+     headline take the brand face and title/body/label take the plain one;
+     they are the same family in this contract. */
+  --md-sys-typescale-display-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-large-size: 44px;
+  --md-sys-typescale-display-large-weight: 600;
+  --md-sys-typescale-display-large-line-height: 1.1;
+  --md-sys-typescale-display-large-tracking: -1px;
+  --md-sys-typescale-display-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-medium-size: 40px;
+  --md-sys-typescale-display-medium-weight: 600;
+  --md-sys-typescale-display-medium-line-height: 1.1;
+  --md-sys-typescale-display-medium-tracking: -0.5px;
+  --md-sys-typescale-display-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-display-small-size: 32px;
+  --md-sys-typescale-display-small-weight: 600;
+  --md-sys-typescale-display-small-line-height: 1.15;
+  --md-sys-typescale-display-small-tracking: -0.5px;
+
+  --md-sys-typescale-headline-large-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-large-size: 26px;
+  --md-sys-typescale-headline-large-weight: 600;
+  --md-sys-typescale-headline-large-line-height: 1.15;
+  --md-sys-typescale-headline-large-tracking: 0;
+  --md-sys-typescale-headline-medium-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-medium-size: 22px;
+  --md-sys-typescale-headline-medium-weight: 500;
+  --md-sys-typescale-headline-medium-line-height: 1.15;
+  --md-sys-typescale-headline-medium-tracking: 0;
+  --md-sys-typescale-headline-small-font: var(--md-ref-typeface-brand);
+  --md-sys-typescale-headline-small-size: 20px;
+  --md-sys-typescale-headline-small-weight: 600;
+  --md-sys-typescale-headline-small-line-height: 1.4;
+  --md-sys-typescale-headline-small-tracking: 0;
+
+  --md-sys-typescale-title-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-large-size: 18px;
+  --md-sys-typescale-title-large-weight: 600;
+  --md-sys-typescale-title-large-line-height: 1.4;
+  --md-sys-typescale-title-large-tracking: 0;
+  --md-sys-typescale-title-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-medium-size: 16px;
+  --md-sys-typescale-title-medium-weight: 600;
+  --md-sys-typescale-title-medium-line-height: 1.45;
+  --md-sys-typescale-title-medium-tracking: 0;
+  --md-sys-typescale-title-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-title-small-size: 14px;
+  --md-sys-typescale-title-small-weight: 600;
+  --md-sys-typescale-title-small-line-height: 1.45;
+  --md-sys-typescale-title-small-tracking: 0;
+
+  --md-sys-typescale-body-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-large-size: 15px;
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-line-height: 1.55;
+  --md-sys-typescale-body-large-tracking: 0;
+  --md-sys-typescale-body-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-medium-size: 14px;
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-line-height: 1.55;
+  --md-sys-typescale-body-medium-tracking: 0;
+  --md-sys-typescale-body-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-body-small-size: 13px;
+  --md-sys-typescale-body-small-weight: 400;
+  --md-sys-typescale-body-small-line-height: 1.5;
+  --md-sys-typescale-body-small-tracking: 0;
+
+  --md-sys-typescale-label-large-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-large-size: 13px;
+  --md-sys-typescale-label-large-weight: 600;
+  --md-sys-typescale-label-large-line-height: 1.4;
+  --md-sys-typescale-label-large-tracking: 0;
+  --md-sys-typescale-label-medium-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-medium-size: 12px;
+  --md-sys-typescale-label-medium-weight: 600;
+  --md-sys-typescale-label-medium-line-height: 1.4;
+  --md-sys-typescale-label-medium-tracking: 0.02em;
+  --md-sys-typescale-label-small-font: var(--md-ref-typeface-plain);
+  --md-sys-typescale-label-small-size: 11px;
+  --md-sys-typescale-label-small-weight: 600;
+  --md-sys-typescale-label-small-line-height: 1.4;
+  --md-sys-typescale-label-small-tracking: 0.08em;
+
+  color-scheme: light;
+}
+
+/* Explicit dark choice. `--md-sys-color-scrim` is deliberately not part of
+   this block: the contract leaves it at its light value in dark too. */
+[data-theme="dark"] {
+  --md-sys-color-primary: #FFB59B;
+  --md-sys-color-on-primary: #56200A;
+  --md-sys-color-primary-container: #72331C;
+  --md-sys-color-on-primary-container: #FFDBCF;
+  --md-sys-color-secondary: #E7BEAF;
+  --md-sys-color-on-secondary: #442A20;
+  --md-sys-color-secondary-container: #5D4035;
+  --md-sys-color-on-secondary-container: #FFDBCF;
+  --md-sys-color-tertiary: #D8C48D;
+  --md-sys-color-on-tertiary: #3A2F05;
+  --md-sys-color-tertiary-container: #52461A;
+  --md-sys-color-on-tertiary-container: #F5E0A7;
+  --md-sys-color-error: #FFB4AB;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000A;
+  --md-sys-color-on-error-container: #FFDAD6;
+  --md-sys-color-surface: #1A120F;
+  --md-sys-color-on-surface: #F1DED8;
+  --md-sys-color-on-surface-variant: #D8C2BB;
+  --md-sys-color-surface-container-lowest: #140C0A;
+  --md-sys-color-surface-container-low: #221A17;
+  --md-sys-color-surface-container: #271E1B;
+  --md-sys-color-surface-container-high: #322825;
+  --md-sys-color-surface-container-highest: #3D3330;
+  --md-sys-color-surface-dim: #1A120F;
+  --md-sys-color-surface-bright: #423734;
+  --md-sys-color-outline: #A08D87;
+  --md-sys-color-outline-variant: #53433E;
+  --md-sys-color-inverse-surface: #F1DED8;
+  --md-sys-color-inverse-on-surface: #382E2B;
+  --md-sys-color-inverse-primary: #8F4C34;
+  --md-sys-color-success: #7DDB9C;
+  --md-sys-color-success-container: #0C4A25;
+  --ripple: rgba(255, 255, 255, .10);
+  color-scheme: dark;
+}
+
+/* ---- Seed variants ---------------------------------------------------
+   `sunset` is the baseline above and has no block of its own. Each light
+   seed restates ten roles and each dark seed twelve; the dark selector
+   `[data-theme="dark"][data-seed="…"]` outranks the light one, which is
+   what keeps a seeded dark theme correct even though the light seed block
+   is declared after the dark base. Every role a light seed touches is also
+   restated by its dark counterpart, so nothing leaks across.
+   -------------------------------------------------------------------- */
+
+[data-seed="violet"] {
+  --md-sys-color-primary: #65558F;
+  --md-sys-color-primary-container: #E9DDFF;
+  --md-sys-color-on-primary-container: #211047;
+  --md-sys-color-secondary: #625B71;
+  --md-sys-color-secondary-container: #E8DEF8;
+  --md-sys-color-on-secondary-container: #1E192B;
+  --md-sys-color-tertiary: #7E5260;
+  --md-sys-color-tertiary-container: #FFD9E3;
+  --md-sys-color-on-tertiary-container: #31101D;
+  --md-sys-color-inverse-primary: #CFBDFE;
+}
+
+[data-theme="dark"][data-seed="violet"] {
+  --md-sys-color-primary: #CFBDFE;
+  --md-sys-color-on-primary: #36275D;
+  --md-sys-color-primary-container: #4D3D75;
+  --md-sys-color-on-primary-container: #E9DDFF;
+  --md-sys-color-secondary: #CBC2DB;
+  --md-sys-color-on-secondary: #332D41;
+  --md-sys-color-secondary-container: #4A4458;
+  --md-sys-color-on-secondary-container: #E8DEF8;
+  --md-sys-color-tertiary: #EFB8C8;
+  --md-sys-color-tertiary-container: #633B48;
+  --md-sys-color-on-tertiary-container: #FFD9E3;
+  --md-sys-color-inverse-primary: #65558F;
+}
+
+[data-seed="teal"] {
+  --md-sys-color-primary: #00696D;
+  --md-sys-color-primary-container: #6FF6FB;
+  --md-sys-color-on-primary-container: #002021;
+  --md-sys-color-secondary: #4A6363;
+  --md-sys-color-secondary-container: #CCE8E7;
+  --md-sys-color-on-secondary-container: #051F20;
+  --md-sys-color-tertiary: #4B607C;
+  --md-sys-color-tertiary-container: #D3E4FF;
+  --md-sys-color-on-tertiary-container: #041C35;
+  --md-sys-color-inverse-primary: #4CD9DF;
+}
+
+[data-theme="dark"][data-seed="teal"] {
+  --md-sys-color-primary: #4CD9DF;
+  --md-sys-color-on-primary: #003738;
+  --md-sys-color-primary-container: #004F51;
+  --md-sys-color-on-primary-container: #6FF6FB;
+  --md-sys-color-secondary: #B0CCCB;
+  --md-sys-color-on-secondary: #1B3535;
+  --md-sys-color-secondary-container: #324B4B;
+  --md-sys-color-on-secondary-container: #CCE8E7;
+  --md-sys-color-tertiary: #B3C8E8;
+  --md-sys-color-tertiary-container: #334863;
+  --md-sys-color-on-tertiary-container: #D3E4FF;
+  --md-sys-color-inverse-primary: #00696D;
+}
+
+[data-seed="lime"] {
+  --md-sys-color-primary: #4C6700;
+  --md-sys-color-primary-container: #CDEF85;
+  --md-sys-color-on-primary-container: #141F00;
+  --md-sys-color-secondary: #5A6147;
+  --md-sys-color-secondary-container: #DEE6C5;
+  --md-sys-color-on-secondary-container: #171E09;
+  --md-sys-color-tertiary: #3A6660;
+  --md-sys-color-tertiary-container: #BCECE4;
+  --md-sys-color-on-tertiary-container: #00201C;
+  --md-sys-color-inverse-primary: #B2D26C;
+}
+
+[data-theme="dark"][data-seed="lime"] {
+  --md-sys-color-primary: #B2D26C;
+  --md-sys-color-on-primary: #243600;
+  --md-sys-color-primary-container: #374E00;
+  --md-sys-color-on-primary-container: #CDEF85;
+  --md-sys-color-secondary: #C2CAAA;
+  --md-sys-color-on-secondary: #2C331C;
+  --md-sys-color-secondary-container: #424931;
+  --md-sys-color-on-secondary-container: #DEE6C5;
+  --md-sys-color-tertiary: #A1CFC8;
+  --md-sys-color-tertiary-container: #214E48;
+  --md-sys-color-on-tertiary-container: #BCECE4;
+  --md-sys-color-inverse-primary: #4C6700;
+}
+
+/* ---- Density ---------------------------------------------------------
+   Only four of the five variables move per level; `--sp` is constant. */
+[data-density="compact"] {
+  --gap: 10px;
+  --pad: 16px;
+  --row: 40px;
+  --card: 12px;
+}
+
+[data-density="comfortable"] {
+  --gap: 20px;
+  --pad: 32px;
+  --row: 56px;
+  --card: 18px;
+}
+
+/* ---- System mode -----------------------------------------------------
+   No `data-theme` attribute at all: follow the OS. This is the second of
+   the app's two dark routes and repeats the dark palette verbatim, seeds
+   included, because a media query cannot be folded into a selector list.
+   `html:not([data-theme])` outranks the light seed blocks above, and
+   `html:not([data-theme])[data-seed="…"]` outranks everything, which
+   reproduces the same precedence the explicit route has.
+   -------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --md-sys-color-primary: #FFB59B;
+    --md-sys-color-on-primary: #56200A;
+    --md-sys-color-primary-container: #72331C;
+    --md-sys-color-on-primary-container: #FFDBCF;
+    --md-sys-color-secondary: #E7BEAF;
+    --md-sys-color-on-secondary: #442A20;
+    --md-sys-color-secondary-container: #5D4035;
+    --md-sys-color-on-secondary-container: #FFDBCF;
+    --md-sys-color-tertiary: #D8C48D;
+    --md-sys-color-on-tertiary: #3A2F05;
+    --md-sys-color-tertiary-container: #52461A;
+    --md-sys-color-on-tertiary-container: #F5E0A7;
+    --md-sys-color-error: #FFB4AB;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000A;
+    --md-sys-color-on-error-container: #FFDAD6;
+    --md-sys-color-surface: #1A120F;
+    --md-sys-color-on-surface: #F1DED8;
+    --md-sys-color-on-surface-variant: #D8C2BB;
+    --md-sys-color-surface-container-lowest: #140C0A;
+    --md-sys-color-surface-container-low: #221A17;
+    --md-sys-color-surface-container: #271E1B;
+    --md-sys-color-surface-container-high: #322825;
+    --md-sys-color-surface-container-highest: #3D3330;
+    --md-sys-color-surface-dim: #1A120F;
+    --md-sys-color-surface-bright: #423734;
+    --md-sys-color-outline: #A08D87;
+    --md-sys-color-outline-variant: #53433E;
+    --md-sys-color-inverse-surface: #F1DED8;
+    --md-sys-color-inverse-on-surface: #382E2B;
+    --md-sys-color-inverse-primary: #8F4C34;
+    --md-sys-color-success: #7DDB9C;
+    --md-sys-color-success-container: #0C4A25;
+    --ripple: rgba(255, 255, 255, .10);
+    color-scheme: dark;
+  }
+
+  html:not([data-theme])[data-seed="violet"] {
+    --md-sys-color-primary: #CFBDFE;
+    --md-sys-color-on-primary: #36275D;
+    --md-sys-color-primary-container: #4D3D75;
+    --md-sys-color-on-primary-container: #E9DDFF;
+    --md-sys-color-secondary: #CBC2DB;
+    --md-sys-color-on-secondary: #332D41;
+    --md-sys-color-secondary-container: #4A4458;
+    --md-sys-color-on-secondary-container: #E8DEF8;
+    --md-sys-color-tertiary: #EFB8C8;
+    --md-sys-color-tertiary-container: #633B48;
+    --md-sys-color-on-tertiary-container: #FFD9E3;
+    --md-sys-color-inverse-primary: #65558F;
+  }
+
+  html:not([data-theme])[data-seed="teal"] {
+    --md-sys-color-primary: #4CD9DF;
+    --md-sys-color-on-primary: #003738;
+    --md-sys-color-primary-container: #004F51;
+    --md-sys-color-on-primary-container: #6FF6FB;
+    --md-sys-color-secondary: #B0CCCB;
+    --md-sys-color-on-secondary: #1B3535;
+    --md-sys-color-secondary-container: #324B4B;
+    --md-sys-color-on-secondary-container: #CCE8E7;
+    --md-sys-color-tertiary: #B3C8E8;
+    --md-sys-color-tertiary-container: #334863;
+    --md-sys-color-on-tertiary-container: #D3E4FF;
+    --md-sys-color-inverse-primary: #00696D;
+  }
+
+  html:not([data-theme])[data-seed="lime"] {
+    --md-sys-color-primary: #B2D26C;
+    --md-sys-color-on-primary: #243600;
+    --md-sys-color-primary-container: #374E00;
+    --md-sys-color-on-primary-container: #CDEF85;
+    --md-sys-color-secondary: #C2CAAA;
+    --md-sys-color-on-secondary: #2C331C;
+    --md-sys-color-secondary-container: #424931;
+    --md-sys-color-on-secondary-container: #DEE6C5;
+    --md-sys-color-tertiary: #A1CFC8;
+    --md-sys-color-tertiary-container: #214E48;
+    --md-sys-color-on-tertiary-container: #BCECE4;
+    --md-sys-color-inverse-primary: #4C6700;
+  }
+}

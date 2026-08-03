@@ -4286,4 +4286,8 @@ export const ja: Dict = {
   'questions.uploadNeedsProject': 'ファイルのアップロードにはアクティブなプロジェクトが必要です。',
   'questions.uploadPartialFailed': '{uploaded} 件のファイルをアップロードしましたが、{failed} 件が失敗しました。',
   'questions.uploadFailed': '{failed} 件のファイルのアップロードに失敗しました。',
+  'titleBar.minimize': '最小化',
+  'titleBar.maximize': '最大化',
+  'titleBar.restore': '元に戻す',
+  'titleBar.close': '閉じる',
 };

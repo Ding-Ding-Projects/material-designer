@@ -4286,4 +4286,8 @@ export const id: Dict = {
   'questions.uploadNeedsProject': 'Unggah file memerlukan proyek aktif.',
   'questions.uploadPartialFailed': '{uploaded} file terunggah, tetapi {failed} gagal.',
   'questions.uploadFailed': 'Gagal mengunggah {failed} file.',
+  'titleBar.minimize': 'Minimalkan',
+  'titleBar.maximize': 'Maksimalkan',
+  'titleBar.restore': 'Pulihkan',
+  'titleBar.close': 'Tutup',
 };

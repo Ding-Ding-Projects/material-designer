@@ -37,6 +37,7 @@ import { AmrArtifactUpgradeGate } from './components/AmrArtifactUpgradeGate';
 import { AmrArtifactUpgradeHomeCard } from './components/AmrArtifactUpgradeHomeCard';
 import { TooltipLayer } from './components/TooltipLayer';
 import { openWorkspaceTab, WorkspaceTabsBar } from './components/WorkspaceTabsBar';
+import { WindowTitleBar } from './components/WindowTitleBar';
 import {
   DesignSystemCreationFlow,
   DesignSystemDetailView,
@@ -2642,6 +2643,7 @@ function AppInner() {
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
       >
+        <WindowTitleBar />
         <WorkspaceTabsBar
           route={route}
           projects={projects}

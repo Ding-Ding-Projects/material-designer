@@ -18,6 +18,14 @@ const stripComments = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, 
 const tokensCss = stripComments(
   readFileSync(new URL('../../src/styles/tokens.css', import.meta.url), 'utf8'),
 );
+// Since the Material Design 3 port, `tokens.css` is a mapping layer: it defines
+// each product token as a `--md-sys-*` role declared in `md3-tokens.css`, and
+// only the roles carry the literal colors. Both sheets are needed to resolve a
+// token to a hex value, and the mapping layer wins where the two overlap
+// (`index.css` imports it second).
+const md3TokensCss = stripComments(
+  readFileSync(new URL('../../src/styles/md3-tokens.css', import.meta.url), 'utf8'),
+);
 const homeHeroCss = stripComments(
   readFileSync(new URL('../../src/styles/home/home-hero.css', import.meta.url), 'utf8'),
 );
@@ -44,17 +52,19 @@ function ruleValue(block: string, property: string): string {
   return match[1]!.trim();
 }
 
-/** Resolve a CSS custom property from a `:root`-style block in tokens.css. */
+/** Resolve CSS custom properties from a `:root`-style block in the token sheets. */
 function tokenMap(blockSelector: string): Map<string, string> {
-  const rulePattern = /([^{}]+)\{([^}]*)\}/g;
-  let match: RegExpExecArray | null;
   const map = new Map<string, string>();
-  while ((match = rulePattern.exec(tokensCss)) !== null) {
-    const selectors = (match[1] ?? '').split(',').map((item) => item.trim());
-    if (!selectors.includes(blockSelector)) continue;
-    for (const decl of (match[2] ?? '').split(';')) {
-      const [name, value] = decl.split(':');
-      if (name && value && name.trim().startsWith('--')) map.set(name.trim(), value.trim());
+  for (const source of [md3TokensCss, tokensCss]) {
+    const rulePattern = /([^{}]+)\{([^}]*)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = rulePattern.exec(source)) !== null) {
+      const selectors = (match[1] ?? '').split(',').map((item) => item.trim());
+      if (!selectors.includes(blockSelector)) continue;
+      for (const decl of (match[2] ?? '').split(';')) {
+        const [name, value] = decl.split(':');
+        if (name && value && name.trim().startsWith('--')) map.set(name.trim(), value.trim());
+      }
     }
   }
   if (map.size === 0) throw new Error(`Missing token block for ${blockSelector}`);
@@ -114,12 +124,23 @@ const SECONDARY_TEXT = [
 ];
 
 describe('Home context picker secondary-text contrast (#4468)', () => {
+  const rootTokens = tokenMap(':root');
+
   for (const theme of ['[data-theme="dark"]'] as const) {
     const tokens = tokenMap(theme);
+    // A themed block only restates what the theme actually changes, and a
+    // mapped token such as `--text-muted` is declared once at `:root` as a
+    // `var()` pointing at the role that flips. Fall back to `:root`, then walk
+    // the indirection until a literal color turns up.
     const resolve = (name: string): Rgb => {
-      const value = tokens.get(name);
-      if (!value) throw new Error(`Token ${name} missing in ${theme}`);
-      return parseHex(value);
+      let current = name;
+      for (let hop = 0; hop <= 8; hop += 1) {
+        const value = tokens.get(current) ?? rootTokens.get(current);
+        if (!value) throw new Error(`Token ${current} missing in ${theme}`);
+        if (!value.startsWith('var(')) return parseHex(value);
+        current = varName(value);
+      }
+      throw new Error(`Token ${name} never resolved to a color in ${theme}`);
     };
     const surface = (key: (typeof SECONDARY_TEXT)[number]['background']): Rgb =>
       key === 'hover-card'

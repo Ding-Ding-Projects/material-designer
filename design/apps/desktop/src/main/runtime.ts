@@ -41,6 +41,10 @@ import {
   parseUpdateActionRequest,
   updateRestartSafetyError,
 } from "./update-preflight.js";
+import {
+  attachWindowMaximizedBroadcast,
+  registerWindowControlHandlers,
+} from "./window-controls.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -724,13 +728,33 @@ export async function mintHomeWorkingDirToken(
   return { baseDir, ok: true, token: mint(deps.desktopAuthSecret, baseDir) };
 }
 
-const MAC_WINDOW_CHROME =
+// Frameless-but-native window chrome, per platform.
+//
+// win32 uses `titleBarStyle: "hidden"`, which removes the OS caption bar while
+// leaving the window an ordinary framed window, so Windows 11 keeps its
+// rounded corners, drop shadow and Alt+Space system menu. `frame: false` would
+// drop all three, and `titleBarOverlay` would put the OS's own caption buttons
+// back on top of the Material Design 3 title bar this makes room for. The
+// renderer paints that title bar and drives the window through the
+// `od:window:*` IPC registered in `window-controls.ts`.
+//
+// What a renderer-drawn caption bar does give up is Windows 11's snap-layouts
+// flyout. The OS shows it only while it hit-tests the pointer onto a maximize
+// button (WM_NCHITTEST returning HTMAXBUTTON), and `-webkit-app-region: drag`
+// reports HTCAPTION for the whole strip — Electron offers no way to mark an
+// HTML element as the maximize button without `titleBarOverlay` drawing the
+// OS's buttons there. Hovering the renderer's own maximize button therefore
+// pops nothing; Win+Z and drag-to-edge snapping are unaffected. That is the
+// price of owning the caption bar, and it is the trade this branch makes.
+const PLATFORM_WINDOW_CHROME =
   process.platform === "darwin"
     ? ({
         titleBarStyle: "hiddenInset" as const,
         trafficLightPosition: { x: 12, y: 10 },
       })
-    : {};
+    : process.platform === "win32"
+      ? ({ titleBarStyle: "hidden" as const })
+      : {};
 
 const MAC_WINDOW_CHROME_CSS = `
   .app-chrome-header {
@@ -2133,7 +2157,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     show: false,
     title: windowTitle,
     autoHideMenuBar: true,
-    ...MAC_WINDOW_CHROME,
+    ...PLATFORM_WINDOW_CHROME,
     webPreferences: {
       additionalArguments: osLocaleAdditionalArguments(options.osLocale),
       backgroundThrottling: false,
@@ -2147,6 +2171,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   installWindowChromeCssHook(window);
   showWindowButtons(window);
+  // The custom title bar has to know whether to draw "maximize" or "restore",
+  // and the OS changes that state behind the app's back — a snap layout, a
+  // double-clicked drag region, Win+Up, or a drag off the top edge all bypass
+  // the renderer's own button. Push every transition instead of letting the
+  // glyph drift out of sync with the window.
+  attachWindowMaximizedBroadcast(window);
   attachDownloadSaveAsDialog(window);
   window.on("page-title-updated", (event) => {
     event.preventDefault();
@@ -2421,6 +2451,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     options.onUpdateMenuLabels?.(labels);
     return { ok: true };
   });
+  // Minimize / maximize / close for the renderer-drawn Windows title bar. The
+  // handlers apply the same main-window-only sender check as the block above;
+  // the bridge that reaches them is exposed on win32 only.
+  const disposeWindowControls = registerWindowControlHandlers(ipcMain, window);
 
   ipcMain.removeAllListeners("desktop-pet:set-visible");
   ipcMain.on("desktop-pet:set-visible", (event, visible: unknown) => {
@@ -2802,6 +2836,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         timer = null;
       }
       unsubscribeUpdater();
+      disposeWindowControls();
       ipcMain.removeAllListeners("desktop-pet:set-visible");
       for (const channel of UPDATER_IPC_CHANNELS) {
         ipcMain.removeHandler(channel);

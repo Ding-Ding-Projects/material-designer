@@ -397,17 +397,15 @@ expensive before.
 
 ## 7. Known risks, with mitigations
 
-### External-state limitation: GitHub Projects is unavailable
+### GitHub Projects: available
 
-The credential this session ran under lacks the `read:project` scope, so Projects
-could not be listed, created, or updated. This is recorded once here and was then
-skipped: Project availability is not allowed to block implementation, push, or
-handoff, and no Project work was attempted afterwards.
+The credential now carries the `project` scope (read and write), granted through
+GitHub's OAuth device flow, so Projects can be listed, created and updated. It was
+briefly unavailable and briefly out of scope by decision; both are now superseded.
 
-*Mitigation:* nothing is broken and nothing is waiting on it. A maintainer who
-wants a Project board can grant the scope (`gh auth refresh -s read:project`) and
-create one; until then, the rolling Discussion and this file carry the status that
-a board would have carried. Do not treat the absent board as missing work.
+Narrative progress still lives in the rolling build-log Discussion and the burn-down
+in [`ROADMAP.md`](ROADMAP.md) — a board tracks state, not reasoning, so it
+complements those rather than replacing them.
 
 ### External-state limitation: the wiki has no first page
 

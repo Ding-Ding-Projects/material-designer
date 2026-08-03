@@ -29,6 +29,23 @@
   background: var(--bg-app);
   overflow: hidden;
 }
+/* The frameless Windows shell paints its own 40px title bar above the tab
+   strip, because the operating system draws no caption bar there; see
+   `components/WindowTitleBar.tsx`. Every other platform keeps its native
+   chrome, that component renders nothing, and the two-row template above
+   still applies. Selecting the row count from the DOM rather than from a
+   second copy of the platform test keeps the two from drifting apart.
+
+   The tab row is `auto` rather than a literal, so it takes whatever height
+   the chrome header actually carries. `:has()` adds the specificity of its
+   argument, so this rule outranks every bare `.workspace-shell` selector no
+   matter which sheet wins the cascade — `viewer/routines.css` re-declares the
+   two-row template at 34px — and a literal here would pin the Windows path to
+   a number the header no longer uses, leaving a bare strip of `--bg-app`
+   under the tab row on that one platform. */
+.workspace-shell:has(> [data-window-title-bar]) {
+  grid-template-rows: 40px auto minmax(0, 1fr);
+}
 .workspace-shell__body {
   min-width: 0;
   min-height: 0;

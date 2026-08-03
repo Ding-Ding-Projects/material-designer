@@ -4286,4 +4286,8 @@ export const ru: Dict = {
   'questions.uploadNeedsProject': 'Для загрузки файлов нужен активный проект.',
   'questions.uploadPartialFailed': 'Загружено файлов: {uploaded}, не удалось: {failed}.',
   'questions.uploadFailed': 'Не удалось загрузить файлы: {failed}.',
+  'titleBar.minimize': 'Свернуть',
+  'titleBar.maximize': 'Развернуть',
+  'titleBar.restore': 'Восстановить',
+  'titleBar.close': 'Закрыть',
 };

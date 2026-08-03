@@ -4286,4 +4286,8 @@ export const it: Dict = {
   'questions.uploadNeedsProject': 'Il caricamento dei file richiede un progetto attivo.',
   'questions.uploadPartialFailed': '{uploaded} file caricati, ma {failed} non riusciti.',
   'questions.uploadFailed': 'Caricamento non riuscito per {failed} file.',
+  'titleBar.minimize': 'Riduci a icona',
+  'titleBar.maximize': 'Ingrandisci',
+  'titleBar.restore': 'Ripristina',
+  'titleBar.close': 'Chiudi',
 };

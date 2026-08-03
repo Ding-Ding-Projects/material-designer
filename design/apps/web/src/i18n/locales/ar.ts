@@ -4286,4 +4286,8 @@ export const ar: Dict = {
   'questions.uploadNeedsProject': 'يتطلب رفع الملفات مشروعًا نشطًا.',
   'questions.uploadPartialFailed': 'تم رفع {uploaded} ملف(ات)، لكن فشل {failed}.',
   'questions.uploadFailed': 'فشل رفع {failed} ملف(ات).',
+  'titleBar.minimize': 'تصغير',
+  'titleBar.maximize': 'تكبير',
+  'titleBar.restore': 'استعادة',
+  'titleBar.close': 'إغلاق',
 };

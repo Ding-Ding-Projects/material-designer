@@ -4286,4 +4286,8 @@ export const ptBR: Dict = {
   'questions.uploadNeedsProject': 'O envio de arquivos precisa de um projeto ativo.',
   'questions.uploadPartialFailed': '{uploaded} arquivo(s) enviado(s), mas {failed} falharam.',
   'questions.uploadFailed': 'Falha no envio de {failed} arquivo(s).',
+  'titleBar.minimize': 'Minimizar',
+  'titleBar.maximize': 'Maximizar',
+  'titleBar.restore': 'Restaurar',
+  'titleBar.close': 'Fechar',
 };

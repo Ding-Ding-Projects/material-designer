@@ -4286,4 +4286,8 @@ export const uk: Dict = {
   'questions.uploadNeedsProject': 'Для завантаження файлів потрібен активний проєкт.',
   'questions.uploadPartialFailed': 'Завантажено файлів: {uploaded}, не вдалося: {failed}.',
   'questions.uploadFailed': 'Не вдалося завантажити файли: {failed}.',
+  'titleBar.minimize': 'Згорнути',
+  'titleBar.maximize': 'Розгорнути',
+  'titleBar.restore': 'Відновити',
+  'titleBar.close': 'Закрити',
 };

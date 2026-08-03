@@ -4286,4 +4286,8 @@ export const hu: Dict = {
   'questions.uploadNeedsProject': 'A fájlfeltöltéshez aktív projekt szükséges.',
   'questions.uploadPartialFailed': '{uploaded} fájl feltöltve, {failed} sikertelen.',
   'questions.uploadFailed': '{failed} fájl feltöltése sikertelen.',
+  'titleBar.minimize': 'Kis méret',
+  'titleBar.maximize': 'Teljes méret',
+  'titleBar.restore': 'Előző méret',
+  'titleBar.close': 'Bezárás',
 };

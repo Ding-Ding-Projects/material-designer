@@ -4430,4 +4430,10 @@ export interface Dict {
   'questions.uploadNeedsProject': string;
   'questions.uploadPartialFailed': string;
   'questions.uploadFailed': string;
+  // Window caption buttons on the frameless Windows shell. Standard
+  // window-control labels — use each language's conventional term.
+  'titleBar.minimize': string;
+  'titleBar.maximize': string;
+  'titleBar.restore': string;
+  'titleBar.close': string;
 }

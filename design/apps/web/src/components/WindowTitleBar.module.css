@@ -1,0 +1,109 @@
+/* Windows caption bar, painted by the renderer because the desktop main
+   process runs the window frameless (`titleBarStyle: "hidden"`) and the
+   operating system therefore draws none. Every value below is the Material
+   Design 3 contract transcribed from `mockups/open-design-m3`: a 40px
+   surface-container strip, one hairline outline-variant border along the
+   bottom only, 12px of padding on the left and none on the right so the
+   buttons run to the window edge, and three 46px caption buttons whose hover
+   is the `--ripple` state layer — except Close, which takes the literal
+   Windows red the contract deliberately keeps outside the token system.
+
+   The button selectors are two-class (`.bar .button`) on purpose.
+   `styles/primitives.css` styles bare `button`, and its
+   `button:hover:not(:disabled)` rule has specificity (0,2,1) — a single-class
+   module rule would lose the hover this bar depends on and repaint it in the
+   product's generic button colours. */
+
+.bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex: none;
+  padding-left: 12px;
+  background: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  user-select: none;
+  /* The whole strip drags the window; the buttons opt back out below, or a
+     click on one would start a window drag instead of firing. */
+  -webkit-app-region: drag;
+}
+
+.drag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+/* The brand mark reuses the app's `.od-brand-glyph` primitive for its mask —
+   the same `/brand-icon.svg` the contract's inline logo draws — and repaints
+   it in the primary role. The two-class selector is deliberate: it has to
+   outrank the primitive's own `background-color` whichever sheet the bundler
+   emits first. */
+.bar .logo {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  background-color: var(--md-sys-color-primary);
+}
+
+.name {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  flex: none;
+}
+
+.bar .button {
+  width: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  /* Not `pointer`: native Windows caption buttons keep the arrow cursor. */
+  cursor: default;
+  display: grid;
+  place-items: center;
+  -webkit-app-region: no-drag;
+  transition:
+    background 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
+}
+
+.bar .button:hover {
+  background: var(--ripple);
+}
+
+/* The contract's focus ring is `3px solid primary` at `outline-offset: 2px`.
+   The offset is inset here instead: these buttons sit flush against the top
+   and right edges of the window, so an outward ring would be drawn outside
+   the window and clipped away on two sides of every button. */
+.bar .button:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: -3px;
+}
+
+.bar .close:hover {
+  background: #C42B1C;
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar .button {
+    transition: none;
+  }
+}

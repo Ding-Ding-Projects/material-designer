@@ -37,6 +37,20 @@ describe("desktop preload host boundary", () => {
     expect(source).toContain("od:app-config-changed");
     expect(source).toContain("open-design:app-config-changed");
     expect(source).toContain("window.dispatchEvent(new CustomEvent(APP_CONFIG_CHANGED_EVENT))");
+    // Windows hides the OS caption bar, so the renderer paints the title bar
+    // and needs a route to the window. Pin the literal channel names: the
+    // preload cannot import `main/window-controls.ts` (a sandboxed preload may
+    // only require `electron`), so the two copies can only be kept honest here.
+    expect(source).toContain("windowControls");
+    expect(source).toContain("'od:window:minimize'");
+    expect(source).toContain("'od:window:toggle-maximize'");
+    expect(source).toContain("'od:window:close'");
+    expect(source).toContain("'od:window:is-maximized'");
+    expect(source).toContain("'od:window:maximized-changed'");
+    expect(source).toContain("subscribeMaximized");
+    // Optional namespace, exposed on win32 only, so every other platform's
+    // renderer feature-detects it away instead of drawing dead buttons.
+    expect(source).toContain("process.platform === 'win32' ? { windowControls } : {}");
     expect(source).not.toContain("@open-design/contracts");
     expect(source).not.toContain("exposeInMainWorld('electronAPI'");
     expect(source).not.toContain('exposeInMainWorld("__odDesktop"');

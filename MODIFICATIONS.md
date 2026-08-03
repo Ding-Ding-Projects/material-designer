@@ -29,6 +29,363 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The accent actually becomes Material Design 3, and motion stops being half-ported
+
+**Reason:** a fidelity review of the token mapping found three places where the
+port claimed more than it delivered. The first is the important one.
+
+**The accent family was mapped in name only.** `styles/tokens.css` defines
+`--accent` and its four derived tones as the M3 `primary` role, but nothing
+downstream ever saw them: `state/appearance.ts` wrote all five as **inline
+style on `<html>`**, and inline style outranks every stylesheet rule there is.
+`DEFAULT_ACCENT_COLOR` was the literal `#c96442`, `DEFAULT_CONFIG.accentColor`
+took that literal, and `App.tsx` fed it to `applyAppearanceToDocument` on every
+mount — so every install whose owner never opened the accent picker painted its
+primary CTAs the pre-port terracotta, in light *and* in dark, under every seed.
+The pre-hydration script in `app/layout.tsx` did the same thing with its own
+hardcoded copy of that hex before React even mounted. The most visible colour in
+the product was the one the mapping could not reach.
+
+The fix does not remove the inline write; it changes what gets written.
+`DEFAULT_ACCENT_COLOR` is now `var(--md-sys-color-primary)` — the role itself
+rather than a colour. Because a custom property's computed value is its
+specified value *after* `var()` substitution, an inline `--accent` holding a
+role reference resolves on `<html>` exactly as the stylesheet would have
+resolved it, and re-resolves when the theme or the seed changes. The four
+`color-mix()` tones already resolved their `--text-strong` and `--bg-panel`
+operands at use time and now resolve their accent operand the same way, so
+`accentVars()` itself needed no change at all.
+
+Three consequences had to be handled rather than left to fall out:
+
+1. **The sentinel must not look like a colour.** `var(--md-sys-color-primary)`
+   fails `normalizeAccentColor`'s `^#[0-9a-fA-F]{6}$` test, which is what makes
+   it safe: it can never be mistaken for a colour the user picked, it round
+   trips through `localStorage` (an unrecognised stored accent already falls
+   back to `DEFAULT_CONFIG.accentColor`, which is now this), and every existing
+   validation path treats it as "no explicit choice" without a new code branch.
+2. **Selecting the default swatch had to keep working.** `setAccentColor` fell
+   through `normalizeAccentColor(color) ?? c.accentColor`, so a value that does
+   not normalize would have silently kept the *previous* accent — clicking
+   "Default" would have done nothing. It now matches the role first.
+3. **`<input type="color">` cannot hold a role.** It only accepts a hex and
+   coerces anything else to black, so the custom-colour control opens on
+   `CUSTOM_ACCENT_FALLBACK`, the terracotta that used to be the default. That
+   hex also stays in `ACCENT_SWATCHES` as an ordinary pickable swatch, one click
+   from where it always was, so nobody who liked it loses it.
+
+The rest follows: `state/config.ts` needed no edit, because `DEFAULT_CONFIG`
+already spelled its default as `DEFAULT_ACCENT_COLOR`, and
+`tests/state/appearance.test.ts` needed none either, because it asserts against
+that constant rather than against the hex. The two suites that pinned the
+literal — `DEFAULT_CONFIG.accentColor` in `tests/state/config.test.ts`, and the
+two default-accent cases in `SettingsDialog.execution.test.tsx` — now pin the
+role, still as literals, so a future change to the default is still deliberate.
+
+**`--ease-out` is back on the app's own curve.** The previous entry repointed it
+to `var(--md-sys-motion-emphasized-decel)` and the comment claimed the animation
+philosophy survived the move. It did not: `AGENTS.md` still names
+`cubic-bezier(0.23, 1, 0.32, 1)` as the canonical curve, and — more concretely —
+roughly as many animations in `apps/web` write that curve as a **literal** as
+read the token (582 against 584), 23 stylesheets use both sources, and eight
+sites write the literal as the token's *own* `var()` fallback — so the repoint
+also made those fallbacks disagree with the token they back. The sharpest case
+is `styles/workspace/design-files.css`, which has a single `transition`
+shorthand where `opacity` takes the literal while `background`, `box-shadow` and
+`color` take the token: one element, four properties, two curves. Repointing the
+token therefore did not move the app onto the M3 curve, it split the app in
+half; the two curves differ by 0.22 of progress a tenth of the way in, which is
+enough for those four properties to visibly lead one another at the start of a
+200ms enter. Sweeping ~580 literals
+was not the trade this change wanted to make, so the token keeps the product's
+curve, the comment says why instead of claiming otherwise, `AGENTS.md` stays
+true, and the M3 curves remain declared next door for new M3 surfaces to use
+directly — which is what `components/WindowTitleBar.module.css` already does.
+
+**`--ui-scale` was a name the contract does not use.** The mockup emits the
+factor as `--od-scale` (`rootVars` at `Open Design M3.dc.html` line 2032) and
+`md3-tokens.css` transcribes every other contract invention verbatim, its own
+header comment included. Nothing in the repository reads either name yet, so the
+divergence was free to correct now and would have been a silent no-op later,
+when a control wired to the mockup's spelling wrote a property nothing declared.
+
+**Changed files:**
+
+- `apps/web/app/layout.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/tokens.css`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/state/config.test.ts`
+
+### 2026-08-04 — The renderer's own title bar, drawn where Windows draws none
+
+**Reason:** the previous entry took the operating system's caption bar away on
+win32 and gave the renderer an IPC bridge to replace it. Until something drew
+that replacement the Windows build had no minimize, no maximize and no close —
+this is the surface that draws it.
+
+`apps/web/src/components/WindowTitleBar.tsx` and its colocated
+`WindowTitleBar.module.css` are the whole bar, styled as a CSS Module beside
+the component the way `AGENTS.md`'s "Web CSS ownership" section asks new
+component-owned UI to be. Every value in it is the Material Design 3 contract
+transcribed from this repository's own mockup
+(`mockups/open-design-m3/Open Design M3.dc.html`, lines 146–157): a 40px
+`surface-container` strip, one hairline `outline-variant` border along the
+bottom only, 12px of padding on the left and none on the right so the buttons
+run to the window edge, the 20px brand mark in `primary`, the app name at
+12px/600 with `.02em` tracking in `on-surface-variant`, a flexible drag region,
+and three 46px caption buttons whose hover is the `--ripple` state layer —
+except Close, which takes the literal `#C42B1C` on `#fff` that the contract
+deliberately keeps outside the token system because it is the Windows system
+red rather than a role.
+
+Four things about it are load-bearing rather than cosmetic:
+
+1. **It renders nothing unless the host is the frameless Windows shell.** The
+   bridge must report a desktop client on `win32` *and* actually carry the
+   optional `windowControls` namespace. Either half alone would be enough
+   today, since the preload exposes that namespace on win32 only — asking both
+   is what stops a future change to one of them from painting caption buttons
+   that do nothing on macOS or Linux.
+2. **The maximized glyph follows the window, not the button.** It is seeded
+   from `isMaximized()` (a session reopened maximized reaches first paint that
+   way) and then tracks the bridge's push, because Windows changes the state
+   behind the app's back through snap layouts, Win+Up and a drag off the top
+   edge. The subscription is torn down on unmount.
+3. **The bar drags, the buttons do not.** The strip is
+   `-webkit-app-region: drag`; each button opts back out with `no-drag`, or a
+   click on one would begin a window drag instead of firing. Double-click to
+   toggle maximize is bound to the drag region rather than the whole bar, so a
+   double-click on Close cannot also maximize the window on its way up the
+   tree.
+4. **The button selectors are two-class (`.bar .button`) on purpose.**
+   `styles/primitives.css` styles bare `button`, and its
+   `button:hover:not(:disabled)` rule has specificity (0,2,1); a single-class
+   module rule would lose the hover the caption bar depends on and repaint it
+   in the product's generic button colours.
+
+Two deliberate departures from the mockup, both because the mockup is a
+demonstration page and this is the application:
+
+- The mockup's second title-bar span, `— Material 3 Expressive · Windows`,
+  describes the mockup itself and is not product copy, so the brand mark is the
+  logo and `app.brand` alone.
+- The contract's focus ring is `3px solid primary` at `outline-offset: 2px`.
+  The offset is inset here, because these buttons sit flush against the top and
+  right edges of the window and an outward ring would be drawn outside the
+  window and clipped away on two sides of every button.
+- The mockup's glyphs are Material Symbols Rounded (`minimize`, `crop_square`,
+  `close`), a font this application does not bundle and will not fetch. The bar
+  uses the app's own bundled Remix icon set at the contract's sizes —
+  `subtract-line` at 16px, `checkbox-blank-line`/`checkbox-multiple-blank-line`
+  at 15px, `close-line` at 17px — rather than adding a webfont for three
+  glyphs.
+
+`App.tsx` mounts it as the first child of the shell, above the existing
+`WorkspaceTabsBar` chrome; nothing else in the tree moved. `styles/shell.css`
+gains the one rule that change requires: `.workspace-shell` is a two-row grid,
+so a third child needs a third row. The rule selects on
+`:has(> [data-window-title-bar])` rather than on a second copy of the platform
+test, so the row count cannot drift away from whether the bar is actually on
+screen — and on every other platform the component renders nothing, the
+selector does not match, and the shell keeps the template it always had. The
+tab row in that template is `auto`, not a literal: `:has()` adds the
+specificity of its argument, so the rule outranks every bare `.workspace-shell`
+selector regardless of import order, and `styles/viewer/routines.css` already
+re-declares that template at a different height. Sizing the row to the chrome
+header's real height keeps the Windows path from being pinned to a number the
+header no longer uses.
+
+The four caption labels are new i18n keys (`titleBar.minimize`,
+`titleBar.maximize`, `titleBar.restore`, `titleBar.close`) added to the typed
+`Dict` and to all nineteen locale files, since a key missing from any one of
+them fails typecheck. They are standard window-control labels, so each locale
+uses the term that platform's users already read on those buttons rather than a
+literal translation.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/WindowTitleBar.module.css`
+- `apps/web/src/components/WindowTitleBar.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/styles/shell.css`
+- `apps/web/tests/components/WindowTitleBar.test.tsx`
+
+### 2026-08-04 — Frameless Windows window with a custom Material Design 3 title bar
+
+**Reason:** Windows builds showed the operating system's own title bar. The
+frameless chrome existed only for macOS, where `MAC_WINDOW_CHROME` spread
+`titleBarStyle: "hiddenInset"` plus a traffic-light position and spread an
+empty object everywhere else, so win32 fell through to the default caption bar
+— a grey strip of another design system sitting above a Material Design 3
+application.
+
+That constant is now `PLATFORM_WINDOW_CHROME` with a win32 branch of
+`{ titleBarStyle: "hidden" }`. The macOS branch is unchanged. Two neighbouring
+options were deliberately **not** used, and the reasons are worth recording
+because both look like the obvious fix:
+
+- **`frame: false`** removes the whole window frame, not just the caption bar,
+  and takes Windows 11's rounded corners, drop shadow and Alt+Space system menu
+  down with it. `titleBarStyle: "hidden"` leaves the window an ordinary framed
+  window that simply draws no caption bar.
+- **`titleBarOverlay`** keeps the OS drawing the caption buttons, in a
+  reserved region the app must dodge. That is precisely the chrome this change
+  exists to replace, so the buttons would be the operating system's and the
+  title bar around them would be the product's.
+
+One Windows 11 behaviour genuinely does not survive, and the code comment says
+so rather than claiming otherwise: the **snap-layouts flyout**. The OS raises it
+only while it hit-tests the pointer onto a maximize button — `WM_NCHITTEST`
+returning `HTMAXBUTTON` — and `-webkit-app-region: drag` reports `HTCAPTION` for
+the whole strip, with no Electron API to mark an HTML element as the maximize
+button short of letting `titleBarOverlay` draw the OS's own buttons there. So
+hovering the renderer's maximize button pops no flyout; Win+Z and drag-to-edge
+snapping still work. That is the cost of the caption bar being the product's.
+
+With no OS caption bar there is no OS route to minimize, maximize or close, so
+the renderer needs one. `apps/desktop/src/main/window-controls.ts` is a new
+module registering four IPC channels (`od:window:minimize`,
+`od:window:toggle-maximize`, `od:window:close`, `od:window:is-maximized`) and a
+`od:window:maximized-changed` push. Two properties of it are load-bearing:
+
+1. **Every handler verifies the sender is the main window.** The app enables
+   `webviewTag` and every frame in the process shares one preload, so an
+   embedded design-browser guest reaches the same channels; without the check
+   any page a user loaded in that panel could close the application. The check
+   and its message mirror `requireMainWindowSender`, which already guards the
+   updater and capture channels in `runtime.ts`.
+2. **The window's maximized state is pushed, not polled.** Windows changes it
+   behind the app's back — a snap layout, a double-clicked drag region, Win+Up,
+   or a drag off the top edge all bypass the renderer's own button — so a title
+   bar that only tracked its own clicks would show the wrong glyph. The main
+   window's `maximize`/`unmaximize` events fan out to the renderer, guarded
+   against a destroyed window.
+
+Both surfaces are declared structurally rather than against Electron's classes
+so `apps/desktop`'s vitest suite, which runs in a plain node environment with
+no Electron, can exercise the whole module with object mocks.
+
+The bridge namespace is **optional** (`windowControls?`) and exposed on win32
+only, so a renderer feature-detects it instead of drawing caption buttons that
+would do nothing on macOS and Linux. `packages/host` carries the type because
+it owns the host-bridge wire contract; the preload duplicates the channel-name
+literals for the same reason it already duplicates the updater ones — a
+sandboxed preload may only `require('electron')`, so it cannot import the
+main-process module that owns them. `apps/desktop/tests/main/window-chrome.test.ts`
+asserts the chrome as source text and would otherwise have gone red on this
+change; it now pins the win32 branch, the macOS branch, and the absence of both
+rejected options.
+
+**Changed files:**
+
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/window-controls.ts`
+- `apps/desktop/tests/main/preload-host-boundary.test.ts`
+- `apps/desktop/tests/main/window-chrome.test.ts`
+- `apps/desktop/tests/main/window-controls.test.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+
+### 2026-08-03 — Material Design 3 token sheet, and the layer that maps the app onto it
+
+**Reason:** the product had a hand-tuned neutral palette and no design system
+behind it. This adds the Material Design 3 contract as a sheet of its own and
+rewrites the existing token file into a mapping layer, so every component that
+already asks for `--bg`, `--text`, `--border`, `--radius` or `--ease-out`
+receives an M3 role without a single component being touched.
+
+The split is the point. `apps/web/src/styles/md3-tokens.css` is the contract,
+transcribed from this repository's own mockup
+(`mockups/open-design-m3/Open Design M3.dc.html`): the 34 light colour roles,
+the dark overrides, the four seed variants, the seven-step shape corner scale,
+the three motion curves, the density scale, the `--ripple` state layer, a
+`--ui-scale` factor, and a fifteen-role type scale assembled from the mockup's
+measured size, weight, line-height and letter-spacing vocabulary (the contract
+declares no typescale tokens of its own). It defines tokens and paints nothing.
+`apps/web/src/styles/tokens.css` keeps all 61 of its historical property names —
+none added, none removed — and redefines each in terms of a role. `index.css`
+gains one line so the contract is imported immediately before the mapping layer;
+nothing else moves, and it stays import-only as its own guard test requires,
+which is also why the explanatory comment lives in the two token sheets and not
+in `index.css`.
+
+Dark is declared under **both** selectors the app already uses — explicit
+`[data-theme="dark"]` and `html:not([data-theme])` under
+`@media (prefers-color-scheme: dark)` — because overriding only the first would
+leave every system-mode user on the old palette. Because the roles flip
+themselves, the mapping layer's duplicated dark block mostly disappeared.
+
+Three groups deliberately did **not** move:
+
+1. **The status/category palette** (`--green*`, `--blue*`, `--purple*`, `--red*`,
+   `--amber*`) is functional data colour, not chrome. The hue *is* the datum —
+   mention kind, cost tier, pass/fail — so folding it onto M3 roles would make
+   different categories indistinguishable. It keeps its own values and its own
+   dark block. `--amber-border` is still deliberately undefined, because
+   `workspace/mention-home.css` falls back through it to `--green-border`.
+2. **`--selected` / `--selected-soft`** are ambiguous and were left alone. M3
+   would call them `secondary`, but in this contract `secondary` is a warm brown
+   a few degrees off `primary` — which would collapse the exact CTA-versus-
+   selection distinction the token exists to hold — and they are theme-invariant
+   on purpose while every M3 role is not.
+3. **`--shadow-*`** keep their own light and dark values. The contract expresses
+   elevation as literal box-shadows and declares neither a `shadow` colour role
+   nor an elevation token set, so there is nothing to derive from.
+
+Also deliberate: `--text-strong` converges onto `on-surface`, M3's
+maximum-contrast text colour, rather than inventing a role above it; the two
+reading measures (`--prose-line-height`, `--code-line-height`) stay literal
+because they are long-form measures wider than any chrome role; and the accent
+group is written in terms of `primary` even though `state/appearance.ts` and the
+pre-hydration script in `app/layout.tsx` both set it inline on `<html>` and win.
+Neither writer needed changing: their stored `color-mix()` strings resolve
+against `--text-strong` and `--bg-panel` at use time, so a user's own accent is
+now mixed against M3 surfaces for free.
+
+Three style tests asserted the palette this change replaces, and were updated to
+the new architecture rather than to new expectations. `default-background` no
+longer reads a literal background hex out of `:root` but checks that `--bg` is
+the surface role and that the role carries the M3 value; `filter-pill` and
+`home-hero-picker-contrast` follow `var()` indirection to a hex before measuring
+contrast. All three also had to stop taking the *first* `:root` /
+`[data-theme="dark"]` block they found, since there are now two sheets that open
+one. The contrast thresholds they guard are still cleared — comfortably, because
+M3's `on-surface-variant` is a higher-contrast role than the `--text-muted` it
+replaces.
+
+**Changed files:**
+
+- `apps/web/src/index.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/tokens.css`
+- `apps/web/tests/styles/default-background.test.ts`
+- `apps/web/tests/styles/filter-pill.test.ts`
+- `apps/web/tests/styles/home-hero-picker-contrast.test.ts`
+
 ### 2026-08-03 — Separate application identity, so the two products can coexist
 
 **Reason:** these are correctness fixes, not cosmetics. Installed side by side,

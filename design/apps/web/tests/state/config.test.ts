@@ -1381,7 +1381,11 @@ describe('loadConfig', () => {
   it('sets an explicit apiProtocol for new default configs', () => {
     expect(DEFAULT_CONFIG.apiProtocol).toBe('anthropic');
     expect(DEFAULT_CONFIG.configMigrationVersion).toBe(2);
-    expect(DEFAULT_CONFIG.accentColor).toBe('#c96442');
+    // Pinned as a literal on purpose: the default accent is the Material
+    // Design 3 `primary` role, not a colour, because it is written as inline
+    // style on <html> and a hex there would outrank the stylesheet for every
+    // install that never picked an accent.
+    expect(DEFAULT_CONFIG.accentColor).toBe('var(--md-sys-color-primary)');
   });
 });
 

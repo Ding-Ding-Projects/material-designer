@@ -312,6 +312,24 @@ export type OpenDesignHostUpdaterOpenDialogRequest = {
 
 export type OpenDesignHostUpdaterOpenDialogListener = (request: OpenDesignHostUpdaterOpenDialogRequest) => void;
 
+export type OpenDesignHostWindowMaximizedListener = (maximized: boolean) => void;
+
+/**
+ * Caption-button controls for a host that draws no operating-system title bar
+ * and expects the renderer to paint its own. `subscribeMaximized` exists
+ * because the window can be maximized or restored without the renderer's
+ * button — a snap layout, a double-clicked drag region, or a keyboard shortcut
+ * — so the glyph has to follow the window rather than the last click.
+ */
+export type OpenDesignHostWindowControls = {
+  close(): Promise<void>;
+  isMaximized(): Promise<boolean>;
+  minimize(): Promise<void>;
+  subscribeMaximized(listener: OpenDesignHostWindowMaximizedListener): () => void;
+  /** Resolves with the window's maximized state after the toggle. */
+  toggleMaximize(): Promise<boolean>;
+};
+
 export type OpenDesignHostBridge = {
   browser: {
     clearData(options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult>;
@@ -349,6 +367,11 @@ export type OpenDesignHostBridge = {
     subscribeOpenDialog(listener: OpenDesignHostUpdaterOpenDialogListener): () => void;
   };
   version: typeof OPEN_DESIGN_HOST_VERSION;
+  // Optional, and absent on every host that keeps its native title bar — only
+  // the frameless Windows shell exposes it. Callers must feature-detect before
+  // drawing caption buttons, or they will draw buttons that do nothing on
+  // macOS and Linux.
+  windowControls?: OpenDesignHostWindowControls;
 };
 
 export type OpenDesignHostGlobalScope = Record<string, unknown> & {

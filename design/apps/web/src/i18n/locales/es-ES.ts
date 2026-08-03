@@ -4286,4 +4286,8 @@ export const esES: Dict = {
   'questions.uploadNeedsProject': 'La subida de archivos necesita un proyecto activo.',
   'questions.uploadPartialFailed': 'Se subieron {uploaded} archivo(s), pero {failed} fallaron.',
   'questions.uploadFailed': 'Falló la subida de {failed} archivo(s).',
+  'titleBar.minimize': 'Minimizar',
+  'titleBar.maximize': 'Maximizar',
+  'titleBar.restore': 'Restaurar',
+  'titleBar.close': 'Cerrar',
 };

@@ -4751,4 +4751,8 @@ export const zhTW: Dict = {
   "questions.uploadNeedsProject": "檔案上傳需要一個使用中的專案。",
   "questions.uploadPartialFailed": "已上傳 {uploaded} 個檔案，{failed} 個失敗。",
   "questions.uploadFailed": "有 {failed} 個檔案上傳失敗。",
+  "titleBar.minimize": "最小化",
+  "titleBar.maximize": "最大化",
+  "titleBar.restore": "還原",
+  "titleBar.close": "關閉",
 };

@@ -8,9 +8,32 @@ const ACCENT_VARS = [
   '--accent-hover',
 ] as const;
 
-export const DEFAULT_ACCENT_COLOR = '#c96442';
+/**
+ * The accent used until the user picks one, written as the Material Design
+ * 3 `primary` role rather than as a colour. That is load-bearing, not
+ * decorative: `applyAppearanceToDocument` below writes all five accent
+ * properties as inline style on `<html>`, which no stylesheet can outrank,
+ * so a literal hex here would pin one colour on every install whose owner
+ * never opens the accent picker — including in dark, where `primary` is a
+ * different tone, and under a different seed, where it is a different hue.
+ * As the role it resolves exactly the way `styles/tokens.css` declares it
+ * and follows the theme for free. It is deliberately not a valid `#rrggbb`,
+ * so `normalizeAccentColor` rejects it and it can never be confused with a
+ * colour the user chose.
+ */
+export const DEFAULT_ACCENT_COLOR = 'var(--md-sys-color-primary)';
+
+/**
+ * What the custom-colour control starts from while the accent is the
+ * default. `<input type="color">` can only hold a hex, so it cannot show a
+ * role; this is the terracotta the product used as its default accent
+ * before that default became the role.
+ */
+export const CUSTOM_ACCENT_FALLBACK = '#c96442';
+
 export const ACCENT_SWATCHES = [
   DEFAULT_ACCENT_COLOR,
+  CUSTOM_ACCENT_FALLBACK,
   '#2563eb',
   '#7c3aed',
   '#059669',

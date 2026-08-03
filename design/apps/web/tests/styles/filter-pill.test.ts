@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 
 const indexCss = readExpandedIndexCss();
+const tokenCss = indexCss.replace(/\/\*[\s\S]*?\*\//g, '');
 
 function cssBlock(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -10,10 +11,22 @@ function cssBlock(selector: string): string {
   return match[1] ?? '';
 }
 
-function cssVar(block: string, name: string): string {
-  const match = new RegExp(`${name}:\\s*([^;]+);`).exec(block);
-  if (!match) throw new Error(`Missing CSS variable ${name}`);
-  return match[1]!.trim();
+// Since the Material Design 3 port the token layer spans two sheets:
+// `md3-tokens.css` declares the `--md-sys-*` roles and `tokens.css` maps the
+// product names onto them. Both open a `:root` and a `[data-theme="dark"]`
+// block, so a themed lookup has to read every block for the selector, not the
+// first one the cascade happens to reach.
+function tokenVars(selector: string): Record<string, string> {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const blocks = [...tokenCss.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, 'g'))];
+  if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);
+  const vars: Record<string, string> = {};
+  for (const block of blocks) {
+    for (const declaration of (block[1] ?? '').matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/gi)) {
+      vars[declaration[1]!] = declaration[2]!.trim();
+    }
+  }
+  return vars;
 }
 
 function ruleValue(block: string, property: string): string {
@@ -22,14 +35,21 @@ function ruleValue(block: string, property: string): string {
   return match[1]!.trim();
 }
 
+/** Follow `var(--token)` indirection until a literal value is reached. */
 function resolveVar(value: string, variables: Record<string, string>): string {
-  const match = /^var\((--[^)]+)\)$/.exec(value);
-  if (!match) return value;
-  const key = match[1];
-  if (!key) throw new Error(`Invalid CSS variable reference ${value}`);
-  const resolved = variables[key];
-  if (!resolved) throw new Error(`Missing resolved value for ${match[1]}`);
-  return resolved;
+  let current = value.trim();
+  const seen = new Set<string>();
+  for (;;) {
+    const match = /^var\((--[^)]+)\)$/.exec(current);
+    if (!match) return current;
+    const key = match[1];
+    if (!key) throw new Error(`Invalid CSS variable reference ${current}`);
+    if (seen.has(key)) throw new Error(`Cyclic CSS variable reference ${key}`);
+    seen.add(key);
+    const resolved = variables[key];
+    if (!resolved) throw new Error(`Missing resolved value for ${key}`);
+    current = resolved.trim();
+  }
 }
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -62,14 +82,8 @@ function contrastRatio(foreground: string, background: string): number {
 
 describe('filter pill hover contrast', () => {
   it('keeps hover labels readable in light and dark themes', () => {
-    const rootVars = {
-      '--bg-muted': cssVar(cssBlock(':root'), '--bg-muted'),
-      '--text': cssVar(cssBlock(':root'), '--text'),
-    };
-    const darkVars = {
-      '--bg-muted': cssVar(cssBlock('[data-theme="dark"]'), '--bg-muted'),
-      '--text': cssVar(cssBlock('[data-theme="dark"]'), '--text'),
-    };
+    const rootVars = tokenVars(':root');
+    const darkVars = { ...rootVars, ...tokenVars('[data-theme="dark"]') };
     const hover = cssBlock('button.filter-pill:hover:not(:disabled)');
     const activeHover = cssBlock('button.filter-pill.active:hover:not(:disabled)');
     const countHover = cssBlock('button.filter-pill:hover:not(:disabled) .filter-pill-count,\n.filter-pill.active .filter-pill-count');

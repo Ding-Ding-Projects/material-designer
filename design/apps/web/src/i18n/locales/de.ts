@@ -4286,4 +4286,8 @@ export const de: Dict = {
   'questions.uploadNeedsProject': 'Zum Hochladen von Dateien wird ein aktives Projekt benötigt.',
   'questions.uploadPartialFailed': '{uploaded} Datei(en) hochgeladen, {failed} fehlgeschlagen.',
   'questions.uploadFailed': 'Hochladen von {failed} Datei(en) fehlgeschlagen.',
+  'titleBar.minimize': 'Minimieren',
+  'titleBar.maximize': 'Maximieren',
+  'titleBar.restore': 'Wiederherstellen',
+  'titleBar.close': 'Schließen',
 };

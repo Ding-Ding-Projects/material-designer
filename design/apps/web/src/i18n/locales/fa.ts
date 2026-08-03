@@ -4281,4 +4281,8 @@ export const fa: Dict = {
   'questions.uploadNeedsProject': 'بارگذاری فایل به یک پروژه فعال نیاز دارد.',
   'questions.uploadPartialFailed': '{uploaded} فایل بارگذاری شد، اما {failed} ناموفق بود.',
   'questions.uploadFailed': 'بارگذاری {failed} فایل ناموفق بود.',
+  'titleBar.minimize': 'کوچک کردن',
+  'titleBar.maximize': 'بزرگ کردن',
+  'titleBar.restore': 'بازیابی',
+  'titleBar.close': 'بستن',
 };

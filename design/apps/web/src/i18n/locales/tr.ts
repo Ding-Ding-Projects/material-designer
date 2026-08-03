@@ -4286,4 +4286,8 @@ export const tr: Dict = {
   'questions.uploadNeedsProject': 'Dosya yüklemek için etkin bir proje gerekir.',
   'questions.uploadPartialFailed': '{uploaded} dosya yüklendi, {failed} dosya başarısız oldu.',
   'questions.uploadFailed': '{failed} dosya yüklenemedi.',
+  'titleBar.minimize': 'Simge durumuna küçült',
+  'titleBar.maximize': 'Ekranı kapla',
+  'titleBar.restore': 'Önceki boyut',
+  'titleBar.close': 'Kapat',
 };

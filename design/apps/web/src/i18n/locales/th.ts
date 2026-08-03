@@ -4286,4 +4286,8 @@ export const th: Dict = {
   'questions.uploadNeedsProject': 'การอัปโหลดไฟล์ต้องมีโปรเจกต์ที่ใช้งานอยู่',
   'questions.uploadPartialFailed': 'อัปโหลดแล้ว {uploaded} ไฟล์ แต่ล้มเหลว {failed} ไฟล์',
   'questions.uploadFailed': 'อัปโหลดล้มเหลว {failed} ไฟล์',
+  'titleBar.minimize': 'ย่อเล็กสุด',
+  'titleBar.maximize': 'ขยายใหญ่สุด',
+  'titleBar.restore': 'คืนค่า',
+  'titleBar.close': 'ปิด',
 };

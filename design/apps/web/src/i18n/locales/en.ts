@@ -4300,4 +4300,8 @@ export const en: Dict = {
   'questions.uploadNeedsProject': 'File upload needs an active project.',
   'questions.uploadPartialFailed': 'Uploaded {uploaded} file(s), but {failed} failed.',
   'questions.uploadFailed': 'File upload failed for {failed} file(s).',
+  'titleBar.minimize': 'Minimize',
+  'titleBar.maximize': 'Maximize',
+  'titleBar.restore': 'Restore',
+  'titleBar.close': 'Close',
 };

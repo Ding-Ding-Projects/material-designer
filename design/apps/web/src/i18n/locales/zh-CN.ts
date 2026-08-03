@@ -4743,4 +4743,8 @@ export const zhCN: Dict = {
   "questions.uploadNeedsProject": "文件上传需要一个活跃的项目。",
   "questions.uploadPartialFailed": "已上传 {uploaded} 个文件，{failed} 个失败。",
   "questions.uploadFailed": "有 {failed} 个文件上传失败。",
+  "titleBar.minimize": "最小化",
+  "titleBar.maximize": "最大化",
+  "titleBar.restore": "还原",
+  "titleBar.close": "关闭",
 };

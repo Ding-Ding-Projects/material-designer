@@ -4286,4 +4286,8 @@ export const fr: Dict = {
   'questions.uploadNeedsProject': 'L’envoi de fichiers nécessite un projet actif.',
   'questions.uploadPartialFailed': '{uploaded} fichier(s) envoyé(s), mais {failed} en échec.',
   'questions.uploadFailed': 'Échec de l’envoi de {failed} fichier(s).',
+  'titleBar.minimize': 'Réduire',
+  'titleBar.maximize': 'Agrandir',
+  'titleBar.restore': 'Restaurer',
+  'titleBar.close': 'Fermer',
 };

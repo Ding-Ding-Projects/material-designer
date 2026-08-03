@@ -60,6 +60,8 @@ export type {
   OpenDesignHostUpdaterMenuLabels,
   OpenDesignHostUpdaterOpenDialogRequest,
   OpenDesignHostUpdaterOpenDialogListener,
+  OpenDesignHostWindowMaximizedListener,
+  OpenDesignHostWindowControls,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";

@@ -194,6 +194,7 @@ import {
 } from './Theater';
 import {
   ACCENT_SWATCHES,
+  CUSTOM_ACCENT_FALLBACK,
   DEFAULT_ACCENT_COLOR,
   applyAppearanceToDocument,
   normalizeAccentColor,
@@ -8582,7 +8583,11 @@ function AppearanceSection({
   }, [current, currentAccent]);
 
   const setAccentColor = (color: string) => {
-    setCfg((c) => ({ ...c, accentColor: normalizeAccentColor(color) ?? c.accentColor ?? DEFAULT_ACCENT_COLOR }));
+    // The default swatch is the M3 `primary` role, not a hex, so it never
+    // normalizes — match it first or picking "Default" would fall through to
+    // `c.accentColor` and leave the previous accent in place.
+    const picked = color === DEFAULT_ACCENT_COLOR ? DEFAULT_ACCENT_COLOR : normalizeAccentColor(color);
+    setCfg((c) => ({ ...c, accentColor: picked ?? c.accentColor ?? DEFAULT_ACCENT_COLOR }));
   };
 
   return (
@@ -8643,7 +8648,10 @@ function AppearanceSection({
             type="color"
             aria-label={customAccentLabel}
             className="pet-swatch-picker"
-            value={currentAccent}
+            // A color input can only hold a hex, so while the accent is the
+            // default (the `primary` role) it opens on the concrete colour
+            // that role started from rather than being coerced to black.
+            value={normalizeAccentColor(currentAccent) ?? CUSTOM_ACCENT_FALLBACK}
             onChange={(e) => setAccentColor(e.target.value)}
           />
         </div>

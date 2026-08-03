@@ -1,37 +1,85 @@
 /* ============================================================
-   Open Design — neutral product workspace
+   Open Design — Material Design 3 mapping layer
+   ============================================================
+   Every product token the app has ever used keeps its name here and is
+   redefined in terms of a Material Design 3 role from `md3-tokens.css`.
+   Nothing that consumes `--bg`, `--text`, `--radius` or the rest had to
+   change: the components ask for the same names and now receive M3.
+
+   That is why the token layer is two files. `md3-tokens.css` is the design
+   contract — colour roles, seeds, shape, motion, density, state layer and
+   type scale, transcribed from the mockup and owned by the design system.
+   This file is the product's vocabulary mapped onto it, and it is the only
+   place that knows both. Reskin by editing the contract; rename or retire a
+   product token by editing this file. `index.css` imports the contract
+   first, so every role below is already defined by the time it is read.
+
+   The dark blocks collapsed. M3 roles flip themselves between light and
+   dark, so a token defined as one colour role needs no dark restatement —
+   and neither does a `color-mix()` whose operands are all roles, because
+   both sides flip together. `color-scheme` moved to the contract with the
+   palette it belongs to. What survives in dark is what no role can produce:
+   the functional data colours and elevation. A third group, the selection
+   indicator, is theme-invariant on purpose and stays unmapped. Each says
+   why at its own declaration.
    ============================================================ */
 :root {
-  /* Surface palette — neutral app chrome that does not bias generated artifacts.
-     Keep warm/brand colors out of preview backgrounds; generated product UI
-     must choose its own palette through the active skill/design brief. */
-  --bg: #faf9f7;
-  --bg-app: #faf9f7;
-  --bg-panel: #fdfcfa;
-  --bg-subtle: #f4f5f7;
-  --bg-muted: #eef1f5;
-  --bg-fill-tertiary: rgba(0, 0, 0, 0.03);
-  --bg-fill-secondary: rgba(0, 0, 0, 0.06);
-  --bg-fill: rgba(0, 0, 0, 0.12);
-  --bg-elevated: #fffefc;
-  --border: #e1e5eb;
-  --border-strong: #c9d0da;
-  --border-soft: #edf0f4;
+  /* Surfaces map onto the M3 container ramp, which carries the elevation
+     semantic in both themes: base surface, then low / regular / high for
+     panels and fills, then highest for anything that floats above them.
+     The ramp inverts direction per theme by design — raised surfaces read
+     lighter in dark and more tinted in light — which is exactly what the
+     hand-tuned pairs here used to do by hand. */
+  --bg: var(--md-sys-color-surface);
+  --bg-app: var(--md-sys-color-surface);
+  --bg-panel: var(--md-sys-color-surface-container-low);
+  --bg-subtle: var(--md-sys-color-surface-container);
+  --bg-muted: var(--md-sys-color-surface-container-high);
+  /* Translucent fills are state layers: `on-surface` at a fixed opacity,
+     which is near-black in light and near-white in dark, so one ladder
+     serves both themes instead of two hand-written rgba sets. */
+  --bg-fill-tertiary: color-mix(in srgb, var(--md-sys-color-on-surface) 4%, transparent);
+  --bg-fill-secondary: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  --bg-fill: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  --bg-elevated: var(--md-sys-color-surface-container-highest);
+  --border: var(--md-sys-color-outline-variant);
+  --border-strong: var(--md-sys-color-outline);
+  /* No M3 role sits below `outline-variant`, so the hairline is derived by
+     pulling that role halfway back toward the surface it draws on. */
+  --border-soft: color-mix(in srgb, var(--md-sys-color-outline-variant) 50%, var(--md-sys-color-surface));
 
-  --text: #1a1916;
-  --text-strong: #0d0c0a;
-  --text-muted: #74716b;
-  --text-soft: #989590;
-  --text-faint: #b3b0a8;
+  /* `on-surface` is M3's maximum-contrast text colour; the contract has no
+     stronger role, so `--text-strong` converges onto it rather than being
+     invented. The lower tiers step `on-surface-variant` back toward the
+     surface, which keeps their contrast ratio stable across both themes. */
+  --text: var(--md-sys-color-on-surface);
+  --text-strong: var(--md-sys-color-on-surface);
+  --text-muted: var(--md-sys-color-on-surface-variant);
+  --text-soft: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 72%, var(--md-sys-color-surface));
+  --text-faint: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 48%, var(--md-sys-color-surface));
 
-  /* Accent — Open Design action color for app chrome only. */
-  --accent: #c96442;
-  --accent-strong: #b45a3b;
-  --accent-soft: #f5d8cb;
-  --accent-tint: #fbeee5;
-  --accent-hover: #b45a3b;
+  /* Accent — the M3 primary role, and the values below are the fallback
+     rather than the usual computed result: `state/appearance.ts` and the
+     pre-hydration script in `app/layout.tsx` both write all five as inline
+     style on `<html>`, which no stylesheet can outrank. What matters is
+     that their stored `color-mix()` strings resolve against `--text-strong`
+     and `--bg-panel` at use time, so the user's own accent is still mixed
+     against M3 surfaces without either writer being touched. */
+  --accent: var(--md-sys-color-primary);
+  --accent-strong: color-mix(in srgb, var(--md-sys-color-primary) 86%, var(--text-strong));
+  --accent-soft: color-mix(in srgb, var(--md-sys-color-primary) 22%, var(--bg-panel));
+  --accent-tint: color-mix(in srgb, var(--md-sys-color-primary) 12%, var(--bg-panel));
+  --accent-hover: color-mix(in srgb, var(--md-sys-color-primary) 90%, var(--text-strong));
 
-  /* Semantic accent tints used by tool / status pills. */
+  /* Semantic accent tints used by tool / status pills.
+     EXEMPT FROM THE MAPPING — these are functional data colors, not chrome.
+     The hue *is* the datum: mention kind (connector green, MCP purple), cost
+     tier (green cheap, amber expensive), and pass/fail status all encode
+     meaning in the color itself. Folding them onto M3 roles would make
+     different categories indistinguishable, so they keep their own values
+     and their own dark block. Note there is deliberately no `--amber-border`:
+     `workspace/mention-home.css` falls back through it, and defining one here
+     would silently repaint that rule. */
   --green: #1f7a3a;
   --green-bg: #e8f7ee;
   --green-border: #c6ead2;
@@ -47,83 +95,89 @@
   --amber: #b26200;
   --amber-bg: #fff3e0;
 
+  /* Elevation keeps its own values, light and dark. The contract expresses
+     elevation as literal box-shadows and declares neither a `shadow` color
+     role nor an `--md-sys-elevation-*` set, so there is nothing to map onto
+     and nothing that would flip on its own. */
   --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
   --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
   --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
   --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
 
   /* Corner-radius scale — the only radii UI should reach for (Shape
-     Consistency Lock). xs for inline code / micro-chips, sm for controls,
-     base for cards/menus, md for medium containers, lg for large surfaces,
-     pill for fully-rounded interactive. Off-scale values (7px, 9px, 10px
-     literals) are drift; collapse them to the nearest token. */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-pill: 999px;
+     Consistency Lock), now the M3 shape corner scale. Three steps land on a
+     token exactly; the two that do not (6px, 10px) are the midpoints of the
+     neighbouring steps and are computed as such, so the ladder keeps its
+     six distinct rungs and still follows the scale if the scale is retuned.
+     Off-scale literals (7px, 9px) remain drift; collapse them to a token. */
+  --radius-xs: var(--md-sys-shape-corner-xs);
+  --radius-sm: calc((var(--md-sys-shape-corner-xs) + var(--md-sys-shape-corner-s)) / 2);
+  --radius: var(--md-sys-shape-corner-s);
+  --radius-md: calc((var(--md-sys-shape-corner-s) + var(--md-sys-shape-corner-m)) / 2);
+  --radius-lg: var(--md-sys-shape-corner-m);
+  --radius-pill: var(--md-sys-shape-corner-full);
 
-  /* Motion — codifies the UI animation philosophy (see AGENTS.md). The
-     built-in `ease` curve is too weak and `ease-in` is banned for UI;
-     --ease-out is the single canonical curve for product transitions.
-     Enter reads gentle, exit reads decisive (asymmetric durations);
-     --dur-quick is for hover / focus micro-feedback. */
+  /* Motion — the UI animation philosophy (see AGENTS.md) is unchanged, and
+     so is its curve: one canonical decelerating ease-out, `ease-in` still
+     banned, enter gentle and exit decisive. This is deliberately NOT mapped
+     onto `--md-sys-motion-emphasized-decel`, because this token is only
+     half the story. Roughly as many animations write `cubic-bezier(0.23, 1,
+     0.32, 1)` as a literal as read this token, 23 stylesheets use both
+     sources, and eight sites write the literal as this token's own `var()`
+     fallback — so repointing it would not move the app onto the M3 curve,
+     it would split the app in two and make those fallbacks disagree with
+     the token they back. `workspace/design-files.css` has one `transition`
+     shorthand where `opacity` takes the literal and `background`,
+     `box-shadow` and `color` take this token: the two curves differ by 0.22
+     of progress a tenth of the way in, so one element's four properties
+     would visibly lead one another. The M3 curves are declared next door
+     and new M3 surfaces reach for them directly, which is what
+     `components/WindowTitleBar.module.css` does. The three durations stay
+     literal because the contract declares no duration tokens at all — the
+     mockup writes every duration inline — so there is no role to defer to
+     and these remain the app's own answer. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --dur-quick: 120ms;
   --dur-enter: 200ms;
   --dur-exit: 140ms;
 
   /* "Active option" indicator color, intentionally separate from --accent
-     (brand orange used by primary CTAs like Create / Save). Use --selected
-     for "this option is the one currently picked" affordances — selected
-     fidelity card, focused input ring, active filter pill — so a primary
-     CTA and a selected state can coexist on the same screen without
-     competing. --selected-soft is the 16% tint for outer rings / fills. */
+     (used by primary CTAs like Create / Save). Use --selected for "this
+     option is the one currently picked" affordances — selected fidelity
+     card, focused input ring, active filter pill — so a primary CTA and a
+     selected state can coexist on the same screen without competing.
+     --selected-soft is the 16% tint for outer rings / fills.
+     LEFT UNMAPPED, deliberately. It is ambiguous: M3 would call it
+     `secondary`, but in this contract `secondary` is a warm brown a few
+     degrees from `primary`, which would collapse the very distinction this
+     token exists to hold. It is also theme-invariant on purpose, and every
+     M3 role is not. Left alone until that call is made on purpose. */
   --selected: #2563eb;
   --selected-soft: rgba(37, 99, 235, 0.16);
 
-  --serif: 'Source Serif Pro', 'Source Serif 4', 'Iowan Old Style', 'Apple Garamond', Georgia, 'Times New Roman', serif;
-  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  /* Type — the M3 reference typefaces. Roboto Flex leads each stack and the
+     platform chain behind it is unchanged, so no locale loses its face. */
+  --serif: var(--md-ref-typeface-serif);
+  --sans: var(--md-ref-typeface-plain);
+  --mono: var(--md-ref-typeface-mono);
 
-  --prose-font-size: 15px;
+  /* Prose and code sizes take their M3 body roles. The two line-heights do
+     not: they are reading measures for long-form markdown and code
+     listings, tuned wider than any chrome role in the type scale, and
+     forcing them onto one would retypeset every rendered message. */
+  --prose-font-size: var(--md-sys-typescale-body-large-size);
   --prose-line-height: 1.75;
-  --code-header-bg: #f4f5f7;
-  --code-body-bg: #f9fafb;
-  --code-font-size: 13px;
+  --code-header-bg: var(--md-sys-color-surface-container-high);
+  --code-body-bg: var(--md-sys-color-surface-container);
+  --code-font-size: var(--md-sys-typescale-body-small-size);
   --code-line-height: 1.65;
 }
 
-/* Dark theme variables — shared between explicit [data-theme="dark"] and the
-   OS-level prefers-color-scheme media query (system mode = no data-theme attr). */
+/* What is left of dark: the functional data colors and elevation. Everything
+   else now flips through its M3 role. Kept under both selectors the app uses
+   — explicit `[data-theme="dark"]` and the OS query for system mode — so the
+   two routes stay identical, exactly as before. */
 [data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #1a1917;
-  --bg-app: #1a1917;
-  --bg-panel: #222120;
-  --bg-subtle: #252321;
-  --bg-muted: #2e2c29;
-  --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-  --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-  --bg-fill: rgba(255, 255, 255, 0.16);
-  --bg-elevated: #2a2825;
-  --border: #333128;
-  --border-strong: #46433c;
-  --border-soft: #2a2825;
-
-  --text: #e8e4dc;
-  --text-strong: #f2ede4;
-  --text-muted: #9a9690;
-  --text-soft: #6e6b65;
-  --text-faint: #4e4b46;
-
-  --accent: #d97a56;
-  --accent-strong: #e8896a;
-  --accent-soft: #3d2318;
-  --accent-tint: #2e1a12;
-  --accent-hover: #e8896a;
-
   --green: #4caf72;
   --green-bg: #0f2a18;
   --green-border: #1a4028;
@@ -143,40 +197,11 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
-
-  --code-header-bg: #1e1e20;
-  --code-body-bg: #18181b;
 }
 
 /* System mode: follow OS preference when no explicit data-theme is set. */
 @media (prefers-color-scheme: dark) {
   html:not([data-theme]) {
-    color-scheme: dark;
-    --bg: #1a1917;
-    --bg-app: #1a1917;
-    --bg-panel: #222120;
-    --bg-subtle: #252321;
-    --bg-muted: #2e2c29;
-    --bg-fill-tertiary: rgba(255, 255, 255, 0.06);
-    --bg-fill-secondary: rgba(255, 255, 255, 0.10);
-    --bg-fill: rgba(255, 255, 255, 0.16);
-    --bg-elevated: #2a2825;
-    --border: #333128;
-    --border-strong: #46433c;
-    --border-soft: #2a2825;
-
-    --text: #e8e4dc;
-    --text-strong: #f2ede4;
-    --text-muted: #9a9690;
-    --text-soft: #6e6b65;
-    --text-faint: #4e4b46;
-
-    --accent: #d97a56;
-    --accent-strong: #e8896a;
-    --accent-soft: #3d2318;
-    --accent-tint: #2e1a12;
-    --accent-hover: #e8896a;
-
     --green: #4caf72;
     --green-bg: #0f2a18;
     --green-border: #1a4028;
@@ -196,8 +221,5 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
-
-    --code-header-bg: #1e1e20;
-    --code-body-bg: #18181b;
   }
 }

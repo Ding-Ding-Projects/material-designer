@@ -4609,7 +4609,10 @@ describe('SettingsDialog appearance interactions', () => {
     );
 
     expect(screen.getByRole('radio', { name: 'Default accent color' }).getAttribute('aria-checked')).toBe('true');
-    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#c96442');
+    // The default accent is the M3 `primary` role rather than a hex, so the
+    // inline value the live preview writes stays a role reference and keeps
+    // following the theme instead of pinning one colour on <html>.
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('var(--md-sys-color-primary)');
   });
 
   it('live previews explicit themes and removes the explicit document theme when switching back to System', () => {
@@ -4801,12 +4804,12 @@ describe('SettingsDialog appearance interactions', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'Default accent color' }));
 
-    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#c96442');
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('var(--md-sys-color-primary)');
 
     await waitForPersist(
       onPersist,
       expect.objectContaining({
-        accentColor: '#c96442',
+        accentColor: 'var(--md-sys-color-primary)',
       }),
       {},
     );

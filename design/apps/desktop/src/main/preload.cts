@@ -16,6 +16,7 @@ import type {
   OpenDesignHostUpdaterOpenDialogRequest,
   OpenDesignHostUpdaterStatusListener,
   OpenDesignHostUpdaterStatusSnapshot,
+  OpenDesignHostWindowMaximizedListener,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -24,6 +25,14 @@ const UPDATER_STATUS_EVENT = 'od:update:status-changed';
 const UPDATER_OPEN_DIALOG_EVENT = 'od:update:open-dialog';
 const APP_CONFIG_CHANGED_IPC_CHANNEL = 'od:app-config-changed';
 const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
+// Duplicated from main/window-controls.ts on purpose, for the same reason the
+// updater channel names are: a sandboxed preload may only require `electron`,
+// so it cannot import the main-process module that owns these literals.
+const WINDOW_MINIMIZE_IPC_CHANNEL = 'od:window:minimize';
+const WINDOW_TOGGLE_MAXIMIZE_IPC_CHANNEL = 'od:window:toggle-maximize';
+const WINDOW_CLOSE_IPC_CHANNEL = 'od:window:close';
+const WINDOW_IS_MAXIMIZED_IPC_CHANNEL = 'od:window:is-maximized';
+const WINDOW_MAXIMIZED_EVENT = 'od:window:maximized-changed';
 
 // Mirror of the argv prefix used by main's `applyOsLocaleSwitch` and
 // runtime's `additionalArguments`. Duplicated literal on purpose: the
@@ -296,6 +305,26 @@ const updater = {
   },
 };
 
+// Caption buttons for the frameless Windows shell, where the OS draws no
+// title bar and the renderer paints a Material Design 3 one instead. The main
+// process rejects any sender that is not the main window, so an embedded
+// webview sharing this preload cannot drive the application window.
+const windowControls = {
+  close: (): Promise<void> => ipcRenderer.invoke(WINDOW_CLOSE_IPC_CHANNEL),
+  isMaximized: (): Promise<boolean> => ipcRenderer.invoke(WINDOW_IS_MAXIMIZED_IPC_CHANNEL),
+  minimize: (): Promise<void> => ipcRenderer.invoke(WINDOW_MINIMIZE_IPC_CHANNEL),
+  subscribeMaximized: (listener: OpenDesignHostWindowMaximizedListener): (() => void) => {
+    const handler = (_event: unknown, maximized: unknown): void => {
+      listener(maximized === true);
+    };
+    ipcRenderer.on(WINDOW_MAXIMIZED_EVENT, handler);
+    return () => {
+      ipcRenderer.removeListener(WINDOW_MAXIMIZED_EVENT, handler);
+    };
+  },
+  toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke(WINDOW_TOGGLE_MAXIMIZE_IPC_CHANNEL),
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -328,6 +357,10 @@ const hostBridge = {
       ipcRenderer.send('desktop-pet:set-visible', Boolean(visible)),
   },
   updater,
+  // win32 only: every other platform keeps its native title bar, so the
+  // namespace is absent there and the renderer feature-detects rather than
+  // drawing caption buttons that would do nothing.
+  ...(process.platform === 'win32' ? { windowControls } : {}),
 } satisfies OpenDesignHostBridge;
 
 contextBridge.exposeInMainWorld(OPEN_DESIGN_HOST_GLOBAL, hostBridge);
