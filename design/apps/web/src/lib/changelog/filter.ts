@@ -170,13 +170,20 @@ export interface ChangelogExportLabels {
 }
 
 function commitSuffix(entry: ChangelogEntry, labels: ChangelogExportLabels): string {
-  // Bound to a local so the discriminant narrows. Narrowing a nested property
-  // path (`entry.commit.state`) does not carry past the early returns here, and
-  // the union is genuinely exhausted by them — the compiler simply cannot see
-  // it through the property access.
+  // Narrowed by testing for `verified` rather than by excluding the two
+  // failure states one at a time.
+  //
+  // The reason is worth the comment: the missing-commit member's `state` is
+  // itself a union of two literals. Excluding one of them cannot remove that
+  // member, because the member is still reachable through its other literal,
+  // and TypeScript has no way to represent "this member, minus one of its
+  // states". So excluding both in sequence never eliminates it, and the
+  // properties that only the verified member has stay invisible — which is
+  // exactly what happened here. Testing positively for the state we want
+  // narrows in one step.
   const commit = entry.commit;
-  if (commit.state === 'unrecorded') return ` — ${labels.commitUnrecorded}`;
-  if (commit.state === 'unresolved') {
+  if (commit.state !== 'verified') {
+    if (commit.state === 'unrecorded') return ` — ${labels.commitUnrecorded}`;
     const named = commit.referenced.join(', ');
     return ` — ${labels.commitUnresolved}${named.length > 0 ? ` (${named})` : ''}`;
   }
