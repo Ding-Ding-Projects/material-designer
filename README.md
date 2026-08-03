@@ -11,12 +11,12 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.16.1-lightgrey)
 
 > [!NOTE]
-> No build has been produced from this repository yet. There is no release and no
-> installer, and no continuous-integration run outcome has been observed. The
-> workflows that would produce one exist and are readable; that is a statement
-> about committed files, not about results. Everything below that is claimed as
-> verified says exactly how it was verified; everything else is stated as not yet
-> done. See [Status](#status).
+> **There is no release and no installer yet.** Continuous integration has verified
+> the port, installed the workspace, typechecked it and run its unit suites — all
+> observed, all green — and has published the documentation site. What it has *not*
+> yet done is produce an installer or start the application. Everything claimed as
+> verified below says exactly how it was verified; everything else is stated as not
+> yet done. See [Status](#status).
 
 ## What this is
 
@@ -70,16 +70,24 @@ scripts/verify-port.sh
 `declared` moves as more of the rebrand lands; **`gaps` is the number that must stay at 0**.
 Prefer the script's answer over this paragraph's.
 
-**The application has never been built or run by this repository.** No dependency has been
-installed, no workspace package compiled, no test executed, no installer produced, and no
-screenshot taken from a real build. Anything about runtime behaviour in this repository's
-documents is inherited from upstream's own documentation or read from source, not observed.
+**What continuous integration has actually proven.** These are observed run outcomes, not
+predictions:
 
-**Three workflows exist; no run of any of them has been observed.** The repository root
-holds `.github/workflows/verify.yml` (*Verify*), `.github/workflows/release.yml` (*Release*)
-and `.github/workflows/pages.yml` (*Pages*), written for this project. They are committed
-definitions, not evidence: this repository has recorded no run outcome for any of them, so
-treat every job below as unproven until a run link says otherwise.
+| Check | Where | Outcome |
+| --- | --- | --- |
+| Port integrity on a clean checkout | *Verify*, Linux | ✅ 11,799 files, 67 declared, 0 gaps |
+| Workspace install — native modules compiled from source | *Release*, Windows | ✅ |
+| Full workspace typecheck, with the rebrand in place | *Release*, Windows | ✅ |
+| Unit suites for `tools-pack`, `packaged`, `desktop` | *Verify*, Linux | ✅ |
+| Windows identity, paths, build targets, launcher payload | *Release*, Windows | ✅ 20 files, 121 tests |
+| Site deployment | *Pages* | ✅ published and serving |
+| **Windows installer build** | *Release*, Windows | ⏳ **not yet observed** |
+| **Packaged smoke test — install, launch, health check, uninstall** | *Release*, Windows | ⏳ **not yet observed** |
+
+**The application itself has still never been run.** Everything above proves it compiles,
+that its logic tests hold, and that the port has not drifted. None of it starts the program.
+Any statement about runtime behaviour in this repository is read from source or inherited
+from upstream's documentation — not observed.
 
 Separately, upstream ships 48 workflow files under `design/.github/workflows/`. GitHub
 Actions only reads workflows at the repository root, so every one of those is inert here.
@@ -514,9 +522,9 @@ Alongside it in the repository root:
 - [`AGENTS.md`](AGENTS.md) — the rules an agent working in this repository must follow.
 - [`MODIFICATIONS.md`](MODIFICATIONS.md) — the licence notice and the enforced allowlist.
 
-`CHANGELOG.md` is not written yet — there is nothing released for it to describe. It is
-tracked as work in [`ROADMAP.md`](ROADMAP.md) §1.2, and this list will link it once the file
-exists rather than pointing at one that does not.
+- [`CHANGELOG.md`](CHANGELOG.md) — every notable change, each linking the commit that made
+  it. All of it sits under `[Unreleased]`, because nothing has been released yet, and it
+  carries a "Not done yet" section so the shape of the remaining work is visible too.
 
 The project's documentation site is published at
 **<https://ding-ding-projects.github.io/material-designer/>**, which is also the repository's
