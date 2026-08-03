@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from "@open-design/components";
+import { Dialog, DialogFooter, DialogTitle } from "@open-design/components";
 import { projectKindFromMetadataToTracking } from "@open-design/contracts/analytics";
 import { useAnalytics } from "../analytics/provider";
 import {
@@ -20,6 +20,7 @@ import type {
 	SkillSummary,
 } from "../types";
 import { AnimatePresence } from "motion/react";
+import { DestructiveGate } from "./destructive/DestructiveGate";
 import { Icon } from "./Icon";
 import {
 	isDesignSystemProject,
@@ -27,6 +28,7 @@ import {
 	resolveProjectDesignSystemId,
 } from "./design-system-project";
 import { LiveArtifactBadges } from "./LiveArtifactBadges";
+import { notify } from "./notifications/notificationStore";
 import { Toast } from "./Toast";
 import {
 	HtmlProjectCoverFrame,
@@ -104,7 +106,6 @@ export function DesignsTab({
 	isActive = true,
 }: Props) {
 	const renameTitleId = useId();
-	const confirmTitleId = useId();
 	const t = useT();
 	const analytics = useAnalytics();
 	// P0 page_view page_name=projects — fire once when the tab mounts so
@@ -140,12 +141,38 @@ export function DesignsTab({
 	const projectsRefreshInFlightRef = useRef(false);
 	const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
 	const [renameInput, setRenameInput] = useState("");
+	// Every one of the three things this can hold deletes something a user
+	// cannot get back, so the shape carries what the super-confirmation gate
+	// has to state: the action, the thing it acts on by its real name, and one
+	// line per piece of data that goes. `onConfirm` may report failure — a
+	// `false` return leaves the gate open saying so, rather than closing on a
+	// delete that did not happen.
 	const [confirmTarget, setConfirmTarget] = useState<{
-		title: string;
-		message: string;
-		confirmLabel: string;
-		onConfirm: () => void;
+		action: string;
+		target: string;
+		items: string[];
+		detail?: string;
+		onConfirm: () => Promise<boolean | void> | boolean | void;
 	} | null>(null);
+	// Everything this tab announces is also recorded, so a toast that expired
+	// while the user was elsewhere is still readable in the notification
+	// centre. `silent` because the toast below is already the announcement —
+	// a second copy in the corner would be one sentence said twice. Keyed on
+	// the toast object, which carries a fresh id per message, so two identical
+	// results in a row are two records rather than one.
+	useEffect(() => {
+		if (!designsToast) return;
+		notify({
+			severity:
+				designsToast.tone === "error"
+					? "error"
+					: designsToast.tone === "success"
+						? "success"
+						: "info",
+			title: designsToast.message,
+			silent: true,
+		});
+	}, [designsToast]);
 	const [view, setView] = useState<ViewMode>(() => {
 		if (typeof window === "undefined") return "grid";
 		try {
@@ -408,9 +435,10 @@ export function DesignsTab({
 	};
 	const handleDeleteProject = (project: Project) => {
 		setConfirmTarget({
-			title: t("designs.deleteTitle"),
-			message: t("designs.deleteConfirm", { name: project.name }),
-			confirmLabel: t("designs.menuDelete"),
+			action: t("designs.deleteTitle"),
+			target: project.name,
+			items: [t("designs.deleteGateProjectItem", { name: project.name })],
+			detail: t("designs.deleteGateProjectDetail"),
 			onConfirm: () => onDelete(project.id),
 		});
 	};
@@ -428,10 +456,18 @@ export function DesignsTab({
 	const handleBatchDelete = () => {
 		const ids = Array.from(selected);
 		if (ids.length === 0) return;
+		const names = ids.map(
+			(id) =>
+				projects.find((candidate) => candidate.id === id)?.name ?? id,
+		);
 		setConfirmTarget({
-			title: t("designs.deleteTitle"),
-			message: t("designs.deleteSelectedConfirm", { n: ids.length }),
-			confirmLabel: t("designs.deleteSelected"),
+			action: t("designs.deleteSelected"),
+			target: t("designs.deleteSelectedConfirm", { n: ids.length }),
+			// Every selected project by name, one line each. A count alone
+			// ("Delete 12 project(s)?") is the number the user already knew;
+			// what they cannot check without this list is *which* twelve.
+			items: names,
+			detail: t("designs.deleteGateProjectDetail"),
 			onConfirm: async () => {
 				const results = await Promise.all(
 					ids.map(async (id) => {
@@ -463,18 +499,22 @@ export function DesignsTab({
 		artifact: LiveArtifactSummary,
 	) => {
 		setConfirmTarget({
-			title: t("common.delete"),
-			message: `${t("common.delete")} "${artifact.title}"?`,
-			confirmLabel: t("designs.menuDelete"),
+			action: t("common.delete"),
+			target: artifact.title,
+			items: [t("designs.deleteGateArtifactItem", { title: artifact.title })],
 			onConfirm: async () => {
 				const ok = await deleteLiveArtifact(projectId, artifact.id);
-				if (!ok) return;
+				// Reported rather than swallowed. This used to `return` on a
+				// failed delete, which closed the dialog and left the artifact
+				// in the list with nothing said about why.
+				if (!ok) return false;
 				setLiveArtifactsByProject((current) => ({
 					...current,
 					[projectId]: (current[projectId] ?? []).filter(
 						(candidate) => candidate.id !== artifact.id,
 					),
 				}));
+				return true;
 			},
 		});
 	};
@@ -1109,33 +1149,22 @@ export function DesignsTab({
 					</DialogFooter>
 				</Dialog>
 			) : null}
+			{/* Deleting a project takes its files, its conversations and its
+			    artifacts with it, and nothing in this product puts them back.
+			    A single-button confirm was the wrong weight for that: it named
+			    the project and asked "?", and one mistimed Enter answered it.
+			    The gate names what goes, and it cannot be answered by one
+			    reflex. */}
 			{confirmTarget ? (
-				<Dialog
-					className="modal-confirm"
-					role="alertdialog"
+				<DestructiveGate
+					action={confirmTarget.action}
+					target={confirmTarget.target}
+					items={confirmTarget.items}
+					detail={confirmTarget.detail ?? null}
+					irreversible
+					onConfirm={confirmTarget.onConfirm}
 					onClose={() => setConfirmTarget(null)}
-					ariaLabelledBy={confirmTitleId}
-				>
-					<DialogTitle id={confirmTitleId}>{confirmTarget.title}</DialogTitle>
-					<DialogDescription className="modal-confirm-message">{confirmTarget.message}</DialogDescription>
-					<DialogFooter className="row">
-						<button type="button" onClick={() => setConfirmTarget(null)}>
-							{t("designs.renameCancel")}
-						</button>
-						<button
-							type="button"
-							className="primary danger"
-							autoFocus
-							onClick={() => {
-								const run = confirmTarget.onConfirm;
-								setConfirmTarget(null);
-								run();
-							}}
-						>
-							{confirmTarget.confirmLabel}
-						</button>
-					</DialogFooter>
-				</Dialog>
+				/>
 			) : null}
 			<AnimatePresence>
 				{designsToast ? (

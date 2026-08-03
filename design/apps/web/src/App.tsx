@@ -29,6 +29,8 @@ import { MemoryToast } from './components/MemoryToast';
 import { UpdateDialog } from './components/UpdateDialog';
 import { Toast } from './components/Toast';
 import { DimSumSurprise } from './components/DimSumSurprise';
+import { NotificationHost } from './components/notifications/NotificationHost';
+import { notify } from './components/notifications/notificationStore';
 import { ChangelogDialog } from './components/changelog/ChangelogDialog';
 import { CenteredLoader } from './components/Loading';
 import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
@@ -461,6 +463,28 @@ function AppInner() {
   const [projectOpenError, setProjectOpenError] = useState<string | null>(null);
   const [legacyByokMigrationError, setLegacyByokMigrationError] =
     useState<Error | null>(null);
+  // The three shell-level errors below already draw their own `Toast`, and
+  // those toasts stay exactly as they were. What changes is that each one is
+  // also *recorded*, so a user who let one go — or who was on another route
+  // when it appeared — can still read it in the notification centre. The
+  // records are `silent`: recording a message must not put a second copy of the
+  // same sentence in the corner beside the toast that is already saying it.
+  useEffect(() => {
+    if (workingDirError == null) return;
+    notify({ severity: 'error', title: workingDirError, silent: true });
+  }, [workingDirError]);
+  useEffect(() => {
+    if (projectOpenError == null) return;
+    notify({ severity: 'error', title: projectOpenError, silent: true });
+  }, [projectOpenError]);
+  useEffect(() => {
+    if (legacyByokMigrationError == null) return;
+    notify({
+      severity: 'error',
+      title: legacyByokMigrationError.message,
+      silent: true,
+    });
+  }, [legacyByokMigrationError]);
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
@@ -2783,6 +2807,12 @@ function AppInner() {
       ) : null}
       </AnimatePresence>
       <MemoryToast onOpenMemory={() => openSettings('memory')} />
+      {/* The app-level notification stack. Mounted once, above every route, so
+          a record raised while the user is anywhere still has somewhere to
+          appear; it renders nothing at all until something is live, and it
+          never takes focus. The centre that reviews the same records lives in
+          the chrome header (`WorkspaceTabsBar`). */}
+      <NotificationHost />
       {/* One launch in ten shows a dish. It is deliberately the last thing
           allowed to speak: the daemon config has to have hydrated (so a first
           run is knowable rather than assumed), onboarding and the privacy

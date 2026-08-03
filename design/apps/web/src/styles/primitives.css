@@ -426,3 +426,66 @@ code {
     animation: none;
   }
 }
+
+/* -------- Material Design 3 surfaces ---------------------------------
+ *
+ * Dialogs, popovers and menus in this application are styled per component,
+ * in dozens of files, each having chosen its own radius and shadow. Rewriting
+ * every one of them is the long tail of this redesign; this block gives all of
+ * them M3 shape and elevation now, by attribute and by the naming conventions
+ * the components already follow.
+ *
+ * Two rules of the standard are enforced here rather than left to each
+ * component to remember:
+ *
+ *   1. An overlay paints its OWN surface. An overlay that renders transparent
+ *      lets whatever is behind it read straight through the text on top — the
+ *      fastest way to make a well-built dialog look broken. Every surface below
+ *      sets a background explicitly.
+ *   2. An overlay is bounded by the viewport and SCROLLS when it does not fit.
+ *      Capping height and hiding the overflow deletes the content past the cap
+ *      with no scrollbar to say anything is missing: a calendar loses its last
+ *      week, a menu its last items, and the user has no way to know.
+ *
+ * Component rules with higher specificity still win, so this is a floor and
+ * not a straitjacket.
+ */
+
+[class*='-modal']:not([class*='backdrop']):not([class*='__']),
+[class*='-dialog']:not([class*='backdrop']):not([class*='__']),
+dialog {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-3);
+  max-height: min(90vh, 100%);
+  overflow: auto;
+}
+
+[class*='-popover']:not([class*='__']),
+[class*='-menu']:not([class*='item']):not([class*='icon']):not([class*='__']) {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-m);
+  box-shadow: var(--md-sys-elevation-2);
+  max-height: min(80vh, 100%);
+  overflow: auto;
+}
+
+[class*='-card']:not([class*='__']) {
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+/* The scrim behind a modal. The token already carries its own alpha — it is
+   `rgba(0, 0, 0, .32)`, not an opaque colour — so it is used directly. Passing
+   it through a further color-mix would dim it twice and produce a scrim far
+   darker than the specification, hiding the context the user often needs in
+   order to answer the dialog. */
+[class*='modal-backdrop'],
+[class*='-scrim'] {
+  background: var(--md-sys-color-scrim);
+}

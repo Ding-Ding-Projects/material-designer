@@ -1,8 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackSettingsPrivacyClick } from '../analytics/events';
 import { useT } from '../i18n';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
+import { notify } from './notifications/notificationStore';
 import type { AppConfig, TelemetryConfig } from '../types';
 
 interface Props {
@@ -22,6 +25,12 @@ function generateInstallationId(): string {
 export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
   const t = useT();
   const analytics = useAnalytics();
+  // Delete my data used to fire straight off the click. It rotates the
+  // anonymous id — the old one is overwritten, not archived — and turns both
+  // sharing switches off, so it is exactly the kind of action the
+  // super-confirmation gate exists for: irreversible, and easy to hit by
+  // accident on the way to the field above it.
+  const [deleteGateOpen, setDeleteGateOpen] = useState(false);
   const telemetry: TelemetryConfig = cfg.telemetry ?? {};
   // `privacyDecisionAt` gates the consent surface. installationId is only
   // the anonymous reporting id and can be rotated by Delete my data without
@@ -137,7 +146,7 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
                   area: 'privacy',
                   element: 'delete_my_data',
                 });
-                deleteMyData();
+                setDeleteGateOpen(true);
               }}
               style={{ alignSelf: 'flex-start', marginTop: 12 }}
             >
@@ -146,6 +155,30 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
             </button>
           </div>
         </>
+      ) : null}
+      {deleteGateOpen ? (
+        <DestructiveGate
+          action={t('settings.privacyDataDeletion')}
+          // The real id, not a description of one. The user has to be able to
+          // read the value that is about to be thrown away.
+          target={cfg.installationId ?? t('settings.privacyOptedOut')}
+          items={[
+            t('privacy.deleteGateIdItem', {
+              id: cfg.installationId ?? t('settings.privacyOptedOut'),
+            }),
+            t('privacy.deleteGateSharingItem'),
+          ]}
+          detail={t('settings.privacyDataDeletionHint')}
+          irreversible
+          onConfirm={() => {
+            deleteMyData();
+            notify({
+              severity: 'success',
+              title: t('privacy.deleteGateDone'),
+            });
+          }}
+          onClose={() => setDeleteGateOpen(false)}
+        />
       ) : null}
     </section>
   );

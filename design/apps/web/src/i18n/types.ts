@@ -4462,6 +4462,10 @@ export interface Dict {
 
   // Regex search field: the affordance beside a search bar, and what it tells assistive
   // technology about the mode in force.
+  // The per-field regex affordance beside a search input: the toggle that
+  // opens the anchored builder, and the status line that says which mode
+  // that one field is currently matching in. `{field}` is the search bar's
+  // own label, so the toggle names the field it belongs to.
   'regexSearch.toggleAria': string;
   'regexSearch.toggleTitleText': string;
   'regexSearch.toggleTitleRegex': string;
@@ -4470,6 +4474,11 @@ export interface Dict {
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
+  // The anchored regex builder itself — mode, pattern editor, flags, the
+  // guided parts, and the sample/matches panel. `{engine}` is the real
+  // engine the pattern runs on (and that the wired search filters with),
+  // never a friendlier alias; `{token}`/`{at}` name the exact construct
+  // and offset the guided parts cannot represent.
   'regexBuilder.title': string;
   'regexBuilder.forField': string;
   'regexBuilder.engineNote': string;
@@ -4583,6 +4592,15 @@ export interface Dict {
 
   // Changelog viewer: every recorded version, the typed/calendar date filter, the scope
   // sentence and the export.
+  // The dim sum surprise's surrounding copy. The dish's own name and its
+  // alt text come from the bundled catalog, not from here, so they stay
+  // correct at every funny level and in every locale.
+  'dimSum.blurb': string;
+
+  // The in-app changelog viewer: releases, the date-range picker, the
+  // search/date scope line, and the commit reference carried by every
+  // entry. `changelog.datePlaceholder` is a format mask rather than
+  // prose, so it reads YYYY-MM-DD in every locale.
   'changelog.title': string;
   'changelog.subtitle': string;
   'changelog.openButton': string;
@@ -4632,6 +4650,10 @@ export interface Dict {
   'changelog.exported': string;
 
   // Command palette: scopes, groups, commands and destinations.
+  // The command palette (Cmd/Ctrl+Shift+P): its scopes, row groups, and
+  // the commands it can run directly. Setting rows borrow their labels
+  // from the settings surface they teleport to, so only palette-owned
+  // strings live here.
   'commandPalette.title': string;
   'commandPalette.placeholder': string;
   'commandPalette.noResults': string;
@@ -4659,6 +4681,9 @@ export interface Dict {
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)
+  // Workspace tab pinning and the two bulk-close actions. The close
+  // preview always states its counts and what it deliberately excluded,
+  // so an excluded tab is reported rather than silently skipped.
   'workspaceTabs.pin': string;
   'workspaceTabs.unpin': string;
   'workspaceTabs.permanentTab': string;

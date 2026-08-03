@@ -4,6 +4,7 @@ import { useT } from '../i18n';
 import { navigate, type EntryHomeView, type Route } from '../router';
 import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
+import { NotificationCenter } from './notifications/NotificationCenter';
 import styles from './WorkspaceTabsBar.module.css';
 import {
   compileBulkCloseMatcher,
@@ -1521,6 +1522,20 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         >
           <Icon name="plus" size={14} />
         </button>
+      </div>
+      {/* Its own actions group, deliberately NOT inside `menuRef`. That ref is
+          the tab-search popover's "clicks in here are not outside" test, so a
+          bell nested in it would leave the tab search open underneath the
+          notification panel — two fixed popovers stacked in the same corner.
+          Outside it, pressing either one closes the other.
+
+          Rendered unconditionally, unlike the tab search beside it. The chrome
+          hides most of itself during onboarding, but a notification centre that
+          disappears is the exact failure this feature exists to fix: a
+          first-run error would be announced by a toast that expires with
+          nowhere to look it up afterwards. */}
+      <div className="workspace-tabs-actions">
+        <NotificationCenter />
       </div>
       <div className="workspace-tabs-actions" ref={menuRef}>
         {onboardingActive ? null : (

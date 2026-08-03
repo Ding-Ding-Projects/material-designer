@@ -1308,6 +1308,84 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 - `packages/contracts/src/index.ts`
 - `packages/contracts/tests/data-export.test.ts`
 
+### 2026-08-03 — Notification centre, destructive-action gate, bulk actions, appearance editor, narrator
+
+
+**Reason:** the remaining user-facing standards this project holds itself to,
+none of which the imported application had.
+
+**Notifications.** Everything that only informs is a non-blocking corner toast;
+anything the user must decide stays a dialog. Dismissed notifications are kept
+in a centre, because a toast that auto-dismissed and vanished is information the
+user cannot get back.
+
+**Destructive-action gate.** Two independently operated keys must both be
+engaged before a full-range slider becomes active, and the action fires only
+when all three have completed. It names the exact data affected rather than
+asking whether the user is sure, keeps an always-available exit, and returns
+focus to the control that opened it. The safety facts stay unambiguous at every
+funny level — playful copy may style the experience, never obscure what will be
+destroyed.
+
+**Bulk actions.** Multi-select with ranges and a keyboard path, a select-all
+that states plainly whether it means this page or every match, and a reviewable
+preview of the exact count before anything runs. An excluded item is reported
+rather than silently skipped.
+
+**Appearance editor.** A continuous colour picker rather than a swatch list,
+with a translator converting between colour spaces and reporting the contrast
+the chosen colour will actually have. A property the platform cannot honour
+stays visible with an explanation instead of silently dropping a saved value.
+
+**Narrator.** Off by default, one utterance at a time through a serialized
+queue, superseded lines replaced rather than stacked, and it yields to an active
+screen reader rather than talking over it.
+
+**Changed files:**
+
+- `apps/web/src/components/ContextMenu.module.css`
+- `apps/web/src/components/ContextMenu.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/src/components/DesignsTab.tsx`
+- `apps/web/src/components/appearance/AppearanceRuntime.tsx`
+- `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/appearance/color.ts`
+- `apps/web/src/components/appearance/colorNames.ts`
+- `apps/web/src/components/appearance/contrast.ts`
+- `apps/web/src/components/appearance/presets.ts`
+- `apps/web/src/components/appearance/store.ts`
+- `apps/web/src/components/appearance/translate.ts`
+- `apps/web/src/components/appearance/typography.ts`
+- `apps/web/src/components/bulk/BulkActionBar.module.css`
+- `apps/web/src/components/bulk/BulkActionBar.tsx`
+- `apps/web/src/components/bulk/BulkPreviewDialog.module.css`
+- `apps/web/src/components/bulk/BulkPreviewDialog.tsx`
+- `apps/web/src/components/bulk/messages.ts`
+- `apps/web/src/components/bulk/plan.ts`
+- `apps/web/src/components/bulk/run.ts`
+- `apps/web/src/components/bulk/selection.ts`
+- `apps/web/src/components/destructive/DestructiveGate.module.css`
+- `apps/web/src/components/destructive/DestructiveGate.tsx`
+- `apps/web/src/components/destructive/gateMachine.ts`
+- `apps/web/src/components/narrator/NarratorSettingsPanel.tsx`
+- `apps/web/src/components/narrator/lines.ts`
+- `apps/web/src/components/narrator/narrator.ts`
+- `apps/web/src/components/narrator/queue.ts`
+- `apps/web/src/components/narrator/settings.ts`
+- `apps/web/src/components/narrator/speech.ts`
+- `apps/web/src/components/notifications/NotificationCenter.module.css`
+- `apps/web/src/components/notifications/NotificationCenter.tsx`
+- `apps/web/src/components/notifications/NotificationHost.module.css`
+- `apps/web/src/components/notifications/NotificationHost.tsx`
+- `apps/web/src/components/notifications/notificationStore.ts`
+- `apps/web/src/components/shortcuts/registry.ts`
+- `apps/web/src/components/shortcuts/useShortcuts.ts`
+- `apps/web/src/styles/base.css`
+- `apps/web/tests/components/DesignsTab.select-mode.test.tsx`
+- `apps/web/tests/components/destructive/gateMachine.test.ts`
+- `apps/web/tests/components/notifications/notificationStore.test.ts`
+
 <!--
 Format for entries, newest first:
 

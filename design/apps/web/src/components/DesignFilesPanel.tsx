@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -14,14 +14,100 @@ import {
   isFileSystemReadError,
 } from '../utils/fileSystemErrors';
 import { isVisualStabilityMode } from '../utils/visualStability';
+import { BulkActionBar, type BulkAction } from './bulk/BulkActionBar';
+import { BulkPreviewDialog } from './bulk/BulkPreviewDialog';
+import { bulkOutcomeMessage } from './bulk/messages';
+import {
+  bulkPlanCounts,
+  bulkPlanRunnable,
+  planBulkAction,
+  type BulkPlan,
+  type BulkSkipReason,
+} from './bulk/plan';
+import type { BulkRunProgress, BulkRunResult } from './bulk/run';
+import {
+  clearSelection,
+  describeSelection,
+  extendTo,
+  invertWithin,
+  isSelected,
+  emptySelection,
+  pruneSelection,
+  selectAllOf,
+  selectionIds,
+  selectionKeyDown,
+  selectOnly,
+  toggleOne,
+  type SelectionState,
+} from './bulk/selection';
+import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { selectInitialDesignPreviewFile } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { getPluginFolderCandidates } from './design-files/pluginFolders';
 import { Icon } from './Icon';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
+import {
+  isEditableTarget,
+  runShortcut,
+  type ShortcutHandler,
+} from './shortcuts/useShortcuts';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
+import { Toast } from './Toast';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+
+/**
+ * What a batch delete actually did, reported back to the panel.
+ *
+ * Three lists rather than a count, because "deleted", "the server refused" and
+ * "you stopped it before we got here" call for three different things from the
+ * user and folding them into one number throws that away.
+ */
+export interface BulkDeleteReport {
+  readonly deleted: readonly string[];
+  readonly failed: readonly string[];
+  readonly notAttempted: readonly string[];
+}
+
+export interface BulkDeleteOptions {
+  /** Called before each file, then once more with `null` when the run ends. */
+  readonly onProgress?: (done: number, current: string | null) => void;
+  /** Checked between files; nothing already in flight is interrupted. */
+  readonly signal?: { readonly aborted: boolean };
+}
+
+/** The bulk action the preview dialog is currently reviewing. */
+type BulkActionId = 'open' | 'download' | 'copyPaths' | 'delete';
+
+/**
+ * A file, as the bulk machinery sees it: an id and something to show a human.
+ * The id is the full path because that is what every callback here takes; the
+ * label is the basename, because a preview listing forty full paths is a
+ * preview nobody reads.
+ */
+interface FileBulkItem {
+  readonly id: string;
+  readonly label: string;
+  readonly localPath?: string;
+}
+
+/**
+ * Why a file was held back. Tokens, not sentences — `describeBulkSkip` below
+ * turns them into copy, so the reason has to survive `t()` like everything else.
+ */
+const SKIP_BUSY: BulkSkipReason = 'busy';
+const SKIP_NO_LOCAL_PATH: BulkSkipReason = 'noLocalPath';
+const SKIP_OVER_TAB_LIMIT: BulkSkipReason = 'overTabLimit';
+
+/**
+ * How many files "Open in tabs" will actually open at once.
+ *
+ * A user who selects three hundred files and asks for tabs does not want three
+ * hundred tabs, and the workspace would be unusable if they got them. The cap
+ * is enforced in the plan rather than silently in the loop, so the preview says
+ * out loud which files are being left closed and why.
+ */
+const BULK_OPEN_TAB_LIMIT = 12;
 
 export interface DesignFilesNavState {
   kindFilter: Set<ProjectFileKind>;
@@ -54,7 +140,15 @@ interface Props {
   onOpenLiveArtifact: (tabId: LiveArtifactWorkspaceEntry['tabId']) => void;
   onRenameFile: (from: string, to: string) => Promise<ProjectFile | null> | ProjectFile | null;
   onDeleteFile: (name: string) => void;
-  onDeleteFiles: (names: string[]) => Promise<void> | void;
+  /**
+   * Delete several files. The panel has already shown the user the exact list
+   * and anything it is skipping, so this must not confirm again; it reports
+   * what happened instead, and the panel turns that into a non-blocking toast.
+   */
+  onDeleteFiles: (
+    names: string[],
+    options?: BulkDeleteOptions,
+  ) => Promise<BulkDeleteReport | void> | BulkDeleteReport | void;
   onUpload: () => void;
   onUploadFiles: (files: File[]) => void;
   onPaste: () => void;
@@ -332,9 +426,23 @@ export function DesignFilesPanel({
   const MENU_SAFE_PADDING = 8;
   const [preview, setPreview] = useState<string | null>(null);
   const autoPreviewAppliedRef = useRef(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selection, setSelection] = useState<SelectionState>(emptySelection);
   const lastKeyPress = useRef<Map<string, number>>(new Map());
   const [deleting, setDeleting] = useState(false);
+  // The bulk action currently under review, its plan, and — once it is running
+  // — the progress and the flag that stops it. `bulkAbortRef` is a ref rather
+  // than state because the running loop reads it between items and must see the
+  // latest value, not the one captured when the run started.
+  const [bulkReview, setBulkReview] = useState<
+    { action: BulkActionId; plan: BulkPlan<FileBulkItem> } | null
+  >(null);
+  const [bulkProgress, setBulkProgress] = useState<BulkRunProgress | null>(null);
+  const bulkAbortRef = useRef<{ aborted: boolean }>({ aborted: false });
+  const [bulkNotice, setBulkNotice] = useState<
+    { id: number; message: string; tone: 'success' | 'error' | 'default'; role: 'status' | 'alert' } | null
+  >(null);
+  const bulkNoticeIdRef = useRef(0);
+  const bulkTitleId = useId();
   const [installingFolder, setInstallingFolder] = useState<string | null>(null);
   const [sharingFolder, setSharingFolder] = useState<string | null>(null);
   const [installNotice, setInstallNotice] = useState<ActionNotice | null>(null);
@@ -414,7 +522,7 @@ export function DesignFilesPanel({
   // Reset selection and renaming state when the user navigates into or out of
   // a directory.
   useEffect(() => {
-    setSelected(new Set());
+    setSelection(clearSelection());
     setRenaming(null);
   }, [currentDir]);
 
@@ -446,20 +554,12 @@ export function DesignFilesPanel({
   // (e.g. after a refresh or delete within the same project).
   // Cross-project leaks are handled by the parent remounting this
   // component via key={projectId}.
+  //
+  // `pruneSelection` returns the same object when nothing was dropped, so this
+  // does not re-render on every `files` identity change.
   useEffect(() => {
-    setSelected((prev) => {
-      if (prev.size === 0) return prev;
-      const names = new Set(files.map((f) => f.name));
-      const next = new Set(prev);
-      let changed = false;
-      for (const n of next) {
-        if (!names.has(n)) {
-          next.delete(n);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
+    const names = files.map((f) => f.name);
+    setSelection((prev) => (prev.ids.size === 0 ? prev : pruneSelection(prev, names)));
   }, [files]);
 
   const previewFile = useMemo(
@@ -533,20 +633,43 @@ export function DesignFilesPanel({
     };
   }, [projectMenuOpen]);
 
-  function toggleSelect(name: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
+  // The rows on screen, in render order. Ranges and "select all on this page"
+  // are both defined against this and nothing else, so a shift-click never
+  // reaches a row the user cannot see.
+  const pageNames = useMemo(() => filesAtCurrentDir.map((f) => f.name), [filesAtCurrentDir]);
+  // Every file in the project, folders included. This is the other universe:
+  // "select everything" here genuinely means everything, which is why it is
+  // labelled with its own count rather than sharing a button with the page.
+  const everyMatchNames = useMemo(() => files.map((f) => f.name), [files]);
+  const selectionSummary = useMemo(
+    () => describeSelection(selection, pageNames, everyMatchNames),
+    [selection, pageNames, everyMatchNames],
+  );
+
+  /**
+   * A click on a row's checkbox or its selectable surface.
+   *
+   * Shift extends from the anchor, Ctrl/Cmd toggles one, and a bare click on a
+   * checkbox toggles too — the checkbox is a toggle by its own affordance, and
+   * having it clear the rest of the selection would be a trap.
+   */
+  function selectRow(
+    name: string,
+    modifiers: { shift?: boolean; toggle?: boolean } = {},
+  ) {
+    setSelection((prev) => {
+      if (modifiers.shift) return extendTo(prev, name, pageNames);
+      if (modifiers.toggle) return toggleOne(prev, name);
+      return selectOnly(name);
     });
   }
 
-  function clearSelection() {
-    setSelected(new Set());
+  function toggleSelect(name: string) {
+    setSelection((prev) => toggleOne(prev, name));
+  }
+
+  function clearRowSelection() {
+    setSelection(clearSelection());
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
@@ -609,12 +732,22 @@ export function DesignFilesPanel({
       const renamed = await onRenameFile(name, nextName);
       if (!renamed) throw new Error('Rename failed');
       setPreview((curr) => (curr === name ? renamed.name : curr));
-      setSelected((prev) => {
-        if (!prev.has(name)) return prev;
-        const next = new Set(prev);
-        next.delete(name);
-        next.add(renamed.name);
-        return next;
+      // A renamed file keeps its place in the selection. Dropping it would be
+      // the surprise: the row is still on screen, still ticked-looking to the
+      // user, and would then be quietly missing from the next bulk action.
+      setSelection((prev) => {
+        if (!prev.ids.has(name)) return prev;
+        const ids = new Set(prev.ids);
+        ids.delete(name);
+        ids.add(renamed.name);
+        const base = new Set(prev.base);
+        if (base.delete(name)) base.add(renamed.name);
+        return {
+          ids,
+          anchor: prev.anchor === name ? renamed.name : prev.anchor,
+          base,
+          scope: prev.scope,
+        };
       });
       setRenaming(null);
     } catch (err) {
@@ -623,54 +756,358 @@ export function DesignFilesPanel({
     }
   }
 
-  async function handleBatchDelete() {
-    if (deleting) return;
-    const fileList = [...selected];
-    if (fileList.length === 0) return;
-    setDeleting(true);
-    try {
-      await onDeleteFiles(fileList);
-      // Don't clear `selected` here: confirm-cancel and all-fail paths
-      // should leave the user's selection intact for retry. The
-      // `useEffect` above prunes successfully-deleted names automatically
-      // once `files` refreshes.
-    } finally {
-      setDeleting(false);
+  /**
+   * The selection, as bulk items, in the order the project lists them.
+   *
+   * Built from `files` rather than from the page so a selection made with
+   * "select everything" survives navigating into a folder for long enough to be
+   * reviewed — the preview would otherwise show only the rows that happen to be
+   * on screen and quietly under-report what the button is about to do.
+   */
+  const selectedItems = useMemo<FileBulkItem[]>(() => {
+    const byName = new Map(files.map((f) => [f.name, f] as const));
+    return selectionIds(selection, everyMatchNames).flatMap((name) => {
+      const file = byName.get(name);
+      if (!file) return [];
+      const slash = name.lastIndexOf('/');
+      return [
+        {
+          id: name,
+          label: slash === -1 ? name : name.slice(slash + 1),
+          localPath: file.localPath,
+        },
+      ];
+    });
+  }, [files, selection, everyMatchNames]);
+
+  /**
+   * What each action refuses to touch, and why.
+   *
+   * Written as one function per action rather than a shared "is this file ok"
+   * because the answers genuinely differ: an agent writing to a file makes it
+   * unsafe to delete but perfectly safe to open, and a file with no local path
+   * cannot have its path copied while remaining downloadable.
+   */
+  function planFor(action: BulkActionId): BulkPlan<FileBulkItem> {
+    const selectedIds = selection.ids;
+    if (action === 'delete') {
+      return planBulkAction(selectedItems, selectedIds, (item) =>
+        activePluginActionPaths.has(item.id) ? SKIP_BUSY : null,
+      );
     }
+    if (action === 'copyPaths') {
+      return planBulkAction(selectedItems, selectedIds, (item) =>
+        item.localPath ? null : SKIP_NO_LOCAL_PATH,
+      );
+    }
+    if (action === 'open') {
+      const allowed = new Set(
+        selectedItems.slice(0, BULK_OPEN_TAB_LIMIT).map((item) => item.id),
+      );
+      return planBulkAction(selectedItems, selectedIds, (item) =>
+        allowed.has(item.id) ? null : SKIP_OVER_TAB_LIMIT,
+      );
+    }
+    return planBulkAction(selectedItems, selectedIds);
+  }
+
+  function describeBulkSkip(reason: BulkSkipReason): string {
+    if (reason === SKIP_BUSY) return t('designFiles.bulkSkipBusy');
+    if (reason === SKIP_NO_LOCAL_PATH) return t('designFiles.bulkSkipNoLocalPath');
+    if (reason === SKIP_OVER_TAB_LIMIT) {
+      return t('designFiles.bulkSkipOverTabLimit', { n: BULK_OPEN_TAB_LIMIT });
+    }
+    return reason;
+  }
+
+  function bulkTitleFor(action: BulkActionId, count: number): string {
+    if (action === 'delete') return t('designFiles.bulkDeleteTitle', { n: count });
+    if (action === 'download') return t('designFiles.bulkDownloadTitle', { n: count });
+    if (action === 'copyPaths') return t('designFiles.bulkCopyPathsTitle', { n: count });
+    return t('designFiles.bulkOpenTitle', { n: count });
+  }
+
+  function bulkConfirmLabelFor(action: BulkActionId, count: number): string {
+    if (action === 'delete') return t('designFiles.deleteSelected', { n: count });
+    if (action === 'download') return t('designFiles.downloadSelected', { n: count });
+    if (action === 'copyPaths') return t('designFiles.bulkCopyPaths', { n: count });
+    return t('designFiles.bulkOpen', { n: count });
+  }
+
+  /** Open the review step. Nothing runs until the user confirms it. */
+  function reviewBulk(action: BulkActionId) {
+    if (selection.ids.size === 0) return;
+    bulkAbortRef.current = { aborted: false };
+    setBulkProgress(null);
+    setBulkReview({ action, plan: planFor(action) });
+  }
+
+  function closeBulkReview() {
+    bulkAbortRef.current.aborted = true;
+    setBulkReview(null);
+    setBulkProgress(null);
+  }
+
+  function reportBulkOutcome(result: BulkRunResult<FileBulkItem>, plan: BulkPlan<FileBulkItem>) {
+    const outcome = bulkOutcomeMessage(t, result, plan);
+    setBulkNotice({
+      id: (bulkNoticeIdRef.current += 1),
+      message: outcome.message,
+      tone: outcome.tone,
+      role: outcome.role,
+    });
+  }
+
+  async function runBulkReview() {
+    const review = bulkReview;
+    if (!review || !bulkPlanRunnable(review.plan)) return;
+    const items = review.plan.willChange;
+
+    if (review.action === 'delete') {
+      if (deleting) return;
+      setDeleting(true);
+      setBulkProgress({ total: items.length, done: 0, succeeded: 0, failed: 0, current: items[0]?.label ?? null });
+      const signal = bulkAbortRef.current;
+      try {
+        // The parent owns the loop because it also owns the tab and sketch
+        // bookkeeping each deletion invalidates. It reports back per file so the
+        // progress here is real rather than a spinner pretending to be one.
+        const report = await onDeleteFiles(items.map((item) => item.id), {
+          onProgress: (done, current) => {
+            setBulkProgress((prev) =>
+              prev ? { ...prev, done, current } : prev,
+            );
+          },
+          signal,
+        });
+        const byId = new Map(items.map((item) => [item.id, item] as const));
+        const pick = (names: readonly string[] | undefined) =>
+          (names ?? []).flatMap((name) => {
+            const item = byId.get(name);
+            return item ? [item] : [];
+          });
+        const result: BulkRunResult<FileBulkItem> = report
+          ? {
+              succeeded: pick(report.deleted),
+              failed: pick(report.failed).map((item) => ({ item, error: 'refused' })),
+              notAttempted: pick(report.notAttempted),
+              cancelled: report.notAttempted.length > 0,
+            }
+          : // A parent that reports nothing back is not evidence of success, so
+            // the panel says what it actually knows: the request was sent.
+            { succeeded: items, failed: [], notAttempted: [], cancelled: false };
+        reportBulkOutcome(result, review.plan);
+      } finally {
+        setDeleting(false);
+        setBulkReview(null);
+        setBulkProgress(null);
+      }
+      // The selection is deliberately left alone: an all-fail run should leave
+      // the user's picks intact to retry, and the prune effect drops whatever
+      // actually went once `files` refreshes.
+      return;
+    }
+
+    if (review.action === 'download') {
+      setBulkReview(null);
+      setBulkProgress(null);
+      await handleBatchDownload(items.map((item) => item.id));
+      return;
+    }
+
+    if (review.action === 'copyPaths') {
+      const paths = items.flatMap((item) => (item.localPath ? [item.localPath] : []));
+      const copied = await copyToClipboard(paths.join('\n'));
+      setBulkReview(null);
+      reportBulkOutcome(
+        copied
+          ? { succeeded: items, failed: [], notAttempted: [], cancelled: false }
+          : {
+              succeeded: [],
+              failed: items.map((item) => ({ item, error: 'clipboard' })),
+              notAttempted: [],
+              cancelled: false,
+            },
+        review.plan,
+      );
+      return;
+    }
+
+    for (const item of items) onOpenFile(item.id);
+    setBulkReview(null);
+    reportBulkOutcome(
+      { succeeded: items, failed: [], notAttempted: [], cancelled: false },
+      review.plan,
+    );
+  }
+
+  const bulkActions: BulkAction[] = [
+    {
+      id: 'open',
+      label: t('designFiles.openInTab'),
+      icon: 'external-link',
+      onRun: () => reviewBulk('open'),
+    },
+    {
+      id: 'download',
+      label: t('designFiles.download'),
+      icon: 'download',
+      onRun: () => {
+        trackFileManagerClick(analytics.track, {
+          page_name: 'file_manager',
+          area: 'file_manager',
+          element: 'download_as_zip',
+        });
+        reviewBulk('download');
+      },
+    },
+    {
+      id: 'copyPaths',
+      label: t('designFiles.copyLocalPath'),
+      icon: 'copy',
+      onRun: () => reviewBulk('copyPaths'),
+    },
+    {
+      id: 'delete',
+      label: t('designFiles.delete'),
+      icon: 'trash',
+      danger: true,
+      disabled: deleting,
+      testId: 'design-files-batch-delete',
+      onRun: () => reviewBulk('delete'),
+    },
+  ];
+
+  function downloadOne(name: string) {
+    const a = document.createElement('a');
+    a.href = projectFileUrl(projectId, name);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  /**
+   * Everything one file row can do — the single list the context menu renders
+   * AND the key handler dispatches from.
+   *
+   * That sharing is the whole point. An item carries `shortcutId` only when the
+   * binding genuinely fires here, `rowShortcutHandlers` installs exactly those
+   * bindings, and `ContextMenu` draws exactly those keycaps. There is no second
+   * place where a key could be advertised without being wired, or wired without
+   * being advertised.
+   *
+   * "Open in tab" carries no shortcut on purpose: the row's name button opens on
+   * a double Enter, not a single one, and printing "Enter" beside it would teach
+   * a key that does something else.
+   */
+  function rowActions(name: string): ContextMenuItem[] {
+    const file = files.find((candidate) => candidate.name === name);
+    return [
+      {
+        id: 'open',
+        label: t('designFiles.openInTab'),
+        icon: 'external-link',
+        onSelect: () => onOpenFile(name),
+      },
+      {
+        id: 'rename',
+        label: t('common.rename'),
+        icon: 'pencil',
+        shortcutId: 'designFiles.rename',
+        onSelect: () => startRename(name),
+      },
+      {
+        id: 'copyPath',
+        label:
+          copiedLocalPath === name
+            ? t('designFiles.copiedLocalPath')
+            : t('designFiles.copyLocalPath'),
+        icon: 'copy',
+        disabled: !file?.localPath,
+        onSelect: () => {
+          void copyLocalPath(name);
+        },
+      },
+      {
+        id: 'download',
+        label: t('designFiles.download'),
+        icon: 'download',
+        onSelect: () => downloadOne(name),
+      },
+      {
+        id: 'delete',
+        label: t('designFiles.delete'),
+        icon: 'trash',
+        danger: true,
+        separatorBefore: true,
+        shortcutId: 'designFiles.delete',
+        testId: `design-file-delete-${name}`,
+        onSelect: () => onDeleteFile(name),
+      },
+    ];
+  }
+
+  /** The bindings above, as handlers. Derived, never written out a second time. */
+  function rowShortcutHandlers(name: string): ShortcutHandler[] {
+    return rowActions(name).flatMap((item) =>
+      item.shortcutId && !item.disabled ? [{ id: item.shortcutId, run: item.onSelect }] : [],
+    );
   }
 
   function renderFileRow(f: ProjectFile, category: FileCategory) {
     const active = preview === f.name;
-    const isSelected = selected.has(f.name);
+    const rowSelected = isSelected(selection, f.name);
     const isHovered = hover === f.name;
     const renameState = renaming?.name === f.name ? renaming : null;
     return (
       <div
         key={f.name}
         data-testid={`design-file-row-${f.name}`}
-        className={`df-row df-file-row ${active ? 'active' : ''} ${isSelected ? 'selected' : ''}`}
+        data-row-id={f.name}
+        className={`df-row df-file-row ${active ? 'active' : ''} ${rowSelected ? 'selected' : ''}`}
         onMouseEnter={() => setHover(f.name)}
         onMouseLeave={() => setHover((c) => (c === f.name ? null : c))}
+        // Right-click opens the same menu as the ⋯ handle, at the pointer. It
+        // is the gesture people reach for first on a file row, and until now it
+        // fell through to the browser's own menu.
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!isSelected(selection, f.name)) selectRow(f.name);
+          setMenuPos({ name: f.name, top: e.clientY, left: e.clientX });
+        }}
+        // Row-scoped shortcuts, dispatched from the same table the context menu
+        // draws its keycaps from. The rename field is exempt: F2 and Delete
+        // belong to the text while it is being edited.
+        onKeyDown={(e) => {
+          if (isEditableTarget(e.target)) return;
+          const fired = runShortcut(rowShortcutHandlers(f.name), e);
+          if (fired) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
       >
         <span
           className="df-row-check"
           onClick={(e) => {
             e.stopPropagation();
-            toggleSelect(f.name);
+            selectRow(f.name, { shift: e.shiftKey, toggle: !e.shiftKey });
           }}
           role="checkbox"
-          aria-checked={isSelected}
+          aria-checked={rowSelected}
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
-              toggleSelect(f.name);
+              if (e.shiftKey) selectRow(f.name, { shift: true });
+              else toggleSelect(f.name);
             }
           }}
         >
           <span className="df-row-check-box" aria-hidden>
-            {isSelected ? <Icon name="check" size={12} /> : null}
+            {rowSelected ? <Icon name="check" size={12} /> : null}
           </span>
         </span>
         <span
@@ -805,8 +1242,7 @@ export function DesignFilesPanel({
     );
   }
 
-  async function handleBatchDownload() {
-    const fileList = [...selected];
+  async function handleBatchDownload(fileList: string[]) {
     if (fileList.length === 0) return;
     try {
       const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/archive/batch`, {
@@ -1013,10 +1449,42 @@ export function DesignFilesPanel({
   );
 
   const visibleUploadError = uploadError ?? dropReadError;
-  const hasSelection = selected.size > 0;
+  const hasSelection = selection.ids.size > 0;
 
   return (
-    <div className={`df-panel ${previewFile ? '' : 'no-preview'} ${hasSelection ? 'has-selection' : ''}`}>
+    <div
+      className={`df-panel ${previewFile ? '' : 'no-preview'} ${hasSelection ? 'has-selection' : ''}`}
+      // Panel-scoped rather than window-scoped: Ctrl+A must still mean
+      // select-all-text everywhere else in the app, and only means
+      // select-all-files while focus is somewhere inside this panel.
+      onKeyDown={(event) => {
+        if (isEditableTarget(event.target)) return;
+        const focused =
+          event.target instanceof HTMLElement
+            ? event.target.closest<HTMLElement>('[data-row-id]')?.dataset.rowId ?? null
+            : null;
+        const result = selectionKeyDown(event, {
+          state: selection,
+          page: pageNames,
+          everyMatch: everyMatchNames,
+          focusedId: focused,
+        });
+        if (!result) return;
+        event.preventDefault();
+        setSelection(result.next);
+        if (result.focusId) {
+          // Matched by walking the rows rather than by building a selector: a
+          // file name is user-supplied and may contain quotes or brackets, and
+          // an unescaped one would silently match nothing.
+          const rows = event.currentTarget.querySelectorAll<HTMLElement>('[data-row-id]');
+          for (const row of Array.from(rows)) {
+            if (row.dataset.rowId !== result.focusId) continue;
+            row.querySelector<HTMLElement>('.df-row-check')?.focus();
+            break;
+          }
+        }
+      }}
+    >
       {reloading ? (
         <div className="df-reloading-overlay" data-testid="design-files-reloading">
           <span className="loading-spinner">
@@ -1070,41 +1538,21 @@ export function DesignFilesPanel({
             </div>
           ) : null}
           {hasSelection ? (
-            <div className="df-batch-bar" data-testid="design-files-batch-bar">
-              <span className="df-batch-count">
-                {t('designFiles.downloadSelected', { n: selected.size })}
-              </span>
-              <div className="df-batch-actions">
-                <button
-                  type="button"
-                  onClick={() => {
-                    trackFileManagerClick(analytics.track, {
-                      page_name: 'file_manager',
-                      area: 'file_manager',
-                      element: 'download_as_zip',
-                    });
-                    void handleBatchDownload();
-                  }}
-                  title={t('designFiles.downloadSelected', { n: selected.size })}
-                >
-                  <Icon name="download" size={13} />
-                  <span>{t('designFiles.download')}</span>
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  data-testid="design-files-batch-delete"
-                  disabled={deleting}
-                  onClick={() => void handleBatchDelete()}
-                  title={t('designFiles.deleteSelected', { n: selected.size })}
-                >
-                  <span>{t('designFiles.delete')}</span>
-                </button>
-                <button type="button" className="df-batch-clear" onClick={clearSelection}>
-                  {t('designFiles.clearSelection')}
-                </button>
-              </div>
-            </div>
+            <BulkActionBar
+              summary={selectionSummary}
+              actions={bulkActions}
+              onSelectPage={() => setSelection(selectAllOf(pageNames, 'page'))}
+              onSelectEveryMatch={() => setSelection(selectAllOf(everyMatchNames, 'match'))}
+              onInvert={() =>
+                setSelection((prev) =>
+                  prev.scope === 'match'
+                    ? invertWithin(prev, everyMatchNames, 'match')
+                    : invertWithin(prev, pageNames, 'page'),
+                )
+              }
+              onClear={clearRowSelection}
+              testId="design-files-batch-bar"
+            />
           ) : null}
           {files.length === 0 && liveArtifacts.length === 0 && (folders?.length ?? 0) === 0 ? (
             <div className="df-empty" data-testid="design-files-empty">
@@ -1322,77 +1770,46 @@ export function DesignFilesPanel({
         />
       ) : null}
       {menuPos ? (
-        <div
-          data-testid="design-file-menu-popover"
-          className="df-row-popover"
-          style={{ top: menuPos.top, left: menuPos.left }}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              const name = menuPos.name;
-              setMenuPos(null);
-              onOpenFile(name);
-            }}
-          >
-            {t('designFiles.openInTab')}
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              startRename(menuPos.name);
-            }}
-          >
-            {t('common.rename')}
-          </button>
-          <button
-            type="button"
-            disabled={!files.some((file) => file.name === menuPos.name && file.localPath)}
-            onClick={(e) => {
-              e.stopPropagation();
-              const name = menuPos.name;
-              setMenuPos(null);
-              void copyLocalPath(name);
-            }}
-          >
-            {copiedLocalPath === menuPos.name
-              ? t('designFiles.copiedLocalPath')
-              : t('designFiles.copyLocalPath')}
-          </button>
-          <a
-            href={projectFileUrl(projectId, menuPos.name)}
-            download={menuPos.name}
-            style={{ textDecoration: 'none' }}
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuPos(null);
-              }}
-            >
-              {t('designFiles.download')}
-            </button>
-          </a>
-          <button
-            type="button"
-            className="danger"
-            data-testid={`design-file-delete-${menuPos.name}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              const name = menuPos.name;
-              setMenuPos(null);
-              onDeleteFile(name);
-            }}
-          >
-            {t('designFiles.delete')}
-          </button>
-        </div>
+        <ContextMenu
+          items={rowActions(menuPos.name)}
+          x={menuPos.left}
+          y={menuPos.top}
+          ariaLabel={menuPos.name}
+          onClose={() => setMenuPos(null)}
+          testId="design-file-menu-popover"
+        />
+      ) : null}
+      {bulkReview ? (
+        <BulkPreviewDialog
+          plan={bulkReview.plan}
+          titleId={bulkTitleId}
+          title={bulkTitleFor(bulkReview.action, bulkPlanCounts(bulkReview.plan).willChange)}
+          confirmLabel={bulkConfirmLabelFor(
+            bulkReview.action,
+            bulkPlanCounts(bulkReview.plan).willChange,
+          )}
+          danger={bulkReview.action === 'delete'}
+          describeSkip={describeBulkSkip}
+          progress={bulkProgress}
+          onCancel={closeBulkReview}
+          onStop={() => {
+            // Stops between files. Anything already in flight finishes, and the
+            // report says how many were never attempted rather than counting
+            // them as done.
+            bulkAbortRef.current.aborted = true;
+          }}
+          onConfirm={() => void runBulkReview()}
+          testId="design-files-bulk-review"
+        />
+      ) : null}
+      {bulkNotice ? (
+        <Toast
+          key={bulkNotice.id}
+          message={bulkNotice.message}
+          tone={bulkNotice.tone}
+          role={bulkNotice.role}
+          onDismiss={() => setBulkNotice(null)}
+        />
       ) : null}
     </div>
   );

@@ -55,8 +55,8 @@
   width: 100%;
   min-width: 0;
   border-right: 0;
-  background: var(--bg-panel);
-  padding: 8px 0 10px;
+  background: var(--md-sys-color-surface);
+  padding: 12px 0 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -635,51 +635,71 @@
   display: block;
   pointer-events: none;
 }
+/* Material Design 3 navigation-rail item.
+ *
+ * The M3 rail marks the current destination with a filled pill behind the
+ * icon — 56x32, fully rounded, in the secondary container — rather than by
+ * tinting the icon and drawing a border around it. That pill is the single
+ * strongest signal in the whole rail, which is why it is worth matching
+ * exactly: an outlined-and-tinted item reads as "hovered", not "here".
+ *
+ * The item itself keeps no border at all. Hover is a state layer, the same
+ * mechanism the buttons use, so the two behave identically and both survive a
+ * change of seed colour. */
 .entry-nav-rail__btn {
   appearance: none;
-  width: 38px;
-  height: 38px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  position: relative;
+  isolation: isolate;
+  width: 56px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--md-sys-color-on-surface-variant);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+.entry-nav-rail__btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms var(--ease-out);
+}
 }
 .entry-nav-rail__btn > svg {
   width: 18px;
   height: 18px;
   flex: 0 0 18px;
 }
-.entry-nav-rail__btn:not(.is-active):hover {
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
-}
+.entry-nav-rail__btn:not(.is-active):hover::after { opacity: 0.08; }
+.entry-nav-rail__btn:active:not(:disabled)::after { opacity: 0.12; }
 .entry-nav-rail__btn:disabled {
   cursor: default;
   opacity: 0.55;
 }
 .entry-nav-rail__btn:disabled:hover {
   background: transparent;
-  color: var(--text-muted);
-  border-color: transparent;
+  color: var(--md-sys-color-on-surface-variant);
 }
+/* The active pill. Secondary container is M3's colour for a selected
+   navigation destination — distinct from primary, which the rail's own
+   call-to-action uses, so "where I am" and "the main action" never look alike. */
 .entry-nav-rail__btn.is-active {
-  background: var(--accent-tint);
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
-.entry-nav-rail__btn.is-active:hover {
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
-  border-color: color-mix(in srgb, var(--accent) 12%, var(--bg-panel));
-}
+.entry-nav-rail__btn.is-active:hover::after { opacity: 0.08; }
 .entry-nav-rail__btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 /* Avatar / settings dropdown — language picker section.
