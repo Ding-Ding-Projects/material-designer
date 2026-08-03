@@ -1,0 +1,399 @@
+/* The super-confirmation gate.
+
+   Everything here is drawn from `styles/md3-tokens.css` rather than from raw
+   colour, so the gate follows the theme, the accent and the density the user
+   chose — a safety surface that ignored the appearance system would read as a
+   different application arriving at the worst possible moment.
+
+   The `.gate` selectors are two-class where they style buttons, because
+   `styles/primitives.css` styles bare `button` with `button:hover:not(:disabled)`
+   at specificity (0,2,1); a single-class module rule would lose to it and the
+   keys would repaint in the product's generic button colours mid-hover. */
+
+.gate {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--md-sys-color-error) 38%, var(--md-sys-color-outline-variant));
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.headIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+
+.gate .title {
+  margin: 0;
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.target {
+  margin: 2px 0 0;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  padding: 12px 14px;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+}
+
+.factsHead {
+  margin: 0 0 6px;
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.items {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  /* Never truncated. The one list in the product where an ellipsis could hide
+     the thing the user is about to lose. */
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  margin: 8px 0 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.irreversible {
+  margin: 10px 0 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: 700;
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-error);
+}
+
+.reversible {
+  margin: 10px 0 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.keys {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Narrow windows and high display scales both land here: two 180px keys side
+   by side stop fitting long before the dialog itself does, and a key whose
+   hint is clipped is a key whose meaning is clipped. */
+@media (max-width: 520px) {
+  .keys {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gate .key {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  min-height: 64px;
+  text-align: left;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  transition: background 160ms var(--md-sys-motion-emphasized),
+    border-color 160ms var(--md-sys-motion-emphasized);
+}
+
+.gate .key:hover:not(:disabled) {
+  background: var(--md-sys-color-surface-container);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface);
+}
+
+.gate .key[aria-checked='true'] {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.gate .key:disabled {
+  opacity: 0.55;
+}
+
+.keyGlyph {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  color: inherit;
+}
+
+.gate .key[aria-checked='true'] .keyGlyph {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.keyText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.keyName {
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+}
+
+.keyHint {
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.35;
+  color: inherit;
+  opacity: 0.82;
+}
+
+.sliderWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 4px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.sliderWrap[data-unlocked='true'] {
+  border-color: var(--md-sys-color-error);
+}
+
+.track {
+  position: absolute;
+  inset: 3px;
+  border-radius: var(--md-sys-shape-corner-full);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.charge {
+  height: 100%;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--md-sys-color-error) 35%, transparent),
+    var(--md-sys-color-error)
+  );
+  transition: width 90ms linear;
+}
+
+/* The drama. It pulses only while the slider is unlocked and part-way, which is
+   the only moment the animation is describing something real; it is painted
+   behind the control and never intercepts a pointer, so nothing about it
+   blocks the interaction it is illustrating. */
+.sliderWrap[data-unlocked='true'] .charge {
+  animation: destructive-charge 900ms ease-in-out infinite alternate;
+}
+
+@keyframes destructive-charge {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.35);
+  }
+}
+
+.gate .slider {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.gate .slider:disabled {
+  cursor: not-allowed;
+}
+
+.gate .slider::-webkit-slider-runnable-track {
+  height: 38px;
+  background: transparent;
+}
+
+.gate .slider::-moz-range-track {
+  height: 38px;
+  background: transparent;
+}
+
+.gate .slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 34px;
+  height: 34px;
+  margin-top: 2px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--shadow-sm);
+}
+
+.gate .slider::-moz-range-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--shadow-sm);
+}
+
+.gate .slider:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.status {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.failure {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* The completion animation, and it is deliberately a different shape from the
+   charge: the charge is a bar that fills, this is a disc that arrives. One says
+   "you are authorizing", the other says "it is done", and they must not be
+   mistakable for one another at a glance. */
+.burst {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-success);
+  animation: destructive-burst 420ms var(--md-sys-motion-emphasized-decel);
+}
+
+@keyframes destructive-burst {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.gate .exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  min-height: 36px;
+  flex: none;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+}
+
+.gate .exit:hover:not(:disabled) {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.exitHint {
+  flex: 1;
+  min-width: 140px;
+  margin-top: 12px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.35;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.gate button:focus-visible,
+.gate .key:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .charge,
+  .sliderWrap[data-unlocked='true'] .charge,
+  .burst,
+  .gate .key {
+    animation: none;
+    transition: none;
+  }
+}

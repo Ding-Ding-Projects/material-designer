@@ -2,12 +2,20 @@
 
 html, body, #root { height: 100%; margin: 0; }
 
+/* The four `--od-ui-*` properties are what the appearance editor writes on
+   <html>; each falls back to the value this rule always had, so an install
+   that never opens the editor renders byte-identically to before they
+   existed. `--sans` still resolves the family, because the editor re-faces
+   the app by overriding `--md-ref-typeface-plain` upstream of it rather
+   than by writing a family here. */
 body {
   font-family: var(--sans);
   color: var(--text);
   background: var(--bg-app);
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: var(--od-ui-font-size, 13.5px);
+  font-weight: var(--od-ui-font-weight, 400);
+  line-height: var(--od-ui-line-height, 1.5);
+  letter-spacing: var(--od-ui-letter-spacing, normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

@@ -4459,6 +4459,240 @@ export interface Dict {
   'settings.funnyDisclosureTitle': string;
   'settings.funnyDisclosureBody': string;
   'settings.funnyDisclosureDismiss': string;
+
+  // The per-field regex affordance beside a search input: the toggle that
+  // opens the anchored builder, and the status line that says which mode
+  // that one field is currently matching in. `{field}` is the search bar's
+  // own label, so the toggle names the field it belongs to.
+  'regexSearch.toggleAria': string;
+  'regexSearch.toggleTitleText': string;
+  'regexSearch.toggleTitleRegex': string;
+  'regexSearch.modeStatusText': string;
+  'regexSearch.modeStatusRegex': string;
+
+  // The anchored regex builder itself — mode, pattern editor, flags, the
+  // guided parts, and the sample/matches panel. `{engine}` is the real
+  // engine the pattern runs on (and that the wired search filters with),
+  // never a friendlier alias; `{token}`/`{at}` name the exact construct
+  // and offset the guided parts cannot represent.
+  'regexBuilder.title': string;
+  'regexBuilder.forField': string;
+  'regexBuilder.engineNote': string;
+  'regexBuilder.modeLegend': string;
+  'regexBuilder.modePlain': string;
+  'regexBuilder.modeRegex': string;
+  'regexBuilder.plainNotice': string;
+  'regexBuilder.enableRegex': string;
+  'regexBuilder.patternLabel': string;
+  'regexBuilder.patternPlaceholder': string;
+  'regexBuilder.patternLength': string;
+  'regexBuilder.errorHeading': string;
+  'regexBuilder.errorTooLong': string;
+  'regexBuilder.usingLastValid': string;
+  'regexBuilder.slowShape': string;
+  'regexBuilder.copyPattern': string;
+  'regexBuilder.copyLiteral': string;
+  'regexBuilder.copied': string;
+  'regexBuilder.copyFailed': string;
+  'regexBuilder.escapeAsLiteral': string;
+  'regexBuilder.flagsLegend': string;
+  'regexBuilder.flagG': string;
+  'regexBuilder.flagI': string;
+  'regexBuilder.flagM': string;
+  'regexBuilder.flagS': string;
+  'regexBuilder.flagU': string;
+  'regexBuilder.flagY': string;
+  'regexBuilder.partsLegend': string;
+  'regexBuilder.partsEmpty': string;
+  'regexBuilder.addPartLegend': string;
+  'regexBuilder.addLiteral': string;
+  'regexBuilder.addCharClass': string;
+  'regexBuilder.addAnchor': string;
+  'regexBuilder.addGroup': string;
+  'regexBuilder.addAlternation': string;
+  'regexBuilder.outOfSyncTitle': string;
+  'regexBuilder.outOfSyncBody': string;
+  'regexBuilder.outOfSyncTooLong': string;
+  'regexBuilder.outOfSyncAction': string;
+  'regexBuilder.partLiteral': string;
+  'regexBuilder.partCharClass': string;
+  'regexBuilder.partAnchor': string;
+  'regexBuilder.partGroup': string;
+  'regexBuilder.partAlternation': string;
+  'regexBuilder.movePartUp': string;
+  'regexBuilder.movePartDown': string;
+  'regexBuilder.removePart': string;
+  'regexBuilder.literalValueLabel': string;
+  'regexBuilder.literalHint': string;
+  'regexBuilder.classPresetLabel': string;
+  'regexBuilder.classDigit': string;
+  'regexBuilder.classNotDigit': string;
+  'regexBuilder.classWord': string;
+  'regexBuilder.classNotWord': string;
+  'regexBuilder.classWhitespace': string;
+  'regexBuilder.classNotWhitespace': string;
+  'regexBuilder.classAny': string;
+  'regexBuilder.classCustom': string;
+  'regexBuilder.classCustomLabel': string;
+  'regexBuilder.classCustomHint': string;
+  'regexBuilder.classNegate': string;
+  'regexBuilder.anchorLabel': string;
+  'regexBuilder.anchorStart': string;
+  'regexBuilder.anchorEnd': string;
+  'regexBuilder.anchorWordBoundary': string;
+  'regexBuilder.anchorNotWordBoundary': string;
+  'regexBuilder.groupKindLabel': string;
+  'regexBuilder.groupCapturing': string;
+  'regexBuilder.groupNonCapturing': string;
+  'regexBuilder.groupNamed': string;
+  'regexBuilder.groupNameLabel': string;
+  'regexBuilder.groupBodyLabel': string;
+  'regexBuilder.groupBodyHint': string;
+  'regexBuilder.alternationHint': string;
+  'regexBuilder.alternationOptionLabel': string;
+  'regexBuilder.alternationAdd': string;
+  'regexBuilder.alternationRemove': string;
+  'regexBuilder.quantifierLabel': string;
+  'regexBuilder.quantifierOne': string;
+  'regexBuilder.quantifierOptional': string;
+  'regexBuilder.quantifierStar': string;
+  'regexBuilder.quantifierPlus': string;
+  'regexBuilder.quantifierExactly': string;
+  'regexBuilder.quantifierAtLeast': string;
+  'regexBuilder.quantifierBetween': string;
+  'regexBuilder.quantifierMin': string;
+  'regexBuilder.quantifierMax': string;
+  'regexBuilder.quantifierLazy': string;
+  'regexBuilder.quantifierLazyHint': string;
+  'regexBuilder.sampleLegend': string;
+  'regexBuilder.samplePlaceholder': string;
+  'regexBuilder.sampleEmpty': string;
+  'regexBuilder.sampleTruncated': string;
+  'regexBuilder.matchCount': string;
+  'regexBuilder.matchCountOne': string;
+  'regexBuilder.matchNone': string;
+  'regexBuilder.matchesTruncated': string;
+  'regexBuilder.matchesTimedOut': string;
+  'regexBuilder.previewLabel': string;
+  'regexBuilder.groupsLegend': string;
+  'regexBuilder.groupsNone': string;
+  'regexBuilder.colMatch': string;
+  'regexBuilder.colGroup': string;
+  'regexBuilder.colName': string;
+  'regexBuilder.colValue': string;
+  'regexBuilder.groupUnmatched': string;
+  'regexBuilder.safetyNote': string;
+
+  // The dim sum surprise's surrounding copy. The dish's own name and its
+  // alt text come from the bundled catalog, not from here, so they stay
+  // correct at every funny level and in every locale.
+  'dimSum.blurb': string;
+
+  // The in-app changelog viewer: releases, the date-range picker, the
+  // search/date scope line, and the commit reference carried by every
+  // entry. `changelog.datePlaceholder` is a format mask rather than
+  // prose, so it reads YYYY-MM-DD in every locale.
+  'changelog.title': string;
+  'changelog.subtitle': string;
+  'changelog.openButton': string;
+  'changelog.settingsHint': string;
+  'changelog.searchLabel': string;
+  'changelog.searchPlaceholder': string;
+  'changelog.dateFrom': string;
+  'changelog.dateTo': string;
+  'changelog.datePlaceholder': string;
+  'changelog.dateHint': string;
+  'changelog.dateOpenAria': string;
+  'changelog.dateRangeBackwards': string;
+  'changelog.datePartialFields': string;
+  'changelog.datePartialYear': string;
+  'changelog.dateInvalidShape': string;
+  'changelog.dateInvalidRange': string;
+  'changelog.calendarAria': string;
+  'changelog.monthLabel': string;
+  'changelog.yearLabel': string;
+  'changelog.prevMonth': string;
+  'changelog.nextMonth': string;
+  'changelog.pickStart': string;
+  'changelog.pickEnd': string;
+  'changelog.scopeAll': string;
+  'changelog.scopeFiltered': string;
+  'changelog.scopeSearch': string;
+  'changelog.scopeRange': string;
+  'changelog.scopeRangeFrom': string;
+  'changelog.scopeRangeTo': string;
+  'changelog.scopeUndated': string;
+  'changelog.empty': string;
+  'changelog.emptyHint': string;
+  'changelog.releaseDateSource': string;
+  'changelog.releaseDateCommits': string;
+  'changelog.releaseDateUnknown': string;
+  'changelog.entryCount': string;
+  'changelog.sourceLabel': string;
+  'changelog.commitLinkAria': string;
+  'changelog.commitSummarizes': string;
+  'changelog.commitUnrecorded': string;
+  'changelog.commitUnresolved': string;
+  'changelog.copy': string;
+  'changelog.copied': string;
+  'changelog.copyFailed': string;
+  'changelog.exportMarkdown': string;
+  'changelog.exportText': string;
+  'changelog.exported': string;
+
+  // The command palette (Cmd/Ctrl+Shift+P): its scopes, row groups, and
+  // the commands it can run directly. Setting rows borrow their labels
+  // from the settings surface they teleport to, so only palette-owned
+  // strings live here.
+  'commandPalette.title': string;
+  'commandPalette.placeholder': string;
+  'commandPalette.noResults': string;
+  'commandPalette.filesUnavailable': string;
+  'commandPalette.scopeLabel': string;
+  'commandPalette.scopeAll': string;
+  'commandPalette.scopeCommands': string;
+  'commandPalette.scopeSettings': string;
+  'commandPalette.scopeGo': string;
+  'commandPalette.scopeFiles': string;
+  'commandPalette.groupCommands': string;
+  'commandPalette.groupGo': string;
+  'commandPalette.groupSettings': string;
+  'commandPalette.groupFiles': string;
+  'commandPalette.commandSearchFiles': string;
+  'commandPalette.commandSearchFilesHint': string;
+  'commandPalette.commandNewTab': string;
+  'commandPalette.commandFullWindow': string;
+  'commandPalette.commandExitFullWindow': string;
+  'commandPalette.commandFullWindowHint': string;
+  'commandPalette.commandCycleTheme': string;
+  'commandPalette.commandToggleLanguageMode': string;
+  'commandPalette.destinationLibrary': string;
+  'commandPalette.footerOpen': string;
+
+  // Workspace tab pinning and the two bulk-close actions. The close
+  // preview always states its counts and what it deliberately excluded,
+  // so an excluded tab is reported rather than silently skipped.
+  'workspaceTabs.pin': string;
+  'workspaceTabs.unpin': string;
+  'workspaceTabs.permanentTab': string;
+  'workspaceTabs.matchMode': string;
+  'workspaceTabs.bulkCloseTitle': string;
+  'workspaceTabs.bulkCloseQueryLabel': string;
+  'workspaceTabs.bulkCloseModeText': string;
+  'workspaceTabs.bulkCloseModeRegex': string;
+  'workspaceTabs.bulkCloseCaseSensitive': string;
+  'workspaceTabs.bulkCloseIncludePinned': string;
+  'workspaceTabs.bulkCloseContaining': string;
+  'workspaceTabs.bulkCloseNotContaining': string;
+  'workspaceTabs.bulkClosePreview': string;
+  'workspaceTabs.bulkCloseMore': string;
+  'workspaceTabs.bulkCloseExcludedPinned': string;
+  'workspaceTabs.bulkCloseExcludedPermanent': string;
+  'workspaceTabs.bulkCloseEmptyQuery': string;
+  'workspaceTabs.bulkCloseInvalidPattern': string;
+  'workspaceTabs.bulkCloseTooLong': string;
+  'workspaceTabs.bulkCloseNoMatches': string;
+  'workspaceTabs.bulkCloseConfirm': string;
 }
 
 // How many languages a rendered string carries. 'single' is the historical

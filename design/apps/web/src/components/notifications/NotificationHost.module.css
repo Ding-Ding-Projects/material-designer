@@ -1,0 +1,191 @@
+/* The corner stack.
+
+   A CSS Module rather than another block in `styles/viewer/routines.css`
+   because every selector here belongs to one component. The existing global
+   `.od-toast` rules are deliberately untouched: two dozen surfaces render that
+   element and a bottom-centre singleton is the right shape for them. This is
+   the app-level stack, and it is a different thing.
+
+   Anchored bottom-right rather than bottom-centre so it cannot sit over the
+   chat composer's send area, which is the one control a user is most likely to
+   be aiming at while a toast arrives. */
+
+.host {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 1400;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: min(380px, calc(100vw - 32px));
+  /* Bounded, and scrolls inside that bound. A stack that grew past the top of
+     the window would put its oldest toast — the error, since errors do not
+     expire — off screen with nothing to say it was there. */
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* The column itself is not a target; each toast opts back in, so the gaps
+     between them stay clickable for whatever is underneath. */
+  pointer-events: none;
+}
+
+.overflow {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: var(--md-sys-shape-corner-full);
+  align-self: center;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--shadow-md);
+  pointer-events: auto;
+  animation: notification-enter var(--dur-enter, 200ms) var(--ease-out);
+}
+
+/* One accent stripe per severity, plus the icon colour. Colour is never the
+   only carrier — the severity is also written out in `.severity` — so this is
+   reinforcement rather than the message. */
+.toast[data-severity='success'] {
+  border-color: color-mix(in srgb, var(--md-sys-color-success) 46%, var(--md-sys-color-outline-variant));
+}
+
+.toast[data-severity='warning'] {
+  border-color: color-mix(in srgb, var(--amber) 52%, var(--md-sys-color-outline-variant));
+}
+
+.toast[data-severity='error'] {
+  border-color: color-mix(in srgb, var(--md-sys-color-error) 52%, var(--md-sys-color-outline-variant));
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.toast[data-severity='success'] .icon {
+  color: var(--md-sys-color-success);
+}
+
+.toast[data-severity='warning'] .icon {
+  color: var(--amber);
+}
+
+.toast[data-severity='error'] .icon {
+  color: var(--md-sys-color-error);
+}
+
+.toast[data-severity='progress'] .icon {
+  color: var(--md-sys-color-primary);
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.severity {
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: var(--md-sys-typescale-label-small-weight);
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.title {
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: 600;
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  /* Wraps rather than truncates. A notification whose sentence is cut in half
+     is a notification the user has to guess at, and there is no hover target
+     here that would reveal the rest. */
+  overflow-wrap: anywhere;
+}
+
+.body {
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.toast .action {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 5px 12px;
+  min-height: 28px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+}
+
+.toast .action:hover:not(:disabled) {
+  background: var(--ripple);
+  color: var(--md-sys-color-primary);
+}
+
+.toast .dismiss {
+  display: grid;
+  place-items: center;
+  flex: none;
+  /* 28px is the visual size; the padding-free box would be an 18px target,
+     which is below what a pointer can comfortably hit at 100% scale. */
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.toast .dismiss:hover:not(:disabled) {
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+.toast .action:focus-visible,
+.toast .dismiss:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}

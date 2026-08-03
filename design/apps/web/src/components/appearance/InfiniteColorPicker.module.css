@@ -1,0 +1,306 @@
+/* The continuous picker.
+
+   Every colour here is an M3 role rather than a literal, with one class of
+   exception: the field, the hue track and the alpha checkerboard, which
+   ARE the colour data the control exists to show. Theming those would make
+   the picker lie about the colour it is picking. */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The two-dimensional saturation / brightness field. `touch-action: none`
+   is what lets a drag work on a touchscreen at all — without it the
+   browser claims the gesture for scrolling before the second pointermove
+   arrives, and the field appears to accept a tap and refuse a drag. */
+.field {
+  position: relative;
+  width: 100%;
+  height: 148px;
+  border-radius: var(--md-sys-shape-corner-s);
+  border: 1px solid var(--border);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.thumb {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: var(--md-sys-shape-corner-full);
+  /* White ring plus a dark shadow, so the thumb stays visible against both
+     ends of the field — a single-colour ring disappears into one corner. */
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--text-muted);
+}
+
+.axes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.axis {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.axisLabel {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  color: var(--text-muted);
+}
+
+.slider {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The hue axis paints the hues it selects, so the track is the legend. */
+.hueSlider {
+  accent-color: transparent;
+  background: linear-gradient(
+    to right,
+    #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%
+  );
+  border-radius: var(--md-sys-shape-corner-full);
+  height: 12px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Alpha over a checkerboard, because "50% transparent" against an opaque
+   panel looks exactly like "a lighter colour". */
+.alphaSlider {
+  height: 12px;
+  border-radius: var(--md-sys-shape-corner-full);
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #bbb 25%, transparent 25%),
+    linear-gradient(-45deg, #bbb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #bbb 75%),
+    linear-gradient(-45deg, transparent 75%, #bbb 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.entryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.entryInput,
+.channelInput {
+  border: 1px solid var(--border);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--bg-panel);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: var(--md-sys-typescale-body-small-size);
+  min-width: 0;
+}
+
+.entryInput {
+  font-family: var(--mono);
+}
+
+.entryInput:focus-visible,
+.channelInput:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.entryInput[aria-invalid='true'] {
+  border-color: var(--md-sys-color-error);
+}
+
+.channel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 74px;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-error);
+}
+
+.swatchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container);
+}
+
+.readoutHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: var(--md-sys-typescale-label-medium-size);
+  color: var(--text-muted);
+}
+
+.nameOut {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.space {
+  text-transform: uppercase;
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+}
+
+.contrast {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--text);
+}
+
+.translations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Ten representations is a long list next to a colour field; bounding it
+     and scrolling inside the bound keeps the panel a panel. */
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.translation {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: var(--md-sys-shape-corner-xs);
+}
+
+.translation:hover {
+  background: var(--ripple);
+}
+
+.translationLabel {
+  font-size: var(--md-sys-typescale-label-small-size);
+  letter-spacing: var(--md-sys-typescale-label-small-tracking);
+  color: var(--text-muted);
+}
+
+.translationValue {
+  font-family: var(--mono);
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--text);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.lossBadges {
+  display: flex;
+  gap: 4px;
+}
+
+.lossBadge {
+  font-size: var(--md-sys-typescale-label-small-size);
+  padding: 1px 6px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.copyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.copyButton:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}

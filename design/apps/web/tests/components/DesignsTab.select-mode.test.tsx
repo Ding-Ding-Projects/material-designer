@@ -41,6 +41,20 @@ function stubCoverProbe(status = 200, statusText = 'OK') {
   return fetchMock;
 }
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Deleting projects used to be one button press; it is now this, and
+ * the sequence is what these tests have to perform to reach the delete.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+    target: { value: '100' },
+  });
+}
+
 describe('DesignsTab select mode', () => {
   beforeAll(() => {
     if (window.localStorage) return;
@@ -326,11 +340,11 @@ describe('DesignsTab select mode', () => {
     expect(screen.getByText('2 selected')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
-    fireEvent.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', {
-        name: 'Delete selected',
-      }),
-    );
+    // The gate names both projects before it will let anything through.
+    expect(
+      within(screen.getByTestId('destructive-gate-items')).getAllByRole('listitem'),
+    ).toHaveLength(2);
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledTimes(2);
@@ -357,11 +371,7 @@ describe('DesignsTab select mode', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Select' }));
       fireEvent.click(screen.getByText('Landing refresh').closest('.design-card') as HTMLElement);
       fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
-      fireEvent.click(
-        within(screen.getByRole('alertdialog')).getByRole('button', {
-          name: 'Delete selected',
-        }),
-      );
+      authorizeDestructiveGate();
       await flushDelete();
     };
 

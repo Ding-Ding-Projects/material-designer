@@ -1,0 +1,94 @@
+/* The selection bar. Sits above the rows it describes, wraps rather than
+   clipping, and keeps the count first because the count is the thing a user
+   double-checks before pressing anything destructive. */
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--accent-tint);
+  color: var(--text);
+}
+
+.count {
+  font-size: 13px;
+  font-weight: 600;
+  /* Never shrinks away: at narrow widths the actions wrap to a second line and
+     the count stays legible, rather than the count truncating to "42 sele…". */
+  flex: 0 0 auto;
+}
+
+.scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.scopeButton {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  /* 24px of height plus the bar's own padding keeps the target usable at 200%
+     display scale, where a 16px pill becomes unhittable. */
+  min-height: 24px;
+  cursor: pointer;
+  transition: background-color 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.scopeButton:hover,
+.scopeButton:focus-visible {
+  background: var(--accent-soft);
+}
+
+.scopeButton:focus-visible,
+.clear:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.danger {
+  color: var(--md-sys-color-error);
+  border-color: color-mix(in srgb, var(--md-sys-color-error) 40%, transparent);
+}
+
+.clear {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  min-height: 24px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.clear:hover {
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scopeButton {
+    transition: none;
+  }
+}
