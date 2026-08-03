@@ -108,6 +108,21 @@ function numbersIn(text: string): number[] {
   return Array.from(text.matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
 }
 
+/**
+ * Read one channel out of a list this module produced a line earlier by
+ * formatting a colour it already holds, then parsing its own output back.
+ *
+ * The index is therefore always present. The fallback exists because the
+ * compiler cannot know that, and it is 0 rather than a throw so a regression
+ * in the formatter shows up as a visibly wrong colour in a settings panel
+ * instead of taking the panel down. It is deliberately not a non-null
+ * assertion: an assertion would silence the same compiler without leaving
+ * anything behind for the next reader.
+ */
+function channelAt(values: number[], index: number): number {
+  return values[index] ?? 0;
+}
+
 export function translateColor(rgba: Rgba): ColorRepresentation[] {
   const source: Rgb = { r: rgba.r, g: rgba.g, b: rgba.b };
   const alpha = clamp(rgba.a, 0, 1);
@@ -180,7 +195,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     space: 'srgb',
     loss: withRounding(
       source,
-      { r: rgbBack[0], g: rgbBack[1], b: rgbBack[2] },
+      { r: channelAt(rgbBack, 0), g: channelAt(rgbBack, 1), b: channelAt(rgbBack, 2) },
       opaque ? [] : ['alpha'],
     ),
   });
@@ -191,7 +206,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
       label: 'RGBA',
       value: formatRgba({ ...source, a: alpha }),
       space: 'srgb',
-      loss: withRounding(source, { r: rgbBack[0], g: rgbBack[1], b: rgbBack[2] }, []),
+      loss: withRounding(source, { r: channelAt(rgbBack, 0), g: channelAt(rgbBack, 1), b: channelAt(rgbBack, 2) }, []),
     });
   }
 
@@ -202,7 +217,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     space: 'srgb',
     loss: withRounding(
       source,
-      hslToRgb({ h: hslBack[0], s: hslBack[1], l: hslBack[2] }),
+      hslToRgb({ h: channelAt(hslBack, 0), s: channelAt(hslBack, 1), l: channelAt(hslBack, 2) }),
       opaque ? [] : ['alpha'],
     ),
   });
@@ -213,7 +228,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
       label: 'HSLA',
       value: formatHsla(hsl, alpha),
       space: 'srgb',
-      loss: withRounding(source, hslToRgb({ h: hslBack[0], s: hslBack[1], l: hslBack[2] }), []),
+      loss: withRounding(source, hslToRgb({ h: channelAt(hslBack, 0), s: channelAt(hslBack, 1), l: channelAt(hslBack, 2) }), []),
     });
   }
 
@@ -228,7 +243,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     // of warning next to it.
     loss: withRounding(
       source,
-      hsvToRgb({ h: hsvBack[0], s: hsvBack[1], v: hsvBack[2] }),
+      hsvToRgb({ h: channelAt(hsvBack, 0), s: channelAt(hsvBack, 1), v: channelAt(hsvBack, 2) }),
       opaque ? ['not-css'] : ['not-css', 'alpha'],
     ),
   });
@@ -239,7 +254,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     value: hwbText,
     space: 'srgb',
     // `hwb()` takes `/ alpha` in CSS Color 4, so this one is complete.
-    loss: withRounding(source, hwbToRgb({ h: hwbBack[0], w: hwbBack[1], b: hwbBack[2] }), []),
+    loss: withRounding(source, hwbToRgb({ h: channelAt(hwbBack, 0), w: channelAt(hwbBack, 1), b: channelAt(hwbBack, 2) }), []),
   });
 
   representations.push({
@@ -249,7 +264,7 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     space: 'device-cmyk',
     loss: withRounding(
       source,
-      cmykToRgb({ c: cmykBack[0], m: cmykBack[1], y: cmykBack[2], k: cmykBack[3] }),
+      cmykToRgb({ c: channelAt(cmykBack, 0), m: channelAt(cmykBack, 1), y: channelAt(cmykBack, 2), k: channelAt(cmykBack, 3) }),
       opaque ? ['unmanaged'] : ['unmanaged', 'alpha'],
     ),
   });

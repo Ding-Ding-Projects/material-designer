@@ -170,16 +170,21 @@ export interface ChangelogExportLabels {
 }
 
 function commitSuffix(entry: ChangelogEntry, labels: ChangelogExportLabels): string {
-  if (entry.commit.state === 'unrecorded') return ` — ${labels.commitUnrecorded}`;
-  if (entry.commit.state === 'unresolved') {
-    const named = entry.commit.referenced.join(', ');
+  // Bound to a local so the discriminant narrows. Narrowing a nested property
+  // path (`entry.commit.state`) does not carry past the early returns here, and
+  // the union is genuinely exhausted by them — the compiler simply cannot see
+  // it through the property access.
+  const commit = entry.commit;
+  if (commit.state === 'unrecorded') return ` — ${labels.commitUnrecorded}`;
+  if (commit.state === 'unresolved') {
+    const named = commit.referenced.join(', ');
     return ` — ${labels.commitUnresolved}${named.length > 0 ? ` (${named})` : ''}`;
   }
   const summary =
-    entry.commit.summarizes > 1
-      ? ` ${labels.commitSummarizes.replace('{count}', String(entry.commit.summarizes))}`
+    commit.summarizes > 1
+      ? ` ${labels.commitSummarizes.replace('{count}', String(commit.summarizes))}`
       : '';
-  return ` — ${entry.commit.shortSha}${summary}`;
+  return ` — ${commit.shortSha}${summary}`;
 }
 
 /**

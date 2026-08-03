@@ -265,7 +265,11 @@ export class NarratorQueue {
   /** The first non-error in the queue — the one waiting longest. */
   private findOldestNonError(): number {
     for (let index = 0; index < this.queue.length; index += 1) {
-      if (this.queue[index].category !== 'error') return index;
+      // Bound and checked rather than asserted: the loop condition guarantees
+      // the index, but under checked index access the compiler does not infer
+      // that from `index < length`.
+      const entry = this.queue[index];
+      if (entry !== undefined && entry.category !== 'error') return index;
     }
     // Every entry is an error. Dropping one would lose a failure report,
     // so the queue is allowed over its bound instead.

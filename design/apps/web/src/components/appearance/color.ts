@@ -300,10 +300,17 @@ const HEX_PATTERN = /^#?([0-9a-f]{3,8})$/i;
 export function parseHex(text: string): Rgba | null {
   const match = HEX_PATTERN.exec(text.trim());
   if (!match) return null;
+  // The capture group is guaranteed by a successful match, and the characters
+  // below are guaranteed by the length checks. Neither is visible to the
+  // compiler under checked index access, so both are stated rather than
+  // asserted away — an assertion here would be a promise, and this is a parser
+  // whose whole job is to distrust its input.
   const digits = match[1];
+  if (digits === undefined) return null;
   const expand = (pair: string): number => parseInt(pair, 16);
   if (digits.length === 3 || digits.length === 4) {
     const [r, g, b, a] = digits.split('');
+    if (r === undefined || g === undefined || b === undefined) return null;
     return {
       r: expand(`${r}${r}`),
       g: expand(`${g}${g}`),
@@ -387,29 +394,38 @@ export function parseColor(input: string, names: Record<string, string>): Parsed
 
   const fn = FUNCTION_PATTERN.exec(text);
   if (!fn) return null;
-  const name = fn[1].toLowerCase();
-  const args = parseArgs(fn[2]);
+  const rawName = fn[1];
+  const rawArgs = fn[2];
+  if (rawName === undefined || rawArgs === undefined) return null;
+  const name = rawName.toLowerCase();
+  const args = parseArgs(rawArgs);
   if (!args) return null;
+  // Bind the three positional channels once. Every branch below is guarded by
+  // `args.length >= 3`, which the compiler does not translate into "index 0..2
+  // are present" — so bind and check here instead of repeating a cast at each
+  // of the twelve use sites.
+  const [arg0, arg1, arg2, arg3] = args;
   const clipped: string[] = [];
+  if (arg0 === undefined || arg1 === undefined || arg2 === undefined) return null;
 
   if ((name === 'rgb' || name === 'rgba') && args.length >= 3) {
     const rgba: Rgba = {
-      r: noteClipped('r', channelOf(args[0]), 0, 255, clipped),
-      g: noteClipped('g', channelOf(args[1]), 0, 255, clipped),
-      b: noteClipped('b', channelOf(args[2]), 0, 255, clipped),
-      a: noteClipped('a', alphaOf(args[3]), 0, 1, clipped),
+      r: noteClipped('r', channelOf(arg0), 0, 255, clipped),
+      g: noteClipped('g', channelOf(arg1), 0, 255, clipped),
+      b: noteClipped('b', channelOf(arg2), 0, 255, clipped),
+      a: noteClipped('a', alphaOf(arg3), 0, 1, clipped),
     };
     return { rgba, format: 'rgb', clipped };
   }
 
   if ((name === 'hsl' || name === 'hsla') && args.length >= 3) {
     const rgb = hslToRgb({
-      h: args[0].value,
-      s: noteClipped('s', args[1].value, 0, 100, clipped),
-      l: noteClipped('l', args[2].value, 0, 100, clipped),
+      h: arg0.value,
+      s: noteClipped('s', arg1.value, 0, 100, clipped),
+      l: noteClipped('l', arg2.value, 0, 100, clipped),
     });
     return {
-      rgba: { ...rgb, a: noteClipped('a', alphaOf(args[3]), 0, 1, clipped) },
+      rgba: { ...rgb, a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
       format: 'hsl',
       clipped,
     };
@@ -417,12 +433,12 @@ export function parseColor(input: string, names: Record<string, string>): Parsed
 
   if ((name === 'hsv' || name === 'hsva' || name === 'hsb') && args.length >= 3) {
     const rgb = hsvToRgb({
-      h: args[0].value,
-      s: noteClipped('s', args[1].value, 0, 100, clipped),
-      v: noteClipped('v', args[2].value, 0, 100, clipped),
+      h: arg0.value,
+      s: noteClipped('s', arg1.value, 0, 100, clipped),
+      v: noteClipped('v', arg2.value, 0, 100, clipped),
     });
     return {
-      rgba: { ...rgb, a: noteClipped('a', alphaOf(args[3]), 0, 1, clipped) },
+      rgba: { ...rgb, a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
       format: 'hsv',
       clipped,
     };
@@ -430,23 +446,27 @@ export function parseColor(input: string, names: Record<string, string>): Parsed
 
   if (name === 'hwb' && args.length >= 3) {
     const rgb = hwbToRgb({
-      h: args[0].value,
-      w: noteClipped('w', args[1].value, 0, 100, clipped),
-      b: noteClipped('b', args[2].value, 0, 100, clipped),
+      h: arg0.value,
+      w: noteClipped('w', arg1.value, 0, 100, clipped),
+      b: noteClipped('b', arg2.value, 0, 100, clipped),
     });
     return {
-      rgba: { ...rgb, a: noteClipped('a', alphaOf(args[3]), 0, 1, clipped) },
+      rgba: { ...rgb, a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
       format: 'hwb',
       clipped,
     };
   }
 
   if ((name === 'cmyk' || name === 'device-cmyk') && args.length >= 4) {
+    // This is the one notation needing a fourth channel, so it carries its own
+    // guard rather than widening the shared one above and letting the
+    // three-channel notations through with a missing argument.
+    if (arg3 === undefined) return null;
     const rgb = cmykToRgb({
-      c: noteClipped('c', args[0].value, 0, 100, clipped),
-      m: noteClipped('m', args[1].value, 0, 100, clipped),
-      y: noteClipped('y', args[2].value, 0, 100, clipped),
-      k: noteClipped('k', args[3].value, 0, 100, clipped),
+      c: noteClipped('c', arg0.value, 0, 100, clipped),
+      m: noteClipped('m', arg1.value, 0, 100, clipped),
+      y: noteClipped('y', arg2.value, 0, 100, clipped),
+      k: noteClipped('k', arg3.value, 0, 100, clipped),
     });
     return {
       rgba: { ...rgb, a: noteClipped('a', alphaOf(args[4]), 0, 1, clipped) },
