@@ -74,7 +74,7 @@ export class DeployError extends Error {
 }
 
 export function deployConfigPath(providerId: DeployProviderId = VERCEL_PROVIDER_ID) {
-  const base = process.env.OD_USER_STATE_DIR || path.join(os.homedir(), '.open-design');
+  const base = process.env.OD_USER_STATE_DIR || path.join(os.homedir(), '.material-designer');
   return path.join(base, providerId === CLOUDFLARE_PAGES_PROVIDER_ID ? 'cloudflare-pages.json' : 'vercel.json');
 }
 

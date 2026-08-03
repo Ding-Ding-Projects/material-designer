@@ -171,7 +171,7 @@ async function runElectronBuilderRaw(
     )
     : null;
   const builderConfig = {
-    appId: "io.open-design.desktop",
+    appId: "io.ding-ding.material-designer",
     afterPack: webStandaloneHookConfigPath == null ? undefined : winResources.webStandaloneAfterPackHook,
     asar: ELECTRON_BUILDER_ASAR,
     buildDependenciesFromSource: ELECTRON_BUILDER_BUILD_DEPENDENCIES_FROM_SOURCE,
@@ -225,6 +225,7 @@ async function runElectronBuilderRaw(
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
       icon: paths.winIconPath,
+      publisherName: "Ding Ding Projects",
       target: resolveElectronBuilderWinTargets(config.to).map((target) => ({ arch: ["x64"], target })),
     },
   };

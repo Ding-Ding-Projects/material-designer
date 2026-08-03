@@ -28,7 +28,7 @@ function resolveHeadlessNamespaceBaseRoot(): string {
     xdgDataHome != null && xdgDataHome.length > 0
       ? xdgDataHome
       : join(homedir(), ".local", "share");
-  return join(dataBase, "open-design", "namespaces");
+  return join(dataBase, "material-designer", "namespaces");
 }
 
 function resolveHeadlessAmrProfile(): PackagedConfig["amrProfile"] {

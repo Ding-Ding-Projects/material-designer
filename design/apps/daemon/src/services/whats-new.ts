@@ -1,7 +1,7 @@
 import type { WhatsNewContent, WhatsNewLocaleContent } from '@open-design/contracts';
 
-// Fetches the post-update "what's new" highlight from a single hosted document
-// on a dedicated R2 bucket. Operators edit that one file after a release; the
+// Fetches the post-update "what's new" highlight from a single hosted document,
+// when one is configured (see below). Operators edit that one file; the
 // document carries an `id` that drives the home card's once-per-highlight
 // behavior (see apps/web/src/lib/whats-new.ts). This service does not know
 // about release channels or the running version — content identity is the
@@ -26,16 +26,13 @@ export interface WhatsNewService {
   readWhatsNew(channel: string): Promise<WhatsNewReadResult>;
 }
 
-/** The dedicated, hardcoded highlights document. Operators update this file. */
-export const DEFAULT_WHATS_NEW_URL = 'https://whatsnew.open-design.ai/whats-new.json';
-
-/**
- * The post-update card is a release feature. Only real release channels fetch
- * the hosted document; development/CI builds resolve to no card so the card
- * never intrudes on tests or unreleased builds. `OD_WHATS_NEW_URL` opts any
- * channel in (used by e2e fixtures that exercise the card on purpose).
- */
-const WHATS_NEW_RELEASE_CHANNELS = new Set(['beta', 'prerelease', 'preview', 'stable']);
+// The post-update card is opt-in for this fork. Upstream pointed every release
+// channel at its own hosted highlights document; this fork ships none and must
+// not fetch upstream's, because that document's operators would then control
+// copy, an image and a clickable download link rendered inside this product,
+// and would receive a launch signal from every user. `OD_WHATS_NEW_URL` is the
+// only source: e2e fixtures set it today, and a document owned by this fork can
+// be pointed at it later without reintroducing a default.
 
 // Short enough that an operator's edit reaches users on their next Home visit
 // without a long stale window, long enough that Home activations do not hammer
@@ -44,15 +41,13 @@ const WHATS_NEW_CACHE_TTL_MS = 10 * 60 * 1000;
 const WHATS_NEW_TIMEOUT_MS = 4_000;
 
 /**
- * The document URL, or null when this build must not show the card.
- * `OD_WHATS_NEW_URL` overrides it for local fixtures and tests (e.g. a
- * tools-serve endpoint) regardless of channel; otherwise the dedicated R2
- * object is used only on release channels.
+ * The document URL, or null when this build must not show the card. Without an
+ * explicit `OD_WHATS_NEW_URL` there is no document, so every channel resolves
+ * to no card. The channel is retained in the signature because the card is a
+ * per-channel concept upstream and callers already pass it.
  */
-export function whatsNewSourceUrl(env: NodeJS.ProcessEnv, channel: string): string | null {
-  const override = env.OD_WHATS_NEW_URL?.trim();
-  if (override) return override;
-  return WHATS_NEW_RELEASE_CHANNELS.has(channel) ? DEFAULT_WHATS_NEW_URL : null;
+export function whatsNewSourceUrl(env: NodeJS.ProcessEnv, _channel: string): string | null {
+  return env.OD_WHATS_NEW_URL?.trim() || null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -129,8 +124,7 @@ export function createWhatsNewService({
   async function readWhatsNew(channel: string): Promise<WhatsNewReadResult> {
     const sourceUrl = whatsNewSourceUrl(env, channel);
     if (sourceUrl == null) {
-      // Development/CI builds (no release channel, no override) never show the
-      // card and never reach out to the network.
+      // No document is configured, so there is no card and no network access.
       return { id: null, content: null, fetchedAt: now(), stale: false };
     }
     const cacheKey = sourceUrl;

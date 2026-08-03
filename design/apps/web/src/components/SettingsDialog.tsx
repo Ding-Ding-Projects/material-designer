@@ -249,7 +249,11 @@ interface ByokProviderPreset {
 // sign-in coachmark when the user has not authorized AMR yet).
 export type SettingsHighlight = 'amr' | null;
 
-const OPEN_DESIGN_RELEASES_URL = 'https://github.com/nexu-io/open-design/releases';
+// This fork's own release page. It must never be upstream's: the About panel
+// shows this link precisely when in-app updating is unavailable, so pointing it
+// at the other product would be a one-click manual route into the build this
+// fork exists to stay separate from.
+const OPEN_DESIGN_RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 
 type AboutUpdatePrimaryAction = 'check' | 'download' | 'install' | 'quit';
 type AboutUpdateTone = 'neutral' | 'success' | 'warning' | 'error';

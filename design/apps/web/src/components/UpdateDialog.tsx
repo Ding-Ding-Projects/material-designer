@@ -27,7 +27,8 @@ import {
 } from '../lib/updater';
 import styles from './UpdateDialog.module.css';
 
-const RELEASES_URL = 'https://github.com/nexu-io/open-design/releases';
+// This fork's own release page, never upstream's — see SettingsDialog.
+const RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 const MENU_SOURCE = 'mac-app-menu';
 
 function withEllipsis(value: string): string {

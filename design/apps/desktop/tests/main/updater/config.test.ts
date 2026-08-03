@@ -87,4 +87,83 @@ describe("desktop updater config", () => {
       rmSync(root, { force: true, recursive: true });
     }
   });
+
+  // The identity guard for this fork: a packaged build that was not given a
+  // feed of its own must never check, and must never resolve another product's
+  // origin. Both are one-line reversions in a file that keeps merging from
+  // upstream, so they are pinned here rather than left to review.
+  it("leaves a packaged build with no configured feed disabled", () => {
+    const root = makeRoot();
+    try {
+      const config = resolveDesktopUpdaterConfig({
+        currentVersion: "1.2.3",
+        downloadRoot: root,
+        env: {},
+        source: SIDECAR_SOURCES.PACKAGED,
+      });
+
+      expect(config.enabled).toBe(false);
+      expect(config.autoCheck).toBe(false);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("never defaults any channel at another product's release feed", () => {
+    const root = makeRoot();
+    try {
+      for (const currentVersion of ["1.2.3", "1.2.3-beta.4", "1.2.3-prerelease.4", "1.2.3-preview.4"]) {
+        const config = resolveDesktopUpdaterConfig({
+          currentVersion,
+          downloadRoot: root,
+          env: {},
+          source: SIDECAR_SOURCES.PACKAGED,
+        });
+
+        expect(new URL(config.metadataUrl).hostname.endsWith(".invalid")).toBe(true);
+        expect(config.metadataUrl).not.toContain("open-design.ai");
+      }
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("enables a packaged build that was packed against an explicit feed", () => {
+    const root = makeRoot();
+    try {
+      const config = resolveDesktopUpdaterConfig({
+        currentVersion: "1.2.3",
+        downloadRoot: root,
+        env: {
+          [DESKTOP_UPDATE_ENV.METADATA_URL]: "https://updates.example.com/stable/latest/metadata.json",
+        },
+        source: SIDECAR_SOURCES.PACKAGED,
+      });
+
+      expect(config.enabled).toBe(true);
+      expect(config.autoCheck).toBe(true);
+      expect(config.metadataUrl).toBe("https://updates.example.com/stable/latest/metadata.json");
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("leaves an unpackaged build disabled even when a feed is configured", () => {
+    const root = makeRoot();
+    try {
+      const config = resolveDesktopUpdaterConfig({
+        currentVersion: "1.2.3",
+        downloadRoot: root,
+        env: {
+          [DESKTOP_UPDATE_ENV.METADATA_URL]: "https://updates.example.com/stable/latest/metadata.json",
+        },
+        source: SIDECAR_SOURCES.TOOLS_DEV,
+      });
+
+      expect(config.enabled).toBe(false);
+      expect(config.autoCheck).toBe(false);
+    } finally {
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
 });

@@ -859,7 +859,7 @@ function createPendingHtml(): string {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Open Design</title>
+    <title>Material Designer</title>
     <style>
       html,
       body {
@@ -1067,7 +1067,7 @@ function buildCrashReportUrl(ctx: RendererCrashScreenContext): string {
   const title = `Desktop app keeps crashing (renderer ${ctx.reason})`;
   const body = [
     "**What happened**",
-    "The Open Design desktop window crashed several times in a row and showed the recovery screen.",
+    "The Material Designer desktop window crashed several times in a row and showed the recovery screen.",
     "",
     "**What I was doing when it started** (please add any detail):",
     "",
@@ -1086,9 +1086,9 @@ function buildCrashReportUrl(ctx: RendererCrashScreenContext): string {
 // Prefilled mailto for the "Email us" action — same auto-filled diagnostics as
 // the issue, for users who'd rather email than open a GitHub account.
 function buildCrashMailtoUrl(ctx: RendererCrashScreenContext): string {
-  const subject = `Open Design keeps crashing (renderer ${ctx.reason})`;
+  const subject = `Material Designer keeps crashing (renderer ${ctx.reason})`;
   const body = [
-    "The Open Design desktop app crashed several times in a row on my device.",
+    "The Material Designer desktop app crashed several times in a row on my device.",
     "",
     "(If possible, attach the diagnostics file you saved with the “Save logs…” button.)",
     "",
@@ -1106,7 +1106,7 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>Open Design</title>
+    <title>Material Designer</title>
     <style>
       /* Palette mirrors the app's neutral design tokens (apps/web tokens.css):
          warm off-white + near-black, no accent color — matching the black/white
@@ -1202,7 +1202,7 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
   </head>
   <body>
     <div class="panel">
-      <p class="title">Open Design keeps closing on this device</p>
+      <p class="title">Material Designer keeps closing on this device</p>
       <p class="body">The app window crashed several times in a row, so it has paused to avoid getting stuck reloading.</p>
       <p class="body">It will try to recover on its own in a few minutes.</p>
       <div class="actions">
@@ -1212,7 +1212,7 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
       <p class="hint" id="diag-note">Saved logs include a crash memory snapshot so we can find the cause. Nothing is sent unless you choose to share it.</p>
       <p class="status" id="status" aria-live="polite"></p>
       <p class="email" id="email-line">Prefer email? <a href="#" id="email">Contact ${SUPPORT_EMAIL}</a></p>
-      <p class="hint">If this keeps happening, quitting and reinstalling Open Design usually resolves it.</p>
+      <p class="hint">If this keeps happening, quitting and reinstalling Material Designer usually resolves it.</p>
     </div>
     <script>
       (function () {
@@ -1300,7 +1300,7 @@ const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
 ];
 
 const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
-  starting: "Starting Open Design",
+  starting: "Starting Material Designer",
   engine: "Starting the local engine",
   engineReady: "Local engine ready",
   interface: "Preparing the interface",
@@ -1420,7 +1420,7 @@ export function createSplashWindow(): SplashWindowHandle {
     height: 900,
     resizable: false,
     show: true,
-    title: "Open Design",
+    title: "Material Designer",
     width: 1280,
     webPreferences: {
       contextIsolation: true,
@@ -2116,7 +2116,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   const petWindow = createDesktopPetWindow(preloadPath, options.osLocale);
-  const windowTitle = options.windowTitle ?? "Open Design";
+  const windowTitle = options.windowTitle ?? "Material Designer";
   const window = new BrowserWindow({
     height: 900,
     icon: resolveDesktopIconPath(),
@@ -2283,7 +2283,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const unsubscribeUpdater = options.updater?.subscribe(() => sendUpdaterStatus()) ?? (() => undefined);
   const requireMainWindowSender = (event: Electron.IpcMainInvokeEvent): void => {
     if (event.sender !== window.webContents) {
-      throw new Error("host IPC is only available to the main Open Design window");
+      throw new Error("host IPC is only available to the main Material Designer window");
     }
   };
   const discoverUpdateDaemonBaseUrl = async (): Promise<string> => {

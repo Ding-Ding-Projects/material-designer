@@ -64,6 +64,7 @@ const { diagnosePackedWinIpc, inspectPackedWinApp, installPackedWinApp, stopPack
   "../src/win/lifecycle.js"
 );
 const { resolveWinPaths } = await import("../src/win/paths.js");
+const { resolveToolPackLauncherLayout } = await import("../src/launcher-layout.js");
 
 function createConfig(root: string): ToolPackConfig {
   return {
@@ -279,7 +280,13 @@ describe("stopPackedWinApp", () => {
   it("waits for a packaged-source payload desktop to exit after graceful shutdown", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
     const config = createConfig(root);
-    const payloadDesktop = { command: "payload-desktop", pid: 4242, ppid: 1 };
+    const payloadDesktopExe = join(
+      resolveToolPackLauncherLayout(config).paths.versionsRoot,
+      "0.10.0-beta.1",
+      "payload",
+      "Material Designer.exe",
+    );
+    const payloadDesktop = { command: `"${payloadDesktopExe}" --payload-desktop`, pid: 4242, ppid: 1 };
 
     try {
       requestJsonIpc.mockReset();
@@ -308,6 +315,37 @@ describe("stopPackedWinApp", () => {
         stoppedPids: [payloadDesktop.pid],
       });
       expect(listProcessSnapshots).toHaveBeenCalledTimes(3);
+      expect(stopProcesses).not.toHaveBeenCalled();
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("leaves a stamp-identical desktop outside this build's own trees alone", async () => {
+    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const config = createConfig(root);
+    const foreignDesktop = {
+      command: "\"C:\\Program Files\\Other Product\\Other Product.exe\" --other",
+      pid: 5150,
+      ppid: 1,
+    };
+
+    try {
+      requestJsonIpc.mockReset();
+      requestJsonIpc.mockResolvedValue({ accepted: true });
+      listProcessSnapshots.mockReset();
+      listProcessSnapshots.mockResolvedValue([foreignDesktop]);
+      matchesStampedProcess.mockReset();
+      matchesStampedProcess.mockReturnValue(true);
+      stopProcesses.mockClear();
+
+      await expect(stopPackedWinApp(config)).resolves.toEqual({
+        gracefulRequested: true,
+        namespace: config.namespace,
+        remainingPids: [],
+        status: "not-running",
+        stoppedPids: [],
+      });
       expect(stopProcesses).not.toHaveBeenCalled();
     } finally {
       await rm(root, { force: true, recursive: true });

@@ -63,13 +63,14 @@ export const SIDECAR_STAMP_FIELDS = ["app", "mode", "namespace", "ipc", "source"
 
 export const SIDECAR_DEFAULTS = Object.freeze({
   host: "127.0.0.1",
-  ipcBase: "/tmp/open-design/ipc",
+  ipcBase: "/tmp/material-designer/ipc",
   namespace: "default",
   projectTmpDirName: ".tmp",
-  windowsPipePrefix: "open-design",
+  windowsPipePrefix: "material-designer",
 } as const);
 
-export const OPEN_DESIGN_PRODUCT_NAME = "Open Design";
+// Product display name. The constant name is historical; only its value tracks the product.
+export const OPEN_DESIGN_PRODUCT_NAME = "Material Designer";
 
 export function resolveWindowsReleaseNamespaceToken(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-");

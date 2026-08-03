@@ -51,12 +51,12 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
   win: "win",
 } as const satisfies Record<ReleasePlatform, string>);
 
-const PRODUCT_NAME = "Open Design";
+const PRODUCT_NAME = "Material Designer";
 const DEFAULT_NAMESPACE = "open-design";
 
 const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
   beta: {
-    appId: "io.open-design.desktop.beta",
+    appId: "io.ding-ding.material-designer.beta",
     baseVersionField: "baseVersion",
     channel: "beta",
     displayLabel: "Beta",
@@ -68,7 +68,7 @@ const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
     storagePrefix: "beta",
   },
   betas: {
-    appId: "io.open-design.desktop.betas",
+    appId: "io.ding-ding.material-designer.betas",
     baseVersionField: "baseVersion",
     channel: "betas",
     counterField: "releaseNumber",
@@ -80,7 +80,7 @@ const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
     storagePrefix: "betas",
   },
   prerelease: {
-    appId: "io.open-design.desktop.prerelease",
+    appId: "io.ding-ding.material-designer.prerelease",
     baseVersionField: "baseVersion",
     channel: "prerelease",
     counterField: "releaseNumber",
@@ -92,7 +92,7 @@ const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
     storagePrefix: "prerelease",
   },
   preview: {
-    appId: "io.open-design.desktop.preview",
+    appId: "io.ding-ding.material-designer.preview",
     baseVersionField: "baseVersion",
     channel: "preview",
     counterField: "releaseNumber",
@@ -104,7 +104,7 @@ const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
     storagePrefix: "preview",
   },
   stable: {
-    appId: "io.open-design.desktop",
+    appId: "io.ding-ding.material-designer",
     baseVersionField: "baseVersion",
     channel: "stable",
     counterField: null,

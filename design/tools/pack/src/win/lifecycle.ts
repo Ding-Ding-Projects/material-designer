@@ -23,6 +23,7 @@ import {
   createProcessStampArgs,
   listProcessSnapshots,
   matchesStampedProcess,
+  pathContains,
   readLogTail,
   spawnBackgroundProcess,
   stopProcesses,
@@ -274,10 +275,46 @@ export async function startPackedWinApp(config: ToolPackConfig, options: { waitF
   };
 }
 
+// Executable-path candidates for a Windows command line: the quoted program
+// when the command line quotes it, otherwise every whitespace-delimited prefix
+// so an unquoted program path containing spaces still resolves.
+function commandExecutableCandidates(command: string): string[] {
+  const trimmed = command.trim();
+  if (trimmed.startsWith("\"")) {
+    const closingQuote = trimmed.indexOf("\"", 1);
+    return closingQuote === -1 ? [] : [trimmed.slice(1, closingQuote)];
+  }
+  const tokens = trimmed.split(/\s+/).filter((token) => token.length > 0);
+  return tokens.map((_token, index) => tokens.slice(0, index + 1).join(" "));
+}
+
+// Sidecar stamps carry no product identity — flag names, sources, and the
+// release namespaces are shared with every other build of this codebase, so a
+// stamp match alone can select a different product's desktop process. Only the
+// trees this tools-pack build itself produces, installs, or stages a payload
+// into may be stopped.
+function toolPackOwnedDesktopRoots(config: ToolPackConfig): string[] {
+  const paths = resolveWinPaths(config);
+  return [
+    paths.installDir,
+    paths.unpackedRoot,
+    config.roots.cacheRoot,
+    resolveToolPackLauncherLayout(config).paths.namespaceRoot,
+  ];
+}
+
+function runsFromToolPackOwnedRoot(command: string, ownedRoots: readonly string[]): boolean {
+  return commandExecutableCandidates(command).some((candidate) =>
+    candidate.length > 0 && ownedRoots.some((root) => pathContains(root, candidate)),
+  );
+}
+
 async function findManagedDesktopProcessTree(config: ToolPackConfig): Promise<number[]> {
   const processes = await listProcessSnapshots();
+  const ownedRoots = toolPackOwnedDesktopRoots(config);
   const stampedRootPids = processes
     .filter((processInfo) =>
+      runsFromToolPackOwnedRoot(processInfo.command, ownedRoots) &&
       [SIDECAR_SOURCES.TOOLS_PACK, SIDECAR_SOURCES.PACKAGED].some((source) =>
         matchesStampedProcess(
           processInfo,

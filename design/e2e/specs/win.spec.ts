@@ -572,7 +572,7 @@ winDescribe('packaged windows runtime smoke', () => {
       expect(basename(install.startMenuShortcutPath)).toBe(`${installIdentity.displayName}.lnk`);
       expect(install.registryEntries.length).toBeGreaterThan(0);
       expect(JSON.stringify(install.registryEntries)).toContain(installIdentity.displayName);
-      expect(JSON.stringify(install.registryEntries)).toContain(`Open Design-${installIdentity.namespaceToken}`);
+      expect(JSON.stringify(install.registryEntries)).toContain(`Material Designer-${installIdentity.namespaceToken}`);
       expect(install.installPayload.fileCount).toBeGreaterThan(0);
       expect(install.installPayload.totalBytes).toBeGreaterThan(0);
       expect(install.installPayload.topLevel.length).toBeGreaterThan(0);
@@ -698,7 +698,7 @@ winDescribe('packaged windows runtime smoke', () => {
                 expectedVersion: expectedPayloadUpdateVersion,
                 ...(intermediateUpdateFixture == null
                   ? {}
-                  : { legacyInstalledExecutablePath: join(install.installDir, 'Open Design.exe') }),
+                  : { legacyInstalledExecutablePath: join(install.installDir, 'Material Designer.exe') }),
                 persistedProjectId,
                 verifyPptx: intermediateUpdateFixture == null,
               }),
@@ -1602,7 +1602,7 @@ async function runInstallerFallbackAcceptance(options: {
 
   const start = await runToolsPackJsonForVersion<WinStartResult>('start', targetVersion);
   expect(start.source).toBe('installed');
-  expect(start.executablePath).toBe(join(options.installDir, 'Open Design.exe'));
+  expect(start.executablePath).toBe(join(options.installDir, 'Material Designer.exe'));
   // The updater-owned installer may preserve the already-confirmed payload
   // desktop while replacing the physical outer. Verify continuity here; the
   // explicit full stop + installed-outer cold start below owns the stronger
@@ -1990,7 +1990,7 @@ async function fetchPackagedHealth(daemonUrl: string): Promise<HealthEvalValue> 
       health: await response.json() as HealthEvalValue['health'],
       href: daemonUrl,
       status: response.status,
-      title: 'Open Design Beta',
+      title: 'Material Designer Beta',
     };
   } finally {
     clearTimeout(timeout);

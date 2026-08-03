@@ -1651,7 +1651,7 @@ async function runMcpInstall(args) {
 
   const uninstall = Boolean(flags.uninstall || flags.remove);
   const dryRun = Boolean(flags.print || flags['dry-run']);
-  const serverName = flags.name || 'open-design';
+  const serverName = flags.name || 'material-designer';
 
   const os = await import('node:os');
   const spec = await resolveMcpLaunchSpec(flags);
@@ -1802,7 +1802,7 @@ Options:
   --uninstall, --remove   Remove the Open Design MCP server instead.
   --print, --dry-run      Show what would change; write nothing.
   --json                  Machine-readable result.
-  --name <name>           MCP server name in the agent config (default: open-design).
+  --name <name>           MCP server name in the agent config (default: material-designer).
   --daemon-url <url>      Daemon URL used to resolve the launch command.
 
 The launch command is resolved from the running daemon's

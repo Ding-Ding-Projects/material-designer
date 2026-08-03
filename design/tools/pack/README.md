@@ -117,9 +117,9 @@ Build artifacts are namespace-scoped under `.tmp/tools-pack/out/linux/namespaces
 
 Local installs use XDG paths:
 
-- AppImage: `~/.local/bin/Open-Design.<namespace>.AppImage`
-- Menu entry: `~/.local/share/applications/open-design-<namespace>.desktop`
-- Icon: `~/.local/share/icons/hicolor/512x512/apps/open-design-<namespace>.png`
+- AppImage: `~/.local/bin/Material-Designer.<namespace>.AppImage`
+- Menu entry: `~/.local/share/applications/material-designer-<namespace>.desktop`
+- Icon: `~/.local/share/icons/hicolor/512x512/apps/material-designer-<namespace>.png`
 
 The `<namespace>` suffix is unconditional so multiple developer namespaces can coexist on the same desktop. The `.desktop` file registers the `od://` scheme via `MimeType=x-scheme-handler/od;` and pre-sets `OD_PACKAGED_NAMESPACE` on the `Exec=` line so menu launches identify the correct namespace.
 

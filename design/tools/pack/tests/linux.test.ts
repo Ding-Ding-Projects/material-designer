@@ -541,7 +541,7 @@ describe("stopPackedLinuxApp", () => {
       },
     };
     const appDir = join(root, "AppDir");
-    const executablePath = join(appDir, "Open Design");
+    const executablePath = join(appDir, "Material Designer");
     const appRunPath = join(appDir, "AppRun");
     const markerPath = join(runtimeNamespaceRoot, "runtime", "desktop-root.json");
     const stamp = {
@@ -750,7 +750,7 @@ describe("renderLinuxAppImageAppRun", () => {
 
     expect(out).toContain("unset ELECTRON_RUN_AS_NODE");
     expect(out.indexOf("unset ELECTRON_RUN_AS_NODE")).toBeLessThan(out.indexOf('exec "$BIN"'));
-    expect(out).toContain('BIN="$APPDIR/Open Design"');
+    expect(out).toContain('BIN="$APPDIR/Material Designer"');
   });
 
   it("preserves AppImageLauncher install-only behavior", () => {
@@ -778,7 +778,7 @@ describe("renderLinuxAppImageAppRun", () => {
     const appDir = join(root, "AppDir");
     const appRunPath = join(appDir, "AppRun");
     const observedEnvPath = join(root, "observed-env.txt");
-    const electronPath = join(appDir, "Open Design");
+    const electronPath = join(appDir, "Material Designer");
 
     try {
       await mkdir(appDir, { recursive: true });
@@ -964,7 +964,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Material Designer",
         env: { APPIMAGE: "/tmp/appimage_extracted_fe548e54/AppRun" },
       },
       installPath,
@@ -976,7 +976,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Material Designer",
         env: { APPIMAGE: "/tmp/other/AppRun" },
       },
       installPath,
@@ -988,7 +988,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Material Designer",
         env: { APPIMAGE: installPath },
       },
       installPath,
@@ -1000,7 +1000,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Open Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Material Designer",
         env: { APPIMAGE: "/elsewhere/Other.AppImage" },
       },
       installPath,

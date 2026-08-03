@@ -157,8 +157,8 @@ Do not add a new business-named follow-on workflow such as `foo.comment.atom.yml
 - `prerelease` is the internal validation channel for stable delivery. Stable releases remain gated by validated prerelease artifacts.
 - `preview` is an independent early-access channel with stable-like release rigor. It should use preview versions such as `X.Y.Z-preview.N`, publish to the `preview` R2 channel, publish updater feeds under `preview/latest`, and follow stable's platform policy including the existing optional Linux enablement.
 - `stable` is the formal delivery channel. Do not make stable promotion depend on preview; stable continues to depend on prerelease only.
-- Public packaged app identity must stay channel-distinct: stable uses `Open Design`, beta uses `Open Design Beta`, prerelease uses `Open Design Prerelease`, and preview uses `Open Design Preview`. Do not ship beta, prerelease, or preview mac DMGs whose drag-install app bundle is `Open Design.app`.
-- Windows beta updater validation must use the real beta namespace `release-beta-win`; otherwise a local beta-like namespace can create a separate uninstall registry key while looking like the same `Open Design Beta` app. See `tools/pack/AGENTS.md` for the architecture map and high-confidence acceptance harness.
+- Public packaged app identity must stay channel-distinct: stable uses `Material Designer`, beta uses `Material Designer Beta`, prerelease uses `Material Designer Prerelease`, and preview uses `Material Designer Preview`. Do not ship beta, prerelease, or preview mac DMGs whose drag-install app bundle is `Material Designer.app`.
+- Windows beta updater validation must use the real beta namespace `release-beta-win`; otherwise a local beta-like namespace can create a separate uninstall registry key while looking like the same `Material Designer Beta` app. See `tools/pack/AGENTS.md` for the architecture map and high-confidence acceptance harness.
 
 ## Boundary constraints
 
@@ -174,7 +174,7 @@ Do not add a new business-named follow-on workflow such as `foo.comment.atom.yml
 - Sidecar process stamps must have exactly five fields: `app`, `mode`, `namespace`, `ipc`, and `source`.
 - Orchestration layers (`tools-dev`, `tools-pack`, packaged launchers) must call package primitives; do not hand-build `--od-stamp-*` args or process-scan regexes.
 - Packaged runtime paths must be namespace-scoped and independent from daemon/web ports; ports are transient transport details only.
-- Default runtime files live under `<project-root>/.tmp/<source>/<namespace>/...`; POSIX IPC sockets are fixed at `/tmp/open-design/ipc/<namespace>/<app>.sock`.
+- Default runtime files live under `<project-root>/.tmp/<source>/<namespace>/...`; POSIX IPC sockets are fixed at `/tmp/material-designer/ipc/<namespace>/<app>.sock`.
 
 ## Capability exposure (UI/CLI dual-track)
 

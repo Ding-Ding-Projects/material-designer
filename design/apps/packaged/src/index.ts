@@ -111,6 +111,13 @@ function applyPackagedUpdaterEnv(updateMetadataUrl: string | null): void {
 }
 
 async function main(): Promise<void> {
+  // Windows keys taskbar grouping, jump lists, and notification identity off
+  // the AppUserModelID. Without an explicit id it falls back to the
+  // electron-builder appId, which is how a fork ends up sharing taskbar and
+  // notification identity with the app it was forked from. Must run before
+  // `app.whenReady()`; no-op on other platforms.
+  app.setAppUserModelId("io.ding-ding.material-designer");
+
   const config = await readPackagedConfig();
   const headlessRequest = parsePackagedHeadlessRequest(process.argv.slice(1));
   if (headlessRequest.headless) {

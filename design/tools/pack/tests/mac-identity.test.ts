@@ -46,11 +46,11 @@ function makeConfig(root: string, namespace: string): ToolPackConfig {
 describe("resolveMacInstallIdentity", () => {
   it("keeps stable builds on the canonical mac identity", () => {
     expect(resolveMacInstallIdentity(makeConfig("/work", "release-stable"))).toMatchObject({
-      appId: "io.open-design.desktop",
-      installerTitle: "Open Design",
-      productName: "Open Design",
-      publicAppBundleName: "Open Design.app",
-      systemAppBundleName: "Open Design.app",
+      appId: "io.ding-ding.material-designer",
+      installerTitle: "Material Designer",
+      productName: "Material Designer",
+      publicAppBundleName: "Material Designer.app",
+      systemAppBundleName: "Material Designer.app",
     });
   });
 
@@ -58,28 +58,28 @@ describe("resolveMacInstallIdentity", () => {
     const config = makeConfig("/work", "release-beta");
 
     expect(resolveMacInstallIdentity(config)).toEqual({
-      appId: "io.open-design.desktop.beta",
-      executableName: "Open Design Beta",
-      installerTitle: "Open Design Beta",
-      productName: "Open Design Beta",
-      publicAppBundleName: "Open Design Beta.app",
-      systemAppBundleName: "Open Design Beta.app",
+      appId: "io.ding-ding.material-designer.beta",
+      executableName: "Material Designer Beta",
+      installerTitle: "Material Designer Beta",
+      productName: "Material Designer Beta",
+      publicAppBundleName: "Material Designer Beta.app",
+      systemAppBundleName: "Material Designer Beta.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Open Design Beta\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Material Designer Beta\.app$/);
   });
 
   it("uses first-class preview app identity for preview release namespaces", () => {
     const config = makeConfig("/work", "release-preview");
 
     expect(resolveMacInstallIdentity(config)).toEqual({
-      appId: "io.open-design.desktop.preview",
-      executableName: "Open Design Preview",
-      installerTitle: "Open Design Preview",
-      productName: "Open Design Preview",
-      publicAppBundleName: "Open Design Preview.app",
-      systemAppBundleName: "Open Design Preview.app",
+      appId: "io.ding-ding.material-designer.preview",
+      executableName: "Material Designer Preview",
+      installerTitle: "Material Designer Preview",
+      productName: "Material Designer Preview",
+      publicAppBundleName: "Material Designer Preview.app",
+      systemAppBundleName: "Material Designer Preview.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Open Design Preview\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Material Designer Preview\.app$/);
   });
 
   it("uses first-class prerelease app identity for prerelease release versions and namespaces", () => {
@@ -90,17 +90,17 @@ describe("resolveMacInstallIdentity", () => {
     const prereleaseNamespaceConfig = makeConfig("/work", "release-prerelease");
 
     expect(resolveMacInstallIdentity(prereleaseVersionConfig)).toEqual({
-      appId: "io.open-design.desktop.prerelease",
-      executableName: "Open Design Prerelease",
-      installerTitle: "Open Design Prerelease",
-      productName: "Open Design Prerelease",
-      publicAppBundleName: "Open Design Prerelease.app",
-      systemAppBundleName: "Open Design Prerelease.app",
+      appId: "io.ding-ding.material-designer.prerelease",
+      executableName: "Material Designer Prerelease",
+      installerTitle: "Material Designer Prerelease",
+      productName: "Material Designer Prerelease",
+      publicAppBundleName: "Material Designer Prerelease.app",
+      systemAppBundleName: "Material Designer Prerelease.app",
     });
-    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Open Design Prerelease\.app$/);
+    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Material Designer Prerelease\.app$/);
     expect(resolveMacInstallIdentity(prereleaseNamespaceConfig)).toMatchObject({
-      productName: "Open Design Prerelease",
-      publicAppBundleName: "Open Design Prerelease.app",
+      productName: "Material Designer Prerelease",
+      publicAppBundleName: "Material Designer Prerelease.app",
     });
   });
 });
