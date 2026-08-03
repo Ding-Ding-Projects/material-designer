@@ -2,19 +2,36 @@
 
 State of play for whoever picks this up next.
 
-Read this before touching anything. The short version: the source tree was
-imported and *proved* byte-for-byte identical to upstream, the rebrand was written
-on top of it, and **it builds and ships**. All three workflows have run: the port
-verifies at zero gaps on a clean checkout, two Windows installers were built and
-published under their own tags, the packaged smoke test installed one of those
-builds, launched it, made the running process answer its own health endpoint and
-uninstalled it with no residue, and the documentation site is deployed.
+Read this before touching anything.
 
-What that does not mean is that the product is finished. Almost nothing of the
-Material Design 3 redesign exists beyond a token layer and a window title bar, and
-**nobody has looked at the running interface** — the one screenshot the smoke test
-captures is asserted to be non-zero bytes and is otherwise uninspected. Read
-[section 4](#4-what-is-not-verified) before repeating any claim from this file.
+**Where it is.** The upstream tree was imported and *proved* byte-for-byte
+identical to its source, rebranded into a genuinely standalone application, and
+brought onto Material Design 3. All three workflows have run and passed. Two
+Windows installers have been built and published under their own tags, and the
+packaged smoke test installed one of them, launched it, made the running process
+answer its own health endpoint from inside its renderer, and uninstalled it with
+no residue.
+
+**What that does not mean.** Two things, and they are the ones most likely to be
+overclaimed by someone skimming:
+
+1. **Nobody has looked at the running interface.** The smoke test captures one
+   screenshot and asserts it is more than zero bytes. Nothing has inspected what
+   is actually on it. Every statement in this repository about how the product
+   *looks* is read from source or from the design mockup, never observed.
+2. **The most recent installer predates most of the redesign.** The published
+   releases were built before the Material Design 3 anatomy pass, the Cantonese
+   locale, the regex builder, the command palette, the changelog viewer, the
+   notification centre, the destructive-action gate, the bulk actions, the
+   appearance editor, the narrator, and the daemon's version history, export and
+   editor capabilities. All of that is on `main` and verified by continuous
+   integration; none of it is in a downloadable build yet.
+
+**The one habit worth inheriting.** Every claim in this repository is written so
+a reader can check it — a command to run, a run to open, a counter to compare.
+Where something has not been checked, it says so in the same sentence. The value
+of that is entirely in the discipline: the moment one confident-but-unverified
+line survives, a reader cannot trust the ones beside it either.
 
 > [!NOTE]
 > **Sections 1 and 2 describe the first working session and have not been
@@ -34,11 +51,14 @@ captures is asserted to be non-zero bytes and is otherwise uninspected. Read
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
-| Continuous integration | **All three workflows have run** | *Verify* at 0 gaps, *Release* through to publication, *Pages* through to deployment. **None has been observed failing** |
-| Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Two built and published** | `v0.16.1-r7.1` and `v0.16.1-r8.1`, each carrying the installer its own run built, plus a checksum, a portable archive and a code-name photograph |
-| Material Design 3 redesign | **Token layer and title bar only** | landed at `dea6b0a`; no component rewritten, and nothing rendered has been looked at |
-| Project standards (language modes, regex builder, tabs, …) | **Not in the application** | the documentation site demonstrates them; the installed build does not carry them |
+| Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
+| Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
+| Windows installer | **Two built and published** | `v0.16.1-r7.1` and `v0.16.1-r8.1`. **Both predate most of the redesign** — see the note above |
+| Material Design 3 anatomy | **Landed, unseen** | buttons, text fields, radii, elevation, navigation rail, dialogs, menus, cards and scrim. Verified by typecheck and unit tests; **not looked at** |
+| Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
+| Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
+| Notification centre · destructive-action gate · bulk actions · appearance editor · narrator · context-menu shortcuts | **Landed, unseen** | merged from `phase4-wip`; its adversarial verification lenses **never ran** — see section 4 |
+| Version history · export · external editor | **Landed, unseen** | daemon endpoints, shared DTOs and `od` subcommands |
 
 ---
 
@@ -399,22 +419,21 @@ the window title still has not been read off a window.
    entirely correct in source and visibly wrong on screen, and nothing here would
    currently catch that.
 
-3. **Rewrite components onto Material Design 3 anatomy.** The token layer landed at
-   `dea6b0a`, so components already *inherit* M3 values — that was the cheap half
-   and it is done. The expensive half is the component tree itself, tracked as
-   ordered waves in [`ROADMAP.md`](ROADMAP.md). Two loose ends from the token work
-   belong here too: literal radii still written directly into component styles have
-   not been swept onto the corner scale, and the interface's duration values are
-   still literals rather than motion tokens.
+3. **Cut a release that actually contains the work.** Both published installers
+   predate the Material Design 3 anatomy pass, the language modes, and every
+   Phase 3 and Phase 4 surface. `main` is green; the next *Release* run produces
+   the first build a person could install and see any of it in. Until then, the
+   download link on the site is honest but stale.
 
-4. **Implement the project standards** in the application — language modes and the
-   two per-language tone sliders, the anchored regex builder on every search field,
-   browser-style tabs with overflow, pinning and grouping, the super-confirmation
-   gate on destructive actions, the command palette, the changelog viewer, local
-   version history, bulk actions and export, and the dim sum startup surprise. The
-   documentation site demonstrates most of these already, which makes it a working
-   reference rather than only a specification — but **none of them is in the
-   application**, and a site that has them is not an application that has them.
+4. **Run the verification that never ran.** The Phase 4 surfaces — notification
+   centre, destructive-action gate, bulk actions, appearance editor, narrator —
+   were written by agents that hit a session limit before their adversarial
+   review lenses executed. Typecheck and unit tests pass, which proves the code
+   compiles and its units behave; it does not prove that the confirmation gate
+   cannot be bypassed, that every destructive action routes through it, that no
+   control merely *looks* operable, or that the colour translator's arithmetic
+   is right. Those four questions are written up in the workflow script under
+   the session's workflow directory and are worth re-running verbatim.
 
 5. **Bundle the fonts and icons locally.** The application's stylesheet still
    carries one font import from a public font service, and the mockup carries
