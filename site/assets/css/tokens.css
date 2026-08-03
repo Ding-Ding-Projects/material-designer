@@ -1,0 +1,608 @@
+/* ==========================================================================
+   Material Designer — Material Design 3 design-token sheet
+   --------------------------------------------------------------------------
+   This is the ONLY file in the site that is allowed to contain literal colour,
+   radius, shadow, duration or type values. Everything in app.css is expressed
+   as var(--md-sys-*) so that a theme, a seed, a density or a scale change is a
+   single attribute flip on <html> and nothing else.
+
+   The palette, shape scale, motion curves and density variables below are
+   transcribed verbatim from the project's own design contract:
+     mockups/open-design-m3/Open Design M3.dc.html  (the <style> block)
+   Do not "improve" the hexes — they are the contract.
+
+   HOW THE ROOT ELEMENT IS DRIVEN (appearance.js writes these):
+     <html data-theme="light|dark|system"
+           data-seed="sunset|violet|teal|lime"
+           data-density="compact|default|comfortable"
+           style="--ui-scale: 1">
+   `data-theme="system"` (or a missing data-theme) follows prefers-color-scheme.
+   `data-seed="sunset"` is the base palette, so it needs no selector of its own.
+
+   NO WEB FONTS. The site makes zero external network requests, so the M3 type
+   scale is bound to a system font stack. Every metric of the scale (size, line
+   height, weight, tracking) still follows the M3 specification.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. LIGHT THEME — the "sunset" seed, which IS the base :root
+   ========================================================================== */
+
+:root {
+  /* ---- Colour roles: primary ------------------------------------------- */
+  --md-sys-color-primary: #8F4C34;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #FFDBCF;
+  --md-sys-color-on-primary-container: #3A0B00;
+
+  /* ---- Colour roles: secondary ----------------------------------------- */
+  --md-sys-color-secondary: #77574C;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #FFDBCF;
+  --md-sys-color-on-secondary-container: #2C160D;
+
+  /* ---- Colour roles: tertiary ------------------------------------------ */
+  --md-sys-color-tertiary: #6C5D2F;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #F5E0A7;
+  --md-sys-color-on-tertiary-container: #231B00;
+
+  /* ---- Colour roles: error --------------------------------------------- */
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FFDAD6;
+  --md-sys-color-on-error-container: #410002;
+
+  /* ---- Colour roles: surfaces ------------------------------------------ */
+  --md-sys-color-surface: #FFF8F6;
+  --md-sys-color-on-surface: #221A17;
+  --md-sys-color-on-surface-variant: #53433E;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low: #FFF1EC;
+  --md-sys-color-surface-container: #FCEAE4;
+  --md-sys-color-surface-container-high: #F6E4DE;
+  --md-sys-color-surface-container-highest: #F1DED8;
+  --md-sys-color-surface-dim: #E8D6D0;
+  --md-sys-color-surface-bright: #FFF8F6;
+
+  /* ---- Colour roles: outline and inverse -------------------------------- */
+  --md-sys-color-outline: #85736D;
+  --md-sys-color-outline-variant: #D8C2BB;
+  --md-sys-color-inverse-surface: #382E2B;
+  --md-sys-color-inverse-on-surface: #FFEDE8;
+  --md-sys-color-inverse-primary: #FFB59B;
+
+  /* ---- Extensions to the standard M3 set, present in the contract ------- */
+  --md-sys-color-success: #1F6B3C;
+  --md-sys-color-success-container: #B8F0C8;
+
+  /* ---- Scrim (a literal rgba in the contract, not a hex) ---------------- */
+  --md-sys-color-scrim: rgba(0, 0, 0, .32);
+
+  /* ---- Derived roles the contract omits --------------------------------
+     `surface-variant` and `surface-tint` are part of the standard M3 role set
+     but are absent from the contract, so they are ALIASES here rather than
+     invented hexes. `shadow` backs the elevation tokens further down. */
+  --md-sys-color-surface-variant: var(--md-sys-color-surface-container-highest);
+  --md-sys-color-surface-tint: var(--md-sys-color-primary);
+  --md-sys-color-on-success-container: var(--md-sys-color-on-surface);
+  --md-sys-color-shadow: #000000;
+
+  /* ======================================================================
+     2. SHAPE SCALE
+     The contract's px values, expressed in rem so that radii grow with the
+     UI-scale control instead of looking pinched at 200%. At the default
+     16px root, these are byte-identical to the contract:
+       xs 4px · s 8px · m 12px · l 16px · xl 28px · xxl 32px · full
+     ====================================================================== */
+  --md-sys-shape-corner-none: 0;
+  --md-sys-shape-corner-xs: 0.25rem;   /*  4px */
+  --md-sys-shape-corner-s: 0.5rem;     /*  8px */
+  --md-sys-shape-corner-m: 0.75rem;    /* 12px */
+  --md-sys-shape-corner-l: 1rem;       /* 16px */
+  --md-sys-shape-corner-xl: 1.75rem;   /* 28px */
+  --md-sys-shape-corner-xxl: 2rem;     /* 32px */
+  --md-sys-shape-corner-full: 9999px;
+
+  /* Asymmetric shapes used by tabs and chat-style bubbles. */
+  --md-sys-shape-corner-top-m: 0.75rem 0.75rem 0 0;
+
+  /* ======================================================================
+     3. MOTION — easing curves and the standard M3 duration ramp
+     Only the three curves are in the contract; the durations are the M3
+     specification values (the contract hard-codes duration literals).
+     ====================================================================== */
+  --md-sys-motion-emphasized: cubic-bezier(.2, 0, 0, 1);
+  --md-sys-motion-emphasized-decel: cubic-bezier(.05, .7, .1, 1);
+  --md-sys-motion-emphasized-accel: cubic-bezier(.3, 0, .8, .15);
+  --md-sys-motion-standard: cubic-bezier(.2, 0, 0, 1);
+  --md-sys-motion-standard-decel: cubic-bezier(0, 0, 0, 1);
+  --md-sys-motion-standard-accel: cubic-bezier(.3, 0, 1, 1);
+  /* A springy overshoot used for transforms (scale/translate), never colour. */
+  --md-sys-motion-spring: linear(0, .4 8%, .87 17%, 1.05 23%, 1.1 27%, 1.05 35%, .99 47%, 1 62%, 1);
+
+  --md-sys-motion-duration-short1: 50ms;
+  --md-sys-motion-duration-short2: 100ms;
+  --md-sys-motion-duration-short3: 150ms;
+  --md-sys-motion-duration-short4: 200ms;
+  --md-sys-motion-duration-medium1: 250ms;
+  --md-sys-motion-duration-medium2: 300ms;
+  --md-sys-motion-duration-medium3: 350ms;
+  --md-sys-motion-duration-medium4: 400ms;
+  --md-sys-motion-duration-long1: 450ms;
+  --md-sys-motion-duration-long2: 500ms;
+  --md-sys-motion-duration-extra-long1: 700ms;
+
+  /* ======================================================================
+     4. ELEVATION
+     The contract has no elevation tokens — every shadow in the mockup is a
+     literal. These six levels are distilled from that literal family so that
+     app.css never has to write a shadow of its own. The dark theme overrides
+     them with heavier alphas, because a soft shadow is invisible on #1A120F.
+     ====================================================================== */
+  --md-sys-elevation-level0: none;
+  --md-sys-elevation-level1: 0 1px 3px rgba(0, 0, 0, .10);
+  --md-sys-elevation-level2: 0 2px 8px rgba(0, 0, 0, .12);
+  --md-sys-elevation-level3: 0 6px 16px rgba(0, 0, 0, .16);
+  --md-sys-elevation-level4: 0 12px 28px rgba(0, 0, 0, .16);
+  --md-sys-elevation-level5: 0 24px 64px rgba(0, 0, 0, .28);
+  /* Directional variant for edge-anchored drawers. */
+  --md-sys-elevation-drawer-left: -12px 0 32px rgba(0, 0, 0, .22);
+
+  /* ======================================================================
+     5. STATE LAYER
+     `--ripple` is the contract's single neutral state colour. The opacity
+     ramp is the M3 specification and is consumed by color-mix() in app.css
+     so a tinted state layer can be built over any role colour.
+     ====================================================================== */
+  --ripple: rgba(0, 0, 0, .08);
+  --md-sys-state-hover-opacity: 0.08;
+  --md-sys-state-focus-opacity: 0.10;
+  --md-sys-state-pressed-opacity: 0.10;
+  --md-sys-state-dragged-opacity: 0.16;
+  --md-sys-state-disabled-content-opacity: 0.38;
+  --md-sys-state-disabled-container-opacity: 0.12;
+
+  /* ======================================================================
+     6. DENSITY — base values (== data-density="default")
+     Contract px values expressed in rem so they track the UI-scale control.
+     At a 16px root: sp 8px · gap 16px · pad 24px · row 48px · card 14px
+     ====================================================================== */
+  --sp: 0.5rem;      /*  8px */
+  --gap: 1rem;       /* 16px */
+  --pad: 1.5rem;     /* 24px */
+  --row: 3rem;       /* 48px */
+  --card: 0.875rem;  /* 14px */
+
+  /* ======================================================================
+     7. TYPOGRAPHY
+     Two families, both system stacks — the site ships no font files and makes
+     no font-service request. The CJK faces are named explicitly so that
+     Cantonese copy in bilingual mode renders in a Hong Kong-appropriate face
+     rather than a Simplified-Chinese default.
+     ====================================================================== */
+  --md-ref-typeface-plain:
+    system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "PingFang HK", "Hiragino Sans TC",
+    "Microsoft JhengHei", "Noto Sans CJK HK", "Noto Sans TC", sans-serif;
+  --md-ref-typeface-brand: var(--md-ref-typeface-plain);
+  --md-ref-typeface-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Mono", "Segoe UI Mono",
+    "Roboto Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* ---- Display ---------------------------------------------------------- */
+  --md-sys-typescale-display-large-size: 3.5625rem;   /* 57px */
+  --md-sys-typescale-display-large-line: 4rem;        /* 64px */
+  --md-sys-typescale-display-large-weight: 400;
+  --md-sys-typescale-display-large-tracking: -0.015625rem;
+  --md-sys-typescale-display-medium-size: 2.8125rem;  /* 45px */
+  --md-sys-typescale-display-medium-line: 3.25rem;    /* 52px */
+  --md-sys-typescale-display-medium-weight: 400;
+  --md-sys-typescale-display-medium-tracking: 0;
+  --md-sys-typescale-display-small-size: 2.25rem;     /* 36px */
+  --md-sys-typescale-display-small-line: 2.75rem;     /* 44px */
+  --md-sys-typescale-display-small-weight: 400;
+  --md-sys-typescale-display-small-tracking: 0;
+
+  /* ---- Headline --------------------------------------------------------- */
+  --md-sys-typescale-headline-large-size: 2rem;       /* 32px */
+  --md-sys-typescale-headline-large-line: 2.5rem;     /* 40px */
+  --md-sys-typescale-headline-large-weight: 400;
+  --md-sys-typescale-headline-large-tracking: 0;
+  --md-sys-typescale-headline-medium-size: 1.75rem;   /* 28px */
+  --md-sys-typescale-headline-medium-line: 2.25rem;   /* 36px */
+  --md-sys-typescale-headline-medium-weight: 400;
+  --md-sys-typescale-headline-medium-tracking: 0;
+  --md-sys-typescale-headline-small-size: 1.5rem;     /* 24px */
+  --md-sys-typescale-headline-small-line: 2rem;       /* 32px */
+  --md-sys-typescale-headline-small-weight: 400;
+  --md-sys-typescale-headline-small-tracking: 0;
+
+  /* ---- Title ------------------------------------------------------------ */
+  --md-sys-typescale-title-large-size: 1.375rem;      /* 22px */
+  --md-sys-typescale-title-large-line: 1.75rem;       /* 28px */
+  --md-sys-typescale-title-large-weight: 400;
+  --md-sys-typescale-title-large-tracking: 0;
+  --md-sys-typescale-title-medium-size: 1rem;         /* 16px */
+  --md-sys-typescale-title-medium-line: 1.5rem;       /* 24px */
+  --md-sys-typescale-title-medium-weight: 500;
+  --md-sys-typescale-title-medium-tracking: 0.009375rem;
+  --md-sys-typescale-title-small-size: 0.875rem;      /* 14px */
+  --md-sys-typescale-title-small-line: 1.25rem;       /* 20px */
+  --md-sys-typescale-title-small-weight: 500;
+  --md-sys-typescale-title-small-tracking: 0.00625rem;
+
+  /* ---- Body ------------------------------------------------------------- */
+  --md-sys-typescale-body-large-size: 1rem;           /* 16px */
+  --md-sys-typescale-body-large-line: 1.5rem;         /* 24px */
+  --md-sys-typescale-body-large-weight: 400;
+  --md-sys-typescale-body-large-tracking: 0.03125rem;
+  --md-sys-typescale-body-medium-size: 0.875rem;      /* 14px */
+  --md-sys-typescale-body-medium-line: 1.25rem;       /* 20px */
+  --md-sys-typescale-body-medium-weight: 400;
+  --md-sys-typescale-body-medium-tracking: 0.015625rem;
+  --md-sys-typescale-body-small-size: 0.75rem;        /* 12px */
+  --md-sys-typescale-body-small-line: 1rem;           /* 16px */
+  --md-sys-typescale-body-small-weight: 400;
+  --md-sys-typescale-body-small-tracking: 0.025rem;
+
+  /* ---- Label ------------------------------------------------------------ */
+  --md-sys-typescale-label-large-size: 0.875rem;      /* 14px */
+  --md-sys-typescale-label-large-line: 1.25rem;       /* 20px */
+  --md-sys-typescale-label-large-weight: 500;
+  --md-sys-typescale-label-large-tracking: 0.00625rem;
+  --md-sys-typescale-label-medium-size: 0.75rem;      /* 12px */
+  --md-sys-typescale-label-medium-line: 1rem;         /* 16px */
+  --md-sys-typescale-label-medium-weight: 500;
+  --md-sys-typescale-label-medium-tracking: 0.03125rem;
+  --md-sys-typescale-label-small-size: 0.6875rem;     /* 11px */
+  --md-sys-typescale-label-small-line: 1rem;          /* 16px */
+  --md-sys-typescale-label-small-weight: 500;
+  --md-sys-typescale-label-small-tracking: 0.03125rem;
+
+  /* ======================================================================
+     8. SITE-LEVEL KNOBS
+     ====================================================================== */
+
+  /* Driven by the appearance controls. 1 == 100%; the control's range is
+     50%-200% in steps of 5, matching the application's own uiScale prop.
+     It multiplies the *browser's* default font size rather than replacing it,
+     so a reader who has enlarged text in their browser keeps that enlargement
+     and the site's own scale composes on top of it. */
+  --ui-scale: 1;
+
+  /* Focus indicator. A 3px ring at 2px offset clears WCAG 2.2 focus
+     appearance against every surface role in both themes. */
+  --md-sys-focus-ring-width: 3px;
+  --md-sys-focus-ring-offset: 2px;
+  --md-sys-focus-ring-color: var(--md-sys-color-primary);
+
+  /* Maximum measure for reading content, and the shell's fixed bands. */
+  --site-content-max: 74rem;   /* 1184px at default scale */
+  --site-prose-max: 46rem;     /* ~736px — a comfortable line length */
+  --site-rail-width: 5.5rem;   /* 88px collapsed nav rail */
+  --site-rail-width-open: 16.25rem; /* 260px expanded nav rail */
+  --site-titlebar-height: 2.5rem;   /* 40px */
+  --site-tabstrip-height: 2.625rem; /* 42px */
+  --site-statusbar-height: 1.75rem; /* 28px */
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   2. LIGHT SEED VARIANTS
+   Each seed overrides exactly the nine roles the contract specifies. The
+   on-primary / on-secondary / on-tertiary trio and every surface, outline,
+   error and success role are deliberately inherited from :root.
+   `sunset` has no rule because sunset IS :root.
+   ========================================================================== */
+
+[data-seed="violet"] {
+  --md-sys-color-primary: #65558F;
+  --md-sys-color-primary-container: #E9DDFF;
+  --md-sys-color-on-primary-container: #211047;
+  --md-sys-color-secondary: #625B71;
+  --md-sys-color-secondary-container: #E8DEF8;
+  --md-sys-color-on-secondary-container: #1E192B;
+  --md-sys-color-tertiary: #7E5260;
+  --md-sys-color-tertiary-container: #FFD9E3;
+  --md-sys-color-on-tertiary-container: #31101D;
+  --md-sys-color-inverse-primary: #CFBDFE;
+}
+
+[data-seed="teal"] {
+  --md-sys-color-primary: #00696D;
+  --md-sys-color-primary-container: #6FF6FB;
+  --md-sys-color-on-primary-container: #002021;
+  --md-sys-color-secondary: #4A6363;
+  --md-sys-color-secondary-container: #CCE8E7;
+  --md-sys-color-on-secondary-container: #051F20;
+  --md-sys-color-tertiary: #4B607C;
+  --md-sys-color-tertiary-container: #D3E4FF;
+  --md-sys-color-on-tertiary-container: #041C35;
+  --md-sys-color-inverse-primary: #4CD9DF;
+}
+
+[data-seed="lime"] {
+  --md-sys-color-primary: #4C6700;
+  --md-sys-color-primary-container: #CDEF85;
+  --md-sys-color-on-primary-container: #141F00;
+  --md-sys-color-secondary: #5A6147;
+  --md-sys-color-secondary-container: #DEE6C5;
+  --md-sys-color-on-secondary-container: #171E09;
+  --md-sys-color-tertiary: #3A6660;
+  --md-sys-color-tertiary-container: #BCECE4;
+  --md-sys-color-on-tertiary-container: #00201C;
+  --md-sys-color-inverse-primary: #B2D26C;
+}
+
+/* ==========================================================================
+   3. DARK THEME — explicit opt-in
+   Declared AFTER the light seeds so that `[data-theme="dark"]` (0,1,0) wins
+   over `[data-seed="violet"]` (0,1,0) on source order, and then each
+   `[data-theme="dark"][data-seed="..."]` block (0,2,0) reinstates its seed.
+   The contract does not redefine --md-sys-color-scrim in dark; it inherits.
+   ========================================================================== */
+
+[data-theme="dark"] {
+  --md-sys-color-primary: #FFB59B;
+  --md-sys-color-on-primary: #56200A;
+  --md-sys-color-primary-container: #72331C;
+  --md-sys-color-on-primary-container: #FFDBCF;
+  --md-sys-color-secondary: #E7BEAF;
+  --md-sys-color-on-secondary: #442A20;
+  --md-sys-color-secondary-container: #5D4035;
+  --md-sys-color-on-secondary-container: #FFDBCF;
+  --md-sys-color-tertiary: #D8C48D;
+  --md-sys-color-on-tertiary: #3A2F05;
+  --md-sys-color-tertiary-container: #52461A;
+  --md-sys-color-on-tertiary-container: #F5E0A7;
+  --md-sys-color-error: #FFB4AB;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000A;
+  --md-sys-color-on-error-container: #FFDAD6;
+  --md-sys-color-surface: #1A120F;
+  --md-sys-color-on-surface: #F1DED8;
+  --md-sys-color-on-surface-variant: #D8C2BB;
+  --md-sys-color-surface-container-lowest: #140C0A;
+  --md-sys-color-surface-container-low: #221A17;
+  --md-sys-color-surface-container: #271E1B;
+  --md-sys-color-surface-container-high: #322825;
+  --md-sys-color-surface-container-highest: #3D3330;
+  --md-sys-color-surface-dim: #1A120F;
+  --md-sys-color-surface-bright: #423734;
+  --md-sys-color-outline: #A08D87;
+  --md-sys-color-outline-variant: #53433E;
+  --md-sys-color-inverse-surface: #F1DED8;
+  --md-sys-color-inverse-on-surface: #382E2B;
+  --md-sys-color-inverse-primary: #8F4C34;
+  --md-sys-color-success: #7DDB9C;
+  --md-sys-color-success-container: #0C4A25;
+  --md-sys-color-on-success-container: var(--md-sys-color-on-surface);
+  --ripple: rgba(255, 255, 255, .10);
+
+  /* Shadows need more alpha to read at all on a near-black surface. */
+  --md-sys-elevation-level1: 0 1px 3px rgba(0, 0, 0, .30);
+  --md-sys-elevation-level2: 0 2px 8px rgba(0, 0, 0, .36);
+  --md-sys-elevation-level3: 0 6px 16px rgba(0, 0, 0, .40);
+  --md-sys-elevation-level4: 0 12px 28px rgba(0, 0, 0, .44);
+  --md-sys-elevation-level5: 0 24px 64px rgba(0, 0, 0, .52);
+  --md-sys-elevation-drawer-left: -12px 0 32px rgba(0, 0, 0, .44);
+
+  color-scheme: dark;
+}
+
+[data-theme="dark"][data-seed="violet"] {
+  --md-sys-color-primary: #CFBDFE;
+  --md-sys-color-on-primary: #36275D;
+  --md-sys-color-primary-container: #4D3D75;
+  --md-sys-color-on-primary-container: #E9DDFF;
+  --md-sys-color-secondary: #CBC2DB;
+  --md-sys-color-on-secondary: #332D41;
+  --md-sys-color-secondary-container: #4A4458;
+  --md-sys-color-on-secondary-container: #E8DEF8;
+  --md-sys-color-tertiary: #EFB8C8;
+  --md-sys-color-tertiary-container: #633B48;
+  --md-sys-color-on-tertiary-container: #FFD9E3;
+  --md-sys-color-inverse-primary: #65558F;
+}
+
+[data-theme="dark"][data-seed="teal"] {
+  --md-sys-color-primary: #4CD9DF;
+  --md-sys-color-on-primary: #003738;
+  --md-sys-color-primary-container: #004F51;
+  --md-sys-color-on-primary-container: #6FF6FB;
+  --md-sys-color-secondary: #B0CCCB;
+  --md-sys-color-on-secondary: #1B3535;
+  --md-sys-color-secondary-container: #324B4B;
+  --md-sys-color-on-secondary-container: #CCE8E7;
+  --md-sys-color-tertiary: #B3C8E8;
+  --md-sys-color-tertiary-container: #334863;
+  --md-sys-color-on-tertiary-container: #D3E4FF;
+  --md-sys-color-inverse-primary: #00696D;
+}
+
+[data-theme="dark"][data-seed="lime"] {
+  --md-sys-color-primary: #B2D26C;
+  --md-sys-color-on-primary: #243600;
+  --md-sys-color-primary-container: #374E00;
+  --md-sys-color-on-primary-container: #CDEF85;
+  --md-sys-color-secondary: #C2CAAA;
+  --md-sys-color-on-secondary: #2C331C;
+  --md-sys-color-secondary-container: #424931;
+  --md-sys-color-on-secondary-container: #DEE6C5;
+  --md-sys-color-tertiary: #A1CFC8;
+  --md-sys-color-tertiary-container: #214E48;
+  --md-sys-color-on-tertiary-container: #BCECE4;
+  --md-sys-color-inverse-primary: #4C6700;
+}
+
+/* ==========================================================================
+   4. DARK THEME — followed from the operating system
+   Applies when the reader has NOT explicitly chosen light: either
+   data-theme="system" or no data-theme attribute at all (first visit, or
+   JavaScript disabled). The selector deliberately excludes only "light" so a
+   missing attribute still follows the OS.
+
+   Specificity note: `:root:not([data-theme="light"])` is (0,2,0) and the seed
+   variants below are (0,3,0), so each beats its light counterpart while a
+   reader's explicit choice above still resolves to the same values.
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --md-sys-color-primary: #FFB59B;
+    --md-sys-color-on-primary: #56200A;
+    --md-sys-color-primary-container: #72331C;
+    --md-sys-color-on-primary-container: #FFDBCF;
+    --md-sys-color-secondary: #E7BEAF;
+    --md-sys-color-on-secondary: #442A20;
+    --md-sys-color-secondary-container: #5D4035;
+    --md-sys-color-on-secondary-container: #FFDBCF;
+    --md-sys-color-tertiary: #D8C48D;
+    --md-sys-color-on-tertiary: #3A2F05;
+    --md-sys-color-tertiary-container: #52461A;
+    --md-sys-color-on-tertiary-container: #F5E0A7;
+    --md-sys-color-error: #FFB4AB;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000A;
+    --md-sys-color-on-error-container: #FFDAD6;
+    --md-sys-color-surface: #1A120F;
+    --md-sys-color-on-surface: #F1DED8;
+    --md-sys-color-on-surface-variant: #D8C2BB;
+    --md-sys-color-surface-container-lowest: #140C0A;
+    --md-sys-color-surface-container-low: #221A17;
+    --md-sys-color-surface-container: #271E1B;
+    --md-sys-color-surface-container-high: #322825;
+    --md-sys-color-surface-container-highest: #3D3330;
+    --md-sys-color-surface-dim: #1A120F;
+    --md-sys-color-surface-bright: #423734;
+    --md-sys-color-outline: #A08D87;
+    --md-sys-color-outline-variant: #53433E;
+    --md-sys-color-inverse-surface: #F1DED8;
+    --md-sys-color-inverse-on-surface: #382E2B;
+    --md-sys-color-inverse-primary: #8F4C34;
+    --md-sys-color-success: #7DDB9C;
+    --md-sys-color-success-container: #0C4A25;
+    --md-sys-color-on-success-container: var(--md-sys-color-on-surface);
+    --ripple: rgba(255, 255, 255, .10);
+
+    --md-sys-elevation-level1: 0 1px 3px rgba(0, 0, 0, .30);
+    --md-sys-elevation-level2: 0 2px 8px rgba(0, 0, 0, .36);
+    --md-sys-elevation-level3: 0 6px 16px rgba(0, 0, 0, .40);
+    --md-sys-elevation-level4: 0 12px 28px rgba(0, 0, 0, .44);
+    --md-sys-elevation-level5: 0 24px 64px rgba(0, 0, 0, .52);
+    --md-sys-elevation-drawer-left: -12px 0 32px rgba(0, 0, 0, .44);
+
+    color-scheme: dark;
+  }
+
+  :root:not([data-theme="light"])[data-seed="violet"] {
+    --md-sys-color-primary: #CFBDFE;
+    --md-sys-color-on-primary: #36275D;
+    --md-sys-color-primary-container: #4D3D75;
+    --md-sys-color-on-primary-container: #E9DDFF;
+    --md-sys-color-secondary: #CBC2DB;
+    --md-sys-color-on-secondary: #332D41;
+    --md-sys-color-secondary-container: #4A4458;
+    --md-sys-color-on-secondary-container: #E8DEF8;
+    --md-sys-color-tertiary: #EFB8C8;
+    --md-sys-color-tertiary-container: #633B48;
+    --md-sys-color-on-tertiary-container: #FFD9E3;
+    --md-sys-color-inverse-primary: #65558F;
+  }
+
+  :root:not([data-theme="light"])[data-seed="teal"] {
+    --md-sys-color-primary: #4CD9DF;
+    --md-sys-color-on-primary: #003738;
+    --md-sys-color-primary-container: #004F51;
+    --md-sys-color-on-primary-container: #6FF6FB;
+    --md-sys-color-secondary: #B0CCCB;
+    --md-sys-color-on-secondary: #1B3535;
+    --md-sys-color-secondary-container: #324B4B;
+    --md-sys-color-on-secondary-container: #CCE8E7;
+    --md-sys-color-tertiary: #B3C8E8;
+    --md-sys-color-tertiary-container: #334863;
+    --md-sys-color-on-tertiary-container: #D3E4FF;
+    --md-sys-color-inverse-primary: #00696D;
+  }
+
+  :root:not([data-theme="light"])[data-seed="lime"] {
+    --md-sys-color-primary: #B2D26C;
+    --md-sys-color-on-primary: #243600;
+    --md-sys-color-primary-container: #374E00;
+    --md-sys-color-on-primary-container: #CDEF85;
+    --md-sys-color-secondary: #C2CAAA;
+    --md-sys-color-on-secondary: #2C331C;
+    --md-sys-color-secondary-container: #424931;
+    --md-sys-color-on-secondary-container: #DEE6C5;
+    --md-sys-color-tertiary: #A1CFC8;
+    --md-sys-color-tertiary-container: #214E48;
+    --md-sys-color-on-tertiary-container: #BCECE4;
+    --md-sys-color-inverse-primary: #4C6700;
+  }
+}
+
+/* ==========================================================================
+   5. DENSITY
+   `default` is the base :root. Only the three overridable variables change;
+   --sp is deliberately constant across all three, as in the contract.
+   ========================================================================== */
+
+[data-density="compact"] {
+  --gap: 0.625rem;  /* 10px */
+  --pad: 1rem;      /* 16px */
+  --row: 2.5rem;    /* 40px */
+  --card: 0.75rem;  /* 12px */
+}
+
+[data-density="comfortable"] {
+  --gap: 1.25rem;   /* 20px */
+  --pad: 2rem;      /* 32px */
+  --row: 3.5rem;    /* 56px */
+  --card: 1.125rem; /* 18px */
+}
+
+/* ==========================================================================
+   6. REDUCED MOTION
+   Collapsing the duration ramp at the token level means every transition and
+   animation in app.css that is expressed in tokens becomes effectively
+   instant, without app.css needing to know about the preference. app.css
+   still carries a belt-and-braces blanket rule for anything with a literal.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --md-sys-motion-duration-short1: 1ms;
+    --md-sys-motion-duration-short2: 1ms;
+    --md-sys-motion-duration-short3: 1ms;
+    --md-sys-motion-duration-short4: 1ms;
+    --md-sys-motion-duration-medium1: 1ms;
+    --md-sys-motion-duration-medium2: 1ms;
+    --md-sys-motion-duration-medium3: 1ms;
+    --md-sys-motion-duration-medium4: 1ms;
+    --md-sys-motion-duration-long1: 1ms;
+    --md-sys-motion-duration-long2: 1ms;
+    --md-sys-motion-duration-extra-long1: 1ms;
+  }
+}
+
+/* ==========================================================================
+   7. FORCED COLOURS (Windows High Contrast)
+   Hand the palette over to the operating system rather than fighting it. Only
+   the roles that must map to system colours are reassigned; layout is
+   untouched.
+   ========================================================================== */
+
+@media (forced-colors: active) {
+  :root {
+    --md-sys-color-outline: CanvasText;
+    --md-sys-color-outline-variant: CanvasText;
+    --md-sys-focus-ring-color: Highlight;
+    --md-sys-elevation-level1: none;
+    --md-sys-elevation-level2: none;
+    --md-sys-elevation-level3: none;
+    --md-sys-elevation-level4: none;
+    --md-sys-elevation-level5: none;
+  }
+}

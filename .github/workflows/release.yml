@@ -145,23 +145,21 @@ jobs:
           pnpm -r --workspace-concurrency=4 --if-present run typecheck
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Test the packages that carry product identity
+      - name: Test the Windows identity and installer logic
         working-directory: design
-        # The rebrand changed what these suites assert. If the identity logic and
-        # its four independent copies ever disagree again, this is where it shows
-        # up — before an installer is built, not after a user runs it.
+        # This job runs the specs that only Windows can answer: the identity the
+        # installer writes, the paths it installs to, its build targets and its
+        # launcher payload. If the identity logic and its four independent copies
+        # ever disagree again, it shows up here — before an installer is built,
+        # rather than after a user runs one.
         #
-        # Gated per command for the same reason as the typecheck above: an
-        # ungated block reports the last suite's result and nothing else, so a
-        # failing test would still ship an installer.
-        #
-        # tools-pack is filtered to the Windows-relevant specs by path substring.
-        # Its macOS specs unpack a macOS node-pty prebuild and assert the
-        # spawn-helper kept its executable bit; NTFS cannot represent that bit, so
-        # they fail here for a reason that has nothing to do with the code under
-        # test. They are not skipped — the `test` job in verify.yml runs the full
-        # suite on Linux, where the assertion is meaningful. Between the two jobs
-        # every spec runs somewhere.
+        # Everything else is tested on Linux, by the `test` job in verify.yml,
+        # which runs the FULL suite for tools-pack, packaged and desktop. That
+        # split is not a convenience: several specs assert things a Windows
+        # filesystem cannot represent — a macOS binary keeping its executable
+        # bit, a symlinked module layout — and fail here for reasons that have
+        # nothing to do with the code under test. Between the two jobs every spec
+        # runs somewhere, and neither job is quietly skipping the awkward ones.
         run: |
           $ErrorActionPreference = "Stop"
           # --testTimeout: two of these specs are `runIf(win32)`, so this job is
@@ -171,10 +169,6 @@ jobs:
           # slower and they time out. Raising the budget gives slow I/O room
           # without weakening a single assertion — the tests still have to pass.
           pnpm --filter @open-design/tools-pack exec vitest run --testTimeout=30000 win- launcher- release-workflows config versions resources
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --filter @open-design/packaged run test
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --filter @open-design/desktop run test
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Set up NSIS

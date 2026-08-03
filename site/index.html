@@ -1,0 +1,1170 @@
+<!doctype html>
+<!--
+  Material Designer — documentation and status site
+  ============================================================================
+  Plain static HTML. No build step, no framework, no package manager: GitHub
+  Pages serves this directory exactly as it is committed.
+
+  EVERY asset is local. There is no content delivery network, no web font, no
+  remote image, no analytics and no third-party script anywhere on this page.
+  Icons are inline SVG (the design mockup's Material Symbols font cannot ship
+  under that rule), and the type scale is bound to a system font stack.
+
+  EVERY internal reference is relative. The site is served from a project
+  subpath (…/material-designer/), so a leading-slash URL would resolve against
+  the account root and 404. Nothing here starts with "/".
+
+  HONESTY
+  -------
+  Nothing has been built from this repository: no installer, no release, no
+  observed continuous-integration run. This page says so where a download
+  button would otherwise be, and never implies otherwise anywhere else. The
+  ported upstream functionality and the work this project is doing are kept in
+  separate, labelled sections for the same reason.
+
+  Text inside a [data-i18n] element is the English fallback. i18n.js replaces
+  it on load with the active language mode and funny level, so the page is
+  still readable as source, and still readable with scripting turned off.
+-->
+<html lang="en" data-md-dimsum-index="assets/dim-sum/index.json">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Material Designer — a local-first design workspace</title>
+<meta name="description" content="Material Designer is a Material Design 3 rebuild of a local-first design workspace. Nothing has been built from this repository yet: there is no release and no installer.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#FFF8F6">
+
+<!--
+  Appearance, applied before first paint.
+
+  This is a hand-transcribed copy of appearance.EARLY_BOOT_SNIPPET. It exists
+  because a module script is deferred, and a deferred module cannot stop a dark
+  reader's browser painting a light page first. It duplicates only the cheap
+  attribute writes; appearance.js takes over moments later and fills in the
+  derived roles for a custom seed colour.
+
+  Keep it in step with the constants in assets/js/appearance.js:
+  STORAGE_PREFIX "md-designer:appearance.", defaults system/default/sunset/100,
+  scale clamped to 50–200.
+-->
+<script>
+(function(){try{
+var P="md-designer:appearance.",d=document.documentElement,g=function(k){try{return localStorage.getItem(P+k)}catch(e){return null}};
+var t=g('theme')||"system";
+var r=(t==='light'||t==='dark')?t:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+d.dataset.theme=r;d.dataset.themePreference=t;d.style.colorScheme=r;
+d.dataset.density=g('density')||"default";
+d.dataset.seed=g('seed')||"sunset";
+var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?100:Math.min(200,Math.max(50,s)))/100));
+}catch(e){}})();
+</script>
+
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/app.css">
+
+<!-- Inline data-URI favicon: a file request that never leaves the document. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%238F4C34'/%3E%3Cpath d='M7 24V8h4l5 8 5-8h4v16h-4v-9l-5 8-5-8v9z' fill='%23FFDBCF'/%3E%3C/svg%3E">
+
+<!--
+  With scripting disabled, tabs.js never runs, so nothing would ever unhide the
+  seven panels this document ships collapsed. This rule turns the site back
+  into one readable scrolling page in exactly that case, and does nothing at
+  all when scripting works.
+-->
+<noscript><style>[data-tab-panel][hidden]{display:block!important}</style></noscript>
+</head>
+<body>
+
+<!-- ==========================================================================
+     Icon sprite. Inline SVG symbols, 24×24, currentColor, decorative by
+     default — every icon on this page sits beside real text or inside a
+     control that carries its own accessible name.
+     ====================================================================== -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+  <symbol id="i-logo" viewBox="0 0 24 24"><path fill="currentColor" d="M4 20V4h3.6L12 12.2 16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path fill="currentColor" d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5-5-5Zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></symbol>
+  <symbol id="i-build" viewBox="0 0 24 24"><path fill="currentColor" d="M22.7 19.1 13.6 10a6 6 0 0 0-1.5-6.9 6 6 0 0 0-7.4-1.3L9 6 6 9 1.6 4.7A6 6 0 0 0 2.9 12a6 6 0 0 0 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.4-2.4c.4-.3.4-1 0-1.1Z"/></symbol>
+  <symbol id="i-command" viewBox="0 0 24 24"><path fill="currentColor" d="M6 2a4 4 0 0 0 0 8h2V8H6a2 2 0 1 1 2-2v12a4 4 0 1 0 4-4h-2v2h2a2 2 0 1 1-2 2V6a4 4 0 1 0-4 4V8H6Z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2Zm6-6v-5.1A6 6 0 0 0 13 5.1V4a1 1 0 1 0-2 0v1.1A6 6 0 0 0 6 10.9V16l-2 2v1h16v-1l-2-2Z"/></symbol>
+  <symbol id="i-light" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-14a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V4a1 1 0 0 1 1-1Zm0 15a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1ZM4 11h1a1 1 0 1 1 0 2H4a1 1 0 1 1 0-2Zm15 0h1a1 1 0 1 1 0 2h-1a1 1 0 1 1 0-2ZM5.6 4.2l.7.7a1 1 0 1 1-1.4 1.4l-.7-.7a1 1 0 0 1 1.4-1.4Zm12.1 12.1.7.7a1 1 0 0 1-1.4 1.4l-.7-.7a1 1 0 0 1 1.4-1.4ZM4.2 18.4l.7-.7a1 1 0 1 1 1.4 1.4l-.7.7a1 1 0 0 1-1.4-1.4ZM16.3 6.3l.7-.7a1 1 0 1 1 1.4 1.4l-.7.7a1 1 0 0 1-1.4-1.4Z"/></symbol>
+  <symbol id="i-dark" viewBox="0 0 24 24"><path fill="currentColor" d="M12.4 2a9 9 0 1 0 9.4 12.3A7.5 7.5 0 0 1 12.4 2Z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path fill="currentColor" d="M12 16 6 10l1.4-1.4L11 12.2V4h2v8.2l3.6-3.6L18 10l-6 6Zm-7 4v-2h14v2H5Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2Z"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm-1 5h2v2h-2V7Zm0 4h2v6h-2v-6Z"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 3 6.5v11L12 22l9-4.5v-11L12 2Zm0 2.2 6.5 3.3L12 10.8 5.5 7.5 12 4.2ZM5 9.2l6 3v7.3l-6-3V9.2Zm8 10.3v-7.3l6-3v7.3l-6 3Z"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path fill="currentColor" d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4Zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4Z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm-1 15-4-4 1.4-1.4L11 14.2l5.6-5.6L18 10l-7 7Z"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3a9 9 0 0 0 0 18c.8 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1a1.5 1.5 0 0 1 1.1-2.5H16a5 5 0 0 0 5-5c0-4.4-4-8-9-8ZM6.5 12a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3-4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm5 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path fill="currentColor" d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2ZM8 4h8v8l-4-2.5L8 12V4Z"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path fill="currentColor" d="M14 3v2h3.6l-9.8 9.8 1.4 1.4L19 6.4V10h2V3h-7ZM5 5h5V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5h-2v5H5V5Z"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2ZM6.4 15.6 5 14.2 7.2 12 5 9.8l1.4-1.4L10 12l-3.6 3.6ZM19 16h-7v-2h7v2Z"/></symbol>
+  <symbol id="i-tabs" viewBox="0 0 24 24"><path fill="currentColor" d="M21 3H3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Zm0 4H10V5h11v2Z"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path fill="currentColor" d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path fill="currentColor" d="m12 4-1.4 1.4L16.2 11H4v2h12.2l-5.6 5.6L12 20l8-8-8-8Z"/></symbol>
+  <symbol id="i-dish" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4c-4 0-7.2 2.4-7.2 5.4 0 .9.3 1.8.8 2.6H4a1 1 0 0 0 0 2h1.1A7.5 7.5 0 0 0 12 20a7.5 7.5 0 0 0 6.9-6H20a1 1 0 0 0 0-2h-1.6c.5-.8.8-1.7.8-2.6C19.2 6.4 16 4 12 4Z"/></symbol>
+  <symbol id="i-lang" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.9 6h-2.9a15.7 15.7 0 0 0-1.4-3.6A8 8 0 0 1 18.9 8ZM12 4.1c.7 1 1.3 2.2 1.7 3.9h-3.4c.4-1.7 1-2.9 1.7-3.9ZM4.3 14a8 8 0 0 1 0-4h3.3a16.6 16.6 0 0 0 0 4H4.3Zm.8 2h2.9c.3 1.3.8 2.5 1.4 3.6A8 8 0 0 1 5.1 16Zm2.9-8H5.1a8 8 0 0 1 4.3-3.6C8.8 5.5 8.3 6.7 8 8Zm4 11.9c-.7-1-1.3-2.2-1.7-3.9h3.4c-.4 1.7-1 2.9-1.7 3.9Zm2.1-5.9H9.9a14.8 14.8 0 0 1 0-4h4.2a14.8 14.8 0 0 1 0 4Zm.5 5.6c.6-1.1 1.1-2.3 1.4-3.6h2.9a8 8 0 0 1-4.3 3.6Zm1.7-5.6a16.6 16.6 0 0 0 0-4h3.3a8 8 0 0 1 0 4h-3.3Z"/></symbol>
+</svg>
+
+<a class="skip-link" href="#tab-panel-overview" data-i18n="a11y.skipToContent">Skip to the main content</a>
+
+<div class="app-shell">
+
+  <!-- =====================================================================
+       Brand band. The application has a custom title bar with real window
+       controls; a web page has no window to control, so this band carries
+       identity only and nothing that merely looks like a control.
+       ================================================================== -->
+  <header class="app-topbar">
+    <span class="app-topbar__brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-logo"/></svg>
+      <span data-i18n="site.name">Material Designer</span>
+    </span>
+    <span class="app-topbar__subtitle" data-i18n="chrome.subtitle" data-i18n-inline>Documentation and honest status</span>
+    <span class="spacer"></span>
+    <span class="md-chip md-chip--mono" title="Upstream Open Design v0.16.1, pinned at commit 517f39acde402c1a7af2189167a8d6957a3dac71">upstream 517f39a</span>
+  </header>
+
+  <!-- The tab strip. tabs.js owns everything inside this element: the tabs
+       themselves, the overflow surface, the searchable tab list, reordering,
+       pinning, and the persistence of all of it. -->
+  <div id="tab-strip" class="app-tabstrip"></div>
+
+  <div class="app-body">
+    <main class="app-main">
+
+      <!-- ---------------- Page header ---------------- -->
+      <div class="app-header">
+        <h1 class="app-header__title" id="page-title" data-i18n="site.name" data-i18n-inline>Material Designer</h1>
+
+        <!-- Site-wide content search. Plain text is the default; the .* button
+             is the explicit opt-in to regular expressions, and the wrench opens
+             the pattern builder anchored beside this very field. main.js wires
+             all three to one regex.js controller. -->
+        <div class="md-search" id="site-search" data-mode="plain">
+          <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+          <label class="visually-hidden" for="site-search-input" data-i18n="search.label">Search this site</label>
+          <input
+            class="md-search__input"
+            id="site-search-input"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search this site"
+            data-i18n-attr="placeholder:search.placeholder"
+            aria-describedby="site-search-status">
+          <button type="button" class="md-icon-btn md-icon-btn--small" id="site-search-mode"
+                  aria-pressed="false"
+                  data-i18n-attr="aria-label:search.mode.regex; title:search.mode.hint">.*</button>
+          <button type="button" class="md-icon-btn md-icon-btn--small" id="site-search-builder"
+                  aria-haspopup="dialog" aria-expanded="false"
+                  data-i18n-attr="aria-label:regex.builder.open; title:regex.builder.open">
+            <svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg>
+          </button>
+        </div>
+
+        <span class="spacer"></span>
+
+        <!-- Command palette. The shortcut is displayed rather than hidden,
+             because a shortcut nobody can see is a shortcut nobody learns. -->
+        <button type="button" class="md-btn md-btn--outlined" data-md-palette-open
+                data-i18n-attr="aria-label:palette.open">
+          <svg aria-hidden="true" focusable="false"><use href="#i-command"/></svg>
+          <span class="i18n-text" data-i18n="palette.heading" data-i18n-inline>Command palette</span>
+          <kbd class="kbd">Ctrl K</kbd>
+        </button>
+
+        <button type="button" class="md-icon-btn" data-md-notifications-toggle
+                style="position:relative"
+                data-i18n-attr="title:notify.center.open">
+          <svg aria-hidden="true" focusable="false"><use href="#i-bell"/></svg>
+          <span class="md-badge" data-md-notification-count hidden>0</span>
+        </button>
+
+        <button type="button" class="md-icon-btn" id="theme-toggle"
+                data-i18n-attr="aria-label:a11y.themeToggle; title:a11y.themeToggle">
+          <svg aria-hidden="true" focusable="false" data-theme-icon><use href="#i-dark"/></svg>
+        </button>
+      </div>
+
+      <!-- ---------------- The one scroll region ---------------- -->
+      <div class="app-scroll" id="app-scroll">
+
+        <!-- Search results. Hidden until a query is typed; rendered by main.js
+             above whichever panel is active, so a match in another section is
+             one click away rather than invisible. -->
+        <div class="app-scroll__inner" id="search-results" hidden>
+          <section class="md-card md-card--outlined" aria-labelledby="search-results-title">
+            <h2 class="md-title-medium" id="search-results-title" data-i18n="find.results.heading">Search results</h2>
+            <p class="md-body-small on-surface-variant" id="site-search-status" role="status" aria-live="polite"></p>
+            <ul class="md-list" id="search-results-list"></ul>
+          </section>
+        </div>
+
+<!-- ==========================================================================
+     PANEL 1 — OVERVIEW
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="overview" id="tab-panel-overview">
+
+  <div class="hero">
+    <span class="hero__eyebrow">
+      <svg width="18" height="18" aria-hidden="true" focusable="false"><use href="#i-build"/></svg>
+      <span class="i18n-text" data-i18n="ov.eyebrow" data-i18n-inline>In progress — nothing released</span>
+    </span>
+    <h2 class="hero__title" data-i18n="hero.headline">Design artifacts, generated on your own machine.</h2>
+    <p class="hero__lede" data-i18n="hero.tagline">A local daemon detects the coding-agent command-line tool you already have installed and drives it. Projects, files and database stay on local disk.</p>
+    <div class="hero__actions">
+      <button type="button" class="md-btn md-btn--filled" data-goto-tab="install">
+        <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+        <span class="i18n-text" data-i18n="ov.cta.install" data-i18n-inline>How to get it</span>
+      </button>
+      <button type="button" class="md-btn md-btn--tonal" data-goto-tab="verifying">
+        <svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg>
+        <span class="i18n-text" data-i18n="hero.cta.status" data-i18n-inline>See what is verified</span>
+      </button>
+      <a class="md-btn md-btn--text" href="https://github.com/Ding-Ding-Projects/material-designer" rel="noopener noreferrer" target="_blank">
+        <svg aria-hidden="true" focusable="false"><use href="#i-external"/></svg>
+        <span class="i18n-text" data-i18n="hero.cta.source" data-i18n-inline>View the source</span>
+        <span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- The honest status band. This is the single most important block on the
+       site: it appears above everything else that could be mistaken for a
+       shipping product. -->
+  <section class="section" aria-labelledby="ov-status-title">
+    <div class="md-empty" id="ov-status">
+      <span class="md-empty__icon">
+        <svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg>
+      </span>
+      <h2 class="md-empty__title" id="ov-status-title" data-i18n="release.none.title">No release yet</h2>
+      <p class="md-empty__body" data-i18n="release.none.body">Nothing has been built from this repository, so there is no installer and no version number. A release will appear here once continuous integration publishes one.</p>
+      <p class="md-empty__body md-body-small" data-i18n="release.none.note">Until then, the only way to run this is to build it from source. The exact commands, toolchain versions and Windows prerequisites are in the documentation.</p>
+      <div class="row" style="justify-content:center">
+        <button type="button" class="md-btn md-btn--tonal" data-goto-tab="building">
+          <svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg>
+          <span class="i18n-text" data-i18n="release.buildFromSource" data-i18n-inline>Build from source</span>
+        </button>
+        <button type="button" class="md-btn md-btn--text" data-goto-tab="install">
+          <span class="i18n-text" data-i18n="ov.cta.releaseDetail" data-i18n-inline>What a release will contain</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ov-what-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ov-what-title" data-i18n="ov.what.heading">What Material Designer is</h2>
+    </div>
+    <div class="prose">
+      <p data-i18n="ov.what.body">A workspace that runs entirely on your own machine. A local daemon detects whichever coding-agent command-line tool you already have installed and drives it to generate single-page design artifacts — prototypes, live dashboards, decks, images and motion pieces — rendered in a sandboxed preview and exportable to HTML, PDF, PPTX, ZIP, Markdown and MP4. Projects, files and database stay on local disk.</p>
+      <p data-i18n="ov.what.split">Two different things are described on this site, and they are never mixed. The product's existing behaviour is the imported upstream release, which works today. The Material Design 3 redesign and the standards conformance are this project's own work, and that work is in progress.</p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ov-adds-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ov-adds-title" data-i18n="ov.adds.heading">What this repository adds</h2>
+    </div>
+    <div class="card-grid">
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-palette"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="ov.add.md3.title">A Material Design 3 redesign</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.md3.body">The product's own interface, rebuilt on the M3 colour-role tokens, type scale, shape scale, elevation and motion easing. Specified by the mockup in this repository; not yet implemented in the application.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.inprogress" data-i18n-inline>In progress</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-book"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="ov.add.rebrand.title">A minimal rebrand</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.rebrand.body">Product name, window title, installer and application identity. Internal package names, the command-line name, its environment variables and its storage keys are left exactly as upstream wrote them, so the port stays diffable against its source.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.inprogress" data-i18n-inline>In progress</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="ov.add.proof.title">A port you can check rather than believe</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.proof.body">A committed shell script re-derives the whole "this is upstream, unmodified" claim from git alone, and the licence notice is the same list the script enforces.</p>
+        <p><span class="md-status md-status--shipped" data-i18n="status.runnable" data-i18n-inline>Runnable today</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-lang"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="ov.add.standards.title">The standards this project holds itself to</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="ov.add.standards.body">Language modes and funny levels, appearance customization, a regex builder beside every search field, tabbed navigation, non-blocking notifications, a command palette, accessibility as a completion blocker. This page implements them; the application does not yet.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.inprogress" data-i18n-inline>In progress</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ov-verified-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ov-verified-title" data-i18n="ov.verified.heading">What is verified, and what has never been run</h2>
+      <p class="section__sub" data-i18n="ov.verified.sub">Every row says how it was checked. A row that says "never run" means exactly that.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <caption class="visually-hidden" data-i18n="ov.verified.caption">Verification state of each claim this repository makes</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="ov.verified.col.claim">Claim</th>
+            <th scope="col" data-i18n="ov.verified.col.state">State</th>
+            <th scope="col" data-i18n="ov.verified.col.how">How it was checked</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" data-i18n="ov.row.port">The imported tree matches upstream exactly</th>
+            <td><span class="md-status md-status--shipped" data-i18n="status.verified" data-i18n-inline>Verified</span></td>
+            <td data-i18n="ov.row.port.how">By running the committed verifier locally, on a checkout with LF line endings. It reports zero gaps and exits 0.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.notice">Every difference from upstream is declared</th>
+            <td><span class="md-status md-status--shipped" data-i18n="status.verified" data-i18n-inline>Verified</span></td>
+            <td data-i18n="ov.row.notice.how">Same run. The licence notice is the allowlist the script reads, so an undeclared change fails and a declaration for an unchanged file fails too.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.build">The application builds and runs</th>
+            <td><span class="md-status md-status--none" data-i18n="status.neverrun" data-i18n-inline>Never run</span></td>
+            <td data-i18n="ov.row.build.how">No dependency installed, no package compiled, no test executed, no installer produced, no screenshot taken from a real build.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.ci">Continuous integration passes</th>
+            <td><span class="md-status md-status--none" data-i18n="status.norun" data-i18n-inline>No run observed</span></td>
+            <td data-i18n="ov.row.ci.how">Three workflows exist at the repository root and are readable. That is a statement about committed files; this repository has recorded no run outcome for any of them.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.release">A release exists</th>
+            <td><span class="md-status md-status--none" data-i18n="status.none" data-i18n-inline>None</span></td>
+            <td data-i18n="ov.row.release.how">No tag, no installer, no artifact, and no code-signing certificate.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.md3">The application follows Material Design 3</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
+            <td data-i18n="ov.row.md3.how">The mockup in this repository specifies the token set, the screens and the components. No application code has been written against it.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="ov.row.site">This site meets the project's own standards</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span></td>
+            <td data-i18n="ov.row.site.how">The standards this page can carry are implemented here and can be exercised in the browser. The Standards section says which, and which are still missing.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <noscript>
+    <div class="md-callout md-callout--warn" style="margin-top:1.5rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
+      <p>
+        <strong class="md-callout__title">JavaScript is turned off.</strong>
+        Every word of this site is readable without it — the sections below are simply
+        laid out as one page instead of as tabs. The language modes, funny levels,
+        appearance controls, search, regex builder and command palette all need
+        scripting, so they are absent rather than broken.
+      </p>
+    </div>
+  </noscript>
+</section>
+
+<!-- ==========================================================================
+     PANEL 2 — FEATURES
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="features" id="tab-panel-features" hidden>
+
+  <section class="section" aria-labelledby="ft-today-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ft-today-title" data-i18n="section.today.heading">What it does today</h2>
+      <span class="md-status md-status--shipped" data-i18n="status.works" data-i18n-inline>Works today</span>
+    </div>
+    <p class="prose" data-i18n="section.today.intro">This is the ported upstream functionality: what the application already does, inherited verbatim from Open Design v0.16.1.</p>
+
+    <div class="card-grid" style="margin-top:1rem">
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="feature.agents.title">Drives the agent you already have</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="feature.agents.body">A local daemon detects whichever coding-agent command-line tool is installed on the machine and drives it. Nothing new to sign up for.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-code"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="feature.artifacts.title">Single-page design artifacts</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="feature.artifacts.body">Prototypes, live dashboards, decks, images and motion pieces, each generated as a single self-contained page.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="feature.preview.title">Sandboxed preview</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="feature.preview.body">Generated pages render in a sandboxed preview rather than being trusted with the application's own privileges.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="feature.export.title">Exports</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="feature.export.body">Export to HTML, PDF, PPTX, ZIP, Markdown and MP4.</p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <span class="md-card__icon"><svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg></span>
+        <h3 class="md-title-medium" data-i18n="feature.local.title">Local disk, local database</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="feature.local.body">Projects, files and database stay on local disk. The workspace runs entirely on your own machine.</p>
+      </article>
+    </div>
+
+    <div class="md-callout md-callout--info" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="ft.today.caveat.title">Read from source, not from a running application</strong>
+        <span data-i18n="ft.today.caveat.body">Everything above is inherited from the imported upstream release and described from its own documentation and source. This repository has never built or run the application, so none of it has been observed working here.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ft-network-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ft-network-title" data-i18n="ft.network.heading">Network defaults it ships with</h2>
+    </div>
+    <div class="prose">
+      <ul>
+        <li data-i18n="ft.network.bind">The daemon binds loopback by default. Exposing it beyond the local machine requires explicitly setting both a bind host and an allowed-origins list; the container deployment additionally requires an API token.</li>
+        <li data-i18n="ft.network.ssrf">Outbound provider proxying is guarded against server-side request forgery: private, link-local, carrier-grade-NAT and cloud-metadata ranges are refused unless a host is explicitly allowed.</li>
+        <li data-i18n="ft.network.keys">Provider keys are the user's own. They are proxied, not collected, and are never included in any telemetry channel.</li>
+        <li data-i18n="ft.network.telemetry">The ported code contains upstream's analytics integration verbatim, because the port is verbatim. Upstream's own source states that without a telemetry destination key in the environment every entry point is a no-op. No such key is configured anywhere in this repository and none is baked in at packaging time, so builds produced from this repository send nothing. That is a statement about configuration, not about surgery — the code paths are still present and unmodified, and they must be, or the port would no longer be a port.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ft-building-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ft-building-title" data-i18n="section.building.heading">What this project is building</h2>
+      <span class="md-status md-status--progress" data-i18n="status.notshipped" data-i18n-inline>Not shipped</span>
+    </div>
+    <p class="prose" data-i18n="section.building.intro">The Material Design 3 redesign and the standards work are in progress. None of it is implemented yet.</p>
+
+    <div class="card-grid" style="margin-top:1rem">
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.md3.title">Material Design 3 conformance</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.md3.body">The colour-role tokens, type scale, shape scale, elevation and motion easing, with no legacy or ad-hoc design elements left behind.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.notstarted" data-i18n-inline>Not started in the application</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.language.title">Language modes and funny levels</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.language.body">English, playful Hong Kong Cantonese and a bilingual mode, with two independent 1–5 sliders. This page has them; the application does not yet.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.notstarted" data-i18n-inline>Not started in the application</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.regex.title">Regex builder beside every search field</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.regex.body">Guided construction, a raw pattern editor, flag toggles, sample text and live match display, anchored beside the field it belongs to.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.notstarted" data-i18n-inline>Not started in the application</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.tabs.title">Browser-style tabbed navigation</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.tabs.body">A persistent tab strip with an overflow surface, reordering, pinning and a searchable tab list, all persisted.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.partial" data-i18n-inline>Partial in design only</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.notifications.title">Non-blocking notifications</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.notifications.body">Corner toasts that auto-dismiss and stack without overlapping, with a notification centre that keeps dismissed ones reviewable. A modal is only for a decision.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.designed" data-i18n-inline>Designed, not built</span></p>
+      </article>
+      <article class="md-card md-card--outlined">
+        <h3 class="md-title-medium" data-i18n="standard.a11y.title">Accessibility as a completion blocker</h3>
+        <p class="md-body-medium on-surface-variant" data-i18n="standard.a11y.body">Keyboard reachable throughout, visible focus, correct roles and names, sufficient contrast in both themes, reduced motion respected.</p>
+        <p><span class="md-status md-status--progress" data-i18n="status.app.notstarted" data-i18n-inline>Not started in the application</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="ft-design-title">
+    <div class="section__head">
+      <h2 class="section__title" id="ft-design-title" data-i18n="section.md3.heading">The design system</h2>
+    </div>
+    <p class="prose" data-i18n="section.md3.intro">This page is built on the same Material Design 3 token contract as the application redesign: colour roles, type scale, shape scale, elevation and motion easing.</p>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="md3.tokens.heading">Colour roles</h3>
+    <p class="md-body-small on-surface-variant" data-i18n="ft.tokens.note">These swatches are painted from the live tokens. Change the seed colour or the theme in Settings and every one of them moves, because nothing on this page hard-codes a colour.</p>
+    <div class="card-grid" style="margin-top:0.75rem" id="token-swatches" aria-live="off"></div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="md3.type.heading">Type scale</h3>
+    <div class="stack" style="margin-top:0.75rem">
+      <p class="md-display-small">Display small</p>
+      <p class="md-headline-medium">Headline medium</p>
+      <p class="md-title-large">Title large</p>
+      <p class="md-body-large">Body large — the measure this documentation is set in.</p>
+      <p class="md-label-medium">LABEL MEDIUM</p>
+      <p class="mono md-body-small">mono — 517f39acde402c1a7af2189167a8d6957a3dac71</p>
+    </div>
+    <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="md3.fonts.note">No web fonts are loaded. The site uses a system font stack, because every asset must be bundled locally and a font file cannot be authored by hand.</p>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="md3.shape.heading">Shape scale</h3>
+    <div class="row" style="margin-top:0.75rem" id="shape-scale"></div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="md3.motion.heading">Motion easing</h3>
+    <div class="table-wrap" style="margin-top:0.75rem">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="ft.motion.col.token">Token</th>
+            <th scope="col" data-i18n="ft.motion.col.curve">Curve</th>
+            <th scope="col" data-i18n="ft.motion.col.use">Where it is used</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code>--md-sys-motion-emphasized</code></th><td><code class="mono">cubic-bezier(.2,0,0,1)</code></td><td data-i18n="ft.motion.emphasized">The default for a change the reader should notice: a tab becoming active, a panel opening.</td></tr>
+          <tr><th scope="row"><code>--md-sys-motion-emphasized-decel</code></th><td><code class="mono">cubic-bezier(.05,.7,.1,1)</code></td><td data-i18n="ft.motion.decel">Anything entering the screen, so it arrives quickly and settles gently.</td></tr>
+          <tr><th scope="row"><code>--md-sys-motion-spring</code></th><td><code class="mono">linear(…)</code></td><td data-i18n="ft.motion.spring">Transforms only — the press of a button, the travel of a switch handle.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="ft.motion.reduced">All of it collapses to a single millisecond when the reader has asked for reduced motion.</p>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 3 — INSTALL
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="install" id="tab-panel-install" hidden>
+
+  <section class="section" aria-labelledby="in-title">
+    <div class="section__head">
+      <h2 class="section__title" id="in-title" data-i18n="release.heading">Download</h2>
+    </div>
+
+    <!-- Where the download button belongs. There is no link here, because a
+         link to a release that does not exist is worse than no link. -->
+    <div class="md-empty">
+      <span class="md-empty__icon"><svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg></span>
+      <h3 class="md-empty__title" data-i18n="release.none.title">No release yet</h3>
+      <p class="md-empty__body" data-i18n="release.none.body">Nothing has been built from this repository, so there is no installer and no version number. A release will appear here once continuous integration publishes one.</p>
+      <p class="md-empty__body md-body-small" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
+      <p>
+        <button type="button" class="md-btn md-btn--filled" disabled aria-disabled="true">
+          <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+          <span class="i18n-text" data-i18n="in.button.disabled" data-i18n-inline>Download — unavailable</span>
+        </button>
+      </p>
+      <p class="md-body-small on-surface-variant" data-i18n="in.button.why">The button is disabled rather than hidden so it is obvious that a download belongs here and that there is genuinely nothing behind it.</p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="in-will-title">
+    <div class="section__head">
+      <h2 class="section__title" id="in-will-title" data-i18n="in.will.heading">What the release will contain when it exists</h2>
+      <p class="section__sub" data-i18n="in.will.sub">This describes the committed release machinery, not an observed run.</p>
+    </div>
+    <div class="prose">
+      <ul>
+        <li data-i18n="in.will.installer">A Windows installer, built by electron-builder on Electron 41, produced by the same run that published it. The packer also offers a portable archive and an unpacked directory.</li>
+        <li data-i18n="in.will.tag">Its own unique tag. No prior release is recycled or overwritten.</li>
+        <li data-i18n="in.will.linecount">A line-count table for the exact released commit, produced by a committed counter that continuous integration runs, broken down by category and by human or agent authorship.</li>
+        <li data-i18n="in.will.codename">A dim sum code name drawn from the catalogue bundled in this repository, with the dish's photograph — chosen only from dishes whose image is actually present.</li>
+        <li data-i18n="in.will.evidence">Evidence recorded as it really is: running, failed, or verified. Never predicted.</li>
+      </ul>
+    </div>
+
+    <div class="md-callout md-callout--warn" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="in.signing.title">An unsigned installer will trip SmartScreen</strong>
+        <span data-i18n="in.signing.body">This repository has no code-signing certificate. Any installer it eventually publishes will make Windows show "Windows protected your PC" with an unknown publisher, and the Run anyway button will be hidden behind More info. That will stay true until a certificate is obtained.</span>
+      </p>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="in-until-title">
+    <div class="section__head">
+      <h2 class="section__title" id="in-until-title" data-i18n="in.until.heading">Until then: build it from source</h2>
+    </div>
+    <p class="prose" data-i18n="in.until.body">The exact commands, the toolchain versions and the Windows prerequisites are in the Building section. Expect the first run to be a real build rather than a formality — one native dependency compiles from source.</p>
+    <p>
+      <button type="button" class="md-btn md-btn--filled" data-goto-tab="building">
+        <svg aria-hidden="true" focusable="false"><use href="#i-terminal"/></svg>
+        <span class="i18n-text" data-i18n="release.buildFromSource" data-i18n-inline>Build from source</span>
+      </button>
+    </p>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 4 — BUILDING
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="building" id="tab-panel-building" hidden>
+
+  <section class="section" aria-labelledby="bd-title">
+    <div class="section__head">
+      <h2 class="section__title" id="bd-title" data-i18n="bd.heading">Building from source</h2>
+    </div>
+
+    <div class="md-callout md-callout--warn">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="bd.caveat.title">These commands have not been executed from this repository</strong>
+        <span data-i18n="bd.caveat.body">They are transcribed from the ported project's own documentation and its package scripts. Treat the first run as a real build, and expect to spend time on native compilation.</span>
+      </p>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.toolchain.heading">Toolchain</h3>
+    <div class="table-wrap" style="margin-top:0.75rem">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="bd.tc.col.req">Requirement</th>
+            <th scope="col" data-i18n="bd.tc.col.ver">Version</th>
+            <th scope="col" data-i18n="bd.tc.col.why">Why it is exact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Node.js</th>
+            <td><code class="mono">24</code></td>
+            <td data-i18n="bd.tc.node">Declared in the engines field by the workspace root and by every package, and pinned by the version file. Upstream's own answer to "can I use Node 22 instead" is no.</td>
+          </tr>
+          <tr>
+            <th scope="row">pnpm</th>
+            <td><code class="mono">10.33.2</code></td>
+            <td data-i18n="bd.tc.pnpm">The package manager field is pinned to that exact version.</td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="bd.tc.vs.name">Visual Studio Build Tools</th>
+            <td><code class="mono">2022+</code></td>
+            <td data-i18n="bd.tc.vs">With the Desktop C++ workload. The SQLite binding has no prebuilt binary for this platform on Node 24, so installing compiles it from source through node-gyp.</td>
+          </tr>
+          <tr>
+            <th scope="row">Python</th>
+            <td><code class="mono">3.x</code></td>
+            <td data-i18n="bd.tc.python">Required by node-gyp for that same native build, and it must be on the path.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.install.heading">Install the package manager</h3>
+    <p class="md-body-medium on-surface-variant" data-i18n="bd.install.corepack">On Windows, enabling corepack fails with a permission error because it cannot write shims into the system program directory. Install pnpm with npm instead.</p>
+    <pre class="code-block"><code>npm install -g pnpm@10.33.2</code></pre>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.workspace.heading">Install and build the workspace</h3>
+    <p class="md-body-medium on-surface-variant" data-i18n="bd.workspace.note">There is no package file at the repository root — the workspace root is the imported tree, so every command runs from inside it. Installing triggers the root postinstall, which builds 18 workspace targets in dependency order and unpacks a bundled export helper.</p>
+    <pre class="code-block"><code>cd design
+pnpm install</code></pre>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.dev.heading">Run it in development</h3>
+    <p class="md-body-medium on-surface-variant" data-i18n="bd.dev.note">There is deliberately no root dev or start script. The development orchestrator is its own tool, and the daemon defaults to loopback on port 7456.</p>
+    <pre class="code-block"><code>pnpm tools-dev run web
+pnpm tools-dev run web --daemon-port 17456 --web-port 17573
+pnpm tools-dev status --json
+pnpm tools-dev logs --json
+pnpm tools-dev stop
+pnpm tools-dev check</code></pre>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.pack.heading">Build the Windows installer</h3>
+    <pre class="code-block"><code>pnpm --filter @open-design/tools-pack build
+pnpm tools-pack win build --to nsis
+pnpm tools-pack win install
+pnpm tools-pack win cleanup</code></pre>
+    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis or zip; zip produces a portable archive from the unpacked build. Packaging runs on electron-builder with Electron 41.</p>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.test.heading">Typecheck and tests</h3>
+    <p class="md-body-medium on-surface-variant" data-i18n="bd.test.note">Tests are package-scoped by design — there is no root aggregate test script. Build the three prerequisites first, exactly as upstream's own continuous integration does, then run a package's suite.</p>
+    <pre class="code-block"><code>pnpm typecheck
+pnpm guard
+pnpm i18n:check
+
+pnpm --filter @open-design/daemon build
+pnpm --filter @open-design/desktop build
+pnpm --filter @open-design/web build:sidecar
+
+pnpm --filter @open-design/daemon test
+pnpm --filter @open-design/web test
+pnpm --filter @open-design/contracts test</code></pre>
+
+    <div class="md-callout md-callout--info" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="bd.platform.title">Windows native is upstream's best-effort tier</strong>
+        <span data-i18n="bd.platform.body">Upstream states that macOS, Linux and WSL2 are its primary supported paths. This project targets Windows, which makes those rough edges this project's problem to fix rather than a caveat to pass along. None has been encountered yet, because nothing has been built.</span>
+      </p>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 5 — VERIFYING THE PORT
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="verifying" id="tab-panel-verifying" hidden>
+
+  <section class="section" aria-labelledby="vf-title">
+    <div class="section__head">
+      <h2 class="section__title" id="vf-title" data-i18n="vf.heading">Verifying the port</h2>
+      <span class="md-status md-status--shipped" data-i18n="status.runnable" data-i18n-inline>Runnable today</span>
+    </div>
+
+    <p class="prose" data-i18n="vf.intro">The claim "the imported tree is upstream, unmodified" is worth nothing unless a reader can check it in one command. That is what the committed verifier is for. It is pure git and POSIX shell — no Node, no dependencies, nothing to install — which makes it the only claim in this repository that anybody can reproduce with no toolchain at all.</p>
+
+    <pre class="code-block" style="margin-top:1rem"><code>git submodule update --init          # optional — see below
+scripts/verify-port.sh               # human-readable report
+scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
+
+    <p class="prose" data-i18n="vf.submodule">The submodule is not required. When it is absent the verifier falls back to a committed manifest of upstream paths, modes and blob ids, and says which source it used. When the submodule is present, the manifest must agree with it, and a disagreement is a hard error rather than a quiet preference for one of them.</p>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="vf.checks.heading">Two independent checks</h3>
+    <p class="md-body-medium on-surface-variant" data-i18n="vf.checks.why">They are separate because they fail for different reasons, and one cannot see what the other catches.</p>
+    <div class="card-grid" style="margin-top:0.75rem">
+      <article class="md-card md-card--filled">
+        <h4 class="md-title-medium" data-i18n="vf.checkA.title">Check A — the working tree</h4>
+        <p class="md-body-medium" data-i18n="vf.checkA.body">Every file on disk is hashed with filters disabled and compared to the upstream blob id. This catches a stray edit, a truncated copy or a missing file.</p>
+      </article>
+      <article class="md-card md-card--filled">
+        <h4 class="md-title-medium" data-i18n="vf.checkB.title">Check B — the committed index</h4>
+        <p class="md-body-medium" data-i18n="vf.checkB.body">Every tracked path must carry the upstream file mode as well as the upstream blob id. This catches line-ending normalisation and lost executable bits, which Check A cannot see.</p>
+      </article>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="vf.counters.heading">What each counter means</h3>
+    <div class="table-wrap" style="margin-top:0.75rem">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="vf.counters.col.name">Counter</th>
+            <th scope="col" data-i18n="vf.counters.col.meaning">Meaning</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row"><code class="mono">expected</code></th><td data-i18n="vf.c.expected">Files in the pinned upstream tree.</td></tr>
+          <tr><th scope="row"><code class="mono">tracked</code></th><td data-i18n="vf.c.tracked">Paths tracked under the imported directory in this repository.</td></tr>
+          <tr><th scope="row"><code class="mono">present</code></th><td data-i18n="vf.c.present">Expected files actually found on disk.</td></tr>
+          <tr><th scope="row"><code class="mono">declared</code></th><td data-i18n="vf.c.declared">Paths listed in the licence notice — the size of the allowlist. It moves as more of the rebrand lands, so read it from the script rather than from any page.</td></tr>
+          <tr><th scope="row"><code class="mono">missing</code></th><td data-i18n="vf.c.missing">Expected upstream files not present on disk.</td></tr>
+          <tr><th scope="row"><code class="mono">bytes differ</code></th><td data-i18n="vf.c.bytes">On-disk bytes do not hash to the upstream blob id.</td></tr>
+          <tr><th scope="row"><code class="mono">mode mismatch</code></th><td data-i18n="vf.c.mode">A file mode recorded here differs from upstream's.</td></tr>
+          <tr><th scope="row"><code class="mono">oid mismatch</code></th><td data-i18n="vf.c.oid">A committed blob id differs from upstream's.</td></tr>
+          <tr><th scope="row"><code class="mono">extra</code></th><td data-i18n="vf.c.extra">Paths tracked here that upstream does not have.</td></tr>
+          <tr><th scope="row"><code class="mono">untracked</code></th><td data-i18n="vf.c.untracked">Non-ignored files loose in the imported tree — what an interrupted copy leaves behind.</td></tr>
+          <tr><th scope="row"><code class="mono">stale notice</code></th><td data-i18n="vf.c.stale">A path declared in the licence notice that no longer differs from upstream.</td></tr>
+          <tr><th scope="row"><code class="mono">gaps</code></th><td data-i18n="vf.c.gaps">Total undeclared differences. This is the number that must stay at zero.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="vf.exit.heading">Exit codes</h3>
+    <div class="prose">
+      <ul>
+        <li data-i18n="vf.exit.0"><strong>0</strong> — both checks report zero gaps.</li>
+        <li data-i18n="vf.exit.1"><strong>1</strong> — gaps remain. The first fifty are printed to standard error.</li>
+        <li data-i18n="vf.exit.2"><strong>2</strong> — the check could not meaningfully run at all: neither the submodule nor the manifest is available, the manifest disagrees with a submodule that is present, or Check B found no tracked paths. This is deliberately distinct from 1, because "the check failed" and "the check did not happen" are different facts.</li>
+      </ul>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="vf.allowlist.heading">The licence notice is an enforced allowlist, not a courtesy</h3>
+    <p class="prose" data-i18n="vf.allowlist.body">The verifier reads the modifications notice as its allowlist. Paths are declared as list items, and HTML-comment blocks are skipped so the file can document its own entry format without that template being mistaken for a declaration. Two consequences follow, and both are the point.</p>
+    <div class="prose">
+      <ul>
+        <li data-i18n="vf.allowlist.undeclared">A file that differs from upstream <strong>without</strong> an entry fails verification.</li>
+        <li data-i18n="vf.allowlist.stale">An entry for a file that <strong>no longer</strong> differs fails verification too, as a stale notice.</li>
+      </ul>
+      <p data-i18n="vf.allowlist.consequence">So the Apache-2.0 section 4(b) notice and the code cannot drift apart: the licence notice is the same list the machine checks.</p>
+    </div>
+
+    <div class="md-callout md-callout--info" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="vf.crlf.title">Check out with LF line endings</strong>
+        <span data-i18n="vf.crlf.body">A CRLF checkout rewrites bytes in the imported tree, and Check A will correctly report thousands of byte differences for a tree that is otherwise fine. Turn automatic line-ending conversion off before the checkout, or run the verifier on Linux. On Windows, run it from a POSIX shell — the one bundled with git works.</span>
+      </p>
+    </div>
+
+    <div class="md-callout md-callout--warn" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-warning"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="vf.counts.title">No transcript is pasted on this page</strong>
+        <span data-i18n="vf.counts.body">Every counter except gaps moves as rebranding work lands, so a frozen copy is wrong shortly after it is written. Run the script; prefer its answer to any paragraph, this one included.</span>
+      </p>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 6 — STANDARDS
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="standards" id="tab-panel-standards" hidden>
+
+  <section class="section" aria-labelledby="st-title">
+    <div class="section__head">
+      <h2 class="section__title" id="st-title" data-i18n="st.heading">The standards this project holds itself to</h2>
+    </div>
+    <p class="prose" data-i18n="st.intro">These are the project's own requirements for every user-facing surface it ships — the application, and equally this site, its settings, and every panel and dialog inside either. "It is small", "it is only docs" and "nobody customizes that one" are not exemptions. Almost none of them is satisfied in the application today; that gap is the work.</p>
+
+    <p class="prose" data-i18n="st.twocolumns">The two status columns are deliberately separate. This page is one surface and the application is another, and a standard met here says nothing whatsoever about the application.</p>
+
+    <div class="table-wrap" style="margin-top:1rem">
+      <table>
+        <caption class="visually-hidden" data-i18n="st.caption">Each standard, its status in the application, and its status on this site</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="st.col.standard">Standard</th>
+            <th scope="col" data-i18n="st.col.app">In the application</th>
+            <th scope="col" data-i18n="st.col.site">On this site</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" data-i18n="st.r1">Language modes and two funny-level sliders</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notstarted" data-i18n-inline>Not started</span> <span data-i18n="st.r1.app">— nineteen locales ship upstream; Cantonese is not one of them, and no tone slider exists.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r1.site">— three modes and two independent sliders, in Settings.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r2">Material Design 3 conformance</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span> <span data-i18n="st.r2.app">— specified in full by the mockup; no application code written against it.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r2.site">— the token sheet is transcribed from that same mockup.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r3">Runtime appearance customization</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notstarted" data-i18n-inline>Not started</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r3.site">— theme, density, seed colour, scale and the colour translator. Per-element editors, font control and named presets are not here.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r4">A regex builder beside every search field</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notstarted" data-i18n-inline>Not started</span> <span data-i18n="st.r4.app">— the mockup draws one shared panel, which does not meet the anchored-per-field requirement.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r4.site">— every search field on the site has its own, anchored beside it, with its own pattern and flags.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r5">Browser-style tabs everywhere</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.app.partial" data-i18n-inline>Partial in design only</span></td>
+            <td><span class="md-status md-status--progress" data-i18n="status.partial" data-i18n-inline>Partly</span> <span data-i18n="st.r5.site">— strip, overflow, reordering, pinning, a searchable list and persistence. Grouping and bulk close are deliberately absent: the site has eight permanent sections with nothing to group and nothing safe to close.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r6">Non-blocking notifications and a centre</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r7">Super confirmation for destructive actions</th>
+            <td><span class="md-status md-status--none" data-i18n="status.undesigned" data-i18n-inline>Not started, not yet designed</span></td>
+            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r7.site">— this site owns no user data, so it has no destructive action to gate.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r8">A command palette</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r8.site">— every command, setting and destination, with the live control rendered in the row.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r9">An in-app changelog viewer</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
+            <td><span class="md-status md-status--none" data-i18n="status.notyet" data-i18n-inline>Not here yet</span> <span data-i18n="st.r9.site">— there is no released version for it to describe, and inventing entries is forbidden.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r10">Local version history for documents, records and settings</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.designed" data-i18n-inline>Designed, not built</span></td>
+            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r10.site">— the site stores preferences in the browser and owns no documents.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r11">Export everything, bulk-act on everything</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.upstreampartial" data-i18n-inline>Partial upstream</span> <span data-i18n="st.r11.app">— several export formats already exist; the full matrix, the archive options and universal bulk actions do not.</span></td>
+            <td><span class="md-status md-status--none" data-i18n="status.notyet" data-i18n-inline>Not here yet</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r12">The startup dim sum surprise</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notstarted" data-i18n-inline>Not started</span> <span data-i18n="st.r12.app">— the mockup draws it with an off switch, which the standard forbids.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r12.site">— a one-in-ten draw on load from the bundled catalogue, non-blocking, no opt-out.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r13">A release code name and a line count</th>
+            <td><span class="md-status md-status--progress" data-i18n="status.machinery" data-i18n-inline>Machinery built, no release observed</span></td>
+            <td><span class="md-status md-status--planned" data-i18n="status.na" data-i18n-inline>Not applicable</span> <span data-i18n="st.r13.site">— it will appear here as soon as there is a release to name.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r14">Accessibility and sizing as completion blockers</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notstarted" data-i18n-inline>Not started</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r14.site">— keyboard reachable throughout, visible focus, roles and names, reduced motion respected, and readable from a narrow window up to a doubled scale.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r15">Every asset bundled locally</th>
+            <td><span class="md-status md-status--none" data-i18n="status.notmet" data-i18n-inline>Not met</span> <span data-i18n="st.r15.app">— the mockup loads its fonts from a third-party network origin.</span></td>
+            <td><span class="md-status md-status--shipped" data-i18n="status.here" data-i18n-inline>Implemented here</span> <span data-i18n="st.r15.site">— this page makes no network request at all, which is checked at publish time rather than trusted.</span></td>
+          </tr>
+          <tr>
+            <th scope="row" data-i18n="st.r16">Documentation, changelog and roadmap current in the same task</th>
+            <td colspan="2"><span class="md-status md-status--progress" data-i18n="status.inforce" data-i18n-inline>In force</span> <span data-i18n="st.r16.body">— applies to both surfaces from now on.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="st.reading.heading">How to read a status</h3>
+    <div class="table-wrap" style="margin-top:0.75rem">
+      <table>
+        <tbody>
+          <tr><th scope="row" data-i18n="status.notstarted">Not started</th><td data-i18n="st.def.notstarted">No code, and possibly no design.</td></tr>
+          <tr><th scope="row" data-i18n="status.undesigned">Not yet designed</th><td data-i18n="st.def.undesigned">Not even specified by the mockup. These carry the most risk, because the shape of the work is unknown.</td></tr>
+          <tr><th scope="row" data-i18n="status.designed">Designed, not built</th><td data-i18n="st.def.designed">The mockup specifies it completely enough to implement. Nothing runs.</td></tr>
+          <tr><th scope="row" data-i18n="status.partial">Partly</th><td data-i18n="st.def.partial">Some of it exists. The gap is named beside it rather than left for the reader to discover.</td></tr>
+          <tr><th scope="row" data-i18n="status.here">Implemented here</th><td data-i18n="st.def.here">Built on this site and exercisable in this browser right now. It says nothing about the application.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="md-callout md-callout--info" style="margin-top:1rem">
+      <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+      <p>
+        <strong class="md-callout__title" data-i18n="st.met.title">Nothing is at "met" yet</strong>
+        <span data-i18n="st.met.body">A standard is promoted only when the verification described in its own documentation has actually been run and its result recorded. Code existing is not promotion.</span>
+      </p>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 7 — PROVENANCE
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="provenance" id="tab-panel-provenance" hidden>
+
+  <section class="section" aria-labelledby="pv-title">
+    <div class="section__head">
+      <h2 class="section__title" id="pv-title" data-i18n="about.heading">About</h2>
+    </div>
+
+    <div class="prose">
+      <h3 data-i18n="pv.upstream.heading">Upstream</h3>
+      <p data-i18n="about.upstream">The application source in design/ is a byte-for-byte port of Open Design v0.16.1, pinned at commit 517f39acde402c1a7af2189167a8d6957a3dac71 and licensed under Apache-2.0.</p>
+      <p>
+        <a href="https://github.com/nexu-io/open-design" rel="noopener noreferrer" target="_blank">
+          <span data-i18n="pv.upstream.link">The upstream project on GitHub</span>
+          <span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span>
+        </a>
+      </p>
+
+      <h3 data-i18n="pv.licence.heading">Licence</h3>
+      <p data-i18n="pv.licence.body">Apache License 2.0. The full text ships with the imported tree and applies to everything in it. Work added by this repository is offered under the same licence.</p>
+      <p data-i18n="pv.notice.body">The modifications notice is the prominent notice Apache-2.0 section 4(b) requires for changed files, kept in one place so a reader sees the whole delta without diffing two repositories — and it is the machine-checked allowlist described under Verifying the port.</p>
+
+      <h3 data-i18n="pv.trademark.heading">Trademarks</h3>
+      <p data-i18n="pv.trademark.body">Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its logo and the upstream application identity belong to the upstream project. Builds published from this repository are branded Material Designer with their own application identity, and are not produced by, endorsed by, or affiliated with the upstream project.</p>
+
+      <h3 data-i18n="pv.scope.heading">Scope of the rebrand</h3>
+      <p data-i18n="pv.scope.body">Deliberately minimal and confined to the user-visible identity: product name, window title, installer and application id. Internal package names, the command-line name, its environment variables and its storage keys are left exactly as upstream wrote them, so the port stays diffable against its source and future upstream changes stay mergeable.</p>
+      <p data-i18n="pv.identity.body">The identity changes are correctness fixes rather than cosmetics. Installed side by side, an unmodified build of this fork and the upstream product are the same application as far as the operating system is concerned: they would share a data directory, a single-instance lock, a named pipe and an uninstall registry key, and the packaged build would poll upstream's release feed and replace itself with the other product. An application must never update itself into something else.</p>
+
+      <h3 data-i18n="pv.submodule.heading">The pinned submodule</h3>
+      <p data-i18n="pv.submodule.body">The upstream repository stays checked in as a pinned submodule. It is not built and nothing imports from it; it exists so the provenance claim has a source of truth on disk and so the verifier has something to compare against.</p>
+
+      <h3 data-i18n="pv.additions.heading">What this repository adds</h3>
+      <p data-i18n="about.additions">What this repository adds is the Material Design 3 redesign, a minimal rebrand, and the standards work. Every change to the ported tree is declared in MODIFICATIONS.md, which a script enforces.</p>
+
+      <h3 data-i18n="pv.privacy.heading">This site's privacy position</h3>
+      <p data-i18n="about.privacy">This site makes no network requests. Every asset is bundled locally: no content delivery network, no web fonts, no analytics, no third-party trackers.</p>
+      <p data-i18n="pv.storage.body">Your language mode, funny levels, theme, density, seed colour, UI scale, tab order and pinned tabs are stored in this browser's local storage and nowhere else. Clearing this site's data resets every one of them.</p>
+      <p data-i18n="about.licence">Licensed under Apache-2.0. The full licence text ships with the source.</p>
+      <p data-i18n="a11y.langNote">Cantonese text on this page is marked up as zh-HK so a screen reader reads it in the right voice.</p>
+    </div>
+  </section>
+</section>
+
+<!-- ==========================================================================
+     PANEL 8 — SETTINGS
+     ====================================================================== -->
+<section class="app-scroll__inner" data-tab-panel="settings" id="tab-panel-settings" hidden>
+
+  <div class="section__head">
+    <h2 class="section__title" id="se-title" data-i18n="settings.heading">Settings</h2>
+    <p class="section__sub" data-i18n="settings.intro">Every preference on this page is stored in your browser and applied immediately. Nothing is sent anywhere.</p>
+  </div>
+
+  <div class="settings">
+    <aside class="settings__aside" aria-labelledby="se-jump-title">
+      <p class="md-label-medium on-surface-variant" id="se-jump-title" data-i18n="se.jump.heading">Jump to</p>
+      <button type="button" class="md-btn md-btn--text" data-jump-to="settings-language">
+        <span class="i18n-text" data-i18n="settings.language.heading" data-i18n-inline>Language mode</span>
+      </button>
+      <button type="button" class="md-btn md-btn--text" data-jump-to="settings-tone">
+        <span class="i18n-text" data-i18n="settings.funny.heading" data-i18n-inline>Funny level</span>
+      </button>
+      <button type="button" class="md-btn md-btn--text" data-jump-to="settings-appearance">
+        <span class="i18n-text" data-i18n="settings.appearance.heading" data-i18n-inline>Appearance</span>
+      </button>
+      <button type="button" class="md-btn md-btn--text" data-jump-to="settings-reset">
+        <span class="i18n-text" data-i18n="se.reset.heading" data-i18n-inline>Reset</span>
+      </button>
+    </aside>
+
+    <div class="settings__main">
+
+      <!-- The settings surface's own search field, with its own regex builder
+           bound to its own query, pattern, flags and mode. It shares no state
+           with the site-wide field in the header. -->
+      <div class="md-search" id="settings-search" data-mode="plain" style="--md-field-surface:var(--md-sys-color-surface)">
+        <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+        <label class="visually-hidden" for="settings-search-input" data-i18n="settings.search.label">Search settings</label>
+        <input
+          class="md-search__input"
+          id="settings-search-input"
+          type="search"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Search every setting on this page"
+          data-i18n-attr="placeholder:settings.search.placeholder"
+          aria-describedby="settings-search-status">
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="settings-search-mode"
+                aria-pressed="false"
+                data-i18n-attr="aria-label:search.mode.regex; title:search.mode.hint">.*</button>
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="settings-search-builder"
+                aria-haspopup="dialog" aria-expanded="false"
+                data-i18n-attr="aria-label:regex.builder.open; title:regex.builder.open">
+          <svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg>
+        </button>
+      </div>
+      <p class="md-body-small on-surface-variant" id="settings-search-status" role="status" aria-live="polite"></p>
+
+      <!-- ---------- Language mode ---------- -->
+      <section class="settings-group" id="settings-language" aria-labelledby="se-lang-title">
+        <h3 class="settings-group__title" id="se-lang-title" data-i18n="settings.language.heading">Language mode</h3>
+        <p class="settings-group__sub" data-i18n="settings.language.help">Choose which language this site speaks. Bilingual shows both, English first.</p>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="settings.language.mode.en">English</span>
+            <span class="setting-row__desc" id="mode-sample-en"></span>
+          </div>
+          <div class="setting-row__control">
+            <input class="md-radio" type="radio" name="lang-mode" id="lang-mode-en" value="en">
+            <label for="lang-mode-en" class="visually-hidden" data-i18n="settings.language.mode.en">English</label>
+          </div>
+        </div>
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="settings.language.mode.yue">粵語 · playful Hong Kong Cantonese</span>
+            <span class="setting-row__desc" id="mode-sample-yue" lang="zh-HK"></span>
+          </div>
+          <div class="setting-row__control">
+            <input class="md-radio" type="radio" name="lang-mode" id="lang-mode-yue" value="yue">
+            <label for="lang-mode-yue" class="visually-hidden" data-i18n="settings.language.mode.yue">粵語</label>
+          </div>
+        </div>
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="settings.language.mode.bilingual">Bilingual — English + 粵語</span>
+            <span class="setting-row__desc" id="mode-sample-bilingual"></span>
+          </div>
+          <div class="setting-row__control">
+            <input class="md-radio" type="radio" name="lang-mode" id="lang-mode-bilingual" value="bilingual">
+            <label for="lang-mode-bilingual" class="visually-hidden" data-i18n="settings.language.mode.bilingual">Bilingual</label>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- Funny level ---------- -->
+      <section class="settings-group" id="settings-tone" aria-labelledby="se-tone-title">
+        <h3 class="settings-group__title" id="se-tone-title" data-i18n="settings.funny.heading">Funny level</h3>
+        <p class="settings-group__sub" data-i18n="settings.funny.help">Two independent sliders, one per language. They restyle the voice of the copy and never the facts: version numbers, commit ids, file counts, licence terms and warnings read identically at every level.</p>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="funny-en" data-i18n="settings.funny.en.label">English</label>
+            <span class="setting-row__desc" id="funny-en-sample" lang="en"></span>
+          </div>
+          <div class="setting-row__control" style="flex-direction:column;align-items:stretch;gap:0.25rem">
+            <input class="md-slider" type="range" id="funny-en" min="1" max="5" step="1" value="3"
+                   aria-describedby="funny-en-sample">
+            <div class="md-slider-ticks" aria-hidden="true">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+            </div>
+            <output class="md-label-medium" id="funny-en-out" for="funny-en"></output>
+          </div>
+        </div>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="funny-yue" data-i18n="settings.funny.yue.label">粵語 Cantonese</label>
+            <span class="setting-row__desc" id="funny-yue-sample" lang="zh-HK"></span>
+          </div>
+          <div class="setting-row__control" style="flex-direction:column;align-items:stretch;gap:0.25rem">
+            <input class="md-slider" type="range" id="funny-yue" min="1" max="5" step="1" value="4"
+                   aria-describedby="funny-yue-sample">
+            <div class="md-slider-ticks" aria-hidden="true">
+              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+            </div>
+            <output class="md-label-medium" id="funny-yue-out" for="funny-yue"></output>
+          </div>
+        </div>
+
+        <div class="md-callout md-callout--info" style="margin-top:0.5rem">
+          <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+          <p>
+            <strong class="md-callout__title" data-i18n="disclosure.title">The funny level styles every message</strong>
+            <span data-i18n="disclosure.body">It applies to warnings and errors too. What changes is the voice; what never changes is the fact — a warning still names exactly what will happen and what your options are.</span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ---------- Appearance ----------
+           appearance.js mounts the whole panel here: theme, density, the seed
+           colour with its continuous picker and hex field, the UI scale, and
+           the colour translator with its contrast readout. -->
+      <section class="settings-group" id="settings-appearance" aria-labelledby="se-appearance-title">
+        <h3 class="settings-group__title" id="se-appearance-title" data-i18n="settings.appearance.heading">Appearance</h3>
+        <p class="settings-group__sub" data-i18n="se.appearance.help">Changes apply to the live page as you make them, and survive a reload. The seed colour accepts any colour at all, not just the four presets.</p>
+        <div data-appearance-controls></div>
+        <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="se.appearance.derived">A custom seed derives its dependent colour roles rather than tinting one button, so the whole page moves with it and stays readable in both themes. The translator shows the contrast the derived primary will actually have.</p>
+      </section>
+
+      <!-- ---------- Reset ---------- -->
+      <section class="settings-group" id="settings-reset" aria-labelledby="se-reset-title">
+        <h3 class="settings-group__title" id="se-reset-title" data-i18n="se.reset.heading">Reset</h3>
+        <p class="settings-group__sub" data-i18n="se.reset.help">Each reset affects only what it names. Nothing here touches anything outside this browser.</p>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="se.reset.language.label">Language mode and funny levels</span>
+            <span class="setting-row__desc" data-i18n="se.reset.language.desc">Back to bilingual, English at 3 and Cantonese at 4.</span>
+          </div>
+          <div class="setting-row__control">
+            <button type="button" class="md-btn md-btn--outlined" id="reset-language">
+              <svg aria-hidden="true" focusable="false"><use href="#i-reset"/></svg>
+              <span class="i18n-text" data-i18n="settings.reset" data-i18n-inline>Reset to defaults</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="se.reset.tabs.label">Tab order and pinned tabs</span>
+            <span class="setting-row__desc" data-i18n="se.reset.tabs.desc">Restores the original section order and unpins everything.</span>
+          </div>
+          <div class="setting-row__control">
+            <button type="button" class="md-btn md-btn--outlined" id="reset-tabs">
+              <svg aria-hidden="true" focusable="false"><use href="#i-reset"/></svg>
+              <span class="i18n-text" data-i18n="se.reset.tabs.button" data-i18n-inline>Reset the tabs</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-i18n="se.reset.all.label">Everything this site has stored</span>
+            <span class="setting-row__desc" data-i18n="se.reset.all.desc">Language, funny levels, appearance, tabs, saved search patterns and the notification history. The page reloads afterwards.</span>
+          </div>
+          <div class="setting-row__control">
+            <button type="button" class="md-btn md-btn--outlined md-btn--danger" id="reset-all">
+              <svg aria-hidden="true" focusable="false"><use href="#i-reset"/></svg>
+              <span class="i18n-text" data-i18n="se.reset.all.button" data-i18n-inline>Clear stored preferences</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</section>
+
+      </div><!-- /.app-scroll -->
+    </main>
+  </div><!-- /.app-body -->
+
+  <!-- ---------------- Status bar ---------------- -->
+  <footer class="app-statusbar">
+    <span class="app-statusbar__dot" aria-hidden="true"></span>
+    <span data-i18n="chrome.status.offline" data-i18n-inline>No network requests</span>
+    <span class="spacer"></span>
+    <span data-i18n="chrome.status.norelease" data-i18n-inline>No release yet</span>
+    <span id="status-lang"></span>
+    <span id="status-appearance"></span>
+  </footer>
+
+</div><!-- /.app-shell -->
+
+<script type="module" src="assets/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,2926 @@
+/* ==========================================================================
+   Material Designer — component stylesheet
+   --------------------------------------------------------------------------
+   Every value here comes from tokens.css. There is no literal hex, no ad-hoc
+   radius and no ad-hoc shadow in this file: a theme, seed, density or scale
+   change therefore reaches every component without any component knowing.
+
+   Load order matters:
+     <link rel="stylesheet" href="assets/css/tokens.css">
+     <link rel="stylesheet" href="assets/css/app.css">
+
+   ---------------------------------------------------------------------------
+   CLASS INVENTORY (for whoever writes index.html)
+   ---------------------------------------------------------------------------
+   Shell        .app-shell .app-topbar .app-tabstrip .app-body .app-rail
+                .app-main .app-header .app-scroll .app-statusbar .app-bottom-nav
+   Rail         .rail-fab .rail-item .rail-item__pill .rail-item__label
+                .rail-divider .rail-footer
+   Tabs         .tabstrip__pinned .tabstrip__scroller .tabstrip__actions
+                .tab .tab--active .tab--pinned .tab__label .tab__close .tab__pin
+                .tab-overflow-btn .tab-list (inside .md-popover)
+   Typography   .md-display-{large,medium,small} .md-headline-{…} .md-title-{…}
+                .md-body-{…} .md-label-{…} .mono .prose
+   Buttons      .md-btn .md-btn--filled|tonal|outlined|text|elevated
+                .md-btn--danger .md-icon-btn .md-icon-btn--filled|tonal
+                .md-fab .md-fab--small|extended
+   Inputs       .md-field .md-field--filled .md-field__input .md-field__label
+                .md-field__support .md-search .md-search__input .md-select
+                .md-switch .md-slider .md-checkbox .md-radio
+   Containment  .md-card .md-card--elevated|filled|outlined .md-card__media
+                .md-list .md-list-item .md-divider .md-chip .md-chip--selected
+                .md-badge .md-status .kbd
+   Overlays     .md-scrim .md-dialog .md-popover .md-menu .md-menu__item
+                .md-tooltip .md-drawer .md-palette
+   Feedback     .md-snackbar-host .md-snackbar .md-snackbar--dish
+                .md-empty .md-callout .md-callout--info|warn|success|error
+   Site         .hero .card-grid .section .settings .setting-row .swatch-grid
+                .color-translator .regex-builder .table-wrap .code-block
+                .md-mark .highlight-target
+   Utility      .visually-hidden .skip-link .no-sb .stack .row .spacer
+   ========================================================================== */
+
+/* ==========================================================================
+   1. RESET AND DOCUMENT BASE
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* The UI-scale control multiplies the reader's own browser default rather
+     than replacing it, so a person who has already enlarged text keeps that
+     enlargement and the site's scale composes on top. */
+  font-size: calc(100% * var(--ui-scale, 1));
+  -webkit-text-size-adjust: 100%;
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--md-ref-typeface-plain);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container-lowest);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd {
+  margin: 0;
+}
+
+ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+img, svg, video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--md-sys-color-primary);
+  text-decoration: none;
+  border-radius: var(--md-sys-shape-corner-xs);
+}
+
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+::selection {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+/* Scrollbars: tinted to the theme so a dark page never shows a light gutter.
+   Firefox uses the standard properties; WebKit/Blink the pseudo-elements. */
+* {
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--md-sys-color-outline);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Opt-out for strips that manage their own scrolling affordance. */
+.no-sb {
+  scrollbar-width: none;
+}
+
+.no-sb::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* ---- Focus -------------------------------------------------------------
+   One rule, everywhere. :focus-visible keeps the ring off mouse clicks while
+   guaranteeing it for keyboard and assistive-technology navigation. */
+:focus-visible {
+  outline: var(--md-sys-focus-ring-width) solid var(--md-sys-focus-ring-color);
+  outline-offset: var(--md-sys-focus-ring-offset);
+}
+
+/* Elements that sit flush inside a container need the ring drawn inward so it
+   is not clipped by an ancestor's overflow. */
+.tab:focus-visible,
+.md-menu__item:focus-visible,
+.rail-item:focus-visible {
+  outline-offset: calc(-1 * var(--md-sys-focus-ring-width));
+}
+
+/* ---- Utilities ---------------------------------------------------------- */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--sp);
+  left: var(--sp);
+  z-index: 100;
+  transform: translateY(-200%);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font: var(--md-sys-typescale-label-large-weight) var(--md-sys-typescale-label-large-size) / var(--md-sys-typescale-label-large-line) var(--md-ref-typeface-plain);
+  box-shadow: var(--md-sys-elevation-level3);
+  transition: transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
+}
+
+.skip-link:focus {
+  transform: none;
+  text-decoration: none;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp);
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   2. TYPE SCALE HELPERS
+   ========================================================================== */
+
+.md-display-large,
+.md-display-medium,
+.md-display-small,
+.md-headline-large,
+.md-headline-medium,
+.md-headline-small,
+.md-title-large,
+.md-title-medium,
+.md-title-small,
+.md-body-large,
+.md-body-medium,
+.md-body-small,
+.md-label-large,
+.md-label-medium,
+.md-label-small {
+  font-family: var(--md-ref-typeface-plain);
+  /* Long unbroken identifiers (commit ids, package names) must wrap rather
+     than push the page sideways. */
+  overflow-wrap: break-word;
+}
+
+.md-display-large  { font-size: var(--md-sys-typescale-display-large-size);  line-height: var(--md-sys-typescale-display-large-line);  font-weight: var(--md-sys-typescale-display-large-weight);  letter-spacing: var(--md-sys-typescale-display-large-tracking); }
+.md-display-medium { font-size: var(--md-sys-typescale-display-medium-size); line-height: var(--md-sys-typescale-display-medium-line); font-weight: var(--md-sys-typescale-display-medium-weight); letter-spacing: var(--md-sys-typescale-display-medium-tracking); }
+.md-display-small  { font-size: var(--md-sys-typescale-display-small-size);  line-height: var(--md-sys-typescale-display-small-line);  font-weight: var(--md-sys-typescale-display-small-weight);  letter-spacing: var(--md-sys-typescale-display-small-tracking); }
+
+.md-headline-large  { font-size: var(--md-sys-typescale-headline-large-size);  line-height: var(--md-sys-typescale-headline-large-line);  font-weight: var(--md-sys-typescale-headline-large-weight);  letter-spacing: var(--md-sys-typescale-headline-large-tracking); }
+.md-headline-medium { font-size: var(--md-sys-typescale-headline-medium-size); line-height: var(--md-sys-typescale-headline-medium-line); font-weight: var(--md-sys-typescale-headline-medium-weight); letter-spacing: var(--md-sys-typescale-headline-medium-tracking); }
+.md-headline-small  { font-size: var(--md-sys-typescale-headline-small-size);  line-height: var(--md-sys-typescale-headline-small-line);  font-weight: var(--md-sys-typescale-headline-small-weight);  letter-spacing: var(--md-sys-typescale-headline-small-tracking); }
+
+.md-title-large  { font-size: var(--md-sys-typescale-title-large-size);  line-height: var(--md-sys-typescale-title-large-line);  font-weight: var(--md-sys-typescale-title-large-weight);  letter-spacing: var(--md-sys-typescale-title-large-tracking); }
+.md-title-medium { font-size: var(--md-sys-typescale-title-medium-size); line-height: var(--md-sys-typescale-title-medium-line); font-weight: var(--md-sys-typescale-title-medium-weight); letter-spacing: var(--md-sys-typescale-title-medium-tracking); }
+.md-title-small  { font-size: var(--md-sys-typescale-title-small-size);  line-height: var(--md-sys-typescale-title-small-line);  font-weight: var(--md-sys-typescale-title-small-weight);  letter-spacing: var(--md-sys-typescale-title-small-tracking); }
+
+.md-body-large  { font-size: var(--md-sys-typescale-body-large-size);  line-height: var(--md-sys-typescale-body-large-line);  font-weight: var(--md-sys-typescale-body-large-weight);  letter-spacing: var(--md-sys-typescale-body-large-tracking); }
+.md-body-medium { font-size: var(--md-sys-typescale-body-medium-size); line-height: var(--md-sys-typescale-body-medium-line); font-weight: var(--md-sys-typescale-body-medium-weight); letter-spacing: var(--md-sys-typescale-body-medium-tracking); }
+.md-body-small  { font-size: var(--md-sys-typescale-body-small-size);  line-height: var(--md-sys-typescale-body-small-line);  font-weight: var(--md-sys-typescale-body-small-weight);  letter-spacing: var(--md-sys-typescale-body-small-tracking); }
+
+.md-label-large  { font-size: var(--md-sys-typescale-label-large-size);  line-height: var(--md-sys-typescale-label-large-line);  font-weight: var(--md-sys-typescale-label-large-weight);  letter-spacing: var(--md-sys-typescale-label-large-tracking); }
+.md-label-medium { font-size: var(--md-sys-typescale-label-medium-size); line-height: var(--md-sys-typescale-label-medium-line); font-weight: var(--md-sys-typescale-label-medium-weight); letter-spacing: var(--md-sys-typescale-label-medium-tracking); }
+.md-label-small  { font-size: var(--md-sys-typescale-label-small-size);  line-height: var(--md-sys-typescale-label-small-line);  font-weight: var(--md-sys-typescale-label-small-weight);  letter-spacing: var(--md-sys-typescale-label-small-tracking); }
+
+.mono {
+  font-family: var(--md-ref-typeface-mono);
+  font-variant-ligatures: none;
+}
+
+.on-surface-variant { color: var(--md-sys-color-on-surface-variant); }
+.on-surface         { color: var(--md-sys-color-on-surface); }
+.text-primary       { color: var(--md-sys-color-primary); }
+.text-error         { color: var(--md-sys-color-error); }
+
+/* ---- Long-form documentation prose -------------------------------------- */
+.prose {
+  max-width: var(--site-prose-max);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.prose > * + * {
+  margin-top: var(--gap);
+}
+
+.prose h2 {
+  margin-top: calc(var(--gap) * 2);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+.prose h3 {
+  margin-top: calc(var(--gap) * 1.5);
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  color: var(--md-sys-color-on-surface);
+}
+
+.prose ul,
+.prose ol {
+  padding-inline-start: 1.5em;
+}
+
+.prose li + li {
+  margin-top: calc(var(--sp) / 2);
+}
+
+.prose strong {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 600;
+}
+
+.prose blockquote {
+  padding: var(--sp) var(--gap);
+  border-inline-start: 4px solid var(--md-sys-color-primary);
+  background: var(--md-sys-color-surface-container-low);
+  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+}
+
+/* ==========================================================================
+   3. APPLICATION SHELL
+   The site is laid out as an application: a fixed brand band, a persistent
+   tab strip, a navigation rail, and ONE internal scroll region. Content
+   scrolls inside the shell rather than the shell scrolling away, which is
+   what makes browser-style tabs behave like tabs.
+   ========================================================================== */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+/* ---- Brand band ---------------------------------------------------------
+   The application has a custom title bar with window controls; a web page has
+   no window to control, so this band carries the brand and nothing that only
+   pretends to be a control. */
+.app-topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp);
+  height: var(--site-titlebar-height);
+  padding-inline: 0.75rem;
+  background: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  user-select: none;
+}
+
+.app-topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-topbar__brand svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--md-sys-color-primary);
+}
+
+.app-topbar__subtitle {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  line-height: var(--md-sys-typescale-label-small-line);
+}
+
+/* ---- Body row ----------------------------------------------------------- */
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: var(--md-sys-color-surface);
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- Page header inside main -------------------------------------------- */
+.app-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem var(--pad);
+  background: var(--md-sys-color-surface);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+
+/* main.js adds this when the scroll region is not at the top, so the header
+   separates from the content it is floating over. */
+.app-header[data-scrolled="true"] {
+  border-bottom-color: var(--md-sys-color-outline-variant);
+}
+
+.app-header__title {
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line);
+  font-weight: 500;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- The one scroll region ---------------------------------------------- */
+.app-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-scroll {
+    scroll-behavior: auto;
+  }
+}
+
+.app-scroll__inner {
+  max-width: var(--site-content-max);
+  margin-inline: auto;
+  padding: var(--sp) var(--pad) calc(var(--pad) * 2.5);
+}
+
+/* ---- Status bar ---------------------------------------------------------- */
+.app-statusbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  height: var(--site-statusbar-height);
+  padding-inline: var(--gap);
+  background: var(--md-sys-color-surface-container);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  line-height: var(--md-sys-typescale-label-small-line);
+  color: var(--md-sys-color-on-surface-variant);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.app-statusbar::-webkit-scrollbar {
+  height: 0;
+}
+
+.app-statusbar__dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-success);
+  animation: md-pulse 2.4s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   4. NAVIGATION RAIL  (expanded window class)
+   ========================================================================== */
+
+.app-rail {
+  flex: none;
+  width: var(--site-rail-width);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.5rem;
+  background: var(--md-sys-color-surface);
+  border-inline-end: 1px solid var(--md-sys-color-outline-variant);
+  overflow: hidden;
+  transition: width var(--md-sys-motion-duration-medium4) var(--md-sys-motion-emphasized);
+}
+
+.app-rail[data-open="true"] {
+  width: var(--site-rail-width-open);
+}
+
+.app-rail__scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.app-rail__scroll::-webkit-scrollbar {
+  width: 0;
+}
+
+/* The "new" action, shaped as an extended FAB that collapses to a square. */
+.rail-fab {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  height: 3.5rem;
+  margin: 0.25rem 0 0.75rem;
+  padding-inline: var(--gap);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: var(--md-sys-elevation-level1);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-spring);
+}
+
+.rail-fab:hover {
+  box-shadow: var(--md-sys-elevation-level3);
+  transform: translateY(-1px);
+}
+
+.rail-fab:active {
+  transform: translateY(0) scale(.97);
+}
+
+.rail-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: var(--row);
+  padding-inline: 0.5rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard);
+}
+
+.rail-item:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  text-decoration: none;
+}
+
+/* The M3 active indicator: a pill behind the icon, not a coloured row. */
+.rail-item__pill {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 2rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  transition: background var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
+}
+
+.rail-item__pill svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.rail-item[aria-selected="true"],
+.rail-item[aria-current="page"] {
+  color: var(--md-sys-color-on-surface);
+}
+
+.rail-item[aria-selected="true"] .rail-item__pill,
+.rail-item[aria-current="page"] .rail-item__pill {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.rail-item__label {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-medium1) var(--md-sys-motion-standard);
+}
+
+.app-rail[data-open="true"] .rail-item__label {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.rail-divider {
+  flex: none;
+  height: 1px;
+  margin: 0.5rem 0.75rem;
+  background: var(--md-sys-color-outline-variant);
+  border: 0;
+}
+
+.rail-footer {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* ---- Bottom navigation bar (compact window class) ------------------------ */
+.app-bottom-nav {
+  display: none;
+  flex: none;
+  align-items: stretch;
+  gap: 0.25rem;
+  padding: 0.5rem 0.25rem;
+  background: var(--md-sys-color-surface-container);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.app-bottom-nav .rail-item {
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 0.125rem;
+  height: auto;
+  padding: 0;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.app-bottom-nav .rail-item__label {
+  opacity: 1;
+  pointer-events: auto;
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+/* ==========================================================================
+   5. TAB STRIP
+   Pinned tabs live in their own region that never scrolls away; ordinary tabs
+   scroll, and anything that still does not fit is reachable from the overflow
+   button — nothing is ever silently clipped.
+   ========================================================================== */
+
+.app-tabstrip {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  height: var(--site-tabstrip-height);
+  padding-inline: 0.5rem;
+  background: var(--md-sys-color-surface-container);
+}
+
+.tabstrip__pinned {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+}
+
+.tabstrip__pinned:not(:empty) {
+  padding-inline-end: 0.375rem;
+  margin-inline-end: 0.25rem;
+  border-inline-end: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.tabstrip__scroller {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.125rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.tabstrip__scroller::-webkit-scrollbar {
+  height: 0;
+}
+
+.tabstrip__actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding-bottom: 0.125rem;
+}
+
+.tab {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: none;
+  height: 2.25rem;
+  max-width: 16.25rem;
+  padding: 0 0.75rem 0 0.875rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-top-m);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard),
+    color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.tab:hover {
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+  text-decoration: none;
+}
+
+.tab--active {
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+}
+
+.tab--active:hover {
+  background: var(--md-sys-color-surface);
+}
+
+/* A tab being dragged to a new position. */
+.tab[data-dragging="true"] {
+  opacity: var(--md-sys-state-dragged-opacity);
+}
+
+.tab[data-drop-target="true"]::after {
+  content: "";
+  position: absolute;
+  inset-block: 0.25rem;
+  inset-inline-start: -0.125rem;
+  width: 2px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+}
+
+.tab__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A pinned tab shows its icon only; the label stays in the accessible name. */
+.tab--pinned {
+  padding-inline: 0.625rem;
+  max-width: none;
+}
+
+.tab--pinned .tab__label {
+  display: none;
+}
+
+.tab__pin,
+.tab__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: .7;
+  transition: background var(--md-sys-motion-duration-short2) var(--md-sys-motion-standard);
+}
+
+.tab__pin:hover,
+.tab__close:hover {
+  opacity: 1;
+  background: var(--ripple);
+}
+
+.tab__pin svg,
+.tab__close svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.tab-overflow-btn {
+  position: relative;
+}
+
+/* Count badge on the overflow button, so hidden tabs are visibly hidden. */
+.tab-overflow-btn[data-count]:not([data-count="0"])::after {
+  content: attr(data-count);
+  position: absolute;
+  top: 0.125rem;
+  inset-inline-end: 0.125rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding-inline: 0.1875rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Searchable tab list, rendered inside an .md-popover. */
+.tab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  max-height: 21rem;
+  overflow-y: auto;
+}
+
+.tab-list__group-label {
+  padding: 0.5rem 0.75rem 0.25rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ==========================================================================
+   6. BUTTONS
+   The state layer is a currentColor overlay at the M3 opacities, which means
+   a filled button gets an on-primary layer and a text button a primary one
+   without either declaring a colour of its own.
+   ========================================================================== */
+
+.md-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding-inline: 1.5rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  font-size: var(--md-sys-typescale-label-large-size);
+  line-height: var(--md-sys-typescale-label-large-line);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-spring);
+}
+
+.md-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.md-btn:hover::before  { opacity: var(--md-sys-state-hover-opacity); }
+.md-btn:focus-visible::before { opacity: var(--md-sys-state-focus-opacity); }
+.md-btn:active::before { opacity: var(--md-sys-state-pressed-opacity); }
+.md-btn:active { transform: scale(.97); }
+.md-btn:hover  { text-decoration: none; }
+
+.md-btn svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.md-btn--filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.md-btn--tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.md-btn--elevated {
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-primary);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.md-btn--elevated:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.md-btn--outlined {
+  background: transparent;
+  color: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+}
+
+.md-btn--text {
+  padding-inline: 0.75rem;
+}
+
+.md-btn--danger {
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+}
+
+.md-btn[disabled],
+.md-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+}
+
+.md-btn--text[disabled],
+.md-btn--outlined[disabled] {
+  background: transparent;
+}
+
+.md-btn[disabled]::before {
+  display: none;
+}
+
+/* ---- Icon buttons -------------------------------------------------------- */
+.md-icon-btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-spring);
+}
+
+.md-icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.md-icon-btn:hover::before  { opacity: var(--md-sys-state-hover-opacity); }
+.md-icon-btn:focus-visible::before { opacity: var(--md-sys-state-focus-opacity); }
+.md-icon-btn:active::before { opacity: var(--md-sys-state-pressed-opacity); }
+.md-icon-btn:active { transform: scale(.92); }
+
+.md-icon-btn svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+.md-icon-btn--small {
+  width: 2rem;
+  height: 2rem;
+}
+
+.md-icon-btn--small svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.md-icon-btn--filled {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+}
+
+.md-icon-btn--tonal {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* A toggle icon button that is currently on. */
+.md-icon-btn[aria-pressed="true"] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* ---- FAB ----------------------------------------------------------------- */
+.md-fab {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  box-shadow: var(--md-sys-elevation-level3);
+  cursor: pointer;
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-spring);
+}
+
+.md-fab:hover {
+  box-shadow: var(--md-sys-elevation-level4);
+  transform: translateY(-1px);
+}
+
+.md-fab--small {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.md-fab--extended {
+  width: auto;
+  gap: 0.75rem;
+  padding-inline: var(--gap);
+  grid-auto-flow: column;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   7. TEXT FIELDS, SEARCH, SELECT
+   ========================================================================== */
+
+/* The floating label paints a slice of the surface behind itself to notch the
+   outline. Any container on a different surface sets --md-field-surface. */
+.md-field {
+  --md-field-surface: var(--md-sys-color-surface);
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.md-field__input,
+textarea.md-field__input {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 1.5rem 1rem 0.5rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line);
+  transition:
+    border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+textarea.md-field__input {
+  padding-top: 1.75rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.md-field__input:hover {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+.md-field__input:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
+}
+
+.md-field__input:focus-visible {
+  /* The field draws its own focus treatment, so suppress the global ring and
+     keep a visible one on the border instead of stacking two indicators. */
+  outline: none;
+}
+
+.md-field__label {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  top: 1rem;
+  padding-inline: 0.25rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line);
+  pointer-events: none;
+  background: transparent;
+  transition:
+    top var(--md-sys-motion-duration-short3) var(--md-sys-motion-emphasized),
+    font-size var(--md-sys-motion-duration-short3) var(--md-sys-motion-emphasized),
+    color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+/* Requires the input to carry placeholder=" " so :placeholder-shown is a
+   reliable "is empty" test. */
+.md-field__input:focus + .md-field__label,
+.md-field__input:not(:placeholder-shown) + .md-field__label {
+  top: calc(-0.5rem);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line);
+  background: var(--md-field-surface);
+}
+
+.md-field__input:focus + .md-field__label {
+  color: var(--md-sys-color-primary);
+}
+
+.md-field__support {
+  display: block;
+  padding: 0.25rem 1rem 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line);
+}
+
+.md-field[data-invalid="true"] .md-field__input {
+  border-color: var(--md-sys-color-error);
+}
+
+.md-field[data-invalid="true"] .md-field__label,
+.md-field[data-invalid="true"] .md-field__support {
+  color: var(--md-sys-color-error);
+}
+
+/* ---- Filled variant ------------------------------------------------------ */
+.md-field--filled .md-field__input {
+  border: 0;
+  border-bottom: 1px solid var(--md-sys-color-on-surface-variant);
+  border-radius: var(--md-sys-shape-corner-xs) var(--md-sys-shape-corner-xs) 0 0;
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.md-field--filled .md-field__input:focus {
+  border-bottom: 2px solid var(--md-sys-color-primary);
+  box-shadow: none;
+  padding-bottom: calc(0.5rem - 1px);
+}
+
+.md-field--filled .md-field__input:focus + .md-field__label,
+.md-field--filled .md-field__input:not(:placeholder-shown) + .md-field__label {
+  top: 0.4375rem;
+  background: transparent;
+}
+
+/* ---- Search field --------------------------------------------------------
+   A pill-shaped bar that carries its own trailing affordances: the plain-text
+   / regex mode toggle and the button that opens the regex builder. */
+.md-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 3rem;
+  min-width: 0;
+  padding: 0 0.375rem 0 1rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  transition: box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
+}
+
+.md-search:hover {
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+.md-search:focus-within {
+  box-shadow: var(--md-sys-elevation-level2), inset 0 0 0 2px var(--md-sys-color-primary);
+}
+
+.md-search__icon {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-search__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-large-size);
+}
+
+.md-search__input:focus {
+  outline: none;
+}
+
+.md-search__input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 1;
+}
+
+/* Regex mode is an explicit opt-in; when it is on, say so unmistakably. */
+.md-search[data-mode="regex"] {
+  box-shadow: inset 0 0 0 2px var(--md-sys-color-tertiary);
+}
+
+.md-search[data-mode="regex"] .md-search__input {
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.md-search[data-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--md-sys-color-error);
+}
+
+/* ---- Select --------------------------------------------------------------
+   The chevron is drawn with borders rather than an image, so the control needs
+   no asset and inherits its colour. */
+.md-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+
+.md-select select {
+  appearance: none;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0 2.5rem 0 1rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  cursor: pointer;
+  transition: border-color var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.md-select select:hover {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+.md-select select:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
+}
+
+.md-select select:focus-visible {
+  outline: var(--md-sys-focus-ring-width) solid var(--md-sys-focus-ring-color);
+  outline-offset: var(--md-sys-focus-ring-offset);
+}
+
+.md-select::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 1.125rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--md-sys-color-on-surface-variant);
+  border-bottom: 2px solid var(--md-sys-color-on-surface-variant);
+  transform: translateY(-0.15rem) rotate(45deg);
+  pointer-events: none;
+}
+
+/* Option lists are painted by the operating system; naming the colours keeps
+   a dark theme from producing white-on-white options on some platforms. */
+.md-select option {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ==========================================================================
+   8. SWITCH, SLIDER, CHECKBOX, RADIO
+   ========================================================================== */
+
+.md-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  cursor: pointer;
+}
+
+.md-switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.md-switch__track {
+  display: flex;
+  align-items: center;
+  width: 3.25rem;
+  height: 2rem;
+  padding: 0.25rem;
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  transition:
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    border-color var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
+}
+
+.md-switch__handle {
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-outline);
+  transition:
+    transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-spring),
+    width var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    height var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized),
+    background var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized);
+}
+
+.md-switch input:checked + .md-switch__track {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+
+.md-switch input:checked + .md-switch__track .md-switch__handle {
+  width: 1.5rem;
+  height: 1.5rem;
+  transform: translateX(1rem);
+  background: var(--md-sys-color-on-primary);
+}
+
+.md-switch input:focus-visible + .md-switch__track {
+  outline: var(--md-sys-focus-ring-width) solid var(--md-sys-focus-ring-color);
+  outline-offset: var(--md-sys-focus-ring-offset);
+}
+
+.md-switch input:disabled + .md-switch__track {
+  opacity: var(--md-sys-state-disabled-container-opacity);
+  cursor: not-allowed;
+}
+
+/* ---- Slider --------------------------------------------------------------
+   accent-color covers browsers that render a native slider well; the explicit
+   track and thumb rules below give the M3 proportions everywhere else. */
+.md-slider {
+  --md-slider-track: var(--md-sys-color-secondary-container);
+  appearance: none;
+  width: 100%;
+  height: 1.5rem;
+  margin: 0;
+  background: transparent;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
+}
+
+.md-slider::-webkit-slider-runnable-track {
+  height: 0.25rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-slider-track);
+}
+
+.md-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: -0.5rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+  box-shadow: var(--md-sys-elevation-level1);
+  transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-spring);
+}
+
+.md-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.md-slider::-moz-range-track {
+  height: 0.25rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-slider-track);
+}
+
+.md-slider::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-primary);
+}
+
+.md-slider:focus-visible {
+  outline: var(--md-sys-focus-ring-width) solid var(--md-sys-focus-ring-color);
+  outline-offset: var(--md-sys-focus-ring-offset);
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+/* Tick labels under a discrete slider (funny levels 1–5, UI scale). */
+.md-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding-inline: 0.25rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+/* ---- Checkbox and radio --------------------------------------------------
+   Native controls tinted to the theme. They keep their platform semantics,
+   hit target and high-contrast behaviour, which a re-implementation loses. */
+.md-checkbox,
+.md-radio {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  accent-color: var(--md-sys-color-primary);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   9. CONTAINMENT — cards, lists, dividers, chips, badges
+   ========================================================================== */
+
+.md-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: var(--gap);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+}
+
+.md-card--elevated {
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.md-card--filled {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.md-card--outlined {
+  background: var(--md-sys-color-surface);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+/* An entire card that is a link or button. */
+a.md-card,
+button.md-card {
+  isolation: isolate;
+  border: 0;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard),
+    transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-emphasized);
+}
+
+a.md-card::before,
+button.md-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+a.md-card:hover,
+button.md-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-level2);
+  text-decoration: none;
+}
+
+a.md-card:hover::before,
+button.md-card:hover::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+/* An outlined card that is itself a control needs a boundary clearing 3:1,
+   which the decorative outline-variant does not reach. Static outlined cards
+   keep outline-variant, as M3 specifies for a container. These rules sit after
+   the hover block above so the border survives the hover elevation instead of
+   being replaced by it. */
+a.md-card--outlined,
+button.md-card--outlined {
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+}
+
+a.md-card--outlined:hover,
+button.md-card--outlined:hover {
+  box-shadow: var(--md-sys-elevation-level2), inset 0 0 0 1px var(--md-sys-color-outline);
+}
+
+.md-card__media {
+  margin: calc(var(--gap) * -1) calc(var(--gap) * -1) 0;
+  border-radius: var(--md-sys-shape-corner-l) var(--md-sys-shape-corner-l) 0 0;
+  overflow: hidden;
+}
+
+.md-card__media img {
+  width: 100%;
+  object-fit: cover;
+}
+
+.md-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+
+.md-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  min-height: var(--row);
+  padding: 0.5rem var(--gap);
+  border-radius: var(--md-sys-shape-corner-m);
+  color: var(--md-sys-color-on-surface);
+}
+
+.md-list-item__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.md-list-item__supporting {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line);
+}
+
+.md-divider {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--md-sys-color-outline-variant);
+}
+
+/* ---- Chips --------------------------------------------------------------- */
+.md-chip {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2rem;
+  padding-inline: 1rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  /* `outline`, not `outline-variant`: an unselected chip's border is the only
+     thing identifying it as a control, so it must clear 3:1 (WCAG 1.4.11).
+     outline-variant is the decorative divider colour and measures ~1.6:1. */
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard),
+    box-shadow var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.md-chip::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short3) var(--md-sys-motion-standard);
+}
+
+.md-chip:hover::before { opacity: var(--md-sys-state-hover-opacity); }
+.md-chip:hover { text-decoration: none; }
+
+.md-chip svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+}
+
+.md-chip--selected,
+.md-chip[aria-pressed="true"],
+.md-chip[aria-selected="true"] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+
+.md-chip--assist {
+  color: var(--md-sys-color-on-surface);
+}
+
+.md-chip--suggestion {
+  border-radius: var(--md-sys-shape-corner-s);
+}
+
+.md-chip--mono {
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-small-size);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  cursor: default;
+}
+
+/* ---- Badge, status pill, keyboard key ------------------------------------ */
+.md-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding-inline: 0.25rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-error);
+  color: var(--md-sys-color-on-error);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.md-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.5rem;
+  padding-inline: 0.625rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.md-status::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: currentColor;
+}
+
+.md-status--planned { color: var(--md-sys-color-on-surface-variant); }
+.md-status--progress { color: var(--md-sys-color-tertiary); background: var(--md-sys-color-tertiary-container); }
+.md-status--shipped { color: var(--md-sys-color-success); }
+.md-status--none { color: var(--md-sys-color-error); }
+
+.kbd {
+  display: inline-block;
+  min-width: 1.5rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-highest);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-small-size);
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ==========================================================================
+   10. OVERLAYS
+   Every overlay paints its own surface, its own elevation and its own shape.
+   A transparent popover is a defect, so each one sets `background` explicitly
+   and carries a hairline outline that keeps it legible in dark themes where a
+   shadow alone would not separate it from the page.
+   ========================================================================== */
+
+.md-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--md-sys-color-scrim);
+  display: grid;
+  place-items: start center;
+  padding: var(--pad);
+  animation: md-fade var(--md-sys-motion-duration-short4) var(--md-sys-motion-standard) both;
+}
+
+.md-scrim[hidden] {
+  display: none;
+}
+
+/* ---- Modal dialog — reserved for decisions, never for information -------- */
+.md-dialog {
+  width: min(100%, 34rem);
+  margin-block: auto;
+  padding: var(--pad);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-level5);
+  animation: md-rise var(--md-sys-motion-duration-medium2) var(--md-sys-motion-emphasized-decel) both;
+}
+
+.md-dialog__title {
+  margin-bottom: var(--sp);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line);
+}
+
+.md-dialog__body {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp);
+  margin-top: var(--pad);
+}
+
+/* ---- Anchored popover ---------------------------------------------------- */
+.md-popover {
+  position: absolute;
+  z-index: 50;
+  /* min-width beats max-width in CSS, so the minimum is itself capped at the
+     viewport — otherwise a large UI scale on a narrow screen would push the
+     popover off the edge with no way to reach it. */
+  min-width: min(14rem, calc(100vw - 2rem));
+  max-width: min(30rem, calc(100vw - 2rem));
+  /* Bounded to the viewport and scrollable inside that bound — capping the
+     height without letting the content scroll would delete whatever fell
+     past the cap with nothing to say it was there. */
+  max-height: min(32rem, calc(100dvh - 6rem));
+  overflow: auto;
+  padding: var(--sp);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-level3), inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  animation: md-rise var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized-decel) both;
+}
+
+.md-popover[hidden] {
+  display: none;
+}
+
+.md-popover__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp);
+  padding: 0.25rem 0.5rem 0.5rem;
+}
+
+.md-popover__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+}
+
+/* ---- Menu ---------------------------------------------------------------- */
+.md-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  list-style: none;
+}
+
+.md-menu__item {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  text-align: start;
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short2) var(--md-sys-motion-standard);
+}
+
+.md-menu__item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-standard);
+}
+
+.md-menu__item:hover::before,
+.md-menu__item[data-active="true"]::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.md-menu__item:hover {
+  text-decoration: none;
+}
+
+.md-menu__item svg {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-menu__item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right-aligned shortcut, so a command's faster route is discoverable from
+   the menu that lists it. */
+.md-menu__shortcut {
+  flex: none;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+.md-menu__item[aria-selected="true"] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+/* ---- Tooltip ------------------------------------------------------------- */
+.md-tooltip {
+  position: absolute;
+  z-index: 70;
+  max-width: 18rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line);
+  box-shadow: var(--md-sys-elevation-level2);
+  pointer-events: none;
+}
+
+/* ---- Drawer (notification centre) ---------------------------------------- */
+.md-drawer {
+  position: fixed;
+  z-index: 55;
+  top: 0;
+  bottom: 0;
+  inset-inline-end: 0;
+  width: min(23.75rem, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--md-sys-color-surface-container-low);
+  border-inline-start: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: var(--md-sys-elevation-drawer-left);
+  animation: md-slide-in var(--md-sys-motion-duration-medium2) var(--md-sys-motion-emphasized-decel) both;
+}
+
+.md-drawer[hidden] {
+  display: none;
+}
+
+.md-drawer__header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp);
+  padding: var(--gap);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md-drawer__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp);
+}
+
+.md-drawer__footer {
+  flex: none;
+  display: flex;
+  gap: var(--sp);
+  padding: var(--sp) var(--gap);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* ---- Command palette ----------------------------------------------------- */
+.md-palette {
+  width: min(100%, 45rem);
+  margin-top: 6vh;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70dvh, 40rem);
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-level5);
+  overflow: hidden;
+  animation: md-rise var(--md-sys-motion-duration-medium2) var(--md-sys-motion-emphasized-decel) both;
+}
+
+/* The full-window size is a user choice, never the default. */
+.md-palette--full {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin-top: 0;
+  border-radius: var(--md-sys-shape-corner-none);
+}
+
+.md-palette__search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: var(--gap);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.md-palette__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-title-medium-size);
+}
+
+.md-palette__input:focus {
+  outline: none;
+}
+
+.md-palette__results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.md-palette__section {
+  padding: 0.75rem 0.75rem 0.25rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* A palette row that IS a setting hosts its live control on the right. */
+.md-palette__control {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 8rem;
+  justify-content: flex-end;
+}
+
+.md-palette__footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0.5rem var(--gap);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+/* The brief attention pulse after the palette teleports to a control. */
+.highlight-target {
+  animation: md-attention var(--md-sys-motion-duration-extra-long1) var(--md-sys-motion-emphasized) 2 both;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+/* ==========================================================================
+   11. FEEDBACK — toasts, empty states, callouts
+   ========================================================================== */
+
+.md-snackbar-host {
+  position: fixed;
+  z-index: 65;
+  inset-inline-end: var(--gap);
+  bottom: calc(var(--site-statusbar-height) + var(--gap));
+  display: flex;
+  /* Stacks in DOM order, so a newly appended toast lands nearest the corner
+     and the older ones ride upward. ui.js should append, never prepend. */
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(26rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.md-snackbar-host--start {
+  inset-inline-end: auto;
+  inset-inline-start: var(--gap);
+}
+
+.md-snackbar {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.125rem;
+  border-radius: var(--card);
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+  box-shadow: var(--md-sys-elevation-level3);
+  animation: md-rise var(--md-sys-motion-duration-medium2) var(--md-sys-motion-emphasized-decel) both;
+}
+
+.md-snackbar[data-leaving="true"] {
+  animation: md-fade-out var(--md-sys-motion-duration-short4) var(--md-sys-motion-emphasized-accel) both;
+}
+
+.md-snackbar__text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line);
+}
+
+.md-snackbar__title {
+  display: block;
+  font-weight: 600;
+}
+
+.md-snackbar__action {
+  flex: none;
+  color: var(--md-sys-color-inverse-primary);
+}
+
+.md-snackbar__action.md-btn:hover::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.md-snackbar .md-icon-btn {
+  color: var(--md-sys-color-inverse-on-surface);
+}
+
+/* Error and warning toasts persist until dismissed; the tint says which. */
+.md-snackbar--error .md-snackbar__action,
+.md-snackbar--error .md-snackbar__title {
+  color: var(--md-sys-color-error-container);
+}
+
+/* ---- The dim sum surprise ------------------------------------------------
+   A wider snackbar with the dish's photograph. It auto-dismisses, never takes
+   focus and never delays the page. */
+.md-snackbar--dish {
+  align-items: stretch;
+  padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+  gap: 0.875rem;
+}
+
+.md-snackbar--dish img {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  object-fit: cover;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.md-snackbar--dish .md-snackbar__text {
+  align-self: center;
+}
+
+.md-snackbar__dish-zh {
+  display: block;
+  color: var(--md-sys-color-inverse-primary);
+}
+
+/* ---- Empty state --------------------------------------------------------
+   Used for the honest "no release yet" notice and for no-match results. */
+.md-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: calc(var(--pad) * 1.5) var(--pad);
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  text-align: center;
+}
+
+.md-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.md-empty__icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.md-empty__title {
+  font-size: var(--md-sys-typescale-title-large-size);
+  line-height: var(--md-sys-typescale-title-large-line);
+  color: var(--md-sys-color-on-surface);
+}
+
+.md-empty__body {
+  max-width: 36rem;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---- Callout ------------------------------------------------------------- */
+.md-callout {
+  display: flex;
+  gap: 0.75rem;
+  padding: var(--gap);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-inline-start: 4px solid var(--md-sys-color-outline);
+}
+
+.md-callout__title {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.md-callout--info {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-inline-start-color: var(--md-sys-color-secondary);
+}
+
+.md-callout--warn {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  border-inline-start-color: var(--md-sys-color-tertiary);
+}
+
+.md-callout--success {
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
+  border-inline-start-color: var(--md-sys-color-success);
+}
+
+.md-callout--error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-inline-start-color: var(--md-sys-color-error);
+}
+
+/* ==========================================================================
+   12. SITE CONTENT BLOCKS
+   ========================================================================== */
+
+.section {
+  margin-top: calc(var(--pad) * 1.5);
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap);
+}
+
+.section__title {
+  font-size: var(--md-sys-typescale-headline-small-size);
+  line-height: var(--md-sys-typescale-headline-small-line);
+  color: var(--md-sys-color-on-surface);
+}
+
+.section__sub {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---- Hero ----------------------------------------------------------------
+   A large surface-tinted band. The headline uses the display scale, which is
+   the M3 way to be loud — not an invented font size. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: calc(var(--pad) * 1.75) var(--pad);
+  margin-top: var(--sp);
+  border-radius: var(--md-sys-shape-corner-xxl);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+/* A soft primary wash, drawn with a token colour at low opacity rather than
+   a hand-picked gradient stop. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -40% -10% auto auto;
+  width: 34rem;
+  height: 34rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: radial-gradient(closest-side, var(--md-sys-color-primary-container), transparent);
+  opacity: .55;
+  pointer-events: none;
+}
+
+.hero > * {
+  position: relative;
+}
+
+.hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+}
+
+.hero__title {
+  max-width: 20ch;
+  font-size: var(--md-sys-typescale-display-small-size);
+  line-height: var(--md-sys-typescale-display-small-line);
+  font-weight: 600;
+  letter-spacing: -0.015625rem;
+  color: var(--md-sys-color-on-surface);
+}
+
+.hero__lede {
+  max-width: 56ch;
+  font-size: var(--md-sys-typescale-title-medium-size);
+  line-height: 1.55;
+  font-weight: 400;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp);
+  margin-top: var(--sp);
+}
+
+@media (min-width: 56.25rem) {
+  .hero__title {
+    font-size: var(--md-sys-typescale-display-medium-size);
+    line-height: var(--md-sys-typescale-display-medium-line);
+  }
+}
+
+/* ---- Card grid ----------------------------------------------------------- */
+.card-grid {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+
+.card-grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+}
+
+.md-card__icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.md-card__icon svg {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* ---- Tables --------------------------------------------------------------
+   Wide content scrolls inside its own container. The page itself must never
+   scroll sideways. */
+.table-wrap {
+  overflow-x: auto;
+  border-radius: var(--md-sys-shape-corner-m);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+.table-wrap th,
+.table-wrap td {
+  padding: 0.625rem var(--gap);
+  text-align: start;
+  vertical-align: top;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.table-wrap th {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table-wrap td {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.table-wrap tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ---- Code ---------------------------------------------------------------- */
+.code-block {
+  overflow-x: auto;
+  padding: var(--gap);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.code-block code {
+  background: none;
+  padding: 0;
+}
+
+code:not(.code-block code) {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: 0.9em;
+}
+
+/* ---- Search result highlight --------------------------------------------- */
+.md-mark,
+mark {
+  padding: 0 0.125em;
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+/* ==========================================================================
+   13. SETTINGS SURFACE
+   ========================================================================== */
+
+.settings {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pad);
+}
+
+.settings__aside {
+  position: sticky;
+  top: 0;
+  flex: none;
+  width: 17.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settings__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  padding: var(--gap);
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+.settings-group__title {
+  margin-bottom: 0.25rem;
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+.settings-group__sub {
+  margin-bottom: var(--sp);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+/* One setting: label and description on the left, live control on the right.
+   Wraps to two rows before anything is allowed to clip. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  flex-wrap: wrap;
+  min-height: var(--row);
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.setting-row:first-of-type {
+  border-top: 0;
+}
+
+.setting-row__text {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.setting-row__label {
+  display: block;
+  font-size: var(--md-sys-typescale-body-large-size);
+  color: var(--md-sys-color-on-surface);
+}
+
+.setting-row__desc {
+  display: block;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line);
+}
+
+.setting-row__control {
+  flex: 0 1 18rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp);
+  min-width: 0;
+}
+
+/* Hidden by the settings search when a row does not match. */
+.setting-row[hidden],
+.settings-group[hidden] {
+  display: none;
+}
+
+/* ---- Seed swatches -------------------------------------------------------
+   Convenience chips over the continuous picker, never a replacement for it. */
+.swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.swatch {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 3px solid transparent;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--swatch-color, var(--md-sys-color-primary));
+  cursor: pointer;
+  transition: transform var(--md-sys-motion-duration-short3) var(--md-sys-motion-spring);
+}
+
+.swatch:hover {
+  transform: scale(1.08);
+}
+
+.swatch[aria-pressed="true"],
+.swatch[aria-checked="true"] {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+/* ---- Colour translator --------------------------------------------------- */
+.color-translator {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: var(--gap);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container);
+}
+
+.color-translator__preview {
+  height: 3.5rem;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--preview-color, var(--md-sys-color-primary));
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+.color-translator__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.color-translator__space {
+  flex: none;
+  width: 3.5rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.color-translator__value {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0.625rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.contrast-readout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+/* The continuous colour input. Native pickers are opaque platform surfaces,
+   so only the well is styled. */
+.color-well {
+  width: 3rem;
+  height: 2.5rem;
+  padding: 0.125rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-high);
+  cursor: pointer;
+}
+
+.color-well::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-well::-webkit-color-swatch {
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-xs);
+}
+
+.color-well::-moz-color-swatch {
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-xs);
+}
+
+/* ==========================================================================
+   14. REGEX BUILDER
+   Anchored beside the search field it belongs to. Every token button inserts
+   at the caret of the raw pattern editor below it.
+   ========================================================================== */
+
+.regex-builder {
+  /* 30rem is the comfortable width, but the builder must never be wider than
+     whatever hosts it — a viewport-relative width would overflow an anchored
+     popover, an inline panel or a settings column that is narrower than that. */
+  width: 30rem;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.regex-builder__section-label {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-small-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.regex-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.regex-token {
+  position: relative;
+  isolation: isolate;
+  padding: 0.3125rem 0.625rem;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  cursor: pointer;
+  transition: background var(--md-sys-motion-duration-short2) var(--md-sys-motion-standard);
+}
+
+.regex-token::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-standard);
+}
+
+.regex-token:hover::before {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.regex-pattern {
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  resize: vertical;
+}
+
+.regex-pattern:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-primary);
+}
+
+.regex-builder[data-invalid="true"] .regex-pattern {
+  border-color: var(--md-sys-color-error);
+}
+
+.regex-error {
+  color: var(--md-sys-color-error);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-family: var(--md-ref-typeface-mono);
+}
+
+.regex-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.regex-matches {
+  max-height: 10rem;
+  overflow: auto;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.regex-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.regex-group__index {
+  flex: none;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ==========================================================================
+   15. RESPONSIVE — M3 window size classes
+   compact  < 600px   medium 600-839px   expanded >= 840px
+   ========================================================================== */
+
+/* Medium: the settings two-column split collapses first, because its aside is
+   the widest fixed element on the page. */
+@media (max-width: 64rem) {
+  .settings {
+    flex-direction: column;
+  }
+
+  .settings__aside {
+    position: static;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 52.5rem) {
+  .app-rail {
+    width: var(--site-rail-width);
+  }
+
+  .app-rail[data-open="true"] {
+    width: var(--site-rail-width);
+  }
+
+  .app-rail .rail-item__label,
+  .app-rail .rail-fab span {
+    display: none;
+  }
+
+  .rail-fab {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+
+/* Compact: the rail becomes a bottom navigation bar, which is what M3
+   prescribes at this width — not a rail squeezed to nothing. */
+@media (max-width: 37.5rem) {
+  .app-rail {
+    display: none;
+  }
+
+  .app-bottom-nav {
+    display: flex;
+  }
+
+  .app-topbar__subtitle {
+    display: none;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    padding-inline: var(--gap);
+  }
+
+  .app-header__title {
+    flex: 1 1 100%;
+  }
+
+  .app-scroll__inner {
+    padding-inline: var(--gap);
+  }
+
+  .md-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .hero {
+    padding: var(--pad) var(--gap);
+    border-radius: var(--md-sys-shape-corner-xl);
+  }
+
+  .md-snackbar-host {
+    inset-inline: var(--sp);
+    width: auto;
+  }
+
+  .md-palette {
+    margin-top: 0;
+    max-height: 100%;
+    height: 100%;
+    border-radius: var(--md-sys-shape-corner-none);
+  }
+
+  .md-scrim {
+    padding: 0;
+  }
+
+  .setting-row__control {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* Very narrow or very high zoom: let the tab strip breathe rather than crush
+   the labels to nothing. */
+@media (max-width: 26rem) {
+  .tab {
+    max-width: 9rem;
+  }
+
+  .tabstrip__pinned {
+    max-width: 35%;
+  }
+}
+
+/* ==========================================================================
+   16. MOTION
+   ========================================================================== */
+
+@keyframes md-rise {
+  from { opacity: 0; transform: translateY(0.875rem) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes md-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes md-fade-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(0.5rem); }
+}
+
+@keyframes md-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: none; }
+}
+
+@keyframes md-pulse {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+
+@keyframes md-attention {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%      { box-shadow: 0 0 0 0.25rem var(--md-sys-color-primary-container); }
+}
+
+/* The duration tokens already collapse under this preference; this is the
+   belt-and-braces rule for anything that slipped through with a literal, and
+   for third-party-free but hand-written animations added later. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .app-statusbar__dot {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   17. PRINT
+   Documentation is read on paper too; drop the chrome and let the content
+   flow instead of trapping it in a 100dvh shell.
+   ========================================================================== */
+
+@media print {
+  .app-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app-topbar,
+  .app-tabstrip,
+  .app-rail,
+  .app-bottom-nav,
+  .app-statusbar,
+  .app-header,
+  .md-snackbar-host,
+  .md-drawer,
+  .md-scrim,
+  .skip-link {
+    display: none !important;
+  }
+
+  .app-scroll {
+    overflow: visible;
+  }
+
+  .md-card,
+  .settings-group,
+  .hero {
+    box-shadow: none;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+}
