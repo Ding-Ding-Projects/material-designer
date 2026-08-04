@@ -107,6 +107,7 @@ an identical rendered result.
 **Changed files:**
 
 - `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/tests/styles/home-hero-compact-controls.test.ts`
 - `apps/web/src/styles/home/recent-projects.css`
 
 

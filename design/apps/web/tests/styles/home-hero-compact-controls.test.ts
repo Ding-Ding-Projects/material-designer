@@ -46,9 +46,12 @@ describe('HomeHero compact composer controls', () => {
       '.home-hero__execution-switcher .inline-switcher__chip',
     );
 
-    // The execution switcher keeps a fixed icon+chevron footprint.
-    expect(ruleValue(switcherChip, 'height')).toBe('32px');
-    expect(ruleValue(switcherChip, 'max-width')).toBe('58px');
+    // The execution switcher keeps a fixed icon+chevron footprint. Its height
+    // is the shared chip token rather than a literal: the whole control row is
+    // one Material Design 3 assist-chip rail now, so a chip that pinned its own
+    // 32px would be the one control standing a step out of line.
+    expect(ruleValue(switcherChip, 'height')).toBe('var(--home-hero-chip-height)');
+    expect(ruleValue(switcherChip, 'max-width')).toBe('62px');
   });
 
   it('prevents the compact execution switcher from expanding on narrow screens', () => {
@@ -58,8 +61,11 @@ describe('HomeHero compact composer controls', () => {
     );
 
     expect(ruleValue(switcher, 'flex-basis')).toBe('auto');
-    expect(ruleValue(switcherChip, 'width')).toBe('58px');
-    expect(ruleValue(switcherChip, 'max-width')).toBe('58px');
+    // 62px, not 58: the chip grew to the 36dp rail height, and its fixed
+    // icon+chevron footprint grew with it. The property under test is that it
+    // stays fixed, not the particular number.
+    expect(ruleValue(switcherChip, 'width')).toBe('62px');
+    expect(ruleValue(switcherChip, 'max-width')).toBe('62px');
   });
 
   it('keeps the template picker search field free of the global input focus halo', () => {
