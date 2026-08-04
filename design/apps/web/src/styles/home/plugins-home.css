@@ -49,46 +49,73 @@
   gap: 10px;
   flex: 0 0 auto;
 }
-/* Hot / newest sort toggle — a compact two-segment pill that shares the
-   search field's height and border treatment so the facet-tools cluster
-   reads as one control strip. */
+/* Hot / newest sort toggle — M3 segmented button, the same anatomy as the
+   projects collection's grid/list switch (`.subtab-pill`) and the library's
+   view toggle: one fully-rounded `outline` container, segments divided by that
+   same hairline, and a `secondary-container` fill on the selected segment.
+   The three controls do the same job on three collections and must not read as
+   three different widgets.
+
+   Focus is an INSET ring — `overflow: hidden` clips the outer radius, so an
+   offset ring would be cut away on the first and last segment. */
 .plugins-home__sort {
   display: inline-flex;
   align-items: stretch;
   flex: 0 0 auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  padding: 2px;
-  gap: 2px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  padding: 0;
+  gap: 0;
 }
 .plugins-home__sort-segment {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   background: transparent;
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  font-size: 12px;
-  color: var(--text-muted);
+  border-radius: 0;
+  padding: 0 16px;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
   white-space: nowrap;
-  transition: background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
 }
-.plugins-home__sort-segment:hover {
-  color: var(--text);
+.plugins-home__sort-segment + .plugins-home__sort-segment {
+  border-left: 1px solid var(--md-sys-color-outline);
+}
+.plugins-home__sort-segment:hover:not(.is-active) {
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface-variant);
 }
 .plugins-home__sort-segment.is-active {
-  background: var(--bg-subtle);
-  color: var(--text);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 .plugins-home__sort-segment:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
 }
+@media (prefers-reduced-motion: reduce) {
+  .plugins-home__sort-segment {
+    transition: none;
+  }
+}
+/* Height is pinned to the sort toggle beside it: the facet-tools cluster is
+   one control strip, and a 32px field next to a 40dp segmented button reads as
+   a misalignment rather than a hierarchy. */
 .plugins-home__search {
   position: relative;
   display: inline-flex;
   align-items: center;
+  height: 40px;
   width: 200px;
   max-width: 100%;
   border: 1px solid var(--border);
@@ -199,42 +226,65 @@
    (rich layout only) + category pills live on the left, the search
    field + clear-filters affordance live on the right.
    ============================================================ */
+/* The Saved chip sits in the same row as the facet pills and is the same M3
+   filter chip; it is a separate class only because its count comes from a
+   different source. Keeping the two anatomies in step matters more than the
+   distinction — a row with one 26dp pill and five 36dp chips reads as a bug. */
 .plugins-home__chip {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-muted);
-  font-size: 12px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    border-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
 }
-.plugins-home__chip:hover {
-  border-color: var(--border-strong);
-  color: var(--text);
+.plugins-home__chip:hover:not(.is-active) {
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.plugins-home__chip:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .plugins-home__chip-count {
-  font-size: 10.5px;
-  color: var(--text-faint);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  color: currentColor;
+  opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
-.plugins-home__chip--saved {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  color: var(--accent);
-  background: var(--accent-tint);
-}
 .plugins-home__chip--saved.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
+.plugins-home__chip--saved.is-active:hover {
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-on-secondary-container) 8%,
+    var(--md-sys-color-secondary-container)
+  );
 }
 .plugins-home__chip--saved.is-active .plugins-home__chip-count {
-  color: white;
+  color: currentColor;
   opacity: 0.85;
+}
+@media (prefers-reduced-motion: reduce) {
+  .plugins-home__chip {
+    transition: none;
+  }
 }
 
 .plugins-home__linkbtn {
@@ -310,7 +360,9 @@
   flex: 0 0 auto;
 }
 .plugins-home__facet-label {
-  padding-top: 7px;
+  /* Centres the label against a 36dp chip; 7px was measured against the 26dp
+     pill this row used to hold. */
+  padding-top: 10px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -321,58 +373,102 @@
 .plugins-home__facet-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  /* The mockup's filter row spaces its 36dp chips 8px apart; the old 5px was
+     measured against a 26dp pill and reads as crowding at chip height. */
+  gap: 8px;
 }
+/* ---------- Facet pills → M3 filter chips ----------
+   The plugin collection's filter row, and the same 36dp fully-rounded chip the
+   rest of the application uses (`.filter-pill`, styles/viewer/composio.css).
+   Unselected is a 1dp `outline` hairline over no fill with an
+   `on-surface-variant` label; selected is a `secondary-container` fill.
+
+   The selected chip previously took the full `--accent` fill with white ink,
+   which made a row of filters read as a row of primary buttons and left the
+   real call to action with no way to stand out. M3 reserves the accent for
+   actions and gives selection a tonal container instead.
+
+   The selected border stays 1px transparent rather than being removed, so
+   picking a facet does not reflow the row by two pixels per chip. */
 .plugins-home__pill {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-muted);
-  font-size: 12px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  /* A chip is a fixed 36dp box, so its label must never wrap INSIDE it — in
+     bilingual mode, where labels are longest, a wrapped second line would be
+     clipped by the height with nothing to say so. The row wraps instead. */
+  white-space: nowrap;
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    border-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
 }
 .plugins-home__pill:hover:not(.is-active) {
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
+}
+.plugins-home__pill:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .plugins-home__pill.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
+/* A filled chip's state layer has to be mixed into its container rather than
+   laid over it — a translucent background would replace the fill, not tint it. */
+.plugins-home__pill.is-active:hover {
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-on-secondary-container) 8%,
+    var(--md-sys-color-secondary-container)
+  );
 }
 .plugins-home__pill.is-active .plugins-home__pill-count {
-  color: white;
+  color: currentColor;
   opacity: 0.85;
 }
 .plugins-home__pill-count {
-  font-size: 10.5px;
-  color: var(--text-faint);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  color: currentColor;
+  opacity: 0.7;
   font-variant-numeric: tabular-nums;
 }
-.plugins-home__pill--all {
-  background: var(--accent-tint);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  color: var(--accent);
+/* The two "All" pills are still ordinary filter chips; they differ only in
+   never picking up the zero-count fade below, which is handled there. */
+.plugins-home__pill--all,
+.plugins-home__pill--sub-all {
+  background: transparent;
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
 }
-.plugins-home__pill--all.is-active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+.plugins-home__pill--all.is-active,
+.plugins-home__pill--sub-all.is-active {
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
 }
-.plugins-home__pill--all.is-active .plugins-home__pill-count {
-  color: white;
+.plugins-home__pill--all.is-active .plugins-home__pill-count,
+.plugins-home__pill--sub-all.is-active .plugins-home__pill-count {
+  color: currentColor;
   opacity: 0.85;
 }
-.plugins-home__pill--sub-all {
-  background: var(--bg-subtle);
-  color: var(--text-muted);
+@media (prefers-reduced-motion: reduce) {
+  .plugins-home__pill {
+    transition: none;
+  }
 }
 /*
  * Planned scene buckets stay visible even before the bundled catalog
@@ -387,7 +483,7 @@
   opacity: 0.75;
 }
 .plugins-home__pill[data-empty='true']:not(.is-active) .plugins-home__pill-count {
-  color: var(--text-faint);
+  color: var(--md-sys-color-on-surface-variant);
 }
 /*
  * "All" pills always reflect the catalog's full size (or full lane
@@ -427,7 +523,9 @@
 .plugins-home__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  /* Every collection grid in the mockup spaces its cards on the same 16px
+     gutter; 14px was this sheet's own guess before there was a contract. */
+  gap: 16px;
 }
 .plugins-home__load-more-sentinel {
   height: 1px;
@@ -445,32 +543,51 @@
   }
 }
 
+/* Plugin collection card — M3 outlined card: an `outline-variant` hairline
+   over `surface-container-low` at corner-l, flat at rest, lifting to elevation
+   2 on hover with the contract's spring curve. */
 .plugins-home__card {
   position: relative;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
   overflow: hidden;
-  transition: border-color 120ms var(--ease-out), box-shadow 160ms var(--ease-out),
-    transform 160ms var(--ease-out);
+  box-shadow: none;
+  transition:
+    background-color 220ms var(--ease-out),
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
   isolation: isolate;
   content-visibility: auto;
   contain: layout paint style;
   contain-intrinsic-size: 280px 260px;
 }
 .plugins-home__card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md, 0 12px 32px rgba(0, 0, 0, 0.08));
-  transform: translateY(-2px);
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
 }
 .plugins-home__card.is-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
 }
 .plugins-home__card.is-featured {
-  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-color: color-mix(
+    in srgb,
+    var(--md-sys-color-primary) 32%,
+    var(--md-sys-color-outline-variant)
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .plugins-home__card {
+    transition: none;
+  }
+  .plugins-home__card:hover {
+    transform: none;
+  }
 }
 
 /* ============================================================
@@ -493,19 +610,20 @@
   contain-intrinsic-size: 400px 380px;
 }
 .plugins-home__card--gallery:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 /* Footer under the preview: title (+ dot + category tag) then description —
    the preview is the hero on top, the metadata reads below it like the Create
-   page picker cards. */
+   page picker cards. It inherits the card's own fill rather than restating the
+   page panel, so the supporting-text region reads as part of the card. */
 .plugins-home__gallery-bar {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-panel);
+  padding: 12px 14px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: transparent;
   min-width: 0;
 }
 .plugins-home__gallery-bar-row {
@@ -519,8 +637,8 @@
    tiles previously showed only title + category, no description). */
 .plugins-home__gallery-desc {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1046,9 +1164,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 12px 10px;
-  border-top: 1px solid var(--border-soft);
-  background: var(--bg-panel);
+  padding: 12px 14px;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  background: transparent;
 }
 .plugins-home__card-save {
   position: relative;
@@ -1083,9 +1201,9 @@
 .plugins-home__card-title {
   display: inline-flex;
   align-items: center;
-  font-weight: 600;
-  color: var(--text-strong);
-  font-size: 13px;
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-title-small-size);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1272,22 +1390,30 @@ button.plugins-home__use-menu-item:focus-visible {
 
    `.entry-main--scroll` is a stretched grid item, so a bottom margin reduces
    its height, and with it the region its content can be painted in. The
-   status bar already sits below the column, so only the part of the band that
-   clears the strip is reserved here.
+   shell's grid already gives the status bar a row of its own below the
+   column, so the band reserved here is measured from the top of that strip.
+
+   The pills are lifted clear of the strip for the same reason. `bottom: 18px`
+   against a viewport whose last 28px is the status bar put the pill's lower
+   third on top of the strip's own segments — the second half of the same
+   overlap, with the app's chrome underneath instead of the template cards.
+   Both offsets are now the strip's height plus the pill's gap above it, read
+   from the same token the strip is sized by, so the two cannot drift.
 
    `:has()` scopes this to the one case that mounts a pinned pill — the
    new-user templates reveal, collapsed or expanded — so every other entry
-   route keeps the full column. */
+   route keeps the full column. The custom properties are declared here and
+   read by the pinned pills below, which are descendants: `position: fixed`
+   changes where a box is painted, never where it inherits from. */
 .entry-main--scroll:has(.home-templates-reveal) {
-  /* 18px is the pills' own `bottom` offset, 30px their height (6px padding
-     either side of an 18px line box), 4px the peak of the hint arrow's bob,
-     and the last 4px is breathing room so a descender never meets the
-     clipped edge. */
+  /* The pill's own breathing room above the status bar. */
+  --home-templates-pill-gap: 18px;
+  /* The band the column gives up, measured up from the top of the status
+     bar: the 18px gap, 30px of pill (6px padding either side of an 18px line
+     box), 4px for the peak of the hint arrow's bob, and a last 4px so a
+     descender never meets the clipped edge. */
   --home-templates-pill-band: 56px;
-  margin-bottom: max(
-    0px,
-    calc(var(--home-templates-pill-band) - var(--od-status-bar-height, 28px))
-  );
+  margin-bottom: var(--home-templates-pill-band);
 }
 /* Collapsed: clip the gallery to zero height and fade it out. Uses the repo's
    canonical auto-height pattern (grid-template-rows 0fr -> 1fr) so the expand
@@ -1321,7 +1447,9 @@ button.plugins-home__use-menu-item:focus-visible {
 button.home-templates-reveal__hint {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(
+    var(--od-status-bar-height, 28px) + var(--home-templates-pill-gap, 18px)
+  );
   transform: translateX(-50%);
   z-index: 5;
   display: inline-flex;
@@ -1383,7 +1511,9 @@ button.home-templates-reveal__hint:focus-visible {
 button.home-templates-reveal__collapse {
   position: fixed;
   left: 50%;
-  bottom: 18px;
+  bottom: calc(
+    var(--od-status-bar-height, 28px) + var(--home-templates-pill-gap, 18px)
+  );
   transform: translateX(-50%);
   z-index: 5;
   display: inline-flex;

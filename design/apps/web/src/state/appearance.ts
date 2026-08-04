@@ -236,6 +236,18 @@ export interface AppearancePreferences {
   density: AppearanceDensity;
   /** Unitless scale factor, 0.5–2, written as `--od-scale`. */
   uiScale: number;
+  /**
+   * Whether `uiScale` is chosen by the window rather than by the user.
+   *
+   * A derived scale rather than a second one: when this is on, the runtime
+   * keeps writing the fitted factor into `uiScale` itself, so the status
+   * bar readout, the preset comparison, the export file and the stored
+   * entry all keep describing the scale that is actually on screen. The
+   * alternative — an `autoFitScale` living beside `uiScale` — gives two
+   * numbers that disagree the moment the window is resized, and every
+   * reader has to know which of them is the real one.
+   */
+  autoFit: boolean;
   typography: AppearanceTypography;
 }
 
@@ -243,6 +255,24 @@ export const MIN_UI_SCALE = 0.5;
 export const MAX_UI_SCALE = 2;
 export const MIN_FONT_SIZE_PX = 10;
 export const MAX_FONT_SIZE_PX = 22;
+
+/**
+ * The slider's granularity, as a factor rather than a percentage.
+ *
+ * 0.05 is the mockup's five-point step, and auto-fit quantizes to the same
+ * grid on purpose: a continuous fit would rewrite the stored scale on every
+ * pixel of a drag-resize, and the status bar would flicker through numbers
+ * nobody asked for.
+ */
+export const UI_SCALE_STEP = 0.05;
+
+/**
+ * The width the layout was designed against, which is what "fit" means.
+ *
+ * 1440 is the mockup's own `$preview` width, so scale 1 is the size the
+ * surfaces were drawn at rather than a number chosen here.
+ */
+export const AUTO_FIT_REFERENCE_WIDTH = 1440;
 
 export const DEFAULT_TYPOGRAPHY: AppearanceTypography = {
   fontStackId: 'default',
@@ -262,6 +292,7 @@ export const DEFAULT_APPEARANCE_PREFERENCES: AppearancePreferences = {
   seed: 'sunset',
   density: 'default',
   uiScale: 1,
+  autoFit: false,
   typography: DEFAULT_TYPOGRAPHY,
 };
 
@@ -324,6 +355,9 @@ export function normalizeAppearancePreferences(value: unknown): AppearancePrefer
       MAX_UI_SCALE,
       DEFAULT_APPEARANCE_PREFERENCES.uiScale,
     ),
+    // Strictly `=== true`, like `smallCaps` and `glow` above: a payload
+    // carrying the string "false" must not read as on.
+    autoFit: raw.autoFit === true,
     typography: normalizeTypography(raw.typography),
   };
 }
@@ -410,6 +444,77 @@ export function uiScaleApplication(uiScale: number, hostScaled: boolean): UiScal
     return { cssZoom: '1', odScale: factor, zoom: null };
   }
   return { cssZoom: factor, odScale: factor, zoom: factor };
+}
+
+/**
+ * Round a factor onto the slider's grid and hold it inside the range.
+ *
+ * Exported because auto-fit and the slider must land on the *same* set of
+ * values: if the fit produced 1.0733 and the slider only speaks in
+ * twentieths, turning auto-fit off would jump the UI on the first drag and
+ * the readout would disagree with the thumb until it did.
+ */
+export function quantizeUiScale(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  const stepped = Math.round(value / UI_SCALE_STEP) * UI_SCALE_STEP;
+  // Two decimals: 0.05 is not exactly representable in binary floating
+  // point, so `7 * 0.05` is 0.35000000000000003 and would be stored,
+  // exported and compared against a preset's clean 0.35 as a different
+  // number for the rest of its life.
+  const rounded = Math.round(stepped * 100) / 100;
+  if (rounded < MIN_UI_SCALE) return MIN_UI_SCALE;
+  if (rounded > MAX_UI_SCALE) return MAX_UI_SCALE;
+  return rounded;
+}
+
+/**
+ * The window's own width, recovered from the layout viewport.
+ *
+ * Auto-fit has to measure the thing it is about to change, which is the
+ * loop this function exists to break. Whichever mechanism carried the last
+ * scale, the *window* did not move — so the fit is computed from a width
+ * that scaling cannot alter, and setting a new scale cannot feed back into
+ * the next measurement.
+ *
+ *   * Host scaling (and scale 1) divide the layout viewport by the factor,
+ *     so the window is `layout × factor`.
+ *   * The CSS `zoom` fallback leaves the layout viewport alone and only
+ *     magnifies the paint, so the window IS the layout width.
+ *
+ * `cssZoom` is the discriminator because it is exactly what
+ * `uiScaleApplication` writes for the two cases: `1` when CSS is scaling
+ * nothing, and the factor itself when CSS is carrying it.
+ */
+export function unscaledViewportWidth(
+  layoutWidthPx: number,
+  cssZoom: number,
+  odScale: number,
+): number {
+  if (!Number.isFinite(layoutWidthPx) || layoutWidthPx <= 0) return 0;
+  if (Number.isFinite(cssZoom) && cssZoom !== 1) return layoutWidthPx;
+  return layoutWidthPx * (Number.isFinite(odScale) && odScale > 0 ? odScale : 1);
+}
+
+/** The scale that makes `AUTO_FIT_REFERENCE_WIDTH` fit the window. */
+export function autoFitUiScale(unscaledWidthPx: number): number {
+  if (!Number.isFinite(unscaledWidthPx) || unscaledWidthPx <= 0) return 1;
+  return quantizeUiScale(unscaledWidthPx / AUTO_FIT_REFERENCE_WIDTH);
+}
+
+/**
+ * Measure the live document, then fit.
+ *
+ * Reads the two custom properties `applyAppearancePreferencesToDocument`
+ * wrote rather than re-deriving them, so the measurement describes the
+ * scaling that is actually applied — including on a host build that
+ * refused the request and fell back to CSS.
+ */
+export function measureAutoFitUiScale(): number {
+  if (typeof document === 'undefined') return 1;
+  const root = document.documentElement;
+  const cssZoom = Number(root.style.getPropertyValue('--od-css-zoom') || '1');
+  const odScale = Number(root.style.getPropertyValue('--od-scale') || '1');
+  return autoFitUiScale(unscaledViewportWidth(root.clientWidth, cssZoom, odScale));
 }
 
 /**

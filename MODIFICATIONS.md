@@ -29,6 +29,291 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The four collections stop being four different products
+
+**Reason:** roadmap § 2.4 Wave 3. The application has four collection surfaces
+— projects, design systems, library assets and plugins — and they were four
+separate answers to the same question. Five stylesheets, two of them CSS
+Modules, each declared its own card: 12px, 16px and `--radius` corners; three
+different hover treatments; three different fills. The filter rows disagreed
+too, and the single-select controls most of all — a projects sub-tab, a library
+view toggle, a plugin sort toggle and a marketplace catalog filter were four
+widgets doing one job.
+
+**Cards.** All five are Material Design 3 outlined cards now: an
+`outline-variant` hairline over `surface-container-low` at corner-l, flat at
+rest, lifting three pixels to elevation 2 on hover. The lift takes the
+contract's spring curve, which overshoots and so needs its full 300ms period,
+while colour and elevation stay on the house ease-out — the same split Wave 2
+used on the home screen's scenario cards.
+
+**Filter chips.** The three chip families — the application-wide `.filter-pill`,
+the plugin facet pills and the plugin Saved chip — are one 36dp fully-rounded
+chip: a 1dp `outline` hairline over no fill, `on-surface-variant` at
+label-large, and a `secondary-container` fill when selected. The selected
+border is kept at 1px *transparent* rather than removed, because dropping the
+hairline moves every chip in the row by two pixels the moment one is picked.
+The facet pills previously filled with the full accent colour and white ink,
+which made a row of filters read as a row of primary buttons; that is exactly
+what the `.filter-pill` sheet's own comment had warned against years earlier
+for the same reason, and M3 resolves it by reserving the accent for actions.
+
+**The segmented control.** All four single-select controls are now one M3
+segmented button: a single fully-rounded `outline` container whose segments are
+divided by that same hairline, with `secondary-container` on the selected one —
+the mockup's Grid/List control. The previous shape was a tray of separate inner
+pills with a raised active one, which is not an M3 component at all.
+
+Focus on a segment is an INSET ring, and that detail is load-bearing rather
+than stylistic: the container clips its own outer radius, so an
+`outline-offset: 2px` ring is cut away on precisely the first and last segment
+— the two a keyboard user reaches first, which would have made the control look
+unfocusable exactly where it is most used.
+
+Two real accessibility defects were fixed on the way. `.design-card` is a
+`role="button"` with `tabIndex={0}` and had **no** focus style at all, so a
+keyboard user tabbing the projects grid could not see where they were; it has a
+primary focus ring now, as do the marketplace card and the design-system card's
+focusable region, whose old indicator was a soft tint. Every hover lift is
+disabled under `prefers-reduced-motion`.
+
+**Deliberately not done:** the mockup draws a leading check glyph on a selected
+filter chip and on the active segment. Adding it needs either a shared glyph
+asset or four copies of a masked data URI, and selection is already carried by
+the fill, the outline's presence or absence, and `aria-pressed` — so it is
+recorded here as remaining Wave 3 work rather than smuggled in as a
+pseudo-element that assistive technology might announce. `.ds-card` in
+`drawer.css` was left alone: it has no consumer in the application and styling
+dead selectors would only make them look alive.
+
+**Changed files:**
+
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/styles/home/marketplace.css`
+- `apps/web/src/styles/home/plugins-home.css`
+- `apps/web/src/styles/viewer/composio.css`
+- `apps/web/src/styles/viewer/library.css`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/tests/styles/collections-m3.test.ts`
+- `apps/web/tests/styles/filter-pill.test.ts`
+
+### 2026-08-04 — Overlays that paint their own card, and stop at the edge of the screen
+
+**Reason:** the roadmap's overlay wave asks two things of every menu, popover,
+sheet and dialog — that it paints its own background, border, elevation and
+shape, and that it bounds its height to the space available and scrolls inside
+that bound. The shared dialog kept neither promise, and the shared context menu
+was painted the same colour as the panels it opens over.
+
+The dialog is the one worth reading about, because the defect hides behind a
+piece of cascade nobody would guess at. `Dialog` puts **two** classes on the
+same element: its CSS-module class and the global `modal` class. The module
+writes its card rule inside `:where()`, which is zero specificity — so for every
+declaration the two rules share, the *global* one wins. The module file is the
+one a reader finds by following the import, and it had not been the file that
+decided what a dialog looked like for some time. Both are now written to say the
+same thing, and a test compares them property by property, because the failure
+mode of leaving them apart is an edit that changes nothing on screen and gives
+no indication of why.
+
+What they now say is Material Design 3 dialog anatomy — the extra-large corner
+on `surface-container-high` at elevation 3 — plus a 1px `outline-variant`
+hairline, which M3 itself does not draw. That is deliberate: the tone step from
+a scrim-dimmed page to the card is small in dark mode, and a card told apart
+from what is behind it by its shadow alone is the transparent-overlay failure
+wearing a different hat.
+
+The height bound is the part that was missing outright. There was none at all:
+the card grew to fit its content, the centring backdrop then pushed the overflow
+off **both** the top and the bottom of the viewport, and nothing scrolled. A
+confirmation dialog can lose its own two buttons that way — the user is shown a
+question and neither answer, with no scrollbar to suggest anything is missing. A
+sectioned dialog scrolls its body instead of its whole card, so its header and
+its ruled footer stay put; `min-height: 0` on that body is the load-bearing
+half, because a column flex item defaults to `min-height: auto` and would push
+the footer off the bottom rather than scroll.
+
+The context menu moved to `surface-container-high` for the same reason it was
+hard to see: `--bg-panel` is the surface a sidebar is painted with, so a menu
+opened over one was a menu found by its shadow. Its rows are the mockup's 44px
+now rather than about 32, which is also the first height that clears the pointer
+target size the accessibility rules hold the rest of the product to, and the
+keycaps moved one tone up to `surface-container-highest` — they had been painted
+the colour the card has just become, which would have made them keycaps with no
+cap. The placement estimate in the component moved with the stylesheet: it runs
+before layout and cannot measure the card, so its row height and inset are kept
+in step by hand and named as such.
+
+The shortcut column itself needed no change and now has a test, which is the
+point of the test. `ContextMenu` draws its keycaps from `shortcuts/registry` and
+`DesignFilesPanel` installs its handlers from the same list, so what is
+displayed and what fires cannot drift. Every expectation in the new suite is
+derived from that registry rather than hard-coded, so renaming a binding moves
+the menu and the test together and *unwiring* one fails.
+
+One more silent delete, found by sweeping for a capped height with no scroller:
+the composer plus-menu's preview column. Its flyout has a hard 320px height and
+clips, and the column had `overflow: hidden` of its own, so a skill with several
+trigger chips pushed its example block somewhere it was simply not drawn. It
+scrolls now, keeping the horizontal clip that stops a long plugin name widening
+the flyout.
+
+**Not done in this pass:** the wave's own definition of done asks for captures
+from an installed build in both themes, at four display scales, at narrow width
+and in bilingual mode. None of that is verified here — there is no build in this
+environment — so the wave's box stays unticked.
+
+**Changed files:**
+
+- `apps/web/src/components/ContextMenu.module.css`
+- `apps/web/src/components/ContextMenu.tsx`
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/ContextMenu.test.tsx`
+- `apps/web/tests/styles/overlay-surfaces.test.ts`
+- `packages/components/src/dialog.module.css`
+- `packages/components/tests/dialog-surface.test.ts`
+
+### 2026-08-04 — Five places text was cut with nothing to say it had been
+
+**Reason:** the pinned templates hint had been lifted off the template cards,
+but only half of the overlap it was reported for. Both pinned pills sit at
+`bottom: 18px`, and that offset is measured from the bottom of the **viewport**,
+whose last 28px is the status bar. The pill's lower third was therefore drawn
+on top of the strip's own segments — the same overlap as before, with the
+application's chrome underneath instead of the cards. Both offsets now start at
+the strip's published height, and the band the scroll column gives up is
+measured up from the top of the strip rather than from the bottom of the
+window, so the whole arrangement is one token and one gap.
+
+**And four instances of the defect that caused it.** `text-overflow: ellipsis`
+applies only to a **block container**. Declared on a flex container it does
+nothing at all, and a bare text child of a flex container is an *anonymous flex
+item* the property cannot reach — so the text is clipped mid-glyph, with no
+ellipsis and no way to tell it was cut. The status bar's own density readout
+was fixed this way once already; these are the rest of them:
+
+- The **new project panel's pickers**. `.ds-picker-title` and
+  `.ds-picker-item-title` are flex containers so a `+N` pill or a status badge
+  can sit beside the name, and the name itself was bare text — across eleven
+  render sites covering platforms, prompt templates, design systems, models and
+  MCP clients. Each name now lives in a span of its own, which is what the
+  ellipsis can land on, and the pill and badge stop shrinking so the name is
+  what yields room rather than the count of what it left out.
+- The **model picker's trigger**. Its option rows escaped because their text is
+  wrapped in a real `> span`; the trigger's value label has no element at all,
+  so it becomes a block container instead. It is a flex item either way, and a
+  flex item's display is blockified, so nothing about its placement moves.
+- The **annotation style summary** in the comment popover, where the value can
+  be a font stack or a computed CSS value. Its optional colour swatch stops
+  being a flex item with a gap and becomes an inline-block with a margin, so it
+  still leads the line and the ellipsis lands on the value behind it.
+- The **automation next-run readout**, which is the one that should not
+  truncate at all: two of its three states are whole sentences rather than a
+  timestamp, and bilingual mode carries their Cantonese half as well. It wraps
+  now. The 260px budget stays, because it is what keeps the row's description
+  column from being squeezed, and a second line costs nothing in a column that
+  is already taller than one line.
+
+**And one overlay that deleted what it could not fit.** The slash-command
+popover capped its height at the caret layer's measured budget and then hid the
+overflow. It has nothing to scroll: the popover *is* the `listbox` and each
+command *is* an `option`, so the rows are its direct children — past the cap
+the remaining commands were painted nowhere, with no scrollbar to say anything
+was missing and no keyboard route to them either. The cap is right; the box
+scrolls inside it now, its head sticky so the popover still says what it is,
+and its rows stop shrinking so the overflow is real rather than absorbed.
+
+**Changed files:**
+
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/plugins-home.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/src/styles/viewer/library.css`
+- `apps/web/src/styles/workspace/artifacts.css`
+- `apps/web/src/styles/workspace/connectors.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
+- `apps/web/tests/styles/mention-popover.test.ts`
+- `apps/web/tests/styles/model-option-lock-layout.test.ts`
+- `apps/web/tests/styles/project-design-system-picker.test.ts`
+- `apps/web/tests/styles/settings-polish.test.ts`
+
+### 2026-08-04 — The appearance controls, and the density that changed five numbers nobody read
+
+**Reason:** the runtime appearance contract was half built. Seed, density, UI
+scale and typography all had storage, normalisation, a live-apply function and
+a preset format — and not one control. The only way to reach any of it was to
+pick one of six built-in presets, so the four seeds were effectively four
+buttons and the density levels were unreachable except through two of them.
+
+Density was worse than unreachable: it did nothing. `data-density` swapped five
+custom properties of which `--gap` had a single reader and `--sp`, `--pad`,
+`--row` and `--card` had none, so all three levels rendered a pixel-identical
+interface. The variables are driven now rather than dropped — `--sp` moves with
+the rest, because a base spacing unit that stays at 8px while the gap built on
+it halves is a scale that disagrees with itself — and three control-height
+variables join them, because none of the original five described a control's
+own height and `--row` is a 48px list row rather than a button. Their `:root`
+values restate exactly what `primitives.css` hard-coded, so an install at
+default density measures the same as before; only compact and comfortable move.
+Every button, text field and select in the application now resizes with the
+setting, which is the difference between a density control and a stored number.
+
+Auto-fit is new, and its whole difficulty is that it has to measure the thing
+it changes. Scaling divides the layout viewport, so fitting from the layout
+viewport is a loop; `unscaledViewportWidth` multiplies the applied factor back
+out and fits from the window, which scaling cannot move. It writes into
+`uiScale` rather than living beside it, so the status bar, the preset
+comparison and the exported theme keep describing the scale that is actually on
+screen instead of choosing between two numbers that disagree.
+
+The typography editor mounts `components/appearance/typography.ts`, which was
+another module written and imported by nothing. The four properties this
+platform cannot honour keep their control, keep the user's saved value, and say
+which kind of "no" they are, exactly as that module's contract requires.
+
+UI scale is untouched: it is still applied by `webContents.setZoomFactor` in the
+desktop shell, and this change deliberately reintroduces no CSS `zoom`.
+
+**Changed files:**
+
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/appearance/AppearanceControls.module.css`
+- `apps/web/src/components/appearance/AppearanceControls.tsx`
+- `apps/web/src/components/appearance/AppearanceRuntime.tsx`
+- `apps/web/src/components/appearance/useAutoFit.ts`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/tests/components/AppearanceControls.test.tsx`
+- `apps/web/tests/state/appearance-auto-fit.test.ts`
+- `apps/web/tests/styles/appearance-density-tokens.test.ts`
+
 ### 2026-08-04 — The first words of every launch, and the 42 waits that never checked them
 
 **Reason:** the loading shell is the very first thing the application paints,

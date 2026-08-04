@@ -231,10 +231,29 @@ Not by a local build — local builds do not happen here.
       `scripts/upstream-manifest.tsv` is the fallback when the pinned submodule
       is not checked out, so a missing submodule no longer exits early.
       *Verified by:* the gate passing on a clean Linux checkout at 11,799 files
-      and zero gaps. **It has never been observed failing**, so the line-ending
-      reasoning above is still an argument rather than a demonstrated result —
-      deliberately introducing an undeclared change and watching the gate go red
-      is the outstanding half of this item.
+      and zero gaps — **and now by watching it fail**, which was the outstanding
+      half of this item. It did not need a contrived test in the end: several
+      agents editing `design/` in parallel produced exactly the situation the
+      gate exists for, and it named all nine before any of them were documented:
+
+      ```
+      verify-port: 9 gap(s); first 50:
+      bytes-differ	apps/web/src/components/LibrarySection.module.css
+      bytes-differ	packages/components/src/dialog.module.css
+      untracked	apps/web/tests/styles/overlay-surfaces.test.ts
+      …
+      ```
+
+      It distinguishes `bytes-differ` (an upstream file edited) from `untracked`
+      (a file added that upstream does not have), which is the distinction that
+      makes the output actionable rather than merely alarming. Each cleared as
+      its `MODIFICATIONS.md` entry landed, returning the tree to zero gaps.
+
+      The **line-ending** reasoning specifically remains an argument rather than
+      a demonstrated result: no Windows checkout has been run through the
+      verifier to watch it report thousands of spurious differences. That is now
+      the only untested half, and it is deliberately untested — proving it means
+      running the gate somewhere it is designed not to run.
 - [x] **Typecheck and lint.** All four now run, in `verify.yml` on Linux rather
       than only inside the Windows packaging job — a type error is the cheapest
       failure to find and the most expensive to find late. `pnpm guard`,
@@ -629,11 +648,23 @@ meeting it.
       and an active-tab underline. That surface had never been photographed
       after the work landed, because it is not one of the smoke test's nine
       states.
-- [ ] **Bottom overlap at a narrow window.** The scroll hint
+- [x] **Bottom overlap at a narrow window.** *Closed in two halves.* The first
+      landed at `81cdbfd`: the entry view's scroll column now reserves the
+      pill's band, so content clips above the hint instead of sliding beneath
+      it, and the status bar's height became a token the strip itself is sized
+      by. The second half is this change — the pills were still drawn on top of
+      the status bar, because `bottom: 18px` is measured from the bottom of the
+      **viewport**, whose last 28px is that strip. Both offsets now start at
+      the strip's height and the reserved band is measured up from the top of
+      it, so the arrangement is one token and one gap rather than three numbers
+      that agree by luck. Originally recorded as: the scroll hint
       (`Scroll up to explore more templates · 向上捲動以探索更多範本`) is drawn
       on top of the template cards behind it, and the card row is cut by the
       28px status bar — the content area does not appear to account for the
       bar's height, which is new.
+      *The second half is the lesson: a fix verified against the complaint that
+      was written down can leave the other half of the same overlap standing,
+      because nobody photographed the 28px the report never mentioned.*
 - [x] **`t()` doubled a bilingual value used as an interpolation variable.**
       *Closed at `81cdbfd`* — rendering is per language before the join now,
       with `tv(key)` for a translated variable. Originally recorded as:
@@ -829,26 +860,65 @@ labels are longest — and when no legacy design element remains in them.
 
 ### 2.5 Runtime appearance controls
 
-- [ ] **Theme** — light and dark, persisted, applied live.
-- [ ] **Density** — compact / default / comfortable, changing the gap, padding
-      and row-height variables. Note that the mockup declares a base spacing
-      unit and a card variable that no density level redefines and nothing
-      reads; the port should either drive them or drop them.
-- [ ] **Seed colour** — the four documented seeds as a starting point. The
-      mockup ships four fixed swatches, which is *not* sufficient for the
-      standards; the continuous picker that replaces them is Phase 4.
-- [ ] **UI scale** — 50–200% in steps of 5, default 100.
+- [x] **Theme** — light and dark, persisted, applied live. The segmented
+      control in Settings · Appearance writes `data-theme` through
+      `applyAppearanceToDocument` on every change and persists in `AppConfig`;
+      cancelling the dialog reverts to the last saved appearance.
+- [x] **Density** — compact / default / comfortable, changing the gap, padding
+      and row-height variables. Driven rather than dropped: `--sp` now moves
+      with the level instead of sitting still while the gap built on it halves,
+      and three control-size variables joined the scale because none of the
+      original five described a control's own height. `primitives.css` reads
+      them, so every button, text field and select in the application resizes
+      with the setting — before this the level changed five numbers of which
+      four had no reader at all and the three levels were pixel-identical.
+      Original wording: Note that the mockup declares a base spacing unit and a
+      card variable that no density level redefines and nothing reads; the port
+      should either drive them or drop them.
+- [x] **Seed colour** — the four documented seeds, as swatches that each paint
+      their own seed rather than the active one. The continuous picker the
+      standards require already ships beside them on the accent field
+      (`InfiniteColorPicker`), so the fixed four are the shortcut and not the
+      whole space. Original wording: the four documented seeds as a starting
+      point. The mockup ships four fixed swatches, which is *not* sufficient for
+      the standards; the continuous picker that replaces them is Phase 4.
+- [x] **UI scale** — 50–200% in steps of 5, default 100. The slider is in
+      Settings · Appearance and stores a factor, not a percentage, quantized
+      onto the same grid auto-fit uses so the two cannot disagree.
 - [x] **Replace the mockup's scaling mechanism.** *Done at `cd0996d`* — the
       host scales its own web contents, so the layout viewport divides and the
       page reflows. Original wording: It sets a custom property that
       nothing reads and does the actual scaling with a non-standard CSS zoom
       property. Implement scaling in a way that is standard, testable, and does
       not break layout measurement.
-- [ ] **Auto-fit to window**, as the mockup's appearance card offers.
-- [ ] **Font family, size scale, and weight**, chosen from bundled and installed
+- [x] **Auto-fit to window**, as the mockup's appearance card offers. It writes
+      into `uiScale` rather than living beside it, so the status bar, the preset
+      comparison and the exported theme keep describing the scale that is
+      actually on screen. The fit is computed from the window width recovered
+      by multiplying the applied factor back out — measuring the layout
+      viewport, which scaling divides, would be a loop.
+- [x] **Font family, size scale, and weight**, chosen from bundled and installed
       faces, with a live preview and a fallback that keeps CJK text legible.
-- [ ] **Persist every control across restarts** and apply changes to the live
-      interface, not only after a restart.
+      The list previews each stack in its own face and says whether this machine
+      actually has it — including "cannot tell", where `document.fonts` cannot
+      answer. No typeface ships with the application, and the editor says so
+      rather than implying otherwise. Line height and letter spacing are here
+      too, and the four properties this platform cannot honour keep their
+      control, their saved value and an explanation of which kind of "no" they
+      are.
+- [x] **Persist every control across restarts** and apply changes to the live
+      interface, not only after a restart. Every control writes through the
+      appearance store, which persists to `localStorage` and applies to the
+      document in the same call; there is no Save step and no draft. Not yet
+      verified against a running build — see the caveat below.
+
+**Not yet verified from an installed build.** Everything in 2.5 is proven by
+specs that assert the document attributes and custom properties each control
+writes, and by static assertions that the shared primitives read the density
+scale. None of it has been driven in a real window, so the visual result at
+each density level, at every display scale, and in bilingual mode where labels
+are longest is still unconfirmed. That confirmation belongs with 2.4's
+capture requirement.
 
 ---
 

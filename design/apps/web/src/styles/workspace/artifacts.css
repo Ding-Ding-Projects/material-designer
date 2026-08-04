@@ -2320,6 +2320,19 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The option label escapes the flex-container trap above because its text is
+   wrapped in that real `> span`. The trigger's value label has no element to
+   hand the ellipsis to — `{selectedOption.label}` is its only child — so the
+   model name was a bare anonymous flex item, which `text-overflow` cannot
+   reach, and a long name was clipped mid-glyph with no ellipsis at all.
+
+   A block container can take the property. Nothing about the label's own
+   placement moves: it is a flex item of `.model-select-searchable__value`,
+   which blockifies `inline-flex` to `flex` and `block` to `block` alike, and
+   `align-items` had nothing to align because there were never any children. */
+.model-select-searchable__value-label {
+  display: block;
+}
 .model-select-searchable__value-badge,
 .model-select-searchable__option-badge {
   --model-tag-color: var(--text-muted);

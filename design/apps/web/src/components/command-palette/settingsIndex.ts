@@ -228,6 +228,50 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['accent', 'colour', 'color', 'swatch'],
     control: 'appearance.accent',
   },
+  // The runtime controls. Reveal anchors rather than inline controls: each
+  // one teleports to the exact element in `AppearanceControls`, which is
+  // what makes them findable by name. Rendering them live in the palette
+  // as well needs a `SettingsControlId` and a `SettingRowControl` case
+  // each, and is deliberately a separate piece of work.
+  {
+    id: 'appearance.seed',
+    section: 'appearance',
+    titleKey: 'appearance.seedLabel',
+    hintKey: 'appearance.seedHint',
+    keywords: ['seed', 'palette', 'colour', 'color', 'sunset', 'violet', 'teal', 'lime'],
+  },
+  {
+    id: 'appearance.density',
+    section: 'appearance',
+    titleKey: 'appearance.densityLabel',
+    keywords: ['density', 'compact', 'comfortable', 'spacing', 'padding'],
+  },
+  {
+    id: 'appearance.uiScale',
+    section: 'appearance',
+    titleKey: 'appearance.uiScaleLabel',
+    keywords: ['ui scale', 'zoom', 'bigger', 'smaller', 'percent'],
+  },
+  {
+    id: 'appearance.autoFit',
+    section: 'appearance',
+    titleKey: 'appearance.autoFit',
+    hintKey: 'appearance.autoFitHint',
+    keywords: ['auto fit', 'autofit', 'fit to window', 'responsive'],
+  },
+  {
+    id: 'appearance.typography',
+    section: 'appearance',
+    titleKey: 'appearance.typography',
+    hintKey: 'appearance.typographyHint',
+    keywords: ['typography', 'font', 'typeface', 'text size', 'weight', 'line height'],
+  },
+  {
+    id: 'appearance.fontFamily',
+    section: 'appearance',
+    titleKey: 'appearance.fontFamily',
+    keywords: ['font', 'family', 'typeface', 'serif', 'mono', 'cjk'],
+  },
   {
     id: sectionAnchorFor('narrator'),
     section: 'narrator',

@@ -36,78 +36,130 @@
   color: var(--text-strong);
 }
 
+/* The catalog filter is a single-select group, so Material Design 3 draws it as
+   a segmented button: one fully-rounded `outline` container, segments divided
+   by that same hairline, and a `secondary-container` fill on the selected
+   segment — the same anatomy as the projects grid/list switch
+   (`.subtab-pill`), the library view toggle and the plugin sort toggle.
+
+   Focus is an INSET ring; `overflow: hidden` clips the outer radius, so an
+   offset ring would be cut away on the first and last segment. */
 .marketplace-view__filters {
   display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-soft);
+  align-items: stretch;
+  height: 40px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline);
 }
 .marketplace-view__filters button {
   appearance: none;
-  height: 28px;
-  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--radius-pill);
+  border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
-  font-size: 12.5px;
-  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   cursor: pointer;
   box-shadow: none;
-  transition: background var(--dur-quick) var(--ease-out),
-    color var(--dur-quick) var(--ease-out);
+  white-space: nowrap;
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
+}
+.marketplace-view__filters button + button {
+  border-left: 1px solid var(--md-sys-color-outline);
 }
 .marketplace-view__filters button:hover:not([data-active='true']) {
-  color: var(--text);
-  background: transparent;
-  border-color: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
 }
 .marketplace-view__filters button[data-active='true'] {
-  background: var(--bg-elevated);
-  color: var(--text-strong);
-  box-shadow: var(--shadow-xs);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+.marketplace-view__filters button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-view__filters button {
+    transition: none;
+  }
 }
 
 /* ---------- Card grid ---------- */
 .marketplace-view__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* Every collection grid in the mockup spaces its cards on the same 16px
+     gutter; 14px was this sheet's own guess before there was a contract. */
+  gap: 16px;
 }
 
+/* M3 outlined card. The resting hairline, fill and radius live here; the hover
+   lift is declared below rather than in `entrance.css`, whose pre-M3 rule for
+   this card is superseded by this sheet (home styles load after it). */
 .marketplace-view__card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: stretch;
   text-align: left;
-  padding: 14px 16px;
+  padding: 16px;
   min-height: 120px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
   color: inherit;
   cursor: pointer;
+  box-shadow: none;
+  transition:
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
+}
+.marketplace-view__card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
+}
+.marketplace-view__card:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marketplace-view__card {
+    transition: none;
+  }
+  .marketplace-view__card:hover {
+    transform: none;
+  }
 }
 
 .marketplace-view__card-title {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
-  color: var(--text-strong);
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  color: var(--md-sys-color-on-surface);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .marketplace-view__card-desc {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--text-muted);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -119,14 +171,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  font-size: 11px;
-  color: var(--text-faint);
+  font-size: var(--md-sys-typescale-label-small-size);
+  color: var(--md-sys-color-on-surface-variant);
   font-variant-numeric: tabular-nums;
 }
 .marketplace-view__card-meta > span + span::before {
   content: '·';
   margin: 0 6px;
-  color: var(--text-faint);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 /* ---------- Loading / empty ---------- */

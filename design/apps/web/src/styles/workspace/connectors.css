@@ -53,7 +53,34 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The title's own text lives in this span, and the reason is `text-overflow`.
+
+   Both title boxes — the trigger's `.ds-picker-title` above and the option
+   row's `.ds-picker-item-title` below — are flex containers, so a trailing
+   `+N` pill or a "Recommended" badge can sit beside the name. But
+   `text-overflow` applies only to a block container, and a flex container's
+   bare text is an anonymous flex item the property cannot reach. Declared on
+   the box, as it was, the ellipsis was inert: a long design-system, prompt
+   template, platform, model or MCP-client name was clipped mid-glyph with
+   nothing to say it had been cut, and bilingual mode is where those names run
+   longest.
+
+   A real element gives the ellipsis somewhere to land, and it keeps the pill
+   visible while it does — the pill stays a sibling that never shrinks, rather
+   than becoming the tail of one run of inline text that the ellipsis would
+   eat first. */
+.ds-picker-title-text,
+.ds-picker-item-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ds-picker-extra-pill {
+  /* Never give up width to the name beside it: the pill is the count of the
+     items the name had to leave out, so it is the one part of the title that
+     stops making sense the moment it is truncated. */
+  flex: 0 0 auto;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -274,6 +301,9 @@
   white-space: nowrap;
 }
 .ds-picker-item-badge {
+  /* Same reasoning as `.ds-picker-extra-pill`: a status word ("Loading…",
+     "Recommended") is unreadable half-clipped, so the name yields first. */
+  flex: 0 0 auto;
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.06em;

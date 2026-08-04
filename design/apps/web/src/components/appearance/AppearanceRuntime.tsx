@@ -12,6 +12,7 @@ import { useLayoutEffect } from 'react';
 
 import { applyAppearancePreferencesToDocument } from '../../state/appearance';
 import { useAppearancePreferences } from './store';
+import { useAutoFit } from './useAutoFit';
 
 export function AppearanceRuntime() {
   const { preferences } = useAppearancePreferences();
@@ -23,6 +24,12 @@ export function AppearanceRuntime() {
   useLayoutEffect(() => {
     applyAppearancePreferencesToDocument(preferences);
   }, [preferences]);
+
+  // Auto-fit rides along here rather than in the editor, because a scale
+  // chosen by the window has to keep following the window after Settings
+  // is closed. It writes back through the same store, so this component's
+  // own effect above is what applies the result.
+  useAutoFit(preferences.autoFit);
 
   return null;
 }

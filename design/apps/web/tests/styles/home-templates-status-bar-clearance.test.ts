@@ -13,6 +13,13 @@
 // from a second copy of `28px`. These assertions pin all three halves of that
 // arrangement together, because the bug is exactly what happens when one of
 // them drifts from the others.
+//
+// The pill also has to clear the strip itself. `bottom: 18px` is measured from
+// the bottom of the VIEWPORT, whose last 28px is the status bar, so the pill's
+// lower third was drawn on top of the strip's own segments — the same overlap
+// as the first, with the app's chrome underneath instead of the cards. Both
+// offsets now start at the strip's height, so the whole arrangement is
+// expressed in one token and one gap.
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -77,24 +84,51 @@ describe('the pinned templates hint has a reserved band to sit in', () => {
     // Anything other than a real reduction in the column's height leaves the
     // pill floating over scrolled content again — an end-of-document padding
     // would not, because content passes under a fixed element mid-scroll.
-    expect(declaration(reserved, 'margin-bottom')).toBe(
-      'max( 0px, calc(var(--home-templates-pill-band) - var(--od-status-bar-height, 28px)) )',
-    );
+    //
+    // The band is measured up from the TOP of the status bar, because the
+    // shell's grid already gives the strip a row of its own below this
+    // column. Subtracting the strip's height here a second time would hand
+    // back 28px of the reservation the pill needs.
+    expect(declaration(reserved, 'margin-bottom')).toBe('var(--home-templates-pill-band)');
   });
 
   it('reserves more than the pill actually occupies', () => {
     const band = pixels(declaration(reserved, '--home-templates-pill-band'));
-    const hintOffset = pixels(
-      declaration(block(pluginsHomeCss, 'button.home-templates-reveal__hint'), 'bottom'),
-    );
-    const collapseOffset = pixels(
-      declaration(block(pluginsHomeCss, 'button.home-templates-reveal__collapse'), 'bottom'),
-    );
+    const gap = pixels(declaration(reserved, '--home-templates-pill-gap'));
 
-    // Both pills sit at the same offset, and the band has to clear that
-    // offset plus the pill's own height (~30px) and the arrow's 4px bob.
-    expect(collapseOffset).toBe(hintOffset);
-    expect(band).toBeGreaterThanOrEqual(hintOffset + 34);
+    // The band has to clear the pill's gap above the strip plus the pill's
+    // own height (~30px) and the arrow's 4px bob.
+    expect(band).toBeGreaterThanOrEqual(gap + 34);
+  });
+
+  it('lifts both pills clear of the status bar itself', () => {
+    // Written as the token plus the gap rather than a resolved literal: the
+    // assertion has to read the text that is actually in the sheet, and a
+    // literal here would be the second copy of `28px` this whole arrangement
+    // exists to avoid.
+    const offset =
+      'calc( var(--od-status-bar-height, 28px) + var(--home-templates-pill-gap, 18px) )';
+
+    expect(
+      declaration(block(pluginsHomeCss, 'button.home-templates-reveal__hint'), 'bottom'),
+    ).toBe(offset);
+    expect(
+      declaration(block(pluginsHomeCss, 'button.home-templates-reveal__collapse'), 'bottom'),
+    ).toBe(offset);
+  });
+
+  it('declares the gap where the pinned pills can inherit it', () => {
+    // `position: fixed` changes where a box is painted, never where it
+    // inherits from — the pills are descendants of this column, so a custom
+    // property declared here reaches them. If the declaration ever moved to a
+    // selector that is not their ancestor, both pills would silently fall
+    // back to the 18px in their own `var()` and sit on the strip again.
+    expect(pluginsHomeCss).toContain('--home-templates-pill-gap: 18px;');
+    expect(
+      /\.entry-main--scroll:has\(\.home-templates-reveal\)\s*\{[^}]*--home-templates-pill-gap:/.test(
+        pluginsHomeCss,
+      ),
+    ).toBe(true);
   });
 
   it('reserves the band for the expanded gallery as well as the collapsed hint', () => {

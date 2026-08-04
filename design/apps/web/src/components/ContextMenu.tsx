@@ -66,11 +66,15 @@ export interface ContextMenuProps {
   readonly mac?: boolean;
 }
 
-const DEFAULT_WIDTH = 232;
+// Kept in step with `ContextMenu.module.css` by hand, because the estimate
+// below runs before the card has been laid out and so cannot measure it. The
+// numbers are the mockup's menu anatomy: a 260px card, 8px of inset on each
+// axis, and 44px rows.
+const DEFAULT_WIDTH = 260;
 const EDGE_PADDING = 8;
-const ITEM_HEIGHT = 32;
+const ITEM_HEIGHT = 44;
 const SEPARATOR_HEIGHT = 9;
-const MENU_PADDING = 10;
+const MENU_PADDING = 16;
 
 /**
  * Where the card goes.
@@ -203,14 +207,21 @@ export function ContextMenu({
             >
               {item.icon ? (
                 <span className={styles.icon} aria-hidden>
-                  <Icon name={item.icon} size={13} />
+                  <Icon name={item.icon} size={18} />
                 </span>
               ) : (
                 // A fixed gutter, not a placeholder glyph: the labels stay in
                 // one column whether or not every item has an icon.
                 <span className={styles.icon} aria-hidden />
               )}
-              <span className={styles.label}>{item.label}</span>
+              {/* The label truncates rather than wrapping, so the full text
+                  has to stay reachable somewhere. Screen readers already get
+                  it from the button's accessible name; `title` is the sighted
+                  equivalent, and bilingual mode is where a 260px card starts
+                  needing it. */}
+              <span className={styles.label} title={item.label}>
+                {item.label}
+              </span>
               {tokens ? (
                 <span className={styles.shortcut} aria-hidden="true">
                   {tokens.map((token, index) => (

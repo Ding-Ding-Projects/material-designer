@@ -204,6 +204,7 @@ import {
   resolveAccentColor,
   type AppearanceTypography,
 } from '../state/appearance';
+import { AppearanceControls } from './appearance/AppearanceControls';
 import { AppearanceRuntime } from './appearance/AppearanceRuntime';
 import { InfiniteColorPicker } from './appearance/InfiniteColorPicker';
 import { formatHex, parseColor, type Rgb, type Rgba } from './appearance/color';
@@ -8489,7 +8490,9 @@ function IntegrationsSection() {
             aria-expanded={pickerOpen}
           >
             <span className="ds-picker-meta">
-              <span className="ds-picker-title">{client.label}</span>
+              <span className="ds-picker-title">
+                <span className="ds-picker-title-text">{client.label}</span>
+              </span>
               <span className="ds-picker-sub">
                 {info ? client.buildMethod(info) : ''}
               </span>
@@ -8519,7 +8522,9 @@ function IntegrationsSection() {
                       }}
                     >
                       <span className="ds-picker-item-text">
-                        <span className="ds-picker-item-title">{c.label}</span>
+                        <span className="ds-picker-item-title">
+                          <span className="ds-picker-item-title-text">{c.label}</span>
+                        </span>
                         <span
                           style={{
                             fontSize: 11,
@@ -8797,6 +8802,10 @@ function AppearanceSection({
         preset.preferences.seed === preferences.seed &&
         preset.preferences.density === preferences.density &&
         preset.preferences.uiScale === preferences.uiScale &&
+        // Auto-fit is part of the look a preset restores: a preset that
+        // pins 90% is not the same appearance as one whose scale happens
+        // to read 90% because the window is that wide right now.
+        preset.preferences.autoFit === preferences.autoFit &&
         sameTypography(preset.preferences.typography, preferences.typography),
     )?.id ?? null;
 
@@ -8914,6 +8923,12 @@ function AppearanceSection({
           ))}
         </div>
       </div>
+      {/* Seed, sizing and typography. They live in their own component
+          beside the store they write to, rather than as another thousand
+          lines here — and unlike theme and accent above, they take effect
+          on the live UI immediately and persist themselves, so they are
+          outside this dialog's draft / Save / revert cycle entirely. */}
+      <AppearanceControls />
     </section>
   );
 }

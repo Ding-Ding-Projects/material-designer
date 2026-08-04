@@ -290,18 +290,53 @@
   z-index: 100;
   animation: fade-in 160ms ease-out;
 }
+/* The dialog card every modal in the product is actually wearing.
+
+   `Dialog` from the shared component package puts BOTH its CSS-module class
+   and this global `modal` class on the same element, and the module writes its
+   card rule inside `:where()` — zero specificity. So for every declaration the
+   two rules share, this one wins. The module and this block are therefore kept
+   saying the same thing: a reader who changes one and not the other changes
+   nothing, which is a worse outcome than either value.
+
+   Material Design 3 draws a dialog at the extra-large corner on
+   `surface-container-high`. The hairline is this port's addition rather than
+   M3's: the tone step from the scrim-dimmed page to the card is small in dark
+   mode, and an overlay that has to be told apart from what is behind it by a
+   shadow alone is the transparent-overlay failure wearing a different hat.
+
+   The height bound is the load-bearing part. There was none: the card grew to
+   its content, the backdrop centred it, and anything past the viewport was
+   painted off both the top and the bottom of the screen with no scrollbar and
+   no way to reach it — a confirmation dialog can lose its own buttons that
+   way. It is bounded to the viewport now and scrolls inside that bound. */
 .modal {
-  background: var(--bg-elevated);
+  background: var(--md-sys-color-surface-container-high);
   -webkit-app-region: no-drag;
-  border-radius: var(--radius-lg);
-  padding: 22px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  padding: 24px;
   width: 520px;
   max-width: calc(100vw - 32px);
+  /* `dvh` second so it wins where it is understood: on a host whose viewport
+     shrinks under an on-screen keyboard, `vh` keeps the old taller number and
+     the card stays partly off-screen. */
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  /* A dialog that has run out of room scrolls itself, not the page behind it. */
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--shadow-lg);
   animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .modal-backdrop {
+    animation: none;
+  }
 }
 .modal h2 { margin: 0; font-size: 18px; letter-spacing: -0.01em; font-weight: 600; }
 .modal label {
@@ -1887,18 +1922,36 @@
   text-align: center;
   border-radius: var(--radius-sm);
 }
+/* The readout wraps rather than truncates, and both halves of that are
+   deliberate.
+
+   `text-overflow: ellipsis` was declared here, on a flex container, where it
+   does nothing: the property applies only to a block container. Neither child
+   clipped either, so `overflow: hidden` against a 260px cap simply cut the
+   value mid-glyph. Two of the three states this renders are whole sentences —
+   `settings.orbit.nextRunScheduledAfterSave` and
+   `settings.orbit.pausedManualOnly` — and in bilingual mode they carry their
+   Cantonese half as well, so the cut landed inside real copy, not inside a
+   timestamp with a predictable tail.
+
+   Wrapping is the honest fix. The 260px budget stays — it is what keeps the
+   row's description column from being squeezed — and a second line costs
+   nothing in a column that is already taller than one line. Nothing is cut, so
+   nothing needs an ellipsis to admit that it was. */
 .orbit-next-run {
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: baseline;
-  gap: 6px;
+  gap: 2px 6px;
   font-size: 11.5px;
   color: var(--text-muted);
   max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: right;
 }
+/* The label names what the value is, so it never yields room to it. */
 .orbit-next-run-label {
+  flex: 0 0 auto;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 10.5px;
@@ -1906,6 +1959,7 @@
   color: var(--text-soft);
 }
 .orbit-next-run-value {
+  min-width: 0;
   color: var(--text);
   font-weight: 600;
   font-variant-numeric: tabular-nums;

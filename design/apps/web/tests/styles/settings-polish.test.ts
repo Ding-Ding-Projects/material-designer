@@ -82,4 +82,25 @@ describe('settings polish CSS', () => {
     expect(ruleValue(actions, 'flex')).toBe('0 0 auto');
     expect(ruleValue(actions, 'flex-wrap')).toBe('nowrap');
   });
+
+  it('wraps the automation next-run readout instead of cutting a sentence', () => {
+    // Two of the three states this renders are whole sentences, not a
+    // timestamp — "scheduled after you save" and "paused, manual only" — and
+    // bilingual mode carries their Cantonese half as well. The readout used
+    // to declare `text-overflow: ellipsis` on a flex container, where the
+    // property does nothing, so `overflow: hidden` against the 260px budget
+    // simply cut the copy mid-glyph. A second line costs nothing here, so
+    // there is nothing left to truncate and nothing left to ellipsise.
+    const readout = cssBlock(mentionHomeCss, '.orbit-next-run');
+    const label = cssBlock(mentionHomeCss, '.orbit-next-run-label');
+
+    expect(ruleValue(readout, 'flex-wrap')).toBe('wrap');
+    expect(ruleValue(readout, 'max-width')).toBe('260px');
+    expect(readout).not.toContain('text-overflow');
+    expect(readout).not.toContain('overflow: hidden');
+    expect(readout).not.toContain('white-space: nowrap');
+    // The label names what the value is, so it is never the half that wraps
+    // away from it.
+    expect(ruleValue(label, 'flex')).toBe('0 0 auto');
+  });
 });

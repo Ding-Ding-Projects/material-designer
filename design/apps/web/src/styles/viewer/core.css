@@ -1709,10 +1709,21 @@
   color: var(--text-muted);
   font-weight: 500;
 }
+/* A block container, because that is what `text-overflow` needs.
+
+   This box was `inline-flex` so the optional colour swatch could sit beside
+   the value with a gap — but a flex container's bare text is an anonymous
+   flex item, and `text-overflow` cannot reach one. The ellipsis declared here
+   was therefore inert, and an annotation value long enough to matter (a font
+   stack, a computed CSS value) was clipped mid-glyph against the second grid
+   track's `minmax(0, 1fr)` with nothing to say it had been cut.
+
+   The swatch keeps its place by becoming an inline-block with a margin
+   instead of a flex item with a gap, so it still leads the line and the
+   ellipsis lands on the value behind it. The full value is on the element's
+   `title` either way. */
 .annotation-style-row strong {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: block;
   min-width: 0;
   color: var(--text);
   font-weight: 700;
@@ -1721,7 +1732,11 @@
   white-space: nowrap;
 }
 .annotation-style-row strong i {
-  flex: 0 0 auto;
+  display: inline-block;
+  /* Optically centred on the 13px/1.35 line the value sits on, which is what
+     the flex container's `align-items: center` used to do for it. */
+  vertical-align: -2px;
+  margin-right: 6px;
   width: 14px;
   height: 14px;
   border: 1px solid var(--border);

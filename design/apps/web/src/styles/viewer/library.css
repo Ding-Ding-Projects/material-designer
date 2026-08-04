@@ -356,25 +356,48 @@
 /* Slash-command popover in the chat composer */
 
 /* Slash-command popover — FLOATING (positioned by CaretFloatingLayer). */
+/* The command rows are DIRECT children of this box — the popover is the
+   `listbox` and each row is an `option`, so there is no wrapper to hand the
+   scrolling to. With `overflow: hidden` that made the height cap a silent
+   delete: past `--cfl-max-h` the remaining commands were painted nowhere, with
+   no scrollbar to say anything was missing and no keyboard route to them
+   either. The cap is right — the layer measures the space actually available
+   above or below the caret — so the box scrolls inside it instead.
+
+   `overflow: hidden auto` keeps the horizontal clip that stops a long command
+   description widening the popover, and both axes being non-`visible` is what
+   keeps the border radius clipping its corners. */
 .slash-popover {
   display: flex;
   flex-direction: column;
   width: 100%;
   max-height: var(--cfl-max-h, 320px);
-  overflow: hidden;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  padding: 5px;
+  /* No padding on the block axis: the scrollport is the padding box, so a
+     top padding would leave a 5px band above the sticky head for rows to
+     scroll through. The head carries that 5px itself instead. */
+  padding: 0 5px 5px;
   /* removed: position, bottom, left, right, margin-bottom, fixed max-height, z-index */
 }
+/* Pinned so the popover still says what it is once the list is scrolled, and
+   opaque so the rows pass behind it rather than through it. */
 .slash-popover-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: 0 0 auto;
+  background: var(--bg-panel);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 10px;
-  padding: 5px 7px 7px;
+  padding: 10px 7px 7px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 4px;
   font-size: 10px;
@@ -395,6 +418,10 @@
   align-items: flex-start;
   gap: 9px;
   width: 100%;
+  /* A flex item shrinks by default, so with the popover now scrolling, an
+     overflowing list would squash every row below its `min-height` instead of
+     producing a scrollbar. `flex: 0 0 auto` is what makes the overflow real. */
+  flex: 0 0 auto;
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
@@ -939,20 +966,39 @@
   gap: 8px;
 }
 
+/* ---------- Design-system collection card (M3 outlined card) ----------
+   Material Design 3 draws this as an outlined card: an `outline-variant`
+   hairline over `surface-container-low` at corner-l, resting flat, lifting to
+   elevation 2 on hover with the contract's spring curve. The card previously
+   declared a border and a radius but no fill at all, so it inherited whatever
+   was behind it and the "card" was really just an outline.
+
+   `.highlighted` is the deep-link target treatment (scroll-to a specific
+   design system) and stays a primary ring rather than becoming a selected
+   state — nothing is selected, one card is being pointed at. */
 .library-ds-card {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   overflow: hidden;
-  padding: 10px;
+  padding: 14px;
   gap: 10px;
+  box-shadow: none;
   transition:
-    border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    background 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    background 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
+}
+
+.library-ds-card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
 }
 
 .library-ds-card.disabled {
@@ -960,9 +1006,22 @@
 }
 
 .library-ds-card.highlighted {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 6%, var(--bg-panel));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-primary) 6%,
+    var(--md-sys-color-surface-container-low)
+  );
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .library-ds-card {
+    transition: none;
+  }
+  .library-ds-card:hover {
+    transform: none;
+  }
 }
 
 .library-ds-card-content {
@@ -976,13 +1035,16 @@
 }
 
 .library-ds-card-content:hover {
-  background: var(--bg-hover);
+  background: var(--ripple);
 }
 
+/* The card itself is a plain container; this is its one focusable region, so
+   the ring has to be unmistakable rather than the old soft tint. */
 .library-ds-card-content:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--selected-soft);
-  background: var(--bg-hover);
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 0;
+  box-shadow: none;
+  background: var(--ripple);
 }
 
 /* Hover-reveal pencil to rename an editable (user-created) design system in
@@ -1032,14 +1094,16 @@
 }
 
 .library-ds-title {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+  color: var(--md-sys-color-on-surface);
   margin-bottom: 2px;
 }
 
 .library-ds-summary {
-  font-size: 11px;
-  color: var(--text-muted);
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;

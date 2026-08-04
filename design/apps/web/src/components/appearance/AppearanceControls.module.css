@@ -1,0 +1,238 @@
+/* The sizing, seed and typography cards.
+
+   Every spacing value here is a density token rather than a number, so the
+   editor is the first thing that demonstrates the control the user is
+   about to move: switching to compact visibly tightens the card the switch
+   itself lives in. The fallbacks are the default-density values, so the
+   layout is intact if this module is ever rendered without the token
+   sheet — a test environment that loads the component but not
+   `md3-tokens.css`, for instance.
+
+   Colours are M3 roles throughout with exactly one exception, the seed
+   swatches: those ARE the palette data the control exists to show, and a
+   swatch painted in a role would show the seed that is already active
+   rather than the one it offers. */
+
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap, 16px);
+}
+
+.card {
+  padding: var(--pad, 24px);
+  border-radius: calc(var(--card, 14px) + 10px);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.cardTitle {
+  margin: 0 0 4px;
+  font-size: var(--md-sys-typescale-title-medium-size, 16px);
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.cardHint {
+  margin: 0 0 var(--gap, 16px);
+  font-size: var(--md-sys-typescale-body-small-size, 12px);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* One labelled control. The label column is fixed so the sliders below it
+   line up with each other; it wraps to its own line on narrow widths
+   rather than squeezing the control into nothing. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap, 16px);
+  flex-wrap: wrap;
+  min-height: var(--control-h, 40px);
+}
+
+.row + .row {
+  margin-top: var(--sp, 8px);
+}
+
+.rowLabel {
+  flex: 0 0 auto;
+  width: 132px;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.rowControl {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp, 8px);
+}
+
+.slider {
+  flex: 1 1 auto;
+  min-width: 120px;
+  width: auto;
+  accent-color: var(--md-sys-color-primary);
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 3px;
+}
+
+/* Auto-fit disables the scale slider rather than removing it, so it still
+   has to read as "showing you the value, not taking one". */
+.slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tabular so the number does not shuffle its neighbours while dragging. */
+.readout {
+  flex: 0 0 auto;
+  min-width: 62px;
+  text-align: right;
+  font-family: var(--mono);
+  font-size: var(--md-sys-typescale-body-small-size, 12px);
+  font-variant-numeric: tabular-nums;
+  color: var(--md-sys-color-on-surface);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp, 8px);
+  margin-top: var(--gap, 16px);
+  min-height: var(--control-h, 40px);
+  cursor: pointer;
+}
+
+.switchInput {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--md-sys-color-primary);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.switchLabel {
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  color: var(--md-sys-color-on-surface);
+}
+
+.note {
+  margin: var(--sp, 8px) 0 0;
+  font-size: var(--md-sys-typescale-body-small-size, 12px);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---- Seed swatches -------------------------------------------------- */
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp, 8px);
+}
+
+.swatch {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  /* Transparent rather than absent, so selecting one does not move the
+     three beside it by three pixels. */
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+
+.swatch[aria-checked='true'] {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+/* ---- Typeface list --------------------------------------------------- */
+
+.faces {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp, 8px);
+}
+
+.face {
+  display: flex;
+  align-items: center;
+  gap: var(--gap, 16px);
+  flex-wrap: wrap;
+  width: 100%;
+  min-height: var(--control-h, 40px);
+  padding: var(--sp, 8px) var(--control-pad-x, 16px);
+  text-align: left;
+  justify-content: flex-start;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+  cursor: pointer;
+}
+
+.face[aria-checked='true'] {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.faceName {
+  flex: 0 0 auto;
+  width: 132px;
+  min-width: 0;
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  font-weight: 500;
+}
+
+/* The sample renders in the face being offered, which is the whole point
+   of showing it: what is in the list is what the interface becomes. */
+.faceSample {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 15px;
+}
+
+.faceStatus {
+  flex: 0 0 auto;
+  font-size: var(--md-sys-typescale-body-small-size, 12px);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ---- Properties this platform cannot honour -------------------------- */
+
+.unsupported {
+  margin-top: var(--gap, 16px);
+  padding-top: var(--gap, 16px);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.reason {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-small-size, 12px);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}

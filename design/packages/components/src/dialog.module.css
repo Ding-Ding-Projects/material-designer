@@ -12,13 +12,33 @@
   animation: dialog-backdrop-fade-in 160ms ease-out;
 }
 
+/* The dialog card.
+   Kept deliberately identical to the global `.modal` rule in the web app's
+   `styles/workspace/mention-home.css`, because `Dialog` puts both classes on
+   this same element and `:where()` here has zero specificity — so for every
+   declaration the two share, the global one wins. Two rules that disagree
+   would mean editing this file changed nothing on screen.
+   Material Design 3 anatomy: extra-large corner, `surface-container-high`,
+   elevation 3. The 1px hairline is this port's addition, so the card is told
+   apart from the dimmed page behind it by something other than a shadow.
+   The height bound is the part that was missing entirely. Without it the card
+   grew to its content and the centring backdrop pushed the overflow off both
+   the top and the bottom of the screen — unreachable, with no scrollbar to say
+   so. A dialog can lose its own confirm button that way. */
 :where(.dialog) {
-  background: var(--bg-elevated);
+  background: var(--md-sys-color-surface-container-high);
   -webkit-app-region: no-drag;
-  border-radius: var(--radius-lg);
-  padding: 22px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  padding: 24px;
   width: 520px;
   max-width: calc(100vw - 32px);
+  /* `dvh` second so it wins where it is understood; `vh` is the fallback for
+     hosts that do not know the dynamic unit. */
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -26,9 +46,30 @@
   animation: dialog-panel-pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
 }
 
-.dialogSectioned {
+/* A sectioned dialog has a padded header and a footer with its own rule above
+   it, and both are meant to stay put. So the scroll moves off the card and
+   onto the body: the card clips (which is also what keeps the corner radius
+   cutting the header's own background), and the body takes the space left
+   over. `min-height: 0` is what actually lets it shrink — a column flex item
+   defaults to `min-height: auto`, which refuses to go below its content and
+   would push the footer off the bottom instead of scrolling.
+
+   Written as the compound `.dialog.dialogSectioned` rather than the single
+   class it used to be. Both classes are always on this element together, so
+   the compound selects exactly the same thing — but at two classes it outranks
+   the global `.modal` rule described above instead of tying with it, and a tie
+   would be settled by whichever stylesheet the bundler happened to emit last.
+   A layout decision should not depend on that. */
+.dialog.dialogSectioned {
   padding: 0;
   gap: 0;
+  overflow: hidden;
+}
+
+.dialog.dialogSectioned .body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .header {
@@ -76,6 +117,13 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  :where(.dialog) {
+    animation: none;
+  }
 }
 
 @keyframes dialog-backdrop-fade-in {

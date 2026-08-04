@@ -112,13 +112,30 @@
   /* ---- Density -------------------------------------------------------
      Applied through `data-density` on the app root. There is no
      `[data-density="default"]` selector — "default" is this state.
-     `--sp` is declared by the contract but read by nothing; it is kept so
-     the scale is complete rather than because anything consumes it. */
+
+     The contract declared five variables and drove none of them: `--gap`
+     had a single reader and `--sp`, `--pad`, `--row` and `--card` had
+     none, so the density control changed five numbers nothing consulted
+     and the UI was identical at all three levels. They are driven now
+     rather than dropped, and `--sp` moves per level with the rest — a
+     base spacing unit that stays 8px while the gap built on it halves is
+     a scale that disagrees with itself.
+
+     `--control-h`, `--control-h-sm` and `--control-pad-x` are additions,
+     because none of the five described a control's own height: `--row` is
+     a list row at 48px and a button is not a list row. Their `:root`
+     values restate exactly what `styles/primitives.css` already hard-coded
+     for `.btn`, the text inputs and `.od-select-trigger`, so an install at
+     default density measures the same before and after this existed, and
+     only compact and comfortable move anything. */
   --sp: 8px;
   --gap: 16px;
   --pad: 24px;
   --row: 48px;
   --card: 14px;
+  --control-h: 40px;
+  --control-h-sm: 36px;
+  --control-pad-x: 16px;
 
   /* ---- UI scale ------------------------------------------------------
      The mockup exposes a 50–200% control in five-point steps and emits it
@@ -403,19 +420,35 @@
 }
 
 /* ---- Density ---------------------------------------------------------
-   Only four of the five variables move per level; `--sp` is constant. */
+   Every variable moves per level, `--sp` included — see the `:root` block
+   for why it no longer sits still while the gap derived from it halves.
+
+   The control heights are deliberately gentler than the row height: a
+   48 → 40 → 56 row is a third of its own height apart, and applying that
+   ratio to a button gives a 34px compact control with a 12px label in it,
+   which stops being compact and starts being unreadable. 40 → 34 → 46
+   keeps every control above the 32px minimum target the accessibility
+   rules hold the rest of the product to. */
 [data-density="compact"] {
+  --sp: 6px;
   --gap: 10px;
   --pad: 16px;
   --row: 40px;
   --card: 12px;
+  --control-h: 34px;
+  --control-h-sm: 32px;
+  --control-pad-x: 12px;
 }
 
 [data-density="comfortable"] {
+  --sp: 10px;
   --gap: 20px;
   --pad: 32px;
   --row: 56px;
   --card: 18px;
+  --control-h: 46px;
+  --control-h-sm: 42px;
+  --control-pad-x: 20px;
 }
 
 /* ---- System mode -----------------------------------------------------

@@ -345,13 +345,27 @@
 }
 /* Base preview block — reused both as the plugins-flyout side column and
    inside the design-toolbox hover-detail panel, so it stays layout-neutral
-   here; the column divider lives in the plugin-pane scope below. */
+   here; the column divider lives in the plugin-pane scope below.
+
+   The flyout that hosts this column has a hard height (`min(320px, …)`) and
+   clips, and this column had `overflow: hidden` of its own — so a skill with
+   several trigger chips pushed its example block past the bottom and it was
+   simply not drawn, with nothing on screen to say a preview had been cut
+   short. The column scrolls inside the flyout's height now. `min-height: 0`
+   is what lets it: as a column flex item it would otherwise refuse to shrink
+   below its content and would grow the flyout instead of scrolling.
+
+   The horizontal clip is kept — a long plugin name should still be truncated
+   by the column rather than widen the flyout. */
 .plus-menu__preview {
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 7px;
-  overflow: hidden;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 .plus-menu__plugin-pane .plus-menu__preview {
   flex: 1 1 auto;

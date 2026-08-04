@@ -1254,7 +1254,9 @@ function PlatformPicker({
       >
         <span className="ds-picker-meta">
           <span className="ds-picker-title">
-            {primary ? t(primary.labelKey) : 'Pick a platform'}
+            <span className="ds-picker-title-text">
+              {primary ? t(primary.labelKey) : 'Pick a platform'}
+            </span>
             {extraCount > 0 ? (
               <span className="ds-picker-extra-pill">+{extraCount}</span>
             ) : null}
@@ -1288,7 +1290,11 @@ function PlatformPicker({
                   onClick={() => togglePlatform(option.value)}
                 >
                   <span className="ds-picker-item-text">
-                    <span className="ds-picker-item-title">{t(option.labelKey)}</span>
+                    <span className="ds-picker-item-title">
+                      <span className="ds-picker-item-title-text">
+                        {t(option.labelKey)}
+                      </span>
+                    </span>
                     <span className="ds-picker-item-sub">{t(option.hintKey)}</span>
                   </span>
                   <span
@@ -1906,7 +1912,9 @@ function PromptTemplatePicker({
       >
         <PromptTemplateAvatar summary={value?.summary ?? null} />
         <span className="ds-picker-meta">
-          <span className="ds-picker-title">{triggerTitle}</span>
+          <span className="ds-picker-title">
+            <span className="ds-picker-title-text">{triggerTitle}</span>
+          </span>
           <span className="ds-picker-sub">{triggerSub}</span>
         </span>
         <Icon
@@ -1941,7 +1949,9 @@ function PromptTemplatePicker({
               </span>
               <span className="ds-picker-item-text">
                 <span className="ds-picker-item-title">
-                  {t('newproj.promptTemplateNoneTitle')}
+                  <span className="ds-picker-item-title-text">
+                    {t('newproj.promptTemplateNoneTitle')}
+                  </span>
                 </span>
                 <span className="ds-picker-item-sub">
                   {t('newproj.promptTemplateNoneSub')}
@@ -1972,7 +1982,7 @@ function PromptTemplatePicker({
                     </span>
                     <span className="ds-picker-item-text">
                       <span className="ds-picker-item-title">
-                        {tpl.title}
+                        <span className="ds-picker-item-title-text">{tpl.title}</span>
                         {loadingId === tpl.id ? (
                           <span className="ds-picker-item-badge">
                             {t('common.loading')}
@@ -2361,7 +2371,9 @@ function DesignSystemPicker({
         <DesignSystemAvatar system={primary} extraCount={extraCount} />
         <span className="ds-picker-meta">
           <span className="ds-picker-title">
-            {primary ? primary.title : t('newproj.dsNoneFreeform')}
+            <span className="ds-picker-title-text">
+              {primary ? primary.title : t('newproj.dsNoneFreeform')}
+            </span>
             {extraCount > 0 ? (
               <span className="ds-picker-extra-pill">+{extraCount}</span>
             ) : null}
@@ -2552,7 +2564,7 @@ function DsPickerItem({
       <span className="ds-picker-item-avatar">{avatar}</span>
       <span className="ds-picker-item-text">
         <span className="ds-picker-item-title">
-          {title}
+          <span className="ds-picker-item-title-text">{title}</span>
           {badge ? <span className="ds-picker-item-badge">{badge}</span> : null}
         </span>
         <span className="ds-picker-item-sub">{subtitle}</span>
@@ -2917,7 +2929,9 @@ function MediaModelCards({
         aria-expanded={open}
       >
         <span className="ds-picker-meta">
-          <span className="ds-picker-title">{triggerTitle}</span>
+          <span className="ds-picker-title">
+            <span className="ds-picker-title-text">{triggerTitle}</span>
+          </span>
           <span className="ds-picker-sub">{triggerSub}</span>
         </span>
         <Icon
@@ -2969,7 +2983,9 @@ function MediaModelCards({
                       >
                         <span className="ds-picker-item-text">
                           <span className="ds-picker-item-title">
-                            {model.label}
+                            <span className="ds-picker-item-title-text">
+                              {model.label}
+                            </span>
                             {model.default ? (
                               <span className="ds-picker-item-badge">
                                 {t('newproj.modelRecommended')}

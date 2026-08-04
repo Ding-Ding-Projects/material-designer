@@ -63,9 +63,11 @@
   color: var(--text-soft);
   pointer-events: none;
 }
+/* The toolbar's controls share the segmented button's 40dp height, so the row
+   sits on one baseline instead of stepping between 36 and 40. */
 .search {
   width: 100%;
-  height: 36px;
+  height: 40px;
   padding: 0 12px 0 34px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -80,7 +82,7 @@
 .select {
   width: auto;
   flex: 0 0 auto;
-  height: 36px;
+  height: 40px;
   padding: 0 32px 0 12px;
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -96,39 +98,67 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  height: 40px;
   padding: 0 13px;
   white-space: nowrap;
 }
 
-/* View-mode segmented control (Grid / Timeline). */
+/* View-mode segmented control (Grid / Timeline) — M3 segmented button. One
+   fully-rounded `outline` container whose segments are divided by the same
+   hairline, with the selected segment on `secondary-container`. This is the
+   same anatomy the projects collection's grid/list switch uses
+   (`.subtab-pill` in styles/workspace/drawer.css); the two controls do the
+   same job on two collections and must not look like different widgets.
+
+   Focus is an INSET ring because `overflow: hidden` clips the outer radius —
+   an offset ring would be cut away on the first and last segment. */
 .viewToggle {
   flex: 0 0 auto;
   display: inline-flex;
-  height: 36px;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--bg-panel);
+  align-items: stretch;
+  height: 40px;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
 }
 .viewToggleBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 0;
   background: none;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   cursor: pointer;
-  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1), color 140ms;
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
+}
+.viewToggleBtn + .viewToggleBtn {
+  border-left: 1px solid var(--md-sys-color-outline);
+}
+.viewToggleBtn:hover:not([data-active='true']) {
+  background: var(--ripple);
 }
 .viewToggleBtn[data-active='true'] {
-  background: var(--bg-subtle);
-  color: var(--text);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+.viewToggleBtn:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .viewToggleBtn {
+    transition: none;
+  }
 }
 
 /* Upload — primary action, anchors the right end of the toolbar. */
@@ -137,7 +167,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 36px;
+  height: 40px;
   padding: 0 15px;
   white-space: nowrap;
 }
@@ -227,15 +257,22 @@
   gap: 16px;
 }
 
+/* Library asset card — M3 outlined card. An `outline-variant` hairline over
+   `surface-container-low` at corner-l, flat at rest, lifting to elevation 2 on
+   hover with the contract's spring curve. */
 .card {
   margin: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   overflow: hidden;
-  background: var(--bg-panel);
-  transition: box-shadow 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: none;
+  transition:
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
   /* Skip layout + paint of cards scrolled off-screen so a large grid stays
      responsive. The reserved intrinsic size keeps the scrollbar and the
      box-select rect snapshot stable; `auto` lets each card remember its real
@@ -247,11 +284,23 @@
   contain-intrinsic-size: auto 248px;
 }
 .card:hover {
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
 }
+/* Selection is a real state here (bulk actions act on it), so it keeps a
+   two-pixel primary ring rather than borrowing the hover elevation. */
 .card[data-selected='true'] {
-  border-color: var(--selected);
-  box-shadow: 0 0 0 2px var(--selected);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
 }
 
 /* Transparent fill-button over the thumbnail; opens the preview on click. */
@@ -269,7 +318,9 @@
 .thumb {
   position: relative;
   aspect-ratio: 4 / 3;
-  background: var(--bg-subtle);
+  /* Tonal cover band — M3 gives a media card's cover its own container tone so
+     the card reads as a cover over a supporting-text region, not one flat box. */
+  background: var(--md-sys-color-surface-container-highest);
   display: flex;
   align-items: center;
   justify-content: center;

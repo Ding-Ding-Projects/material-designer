@@ -4878,6 +4878,55 @@ export interface Dict {
   'appearance.preset.readable': string;
   'appearance.presets': string;
 
+  // The runtime appearance controls: seed, sizing and typography.
+  //
+  // The four seed names and the three density levels are deliberately NOT
+  // here. The seeds reuse `appearance.preset.*` above, because the four
+  // colour presets are named after exactly these four seeds; the density
+  // levels reuse `statusBar.density*`, because the status bar was already
+  // naming them. Two key sets for one word is two places to translate it
+  // differently.
+  'appearance.seedLabel': string;
+  'appearance.seedHint': string;
+  'appearance.sizing': string;
+  'appearance.sizingHint': string;
+  'appearance.uiScaleLabel': string;
+  'appearance.densityLabel': string;
+  'appearance.autoFit': string;
+  'appearance.autoFitHint': string;
+  'appearance.typography': string;
+  'appearance.typographyHint': string;
+  'appearance.fontFamily': string;
+  'appearance.font.default': string;
+  'appearance.font.system': string;
+  'appearance.font.grotesque': string;
+  'appearance.font.humanist': string;
+  'appearance.font.serif': string;
+  'appearance.font.mono': string;
+  // Three answers, never two: "cannot tell" is its own state because
+  // `isFaceAvailable` returns null where `document.fonts` is absent, and
+  // guessing either way there would be a claim about the user's machine
+  // that the app cannot support.
+  'appearance.fontInstalled': string;
+  'appearance.fontNotInstalled': string;
+  'appearance.fontUnknown': string;
+  'appearance.fontSize': string;
+  'appearance.fontWeight': string;
+  'appearance.lineHeight': string;
+  'appearance.letterSpacing': string;
+  // Properties this platform cannot honour. They keep their control and
+  // their saved value; these strings are what turns a dead control into an
+  // explanation. See `components/appearance/typography.ts`.
+  'appearance.opticalSize': string;
+  'appearance.grade': string;
+  'appearance.smallCaps': string;
+  'appearance.glow': string;
+  'appearance.unsupportedBadge': string;
+  'appearance.unsupportedNoVariableFont': string;
+  'appearance.unsupportedCjkUnsafe': string;
+  'appearance.unsupportedContrastUnsafe': string;
+  'appearance.reset': string;
+
   // The optional spoken narrator: its settings panel, the three language
   // choices (reached through `LANGUAGE_LABEL`), and the line the "speak a
   // sample" button says. `{voice}` is the platform voice actually chosen.

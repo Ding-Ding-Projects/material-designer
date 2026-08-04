@@ -386,75 +386,145 @@
   }
 }
 
-/* Recent / Your designs segmented pill */
+/* ---------- Segmented button (M3) ----------
+   The Recent/Yours filter and the grid/kanban view switch on the projects
+   collection, the Pets source tabs, and the routines kind tabs. Material
+   Design 3 draws a single-select segmented button as ONE fully-rounded
+   outlined container whose segments are divided by the same 1dp `outline`
+   hairline — not as a tray of separate inner pills with a raised "active" one,
+   which is the pre-M3 shape this replaces. The selected segment carries a
+   `secondary-container` fill and the unselected ones stay transparent with an
+   `on-surface-variant` label, exactly as the mockup's Grid/List control does.
+
+   `overflow: hidden` is what makes the outer radius clip the end segments, so
+   focus has to be an INSET ring: an `outline-offset: 2px` ring would be
+   clipped away on the first and last segment and the control would look
+   unfocusable to a keyboard user on precisely the two segments most reachable
+   by Tab. */
 .subtab-pill {
   display: inline-flex;
-  padding: 3px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  gap: 4px;
+  align-items: stretch;
+  height: 40px;
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
   max-width: 100%;
+  overflow: hidden;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .subtab-pill::-webkit-scrollbar { display: none; }
 .subtab-pill button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 0 16px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 5px 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 500;
+  border-radius: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   white-space: nowrap;
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
 }
-.subtab-pill button:hover:not(.active) { background: var(--bg-muted); border-color: transparent; color: var(--text); }
+/* The divider belongs to the segment on its left edge, so the first segment
+   has none and the container's own hairline draws the outer ends. */
+.subtab-pill button + button {
+  border-left: 1px solid var(--md-sys-color-outline);
+}
+.subtab-pill button:hover:not(.active) {
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
+}
 .subtab-pill button.active {
-  background: var(--bg-panel);
-  color: var(--text);
-  box-shadow: var(--shadow-xs);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
 }
-/* Icon-only variant: any pill button whose sole child is an SVG icon.
-   Center the glyph via inline-flex (removes text line-height drift) and
-   use padding that matches the text variant's overall height so both
-   sub-pills align on the same baseline in the toolbar. */
+.subtab-pill button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+/* Icon-only variant: any segment whose sole child is an SVG icon (the
+   grid/kanban switch). It keeps the segment's full height and only narrows
+   the inline padding, so both switches in the toolbar share one baseline. */
 .subtab-pill button:has(> svg:only-child) {
-  padding: 5px 8px;
+  padding: 0 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 0;
 }
+@media (prefers-reduced-motion: reduce) {
+  .subtab-pill button {
+    transition: none;
+  }
+}
 
-/* Designs grid */
+/* ---------- Designs grid → M3 outlined cards ----------
+   The projects collection. Material Design 3 draws these as outlined cards:
+   an `outline-variant` hairline over `surface-container-low` at corner-l, no
+   resting elevation, and a lift to elevation 2 on hover. The lift uses the
+   contract's spring curve (which overshoots, so it needs its full period)
+   while colour and elevation stay on the house ease-out. */
 .design-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
 .design-card {
   position: relative;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   padding: 0;
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), transform 120ms var(--ease-out);
+  box-shadow: none;
+  transition:
+    background-color 220ms var(--ease-out),
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   min-height: 168px;
 }
-.design-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+.design-card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-3px);
+}
+.design-card:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .design-card {
+    transition: none;
+  }
+  .design-card:hover {
+    transform: none;
+  }
+}
+/* Tonal cover band. M3 gives a media card's cover its own container tone
+   rather than the page fill, so the card reads as two stacked regions. */
 .design-card-thumb {
   flex: 1;
-  min-height: 100px;
+  min-height: 132px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-subtle);
-  color: var(--text-faint);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface-variant);
   font-size: 38px;
   position: relative;
 }
@@ -482,29 +552,34 @@
   margin-top: -52px;
   margin-left: -26px;
 }
+/* Supporting-text region. The mockup runs the card's own fill straight
+   through under the cover with no divider, so the hairline goes and the block
+   inherits the card surface instead of re-declaring the page panel. */
 .design-card-meta-block {
-  padding: 10px 12px 12px;
+  padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  border-top: 1px solid var(--border-soft);
-  background: var(--bg-panel);
+  gap: 6px;
+  border-top: 0;
+  background: transparent;
 }
 .design-card-name {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  font-size: var(--md-sys-typescale-title-small-size);
+  line-height: var(--md-sys-typescale-title-small-line-height);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-strong);
+  color: var(--md-sys-color-on-surface);
 }
 .design-card-meta {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 11.5px;
-  color: var(--text-muted);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -656,48 +731,62 @@
   border-color: var(--accent);
   color: #fff;
 }
+/* Selection is a real state (bulk actions act on it), so it keeps a primary
+   ring rather than borrowing the hover elevation — a selected card and a
+   hovered card must not look the same. */
 .design-card.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 32%, transparent);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 32%, transparent);
 }
 .design-card.select-mode { cursor: pointer; }
 
-/* Select-mode toolbar controls */
-.designs-select-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 12.5px;
-  cursor: pointer;
-}
-.designs-select-toggle:hover { border-color: var(--border-strong); }
+/* Projects toolbar controls — M3 outlined buttons at the same 40dp height as
+   the segmented buttons beside them. They used to be 31px against a 34px pill
+   tray, which was close enough to look accidental rather than deliberate;
+   against a 40dp segmented button it would read as a broken row. */
+.designs-select-toggle,
 .designs-new-project-button,
 .designs-refresh-button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  min-height: 31px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font-size: 12.5px;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   cursor: pointer;
-  transition: border-color 120ms var(--ease-out), opacity 120ms var(--ease-out);
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    border-color 200ms var(--md-sys-motion-emphasized),
+    opacity 200ms var(--md-sys-motion-emphasized);
 }
+/* The one primary action in the toolbar keeps primary ink — an M3 outlined
+   button in its emphasised form, not a second neutral button. */
 .designs-new-project-button {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  color: var(--accent);
+  color: var(--md-sys-color-primary);
 }
+.designs-select-toggle:hover,
 .designs-new-project-button:hover,
 .designs-refresh-button:hover:not(:disabled) {
-  border-color: var(--border-strong);
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+}
+.designs-select-toggle:focus-visible,
+.designs-new-project-button:focus-visible,
+.designs-refresh-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .designs-select-toggle,
+  .designs-new-project-button,
+  .designs-refresh-button {
+    transition: none;
+  }
 }
 .designs-refresh-button:disabled {
   cursor: progress;
@@ -1139,7 +1228,10 @@
    gallery surfaces so the three browse tabs feel uniform. */
 .ds-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* The mockup's design-system collection is a 300px auto-fill grid; the cards
+     carry a swatch strip, a title, a two-line summary and an enable switch, so
+     the wider track is what keeps the summary from clamping at one line. */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 .ds-card {

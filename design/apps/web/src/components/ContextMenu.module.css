@@ -10,18 +10,25 @@
    to admit anything is missing — and the last item in a menu is usually the
    destructive one. */
 
+/* Material Design 3 menu anatomy, from the mockup: the large corner, an 8dp
+   inset, and `surface-container-high` — one tone above the panels a menu opens
+   over, so the card reads as being in front of them rather than part of them.
+   The panel tone it used before is the same surface a sidebar is painted with,
+   which is a menu that has to be found by its shadow. */
 .menu {
   position: fixed;
   z-index: 1400;
   display: flex;
   flex-direction: column;
-  padding: 5px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  padding: 8px;
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   color: var(--text);
+  /* `dvh` second so it wins where the dynamic unit is understood. */
   max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -37,18 +44,27 @@
   background: var(--border-soft);
 }
 
+/* 44px is the mockup's row height and also the smallest comfortable pointer
+   target; the old 6px-padded row measured about 32px, which is under the
+   target size the accessibility rules hold the rest of the product to.
+
+   `min-height` rather than `height` so the row is a floor and not a ceiling —
+   nothing here wraps today (the label truncates on purpose, see below), but a
+   fixed height is the declaration that turns a future two-line row into
+   overlapping text rather than a taller row. */
 .item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   width: 100%;
-  padding: 6px 8px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   text-align: left;
   cursor: pointer;
   /* Enter is 200ms, exit 140ms elsewhere in the app; a hover tint is closer to
@@ -75,9 +91,16 @@
   color: var(--md-sys-color-error);
 }
 
+/* Mixed into the card's own surface, not into `--bg-panel` — that was the
+   card's background before it moved up a tone, and a tint mixed against the
+   wrong base is a tint that no longer matches what it sits on. */
 .danger:hover:not(:disabled),
 .danger:focus-visible {
-  background: color-mix(in srgb, var(--md-sys-color-error) 12%, var(--bg-panel));
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-error) 12%,
+    var(--md-sys-color-surface-container-high)
+  );
 }
 
 .icon {
@@ -85,9 +108,9 @@
   align-items: center;
   justify-content: center;
   /* Reserved whether or not this item has an icon, so the labels line up. */
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
   color: var(--text-faint);
 }
 
@@ -125,7 +148,9 @@
   padding: 0 4px;
   border: 1px solid var(--border-soft);
   border-radius: var(--md-sys-shape-corner-xs);
-  background: var(--md-sys-color-surface-container-high);
+  /* One tone above the card, because the card is now `-high` itself: a keycap
+     painted the same colour as the menu behind it is a keycap with no cap. */
+  background: var(--md-sys-color-surface-container-highest);
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;

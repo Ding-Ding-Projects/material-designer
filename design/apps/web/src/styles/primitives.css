@@ -12,6 +12,15 @@
  *
  * The `::after` layer is the film. It is inert to pointer events, sits under
  * the label, and animates opacity only, so it cannot shift layout.
+ *
+ * The height, the horizontal padding and the icon gap are read from the
+ * density tokens rather than written as the three numbers they used to be.
+ * That is what makes the density control real: `--control-h`,
+ * `--control-pad-x` and `--sp` resolve to 40px, 16px and 8px at default
+ * density — the exact values that were hard-coded here — so nothing moves
+ * for an install that never touches the control, and every button in the
+ * app resizes the moment one does. The fallbacks keep the geometry intact
+ * if this rule is ever rendered without the token sheet.
  */
 button {
   position: relative;
@@ -19,9 +28,9 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 16px;
+  gap: var(--sp, 8px);
+  min-height: var(--control-h, 40px);
+  padding: 0 var(--control-pad-x, 16px);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
@@ -177,10 +186,15 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
  * thickens to 2px on focus rather than growing a separate halo ring, and the
  * M3 shape scale. The thickening is drawn with an inset box-shadow, not a
  * border-width change: changing the border would move the field's content by a
- * pixel on focus, which reads as a twitch on every click into an input. */
+ * pixel on focus, which reads as a twitch on every click into an input.
+ *
+ * "40px minimum height to match the buttons beside it" is now enforced
+ * rather than restated: the field and the button read the same
+ * `--control-h`, so they cannot drift apart at compact or comfortable
+ * density the way two independently hard-coded 40s would. */
 input, textarea, select {
   font: inherit;
-  min-height: 40px;
+  min-height: var(--control-h, 40px);
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-surface);
   border: 0;
@@ -253,7 +267,9 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  /* The smaller of the two density heights: this trigger is deliberately
+     shorter than a button, and reading `--control-h` would erase that. */
+  min-height: var(--control-h-sm, 36px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;

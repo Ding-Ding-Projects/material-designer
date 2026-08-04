@@ -2892,51 +2892,90 @@ button.qf-chip-other:disabled { cursor: default; opacity: 0.6; }
   margin-right: 6px;
   font-weight: 500;
 }
+/* ---------- Filter chip (M3) ----------
+   The application's one filter-chip contract, shared by the examples browser,
+   the memory sections, settings and the design-system manager's count badge.
+   Material Design 3 draws a filter chip as a 36dp fully-rounded control with a
+   1dp `outline` hairline over NO fill and an `on-surface-variant` label at
+   label-large; selection swaps the hairline for a `secondary-container` fill.
+
+   The selected border is kept at 1px *transparent* rather than removed, so the
+   box metrics do not move by two pixels when a chip is picked — a whole filter
+   row would otherwise reflow on every click.
+
+   The pre-M3 comment on the selected state warned against borrowing `--accent`
+   for the fill, because a filled accent chip read as a primary button
+   competing with the real action beside it. `secondary-container` keeps that
+   promise: it is a tonal fill with no claim on the accent colour, so the
+   selection still reads as "on" without shouting. */
 .filter-pill {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 5px 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
   display: inline-flex;
-  gap: 6px;
   align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  /* A chip is a fixed 36dp box, so its label must never wrap INSIDE it — in
+     bilingual mode, where labels are longest, a wrapped second line would be
+     clipped by the height with nothing to say so. The row wraps instead. */
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--md-sys-motion-emphasized),
+    border-color 200ms var(--md-sys-motion-emphasized),
+    color 200ms var(--md-sys-motion-emphasized);
 }
+/* The contract carries one state-layer value (`--ripple`) rather than an
+   `--md-sys-state-*` opacity set, so the unselected chip lays it straight over
+   its transparent fill. The label colour deliberately does NOT change on
+   hover: an 8% wash cannot lower the resting contrast of the same ink, so the
+   resting pair is the bound for both states. */
 button.filter-pill:hover:not(:disabled) {
-  background: var(--bg-muted);
-  border-color: var(--border-strong);
-  color: var(--text);
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
 }
-/*
-  Selected filter pill — quiet "I am the chosen one" treatment, NOT a CTA.
-  Earlier the active pill borrowed the full `--accent` fill, which read as
-  a primary button competing with the real action ("+ New memory") next to
-  it. Users would mis-read the count (e.g. "All 0") as a clickable big
-  orange button. We now keep the selection bordered + slightly weighted so
-  it still looks "on" but stops shouting; the lone primary button on the
-  right keeps its monopoly on the accent color.
-*/
 .filter-pill.active {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
-  color: var(--text);
-  font-weight: 600;
+  background: var(--md-sys-color-secondary-container);
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
 }
+/* A selected chip already owns its fill, so its state layer has to be mixed
+   INTO that fill rather than laid over it — a second translucent background
+   would replace the container, not tint it. */
 button.filter-pill.active:hover:not(:disabled) {
-  background: var(--bg-muted);
-  border-color: var(--border-strong);
-  color: var(--text);
+  background: color-mix(
+    in srgb,
+    var(--md-sys-color-on-secondary-container) 8%,
+    var(--md-sys-color-secondary-container)
+  );
+  border-color: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
+.filter-pill:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .filter-pill-count {
-  font-size: 11px;
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-variant-numeric: tabular-nums;
   opacity: 0.7;
 }
 button.filter-pill:hover:not(:disabled) .filter-pill-count,
 .filter-pill.active .filter-pill-count {
   color: currentColor;
   opacity: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-pill {
+    transition: none;
+  }
 }
 .example-card-actions {
   display: flex;
