@@ -93,7 +93,7 @@ export const zhTW: Dict = {
   "chat.runError.emptyOutputMessage": "智能體本次結束時沒有產生任何輸出。這通常是暫時的，重試即可再次執行。",
   "chat.runError.sessionExpiredMessage": "要恢復的工作階段已過期，已為你重置。重試即可開始一次全新執行。",
   "chat.runError.gitBashMissingMessage": "在 Windows 上執行此智能體需要 Git Bash，但找不到。請安裝 Git for Windows 後重試。",
-  "chat.runError.cpuUnsupportedMessage": "此智能體的執行時需要此裝置處理器不支援的指令集（AVX2），因此無法啟動。請將 Open Design 更新到最新版本，新版本附帶相容的執行時。",
+  "chat.runError.cpuUnsupportedMessage": "此智能體的執行時需要此裝置處理器不支援的指令集（AVX2），因此無法啟動。請將 Material Designer 更新到最新版本，新版本附帶相容的執行時。",
   "common.cancel": "取消",
   "chat.selectFromLibrary": "從資源庫匯入",
   "chat.importFigma": "從 Figma 匯入",
@@ -119,7 +119,7 @@ export const zhTW: Dict = {
   "chat.referenceProject.loadFailed": "無法載入專案。請確認 daemon 正在執行後再試一次。",
   "chat.referenceProject.confirm": "引用專案",
   "chat.contextPrompt.referenceProject":
-    "請把 Open Design 專案「{name}」作為參考上下文。它的本機路徑是：{path}。在設計或修改前，如有幫助請先搜尋並讀取這個目錄。",
+    "請把 Material Designer 專案「{name}」作為參考上下文。它的本機路徑是：{path}。在設計或修改前，如有幫助請先搜尋並讀取這個目錄。",
   "chat.contextPrompt.localCode":
     "請把本機程式碼目錄「{name}」作為程式碼參考。它的絕對路徑是：{path}。如有幫助請先讀取相關檔案，並與既有實作保持一致。",
   "chat.figmaHelp.title": "如何下載 .fig 檔案",
@@ -207,17 +207,17 @@ export const zhTW: Dict = {
   "app.brandSubtitle": "由 Nexu Labs 出品",
   "app.welcomeLoading": "正在載入工作區…",
   "settings.welcomeKicker": "",
-  "settings.welcomeTitle": "歡迎使用 Open Design",
+  "settings.welcomeTitle": "歡迎使用 Material Designer",
   "settings.welcomeSubtitle": "",
   "settings.onboardingCreateTitle": "從一句需求開始",
   "settings.onboardingCreateBody":
-    "描述你想做的網站、應用、Deck、圖片或影片，Open Design 會建立專案，並保留可繼續編輯的產出。",
+    "描述你想做的網站、應用、Deck、圖片或影片，Material Designer 會建立專案，並保留可繼續編輯的產出。",
   "settings.onboardingMemoryTitle": "保存工作上下文",
   "settings.onboardingMemoryBody":
     "把偏好、專案事實和長期規則寫入 Memory，後續對話會自動帶上正確背景。",
   "settings.onboardingMemoryCalloutTitle": "已儲存到你的記憶",
   "settings.onboardingMemoryCalloutBody":
-    "這些回答會構成你的記憶檔案。Open Design 會在每個任務中重複使用它，並在你工作時持續學習。",
+    "這些回答會構成你的記憶檔案。Material Designer 會在每個任務中重複使用它，並在你工作時持續學習。",
   "settings.onboardingMemoryBenefitIntent": "從一句簡短需求就能理解你的意圖",
   "settings.onboardingMemoryBenefitFewerQuestions": "跳過重複的設定提問",
   "settings.onboardingMemoryBenefitPersonalized":
@@ -248,10 +248,10 @@ export const zhTW: Dict = {
     "在信箱裡收到產品更新、新模版、設計系統與大使活動。選填——可以跳過。",
   "settings.onboardingConnectTitle": "選擇執行方式",
   "settings.onboardingConnectBody": "",
-  "settings.onboardingCloudTitle": "登入 Open Design",
+  "settings.onboardingCloudTitle": "登入 Open Design Cloud",
   "settings.onboardingCloudBody":
     "登入後可直接用雲端 AI 開始設計，無需任何複雜設定。",
-  "settings.onboardingCloudSignIn": "登入 Open Design 雲端",
+  "settings.onboardingCloudSignIn": "登入 Open Design Cloud",
   "settings.onboardingCloudContinue": "繼續（已登入）",
   "settings.onboardingCloudAlternative": "使用本機 CLI 或自己的 API Key",
   "settings.onboardingCloudRights": "保留所有權利。",
@@ -393,11 +393,11 @@ export const zhTW: Dict = {
   "settings.agentInstall.install": "安裝",
   "settings.agentInstall.docs": "文件",
   "settings.agentInstall.pathHint":
-    "如果你透過 npm 或 Homebrew 安裝了 CLI，但仍顯示為未安裝，請確認該工具的 bin 目錄已加入 Open Design daemon 繼承的 PATH（在 macOS 上，Terminal 與 GUI 應用的 PATH 可能不同）。請參閱 QUICKSTART.md（「Local agent CLI and PATH」章節）。",
+    "如果你透過 npm 或 Homebrew 安裝了 CLI，但仍顯示為未安裝，請確認該工具的 bin 目錄已加入 Material Designer daemon 繼承的 PATH（在 macOS 上，Terminal 與 GUI 應用的 PATH 可能不同）。請參閱 QUICKSTART.md（「Local agent CLI and PATH」章節）。",
   "settings.agentInstall.stepOpenLinks":
     "在目標代理卡片上開啟「安裝」或「文件」連結。",
   "settings.agentInstall.stepAuth":
-    "返回 Open Design 前，請先在對應 CLI 完成驗證（登入或新增 API 憑證）。",
+    "返回 Material Designer 前，請先在對應 CLI 完成驗證（登入或新增 API 憑證）。",
   "settings.agentInstall.stepRescan": "在此區域點擊「重新掃描」。",
   "settings.agentInstall.stepSelect": "當代理顯示為已安裝後，選擇該代理卡片。",
   "settings.noAgentsDetected":
@@ -554,7 +554,7 @@ export const zhTW: Dict = {
     "圖片、影片、音訊生成的 API key。存於本機並同步到本地守護程序。",
   "settings.mcpServerTitle": "MCP 伺服器",
   "settings.mcpServerHint":
-    "將 Open Design 作為 MCP 伺服器暴露給你的編碼代理。",
+    "將 Material Designer 作為 MCP 伺服器暴露給你的編碼代理。",
   "settings.externalMcpTitle": "外部 MCP",
   "settings.externalMcpHint":
     "接入外部服務的 MCP 工具（Higgsfield、GitHub 等）。",
@@ -624,9 +624,9 @@ export const zhTW: Dict = {
   "settings.alreadyLatest": "目前已是最新版本",
   "settings.mcpTitle": "MCP server",
   "settings.mcpHint":
-    "讓其他專案中的程式碼代理（Claude Code、Cursor、VS Code、Antigravity、Zed、Windsurf）讀取您的 Open Design 專案。您可以直接將設計匯入應用程式，無需先匯出 zip。",
+    "讓其他專案中的程式碼代理（Claude Code、Cursor、VS Code、Antigravity、Zed、Windsurf）讀取您的 Material Designer 專案。您可以直接將設計匯入應用程式，無需先匯出 zip。",
   "settings.mcpDaemonError":
-    "無法連線到本地守護程序以解析安裝路徑（{error}）。請確認 Open Design 正在執行，然後重新開啟此面板。",
+    "無法連線到本地守護程序以解析安裝路徑（{error}）。請確認 Material Designer 正在執行，然後重新開啟此面板。",
   "settings.mcpBuildDaemon": "請先建置守護行程。",
   "settings.mcpNodeMissing": "缺少 Node 執行檔。",
   "settings.mcpBuildHint":
@@ -675,9 +675,9 @@ export const zhTW: Dict = {
   "settings.mcpCapabilityPull":
     "透過單一呼叫拉取設計套件：包含進入點檔案以及所有引用的 CSS 變數、元件與字型。",
   "settings.mcpCapabilityDefault":
-    "預設使用您在 Open Design 中開啟的專案與檔案，因此您可以說「在我的應用程式中建置這個」，無需重新說明是哪個設計。",
+    "預設使用您在 Material Designer 中開啟的專案與檔案，因此您可以說「在我的應用程式中建置這個」，無需重新說明是哪個設計。",
   "settings.mcpRunningNote":
-    "Open Design 必須正在執行，MCP 工具呼叫才能成功。如果您在開啟 Open Design 之前就已啟動 coding agent，請重新啟動 agent，使其能夠連線到正在執行的守護行程。",
+    "Material Designer 必須正在執行，MCP 工具呼叫才能成功。如果您在開啟 Material Designer 之前就已啟動 coding agent，請重新啟動 agent，使其能夠連線到正在執行的守護行程。",
   "entry.tabDesigns": "我的設計",
   "entry.tabTemplates": "範本",
   "entry.tabDesignSystems": "設計系統",
@@ -908,7 +908,7 @@ export const zhTW: Dict = {
   "handoff.copied": "已複製",
   "handoff.projectPathUnavailable": "尚未取得專案本機路徑，請稍後再試。",
   "handoff.copyFailed": "瀏覽器拒絕寫入剪貼簿，請稍後再試。",
-  "handoff.promptIntro": "請基於這個 Open Design 專案的本機資料夾繼續實作：",
+  "handoff.promptIntro": "請基於這個 Material Designer 專案的本機資料夾繼續實作：",
   "handoff.promptTarget": "目標",
   "handoff.promptCli": "CLI",
   "handoff.promptStepsLead": "你現在是在 {cli} 中接手，請：",
@@ -951,7 +951,7 @@ export const zhTW: Dict = {
   "pluginsHome.count": "{total} 個中的 {filtered} 個",
   "pluginsHome.loadingCatalog": "正在載入目錄…",
   "pluginsHome.emptyCatalog":
-    "目錄是空的。內建外掛隨 Open Design 一同提供，應會自動出現在此處 — 若問題持續發生，請嘗試重新啟動 daemon。",
+    "目錄是空的。內建外掛隨 Material Designer 一同提供，應會自動出現在此處 — 若問題持續發生，請嘗試重新啟動 daemon。",
   "pluginsHome.emptyFiltered": "沒有符合目前篩選條件的外掛程式。",
   "pluginsHome.clearFilters": "清除篩選條件",
   "pluginsHome.modeAria": "外掛程式模式",
@@ -1102,7 +1102,7 @@ export const zhTW: Dict = {
   "skillPluginCandidate.repoDescription": "這個倉庫看起來可以做成外掛。",
   "integrations.kicker": "整合",
   "integrations.lede":
-    "連接外部系統，把 MCP 工具帶入智能體迴圈，並在其他 IDE、腳本與自動化流程中使用 Open Design。",
+    "連接外部系統，把 MCP 工具帶入智能體迴圈，並在其他 IDE、腳本與自動化流程中使用 Material Designer。",
   "integrations.agentReady": "智能體就緒",
   "integrations.areasAria": "整合區域",
   "integrations.tabLabel.mcp": "MCP 伺服器",
@@ -1122,12 +1122,12 @@ export const zhTW: Dict = {
   "mcpClient.saveChanges": "儲存變更",
   "mcpClient.storedAt": "儲存於",
   "mcpClient.daemonError":
-    "無法連線到本機 daemon。請確認 Open Design 正在執行，然後重新開啟此面板。",
+    "無法連線到本機 daemon。請確認 Material Designer 正在執行，然後重新開啟此面板。",
   "mcpClient.saveFailed": "儲存失敗。請確認 daemon 正在執行後再試一次。",
-  "useEverywhere.modalAria": "隨處使用 Open Design",
-  "useEverywhere.modalTitle": "隨處使用 Open Design",
+  "useEverywhere.modalAria": "隨處使用 Material Designer",
+  "useEverywhere.modalTitle": "隨處使用 Material Designer",
   "useEverywhere.modalSubtitle":
-    "將 Open Design 接入任何 IDE、Agent 或指令碼 — CLI、HTTP、MCP 及 Skills。使用「複製 Agent 指南」並貼到 Claude Code、Codex、Cursor、openclaw 或 hermes 中，即可設定一切。",
+    "將 Material Designer 接入任何 IDE、Agent 或指令碼 — CLI、HTTP、MCP 及 Skills。使用「複製 Agent 指南」並貼到 Claude Code、Codex、Cursor、openclaw 或 hermes 中，即可設定一切。",
   "useEverywhere.closeAria": "關閉隨處使用",
   "useEverywhere.closeTitle": "關閉 (Esc)",
   "useEverywhere.tabsAria": "整合介面",
@@ -1142,17 +1142,17 @@ export const zhTW: Dict = {
   "useEverywhere.copySnippetAria": "複製程式碼片段：{label}",
   "useEverywhere.section.overview.tab": "總覽",
   "useEverywhere.section.overview.heading":
-    "你的 Agent 在哪裡運作，Open Design 就在哪裡運作",
+    "你的 Agent 在哪裡運作，Material Designer 就在哪裡運作",
   "useEverywhere.section.overview.intro":
-    "Open Design 不只是一個視窗 — 它是一個本機特權 daemon（`od`），外加一個 Skills + Design-Systems + Atoms 登錄。一旦它在您的機器上執行，任何程式碼 Agent（Claude Code、Codex、Cursor、OpenCode/openclaw、Hermes、您自己的指令碼）都能透過四個可互換的介面來驅動產生作業、檢視專案並產出設計成品。",
+    "Material Designer 不只是一個視窗 — 它是一個本機特權 daemon（`od`），外加一個 Skills + Design-Systems + Atoms 登錄。一旦它在您的機器上執行，任何程式碼 Agent（Claude Code、Codex、Cursor、OpenCode/openclaw、Hermes、您自己的指令碼）都能透過四個可互換的介面來驅動產生作業、檢視專案並產出設計成品。",
   "useEverywhere.section.overview.bullet1":
     "CLI — 以 `od <command>` 用於無頭指令碼、CI 及 shell 自動化。",
   "useEverywhere.section.overview.bullet2":
-    "MCP server — 將 Open Design 接成 Model Context Protocol 伺服器，讓任何支援 MCP 的 Agent 都能列出技能、執行情境並讀取成品。",
+    "MCP server — 將 Material Designer 接成 Model Context Protocol 伺服器，讓任何支援 MCP 的 Agent 都能列出技能、執行情境並讀取成品。",
   "useEverywhere.section.overview.bullet3":
     "HTTP API — `http://127.0.0.1:7456/api/*` REST + SSE 端點；與網頁 UI 使用的介面相同。",
   "useEverywhere.section.overview.bullet4":
-    "Skills — 隨插即用的 `SKILL.md` 套件（相容於 Claude），任何已在您 PATH 上的 Agent 完全無需 Open Design 即可調用。",
+    "Skills — 隨插即用的 `SKILL.md` 套件（相容於 Claude），任何已在您 PATH 上的 Agent 完全無需 Material Designer 即可調用。",
   "useEverywhere.section.overview.bullet5":
     "標準成品 — 在 daemon 啟動前，從 Skills、內建預設外掛及社群外掛範例中產生真實的 HTML 專案。",
   "useEverywhere.section.overview.snippet1": "在本機啟動 daemon（與 web UI）",
@@ -1161,7 +1161,7 @@ export const zhTW: Dict = {
   "useEverywhere.section.overview.footer":
     "daemon 預設會寫入 `./.od/`（專案本機）。設定 `OD_DATA_DIR=~/.open-design` 即可在多個專案間共用資料。",
   "useEverywhere.section.cli.tab": "CLI · od",
-  "useEverywhere.section.cli.heading": "從任何 shell 操作 Open Design",
+  "useEverywhere.section.cli.heading": "從任何 shell 操作 Material Designer",
   "useEverywhere.section.cli.intro":
     "`od` 執行檔隨 daemon 一起發佈，與 Claude Code / Codex 執行產生作業時所用的是同一個二進位檔。多數子指令都是精簡的用戶端，會 POST 至本機 daemon，因此無論你是透過 `pnpm tools-dev` 啟動，還是以打包後的應用程式執行，運作方式都相同。",
   "useEverywhere.section.cli.bullet1":
@@ -1187,9 +1187,9 @@ export const zhTW: Dict = {
     "所有子指令都接受 `--daemon-url http://127.0.0.1:<port>`，以指定某個正在執行的 daemon — 在執行沙箱化的第二個執行個體進行測試時很有用。",
   "useEverywhere.section.mcp.tab": "MCP 伺服器",
   "useEverywhere.section.mcp.heading":
-    "將 Open Design 以 MCP 伺服器形式開放給任何程式設計 Agent",
+    "將 Material Designer 以 MCP 伺服器形式開放給任何程式設計 Agent",
   "useEverywhere.section.mcp.intro":
-    "Open Design 隨附一個 Model Context Protocol 伺服器（`od mcp`），讓任何支援 MCP 的用戶端 — Cursor、Claude Code、Antigravity、VS Code Copilot Chat、openclaw、hermes — 都能探索 Open Design 工具（列出技能、算繪預覽、產生媒體、執行外掛），而無需手動使用 shell。daemon 透過 `GET /api/mcp/install-info` 為每個主要用戶端發布可直接貼上的安裝程式碼片段。",
+    "Material Designer 隨附一個 Model Context Protocol 伺服器（`od mcp`），讓任何支援 MCP 的用戶端 — Cursor、Claude Code、Antigravity、VS Code Copilot Chat、openclaw、hermes — 都能探索 Material Designer 工具（列出技能、算繪預覽、產生媒體、執行外掛），而無需手動使用 shell。daemon 透過 `GET /api/mcp/install-info` 為每個主要用戶端發布可直接貼上的安裝程式碼片段。",
   "useEverywhere.section.mcp.bullet1":
     "Stdio 傳輸 — 不需額外連接埠，用戶端直接產生 `od mcp` 程序。",
   "useEverywhere.section.mcp.bullet2":
@@ -1205,7 +1205,7 @@ export const zhTW: Dict = {
   "useEverywhere.section.mcp.snippet3":
     "即時看板 MCP 變體（讀取並重新整理儀表板）",
   "useEverywhere.section.mcp.footer":
-    "在 Open Design 應用程式中，開啟「設定 → 整合」即可複製特定用戶端的安裝指令（Cursor、Claude Code、Antigravity、VS Code），而無需手動編輯 JSON。",
+    "在 Material Designer 應用程式中，開啟「設定 → 整合」即可複製特定用戶端的安裝指令（Cursor、Claude Code、Antigravity、VS Code），而無需手動編輯 JSON。",
   "useEverywhere.section.http.tab": "HTTP API",
   "useEverywhere.section.http.heading": "與 web UI 所用相同的 REST + SSE 介面",
   "useEverywhere.section.http.intro":
@@ -1231,7 +1231,7 @@ export const zhTW: Dict = {
     "每個請求／回應的純 TypeScript 型別都位於 `@open-design/contracts` 中 — 在您的指令碼中匯入它們，即可享有完整的自動完成，而無需接上產生器。",
   "useEverywhere.section.skills.tab": "技能與無頭模式",
   "useEverywhere.section.skills.heading":
-    "適用於任何 Agent 的隨插即用 Skills — 即使 Open Design 未在執行也行",
+    "適用於任何 Agent 的隨插即用 Skills — 即使 Material Designer 未在執行也行",
   "useEverywhere.section.skills.intro":
     "Skill 是一個包含相容於 Claude 的 `SKILL.md`（YAML 前置資料 + 內文）的目錄。Open Design 以 `od:` 命名空間（`mode`、`preview`、`design_system`、`inputs`、…）擴充此格式，因此同一個成品既能在 Open Design 內使用，也能被像 Claude Code、Codex、openclaw 或 hermes 這類原生 Agent 使用。探索作業遵循一條優先順序鏈，因此專案可覆寫自己的技能。",
   "useEverywhere.section.skills.bullet1":
@@ -1646,7 +1646,7 @@ export const zhTW: Dict = {
   "newproj.filePlural": "個檔案",
   "newproj.create": "建立",
   "newproj.locationLabel": "儲存到",
-  "newproj.locationDefault": "Open Design 專案",
+  "newproj.locationDefault": "Material Designer 專案",
   "newproj.locationExternalBase": "外部基目錄",
   "newproj.createLiveArtifact": "建立即時看板",
   "newproj.createFromTemplate": "基於範本建立",
@@ -1987,14 +1987,14 @@ export const zhTW: Dict = {
   "chat.startTitle": "開始一個對話",
   "chat.startHint": "描述你想生成的內容，或從下面的範例開始：",
   "chat.brandBrowserAssistDesktopOnly":
-    "瀏覽器輔助需要桌面應用，Open Design 才能讀取即時瀏覽器頁面。",
+    "瀏覽器輔助需要桌面應用，Material Designer 才能讀取即時瀏覽器頁面。",
   "chat.brandBrowserAssistReadFailed":
     "無法讀取瀏覽器頁面。請確認品牌網站已開啟並完整載入。",
   "chat.brandBrowserAssistMessage":
-    "Open Design 需要瀏覽器輔助才能完成這次品牌擷取。請先在 Browser 分頁清除頁面攔截，然後在下方確認。",
+    "Material Designer 需要瀏覽器輔助才能完成這次品牌擷取。請先在 Browser 分頁清除頁面攔截，然後在下方確認。",
   "brandEnrichment.title": "AI 優化",
   "brandEnrichment.body":
-    "Open Design 會在背景執行更深度的抽取，自動套用合適的設計系統 skills，並就地更新這個系統。通常需要 10-20 分鐘，你可以繼續做其他事。",
+    "Material Designer 會在背景執行更深度的抽取，自動套用合適的設計系統 skills，並就地更新這個系統。通常需要 10-20 分鐘，你可以繼續做其他事。",
   "brandEnrichment.cta": "AI 優化",
   "brandEnrichment.busy": "正在啟動 AI 優化...",
   "brandExtractionTranscript.sourceDesignMd": "貼上的 DESIGN.md",
@@ -2018,7 +2018,7 @@ export const zhTW: Dict = {
   "chat.inspect.commentHint": "在預覽中選擇文字或區域進行評論。",
   "chat.composerPlaceholder": "描述你想生成的內容…",
   "chat.activeFileEditingLabel": "編輯中",
-  "chat.activeFilePlaceholder": "讓 Open Design 修改 {file}...",
+  "chat.activeFilePlaceholder": "讓 Material Designer 修改 {file}...",
   "chat.designArtifactsShowMore": "再顯示 {count} 個設計檔案",
   "chat.mode.chat.label": "詢問",
   "chat.mode.chat.title": "Ask 模式",
@@ -2043,7 +2043,7 @@ export const zhTW: Dict = {
   "chat.mode.design.summary":
     "適合建立或修改具體設計產物，例如網頁、原型、即時看板、投影片、圖片、影片、HyperFrames、音訊、資料看板和專案檔案。",
   "chat.mode.design.solves":
-    "當你希望 Open Design 產生檔案、更新 workspace，或把需求變成多模態可交付結果時使用。",
+    "當你希望 Material Designer 產生檔案、更新 workspace，或把需求變成多模態可交付結果時使用。",
   "chat.mode.design.query1":
     "根據這段需求做一個產品發布落地頁和 HyperFrames 原型。",
   "chat.mode.design.query2": "做一份 10 頁投資人 Deck，並附上講稿備註。",
@@ -2169,7 +2169,7 @@ export const zhTW: Dict = {
   "designBrowser.inspect.saving": "正在保存...",
   "designBrowser.inspect.saveHtml": "保存 HTML",
   "designBrowser.inspect.liveOnly": "仅实时预览",
-  "designBrowser.reference.kicker": "Open Design 浏览器",
+  "designBrowser.reference.kicker": "Material Designer 浏览器",
   "designBrowser.reference.title": "参考看板",
   "designBrowser.reference.subtitle": "精选灵感、真实产品 UI、动效、色彩、字体、素材和设计系统参考。打开任意站点即可边浏览边收集下一个产物所需的设计语言。",
   "designBrowser.reference.categoryAria": "参考分类",
@@ -2653,7 +2653,7 @@ export const zhTW: Dict = {
   "preview.shareExportGroup": "匯出檔案",
   "preview.shareCopied": "已複製",
   "preview.shareCopyFailed": "複製失敗",
-  "preview.shareTextDefault": "Open Design 模板：{title}",
+  "preview.shareTextDefault": "Material Designer 模板：{title}",
   "preview.openInNewTab": "在新分頁中開啟",
   "preview.exit": "⤓ 離開",
   "preview.fullscreen": "⤢ 全螢幕",
@@ -2661,7 +2661,7 @@ export const zhTW: Dict = {
   "preview.loading": "正在載入{label}…",
   "preview.errorTitle": "無法載入此範例。",
   "preview.errorBody":
-    "範例 HTML 載入失敗。請確認 Open Design 正在執行後重試。",
+    "範例 HTML 載入失敗。請確認 Material Designer 正在執行後重試。",
   "preview.retry": "重試",
   "preview.unavailableTitle": "{noun}尚未附帶預覽範例。",
   "preview.unavailableBody": "請在對話中執行此 Prompt 來產生 {kind} 產物。",
@@ -2742,12 +2742,12 @@ export const zhTW: Dict = {
   "designFiles.documentTemplate.titleFallback": "文件",
   "designFiles.documentTemplate.goalHeading": "目標",
   "designFiles.documentTemplate.goalBody":
-    "說明希望 Open Design 基於這份文件生成、修改或判斷什麼。",
+    "說明希望 Material Designer 基於這份文件生成、修改或判斷什麼。",
   "designFiles.documentTemplate.capabilitiesHeading": "如何使用這份文件",
   "designFiles.documentTemplate.capabilityMarkdown":
     "可以自由使用 Markdown：標題、表格、清單、連結、引用、程式碼區塊和圖片。",
   "designFiles.documentTemplate.capabilityAgent":
-    "Open Design agent 可以讀取、編輯這份檔案，並把它作為專案上下文。",
+    "Material Designer agent 可以讀取、編輯這份檔案，並把它作為專案上下文。",
   "designFiles.documentTemplate.capabilityImages":
     "可以貼上圖片，或把圖片拖到編輯器裡；上傳後的圖片會插入到目前游標位置。",
   "designFiles.documentTemplate.scenarioHeading": "場景說明",
@@ -2777,7 +2777,7 @@ export const zhTW: Dict = {
     "描述受眾、交付物、必要內容、參考、約束，以及什麼狀態算完成。",
   "designFiles.documentTemplate.nextHeading": "下一步",
   "designFiles.documentTemplate.nextBody":
-    "檢查並編輯這份文件，然後讓 Open Design 基於它生成、修改或執行操作。",
+    "檢查並編輯這份文件，然後讓 Material Designer 基於它生成、修改或執行操作。",
   "designFiles.previewOpen": "開啟",
   "designFiles.previewClose": "關閉預覽",
   "designFiles.modified": "修改於 {time} · {size}",
@@ -3529,7 +3529,7 @@ export const zhTW: Dict = {
   "pet.navTitle": "寵物",
   "pet.navHint": "領養與自訂",
   "pet.tabBuiltIn": "內建",
-  "pet.tabBuiltInHint": "Open Design 內建的精選寵物 — 一鍵領養。",
+  "pet.tabBuiltInHint": "Material Designer 內建的精選寵物 — 一鍵領養。",
   "pet.builtInEmpty":
     "目前無法載入內建寵物。等本地服務恢復後,重新整理「社群」頁籤再試。",
   "pet.tabCustom": "自訂",
@@ -3657,7 +3657,7 @@ export const zhTW: Dict = {
   "pet.communitySyncDone": "已同步 {wrote} 個新寵物（共 {total} 個）。",
   "pet.communitySyncFailed": "同步失敗：{error}",
   "pet.codexBundled": "內建",
-  "pet.codexBundledTitle": "Open Design 內建寵物，無需下載。",
+  "pet.codexBundledTitle": "Material Designer 內建寵物，無需下載。",
   "settings.notifications": "通知",
   "settings.notificationsHint": "任務完成時的音效和桌面通知",
   "settings.notifyCompletionSound": "完成提示音",
@@ -3733,7 +3733,7 @@ export const zhTW: Dict = {
   "settings.projectLocations": "專案位置",
   "settings.projectLocationsHint": "工作區儲存根目錄",
   "settings.projectLocationsDescription":
-    "新增可包含多個 Open Design 專案資料夾的工作基目錄。新專案會儲存為所選基目錄中的一個資料夾。",
+    "新增可包含多個 Material Designer 專案資料夾的工作基目錄。新專案會儲存為所選基目錄中的一個資料夾。",
   "settings.projectLocationsSaveError":
     "無法儲存專案位置。請確認每個路徑都是可存取的資料夾。",
   "settings.projectLocationsSaved": "專案位置已儲存。",
@@ -3981,11 +3981,11 @@ export const zhTW: Dict = {
   "notify.successBody": "一輪回答已經寫完。",
   "notify.failureBody": "本輪任務出錯，請查看錯誤訊息。",
   "updater.available": "有可用更新",
-  "updater.activeRunsTitle": "Open Design 仍在執行任務",
+  "updater.activeRunsTitle": "Material Designer 仍在執行任務",
   "updater.activeRunsBody": "仍有 {count} 個任務正在執行。現在重新啟動會中斷這些任務。",
-  "updater.activeRunsUnknownBody": "Open Design 無法確認是否仍有任務執行。現在重新啟動可能會中斷進行中的工作。",
+  "updater.activeRunsUnknownBody": "Material Designer 無法確認是否仍有任務執行。現在重新啟動可能會中斷進行中的工作。",
   "updater.availableBody":
-    "Open Design {version} 可用。下載完成後即可開啟安裝器。",
+    "Material Designer {version} 可用。下載完成後即可開啟安裝器。",
   "updater.checking": "正在檢查更新",
   "updater.download": "下載更新",
   "updater.downloading": "正在下載更新",
@@ -3993,7 +3993,7 @@ export const zhTW: Dict = {
   "updater.done": "完成",
   "updater.failed": "更新失敗",
   "updater.installerOpenBody":
-    "安裝器已開啟。Open Design 正在結束，以便你完成更新。",
+    "安裝器已開啟。Material Designer 正在結束，以便你完成更新。",
   "updater.installerOpened": "安裝器已開啟",
   "updater.later": "稍後",
   "updater.allowSilentUpdates": "允許以後自動安裝應用內更新",
@@ -4012,24 +4012,24 @@ export const zhTW: Dict = {
   "updater.dialogUnsupported":
     "目前環境不支援應用程式內更新。\n可前往發布頁面手動下載。",
   "updater.payloadReadyGeneric":
-    "A new Open Design update is ready. Open Design will close and restart automatically.",
+    "A new Material Designer update is ready. Material Designer will close and restart automatically.",
   "updater.payloadReadyVersion":
-    "Open Design {version} is ready. Open Design will close and restart automatically.",
-  "updater.quitButton": "結束 Open Design",
+    "Material Designer {version} is ready. Material Designer will close and restart automatically.",
+  "updater.quitButton": "結束 Material Designer",
   "updater.quitFailedBody":
-    "安裝器已開啟，但 Open Design 無法結束。替換應用程式前請先結束 Open Design。",
+    "安裝器已開啟，但 Material Designer 無法結束。替換應用程式前請先結束 Material Designer。",
   "updater.quitFailedTitle": "無法結束",
   "updater.quitting": "正在結束…",
   "updater.ready": "更新已就緒",
-  "updater.readyGeneric": "新版本已就緒。Open Design 會關閉並開啟安裝器。",
+  "updater.readyGeneric": "新版本已就緒。Material Designer 會關閉並開啟安裝器。",
   "updater.readyVersion":
-    "Open Design {version} 已就緒。Open Design 會關閉並開啟安裝器。",
+    "Material Designer {version} 已就緒。Material Designer 會關閉並開啟安裝器。",
   "updater.upToDate": "您已經是最新版本啦",
   "updater.viewVersionFeatures": "查看新版本特色",
   "updater.manualDownload": "手動下載",
   "updater.reinstallLearnMore": "了解詳情",
-  "updater.reinstallReadyGeneric": "此更新需要完整重新安裝。Open Design 將關閉並開啟安裝程式。",
-  "updater.reinstallReadyVersion": "Open Design {version} 需要完整重新安裝。Open Design 將關閉並開啟安裝程式。",
+  "updater.reinstallReadyGeneric": "此更新需要完整重新安裝。Material Designer 將關閉並開啟安裝程式。",
+  "updater.reinstallReadyVersion": "Material Designer {version} 需要完整重新安裝。Material Designer 將關閉並開啟安裝程式。",
   "updater.restartAnyway": "仍然重新啟動",
 
   "whatsNew.cta": "看看有什麼新功能",
@@ -4064,7 +4064,7 @@ export const zhTW: Dict = {
   'settings.updateRetry': '重試',
   'settings.updateViewReleases': '查看發佈記錄',
   'settings.updateActionFailed': '無法完成更新操作。',
-  'settings.updateQuitFailed': '安裝程式已開啟，但 Open Design 未能自動結束。',
+  'settings.updateQuitFailed': '安裝程式已開啟，但 Material Designer 未能自動結束。',
   'settings.updateStatusNotChecked': '未檢查更新',
   'settings.updateStatusDevelopment': '開發環境不支援應用程式內更新。',
   'settings.updateStatusUnsupported': '目前環境不支援應用程式內更新。',
@@ -4369,7 +4369,7 @@ export const zhTW: Dict = {
   "dsManager.filterDraft": "草稿",
   "dsManager.createTitle": "新增設計體系",
   "dsManager.createBody":
-    "把你的品牌、產品、程式碼、素材與設計參考教給 Open Design。",
+    "把你的品牌、產品、程式碼、素材與設計參考教給 Material Designer。",
   "dsManager.createAction": "建立",
   "dsManager.emptyMine":
     "還沒有設計體系。從真實的產品脈絡建立一個，審閱草稿後再發佈，供日後的專案使用。",
@@ -4404,7 +4404,7 @@ export const zhTW: Dict = {
   "settings.instructionsSubtitle": "助手應始終遵循的固定行為",
   "settings.instructionsNavSub": "固定的助手行為",
   "settings.customInstructionsDesc":
-    "Open Design 在每次對話中都會遵循的固定指令。它們不是儲存的記憶；事實、偏好與專案脈絡請使用「記憶」。",
+    "Material Designer 在每次對話中都會遵循的固定指令。它們不是儲存的記憶；事實、偏好與專案脈絡請使用「記憶」。",
   "mcpClient.forwardedToLabel": "已轉發給：",
   "mcpClient.notForwardedToLabel": "未轉發給：",
   "mcpClient.forwardedAcpNote":
@@ -4415,7 +4415,7 @@ export const zhTW: Dict = {
   // Brands library + extraction
   "brand.libraryTitle": "品牌套件",
   "brand.librarySubtitle":
-    "把你的品牌套件教給 Open Design——從網站擷取一個品牌套件，然後在任意對話中套用它。",
+    "把你的品牌套件教給 Material Designer——從網站擷取一個品牌套件，然後在任意對話中套用它。",
   "brand.newBrand": "新增品牌套件",
   "brand.searchPlaceholder": "搜尋你的品牌套件…",
   "brand.empty": "還沒有品牌套件。從一個網站擷取一個品牌套件即可開始。",
@@ -4488,7 +4488,7 @@ export const zhTW: Dict = {
   "onboarding.brandDone": "設計系統已擷取",
   "onboarding.buildTitle": "一次建立,處處沿用",
   "onboarding.buildBody":
-    "Open Design 將你的品牌沉澱為可重用的設計系統,讓你之後打造的一切都保持品牌一致。",
+    "Material Designer 將你的品牌沉澱為可重用的設計系統,讓你之後打造的一切都保持品牌一致。",
   "onboarding.buildBenefitMemoryTitle": "一份品牌記憶",
   "onboarding.buildBenefitMemoryBody":
     "色彩、字體、間距、元件和語氣會沉澱成可重用的 DESIGN.md。",
@@ -4516,7 +4516,7 @@ export const zhTW: Dict = {
   "dsCreate.embeddedBody": "先加入網站或品牌參考，再補充你已有的來源檔案。",
   "dsCreate.sourceSectionTitle": "從 GitHub、網站或來源素材擷取",
   "dsCreate.sourceSectionBody":
-    "從 GitHub repo、網站、DESIGN.md 或能體現風格的檔案開始。Open Design 會先快速建立一套可用系統，之後 AI 可在專案中繼續細化。",
+    "從 GitHub repo、網站、DESIGN.md 或能體現風格的檔案開始。Material Designer 會先快速建立一套可用系統，之後 AI 可在專案中繼續細化。",
   "dsCreate.githubWebsiteLabel": "GitHub 或網站",
   "dsCreate.add": "加入",
   "dsCreate.startFromBrand": "從品牌開始",
@@ -4663,7 +4663,7 @@ export const zhTW: Dict = {
   "ds.publish": "发布",
   "ds.extractionRunningTitle": "正在擷取設計體系",
   "ds.extractionCompleteTitle": "擷取完成",
-  "ds.extractionRunningBody": "Open Design 正在就地更新此體系。",
+  "ds.extractionRunningBody": "Material Designer 正在就地更新此體系。",
   "ds.extractionCompleteBody": "已擷取的模組如下所示；空段落會保持為空。",
   "ds.publishCardPublished": "團隊的新專案預設可以使用此設計體系作為上下文。",
   "ds.publishCardDraft":
@@ -4733,7 +4733,7 @@ export const zhTW: Dict = {
   "ds.repoConnectedBody": "重新匯入此儲存庫，把檔案拉入你的設計體系。",
   "ds.repoImportButton": "匯入儲存庫",
   "ds.repoConnectBannerBody":
-    "連接 GitHub 後，Open Design 可以讀取你的儲存庫，並把顏色、字體和元件擷取到此設計體系中。",
+    "連接 GitHub 後，Material Designer 可以讀取你的儲存庫，並把顏色、字體和元件擷取到此設計體系中。",
   "ds.repoConnectCardBody": "從儲存庫中擷取顏色、字體和元件到此設計體系。",
   "ds.repoConnectButton": "連接 GitHub",
   "newproj.startFromLabel": "起點",

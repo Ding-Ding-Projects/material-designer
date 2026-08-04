@@ -219,7 +219,7 @@ export const zhHK: Dict = {
   "chat.composerPlaceholder": "講吓你想整乜…",
   "chat.composerHint": "⌘/Ctrl + Enter 送出 · 講埋目標、內容、風格同格式會更好",
   "chat.activeFileEditingLabel": "改緊",
-  "chat.activeFilePlaceholder": "叫 Open Design 改吓 {file}...",
+  "chat.activeFilePlaceholder": "叫 Material Designer 改吓 {file}...",
   "chat.designArtifactsShowMore": "再顯示 {count} 個設計檔案",
   "chat.fillInputTitle": "撳一撳就填入輸入框",
   "chat.jumpToLatest": "跳去最新",
@@ -351,7 +351,7 @@ export const zhHK: Dict = {
   "chat.runError.emptyOutputMessage": "個 agent 做完但係咩都冇出到。呢個情況通常係一時，再跑一次就得。",
   "chat.runError.sessionExpiredMessage": "恢復嗰個工作階段已經過咗期，已經重設咗。再試一次就會開段全新嘅。",
   "chat.runError.gitBashMissingMessage": "喺 Windows 上面跑呢個 agent 要用 Git Bash，但係搵唔到。裝咗 Git for Windows，然後再試。",
-  "chat.runError.cpuUnsupportedMessage": "呢個 agent 嘅執行環境要一組呢部機冇嘅 CPU 指令集（AVX2），所以起唔到步。更新 Open Design 去最新版本，嗰個版本帶埋相容嘅執行環境。",
+  "chat.runError.cpuUnsupportedMessage": "呢個 agent 嘅執行環境要一組呢部機冇嘅 CPU 指令集（AVX2），所以起唔到步。更新 Material Designer 去最新版本，嗰個版本帶埋相容嘅執行環境。",
 
   // Cloud balance / upgrade
   "chat.amrCard.switchTitle": "模型呼叫失敗，呢個任務暫停咗",
@@ -569,7 +569,7 @@ export const zhHK: Dict = {
   "preview.closeTitle": "閂（Esc）",
   "preview.loading": "載緊 {label}…",
   "preview.errorTitle": "載唔到呢個例子。",
-  "preview.errorBody": "個範例 HTML 攞唔到。睇吓 Open Design 開咗未，然後再試。",
+  "preview.errorBody": "個範例 HTML 攞唔到。睇吓 Material Designer 開咗未，然後再試。",
   "preview.retry": "再試",
   "preview.unavailableTitle": "{noun} 冇隨附預覽。",
   "preview.unavailableBody": "喺對話度跑個 prompt，就會生成 {kind} 輸出。",
@@ -581,7 +581,7 @@ export const zhHK: Dict = {
 
   // Integrations
   "integrations.kicker": "整合",
-  "integrations.lede": "駁外部系統、將 MCP 工具帶入 agent 流程，仲可以喺其他 IDE、指令稿同自動化度用 Open Design。",
+  "integrations.lede": "駁外部系統、將 MCP 工具帶入 agent 流程，仲可以喺其他 IDE、指令稿同自動化度用 Material Designer。",
   "integrations.agentReady": "Agent 用得",
   "integrations.areasAria": "整合範圍",
   "integrations.tabHint.mcp": "外部工具",
@@ -677,7 +677,7 @@ export const zhHK: Dict = {
   "updater.installingRestart": "安裝緊，跟住重開...",
   "updater.openInstaller": "安裝更新",
   "updater.opening": "開緊安裝程式...",
-  "updater.quitButton": "結束 Open Design",
+  "updater.quitButton": "結束 Material Designer",
   "updater.quitFailedTitle": "結束唔到",
   "updater.quitting": "結束緊...",
   "updater.ready": "更新準備好",
@@ -686,9 +686,9 @@ export const zhHK: Dict = {
   "updater.viewVersionFeatures": "睇吓新功能",
   "updater.manualDownload": "自己手動下載",
   "updater.reinstallLearnMore": "了解多啲",
-  "updater.activeRunsTitle": "Open Design 仲做緊嘢",
+  "updater.activeRunsTitle": "Material Designer 仲做緊嘢",
   "updater.activeRunsBody": "仲有 {count} 個任務跑緊。而家重開會打斷佢哋。",
-  "updater.activeRunsUnknownBody": "Open Design 確認唔到仲有冇任務跑緊。而家重開有機會打斷做緊嘅嘢。",
+  "updater.activeRunsUnknownBody": "Material Designer 確認唔到仲有冇任務跑緊。而家重開有機會打斷做緊嘅嘢。",
 
   // Next step cards
   "nextStep.title": "下一步",

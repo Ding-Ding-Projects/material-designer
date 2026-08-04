@@ -220,8 +220,8 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
   'workspace.terminalSessionEnded': { 3: '工作階段完咗', 5: '工作階段完咗，都算做得耐' },
   'preview.errorTitle': { 3: '載唔到呢個例子。', 5: '呢個例子冇現身。' },
   'preview.errorBody': {
-    3: '個範例 HTML 攞唔到。睇吓 Open Design 開咗未，然後再試。',
-    5: '個範例 HTML 一直冇到。睇吓 Open Design 真係開咗未，然後再試。',
+    3: '個範例 HTML 攞唔到。睇吓 Material Designer 開咗未，然後再試。',
+    5: '個範例 HTML 一直冇到。睇吓 Material Designer 真係開咗未，然後再試。',
   },
   'preview.unavailableTitle': { 3: '{noun} 冇隨附預覽。', 5: '{noun} 出廠嗰陣就冇預覽。' },
   'preview.unavailableBody': {
@@ -243,7 +243,7 @@ export const ZH_HK_FUNNY: FunnyOverrides = {
   'updater.ready': { 3: '更新準備好', 5: '更新準備好，等緊你' },
   'updater.openFailedFallback': { 3: '開唔到個安裝程式。', 5: '個安裝程式唔肯開。' },
   'updater.quitFailedTitle': { 3: '結束唔到', 5: '佢唔肯走' },
-  'updater.activeRunsTitle': { 3: 'Open Design 仲做緊嘢', 5: 'Open Design 做到一半' },
+  'updater.activeRunsTitle': { 3: 'Material Designer 仲做緊嘢', 5: 'Material Designer 做到一半' },
 
   // 新手引導
   'onboarding.brandTitle': { 3: '抽返你嘅設計系統出嚟', 5: '走，去抽返你個設計系統' },

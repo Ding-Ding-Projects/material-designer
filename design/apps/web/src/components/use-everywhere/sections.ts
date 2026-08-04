@@ -72,7 +72,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
         body:
           'pnpm seed:test-projects --offline --data-dir ./.od \\\n' +
           '  --decks 2 --webs 2 --default-plugins 3 --community-plugins 3\n' +
-          '# Then start Open Design in the shell you normally use for dev:\n' +
+          '# Then start Material Designer in the shell you normally use for dev:\n' +
           'pnpm tools-dev',
       },
     ],
@@ -350,7 +350,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
           'pnpm seed:test-projects --offline --data-dir ./.od \\\n' +
           '  --decks 2 --webs 2 \\\n' +
           '  --default-plugins 3 --community-plugins 3\n' +
-          '# Shell 1: start Open Design after ingesting.\n' +
+          '# Shell 1: start Material Designer after ingesting.\n' +
           'pnpm tools-dev\n' +
           '# Shell 2: inspect the produced projects.\n' +
           'od project list --json --daemon-url http://127.0.0.1:7456',

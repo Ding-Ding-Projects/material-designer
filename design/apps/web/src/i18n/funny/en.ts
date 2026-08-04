@@ -278,8 +278,8 @@ export const EN_FUNNY: FunnyOverrides = {
   'workspace.terminalSessionEnded': { 3: 'Session ended', 5: 'Session over. It had a good run.' },
   'preview.errorTitle': { 3: "Couldn't load this example.", 5: 'This example did not show up.' },
   'preview.errorBody': {
-    3: 'The example HTML failed to fetch. Check Open Design is running and try again.',
-    5: 'The example HTML never arrived. Check Open Design is actually running, then try again.',
+    3: 'The example HTML failed to fetch. Check Material Designer is running and try again.',
+    5: 'The example HTML never arrived. Check Material Designer is actually running, then try again.',
   },
   'preview.unavailableTitle': { 3: 'No shipped preview for {noun}.', 5: '{noun} ships without a preview.' },
   'preview.unavailableBody': {
@@ -307,7 +307,7 @@ export const EN_FUNNY: FunnyOverrides = {
   'updater.ready': { 3: 'Update ready', 5: 'Update ready and waiting' },
   'updater.openFailedFallback': { 3: "The installer wouldn't open.", 5: 'The installer refused to open.' },
   'updater.quitFailedTitle': { 3: 'Could not quit', 5: 'It will not quit' },
-  'updater.activeRunsTitle': { 3: 'Open Design is still working', 5: 'Open Design is mid-task' },
+  'updater.activeRunsTitle': { 3: 'Material Designer is still working', 5: 'Material Designer is mid-task' },
 
   // ---------------------------------------------------------------------
   // Onboarding

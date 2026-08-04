@@ -87,7 +87,7 @@ const PLUGIN_SHARE_DETAILS: Record<PluginShareAction, {
       'Creates a public GitHub repository for this local Open Design plugin.',
     confirmLabel: 'Start publishing',
     steps: [
-      'Create a new Open Design project for the publish workflow.',
+      'Create a new Material Designer project for the publish workflow.',
       'Copy this plugin into that project as isolated source context.',
       'Run the official publish action plugin against the local daemon.',
     ],
@@ -99,7 +99,7 @@ const PLUGIN_SHARE_DETAILS: Record<PluginShareAction, {
       'Opens a pull request that adds this plugin to the Open Design community catalog.',
     confirmLabel: 'Start contribution',
     steps: [
-      'Create a new Open Design project for the contribution workflow.',
+      'Create a new Material Designer project for the contribution workflow.',
       'Copy this plugin into that project as isolated source context.',
       'Run the official contribution action plugin against the local daemon.',
     ],
@@ -1183,7 +1183,7 @@ function AvailablePluginDetailsModal({
                 </h3>
               </div>
               <p className="plugin-details-modal__section-hint">
-                This official catalog entry is bundled with Open Design and is ready to use.
+                This official catalog entry is bundled with Material Designer and is ready to use.
               </p>
             </section>
           ) : (

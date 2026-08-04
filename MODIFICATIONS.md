@@ -29,6 +29,100 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Finish the rebrand on the surfaces a user actually reads first
+
+**Reason:** driving the packaged build from a clean profile lands on
+onboarding — the first screen anyone sees — and it read "Welcome to Open
+Design" and "Sign in to Open Design" inside a window titled *Material
+Designer*. The release smoke test cannot catch it: its captures begin past
+onboarding, so the surface is outside the state list entirely.
+
+**The work was the classification, not the substitution.** Of 111 occurrences
+in the English dictionary, 64 name *this product* and were changed. The rest
+were kept, each for a reason:
+
+- **Open Design Cloud** is upstream's real hosted service, with real accounts
+  and balances. Renaming it would tell a user their account lives somewhere it
+  does not.
+- The **upstream project, repository, community and social links**, the
+  **telemetry recipient**, the **`od:` plugin and skill format nouns**, and
+  the sample starter-memory text all legitimately name upstream.
+- One is not the brand at all: *"**Open** Design Systems to view the full
+  preview"* is an imperative verb, which every other locale confirms by
+  translating it as one.
+
+**One call went deliberately against the brief.** The cloud sign-in button
+became "Sign in to Open Design **Cloud**" rather than "Material Designer",
+because it authenticates against upstream's service — there is no Material
+Designer account to sign in to. Spelling the service out removes the "this app
+is called Open Design" reading without lying about where the credential lives.
+
+**The copyright line is deliberately unchanged.** `© 2026 Open Design · All
+rights reserved.` is an attribution, not a product name. Apache-2.0 §4(c)
+requires retaining copyright notices, and this notice is the only place a user
+sees upstream credited. Replacing it would erase that; adding this fork's name
+would assert a co-holder claim nobody here is in a position to make. The
+ambiguity around it was removed instead — the wordmark and heading above it
+now say Material Designer, so the footer reads as what it is. **This is the one
+item that warrants a human decision rather than an agent's.**
+
+**Substituting a token into twenty languages broke grammar, and it was fixed
+rather than shipped.** "Material" is consonant-initial where "Open" is not, so
+Hungarian's article changes and its vowel-harmony suffixes flip across 49
+sites; Turkish's front-unrounded ending flips 22 more; Korean's vowel-final
+디자이너 takes different particles than 디자인 across 28. A rename that reads
+as broken grammar in three languages is not a rename that respects them.
+
+**Deliberately left:** the pre-mount `Loading Open Design…` string, because 42
+Playwright waits across 32 files synchronise on that exact literal and use
+hidden/count assertions — changing the source without changing all 42 would
+not fail the suite, it would silently turn every startup wait into a no-op.
+That is a one-line change with a 32-file dependency and belongs in its own
+pass.
+
+**Changed files:**
+
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/McpClientSection.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/PluginsView.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/components/WhatsNewPopup.tsx`
+- `apps/web/src/components/XaiOAuthControl.tsx`
+- `apps/web/src/components/use-everywhere/sections.ts`
+- `apps/web/src/design-system-auto-prompt.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+- `apps/web/tests/components/UpdaterPopup.test.tsx`
+- `apps/web/tests/components/WhatsNewPopup.test.tsx`
+
+
 ### 2026-08-04 — Interpolate per language, so a bilingual value stops being said twice
 
 **Reason:** `t()` composed the two languages **and then** interpolated, so a

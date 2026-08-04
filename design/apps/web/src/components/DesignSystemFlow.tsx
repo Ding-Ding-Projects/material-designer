@@ -1000,7 +1000,7 @@ export function DesignSystemCreationFlow({
     return (
       <div className="ds-setup-shell ds-setup-shell--center">
         <div className="ds-setup-center-card">
-          <h1>Open Design will extract your design system.</h1>
+          <h1>Material Designer will extract your design system.</h1>
           <p>You'll land in a project that fills in live — logo, palette, typography, imagery — as it measures your brand. Keep the tab open.</p>
           <div className="ds-setup-actions">
             <Button variant="ghost" onClick={() => setStep('setup')}>
@@ -2182,7 +2182,7 @@ export function DesignSystemDetailView({
         conversationId = fresh.id;
       }
       if (config.mode !== 'daemon' || !config.agentId) {
-        setChatError('Pick a local agent first, then ask Open Design to update this design system.');
+        setChatError('Pick a local agent first, then ask Material Designer to update this design system.');
         return;
       }
 
@@ -2644,11 +2644,11 @@ export function DesignSystemDetailView({
               <p>
                 {generationActive
                   ? activeJob?.kind === 'token-contract-rebuild'
-                    ? 'Open Design is preparing a token contract rebuild for review. The active contract stays unchanged until you accept it.'
+                    ? 'Material Designer is preparing a token contract rebuild for review. The active contract stays unchanged until you accept it.'
                     : activeJob?.kind === 'revision'
-                      ? 'Open Design is applying your feedback. You can keep reviewing while the updated draft is prepared.'
-                      : 'Open Design is still working, but you can start giving feedback on the work so far.'
-                  : 'Open Design is ready for review. Give feedback on the work so far, then publish when it is useful for future projects.'}
+                      ? 'Material Designer is applying your feedback. You can keep reviewing while the updated draft is prepared.'
+                      : 'Material Designer is still working, but you can start giving feedback on the work so far.'
+                  : 'Material Designer is ready for review. Give feedback on the work so far, then publish when it is useful for future projects.'}
               </p>
               <label>
                 <input
@@ -3144,7 +3144,7 @@ function WorkspaceActivityCard({
         <span>
           <strong>
             {status === 'running'
-              ? 'Open Design is updating this system'
+              ? 'Material Designer is updating this system'
               : status === 'failed'
                 ? 'Workspace update needs attention'
                 : 'Workspace update ready'}
@@ -3368,10 +3368,10 @@ function GenerationStatusCard({ job }: { job: DesignSystemGenerationJob }) {
           <strong>
             {active
               ? job.kind === 'token-contract-rebuild'
-                ? 'Open Design is rebuilding tokens'
+                ? 'Material Designer is rebuilding tokens'
                 : job.kind === 'revision'
-                  ? 'Open Design is revising'
-                  : 'Open Design is still working'
+                  ? 'Material Designer is revising'
+                  : 'Material Designer is still working'
               : job.status === 'failed'
                 ? `${noun} needs attention`
                 : `${noun} completed`}
