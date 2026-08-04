@@ -115,4 +115,105 @@ describe('Dialog', () => {
     expect(container.querySelector('[class*="body"]')).toBeTruthy();
     expect(container.querySelector('[class*="footer"]')).toBeTruthy();
   });
+
+  // aria-modal="true" is a promise that the rest of the page is inert. It was
+  // being made without a focus trap behind it, so Tab walked out of the dialog
+  // onto the controls the backdrop was covering — for a confirmation dialog,
+  // the very controls the user had just been asked to stop and think about.
+  describe('focus management', () => {
+    it('moves focus to the first tab stop when it opens', () => {
+      render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+          <button type="button">Delete</button>
+        </Dialog>,
+      );
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
+    });
+
+    it('wraps Tab from the last stop back to the first', () => {
+      render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+          <button type="button">Delete</button>
+        </Dialog>,
+      );
+      const first = screen.getByRole('button', { name: 'Cancel' });
+      const last = screen.getByRole('button', { name: 'Delete' });
+
+      last.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+
+      expect(document.activeElement).toBe(first);
+    });
+
+    it('wraps Shift+Tab from the first stop back to the last', () => {
+      render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+          <button type="button">Delete</button>
+        </Dialog>,
+      );
+      const first = screen.getByRole('button', { name: 'Cancel' });
+      const last = screen.getByRole('button', { name: 'Delete' });
+
+      first.focus();
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+      expect(document.activeElement).toBe(last);
+    });
+
+    it('pulls focus back when it has escaped to the page behind', () => {
+      const outside = document.createElement('button');
+      outside.textContent = 'Behind the backdrop';
+      document.body.appendChild(outside);
+
+      render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+        </Dialog>,
+      );
+
+      outside.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
+      outside.remove();
+    });
+
+    it('gives focus back to whatever opened it', () => {
+      const opener = document.createElement('button');
+      opener.textContent = 'Delete project';
+      document.body.appendChild(opener);
+      opener.focus();
+
+      const view = render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+        </Dialog>,
+      );
+      expect(document.activeElement).not.toBe(opener);
+
+      view.unmount();
+
+      expect(document.activeElement).toBe(opener);
+      opener.remove();
+    });
+
+    it('ignores keys other than Tab', () => {
+      render(
+        <Dialog ariaLabel="Confirm">
+          <button type="button">Cancel</button>
+          <button type="button">Delete</button>
+        </Dialog>,
+      );
+      const last = screen.getByRole('button', { name: 'Delete' });
+
+      last.focus();
+      fireEvent.keyDown(document, { key: 'ArrowDown' });
+
+      expect(document.activeElement).toBe(last);
+    });
+  });
 });

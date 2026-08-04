@@ -3914,6 +3914,7 @@ export function SettingsDialog({
     mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
     appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
+    narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
     critiqueTheater: {
       title: t('critiqueTheater.settingsNav'),
       subtitle: t('critiqueTheater.settingsNavHint'),

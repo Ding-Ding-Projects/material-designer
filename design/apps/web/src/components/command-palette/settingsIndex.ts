@@ -82,6 +82,7 @@ export const SETTINGS_SECTION_TOKENS: Record<SettingsSection, true> = {
   mcpClient: true,
   language: true,
   appearance: true,
+  narrator: true,
   critiqueTheater: true,
   notifications: true,
   pet: true,

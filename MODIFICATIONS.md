@@ -29,6 +29,29 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Make the shared dialog keep the promise its own markup makes
+
+**Reason:** every dialog in the application renders `aria-modal="true"`, which
+tells assistive technology the rest of the page is inert. Nothing enforced it.
+Tab walked straight out of the dialog onto the controls behind the backdrop —
+visually obscured, still focusable, and in the case of a confirmation dialog
+the exact controls the user had just been asked to stop and think about.
+
+Focus is now moved to the first tab stop when a dialog opens, kept inside it
+by Tab and Shift+Tab, pulled back if something moves it out, and returned to
+whichever control opened the dialog when it closes. Because this is the shared
+primitive, every dialog gains the behaviour at once.
+
+The visibility filter deliberately tests attributes rather than layout:
+`offsetParent` is the better check in a browser and is always null under
+jsdom, where these tests run, so a layout-based filter would conclude nothing
+is focusable in precisely the environment that asserts the behaviour.
+
+**Changed files:**
+
+- `packages/components/src/dialog.tsx`
+- `packages/components/tests/Dialog.test.tsx`
+
 ### 2026-08-04 — Give the spoken narrator a surface a user can actually reach
 
 **Reason:** the narrator shipped as unreachable code. Every piece existed —
