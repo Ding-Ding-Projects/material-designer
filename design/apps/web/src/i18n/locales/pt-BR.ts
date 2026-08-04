@@ -4619,6 +4619,10 @@ export const ptBR: Dict = {
   'privacy.deleteGateIdItem': 'O ID anônimo de instalação {id}, que é substituído por um novo',
   'privacy.deleteGateSharingItem': 'O compartilhamento de uso, que é desligado — os relatórios já enviados expiram conforme a política de retenção',
   'privacy.deleteGateDone': 'Seus dados foram excluídos e um novo ID anônimo foi emitido.',
+  'memory.deleteGateAction': 'Excluir memória',
+  'memory.deleteGateEntryItem': 'A memória salva “{name}”, arquivada em {type}, e tudo o que está escrito nela',
+  'memory.deleteGateEntryTextItem': 'O que ela diz agora: {description}',
+  'memory.deleteGateEntryDetail': 'O arquivo da memória é excluído do disco e a linha dela sai do índice de memórias, então os próximos chats deixam de vê-la. Nada no aplicativo a traz de volta.',
 
   // O seletor de cor infinito e seu tradutor de cores.
   'appearance.color.fieldLabel': 'Saturação e brilho',

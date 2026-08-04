@@ -4619,6 +4619,10 @@ export const esES: Dict = {
   'privacy.deleteGateIdItem': 'El identificador anónimo de instalación {id}, que se sustituye por uno nuevo',
   'privacy.deleteGateSharingItem': 'El envío de datos de uso, que se desactiva: los informes ya enviados caducan según la política de retención',
   'privacy.deleteGateDone': 'Tus datos se han eliminado y se ha emitido un identificador anónimo nuevo.',
+  'memory.deleteGateAction': 'Eliminar memoria',
+  'memory.deleteGateEntryItem': 'La memoria guardada «{name}», archivada en {type}, y todo lo escrito en ella',
+  'memory.deleteGateEntryTextItem': 'Lo que dice ahora mismo: {description}',
+  'memory.deleteGateEntryDetail': 'El archivo de memoria se elimina del disco y su línea desaparece del índice de memoria, así que los chats futuros dejan de verla. Nada en la aplicación la recupera.',
 
   // El selector de color infinito y su traductor de color.
   'appearance.color.fieldLabel': 'Saturación y brillo',

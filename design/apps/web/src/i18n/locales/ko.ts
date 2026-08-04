@@ -4619,6 +4619,10 @@ export const ko: Dict = {
   'privacy.deleteGateIdItem': '익명 설치 ID {id} — 새 ID로 교체됩니다',
   'privacy.deleteGateSharingItem': '사용 데이터 공유가 꺼집니다 — 이미 보낸 기록은 보존 정책에 따라 만료됩니다',
   'privacy.deleteGateDone': '데이터를 삭제하고 새 익명 ID를 발급했습니다.',
+  'memory.deleteGateAction': '메모리 삭제',
+  'memory.deleteGateEntryItem': '저장된 메모리 “{name}”({type} 분류)과 그 안에 쓰인 모든 내용',
+  'memory.deleteGateEntryTextItem': '지금 적혀 있는 내용: {description}',
+  'memory.deleteGateEntryDetail': '메모리 파일이 디스크에서 삭제되고 메모리 색인에서도 줄이 빠집니다. 이후 대화에서는 보이지 않으며, 앱 안에 되돌릴 방법은 없습니다.',
 
   // 무한 색상 선택기와 색상 변환기.
   'appearance.color.fieldLabel': '채도와 명도',

@@ -4619,6 +4619,10 @@ export const id: Dict = {
   'privacy.deleteGateIdItem': 'ID instalasi anonim {id}, yang diganti dengan yang baru',
   'privacy.deleteGateSharingItem': 'Pengiriman data penggunaan, yang dimatikan — laporan yang sudah terkirim hangus sesuai kebijakan retensi',
   'privacy.deleteGateDone': 'Data Anda sudah dihapus dan ID anonim baru sudah diterbitkan.',
+  'memory.deleteGateAction': 'Hapus memori',
+  'memory.deleteGateEntryItem': 'Memori tersimpan “{name}”, yang masuk kategori {type}, beserta semua isinya',
+  'memory.deleteGateEntryTextItem': 'Isinya saat ini: {description}',
+  'memory.deleteGateEntryDetail': 'Berkas memori dihapus dari disk dan barisnya dikeluarkan dari indeks memori, sehingga obrolan berikutnya tidak lagi melihatnya. Tidak ada apa pun di aplikasi ini yang bisa mengembalikannya.',
 
   // Pemilih warna tak terbatas dan penerjemah warnanya.
   'appearance.color.fieldLabel': 'Saturasi dan kecerahan',

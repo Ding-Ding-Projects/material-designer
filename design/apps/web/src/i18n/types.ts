@@ -4808,6 +4808,16 @@ export interface Dict {
   'privacy.deleteGateSharingItem': string;
   'privacy.deleteGateDone': string;
 
+  // The same, for deleting a saved memory. The entry's markdown file is
+  // unlinked and its bullet dropped from the index, with no revision written
+  // anywhere, so the gate names the memory (`{name}`), the category it is
+  // filed under (`{type}`) and — when it has one — its own description
+  // (`{description}`) quoted back rather than summarized.
+  'memory.deleteGateAction': string;
+  'memory.deleteGateEntryItem': string;
+  'memory.deleteGateEntryTextItem': string;
+  'memory.deleteGateEntryDetail': string;
+
   // The infinite colour picker and its translator: the continuous field, the
   // axes, typed entry, and an honest account of what each representation costs.
   // `{components}` lists the channels that were clipped, `{format}` is a format

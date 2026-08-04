@@ -4619,6 +4619,10 @@ export const hu: Dict = {
   'privacy.deleteGateIdItem': 'A(z) {id} névtelen telepítési azonosító, amelyet új vált fel',
   'privacy.deleteGateSharingItem': 'A használati adatok megosztása, amely kikapcsol — a már elküldött jelentések a megőrzési szabály szerint elévülnek',
   'privacy.deleteGateDone': 'Az adataidat töröltük, és új névtelen azonosítót adtunk ki.',
+  'memory.deleteGateAction': 'Memória törlése',
+  'memory.deleteGateEntryItem': 'A mentett memória („{name}”), amely a(z) {type} kategóriában szerepel, és minden, ami benne van',
+  'memory.deleteGateEntryTextItem': 'Amit jelenleg tartalmaz: {description}',
+  'memory.deleteGateEntryDetail': 'A memóriafájl törlődik a lemezről, és a sora kikerül a memóriaindexből, így a későbbi beszélgetések már nem látják. Az alkalmazásban semmi nem hozza vissza.',
 
   // A végtelen színválasztó és a színfordítója.
   'appearance.color.fieldLabel': 'Telítettség és világosság',

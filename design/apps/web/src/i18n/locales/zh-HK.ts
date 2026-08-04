@@ -1031,6 +1031,10 @@ export const zhHK: Dict = {
   "privacy.deleteGateIdItem": "匿名安裝 ID {id}，會換成一個新嘅",
   "privacy.deleteGateSharingItem": "使用資料分享會閂咗 —— 已經寄咗出去嘅紀錄按保留政策夠鐘就清走",
   "privacy.deleteGateDone": "你嘅資料刪咗喇，亦都發咗個新嘅匿名 ID 畀你。",
+  "memory.deleteGateAction": "刪咗個記憶",
+  "memory.deleteGateEntryItem": "已經存低嘅記憶「{name}」，歸喺 {type} 呢類，連埋入面寫低嘅所有嘢",
+  "memory.deleteGateEntryTextItem": "而家寫住嘅係：{description}",
+  "memory.deleteGateEntryDetail": "記憶檔案會喺硬碟度刪走，索引嗰行都會移除，之後傾偈就見唔到佢。個 app 入面冇任何地方搵得返。",
 
   // 無限色彩揀色器同色彩轉換器。
   "appearance.color.fieldLabel": "飽和度同明度",

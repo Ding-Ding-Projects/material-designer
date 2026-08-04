@@ -4619,6 +4619,10 @@ export const ar: Dict = {
   'privacy.deleteGateIdItem': 'معرِّف التثبيت المجهول {id}، وسيُستبدل بمعرِّف جديد',
   'privacy.deleteGateSharingItem': 'مشاركة بيانات الاستخدام، وستُوقَف — والتقارير المُرسَلة سلفًا تنتهي صلاحيتها وفق سياسة الاحتفاظ',
   'privacy.deleteGateDone': 'حُذفت بياناتك وصدر لك معرِّف مجهول جديد.',
+  'memory.deleteGateAction': 'حذف الذاكرة',
+  'memory.deleteGateEntryItem': 'الذاكرة المحفوظة «{name}» المصنَّفة ضمن {type}، وكل ما هو مكتوب فيها',
+  'memory.deleteGateEntryTextItem': 'ما تقوله حاليًا: {description}',
+  'memory.deleteGateEntryDetail': 'يُحذف ملف الذاكرة من القرص ويُزال سطره من فهرس الذاكرة، فتتوقف المحادثات المقبلة عن رؤيته. لا شيء في التطبيق يعيده.',
 
   // منتقي الألوان اللانهائي ومترجم الألوان الملحق به.
   'appearance.color.fieldLabel': 'التشبع والسطوع',

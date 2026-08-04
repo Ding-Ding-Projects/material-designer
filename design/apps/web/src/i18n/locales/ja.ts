@@ -4619,6 +4619,10 @@ export const ja: Dict = {
   'privacy.deleteGateIdItem': '匿名インストール ID {id}（新しいものに置き換わります）',
   'privacy.deleteGateSharingItem': '利用状況の共有（オフになります。送信済みのレポートは保持ポリシーに従って消えます）',
   'privacy.deleteGateDone': 'データを削除し、新しい匿名 ID を発行しました。',
+  'memory.deleteGateAction': 'メモリーを削除',
+  'memory.deleteGateEntryItem': '保存済みメモリー「{name}」（分類：{type}）と、そこに書かれている内容すべて',
+  'memory.deleteGateEntryTextItem': '現在の内容: {description}',
+  'memory.deleteGateEntryDetail': 'メモリーファイルはディスクから削除され、メモリー索引の行も取り除かれます。以後のチャットからは見えなくなり、アプリ内に元へ戻す手段はありません。',
 
   // 無限カラーピッカーとカラートランスレーター。
   'appearance.color.fieldLabel': '彩度と明度',

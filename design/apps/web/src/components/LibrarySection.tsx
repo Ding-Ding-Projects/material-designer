@@ -13,10 +13,16 @@
 // rubber-band box drag, Cmd/Ctrl+A — and the selection can be bulk-deleted from
 // the action bar or with Delete / Backspace.
 //
+// Every delete — one card or a whole selection — goes through the destructive
+// super-confirmation gate. Removing an asset drops its Library record outright
+// (caption, OCR text, tags, palette), and for a Library-owned asset the daemon
+// also unlinks the stored bytes; nothing writes a revision, so none of it is
+// recoverable from inside the product.
+//
 // Copy is intentionally inline (not yet i18n-keyed) — localization of the
 // Library surface is a tracked follow-up.
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
 import {
   applyLibraryAsset,
@@ -35,7 +41,8 @@ import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { setComposerSeed, setDesignSystemAssetSeed, setHomeComposerAssetSeed } from '../state/libraryHandoff';
-import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import { Button } from '@open-design/components';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
 import {
   KindIcon,
@@ -329,6 +336,67 @@ export interface Band {
   h: number;
 }
 
+/** How many assets the gate names one line each before it starts counting. */
+export const MAX_GATE_ITEMS = 12;
+
+/**
+ * What deleting one asset actually costs, in that asset's own name.
+ *
+ * The two storage models lose different things and the gate has to say which.
+ * An `owned` asset is one the Library holds its own copy of (a clipper
+ * capture, an upload, an import): the daemon unlinks those bytes from the
+ * Library folder. A `referenced` asset's bytes live inside a project or design
+ * system and are left alone — only the pointer goes.
+ *
+ * Neither one keeps the Library record. The caption, OCR text, tags and
+ * palette are deleted with the row, and Sync re-derives an asset from its
+ * source rather than restoring what was there, so "you can just sync it back"
+ * is not true of the parts a person curated.
+ */
+export function describeAssetLoss(asset: LibraryAsset): string {
+  const title = assetTitle(asset);
+  return asset.storage === 'owned'
+    ? `${title} — the file stored in your Library, plus its caption, OCR text, tags and palette`
+    : `${title} — its Library record: caption, OCR text, tags and palette. The file itself stays in the project that owns it.`;
+}
+
+/**
+ * One line per asset, then an honest count for whatever the cap left out. A
+ * Cmd+A selection can run to hundreds; a list that long buries the keys and
+ * the slider under a scroll, and a list that silently stopped at twelve would
+ * under-report what is about to go.
+ */
+export function describeAssetItems(assets: readonly LibraryAsset[]): string[] {
+  const named = assets.slice(0, MAX_GATE_ITEMS).map(describeAssetLoss);
+  const rest = assets.length - named.length;
+  if (rest > 0) named.push(`…and ${rest} more asset${rest === 1 ? '' : 's'} in the selection`);
+  return named;
+}
+
+/** The blast-radius sentence, keyed on which storage models are in the set. */
+export function describeDeleteDetail(assets: readonly LibraryAsset[]): string {
+  const owned = assets.filter((a) => a.storage === 'owned').length;
+  const referenced = assets.length - owned;
+  if (owned > 0 && referenced > 0) {
+    return (
+      `${owned} of these ${owned === 1 ? 'is' : 'are'} stored by the Library and ${owned === 1 ? 'its file is' : 'their files are'} ` +
+      `deleted from disk. The other ${referenced} only lose ${referenced === 1 ? 'its' : 'their'} Library record. ` +
+      'Nothing here is kept in version history, so none of it comes back.'
+    );
+  }
+  if (owned > 0) {
+    return (
+      `The ${owned === 1 ? 'file is' : 'files are'} unlinked from the Library folder. ` +
+      'Nothing in Open Design keeps a second copy, so this cannot be undone.'
+    );
+  }
+  return (
+    `The ${referenced === 1 ? 'file stays' : 'files stay'} in the project that owns ${referenced === 1 ? 'it' : 'them'}; ` +
+    `what goes is the Library record. Sync can index ${referenced === 1 ? 'it' : 'them'} again, but the caption, OCR text, ` +
+    'tags and palette are derived from scratch rather than restored.'
+  );
+}
+
 interface LibraryCardProps {
   asset: LibraryAsset;
   /** Flat position in `assets` — drives shift-range + box selection. */
@@ -505,8 +573,17 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [dragging, setDragging] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [seedFiles, setSeedFiles] = useState<File[] | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const confirmDeleteTitleId = useId();
+  // What the super-confirmation gate is currently pointed at, or null when it
+  // is closed. Both delete routes — the per-card "Remove" and the selection
+  // bar's "Delete N" — fill this in; neither one deletes anything on its own
+  // any more.
+  const [deleteGate, setDeleteGate] = useState<{
+    action: string;
+    target: string;
+    items: string[];
+    detail: string;
+    onConfirm: () => Promise<boolean>;
+  } | null>(null);
   // Asset currently being turned into an editable OD page (spinner gate).
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
@@ -679,10 +756,36 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     });
   }, [assets]);
 
+  // The delete itself. Reports failure rather than swallowing it, so a daemon
+  // that refused leaves the gate open saying so instead of closing on a
+  // removal that did not happen.
   const onDelete = useCallback(async (id: string) => {
     const ok = await deleteLibraryAsset(id);
-    if (ok) setAssets((prev) => prev.filter((a) => a.id !== id));
+    if (!ok) return false;
+    setAssets((prev) => prev.filter((a) => a.id !== id));
+    return true;
   }, []);
+
+  // Removing one asset had no confirmation at all: a single click on a small
+  // button inside a hover-revealed row, and the bytes were gone. It now names
+  // the asset and routes through the same two-key-plus-slider gate the rest of
+  // the product uses for anything it cannot put back.
+  const requestDeleteAsset = useCallback(
+    (id: string) => {
+      const asset = assets.find((a) => a.id === id);
+      if (!asset) return;
+      setDeleteGate({
+        action: 'Delete asset',
+        // The asset's own title, so the user can check the gate against the
+        // card they meant to act on rather than against a generic noun.
+        target: assetTitle(asset),
+        items: describeAssetItems([asset]),
+        detail: describeDeleteDetail([asset]),
+        onConfirm: () => onDelete(id),
+      });
+    },
+    [assets, onDelete],
+  );
 
   // "Edit as page": turn a captured html asset into a fresh editable OD project
   // and open it on its index.html. The daemon owns the project creation; here we
@@ -705,26 +808,34 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   const deleteSelected = useCallback(async () => {
     const ids = Array.from(selectedIds);
-    if (!ids.length) return;
+    if (!ids.length) return false;
     const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
     const deleted = new Set(ids.filter((_, i) => results[i]));
-    if (!deleted.size) return;
+    // Nothing landed — reported as a failure so the gate says so rather than
+    // closing over a selection that is still entirely there.
+    if (!deleted.size) return false;
     setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
     setSelectedIds(new Set());
     setPreviewId((cur) => (cur && deleted.has(cur) ? null : cur));
+    return true;
   }, [selectedIds]);
 
-  // Bulk delete is destructive and easy to trigger (a button or Delete/
-  // Backspace), so it routes through a confirmation dialog instead of removing
-  // the selection immediately.
+  // Bulk delete is destructive and very easy to trigger — a button in the
+  // selection bar, or Delete/Backspace with a box-selection still live. The
+  // dialog it used to raise was answered by one click on an autofocused
+  // button, which a stray Enter supplies; the gate cannot be answered by one
+  // reflex, and it lists what is in the selection rather than only counting it.
   const requestDeleteSelected = useCallback(() => {
-    if (selectedIds.size) setConfirmDeleteOpen(true);
-  }, [selectedIds]);
-
-  const confirmDeleteSelected = useCallback(() => {
-    setConfirmDeleteOpen(false);
-    void deleteSelected();
-  }, [deleteSelected]);
+    const chosen = assets.filter((a) => selectedIds.has(a.id));
+    if (!chosen.length) return;
+    setDeleteGate({
+      action: `Delete ${chosen.length} ${chosen.length === 1 ? 'asset' : 'assets'}`,
+      target: `${chosen.length} selected ${chosen.length === 1 ? 'asset' : 'assets'}`,
+      items: describeAssetItems(chosen),
+      detail: describeDeleteDetail(chosen),
+      onConfirm: () => deleteSelected(),
+    });
+  }, [assets, selectedIds, deleteSelected]);
 
   // --- multi-select → design system ---------------------------------------
 
@@ -1014,9 +1125,11 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
-      // The upload modal, delete-confirm dialog, and the design-system menu own
-      // shortcuts while open.
-      if (uploadOpen || confirmDeleteOpen || dsMenuOpen) return;
+      // The upload modal, the destructive gate, and the design-system menu own
+      // shortcuts while open. Escape is already taken by the gate in the
+      // capture phase; Delete/Backspace and Cmd+A are not, so this guard is
+      // what stops a second gate being raised over the open one.
+      if (uploadOpen || deleteGate || dsMenuOpen) return;
       const el = document.activeElement as HTMLElement | null;
       const typing =
         !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
@@ -1035,7 +1148,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, assets, selectedIds, previewId, uploadOpen, confirmDeleteOpen, dsMenuOpen, selectAll, requestDeleteSelected]);
+  }, [active, assets, selectedIds, previewId, uploadOpen, deleteGate, dsMenuOpen, selectAll, requestDeleteSelected]);
 
   // `@font-face` rules for every font asset on screen, so both the grid
   // thumbnails and the preview specimen render in the real typeface.
@@ -1086,7 +1199,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       onToggle={toggleOne}
       onRange={rangeTo}
       onPreview={setPreviewId}
-      onDelete={onDelete}
+      onDelete={requestDeleteAsset}
       onEditAsPage={handleEditAsPage}
       onOpenProject={onOpenProject}
     />
@@ -1348,30 +1461,22 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         />
       ) : null}
 
-      {confirmDeleteOpen ? (
-        <Dialog
-          className="modal-confirm"
-          role="alertdialog"
-          onClose={() => setConfirmDeleteOpen(false)}
-          closeOnEscape
-          ariaLabelledBy={confirmDeleteTitleId}
-        >
-          <DialogTitle id={confirmDeleteTitleId}>
-            Delete {selectedCount} {selectedCount === 1 ? 'asset' : 'assets'}?
-          </DialogTitle>
-          <DialogDescription className="modal-confirm-message">
-            This permanently removes {selectedCount === 1 ? 'it' : 'them'} from your Library. This
-            can’t be undone.
-          </DialogDescription>
-          <DialogFooter className="row">
-            <button type="button" onClick={() => setConfirmDeleteOpen(false)}>
-              Cancel
-            </button>
-            <button type="button" className="primary danger" autoFocus onClick={confirmDeleteSelected}>
-              Delete {selectedCount}
-            </button>
-          </DialogFooter>
-        </Dialog>
+      {deleteGate ? (
+        <DestructiveGate
+          action={deleteGate.action}
+          target={deleteGate.target}
+          items={deleteGate.items}
+          detail={deleteGate.detail}
+          // True for both storage models, for different reasons: an owned
+          // asset loses its bytes, and every asset loses the Library record
+          // that carried its caption, OCR text, tags and palette.
+          irreversible
+          onConfirm={deleteGate.onConfirm}
+          // `cancelled` means nothing ran and the selection is untouched;
+          // `dismissed` and `completed` both mean the delete was started, and
+          // the grid already reflects whatever landed.
+          onClose={() => setDeleteGate(null)}
+        />
       ) : null}
 
       {previewAsset ? (
@@ -1388,9 +1493,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             if (next) setPreviewId(next.id);
           }}
           onClose={() => setPreviewId(null)}
+          // The preview closes BEFORE the gate opens, and it has to: the
+          // preview is a portal at `z-index: 1000` and the gate's dialog
+          // backdrop sits at 100, so a gate raised underneath it would be
+          // invisible — a super-confirmation nobody can see is worse than the
+          // unguarded delete this replaced. Cancelling therefore returns the
+          // user to the grid rather than to the preview; nothing is deleted.
           onDelete={(id) => {
-            void onDelete(id);
             setPreviewId(null);
+            requestDeleteAsset(id);
           }}
           onOpenProject={onOpenProject}
           onEditAsPage={handleEditAsPage}

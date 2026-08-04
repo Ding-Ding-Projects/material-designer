@@ -26,6 +26,60 @@ Two rules this file is held to:
 Changes land here as they are committed, each with its commit link, and move into a
 version section when a release carries them.
 
+### Security
+
+- **The confirmation gate can no longer be defeated five different ways.** An
+  adversarial audit confirmed all five, and they matter because this gate is what
+  stands between a user and irreversible loss. Armed keys survived a target swap,
+  so keys operated for one action stayed engaged for the next. The "full-range"
+  slider was satisfiable in a single gesture — one far-end click or one `End`
+  press — and now rations forward travel so the end costs at least five
+  deliberate advances, while retreat stays free: hard to authorize and easy to
+  abandon is the right asymmetry. Dismissing mid-flight discarded the action's
+  failure. Escape and the emergency exit reported `cancelled` for an action that
+  had already begun, which was a false statement about the user's data
+  ([`081ccdd`](https://github.com/Ding-Ding-Projects/material-designer/commit/081ccdd)).
+- **`od` no longer deletes what the interface guards.** `od project|files|brand|templates|automation delete`
+  executed irreversible deletions with no confirmation of any kind, while the web
+  interface gated the identical operations behind the two-key slider — the CLI
+  reached the daemon route around it. All five now refuse without `--confirm`,
+  naming what would be deleted and printing the command that would proceed, and
+  they refuse *before* the request, so nothing reaches the daemon. This is
+  enforcement in two interfaces rather than at the operation, which the standard
+  asks for and this does not yet achieve; that gap is recorded rather than implied
+  to be closed
+  ([`c68068e`](https://github.com/Ding-Ding-Projects/material-designer/commit/c68068e)).
+- **Typing `constructor` into the colour field crashed it.** `parseColor` indexed
+  a plain-object colour map with no ownership check, so an inherited function came
+  back truthy and reached the hex parser, throwing out of a React change handler.
+  The field parses on every keystroke, so a paste was enough
+  ([`87e0118`](https://github.com/Ding-Ding-Projects/material-designer/commit/87e0118)).
+
+### Added
+
+- **CIELAB, LCH, OKLab and OKLCH.** The colour translator advertised twelve
+  representations and implemented eight; the whole Lab family was absent, and
+  typing `oklch(…)` was rejected as invalid. `lab()` and `lch()` are computed
+  against D50 and `oklab()`/`oklch()` against D65, because CSS Color 4 defines
+  them that way — emitting D65 numbers inside a `lab()` string produces a
+  well-formed value a browser renders as a *different colour*. The arithmetic is
+  checked against published reference values rather than against itself, which is
+  how a wrong digit in the Bradford D50→D65 matrix was caught
+  ([`87e0118`](https://github.com/Ding-Ding-Projects/material-designer/commit/87e0118)).
+- **The appearance editor and its infinite colour picker are reachable.** Both had
+  zero importers — written, typechecking, shipped in the bundle, and mounted by
+  nothing. The picker is now the accent control in Settings → Appearance, with the
+  fixed swatches kept as a convenience layered on top rather than replaced. The
+  appearance runtime mounts in `App.tsx` rather than the dialog, because mounted
+  in the dialog a chosen preset silently reverted on the next reload
+  ([`ab2a89c`](https://github.com/Ding-Ding-Projects/material-designer/commit/ab2a89c)).
+- **The web suite is a gate.** 463 test files now run on every push. They had never
+  run in this repository at all; the first run found 454 of 459 passing, and every
+  failure was a test describing behaviour the product had deliberately moved on
+  from — plus one genuine defect in the regex highlighter and one fixture that
+  mis-counted its own dice. Wired in without `|| true`
+  ([`ca03246`](https://github.com/Ding-Ding-Projects/material-designer/commit/ca03246)).
+
 ### Fixed
 
 - **The Design Files bulk delete no longer reports a success it never had.** It said

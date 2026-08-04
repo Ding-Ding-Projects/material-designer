@@ -40,6 +40,7 @@ import { notifyConnectorsChanged } from './connectors-events';
 import { hasConnectorStatusChanges } from './connectors-state';
 import { MemoryProfilePanel } from './MemoryProfilePanel';
 import { MemoryHooksPanel, type MemoryHookKey } from './MemoryHooksPanel';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 // All manually-selectable memory types. `profile` (the structured singleton)
 // and `rule` (verified checks the POST loop enforces) join the original four
@@ -1396,15 +1397,61 @@ export function MemorySection({
     }
   }, [editing, reload, fireFlash]);
 
+  // Deleting a saved memory unlinks its markdown file from the memory
+  // directory and drops its bullet from MEMORY.md. Nothing writes a revision,
+  // nothing moves it to a trash, and no surface in the product puts it back —
+  // so the one-click "×" on the card was the whole distance between a
+  // mis-aimed pointer and a fact the user wrote being gone.
+  const [deleteGate, setDeleteGate] = useState<{
+    action: string;
+    target: string;
+    items: string[];
+    detail: string;
+    onConfirm: () => Promise<boolean>;
+  } | null>(null);
+
+  // The delete itself. It reports failure rather than swallowing it: a `false`
+  // leaves the gate open saying the entry is still there, instead of closing
+  // on a delete that did not happen.
   const onDelete = useCallback(
     async (id: string) => {
       const ok = await deleteMemoryEntry(id);
-      if (ok) {
-        await reload();
-        fireFlash('deleted');
-      }
+      if (!ok) return false;
+      await reload();
+      fireFlash('deleted');
+      return true;
     },
     [reload, fireFlash],
+  );
+
+  const requestDeleteEntry = useCallback(
+    (entry: MemoryEntrySummary) => {
+      // `|| ''` rather than a bare `.trim()`: the list already renders this
+      // field defensively, and a gate that throws is a delete button with no
+      // confirmation again.
+      const description = (entry.description || '').trim();
+      setDeleteGate({
+        action: t('memory.deleteGateAction'),
+        // The memory's own title, not a description of one — this is the
+        // string the user has to be able to check the slider against.
+        target: entry.name,
+        items: [
+          t('memory.deleteGateEntryItem', {
+            name: entry.name,
+            type: TYPE_LABEL[entry.type],
+          }),
+          // Quoted verbatim when there is one, so the user reads what the
+          // memory currently says rather than trusting the title to describe
+          // it. Omitted rather than padded when the entry has no description.
+          ...(description
+            ? [t('memory.deleteGateEntryTextItem', { description })]
+            : []),
+        ],
+        detail: t('memory.deleteGateEntryDetail'),
+        onConfirm: () => onDelete(entry.id),
+      });
+    },
+    [onDelete, t, TYPE_LABEL],
   );
 
   const onToggleEnabled = useCallback(async (next: boolean) => {
@@ -1538,8 +1585,9 @@ export function MemorySection({
 	        <button
 	          type="button"
 	          className="ghost library-card-action"
-	          onClick={() => onDelete(entry.id)}
+	          onClick={() => requestDeleteEntry(entry)}
 	          title={t('settings.memoryDelete')}
+	          aria-label={t('settings.memoryDelete')}
 	        >
 	          <Icon name="close" size={14} />
 	        </button>
@@ -2648,6 +2696,23 @@ export function MemorySection({
       modalHost,
       ) : null}
       </>
+      ) : null}
+      {/* Rendered outside the `memories` tab branch on purpose: closing the
+          gate must not depend on which tab the user happens to be looking at
+          when the delete resolves. */}
+      {deleteGate ? (
+        <DestructiveGate
+          action={deleteGate.action}
+          target={deleteGate.target}
+          items={deleteGate.items}
+          detail={deleteGate.detail}
+          irreversible
+          onConfirm={deleteGate.onConfirm}
+          // Every outcome closes the gate. `cancelled` means nothing ran and
+          // the entry is untouched; `dismissed` and `completed` are both the
+          // delete having been started, which the list already reflects.
+          onClose={() => setDeleteGate(null)}
+        />
       ) : null}
     </>
   );

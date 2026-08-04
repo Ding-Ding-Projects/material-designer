@@ -4619,6 +4619,10 @@ export const de: Dict = {
   'privacy.deleteGateIdItem': 'Die anonyme Installations-ID {id}, die durch eine neue ersetzt wird',
   'privacy.deleteGateSharingItem': 'Die Nutzungsdatenfreigabe, die abgeschaltet wird — bereits gesendete Berichte verfallen gemäß Aufbewahrungsrichtlinie',
   'privacy.deleteGateDone': 'Ihre Daten wurden gelöscht und eine neue anonyme ID wurde vergeben.',
+  'memory.deleteGateAction': 'Erinnerung löschen',
+  'memory.deleteGateEntryItem': 'Die gespeicherte Erinnerung „{name}“, abgelegt unter {type}, und alles, was darin steht',
+  'memory.deleteGateEntryTextItem': 'Was aktuell darin steht: {description}',
+  'memory.deleteGateEntryDetail': 'Die Erinnerungsdatei wird von der Festplatte gelöscht und ihre Zeile aus dem Erinnerungsindex entfernt, künftige Chats sehen sie also nicht mehr. Nichts in der App holt sie zurück.',
 
   // Der unendliche Farbwähler und sein Farbübersetzer.
   'appearance.color.fieldLabel': 'Sättigung und Helligkeit',

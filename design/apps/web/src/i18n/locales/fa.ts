@@ -4614,6 +4614,10 @@ export const fa: Dict = {
   'privacy.deleteGateIdItem': 'شناسهٔ ناشناس نصب {id} که با شناسهٔ تازه‌ای جایگزین می‌شود',
   'privacy.deleteGateSharingItem': 'اشتراک‌گذاری داده‌های کاربرد که خاموش می‌شود — گزارش‌های ارسال‌شده طبق سیاست نگهداری منقضی می‌شوند',
   'privacy.deleteGateDone': 'داده‌های شما حذف شد و شناسهٔ ناشناس تازه‌ای صادر شد.',
+  'memory.deleteGateAction': 'حذف حافظه',
+  'memory.deleteGateEntryItem': 'حافظهٔ ذخیره‌شدهٔ «{name}» که زیر {type} بایگانی شده، و هر چه در آن نوشته شده',
+  'memory.deleteGateEntryTextItem': 'الان چه می‌گوید: {description}',
+  'memory.deleteGateEntryDetail': 'فایل حافظه از دیسک حذف می‌شود و سطرش از فهرست حافظه برداشته می‌شود، پس گفتگوهای بعدی دیگر آن را نمی‌بینند. هیچ چیزی در برنامه آن را برنمی‌گرداند.',
 
   // انتخابگر رنگ بی‌کران و مترجم رنگ آن.
   'appearance.color.fieldLabel': 'اشباع و روشنایی',

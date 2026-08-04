@@ -5084,6 +5084,10 @@ export const zhTW: Dict = {
   "privacy.deleteGateIdItem": "匿名安裝 ID {id}，會換成一個新的",
   "privacy.deleteGateSharingItem": "使用資料分享會被關掉 —— 已經送出去的紀錄依保留政策到期清除",
   "privacy.deleteGateDone": "你的資料已刪除，並已發出新的匿名 ID。",
+  "memory.deleteGateAction": "刪除記憶",
+  "memory.deleteGateEntryItem": "已儲存的記憶「{name}」，歸類於 {type}，以及裡面寫下的全部內容",
+  "memory.deleteGateEntryTextItem": "它目前寫的是：{description}",
+  "memory.deleteGateEntryDetail": "記憶檔案會從磁碟刪除，索引裡的那一行也會移除，之後的對話就看不到它了。應用程式裡沒有任何地方能把它找回來。",
 
   // 無限色彩選擇器與色彩轉換器。
   "appearance.color.fieldLabel": "飽和度與明度",

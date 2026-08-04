@@ -5076,6 +5076,10 @@ export const zhCN: Dict = {
   "privacy.deleteGateIdItem": "匿名安装 ID {id}，会被换成一个新的",
   "privacy.deleteGateSharingItem": "使用数据共享会被关掉 —— 已经发送出去的记录按保留策略到期清除",
   "privacy.deleteGateDone": "你的数据已删除，并已发放新的匿名 ID。",
+  "memory.deleteGateAction": "删除记忆",
+  "memory.deleteGateEntryItem": "已保存的记忆“{name}”，归类为 {type}，以及其中写下的全部内容",
+  "memory.deleteGateEntryTextItem": "它目前写的是：{description}",
+  "memory.deleteGateEntryDetail": "记忆文件会从磁盘删除，索引里的那一行也会移除，之后的对话就看不到它了。应用里没有任何地方能把它找回来。",
 
   // 无限颜色选择器与颜色转换器。
   "appearance.color.fieldLabel": "饱和度与明度",

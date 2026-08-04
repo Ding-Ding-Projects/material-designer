@@ -4619,6 +4619,10 @@ export const tr: Dict = {
   'privacy.deleteGateIdItem': 'Anonim kurulum kimliği {id} — yerine yenisi verilir',
   'privacy.deleteGateSharingItem': 'Kullanım verisi paylaşımı kapatılır — zaten gönderilmiş raporlar saklama politikasına göre süresi dolunca silinir',
   'privacy.deleteGateDone': 'Verileriniz silindi ve yeni bir anonim kimlik verildi.',
+  'memory.deleteGateAction': 'Belleği sil',
+  'memory.deleteGateEntryItem': '{type} altında saklanan “{name}” adlı kayıtlı bellek ve içine yazılmış her şey',
+  'memory.deleteGateEntryTextItem': 'Şu anda ne yazıyor: {description}',
+  'memory.deleteGateEntryDetail': 'Bellek dosyası diskten silinir ve satırı bellek dizininden çıkarılır; sonraki sohbetler onu artık görmez. Uygulamada geri getiren hiçbir şey yok.',
 
   // Sonsuz renk seçici ve renk çevirmeni.
   'appearance.color.fieldLabel': 'Doygunluk ve parlaklık',

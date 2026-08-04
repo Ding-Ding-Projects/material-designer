@@ -74,6 +74,28 @@ async function openAdvancedMemoryModal() {
 // caption, so their accessible name is composite. Match by the leading label.
 const howItWorksTopTab = { name: /^How it works/ } as const;
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider
+ * end to end. Deleting a saved memory used to be one click on the card's "×";
+ * it is now this, and the sequence is what these tests have to perform to
+ * reach the delete.
+ *
+ * Five slider advances, not one: the gate rations how far a single input event
+ * may carry the slider, so a jump straight to 100 lands at 20 and stops. This
+ * helper is not working around that — it is performing the gesture a person
+ * actually has to make.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 describe('MemorySection', () => {
   afterEach(() => {
     cleanup();
@@ -1783,11 +1805,84 @@ describe('MemorySection', () => {
     const card = (await screen.findByText('UI preferences')).closest('.library-card') as HTMLElement;
     fireEvent.click(within(card).getByTitle('Delete'));
 
+    // The click raises the gate and deletes nothing on its own.
+    expect(screen.getByTestId('destructive-gate')).toBeTruthy();
+    expect(deletedUrls).toEqual([]);
+    authorizeDestructiveGate();
+
     await waitFor(() => {
       expect(screen.getByText('✓ Memory deleted')).toBeTruthy();
       expect(screen.getByText(/No memory yet\./)).toBeTruthy();
     });
     expect(deletedUrls).toEqual(['/api/memory/user_ui_preferences']);
+  });
+
+  it('names the memory in the delete gate and deletes nothing when it is cancelled', async () => {
+    globalThis.EventSource = StubEventSource as unknown as typeof EventSource;
+    const deletedUrls: string[] = [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === '/api/memory' && (!init || init.method === undefined)) {
+        return new Response(JSON.stringify({
+          enabled: true,
+          rootDir: '/tmp/memory',
+          index: '# Memory\n',
+          entries: [
+            {
+              id: 'user_ui_preferences',
+              name: 'UI preferences',
+              description: 'Persistent UI rendering preferences',
+              type: 'user',
+              updatedAt: Date.now(),
+            },
+          ],
+          extraction: null,
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (url === '/api/memory/extractions') {
+        return new Response(JSON.stringify({ extractions: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/memory/user_ui_preferences' && init?.method === 'DELETE') {
+        deletedUrls.push(url);
+        return new Response(null, { status: 204 });
+      }
+      return new Response(JSON.stringify({}), { status: 404 });
+    }) as typeof fetch;
+
+    renderMemorySection();
+
+    const card = (await screen.findByText('UI preferences')).closest('.library-card') as HTMLElement;
+    const deleteButton = within(card).getByTitle('Delete') as HTMLButtonElement;
+    // Focused first so the gate has a real origin to hand focus back to —
+    // `fireEvent.click` does not move focus the way a pointer or Enter does.
+    deleteButton.focus();
+    fireEvent.click(deleteButton);
+
+    // The gate has to say what goes by its own name, not "are you sure?": the
+    // memory's title, the category it is filed under, and the description it
+    // currently carries.
+    const items = within(screen.getByTestId('destructive-gate-items')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]?.textContent).toContain('UI preferences');
+    expect(items[0]?.textContent).toContain('User');
+    expect(items[1]?.textContent).toContain('Persistent UI rendering preferences');
+    expect(screen.getByTestId('destructive-gate-reversibility').textContent).toMatch(
+      /cannot be undone/i,
+    );
+
+    fireEvent.click(screen.getByTestId('destructive-gate-exit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('destructive-gate')).toBeNull();
+    });
+    expect(deletedUrls).toEqual([]);
+    expect(screen.getByText('UI preferences')).toBeTruthy();
+    // Cancelling puts focus back on the control that opened the gate.
+    expect(document.activeElement).toBe(deleteButton);
   });
 
   it('keeps the editor open when saving a memory entry fails', async () => {
@@ -1945,6 +2040,12 @@ describe('MemorySection', () => {
     const row = screen.getByText('Remember I prefer dark mode')
       .closest('.library-card') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+
+    // Deliberately NOT behind the super-confirmation gate. An extraction row is
+    // a line in a 20-deep in-memory buffer that evicts itself and dies with the
+    // daemon; the memories it wrote are separate files and survive it. Gating a
+    // dismissable status line is how a gate stops meaning anything.
+    expect(screen.queryByTestId('destructive-gate')).toBeNull();
 
     await waitFor(() => {
       expect(screen.queryByText('Remember I prefer dark mode')).toBeNull();

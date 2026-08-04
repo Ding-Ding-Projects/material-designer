@@ -29,6 +29,68 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Route the memory and library deletions through the gate that already existed
+
+**Reason:** an audit confirmed that irreversible deletions fired with no
+confirmation at all while the same product gated others behind a two-key
+slider. A gate that guards two doors of a dozen is closer to a false assurance
+than to a safety feature.
+
+**Memory entries** deleted the markdown file from disk and dropped its line
+from the index, with no revision, no trash and no restore path — and no
+confirmation whatsoever. Now gated, naming the entry's own title, its type and
+what it currently says, so the user is reading the thing they are about to
+lose rather than answering "are you sure".
+
+**Library assets** had no confirmation on single delete, and a bulk dialog
+that a stray Enter answered because its button was auto-focused. Both are
+gated. The copy branches on how the asset is stored: an owned asset loses its
+bytes, a referenced one keeps its file but loses the record and every piece of
+enrichment on it — caption, OCR text, tags, palette. Both are marked
+irreversible, because the record never comes back either way. The bulk gate
+lists each asset by name, capped at twelve with an explicit remainder, since a
+select-all can run to hundreds and would otherwise bury the keys and the
+slider under a scroll.
+
+**What was deliberately not gated**, because over-gating is how a gate stops
+meaning anything: the extraction-record rows are a self-evicting twenty-entry
+in-memory buffer that does not survive a daemon restart — its own header calls
+it a UX surface rather than an audit log — and the memories it wrote are
+separate files that outlive it. A regression test now pins that decision so it
+is not quietly reversed.
+
+Both call sites' confirm handlers now return a boolean, so a refused delete
+holds the gate open reporting failure instead of closing over a removal that
+did not happen.
+
+**Changed files:**
+
+- `apps/web/src/components/MemorySection.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/MemorySection.test.tsx`
+- `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
+
 ### 2026-08-04 — Add the four colour spaces the translator never had, and stop it overstating losslessness
 
 **Reason:** the appearance standard requires bidirectional conversion across

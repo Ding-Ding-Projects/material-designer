@@ -4633,6 +4633,10 @@ export const en: Dict = {
   'privacy.deleteGateIdItem': 'The anonymous installation id {id}, which is replaced with a new one',
   'privacy.deleteGateSharingItem': 'Usage sharing, which is switched off — reports already sent age out under the retention policy',
   'privacy.deleteGateDone': 'Your data has been deleted and a new anonymous id has been issued.',
+  'memory.deleteGateAction': 'Delete memory',
+  'memory.deleteGateEntryItem': 'The saved memory “{name}”, filed under {type}, and everything written in it',
+  'memory.deleteGateEntryTextItem': 'What it currently says: {description}',
+  'memory.deleteGateEntryDetail': 'The memory file is deleted from disk and its line removed from the memory index, so future chats stop seeing it. Nothing in the app puts it back.',
 
   // The infinite colour picker and the colour translator.
   'appearance.color.fieldLabel': 'Saturation and brightness',

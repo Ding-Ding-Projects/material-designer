@@ -4619,6 +4619,10 @@ export const pl: Dict = {
   'privacy.deleteGateIdItem': 'Anonimowy identyfikator instalacji {id}, który zostanie zastąpiony nowym',
   'privacy.deleteGateSharingItem': 'Udostępnianie danych o użyciu, które zostanie wyłączone — już wysłane raporty wygasają zgodnie z polityką przechowywania',
   'privacy.deleteGateDone': 'Twoje dane zostały usunięte i wydano nowy anonimowy identyfikator.',
+  'memory.deleteGateAction': 'Usuń wspomnienie',
+  'memory.deleteGateEntryItem': 'Zapisane wspomnienie „{name}”, w kategorii {type}, i wszystko, co w nim napisano',
+  'memory.deleteGateEntryTextItem': 'Co obecnie mówi: {description}',
+  'memory.deleteGateEntryDetail': 'Plik wspomnienia zostaje usunięty z dysku, a jego wiersz znika z indeksu wspomnień, więc kolejne rozmowy przestają je widzieć. Nic w aplikacji go nie przywróci.',
 
   // Nieskończony wybór koloru i jego tłumacz zapisów.
   'appearance.color.fieldLabel': 'Nasycenie i jasność',
