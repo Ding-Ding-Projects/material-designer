@@ -214,6 +214,14 @@ describe('LibrarySection delete gate', () => {
     await waitFor(() => {
       expect(screen.getByTestId('destructive-gate').getAttribute('data-phase')).toBe('failed');
     });
-    expect(screen.getByText('A photo')).toBeTruthy();
+    // Scoped outside the gate deliberately. The gate names the asset it is
+    // about to delete, so a bare text query matches twice while it is open —
+    // and the thing being asserted is that the asset is still in the GRID,
+    // which a match inside the gate would not show.
+    const gate = screen.getByTestId('destructive-gate');
+    const stillInTheGrid = screen
+      .getAllByText('A photo')
+      .some((node) => !gate.contains(node));
+    expect(stillInTheGrid).toBe(true);
   });
 });
