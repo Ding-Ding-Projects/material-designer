@@ -1153,6 +1153,16 @@ only in a report is a finding that gets rediscovered.
         it, and it is capped at 200.)
       The confirmed ones are tracked as their own items above and below.
       **The standing lesson: an unrefuted finding is a lead, not a fact.**
+- [ ] **`App.connectors.test.tsx` is flaky, and that matters more now.**
+      "keeps telemetry and content sharing enabled when the first-run banner
+      share choice is clicked" failed on a **documentation-only commit** and
+      passed on a re-run of the identical tree with no change — which is the
+      definition of a flake rather than a regression. It was harmless while
+      nothing ran this suite; now that the suite gates every push, an
+      intermittent failure trains readers to re-run a red gate instead of
+      reading it, which is how a gate stops working. Find the non-determinism
+      (a timer, an unawaited effect, or shared state across the file's cases)
+      rather than raising a timeout.
 - [ ] **Give the colour module a test file.** Five of the seven confirmed
       findings live in `components/appearance/` — `color.ts`, `translate.ts`,
       `contrast.ts`, `colorNames.ts`, `InfiniteColorPicker.tsx` — and the whole

@@ -11,6 +11,24 @@ import * as router from '../../src/router';
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Deleting an automation used to be one browser confirm; it is now
+ * this, and the sequence is what this test has to perform to reach the delete.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // The slider rations forward travel, so a single jump to the end does not
+  // authorize — five advances is the minimum the ration allows.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 function mockTasksViewFetch({ routines = [] }: { routines?: Routine[] } = {}) {
   globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
@@ -469,7 +487,6 @@ describe('TasksView page shell', () => {
       },
     ];
     const deletedUrls: string[] = [];
-    window.confirm = vi.fn(() => true);
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === '/api/routines' && (!init || init.method === undefined)) {
@@ -514,6 +531,12 @@ describe('TasksView page shell', () => {
 
     const row = (await screen.findByText('Daily digest')).closest('li')!;
     fireEvent.click(within(row).getByRole('button', { name: 'Delete automation' }));
+
+    // Pressing Delete opens the gate and does nothing else.
+    expect(screen.getByTestId('destructive-gate')).toBeTruthy();
+    expect(deletedUrls).toEqual([]);
+
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /No automations yet/i })).toBeTruthy();

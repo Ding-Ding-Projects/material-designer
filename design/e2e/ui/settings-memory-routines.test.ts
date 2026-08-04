@@ -2041,10 +2041,6 @@ test.describe('Settings Memory and Automations flows', () => {
   test('[P1] refreshes and clears extraction history from Saved memory', async ({ page }) => {
     await seedSettingsBase(page);
 
-    await page.addInitScript(() => {
-      window.confirm = () => true;
-    });
-
     let extractions = [
       {
         id: 'ex-1',
@@ -2126,7 +2122,22 @@ test.describe('Settings Memory and Automations flows', () => {
     await dialog.getByRole('button', { name: 'Refresh' }).click();
     await expect(dialog.getByText('Remember I prefer dense dashboards')).toBeVisible();
 
+    // Clear no longer answers a blocking browser dialog. It opens the app's
+    // own super-confirmation gate, which has to be driven: two keys, then the
+    // slider run end to end. The slider rations forward travel to 20 per
+    // input event, so one End press lands at 20% and five are needed — that
+    // rationing is the point of the control, not an obstacle to work around.
     await dialog.getByRole('button', { name: 'Clear' }).click();
+    const gate = page.getByTestId('destructive-gate');
+    await expect(gate).toBeVisible();
+    await gate.getByTestId('destructive-gate-key-first').click();
+    await gate.getByTestId('destructive-gate-key-second').click();
+    const slider = gate.getByTestId('destructive-gate-slider');
+    await slider.focus();
+    for (let advance = 0; advance < 5; advance += 1) {
+      await slider.press('End');
+    }
+
     await expect(dialog.getByText('Remember I prefer dense dashboards')).toHaveCount(0);
   });
 

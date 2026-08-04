@@ -4879,6 +4879,24 @@ export interface Dict {
   'narrator.speakSample': string;
   'narrator.stop': string;
   'narrator.sample': string;
+  // Copy for the surfaces that replaced blocking browser dialogs: the fact
+  // lines the destructive gate states, the sketch discard choice, and the
+  // rename failure that is now a notification rather than an `alert()`.
+  'designFiles.renameFailed': string;
+  'memory.clearGateItem': string;
+  'memory.clearGateDetail': string;
+  'brandDetail.deleteGateItem': string;
+  'conv.deleteGateItem': string;
+  'automations.deleteGateItem': string;
+  'automations.deleteGateDetail': string;
+  'dsManager.deleteGateItem': string;
+  'dsManager.deleteGateDetail': string;
+  'workspace.deleteFileGateItem': string;
+  'ds.deleteProjectGateItem': string;
+  'ds.deleteProjectGateDetail': string;
+  'settings.mediaProviderClearGateAction': string;
+  'settings.mediaProviderClearGateItem': string;
+  'sketch.closeDiscard': string;
 }
 
 // How many languages a rendered string carries. 'single' is the historical

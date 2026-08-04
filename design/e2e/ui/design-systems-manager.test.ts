@@ -1,4 +1,5 @@
 import { expect, test } from '@/playwright/suite';
+import { authorizeDestructiveGate } from '@/playwright/destructive-gate';
 import { ensureRailOpen } from '@/playwright/rail';
 import type { Page } from '@playwright/test';
 
@@ -296,13 +297,15 @@ test('[P1] deleting the active design system falls back to another user system',
   await expect(page).toHaveURL(/\/design-systems$/);
   await page.getByRole('tab', { name: 'Your systems' }).click();
 
-  page.once('dialog', (dialog) => dialog.accept());
-
   const alphaCard = page.getByTestId('design-system-card-brand-alpha');
   await alphaCard.click();
   const detail = page.getByTestId('design-system-detail-brand-alpha');
   await detail.getByTestId('design-kit-more-actions').click();
   await page.getByRole('menuitem', { name: 'Delete Brand Alpha' }).click();
+  // Deleting a design system removes its tokens from this device with no
+  // restore path, so it now goes through the app's own super-confirmation
+  // gate rather than a browser dialog.
+  await authorizeDestructiveGate(page);
 
   await expect(alphaCard).toHaveCount(0);
   await expect

@@ -1517,14 +1517,32 @@ export function MemorySection({
     }
   }, [reloadExtractions]);
 
-  const onClearExtractions = useCallback(async () => {
-    if (!window.confirm(t('settings.memoryExtractionsClearConfirm'))) return;
-    setExtractions([]);
+  // The clear itself. It runs the request first and only empties the list once
+  // the daemon has confirmed, which reverses the old optimistic order on
+  // purpose: behind the gate the user has already spent several seconds
+  // authorizing, so the snappiness the optimism bought is worth nothing, and a
+  // `false` now leaves the gate open over a list that is genuinely still there
+  // rather than over one the UI had already blanked.
+  const clearExtractions = useCallback(async () => {
     const ok = await clearExtractionHistory();
-    if (!ok) {
-      void reloadExtractions();
-    }
-  }, [reloadExtractions, t]);
+    if (!ok) return false;
+    setExtractions([]);
+    return true;
+  }, []);
+
+  // Clearing the extraction history deletes every memory the assistant pulled
+  // out of past chats. Nothing writes a revision and no surface puts them back,
+  // so it goes through the same super-confirmation gate as deleting a single
+  // entry rather than through a browser dialog one stray Enter answers.
+  const onClearExtractions = useCallback(() => {
+    setDeleteGate({
+      action: t('settings.memoryExtractionsClearTitle'),
+      target: t('settings.memoryExtractions'),
+      items: [t('memory.clearGateItem', { count: extractions.length })],
+      detail: t('memory.clearGateDetail'),
+      onConfirm: clearExtractions,
+    });
+  }, [clearExtractions, extractions.length, t]);
 
 	  const memoryTabs: ReadonlyArray<{
 	    id: MemoryTab;

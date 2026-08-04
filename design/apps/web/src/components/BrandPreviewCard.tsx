@@ -19,6 +19,7 @@ import { trackDesignSystemEditClick } from '../analytics/events';
 import { requestHomeChip } from '../runtime/home-intent';
 import { brandSummaryToKit } from '../runtime/design-kit';
 import { DesignKitView } from './DesignKitView';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import styles from './BrandPreviewCard.module.css';
 
 // Re-exports preserving the previous public surface of this module.
@@ -54,6 +55,11 @@ export function BrandPreviewCard({
   const projectId = meta.projectId;
   const [busy, setBusy] = useState(false);
   const [backingProjectMissing, setBackingProjectMissing] = useState(false);
+  // Deleting a brand takes its extracted design system with it — the tokens,
+  // the type scale, the palette — and nothing in the product puts them back.
+  // A one-button browser confirm was the whole distance between a mis-aimed
+  // pointer and that, so the delete goes through the super-confirmation gate.
+  const [deleteGateOpen, setDeleteGateOpen] = useState(false);
 
   const kit = brandSummaryToKit(summary);
 
@@ -116,9 +122,7 @@ export function BrandPreviewCard({
   }, [onOpenProject, projectId, analytics.track, meta.designSystemId]);
 
   const deleteBrand = useCallback(async () => {
-    if (busy) return;
-    const ok = window.confirm(t('brandDetail.deleteConfirm').replace('{name}', name));
-    if (!ok) return;
+    if (busy) return false;
     const designSystemId = meta.designSystemId;
     if (designSystemId) {
       trackDesignSystemEditClick(analytics.track, {
@@ -137,10 +141,14 @@ export function BrandPreviewCard({
       await fetch(`/api/brands/${encodeURIComponent(meta.id)}`, { method: 'DELETE' });
       navigate({ kind: 'home', view: 'brands' }, { replace: true });
       await onChanged?.();
+      return true;
     } catch {
       setBusy(false);
+      // Reported rather than swallowed: `false` holds the gate open saying the
+      // brand is still there, instead of closing on a delete that did not run.
+      return false;
     }
-  }, [busy, meta.id, meta.designSystemId, name, onChanged, t, analytics.track, projectId]);
+  }, [busy, meta.id, meta.designSystemId, onChanged, analytics.track, projectId]);
 
   const badgeSlot = extracting ? (
     <span className={`${styles.badge} ${styles.badgeBusy}`} role="status">
@@ -174,7 +182,7 @@ export function BrandPreviewCard({
       ) : null}
       <Button
         variant="ghost"
-        onClick={() => void deleteBrand()}
+        onClick={() => setDeleteGateOpen(true)}
         disabled={busy}
         data-testid="brand-preview-delete"
       >
@@ -199,13 +207,27 @@ export function BrandPreviewCard({
   );
 
   return (
-    <DesignKitView
-      kit={kit}
-      variant={variant}
-      badgeSlot={badgeSlot}
-      actionsSlot={actionsSlot}
-      noticeSlot={noticeSlot}
-      dataTestId="brand-preview-card"
-    />
+    <>
+      <DesignKitView
+        kit={kit}
+        variant={variant}
+        badgeSlot={badgeSlot}
+        actionsSlot={actionsSlot}
+        noticeSlot={noticeSlot}
+        dataTestId="brand-preview-card"
+      />
+      {deleteGateOpen ? (
+        <DestructiveGate
+          action={t('brandDetail.delete')}
+          // The brand's own name, not a description of one — this is the
+          // string the user has to be able to check the slider against.
+          target={name}
+          items={[t('brandDetail.deleteGateItem', { name })]}
+          irreversible
+          onConfirm={deleteBrand}
+          onClose={() => setDeleteGateOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

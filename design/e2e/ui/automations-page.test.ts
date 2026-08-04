@@ -1,4 +1,5 @@
 import { expect, test } from '@/playwright/suite';
+import { authorizeDestructiveGate } from '@/playwright/destructive-gate';
 import { ensureRailOpen } from '@/playwright/rail';
 import { routeAgents } from '@/playwright/mock-factory';
 import type { Locator, Page } from '@playwright/test';
@@ -1243,10 +1244,11 @@ test.describe('Automations page', () => {
     await row.getByRole('button', { name: 'Hide history' }).click();
     await expect(page.getByLabel('Automation run history')).toHaveCount(0);
 
-    page.once('dialog', (dialog) => {
-      void dialog.accept();
-    });
     await row.getByRole('button', { name: 'Delete automation' }).click({ force: true });
+    // Deleting an automation removes it from this device with no restore
+    // path, so it now goes through the app's own super-confirmation gate
+    // rather than a browser dialog.
+    await authorizeDestructiveGate(page);
 
     await expect(view.getByText('No automations yet')).toBeVisible();
   });
@@ -1610,14 +1612,17 @@ test.describe('Automations page', () => {
     const view = await gotoAutomations(page);
     const row = view.locator('.automation-row', { hasText: 'Daily digest' }).first();
 
-    page.once('dialog', (dialog) => {
-      void dialog.accept();
-    });
     await row.getByRole('button', { name: 'Delete automation' }).click({ force: true });
+    await authorizeDestructiveGate(page);
 
-    await expect(view.getByRole('alert')).toContainText('delete failed upstream');
+    // The daemon's own words, now rendered inside the gate the user is
+    // looking at rather than on a banner behind it. The gate stays open over
+    // an automation that is demonstrably still in the list.
+    await expect(page.getByTestId('destructive-gate-failure')).toContainText(
+      'delete failed upstream',
+    );
+    await expect(page.getByTestId('destructive-gate')).toBeVisible();
     await expect(row).toBeVisible();
-    await expect(row.getByRole('button', { name: 'Delete automation' })).toBeVisible();
   });
 
   test('[P1] edits an automation title from the saved list and keeps the updated row visible', async ({ page }) => {

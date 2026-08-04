@@ -41,6 +41,7 @@ import {
   type SelectionState,
 } from './bulk/selection';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+import { notify } from './notifications/notificationStore';
 import { selectInitialDesignPreviewFile } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { getPluginFolderCandidates } from './design-files/pluginFolders';
@@ -751,7 +752,14 @@ export function DesignFilesPanel({
       });
       setRenaming(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      // Reporting a failed rename is not a decision, so it must not halt the
+      // panel. The row stays in edit mode with the user's draft intact — the
+      // notification says what went wrong, the field says where to fix it.
+      notify({
+        severity: 'error',
+        title: t('designFiles.renameFailed'),
+        body: err instanceof Error ? err.message : String(err),
+      });
       setRenaming({ name, draft, saving: false });
     }
   }

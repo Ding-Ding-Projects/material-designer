@@ -3,6 +3,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PreviewModal } from '../../src/components/PreviewModal';
+import {
+  clearNotifications,
+  readNotifications,
+} from '../../src/components/notifications/notificationStore';
 
 // Regression coverage for image export: the PreviewModal share menu must
 // include an "Export as image" button that snapshots the srcdoc iframe and
@@ -117,8 +121,12 @@ describe('PreviewModal image export', () => {
     expect(exportAsImageMock).toHaveBeenCalledWith(fakeDataUrl, 'main');
   });
 
-  it('alerts when snapshot capture returns null', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  // Both failure paths used to be `alert()`, which halted the modal to say
+  // something the user could only acknowledge. They are notifications now:
+  // non-blocking, and `error` severity so they stay on screen until dismissed
+  // rather than expiring unread while the user looks at the preview.
+  it('reports a persistent error when snapshot capture returns null', async () => {
+    clearNotifications();
     captureHostIframeSnapshotMock.mockResolvedValueOnce(null);
     requestPreviewSnapshotMock.mockResolvedValueOnce(null);
 
@@ -130,17 +138,18 @@ describe('PreviewModal image export', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /export as image/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(readNotifications()).toHaveLength(1);
     });
+    const [record] = readNotifications();
+    expect(record?.severity).toBe('error');
+    expect(record?.title).toContain('Image capture failed');
 
     // exportAsImage must not be called when snapshot is null.
     expect(exportAsImageMock).not.toHaveBeenCalled();
-
-    alertSpy.mockRestore();
   });
 
-  it('alerts when exportAsImage throws', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('reports a persistent error when exportAsImage throws', async () => {
+    clearNotifications();
     captureHostIframeSnapshotMock.mockResolvedValueOnce(null);
     requestPreviewSnapshotMock.mockResolvedValueOnce({
       dataUrl: 'data:image/png;base64,ok',
@@ -159,10 +168,9 @@ describe('PreviewModal image export', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: /export as image/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(readNotifications()).toHaveLength(1);
     });
-
-    alertSpy.mockRestore();
+    expect(readNotifications()[0]?.severity).toBe('error');
   });
 
   it('fires onSharePopoverItemClick with "image"', () => {

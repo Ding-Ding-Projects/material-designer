@@ -10,6 +10,25 @@ import * as router from '../../src/router';
 const originalFetch = globalThis.fetch;
 const originalConfirm = window.confirm;
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Deleting an automation used to be one browser confirm; it is now
+ * this, and the sequence is what these tests have to perform to reach the
+ * delete.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // The slider rations forward travel, so a single jump to the end does not
+  // authorize — five advances is the minimum the ration allows.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 describe('RoutinesSection', () => {
   afterEach(() => {
     cleanup();
@@ -305,7 +324,7 @@ describe('RoutinesSection', () => {
     expect(postBodies).toEqual([]);
   });
 
-  it('deletes a routine after confirmation', async () => {
+  it('deletes a routine after the destructive gate is authorized', async () => {
     let routines: Routine[] = [{
       id: 'routine-1',
       name: 'Morning briefing',
@@ -321,7 +340,6 @@ describe('RoutinesSection', () => {
       updatedAt: Date.now(),
     }];
     const deletedUrls: string[] = [];
-    window.confirm = vi.fn(() => true);
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -350,10 +368,78 @@ describe('RoutinesSection', () => {
     const row = (await screen.findByText('Morning briefing')).closest('li')!;
     fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
 
+    // Pressing Delete opens the gate and does nothing else. The gate names the
+    // automation, so the user can check what the slider is about to do.
+    const gate = screen.getByTestId('destructive-gate');
+    expect(within(gate).getByText(/Morning briefing/)).toBeTruthy();
+    expect(deletedUrls).toEqual([]);
+
+    authorizeDestructiveGate();
+
     await waitFor(() => {
       expect(screen.getByText('No automations yet.')).toBeTruthy();
     });
     expect(deletedUrls).toEqual(['/api/routines/routine-1']);
+  });
+
+  it('leaves the routine alone when the destructive gate is dismissed', async () => {
+    const routines: Routine[] = [{
+      id: 'routine-1',
+      name: 'Morning briefing',
+      prompt: 'Morning summary',
+      schedule: { kind: 'daily', time: '09:00', timezone: 'UTC' },
+      target: { mode: 'create_each_run' },
+      skillId: null,
+      agentId: null,
+      enabled: true,
+      nextRunAt: Date.now() + 3600_000,
+      lastRun: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }];
+    const deletedUrls: string[] = [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url === '/api/routines' && (!init || init.method === undefined)) {
+        return new Response(JSON.stringify({ routines }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/projects' && (!init || init.method === undefined)) {
+        return new Response(JSON.stringify({ projects: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (url === '/api/routines/routine-1' && init?.method === 'DELETE') {
+        deletedUrls.push(url);
+        return new Response(null, { status: 204 });
+      }
+      return new Response(JSON.stringify({}), { status: 404 });
+    }) as typeof fetch;
+
+    render(<RoutinesSection />);
+
+    const row = (await screen.findByText('Morning briefing')).closest('li')!;
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+
+    const gate = screen.getByTestId('destructive-gate');
+    // Both keys on and the slider dragged part-way: the emergency exit still
+    // leaves the automation untouched, because nothing has run.
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value: '20' },
+    });
+    fireEvent.click(within(gate).getByTestId('destructive-gate-exit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('destructive-gate')).toBeNull();
+    });
+    expect(deletedUrls).toEqual([]);
+    expect(screen.getByText('Morning briefing')).toBeTruthy();
   });
 
   it('opens the project referenced by a routine run from history', async () => {
@@ -832,7 +918,7 @@ describe('RoutinesSection', () => {
     expect(body.target).toEqual({ mode: 'reuse', projectId: 'proj-1' });
   });
 
-  it('shows an error alert when deleting a routine fails', async () => {
+  it('shows the failure inside the gate when deleting a routine fails', async () => {
     const routines: Routine[] = [{
       id: 'routine-1',
       name: 'Morning briefing',
@@ -847,7 +933,6 @@ describe('RoutinesSection', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     }];
-    window.confirm = vi.fn(() => true);
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -876,9 +961,14 @@ describe('RoutinesSection', () => {
 
     const row = (await screen.findByText('Morning briefing')).closest('li')!;
     fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+    authorizeDestructiveGate();
 
-    expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(screen.getByRole('alert').textContent).toContain('delete failed upstream');
+    // The daemon's own words, rendered inside the gate the user is looking at
+    // rather than on a banner behind it. The gate stays open over an
+    // automation that is demonstrably still in the list.
+    const failure = await screen.findByTestId('destructive-gate-failure');
+    expect(failure.textContent).toContain('delete failed upstream');
+    expect(screen.getByTestId('destructive-gate')).toBeTruthy();
     expect(screen.getByText('Morning briefing')).toBeTruthy();
   });
 });

@@ -29,6 +29,91 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Remove every blocking browser dialog from the web application
+
+**Reason:** two standards were being broken by the same eighteen call sites.
+Anything that only informs must be a non-blocking notification rather than a
+modal that halts the application; and an irreversible action must go through
+the super-confirmation gate. `window.confirm` and `window.alert` satisfy
+neither — they freeze the application, they cannot be styled or localized, and
+as a guard on a destructive action they are answered by a single stray Enter.
+
+**Thirteen were irreversible destruction** and now route through the gate,
+each naming the exact data it will destroy: clearing memory extractions,
+deleting a routine, an automation, a conversation from two different surfaces,
+a project file, a design-system project, a design system, a brand, and
+clearing a media provider's stored credential — the last being a key the
+application never shows again and cannot re-derive.
+
+**One was a genuinely recoverable decision** and deliberately did *not* get
+the gate: closing a sketch tab with unsaved work now asks through the shared
+dialog primitive. Putting two keys and a slider in front of closing a tab is
+exactly how a gate stops meaning anything. The terminal teardown moved out of
+the asking path at the same time, so cancelling now changes nothing at all.
+
+**Six were merely informational** and became notifications. The worst of them
+told the user their pop-up had been blocked — in an alert that was itself
+blocking them from reaching the browser control that would unblock it.
+
+Several handlers were reshaped to return a real boolean rather than swallowing
+their own failure, so a refused delete holds the gate open reporting what went
+wrong instead of closing over a removal that never happened. Fifteen keys were
+added across all twenty locales, with Cantonese written rather than inherited.
+
+**Changed files:**
+
+- `apps/web/src/components/BrandPreviewCard.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/ConversationsMenu.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/src/components/DesignSystemsTab.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/MemorySection.tsx`
+- `apps/web/src/components/PreviewModal.tsx`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/SketchEditor.tsx`
+- `apps/web/src/components/TasksView.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/runtime/exports.ts`
+- `apps/web/tests/components/ConversationsMenu.destructive-gate.test.tsx`
+- `apps/web/tests/components/MemorySection.test.tsx`
+- `apps/web/tests/components/RoutinesSection.test.tsx`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/components/SettingsDialog.media.test.tsx`
+- `apps/web/tests/components/TasksView.analytics.test.tsx`
+- `apps/web/tests/components/TasksView.page.test.tsx`
+- `apps/web/tests/components/preview-modal-image-export.test.tsx`
+- `apps/web/tests/runtime/exports.test.ts`
+- `e2e/lib/playwright/destructive-gate.ts`
+- `e2e/ui/app-design-files.test.ts`
+- `e2e/ui/app-restoration.test.ts`
+- `e2e/ui/app.test.ts`
+- `e2e/ui/automations-page.test.ts`
+- `e2e/ui/design-systems-manager.test.ts`
+- `e2e/ui/settings-memory-routines.test.ts`
+
+
 ### 2026-08-04 — Route the memory and library deletions through the gate that already existed
 
 **Reason:** an audit confirmed that irreversible deletions fired with no

@@ -147,7 +147,9 @@ describe('TasksView analytics', () => {
     { button: 'Edit', element: 'edit' },
     { button: 'Delete automation', element: 'delete' },
   ])('tracks the $element row action', async ({ button, element }) => {
-    window.confirm = vi.fn(() => true);
+    // No `window.confirm` stub any more: Delete opens the destructive gate
+    // instead of a browser dialog, and the click event this asserts is
+    // emitted when the button is pressed, before the gate is authorized.
     mockFetch({ routines: [routine()] });
     render(<TasksView />);
     const row = (await screen.findByText('Orbit digest')).closest('li')!;

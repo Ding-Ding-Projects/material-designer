@@ -1089,4 +1089,22 @@ export const zhHK: Dict = {
   "narrator.speakSample": "讀段示範嚟聽",
   "narrator.stop": "唔好讀住",
   "narrator.sample": "旁白開咗喇，聽落就係咁。",
+
+  // Blocking browser dialogs replaced: the destructive gate's fact lines, the
+  // sketch discard choice, and the rename failure notice.
+  "designFiles.renameFailed": "改名唔成功",
+  "memory.clearGateItem": "到而家為止喺你啲對話度抽出嚟嘅每一條記憶 —— 清單而家有 {count} 條",
+  "memory.clearGateDetail": "抽取紀錄會喺磁碟度刪走。你自己儲低嘅記憶唔會郁到，但抽出嚟嗰份清單，app 入面冇任何地方搵得返。",
+  "brandDetail.deleteGateItem": "品牌「{name}」同埋由佢抽出嚟嘅設計系統 —— 配色、字級級距同設計變數",
+  "conv.deleteGateItem": "對話「{title}」同入面每一句訊息",
+  "automations.deleteGateItem": "自動化「{name}」同佢個排程",
+  "automations.deleteGateDetail": "自動化會停埋唔再行，仲會喺呢部機度移走。之前跑過嘅紀錄同佢哋整出嚟嘅專案會留低，但自動化本身唔會。",
+  "dsManager.deleteGateItem": "設計系統「{title}」 —— 配色、字級級距同設計變數",
+  "dsManager.deleteGateDetail": "設計系統會喺呢部機度移走。之前用佢整咗嘅設計仲有返自己啲檔案，但個系統本身就冇咗，app 入面冇任何地方還原到。",
+  "workspace.deleteFileGateItem": "專案資料夾入面嘅檔案「{name}」",
+  "ds.deleteProjectGateItem": "設計系統「{title}」、佢個專案資料夾，同埋入面每一個檔案、對話同產出",
+  "ds.deleteProjectGateDetail": "個專案資料夾會連埋已註冊嘅設計系統一齊喺磁碟度刪走。app 入面冇任何地方放得返。",
+  "settings.mediaProviderClearGateAction": "清走儲低咗嘅憑證",
+  "settings.mediaProviderClearGateItem": "儲低咗嘅 {name} API 金鑰、基礎 URL 同模型。個金鑰唔會再顯示，app 都還原唔到。",
+  "sketch.closeDiscard": "唔要啲改動",
 };

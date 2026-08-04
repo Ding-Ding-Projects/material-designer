@@ -7,6 +7,24 @@ import { installMockOpenDesignHost } from '@open-design/host/testing';
 import type { UpsertByokCredentialProfileRequest } from '@open-design/contracts';
 import { en } from '../../src/i18n/locales/en';
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Clearing a media provider's saved credentials used to be one
+ * browser confirm; it is now this.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // The slider rations forward travel, so a single jump to the end does not
+  // authorize — five advances is the minimum the ration allows.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 function optionNames(container: HTMLElement): string[] {
   return within(container).getAllByRole('option').map((option) => {
     const labelledBy = option.getAttribute('aria-labelledby');
@@ -3927,15 +3945,18 @@ describe('SettingsDialog media providers interactions', () => {
       { initialSection: 'media' },
     );
 
-    // Issue #737 added a window.confirm guard on the Clear button so a
-    // stray click cannot wipe a saved API key. Auto-accept the prompt
-    // here so the test still exercises the cleared-payload path.
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
+    // Issue #737 put a guard on the Clear button so a stray click cannot wipe
+    // a saved API key. That guard is now the app's own super-confirmation gate
+    // rather than a blocking `window.confirm`, so reaching the cleared-payload
+    // path means driving the gate.
     const clearButtons = screen.getAllByRole('button', { name: 'Clear' });
     fireEvent.click(clearButtons[0]!);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    // The click only opens the gate; the saved key is untouched until it is
+    // driven end to end.
+    expect((screen.getByLabelText('OpenAI API key') as HTMLInputElement).value).toBe('sk-media');
+    authorizeDestructiveGate();
+
     expect((screen.getByLabelText('OpenAI API key') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('OpenAI Base URL') as HTMLInputElement).value).toBe('');
 
@@ -3946,11 +3967,9 @@ describe('SettingsDialog media providers interactions', () => {
       }),
       { forceMediaProviderSync: true },
     );
-
-    confirmSpy.mockRestore();
   });
 
-  it('cancels Clear when the confirmation is dismissed (issue #737)', () => {
+  it('cancels Clear when the gate is dismissed (issue #737)', () => {
     const { onPersist } = renderSettingsDialog(
       {
         mode: 'daemon',
@@ -3962,13 +3981,22 @@ describe('SettingsDialog media providers interactions', () => {
       { initialSection: 'media' },
     );
 
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const clearButtons = screen.getAllByRole('button', { name: 'Clear' });
     fireEvent.click(clearButtons[0]!);
 
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    const gate = screen.getByTestId('destructive-gate');
+    // Both keys on and the slider part-way: the emergency exit still leaves
+    // everything alone, because the gate has not run anything.
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value: '20' },
+    });
+    fireEvent.click(within(gate).getByTestId('destructive-gate-exit'));
+
+    expect(screen.queryByTestId('destructive-gate')).toBeNull();
     // Saved key + base URL must stay intact when the user dismisses
-    // the confirmation; without this guard a fat-fingered click on
+    // the gate; without this guard a fat-fingered click on
     // Clear would silently wipe the key. Autosave should never fire
     // because nothing changed.
     expect((screen.getByLabelText('OpenAI API key') as HTMLInputElement).value).toBe('sk-media');
@@ -3976,8 +4004,6 @@ describe('SettingsDialog media providers interactions', () => {
       'https://custom.openai.example/v1',
     );
     expect(onPersist).not.toHaveBeenCalled();
-
-    confirmSpy.mockRestore();
   });
 
   it('supports persisting provider API key and base URL edits', async () => {
@@ -4026,11 +4052,12 @@ describe('SettingsDialog media providers interactions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'OpenAI Show key' }));
     expect(apiKeyInput.type).toBe('text');
 
-    // Issue #737 added a window.confirm guard on Clear; jsdom's
-    // unimplemented confirm() returns undefined, which would cancel
-    // the clear and leave this test asserting the wrong reveal state.
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // Issue #737 put a guard on Clear. It is now the app's own gate rather
+    // than a browser dialog, so the clear only lands once the gate is driven
+    // end to end — clicking Clear alone would leave this test asserting the
+    // wrong reveal state.
     fireEvent.click(screen.getAllByRole('button', { name: 'Clear' })[0]!);
+    authorizeDestructiveGate();
     expect(apiKeyInput.type).toBe('password');
 
     fireEvent.change(apiKeyInput, { target: { value: 'sk-replacement' } });
@@ -4038,8 +4065,6 @@ describe('SettingsDialog media providers interactions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'OpenAI Show key' }));
     expect(apiKeyInput.type).toBe('text');
-
-    confirmSpy.mockRestore();
   });
 
   it('supports providers with a custom model override field', async () => {

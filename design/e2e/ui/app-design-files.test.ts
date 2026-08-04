@@ -1,4 +1,5 @@
 import { expect, test } from '@/playwright/suite';
+import { authorizeDestructiveGate } from '@/playwright/destructive-gate';
 import { openNewProjectModal as openNewProjectModalFromProjects } from '@/playwright/rail';
 import { routeAgents } from '@/playwright/mock-factory';
 import { expectAllProjectFilesActive, openAllProjectFiles } from '@/playwright/workspace';
@@ -487,6 +488,9 @@ async function runDesignFilesDeleteFlow(page: Page) {
   await fileRow.locator('[data-testid^="design-file-menu-"]').click();
   await expect(page.getByTestId('design-file-menu-popover')).toBeVisible();
   await page.locator('[data-testid^="design-file-delete-"]').click();
+  // Deleting a file is irreversible, so it now goes through the app's own
+  // super-confirmation gate rather than a blocking browser dialog.
+  await authorizeDestructiveGate(page);
 
   await expect(fileRow).toHaveCount(0);
   await expect(page.getByRole('tab', { name: /trash-me\.png/i })).toHaveCount(0);

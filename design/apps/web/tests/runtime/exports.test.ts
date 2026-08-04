@@ -25,6 +25,10 @@ import {
   requestPreviewSnapshot,
   sourceLooksLikeExportableDeck,
 } from '../../src/runtime/exports';
+import {
+  clearNotifications,
+  readNotifications,
+} from '../../src/components/notifications/notificationStore';
 
 describe('planDeckImageCapture (#4604 current-slide capture for runtime decks)', () => {
   it('whole-deck capture renders off-screen with no index (stitch all)', () => {
@@ -1162,7 +1166,7 @@ describe('sandboxed preview Blob exports', () => {
     expect(doc).toContain("window.__odPrintReady===true");
   });
 
-  it('shows an alert and revokes the blob URL when the popup is blocked', async () => {
+  it('raises a persistent notification and revokes the blob URL when the popup is blocked', async () => {
     vi.stubGlobal('window', {
       open: () => null,
       addEventListener: () => {},
@@ -1170,10 +1174,20 @@ describe('sandboxed preview Blob exports', () => {
 
     const revokeSpy = URL.revokeObjectURL as ReturnType<typeof vi.fn>;
     revokeSpy.mockClear();
+    clearNotifications();
 
     await exportAsPdf('<p>test</p>', 'Blocked');
 
-    expect(alert).toHaveBeenCalledWith('Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.');
+    // This was an `alert()`, which froze the app on the one path where the
+    // message tells the user to go and click something in the browser chrome
+    // the alert itself was blocking them from reaching. It is now a
+    // notification: non-blocking, and `error` severity so it stays on screen
+    // until dismissed rather than expiring unread.
+    const [record] = readNotifications();
+    expect(record?.severity).toBe('error');
+    expect(record?.body).toBe(
+      'Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.',
+    );
     expect(revokeSpy).toHaveBeenCalledWith('blob:test');
   });
 

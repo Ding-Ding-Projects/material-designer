@@ -147,6 +147,7 @@ import { isVisualStabilityMode } from '../utils/visualStability';
 import { byokProviderRequiresApiKey } from '../utils/byokProvider';
 import { XaiOAuthControl } from './XaiOAuthControl';
 import type { MediaProvider } from '../media/models';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { Toast } from './Toast';
 import {
   checkForUpdaterUpdate,
@@ -7735,6 +7736,14 @@ function MediaProvidersSection({
   const [visibleApiKeys, setVisibleApiKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  // The provider whose saved credentials the super-confirmation gate is
+  // pointed at, or null when it is closed. Clearing wipes an API key the app
+  // never shows again and cannot re-derive — the user has to go and find it
+  // wherever they originally got it — so a stray click on a row's Clear
+  // button is exactly the accident the gate exists to stop. Issue #737 added
+  // a `confirm()` here for the same reason; this replaces that blocking
+  // browser dialog with the product's own gate.
+  const [clearTarget, setClearTarget] = useState<MediaProvider | null>(null);
   useEffect(() => {
     setVisibleApiKeys((current) => {
       const next = new Set<string>();
@@ -8020,27 +8029,10 @@ function MediaProvidersSection({
                         // dashboard cares about the intent signal.
                         is_configured: clearable,
                       });
-                      // Match the existing window.confirm guard the rest of
-                      // the app uses for destructive actions (conversation
-                      // delete, design delete, file delete in FileWorkspace).
-                      // Without this a stray click on the row's Clear button
-                      // wipes the saved key with no recovery. Issue #737.
-                      if (
-                        !confirm(
-                          t('settings.mediaProviderClearConfirm', {
-                            name: provider.label,
-                          }),
-                        )
-                      ) {
-                        return;
-                      }
-                      updateProvider(provider, {
-                        apiKey: '',
-                        baseUrl: '',
-                        model: '',
-                        apiKeyConfigured: false,
-                        apiKeyTail: '',
-                      });
+                      // The gate below owns the actual clear. Opening it is
+                      // all this click does, so a mis-aimed pointer changes
+                      // nothing at all.
+                      setClearTarget(provider);
                     }}
                   >
                     {t('settings.mediaProviderClear')}
@@ -8103,6 +8095,28 @@ function MediaProvidersSection({
             })}
           </ul>
         </details>
+      ) : null}
+      {clearTarget ? (
+        <DestructiveGate
+          action={t('settings.mediaProviderClearGateAction')}
+          // The provider's own name, not a description of one — this is the
+          // string the user has to be able to check the slider against.
+          target={clearTarget.label}
+          items={[
+            t('settings.mediaProviderClearGateItem', { name: clearTarget.label }),
+          ]}
+          irreversible
+          onConfirm={() => {
+            updateProvider(clearTarget, {
+              apiKey: '',
+              baseUrl: '',
+              model: '',
+              apiKeyConfigured: false,
+              apiKeyTail: '',
+            });
+          }}
+          onClose={() => setClearTarget(null)}
+        />
       ) : null}
     </section>
   );

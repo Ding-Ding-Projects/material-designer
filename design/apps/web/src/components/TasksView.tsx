@@ -16,6 +16,7 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon, type IconName } from './Icon';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
 import { useT } from '../i18n';
 import type { SkillSummary } from '../types';
@@ -410,6 +411,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Deleting an automation stops it running and removes it from this device
+  // with no restore path, so it goes through the super-confirmation gate
+  // rather than a browser dialog a mistimed Enter answers.
+  const [deleteTarget, setDeleteTarget] = useState<Routine | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
   const [automationCatalog, setAutomationCatalog] = useState<ContractAutomationTemplate[]>([]);
@@ -614,20 +619,21 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
     }
   };
 
-  const remove = async (id: string) => {
-    if (!window.confirm(t('automations.deleteConfirm')))
-      return;
-    setBusyId(id);
+  // The delete itself, run by the gate. A failure is rethrown rather than
+  // routed to the view's error banner: the banner sits behind the gate the
+  // user is looking at, and the gate renders the message in place while
+  // keeping itself open over an automation that is demonstrably still there.
+  const remove = async (routine: Routine) => {
+    setBusyId(routine.id);
     try {
-      const res = await fetch(`/api/routines/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/routines/${routine.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `delete failed: ${res.status}`);
       }
-      if (expandedId === id) setExpandedId(null);
+      if (expandedId === routine.id) setExpandedId(null);
       void refresh();
-    } catch (err) {
-      setError(errorMessage(err));
+      return true;
     } finally {
       setBusyId(null);
     }
@@ -808,7 +814,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                       className="automation-row__btn automation-row__btn--danger"
                       onClick={() => {
                         fireClick('delete');
-                        remove(r.id);
+                        setDeleteTarget(r);
                       }}
                       disabled={isBusy}
                       aria-label={t('automations.deleteAria')}
@@ -1009,6 +1015,20 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
           })();
         }}
       />
+
+      {deleteTarget ? (
+        <DestructiveGate
+          action={t('automations.deleteTitle')}
+          // The automation's own name, not a description of one — this is the
+          // string the user has to be able to check the slider against.
+          target={deleteTarget.name}
+          items={[t('automations.deleteGateItem', { name: deleteTarget.name })]}
+          detail={t('automations.deleteGateDetail')}
+          irreversible
+          onConfirm={() => remove(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+        />
+      ) : null}
     </section>
   );
 }

@@ -88,6 +88,7 @@ import {
 import type { PlaceholderScenario } from './home-hero/placeholderScenarios';
 import { listDesignArtifactCandidates } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon, type IconName } from './Icon';
 import { UserActionCard, type UserActionCardTone } from './UserActionCard';
 import { repoConnectCopy } from './design-system-github-evidence';
@@ -1153,6 +1154,13 @@ export function ChatPane({
   const [tab, setTab] = useState<Tab>('chat');
   const [showConvList, setShowConvList] = useState(false);
   const [conversationSearch, setConversationSearch] = useState('');
+  // Deleting a conversation takes every message in it and nothing in the
+  // product puts them back, so the "×" on a history row now opens the
+  // super-confirmation gate rather than a browser dialog one stray Enter
+  // answered. Held at pane level so the gate survives the history popover
+  // closing underneath it.
+  const [deleteConversationTarget, setDeleteConversationTarget] =
+    useState<Conversation | null>(null);
   const deferredConversationSearch = useDeferredValue(conversationSearch);
   const [scrolledFromBottom, setScrolledFromBottom] = useState(false);
   const [chatLogScrollable, setChatLogScrollable] = useState(false);
@@ -2253,7 +2261,7 @@ export function ChatPane({
                         onSelectConversation(c.id);
                         setShowConvList(false);
                       }}
-                      onDelete={() => onDeleteConversation(c.id)}
+                      onRequestDelete={() => setDeleteConversationTarget(c)}
                       t={t}
                     />
                   ))
@@ -2757,6 +2765,26 @@ export function ChatPane({
               )
             : null}
         </>
+      ) : null}
+      {deleteConversationTarget ? (
+        <DestructiveGate
+          action={t('chat.deleteConversation')}
+          // The conversation's own title, not a description of one — this is
+          // the string the user has to be able to check the slider against.
+          target={
+            deleteConversationTarget.title || t('chat.untitledConversation')
+          }
+          items={[
+            t('conv.deleteGateItem', {
+              title:
+                deleteConversationTarget.title ||
+                t('chat.untitledConversation'),
+            }),
+          ]}
+          irreversible
+          onConfirm={() => onDeleteConversation(deleteConversationTarget.id)}
+          onClose={() => setDeleteConversationTarget(null)}
+        />
       ) : null}
     </div>
   );
@@ -3976,14 +4004,15 @@ function ConversationRow({
   active,
   messageCount,
   onSelect,
-  onDelete,
+  onRequestDelete,
   t,
 }: {
   conversation: Conversation;
   active: boolean;
   messageCount: number | null;
   onSelect: () => void;
-  onDelete: () => void;
+  /** Ask the pane to open the destructive gate; it owns the actual delete. */
+  onRequestDelete: () => void;
   t: TranslateFn;
 }) {
   const displayTitle =
@@ -4017,11 +4046,7 @@ function ConversationRow({
         title={t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          if (
-            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
-          ) {
-            onDelete();
-          }
+          onRequestDelete();
         }}
       >
         <Icon name="close" size={12} />

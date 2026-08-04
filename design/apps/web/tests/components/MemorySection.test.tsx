@@ -12,6 +12,27 @@ const originalFetch = globalThis.fetch;
 const originalEventSource = globalThis.EventSource;
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Clearing the extraction history used to be one browser confirm; it
+ * is now this, and the sequence is what these tests have to perform to reach
+ * the delete.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // The slider rations forward travel, so a single jump to the end does not
+  // authorize — five advances is the minimum the ration allows, and driving it
+  // that way here is not a workaround but this helper performing the gesture a
+  // user actually has to make.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
+
 class StubEventSource {
   url: string;
   listeners = new Map<string, Array<(event: MessageEvent) => void>>();
@@ -1487,10 +1508,9 @@ describe('MemorySection', () => {
     ).toBeNull();
   });
 
-  it('clears extraction history after clicking Clear', async () => {
+  it('clears extraction history after authorizing the destructive gate', async () => {
     globalThis.EventSource = StubEventSource as unknown as typeof EventSource;
     const deletedUrls: string[] = [];
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -1534,19 +1554,24 @@ describe('MemorySection', () => {
     expect(await screen.findByText('Remember I prefer dark mode')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    // Pressing Clear opens the gate and does nothing else. The history is
+    // still on screen and no request has gone out until the gate is driven.
+    expect(screen.getByTestId('destructive-gate')).toBeTruthy();
+    expect(deletedUrls).toEqual([]);
+    expect(screen.getByText('Remember I prefer dark mode')).toBeTruthy();
+
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(screen.queryByText('Remember I prefer dark mode')).toBeNull();
     });
     expect(deletedUrls).toEqual(['/api/memory/extractions']);
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 
-  it('does not clear extraction history when Clear is cancelled', async () => {
+  it('does not clear extraction history when the gate is cancelled', async () => {
     globalThis.EventSource = StubEventSource as unknown as typeof EventSource;
     const deletedUrls: string[] = [];
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
@@ -1591,10 +1616,20 @@ describe('MemorySection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
 
+    const gate = screen.getByTestId('destructive-gate');
+    // One key turned and the slider dragged to the end: still nothing, because
+    // the gate refuses to move the slider at all until both keys are on.
+    fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value: '100' },
+    });
+    fireEvent.click(within(gate).getByTestId('destructive-gate-exit'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('destructive-gate')).toBeNull();
+    });
     expect(deletedUrls).toEqual([]);
     expect(screen.getByText('Remember I prefer dark mode')).toBeTruthy();
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 
   it('loads preview, edits an entry, and refreshes the saved content', async () => {

@@ -1,4 +1,5 @@
 import { expect, test } from '@/playwright/suite';
+import { authorizeDestructiveGate } from '@/playwright/destructive-gate';
 import { openNewProjectModal as openNewProjectModalFromProjects } from '@/playwright/rail';
 import { routeAgents, routeSuccessfulRuns, successfulRunEventBody } from '@/playwright/mock-factory';
 import { clickDeckNextSlide, clickDeckPreviousSlide, openAllProjectFiles } from '@/playwright/workspace';
@@ -1578,6 +1579,9 @@ async function runConversationDeleteRecoveryFlow(
     .first();
   await expect(activeRow).toBeVisible();
   await activeRow.getByTestId(/conversation-delete-/).click();
+  // Deleting a conversation takes every message in it, so it now goes through
+  // the app's own super-confirmation gate rather than a browser dialog.
+  await authorizeDestructiveGate(page);
 
   await expect(
     page.locator('.msg.user .user-text').filter({ hasText: entry.prompt }).first(),

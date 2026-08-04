@@ -442,7 +442,6 @@ describe('SettingsDialog media providers', () => {
 
   it('clears saved media keys only through the explicit Clear action', async () => {
     const onPersist = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderDialog(
       {
         ...saveableConfig(),
@@ -462,20 +461,21 @@ describe('SettingsDialog media providers', () => {
     if (!openaiRow) throw new Error('Expected OpenAI media provider row');
     fireEvent.click(within(openaiRow).getByRole('button', { name: 'Clear' }));
 
+    // The click only opens the super-confirmation gate. Nothing is persisted
+    // until the gate is driven end to end.
+    expect(onPersist).not.toHaveBeenCalled();
+    authorizeDestructiveGate();
+
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
         expect.objectContaining({ mediaProviders: {} }),
         expect.objectContaining({ forceMediaProviderSync: true }),
       );
     });
-
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 
   it('clears saved marker state and custom model fields together for custom-model providers', async () => {
     const onPersist = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderDialog(
       {
         ...saveableConfig(),
@@ -501,6 +501,7 @@ describe('SettingsDialog media providers', () => {
     );
 
     fireEvent.click(within(row).getByRole('button', { name: 'Clear' }));
+    authorizeDestructiveGate();
 
     await waitFor(() => {
       expect(onPersist).toHaveBeenCalledWith(
@@ -510,10 +511,26 @@ describe('SettingsDialog media providers', () => {
     });
 
     expect((screen.getByLabelText('Nano Banana model') as HTMLInputElement).value).toBe('');
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    confirmSpy.mockRestore();
   });
 });
+
+/**
+ * Drive the super-confirmation gate all the way: both keys, then the slider to
+ * the end. Clearing a provider's saved credentials used to be one browser
+ * confirm; it is now this.
+ */
+function authorizeDestructiveGate(): void {
+  const gate = screen.getByTestId('destructive-gate');
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
+  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // The slider rations forward travel, so a single jump to the end does not
+  // authorize — five advances is the minimum the ration allows.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
+}
 
 function renderDialog(
   initial: AppConfig,

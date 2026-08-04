@@ -3,13 +3,14 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
   type ReactNode,
 } from 'react';
-import { Button } from '@open-design/components';
+import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { createPortal } from 'react-dom';
 import type { DesignSystemEditClickProps, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
@@ -23,6 +24,7 @@ import {
   trackSketchExportResult,
 } from '../analytics/events';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { useI18n, useT, type Locale } from '../i18n';
 import { useStableHandler } from '../lib/use-stable-handler';
 import { useDeckPreviewScale } from '../lib/use-deck-preview-scale';
@@ -1307,6 +1309,13 @@ export function FileWorkspace({
   const flushPendingSketchAutosavesRef = useRef<() => void>(() => {});
   const sketchPreloadInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
+  // The file the super-confirmation gate is pointed at, or null when closed.
+  const [deleteFileTarget, setDeleteFileTarget] = useState<string | null>(null);
+  // The tab whose unsaved strokes the discard dialog is asking about. A real
+  // decision, but a recoverable-shaped one, so it gets an ordinary dialog
+  // rather than the gate — see `closeTab`.
+  const [sketchCloseTarget, setSketchCloseTarget] = useState<string | null>(null);
+  const sketchCloseTitleId = useId();
   const [projectFolders, setProjectFolders] = useState<ProjectFolder[]>(EMPTY_PROJECT_FOLDERS);
   // Reset the folder list during render — NOT in an effect — when the project
   // changes. DesignFilesPanel is keyed by `projectId`, so an effect-based reset
@@ -2070,7 +2079,32 @@ export function FileWorkspace({
     setActiveTab(openName);
   }
 
+  /**
+   * Close a tab, asking first when that would throw away unsaved strokes.
+   *
+   * Discarding a sketch is a real decision — the strokes are gone and the user
+   * has to make the call before the tab can close — so this one keeps a
+   * dialog rather than becoming a notification. It is NOT routed through the
+   * destructive gate: the sketch is a document the user has been drawing for
+   * the last minute, not an account or a project folder, and putting two keys
+   * and a full-range slider in front of closing a tab is how a gate stops
+   * meaning anything at the point it is actually needed.
+   *
+   * Nothing is touched before the answer comes back — in particular the
+   * terminal kill below moved into `performCloseTab`, so a cancelled close
+   * leaves the tab exactly as it was.
+   */
   function closeTab(name: string) {
+    const sketchEntry = sketches[name];
+    const hasUnsavedStrokes = sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted);
+    if (hasUnsavedStrokes) {
+      setSketchCloseTarget(name);
+      return;
+    }
+    performCloseTab(name);
+  }
+
+  function performCloseTab(name: string) {
     // Terminal tabs own a daemon PTY that now outlives unmount (so tab switches
     // reattach cheaply). An explicit Close is the one place we terminate it —
     // kill the LIVE session (which may differ from the tab's original id after
@@ -2083,8 +2117,6 @@ export function FileWorkspace({
     }
     const sketchEntry = sketches[name];
     const isPending = sketchEntry && !sketchEntry.persisted;
-    const hasUnsavedStrokes = sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted);
-    if (hasUnsavedStrokes && !confirm(t('sketch.closeConfirm'))) return;
     if (isPending) {
       setSketches((curr) => {
         const next = { ...curr };
@@ -2355,8 +2387,21 @@ export function FileWorkspace({
     };
   }, [quickSwitcherOpen]);
 
-  async function handleDelete(name: string) {
-    if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
+  /**
+   * Open the super-confirmation gate over one file.
+   *
+   * Deleting a project file removes it from the folder on disk and nothing in
+   * the product puts it back, so the browser confirm this replaced was the
+   * whole distance between a mis-aimed pointer and a lost file.
+   */
+  function handleDelete(name: string) {
+    setDeleteFileTarget(name);
+  }
+
+  // The delete itself, run by the gate. Reports failure rather than swallowing
+  // it: a `false` leaves the gate open saying the file is still there, instead
+  // of closing on a delete that did not happen.
+  async function runDeleteFile(name: string): Promise<boolean> {
     const ok = await deleteProjectFile(projectId, name);
     if (ok) {
       await onRefreshFiles();
@@ -2384,6 +2429,7 @@ export function FileWorkspace({
         return next;
       });
     }
+    return ok;
   }
 
   /**
@@ -4032,6 +4078,54 @@ export function FileWorkspace({
           />
         ) : null}
       </AnimatePresence>
+      {deleteFileTarget ? (
+        <DestructiveGate
+          action={t('designFiles.delete')}
+          // The file's own name, not a description of one — this is the string
+          // the user has to be able to check the slider against.
+          target={deleteFileTarget}
+          items={[t('workspace.deleteFileGateItem', { name: deleteFileTarget })]}
+          irreversible
+          onConfirm={() => runDeleteFile(deleteFileTarget)}
+          onClose={() => setDeleteFileTarget(null)}
+        />
+      ) : null}
+      {sketchCloseTarget ? (
+        <Dialog
+          role="alertdialog"
+          className="modal-confirm"
+          onClose={() => setSketchCloseTarget(null)}
+          closeOnEscape
+          ariaLabelledBy={sketchCloseTitleId}
+          data-testid="sketch-close-confirm"
+        >
+          <DialogTitle id={sketchCloseTitleId}>{t('sketch.closeConfirm')}</DialogTitle>
+          <DialogFooter className="row">
+            <button
+              type="button"
+              onClick={() => setSketchCloseTarget(null)}
+              data-testid="sketch-close-cancel"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="primary"
+              data-testid="sketch-close-discard"
+              onClick={() => {
+                // Read the target before clearing it: `performCloseTab` runs
+                // after the setState above in the same handler, and reading
+                // state there would see the value React has not committed yet.
+                const target = sketchCloseTarget;
+                setSketchCloseTarget(null);
+                performCloseTab(target);
+              }}
+            >
+              {t('sketch.closeDiscard')}
+            </button>
+          </DialogFooter>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
@@ -4116,6 +4210,9 @@ function DesignSystemProjectPanel({
   const [designMdBody, setDesignMdBody] = useState('');
   const [savingDesignMd, setSavingDesignMd] = useState(false);
   const [kitActionBusy, setKitActionBusy] = useState<string | null>(null);
+  // Whether the super-confirmation gate is open over "delete this design
+  // system and its project". See `requestDeleteDesignSystemProject`.
+  const [deleteProjectGateOpen, setDeleteProjectGateOpen] = useState(false);
   // Transient feedback for kit edits (upload / refresh / reset / delete) so an
   // action that previously fired-and-forgot now reports success or failure.
   const [kitToast, setKitToast] = useState<{ message: string; tone: DesignKitActionFeedbackTone } | null>(null);
@@ -4276,12 +4373,20 @@ function DesignSystemProjectPanel({
   // handleDeleteProject, which deletes the project, clears local state and
   // navigates home — so the panel unmounts on success and there's no busy reset
   // to do in the happy path.
-  async function deleteDesignSystemProject() {
+  /**
+   * Open the super-confirmation gate over the design system and its project.
+   *
+   * This takes the registered design system, the whole backing project folder,
+   * and every file, chat and artifact inside it. A browser confirm named the
+   * title and asked "?", and one mistimed Enter answered it.
+   */
+  function requestDeleteDesignSystemProject(): void {
     if (kitActionBusy || !onDeleteDesignSystemProject) return;
-    const ok = window.confirm(
-      t('ds.deleteProjectConfirm', { title: system.title }),
-    );
-    if (!ok) return;
+    setDeleteProjectGateOpen(true);
+  }
+
+  async function deleteDesignSystemProject(): Promise<boolean> {
+    if (!onDeleteDesignSystemProject) return false;
     setKitActionBusy('delete');
     notifyKitLoading(t('ds.deleteProjectAction', { title: system.title }));
     try {
@@ -4295,13 +4400,18 @@ function DesignSystemProjectPanel({
       if (!deleted) {
         notifyKit('error', t('ds.actionFailed'));
         setKitActionBusy(null);
-        return;
+        // Reported rather than swallowed: `false` holds the gate open saying
+        // the design system is still there, instead of closing on a delete
+        // that did not happen.
+        return false;
       }
       await deleteDesignSystemDraft(system.id);
       await onDesignSystemsRefresh?.();
+      return true;
     } catch {
       notifyKit('error', t('ds.actionFailed'));
       setKitActionBusy(null);
+      return false;
     }
   }
 
@@ -4831,7 +4941,7 @@ function DesignSystemProjectPanel({
             id: 'delete',
             label: t('ds.deleteProjectAction', { title: system.title }),
             icon: 'trash' as IconName,
-            onClick: () => void deleteDesignSystemProject(),
+            onClick: () => requestDeleteDesignSystemProject(),
             disabled: Boolean(kitActionBusy) || statusBusy || defaultBusy,
             loading: kitActionBusy === 'delete',
           } satisfies HeaderMenuAction,
@@ -4986,6 +5096,19 @@ function DesignSystemProjectPanel({
           progressLabel={t('ds.workspaceLoadingLabel')}
         />
       )}
+      {deleteProjectGateOpen ? (
+        <DestructiveGate
+          action={t('ds.deleteProjectAction', { title: system.title })}
+          // The design system's own title, not a description of one — this is
+          // the string the user has to be able to check the slider against.
+          target={system.title}
+          items={[t('ds.deleteProjectGateItem', { title: system.title })]}
+          detail={t('ds.deleteProjectGateDetail')}
+          irreversible
+          onConfirm={deleteDesignSystemProject}
+          onClose={() => setDeleteProjectGateOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

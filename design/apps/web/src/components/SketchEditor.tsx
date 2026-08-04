@@ -17,6 +17,7 @@ import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/ty
 import { useI18n, type Locale } from '../i18n';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
+import { notify } from './notifications/notificationStore';
 import { readDefaultSketchToolColor } from './sketch-colors';
 import {
   emptySketchScene,
@@ -329,7 +330,14 @@ export function SketchEditor({
       });
     } catch (err) {
       console.warn('[SketchEditor] export image failed', err);
-      alert(t('common.exportImageFailed'));
+      // A failed export only informs — there is nothing for the user to decide
+      // — so it goes to the corner rather than halting the canvas behind a
+      // browser dialog. Raised through the notification store rather than this
+      // component's own `Toast` because that toast counts down a TTL, and an
+      // error that expires unread while the user is looking at the drawing is
+      // an error nobody was told about. `error` records pin open until
+      // dismissed and stay in the notification centre afterwards.
+      notify({ severity: 'error', title: t('common.exportImageFailed') });
     } finally {
       setExporting(false);
     }

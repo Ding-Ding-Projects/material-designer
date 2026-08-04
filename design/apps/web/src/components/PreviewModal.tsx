@@ -12,6 +12,7 @@ import {
 } from '../runtime/exports';
 import { buildSrcdoc } from '../runtime/srcdoc';
 import { Icon } from './Icon';
+import { notify } from './notifications/notificationStore';
 
 export interface PreviewView {
   id: string;
@@ -876,16 +877,27 @@ export function PreviewModal({
                               const snap =
                                 (await captureHostIframeSnapshot(iframe)) ??
                                 (await requestPreviewSnapshot(iframe));
+                              // Both failures only report a result — there is
+                              // nothing to decide — so neither halts the modal
+                              // behind a browser dialog. `error` records pin
+                              // open until dismissed and stay reviewable in the
+                              // notification centre afterwards.
                               try {
                                 if (snap) {
                                   exportAsImage(snap.dataUrl, exportTitle);
                                 } else {
                                   console.warn('[PreviewModal] snapshot capture returned null');
-                                  alert(t('common.exportImageFailed'));
+                                  notify({
+                                    severity: 'error',
+                                    title: t('common.exportImageFailed'),
+                                  });
                                 }
                               } catch (err) {
                                 console.warn('[PreviewModal] failed to convert snapshot:', err);
-                                alert(t('common.exportImageFailed'));
+                                notify({
+                                  severity: 'error',
+                                  title: t('common.exportImageFailed'),
+                                });
                               }
                             }}
                           >
