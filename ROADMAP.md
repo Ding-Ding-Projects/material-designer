@@ -235,29 +235,39 @@ Not by a local build — local builds do not happen here.
       reasoning above is still an argument rather than a demonstrated result —
       deliberately introducing an undeclared change and watching the gate go red
       is the outstanding half of this item.
-- [ ] **Typecheck and lint.** `release.yml` runs the workspace-wide typecheck,
-      after building the daemon and desktop declaration files it depends on. The
-      guard script, the translation-coverage check and the craft lint are **not
-      wired in yet**; all four should run.
-- [ ] **Prebuild the three packages the tests depend on** before typechecking or
-      testing — the daemon, the desktop main process, and the web sidecar
-      bundle. The first two are built in the typecheck step; **the web sidecar
-      bundle is not**. Upstream's own CI builds all three, and the test suites
-      fail without them.
-- [ ] **Run the test suites per package.** `release.yml` runs three suites today
-      — the packaging tool, the packaged launcher and the desktop shell — chosen
-      because the rebrand changed what they assert. That is a gate on product
-      identity, not coverage, and the remaining packages still need their own
-      invocations. There is deliberately no aggregate test command in the
-      imported tree and one must not be added; the workspace convention is
-      package-scoped invocation. Expect roughly 1,150 test files across the
-      workspace, dominated by the daemon and the web app. The daemon suite
+- [x] **Typecheck and lint.** All four now run, in `verify.yml` on Linux rather
+      than only inside the Windows packaging job — a type error is the cheapest
+      failure to find and the most expensive to find late. `pnpm guard`,
+      `pnpm lint:craft` and `pnpm i18n:check` are separate commands sharing one
+      install, so a failure names which of the three it was. None of them is
+      wired with `|| true`: a check that is ignored is worse than one that is
+      absent, because the green tick then means less across the whole job.
+- [x] **Prebuild the three packages the tests depend on** — the daemon, the
+      desktop main process, and the web sidecar bundle. The third was the one
+      missing: `apps/packaged` imports `@open-design/web/sidecar`, which resolves
+      to `dist/`, so without it the packaged suite died at import time and the
+      error named a module rather than a cause.
+- [x] **Run the test suites per package.** `verify.yml` runs the product-identity
+      three (packaging tool, packaged launcher, desktop shell), the shared
+      component primitives, and the web application's own suite. There is
+      deliberately no aggregate test command in the imported tree and one must
+      not be added; the workspace convention is package-scoped invocation.
+      *Still open:* the daemon suite, which is the largest remaining gap. It
       disables file parallelism because its tests bind real local servers, so it
-      is slow by design.
-- [ ] **Report test counts per package in the job summary**, so a regression in
-      coverage is visible without opening logs. The `Summarise` step reports
-      version, tag, installer name, smoke-test outcome and code name — not test
-      counts.
+      is slow by design and needs its own job rather than a step appended to
+      this one.
+- [x] **Report test counts per package in the job summary**, so a regression in
+      coverage is visible without opening logs. `verify.yml` tees each suite to
+      its own log and reports files, tests and result per package, plus a total.
+      A package that never started reports `did not run` rather than `0` —
+      those mean very different things and a zero would read as catastrophic
+      rather than absent. The counts are read from what each suite actually
+      printed, never from a figure recorded anywhere else.
+      *Verified by:* parsing real colourised vitest output, passing and failing,
+      before the step was trusted — the escape codes sit between the line start
+      and the word, so an anchored pattern matches `Test Files` and silently
+      misses `Tests`, producing a summary that looks complete and is missing a
+      column.
 - [x] **Build the Windows installer.** `release.yml` sets up NSIS, builds the
       packaging tool and invokes the installer target, then uploads the result as
       a workflow artifact even when a later step fails, so a bad run still leaves

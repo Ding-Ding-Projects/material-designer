@@ -227,11 +227,16 @@ jobs:
       - name: Test the packages that carry product identity
         working-directory: design
         shell: bash
+        # Each suite tees to its own log so the summary step can report counts
+        # per package. `pipefail` is what keeps `tee` from swallowing a failing
+        # exit code — without it the step would go green on a red suite, which
+        # is a worse outcome than having no summary at all.
         run: |
           set -euo pipefail
-          pnpm --filter @open-design/tools-pack run test
-          pnpm --filter @open-design/packaged run test
-          pnpm --filter @open-design/desktop run test
+          mkdir -p "$RUNNER_TEMP/testlogs"
+          pnpm --filter @open-design/tools-pack run test 2>&1 | tee "$RUNNER_TEMP/testlogs/tools-pack.log"
+          pnpm --filter @open-design/packaged run test 2>&1 | tee "$RUNNER_TEMP/testlogs/packaged.log"
+          pnpm --filter @open-design/desktop run test 2>&1 | tee "$RUNNER_TEMP/testlogs/desktop.log"
 
       - name: Test the shared component primitives
         working-directory: design
@@ -239,7 +244,10 @@ jobs:
         # Small and fast, and it covers the one primitive every dialog in the
         # application is built from — including its focus trap, which is an
         # accessibility contract rather than a detail.
-        run: pnpm --filter @open-design/components run test
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/testlogs"
+          pnpm --filter @open-design/components run test 2>&1 | tee "$RUNNER_TEMP/testlogs/components.log"
 
       - name: Test the web application
         working-directory: design
@@ -259,4 +267,68 @@ jobs:
         #
         # Its own config pins the worker count, so this adds no parallelism
         # flags of its own.
-        run: pnpm --filter @open-design/web run test
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/testlogs"
+          pnpm --filter @open-design/web run test 2>&1 | tee "$RUNNER_TEMP/testlogs/web.log"
+
+      - name: Report test counts per package
+        if: ${{ always() }}
+        shell: bash
+        # A coverage regression is invisible in a green tick. Reporting the
+        # per-package counts in the job summary makes "the web suite quietly
+        # lost forty files" something you notice on the run page rather than
+        # something you find by opening logs you had no reason to open.
+        #
+        # It reads what each suite actually printed rather than a number kept
+        # anywhere else, and a suite that did not run says so instead of
+        # reporting zero — zero and "never started" mean very different things.
+        run: |
+          set -uo pipefail
+          logs="$RUNNER_TEMP/testlogs"
+          {
+            echo "### Test counts"
+            echo ""
+            echo "| Package | Test files | Tests | Result |"
+            echo "| --- | ---: | ---: | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          total_files=0
+          total_tests=0
+          for pkg in tools-pack packaged desktop components web; do
+            f="$logs/$pkg.log"
+            if [ ! -f "$f" ]; then
+              echo "| \`$pkg\` | — | — | did not run |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            # Vitest prints "Test Files  N passed (M)" / "Tests  N passed (M)";
+            # the parenthesised figure is the total, which is the one that moves
+            # when coverage regresses.
+            #
+            # The colour codes have to come off FIRST. Vitest keeps colour on in
+            # Actions, and the escape sequence sits between the line start and
+            # the word, so an anchored pattern matches "Test Files" and silently
+            # misses "Tests" — giving a summary that looks fine and is missing a
+            # column. Verified against real colourised output, both passing and
+            # failing, before this was trusted.
+            clean=$(sed 's/\x1b\[[0-9;]*m//g' "$f")
+            files=$(printf '%s\n' "$clean" | grep -oE 'Test Files[^(]*\(([0-9]+)\)' | tail -1 | sed 's/.*(\([0-9]*\))/\1/')
+            tests=$(printf '%s\n' "$clean" | grep -oE '(^|[^a-zA-Z])Tests[^(]*\(([0-9]+)\)' | tail -1 | sed 's/.*(\([0-9]*\))/\1/')
+            if printf '%s\n' "$clean" | grep -qE 'Test Files.*failed'; then
+              result='❌ failed'
+            elif [ -n "$files" ]; then
+              result='✅ passed'
+            else
+              result='⚠️ no counts found'
+            fi
+            echo "| \`$pkg\` | ${files:-—} | ${tests:-—} | $result |" >> "$GITHUB_STEP_SUMMARY"
+            [ -n "$files" ] && total_files=$(( total_files + files ))
+            [ -n "$tests" ] && total_tests=$(( total_tests + tests ))
+          done
+
+          {
+            echo "| **Total** | **$total_files** | **$total_tests** | |"
+            echo ""
+            echo "Counts are read from each suite's own output. A package that never"
+            echo "started reports \`did not run\` rather than zero."
+          } >> "$GITHUB_STEP_SUMMARY"
