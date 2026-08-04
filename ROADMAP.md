@@ -579,23 +579,16 @@ meeting it.
       now, the widths Wave 1 specified. **A second species of the "mounted by
       nothing" defect: mounted, and still invisible.** A diff catches neither;
       a capture catches both.
-- [ ] **The UI scale setting is broken at every value except 100%.** Captures
-      at 125, 150 and 200% all show a horizontal scrollbar, the home heading
-      cut off mid-word, the status bar pushed off the bottom of the screen,
-      and at 125% the scroll hint overlapping the template cards. At 200%
-      roughly half the interface is unreachable without scrolling.
-      **This repository predicted it.** § 2.5 below says: *"Replace the
-      mockup's scaling mechanism. It sets a custom property that nothing reads
-      and does the actual scaling with a non-standard CSS `zoom` property.
-      Implement scaling in a way that is standard, testable, and does not
-      break layout measurement."* The warning was written and the mechanism
-      was ported anyway, because nothing ever rendered it. `zoom` magnifies
-      the painted box without changing the layout viewport, so the page lays
-      out at 1280px and then draws 1.5× larger — the overflow is arithmetic,
-      not a styling accident.
-      A user who raises the scale for accessibility reasons currently gets a
-      broken window, which makes this a standard 14 blocker rather than
-      polish.
+- [x] **The UI scale setting was broken at every value except 100%.** *Closed
+      at `cd0996d`, and confirmed by captures.* It scaled with CSS `zoom`,
+      which multiplies painted lengths without moving the layout viewport, so
+      `100vw` on a 1280px window still resolved to 1280 and was drawn twice as
+      wide — the overflow was arithmetic. § 2.5 had warned about exactly this
+      mechanism and it was ported anyway, because nothing had ever rendered it.
+      The desktop host now scales its own web contents, dividing the real
+      layout viewport. The capture run reports `innerWidth` 640 at 200% (was
+      1280), `overflowX` 0 at all four scales, and the images show the heading
+      wrapping instead of clipping with the status bar on screen.
 - [ ] **Bilingual mode clips at 900px.** The status bar's density segment runs
       off the right edge (`Default · 預設 density · Default · 預…`) and the
       Design control truncates to an ellipsis. Bilingual pairs both languages

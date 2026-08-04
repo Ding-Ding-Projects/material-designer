@@ -65,12 +65,14 @@ until `92ed8c6`; this capture is how it was confirmed reachable rather than mere
 
 ![The settings dialog showing its section list including Language, Appearance, Spoken narrator, Notifications and Design Systems](assets/screenshots/settings-dialog.png)
 
-**The UI scale at 200%, and it is broken.** Horizontal scrollbar, the heading cut off
-mid-word, the status bar pushed off the bottom of the screen. Published because it is
-true: raising the UI scale is something a user does for accessibility reasons, and what
-they currently get is a window they have to scroll sideways.
+**The UI scale at 200% — the fix, and the reason the capture set exists.** The previous
+image here showed this same state overflowing horizontally with the heading cut off
+mid-word and no status bar. The setting used CSS `zoom`, which magnifies painted lengths
+without moving the layout viewport, so `100vw` still resolved to the unscaled window. The
+desktop host now scales its own web contents, which divides the real layout viewport: a
+1280×900 window at 200% lays out as 640×450, and the heading wraps instead of clipping.
 
-![The home screen at 200% UI scale, overflowing horizontally with the heading cut off mid-word and no status bar visible](assets/screenshots/home-scale-200-broken.png)
+![The home screen at 200% UI scale after the fix — the heading wraps onto two lines, the navigation rail and status bar are both present, and there is no horizontal scrollbar](assets/screenshots/home-scale-200.png)
 
 </details>
 
