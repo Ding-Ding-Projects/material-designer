@@ -1058,11 +1058,20 @@ only in a report is a finding that gets rediscovered.
 - [x] **Three modules were unreachable.** `AppearanceRuntime`,
       `InfiniteColorPicker` and `NarratorSettingsPanel` had zero importers.
       The narrator was additionally *unmountable*: it imported a stylesheet
-      that did not exist, so wiring it would have failed the build.
-      *Closed for the narrator at `92ed8c6`* — stylesheet written, settings
-      section added, command palette indexed with two live inline controls.
-      **The appearance editor and colour picker are still orphaned**, tracked
-      at 4.10–4.12.
+      that did not exist, so wiring it would have failed the build — which is
+      very likely why it was left unwired, since an unmounted component
+      compiles perfectly.
+      *All three closed:* the narrator at `92ed8c6` (stylesheet written, its
+      own settings section, command palette indexed with two live inline
+      controls), and the appearance editor and colour picker at `ab2a89c` —
+      the picker is now the accent control with the fixed swatches kept as a
+      convenience layered on top, and the runtime mounts in `App.tsx` rather
+      than the dialog, because mounted in the dialog a chosen preset silently
+      reverted on the next reload.
+      **The standing lesson, worth more than the fix:** judge a feature by
+      whether a surface mounts it, never by whether its files exist. Nothing
+      in a normal pipeline catches this — an unmounted component typechecks,
+      passes its unit tests, and ships in the bundle.
 - [x] **The Design Files bulk delete reported success it never had.**
       `handleDeleteMany` returned nothing, so the panel counted every selected
       item as succeeded — "3 done." after a cancelled confirmation, and after
@@ -1070,30 +1079,43 @@ only in a report is a finding that gets rediscovered.
       options, freezing the progress bar at zero and making Stop decorative.
       *Closed at `6e90fbd`*, routed through the shared `runBulkAction` runner
       with five tests pinning the invariants.
-- [ ] **Destructive actions bypass the confirmation gate.** Confirmed for
-      whole-project delete via the design-system workspace tab, bulk file
-      deletion (a plain dialog, not the gate), memory entries, extraction
-      records, and library assets — single-asset delete there has no
-      confirmation at all. A further ten actions fire behind a plain
-      `confirm()`. The gate exists and is good; the routing is the gap.
-- [ ] **The gate's own state machine has five confirmed defects.** Armed keys
-      survive a target swap, so keys operated for one action stay engaged for
-      the next; the slider's "full range" is satisfiable in a single pointer
-      jump or one `End` keypress; dismissing mid-flight swallows the action's
-      failure; Escape and the emergency exit report `cancelled` for an action
-      that already ran; and focus does not return to the originating control
-      on some paths.
-- [ ] **The shared dialog has no focus trap.** Tab walks out of an
-      `aria-modal` alertdialog onto the content behind it. This is an
-      accessibility blocker under standard 14, not a polish item.
-- [ ] **Fix the five failing web suites, then wire the web suite into CI.**
-      It was wired in once, ran for the first time in this repository's
-      history, and measured **454 of 459 test files passing**. All five
-      failures are pre-existing; none was caused by the change that ran them.
-      The step is commented out in `verify.yml` with that measurement recorded
-      beside it — deliberately not left in with `|| true`, because a check that
-      reports a failure and passes anyway devalues every other tick in the job.
-      The five:
+- [x] **Destructive actions bypass the confirmation gate.** *Closed at
+      `9d5c5d3` and `c68068e`.* Memory entries (which unlinked a file from
+      disk with no confirmation at all) and library assets, single and bulk,
+      now route through the gate naming the exact data affected. The `od`
+      CLI's five delete subcommands — which reached the daemon route around
+      the UI's gate entirely — refuse without `--confirm`, before the request
+      is made. **Deliberately not gated:** the extraction records, a
+      self-evicting twenty-entry in-memory buffer whose contents do not
+      survive a daemon restart; a regression test pins that decision.
+- [x] **The gate's own state machine has five confirmed defects.** *Closed at
+      `081ccdd`.* Armed keys no longer survive a target swap; the slider
+      rations forward travel so the range costs at least five deliberate
+      advances while retreat stays free; a mid-flight dismissal raises the
+      action's failure instead of swallowing it; the outcome union gained
+      `dismissed` so Escape can stop claiming an action was cancelled when it
+      had already run; and focus returns before `onClose` on every path.
+- [x] **The shared dialog has no focus trap.** *Closed at `3f30a12`.* Focus
+      moves in on open, is held by Tab and Shift+Tab, is pulled back if
+      something moves it out, and returns to the opening control on close.
+      Fixed in the shared primitive, so every dialog in the product gained it
+      at once.
+- [ ] **Enforce the gate at the operation, not in each interface.** This is
+      the remaining half and the standard is explicit about it: the daemon's
+      `DELETE` routes still accept the call from any caller, so the CLI and
+      the web app each gate themselves and a third client would gate nothing.
+      A confirmation token on the destructive routes is the shape that fixes
+      it properly.
+- [x] **Fix the five failing web suites, then wire the web suite into CI.**
+      *Closed at `ca03246`.* It ran for the first time in this repository's
+      history at 454 of 459, and is now **464 files, all passing, gating every
+      push**. Four failures were tests describing behaviour the product had
+      deliberately moved on from; one was a fixture that mis-counted its own
+      dice (it interleaved a selecting roll after each deciding roll, but a
+      losing draw short-circuits and takes only one — so the second draw's
+      deciding roll became the `0` meant as a selector, and `0` wins); and one
+      was a genuine defect, zero-width regex matches splitting a plain run in
+      two. It was never wired in with `|| true`. The five, kept for the record:
       - `tests/components/DesignFilesPanel.test.tsx` (two cases) — clicks
         batch-delete and expects `onDeleteFiles` immediately, but the code
         grew a bulk preview dialog in front of that call, and the callback's
@@ -1165,11 +1187,11 @@ rows say so rather than counting their file size as progress.
 | --- | --- | --- | --- |
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
 | 2 | Full Material Design 3 conformance | 2.1–2.4 | **Partial.** The token sheet, its mapping layer and the Windows frameless window with its custom title bar landed at `dea6b0a`. No component has been rewritten, so component anatomy is untouched — and nobody has looked at the result |
-| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Split, and the split is the point.** Theme, accent and density persist through `state/appearance.ts` and are reachable from the settings dialog and the command palette. The *editor* — `components/appearance/`, carrying the infinite colour picker, the colour translator, the contrast readout, presets and typography — has **zero importers**: it is written, it typechecks, and no user can open it. Counted as unimplemented until something mounts it |
+| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Built and reachable.** Theme, accent and density persist and are reachable from the settings dialog and the command palette. The editor behind them — the infinite colour picker, the colour translator, the contrast readout, presets and typography — had **zero importers** and is now mounted: the picker is the accent control, with the fixed swatches kept as a convenience layered on it rather than replacing it, and the runtime mounts in `App.tsx` so a chosen preset survives a reload. Unaudited: nobody has operated any of it |
 | 4 | Regex builder on every search bar | 3.3 | **Built and mounted.** The builder exists with guided token rows, a raw pattern editor, flags and a live sample panel. Unverified: whether *every* search bar reaches it and whether each is anchored to its own field rather than sharing one panel — the count of search inputs against the count of builders has not been taken |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial.** The tab strip, pinning and the text-matched bulk closes are built. Tab *groups* (4.1) and the four tab-discovery searches are absent |
 | 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
-| 7 | Super-confirmation gate | 4.3 | **Built, mounted, and demonstrably not covering the ground.** The two-key-plus-slider gate exists and is used by `DesignsTab` and `PrivacySection`. An adversarial pass confirmed **eight** real defects, the worst being that irreversible deletes elsewhere — whole projects, memory entries, library assets, bulk file deletion — do not route through it at all, plus a missing focus trap in the underlying dialog. Not met |
+| 7 | Super-confirmation gate | 4.3 | **Built, mounted, and now actually covering the ground.** The two-key-plus-slider gate exists, and the eight confirmed defects against it are closed: five in its own state machine (armed keys surviving a target swap, a "full range" satisfiable in one gesture, a swallowed mid-flight failure, `cancelled` reported for an action that had run, focus not returning), plus the routing — memory entries, library assets single and bulk, and the `od` CLI's five delete subcommands, which reached the daemon route around the gate entirely. **Still not met:** enforcement lives in each interface rather than in the handler, so a third client would gate nothing |
 | 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface and live inline controls whose union is exhaustive, so adding an indexed setting without its control is a typecheck error rather than a blank row. Unverified: whether the index covers every setting the dialog actually has |
 | 9 | In-app changelog viewer | 3.5 | **Built and mounted.** `ChangelogDialog` mounts in `App.tsx` with a date-range filter and generated entries. Unverified: commit-link validity at build time |
 | 10 | Local version history | 4.4 | **Partial.** Daemon endpoints, shared DTOs and `od` subcommands exist; a history *panel* with its date picker and action filters has not been confirmed present |
