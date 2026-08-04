@@ -17,6 +17,7 @@ import { navigate } from '../router';
 import { useAnalytics } from '../analytics/provider';
 import { trackDesignSystemEditClick } from '../analytics/events';
 import { requestHomeChip } from '../runtime/home-intent';
+import { confirmedDelete } from '../lib/confirm-delete';
 import { brandSummaryToKit } from '../runtime/design-kit';
 import { DesignKitView } from './DesignKitView';
 import { DestructiveGate } from './destructive/DestructiveGate';
@@ -137,15 +138,25 @@ export function BrandPreviewCard({
       });
     }
     setBusy(true);
+    // `DELETE /api/brands/:id` is refused without a single-use token bound to
+    // this brand, so this mints one first. `confirmedDelete` resolves `false`
+    // for a refused mint, a refused DELETE and a transport error alike, which
+    // also fixes a pre-existing bug here: the old code never inspected
+    // `resp.ok`, so a 4xx/5xx closed the gate reporting success on a brand that
+    // was still there.
+    const ok = await confirmedDelete(`/api/brands/${encodeURIComponent(meta.id)}`);
+    if (!ok) {
+      setBusy(false);
+      // Reported rather than swallowed: `false` holds the gate open saying the
+      // brand is still there, instead of closing on a delete that did not run.
+      return false;
+    }
     try {
-      await fetch(`/api/brands/${encodeURIComponent(meta.id)}`, { method: 'DELETE' });
       navigate({ kind: 'home', view: 'brands' }, { replace: true });
       await onChanged?.();
       return true;
     } catch {
       setBusy(false);
-      // Reported rather than swallowed: `false` holds the gate open saying the
-      // brand is still there, instead of closing on a delete that did not run.
       return false;
     }
   }, [busy, meta.id, meta.designSystemId, onChanged, analytics.track, projectId]);

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startServer } from '../src/server.js';
+import { confirmedDeleteFetch } from './helpers/confirm-delete.js';
 
 describe('project preview containment routes', () => {
   let server: http.Server;
@@ -20,7 +21,8 @@ describe('project preview containment routes', () => {
 
   afterAll(async () => {
     for (const id of projectsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' }).catch(() => {});
+      // Project delete needs the daemon's confirmation handshake.
+      await confirmedDeleteFetch(`${baseUrl}/api/projects/${id}`);
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
@@ -229,10 +231,10 @@ describe('project preview containment routes', () => {
       expect(forgedResponse.status).toBe(404);
     } finally {
       if (tokenBaseUrl) {
-        await fetch(`${tokenBaseUrl}/api/projects/${projectId}`, {
-          method: 'DELETE',
-          headers: { authorization: `Bearer ${token}` },
-        }).catch(() => {});
+        // Both legs of the confirmation handshake carry the bearer.
+        await confirmedDeleteFetch(`${tokenBaseUrl}/api/projects/${projectId}`, {
+          authorization: `Bearer ${token}`,
+        });
       }
       if (shutdown) await Promise.resolve(shutdown());
       if (tokenServer) await new Promise<void>((resolve) => tokenServer!.close(() => resolve()));

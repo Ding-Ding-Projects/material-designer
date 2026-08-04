@@ -53,6 +53,10 @@ import {
   startPairing,
   validateLibraryToken,
 } from '../library-tokens.js';
+import {
+  issueDeleteConfirmation,
+  requireDeleteConfirmation,
+} from '../http/confirm-delete.js';
 
 export interface RegisterLibraryRoutesDeps
   extends RouteDeps<
@@ -493,7 +497,42 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     res.json({ asset: toPublicAsset(asset) });
   });
 
-  app.delete('/api/library/assets/:id', requireLocalDaemonRequest, async (req, res) => {
+  // Mint the single-use confirmation the DELETE below requires. See
+  // `http/confirm-delete.ts`: the two-key gate in `LibrarySection.tsx` and the
+  // `od library rm` verb are interface-level, so neither is on the path a
+  // script, a third-party client, or a future surface takes.
+  app.post('/api/library/assets/:id/confirm-delete', requireLocalDaemonRequest, (req, res) => {
+    const asset = getLibraryAsset(db, req.params.id);
+    // No token for an asset that is not there — see the mint-route note in
+    // routes/project/index.ts.
+    if (!asset) return sendApiError(res, 404, 'NOT_FOUND', 'asset not found');
+    const items = [`The ${asset.kind} asset record, its sources and its enrichment`];
+    // Only the owned copy is unlinked; a referenced asset's bytes belong to the
+    // project that owns them and survive. Saying which is the difference
+    // between consent to lose a row and consent to lose a file.
+    items.push(
+      asset.storage === 'owned'
+        ? 'The library\'s own copy of the bytes on disk'
+        : 'The pointer only — the bytes stay in the project that owns them',
+    );
+    res.json(
+      issueDeleteConfirmation({
+        kind: 'library-asset',
+        id: asset.id,
+        label: asset.sourceTitle?.trim() || asset.sourceUrl?.trim() || asset.id,
+        items,
+        reversible: false,
+      }),
+    );
+  });
+
+  // `LIBRARY_DIR` is in no local-version-history domain (see
+  // `history/domains.ts`), so an unlinked owned asset is gone for good.
+  app.delete('/api/library/assets/:id', requireLocalDaemonRequest, requireDeleteConfirmation({
+    kind: 'library-asset',
+    resourceId: (req) => String(req.params.id ?? ''),
+    resourcePath: (_req, id) => `/api/library/assets/${encodeURIComponent(id)}`,
+  }), async (req, res) => {
     const asset = getLibraryAsset(db, req.params.id);
     if (!asset) return sendApiError(res, 404, 'NOT_FOUND', 'asset not found');
     // Only unlink bytes we own and that live under LIBRARY_DIR.

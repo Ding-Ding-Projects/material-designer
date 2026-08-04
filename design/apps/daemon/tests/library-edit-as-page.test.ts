@@ -7,6 +7,7 @@ import type http from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startServer } from '../src/server.js';
+import { confirmedDeleteFetch } from './helpers/confirm-delete.js';
 
 describe('library edit-as-page route', () => {
   let server: http.Server;
@@ -24,15 +25,13 @@ describe('library edit-as-page route', () => {
   });
 
   afterAll(async () => {
+    // Project and library-asset deletes both need the daemon's confirmation
+    // handshake — see tests/helpers/confirm-delete.ts.
     for (const id of projectsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(
-        () => {},
-      );
+      await confirmedDeleteFetch(`${baseUrl}/api/projects/${encodeURIComponent(id)}`);
     }
     for (const id of assetsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/library/assets/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-      }).catch(() => {});
+      await confirmedDeleteFetch(`${baseUrl}/api/library/assets/${encodeURIComponent(id)}`);
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });

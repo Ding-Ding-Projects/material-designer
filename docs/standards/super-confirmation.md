@@ -5,21 +5,45 @@ an input the user did not intend: two independently operated keys, then a
 full-range slider, with an always-available emergency exit.
 
 > [!WARNING]
-> **Status: built and mounted, and it does not yet cover the ground it appears
-> to.** The gate exists — `apps/web/src/components/destructive/` carries the
-> two-key-plus-slider machine, its dialog, and an emergency exit — and it is
-> rendered from the designs tab and the privacy section. What is unfinished is
-> **routing**: irreversible actions elsewhere in the product still fire without
-> it, including whole-project delete via the design-system workspace tab,
-> memory entries, extraction records, library assets, and the `od` CLI's own
-> delete subcommands, which reach the daemon route around the web layer
-> entirely.
+> **Status: the boundary now exists for the irreversible deletes; the
+> interface gate still does not cover every affordance.**
 >
-> That is the more dangerous state of the two this document has described. An
-> absent gate is honestly absent; a gate that guards two doors of a dozen reads
-> as protection the product does not have. This section said "not started, and
-> not designed" for some time after the gate shipped, which is how a reviewer
-> comes to believe a defended surface is undefended and vice versa.
+> The gate exists — `apps/web/src/components/destructive/` carries the
+> two-key-plus-slider machine, its dialog, and an emergency exit — and it is
+> rendered from the designs tab and the privacy section.
+>
+> What changed: the three deletes that local version history genuinely cannot
+> undo — **project**, **brand**, **library asset** — are now enforced in the
+> daemon's own handler. Each `DELETE` is refused without a single-use
+> confirmation token minted for that exact resource at
+> `POST <resource>/confirm-delete` and sent back in the `x-od-confirm-token`
+> header. See `apps/daemon/src/http/confirm-delete.ts` and
+> `packages/contracts/src/api/destructive-confirmation.ts`. That is the
+> authorization boundary this document's security section asks for, and it
+> holds for callers no interface can see: `curl`, a third-party client, a
+> script.
+>
+> What is still unfinished is **routing on the interface side**. The web gate
+> is mounted on some affordances and not others — whole-project delete from the
+> recent-projects strip still goes through a plain one-button dialog — and the
+> `od` CLI's `--confirm` flag and the MCP `delete_project` tool's `confirm:true`
+> are each a gate on their own surface. All three now have to complete the
+> daemon's handshake, so none of them can delete in a single unauthenticated
+> request; but a user reaching a delete through an ungated affordance still does
+> not meet two keys and a slider.
+>
+> **Deliberately not gated, with reasons.** Deletes whose records are captured
+> by local version history (`apps/daemon/src/history/domains.ts`) are
+> restorable, and this document says to prefer an undo notification for those:
+> memory entries, project files, project templates, automations, BYOK profiles,
+> connector accounts and MCP servers all fall there. Gating a restorable delete
+> adds ceremony without safety and dilutes the signal that the gate means
+> *irreversible*.
+>
+> An absent gate is honestly absent; a gate that guards two doors of a dozen
+> reads as protection the product does not have. This section said "not started,
+> and not designed" for some time after the gate shipped, which is how a
+> reviewer comes to believe a defended surface is undefended and vice versa.
 
 ## The requirement
 
@@ -143,7 +167,7 @@ mounts it; it does not mean anyone has operated it, because nobody has.
 | Progress and completion animations | **Built.** |
 | Emergency exit and platform cancellation path | **Built.** An audit found Escape and the exit reporting `cancelled` for an action that had already begun. Tracked in § 4.0. |
 | Focus return to the originating control | **Partly.** The shared `Dialog` primitive now traps focus and restores it on close; the gate's own paths were found not to restore on every route. Tracked in § 4.0. |
-| Enforcement at the operation rather than the button | **Not met, and this is the important row.** The gate is enforced in the interface. The daemon's `DELETE` routes accept the operation from any caller, so the `od` CLI deletes projects, files, brands, templates and automations with no gate at all. |
+| Enforcement at the operation rather than the button | **Met for the irreversible deletes; not yet for the rest.** `DELETE /api/projects/:id`, `/api/brands/:id` and `/api/library/assets/:id` are refused in the handler without a single-use, resource-bound, short-lived confirmation token (428 `CONFIRMATION_REQUIRED`). The web app, the `od` CLI and the MCP `delete_project` tool all complete the handshake. Restorable deletes are deliberately ungated — see the status note above. Nothing yet enforces *two keys and a slider* at the operation; the token proves a deliberate two-step exchange against a named resource, not that a human moved a slider. |
 | Destructive actions that will need it | **Present in the mockup** — a delete in the bulk-selection bar and a delete in the item context menu, the latter styled in the error colour. Both are plain actions with no gate. |
 
 The mockup draws the destructive actions and none of the protection. That is the

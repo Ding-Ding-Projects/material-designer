@@ -56,6 +56,10 @@ import { auditDesignSystemPackage } from '../../tools-connectors-cli.js';
 import { parseOrchestratorWorkspace } from '../../workspace-contract.js';
 import { registerProjectConversationRoutes } from './conversations.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
+import {
+  issueDeleteConfirmation,
+  requireDeleteConfirmation,
+} from '../../http/confirm-delete.js';
 
 export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'history' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation'> {}
 
@@ -2283,7 +2287,42 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     }
   });
 
-  app.delete('/api/projects/:id', async (req, res) => {
+  // Mint the single-use confirmation the DELETE below requires.
+  //
+  // This is the authorization boundary the web gate and the CLI's `--confirm`
+  // flag were both standing in for from outside the daemon; see
+  // `http/confirm-delete.ts` for why a token the caller must obtain, rather
+  // than a flag it can assert, is the only form of this that holds.
+  app.post('/api/projects/:id/confirm-delete', (req, res) => {
+    const project = getProject(db, req.params.id);
+    // Never mint for a resource that is not there: a token for a phantom id
+    // would report the delete as authorized and then 404, and the caller could
+    // not tell that apart from a race.
+    if (!project) return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
+    res.json(
+      issueDeleteConfirmation({
+        kind: 'project',
+        id: req.params.id,
+        label: typeof project.name === 'string' && project.name.trim().length > 0
+          ? project.name
+          : req.params.id,
+        // Computed from the row the DELETE will act on, so the gate's copy and
+        // the operation cannot describe different blast radii.
+        items: [
+          'The project record and every file in its directory',
+          'Any agent run still in flight for this project',
+          'The project\'s per-file version history',
+        ],
+        reversible: false,
+      }),
+    );
+  });
+
+  app.delete('/api/projects/:id', requireDeleteConfirmation({
+    kind: 'project',
+    resourceId: (req) => String(req.params.id ?? ''),
+    resourcePath: (_req, id) => `/api/projects/${encodeURIComponent(id)}`,
+  }), async (req, res) => {
     try {
       // Stop any live agent run in this project before its row and directory
       // are removed, otherwise the CLI subprocess is orphaned — it keeps

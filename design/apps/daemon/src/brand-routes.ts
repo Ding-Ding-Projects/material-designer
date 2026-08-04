@@ -40,6 +40,10 @@ import {
   startBrandExtraction,
 } from './brands/index.js';
 import { patchMeta } from './brands/store.js';
+import {
+  issueDeleteConfirmation,
+  requireDeleteConfirmation,
+} from './http/confirm-delete.js';
 import type { BrandDetailResponse, BrandMeta, BrandSummary } from '@open-design/contracts';
 
 export interface BrandRoutesDeps {
@@ -497,8 +501,46 @@ export function registerBrandRoutes(app: Application, deps: BrandRoutesDeps): vo
     }
   });
 
+  // POST /api/brands/:id/confirm-delete — mint the single-use confirmation the
+  // DELETE below requires. See `http/confirm-delete.ts`: the two-key gate in
+  // `BrandPreviewCard.tsx` and the CLI's `--confirm` flag are both interface
+  // gates, so neither is on the path a script or a third-party client takes.
+  app.post('/api/brands/:id/confirm-delete', (req: Request, res: Response) => {
+    try {
+      const id = String(req.params.id);
+      const detail = readBrandDetail(brandsRoot, id);
+      // No token for a brand that is not there — see the mint-route note in
+      // routes/project/index.ts.
+      if (!detail) {
+        res.status(404).json({ error: 'brand not found' });
+        return;
+      }
+      const items = ['The brand record, its metadata and its logo assets'];
+      if (detail.meta.designSystemId) {
+        items.push(`The user design system it registered (${detail.meta.designSystemId})`);
+      }
+      res.json(
+        issueDeleteConfirmation({
+          kind: 'brand',
+          id,
+          label: detail.brand?.name?.trim() || id,
+          items,
+          reversible: false,
+        }),
+      );
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
   // DELETE /api/brands/:id — remove the brand and its registered design system.
-  app.delete('/api/brands/:id', async (req: Request, res: Response) => {
+  // Neither the brand directory nor `design-systems/` is a local-version-history
+  // domain (see `history/domains.ts`), so this cannot be undone — hence the gate.
+  app.delete('/api/brands/:id', requireDeleteConfirmation({
+    kind: 'brand',
+    resourceId: (req) => String(req.params.id ?? ''),
+    resourcePath: (_req, id) => `/api/brands/${encodeURIComponent(id)}`,
+  }), async (req: Request, res: Response) => {
     try {
       await removeBrand(brandsRoot, userDesignSystemsRoot, String(req.params.id));
       res.json({ ok: true });

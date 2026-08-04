@@ -8,6 +8,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { startServer } from '../../src/server.js';
+import { confirmedDeleteFetch } from '../helpers/confirm-delete.js';
 
 describe('project export manifest route', () => {
   let server: http.Server;
@@ -26,7 +27,8 @@ describe('project export manifest route', () => {
 
   afterAll(async () => {
     for (const id of projectsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' }).catch(() => {});
+      // Project delete needs the daemon's confirmation handshake.
+      await confirmedDeleteFetch(`${baseUrl}/api/projects/${id}`);
     }
     for (const dir of tempDirs.splice(0)) {
       rmSync(dir, { recursive: true, force: true });

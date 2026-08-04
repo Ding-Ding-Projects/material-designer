@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { startServer } from '../src/server.js';
+import { confirmedDeleteFetch } from './helpers/confirm-delete.js';
 
 async function withFakeClaude<T>(run: () => Promise<T>): Promise<T> {
   const dir = await fsp.mkdtemp(join(tmpdir(), 'od-mcp-spawn-bin-'));
@@ -99,7 +100,8 @@ describe('spawn writes external MCP config for Claude Code', () => {
 
   afterAll(async () => {
     for (const id of projectsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' }).catch(() => {});
+      // Project delete needs the daemon's confirmation handshake.
+      await confirmedDeleteFetch(`${baseUrl}/api/projects/${id}`);
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });

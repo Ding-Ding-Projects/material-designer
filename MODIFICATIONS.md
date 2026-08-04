@@ -29,6 +29,77 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Move the destructive-action check out of the interfaces and into the handler
+
+**Reason:** the standard is explicit that this is an authorization boundary and
+that boundaries are enforced in the handler, never in the interface. It was
+being enforced in the interfaces — and not two of them, as assumed, but
+**three**: the web app's two-key-plus-slider gate, the `od` CLI's `--confirm`
+flag, and an MCP tool's own `confirm: true`. Three independent gates and zero
+boundaries, which is exactly the shape the standard warns about: anything that
+is none of the three — a `curl`, a script, a third-party client — deleted
+freely.
+
+The three genuinely irreversible deletes now require a single-use confirmation
+token, minted for that exact resource at `POST <resource>/confirm-delete` and
+returned in an `x-od-confirm-token` header. Bound to kind and id, 120-second
+expiry, consumed on success, in memory only so a restart invalidates
+outstanding grants — an authorization that outlives its session is the wrong
+failure. Refusal is 428 rather than 409 because these routes already return
+409 for genuine write conflicts, and two different failures on one endpoint
+should not be indistinguishable. The header is deliberate: access, proxy and
+shell logs record method and URL.
+
+**Which routes, and the line drawn.** Not "is it a DELETE" but **"can local
+version history bring it back?"** — the registered history domains are the
+authority. Gated: project (cancels in-flight runs, drops the row, removes the
+whole directory), brand (removes the brand tree and the design system it
+registered), and library asset (unlinks content-addressed bytes). Deliberately
+**not** gated: memory entries, project files, templates, automations, BYOK
+profiles, connector accounts and MCP servers all sit inside history domains
+and restore. Gating a restorable delete adds ceremony without safety and
+dilutes the signal that the gate means irreversible.
+
+**What this does and does not prove.** The token does not establish that a
+human moved a slider; the web app mints it at the moment of authorization and
+spends it immediately. What it buys is that no caller reaches the operation in
+one replayable request, and that every route converges on a single enforcement
+point where policy can be strengthened later. That distinction is written into
+the standard's own status rather than the row being ticked green.
+
+Incidental fix found on the way: `deleteBrand` never checked the response was
+ok, so a server error closed the gate reporting success.
+
+**Changed files:**
+
+- `apps/daemon/src/brand-routes.ts`
+- `apps/daemon/src/cli.ts`
+- `apps/daemon/src/http/confirm-delete.ts`
+- `apps/daemon/src/mcp.ts`
+- `apps/daemon/src/routes/library.ts`
+- `apps/daemon/src/routes/project/index.ts`
+- `apps/daemon/tests/cli-delete-confirmation.test.ts`
+- `apps/daemon/tests/confirm-delete.test.ts`
+- `apps/daemon/tests/delete-cancels-active-runs.test.ts`
+- `apps/daemon/tests/helpers/confirm-delete.ts`
+- `apps/daemon/tests/library-edit-as-page.test.ts`
+- `apps/daemon/tests/mcp-spawn.test.ts`
+- `apps/daemon/tests/mcp-write-tools.test.ts`
+- `apps/daemon/tests/project-file-version-routes.test.ts`
+- `apps/daemon/tests/project-preview-containment.test.ts`
+- `apps/daemon/tests/routes/export-manifest.test.ts`
+- `apps/web/src/components/BrandPreviewCard.tsx`
+- `apps/web/src/lib/confirm-delete.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/state/projects.test.ts`
+- `e2e/lib/vitest/packaged-pty-smoke.ts`
+- `packages/contracts/src/api/destructive-confirmation.ts`
+- `packages/contracts/src/errors.ts`
+- `packages/contracts/src/index.ts`
+- `packages/contracts/tests/destructive-confirmation.test.ts`
+
+
 ### 2026-08-04 — Remove every blocking browser dialog from the web application
 
 **Reason:** two standards were being broken by the same eighteen call sites.

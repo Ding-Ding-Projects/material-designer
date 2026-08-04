@@ -24,6 +24,7 @@ import type {
   TerminalSession,
 } from '@open-design/contracts';
 import { randomUUID } from '../utils/uuid';
+import { confirmedDelete } from '../lib/confirm-delete';
 import type {
   ChatMessage,
   Conversation,
@@ -364,19 +365,26 @@ export async function patchProject(
   }
 }
 
+/**
+ * Delete a project through the daemon's confirmation handshake.
+ *
+ * The DELETE is refused without a single-use token bound to this id, so this
+ * mints one first (`confirmedDelete`). That refusal is the authorization
+ * boundary; the two-key gate in `DesignsTab` and `FileWorkspace` is the
+ * user-facing half and is untouched.
+ *
+ * It also closes a hole that predates the boundary: `RecentProjectsStrip`
+ * reaches this same function through a plain one-button dialog and never met
+ * the gate at all. It still does not — but it can no longer reach the daemon
+ * route in one request either.
+ */
 export async function deleteProject(id: string): Promise<boolean> {
-  try {
-    const resp = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    // Drop the project's local tab-state cache once it is gone server-side, so
-    // the `open-design:project-tabs:*` keys don't accumulate in localStorage
-    // for the lifetime of the browser profile as projects are deleted.
-    if (resp.ok) removeCachedTabs(id);
-    return resp.ok;
-  } catch {
-    return false;
-  }
+  const ok = await confirmedDelete(`/api/projects/${encodeURIComponent(id)}`);
+  // Drop the project's local tab-state cache once it is gone server-side, so
+  // the `open-design:project-tabs:*` keys don't accumulate in localStorage
+  // for the lifetime of the browser profile as projects are deleted.
+  if (ok) removeCachedTabs(id);
+  return ok;
 }
 
 // ---------- conversations ----------

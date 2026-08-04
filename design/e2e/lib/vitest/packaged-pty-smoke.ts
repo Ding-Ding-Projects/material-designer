@@ -183,10 +183,28 @@ export function packagedPtySmokeExpression(platform: PackagedPtySmokePlatform): 
           terminalCleanupStatus = terminalCleanup?.status ?? null;
         }
         if (projectCreated) {
-          const projectCleanup = await fetch(
-            '/api/projects/' + encodeURIComponent(projectId),
-            { method: 'DELETE' },
-          ).catch(() => null);
+          // Project delete is gated in the daemon's handler on a single-use
+          // confirmation token bound to this id (see
+          // apps/daemon/src/http/confirm-delete.ts). Mint one, then spend it on
+          // the DELETE. The header name is spelled out because this expression
+          // is evaluated inside the packaged renderer and cannot import the
+          // contracts constant.
+          const projectUrl = '/api/projects/' + encodeURIComponent(projectId);
+          const confirmResponse = await fetch(projectUrl + '/confirm-delete', {
+            method: 'POST',
+          }).catch(() => null);
+          const confirmBody = confirmResponse && confirmResponse.ok
+            ? await confirmResponse.json().catch(() => null)
+            : null;
+          const confirmToken = confirmBody && typeof confirmBody.token === 'string'
+            ? confirmBody.token
+            : '';
+          const projectCleanup = confirmToken
+            ? await fetch(projectUrl, {
+                method: 'DELETE',
+                headers: { 'x-od-confirm-token': confirmToken },
+              }).catch(() => null)
+            : null;
           projectCleanupStatus = projectCleanup?.status ?? null;
         }
       }

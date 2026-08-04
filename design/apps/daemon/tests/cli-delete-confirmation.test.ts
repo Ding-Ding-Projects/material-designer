@@ -16,12 +16,24 @@
 //      still exit 2, so a headless caller can branch on it instead of scraping
 //      prose (AGENTS.md "Capability exposure" — the CLI is the embeddability
 //      contract);
-//   3. with --confirm the original DELETE goes through unchanged.
+//   3. with --confirm the expected request sequence goes through.
 //
 // Like the neighbouring `cli-templates.test.ts`, this drives the real CLI
 // entrypoint against a stub HTTP server rather than booting the full daemon:
 // that is enough to prove SUBCOMMAND_MAP routing, parseFlags acceptance of
 // --confirm, and the exact request emitted (or not emitted) per verb.
+//
+// The `--confirm` flag is now only half the gate. The daemon refuses the
+// genuinely irreversible deletes — project, brand, library asset — without a
+// single-use confirmation token bound to that resource, so those verbs emit a
+// `POST <resource>/confirm-delete` before the DELETE and send the token back in
+// the `x-od-confirm-token` header. That is why `expected` below is a *sequence*
+// rather than a single request. The verbs whose delete is restorable through
+// local version history (files, templates, automations) are not gated at the
+// daemon and still emit exactly one request.
+//
+// The three properties above are unchanged by that: the refusal still fires
+// before any HTTP request at all, so a refused delete never even mints a token.
 
 import http from 'node:http';
 import { execFile } from 'node:child_process';
@@ -37,9 +49,14 @@ const REPO_ROOT = pathResolve(__dirname, '../../..');
 const CLI_SRC = pathResolve(__dirname, '../src/cli.ts');
 const TSX_CLI = pathResolve(REPO_ROOT, 'node_modules/tsx/dist/cli.mjs');
 
+/** The stub's canned token. Asserted on, so a dropped header is visible. */
+const STUB_TOKEN = 'stub-confirmation-token';
+
 interface CapturedRequest {
   method: string;
   url: string;
+  /** Present only when the request carried `x-od-confirm-token`. */
+  confirmToken?: string;
 }
 
 interface StubServer {
@@ -54,9 +71,25 @@ async function startStubServer(): Promise<StubServer> {
   const server = http.createServer((req, res) => {
     req.on('data', () => {});
     req.on('end', () => {
-      requests.push({ method: req.method ?? '', url: req.url ?? '' });
+      const url = req.url ?? '';
+      const token = req.headers['x-od-confirm-token'];
+      requests.push({
+        method: req.method ?? '',
+        url,
+        ...(typeof token === 'string' ? { confirmToken: token } : {}),
+      });
       res.statusCode = 200;
       res.setHeader('content-type', 'application/json');
+      // Stand in for the daemon's mint route so the CLI has a token to spend.
+      if (url.endsWith('/confirm-delete')) {
+        res.end(JSON.stringify({
+          token:       STUB_TOKEN,
+          expiresAt:   Date.now() + 120_000,
+          expiresInMs: 120_000,
+          summary:     { kind: 'project', id: 'stub', label: 'stub', items: [], reversible: false },
+        }));
+        return;
+      }
       res.end(JSON.stringify({ ok: true }));
     });
   });
@@ -103,42 +136,57 @@ interface GatedVerb {
   name: string;
   /** Args before the shared `--daemon-url <stub>` tail. */
   args: string[];
-  /** The request the daemon must see once --confirm is supplied. */
-  expected: CapturedRequest;
+  /** The exact request sequence the daemon must see once --confirm is supplied. */
+  expected: CapturedRequest[];
   /** A fragment of the refusal that must name what would be destroyed. */
   namesTarget: RegExp;
 }
 
 // One entry per confirmed ungated call site in apps/daemon/src/cli.ts.
+//
+// `expected` is two requests where the daemon also enforces the boundary, and
+// one where it does not. The split is not arbitrary: a delete that writes a
+// local-version-history revision can be undone, and gating it would add
+// ceremony without safety (`docs/standards/super-confirmation.md`: "Where an
+// action is genuinely reversible through the local version history, prefer a
+// notification with an undo action"). `files`, `templates` and `automations`
+// are all restorable that way; projects, brands and library assets are in no
+// history domain at all.
 const GATED_VERBS: GatedVerb[] = [
   {
     name: 'od project delete',
     args: ['project', 'delete', 'proj-1'],
-    expected: { method: 'DELETE', url: '/api/projects/proj-1' },
+    expected: [
+      { method: 'POST', url: '/api/projects/proj-1/confirm-delete' },
+      { method: 'DELETE', url: '/api/projects/proj-1', confirmToken: STUB_TOKEN },
+    ],
     namesTarget: /project "proj-1"/,
   },
   {
     name: 'od files delete',
     args: ['files', 'delete', 'proj-1', 'index.html'],
-    expected: { method: 'DELETE', url: '/api/projects/proj-1/files/index.html' },
+    expected: [{ method: 'DELETE', url: '/api/projects/proj-1/files/index.html' }],
     namesTarget: /file "index\.html" from project "proj-1"/,
   },
   {
     name: 'od brand delete',
     args: ['brand', 'delete', 'acme'],
-    expected: { method: 'DELETE', url: '/api/brands/acme' },
+    expected: [
+      { method: 'POST', url: '/api/brands/acme/confirm-delete' },
+      { method: 'DELETE', url: '/api/brands/acme', confirmToken: STUB_TOKEN },
+    ],
     namesTarget: /brand "acme"/,
   },
   {
     name: 'od templates delete',
     args: ['templates', 'delete', 't-1'],
-    expected: { method: 'DELETE', url: '/api/templates/t-1' },
+    expected: [{ method: 'DELETE', url: '/api/templates/t-1' }],
     namesTarget: /template "t-1"/,
   },
   {
     name: 'od automation delete',
     args: ['automation', 'delete', 'r-1'],
-    expected: { method: 'DELETE', url: '/api/routines/r-1' },
+    expected: [{ method: 'DELETE', url: '/api/routines/r-1' }],
     namesTarget: /automation "r-1"/,
   },
 ];
@@ -203,7 +251,7 @@ describe('od delete confirmation gate', () => {
         const result = await runCli([...verb.args, '--daemon-url', stub.baseUrl, '--confirm']);
 
         expect(result.code).toBe(0);
-        expect(stub.requests).toEqual([verb.expected]);
+        expect(stub.requests).toEqual(verb.expected);
       });
     });
   }

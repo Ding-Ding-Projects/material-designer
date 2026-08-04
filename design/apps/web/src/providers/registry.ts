@@ -73,6 +73,7 @@ import type {
 } from '../types';
 import type { ArtifactManifest } from '../artifacts/types';
 import { GENERIC_DEPLOY_ENVELOPE_CODES } from '../analytics/deploy-error-code';
+import { confirmedDelete } from '../lib/confirm-delete';
 import {
   isOpenDesignHostAvailable,
   openHostExternalUrl,
@@ -2715,13 +2716,19 @@ export async function fetchLibraryAssetAsFile(asset: LibraryAsset): Promise<File
   }
 }
 
+/**
+ * Delete a library asset through the daemon's confirmation handshake.
+ *
+ * `DELETE /api/library/assets/:id` is refused without a single-use token bound
+ * to this id — the boundary lives in the handler, not in `LibrarySection`'s
+ * two-key gate, which is unchanged and remains the user-facing half.
+ *
+ * Note for the bulk path: `deleteSelected` fans this out per id, so each asset
+ * gets its own token. That is the intended shape — one authorization
+ * authorizes one deletion, never a batch.
+ */
 export async function deleteLibraryAsset(id: string): Promise<boolean> {
-  try {
-    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    return resp.ok;
-  } catch {
-    return false;
-  }
+  return confirmedDelete(`/api/library/assets/${encodeURIComponent(id)}`);
 }
 
 /**

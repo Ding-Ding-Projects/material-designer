@@ -17,7 +17,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, EXTERNAL_EDITOR_IDS } from '@open-design/contracts';
+import { CONFIRM_DELETE_HEADER, EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, EXTERNAL_EDITOR_IDS } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
 import { exportRoutePath } from './export-cli-routing.js';
 import {
@@ -2170,6 +2170,65 @@ function requireDeleteConfirmation({ confirmed, json, label, target, command }) 
     console.error(`  Re-run to proceed: ${command}`);
   }
   process.exit(2);
+}
+
+// ---------------------------------------------------------------------------
+// The daemon-side half of the same gate.
+//
+// `--confirm` above is an *interface* gate: it lives in this file, so it stops
+// a careless `od` invocation and stops nothing else. A script with `curl`, a
+// third-party client, or a future surface reaches the same DELETE route having
+// met neither it nor the web app's two-key slider — which is the hole
+// `docs/standards/super-confirmation.md` names when it says the boundary
+// belongs "in the handler, never in the interface".
+//
+// The daemon now refuses the genuinely irreversible deletes without a
+// single-use token minted for that exact resource. This performs the handshake:
+//
+//   POST <resource>/confirm-delete  ->  { token, expiresAt, summary }
+//   DELETE <resource>               ->  with the token in a header
+//
+// The token goes in a header and is never printed, never logged, and never put
+// into a URL — see `http/confirm-delete.ts` for why the URL in particular is
+// the wrong place for it.
+//
+// Both halves apply. `--confirm` still refuses before any HTTP request is made;
+// this runs only once the user has passed that.
+//
+// Returns the DELETE's response for the caller to handle exactly as before. Any
+// failure on the mint leg exits through the same structured-error path a failed
+// DELETE would have, so a caller's error branch keeps working unchanged.
+async function confirmedDeleteRequest(base, resourcePath, fallbackCode = 'daemon-not-running') {
+  let mint;
+  try {
+    mint = await fetch(`${base}${resourcePath}/confirm-delete`, { method: 'POST' });
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
+  // A refused mint is reported as itself — a 404 here means the record is
+  // already gone, which is exactly what the DELETE would have said.
+  if (!mint.ok) return structuredHttpFailure(mint, fallbackCode);
+
+  const body = await mint.json().catch(() => ({}));
+  const token = typeof body?.token === 'string' ? body.token : '';
+  if (!token) {
+    exitWithStructuredError({
+      code:    'confirmation-required',
+      message: `the daemon accepted the confirmation request for ${resourcePath} but issued no token`,
+      data:    { resource: resourcePath },
+    });
+  }
+
+  try {
+    return await fetch(`${base}${resourcePath}`, {
+      method:  'DELETE',
+      headers: { [CONFIRM_DELETE_HEADER]: token },
+    });
+  } catch (err) {
+    surfaceFetchError(err, base);
+    process.exit(3);
+  }
 }
 
 async function cliDaemonUrl(flags) {
@@ -6711,13 +6770,9 @@ async function runBrandDelete(rest) {
     command:   `od brand delete ${id} --confirm`,
   });
   const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
+  // The daemon refuses this DELETE without a token bound to this brand;
+  // `--confirm` above is the local half, this is the boundary half.
+  const resp = await confirmedDeleteRequest(base, `/api/brands/${encodeURIComponent(id)}`);
   if (!resp.ok) return structuredHttpFailure(resp);
   const data = await resp.json().catch(() => ({ ok: true }));
   if (flags.json) {
@@ -7062,7 +7117,13 @@ Common options:
         target:    `project "${id}", every file in its directory, and any run still in flight`,
         command:   `od project delete ${id} --confirm`,
       });
-      const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      // The daemon refuses this DELETE without a token bound to this project;
+      // `--confirm` above is the local half, this is the boundary half.
+      const resp = await confirmedDeleteRequest(
+        base,
+        `/api/projects/${encodeURIComponent(id)}`,
+        'project-not-found',
+      );
       if (!resp.ok) return structuredHttpFailure(resp, 'project-not-found');
       console.log(`[project] deleted ${id}`);
       return;
@@ -8682,9 +8743,18 @@ async function runLibrary(args) {
           console.error('Usage: od library rm <id>');
           process.exit(2);
         }
-        const resp = await fetch(`${base}/api/library/assets/${encodeURIComponent(id)}`, {
-          method: 'DELETE',
-        });
+        // The daemon refuses this DELETE without a token bound to this asset.
+        //
+        // Note this verb has no `--confirm` flag, unlike `od project delete`
+        // and friends — a pre-existing gap in the CLI's own interface gate, not
+        // one this change introduces. Adding the flag would break every script
+        // already calling `od library rm`, so it is left for a deliberate
+        // decision; the daemon-side boundary now covers the operation either
+        // way, which is the half that was actually missing.
+        const resp = await confirmedDeleteRequest(
+          base,
+          `/api/library/assets/${encodeURIComponent(id)}`,
+        );
         if (!resp.ok) return structuredHttpFailure(resp);
         if (flags.json) return writeJson(await resp.json());
         console.log(`deleted ${id}`);

@@ -32,6 +32,7 @@ import {
   ANALYTICS_HEADER_PUBLISHER_CLASS,
   ANALYTICS_HEADER_REQUEST_ID,
   ANALYTICS_HEADER_SESSION_ID,
+  CONFIRM_DELETE_HEADER,
   buildProjectRawFileUrl,
   type McpAnalyticsContextResponse,
 } from '@open-design/contracts';
@@ -2137,7 +2138,27 @@ async function deleteProject(baseUrl: string, args: McpArgs) {
   }
   const { id, resolved } = await resolveProjectArg(baseUrl, args.project);
   const url = `${baseUrl}/api/projects/${encodeURIComponent(id)}`;
-  const resp = await fetch(url, { method: 'DELETE' });
+
+  // `confirm: true` above is this tool's own gate, and like the web app's
+  // slider and the CLI's `--confirm` it is a property of one interface. The
+  // daemon now enforces the boundary itself: the DELETE is refused without a
+  // single-use token minted for this exact project (see
+  // `http/confirm-delete.ts` and `docs/standards/super-confirmation.md`), so
+  // obtain one and send it in a header — never in the URL, which is logged.
+  const confirmUrl = `${url}/confirm-delete`;
+  const confirmResp = await fetch(confirmUrl, { method: 'POST' });
+  if (!confirmResp.ok) {
+    return errorResult(await formatDaemonError(confirmResp, confirmUrl));
+  }
+  const confirmBody = (await confirmResp.json()) as { token?: unknown };
+  if (typeof confirmBody.token !== 'string' || confirmBody.token.length === 0) {
+    return errorResult(`daemon issued no confirmation token for ${confirmUrl}`);
+  }
+
+  const resp = await fetch(url, {
+    method: 'DELETE',
+    headers: { [CONFIRM_DELETE_HEADER]: confirmBody.token },
+  });
   if (!resp.ok) {
     return errorResult(await formatDaemonError(resp, url));
   }

@@ -10,6 +10,17 @@ export const API_ERROR_CODES = [
   'PAYLOAD_TOO_LARGE',
   'UNSUPPORTED_MEDIA_TYPE',
   'VALIDATION_FAILED',
+  // A destructive route was called without a valid confirmation token. Sent
+  // with 428 Precondition Required — the request is not in conflict with the
+  // resource's state (which is what 409 means, and what these same routes
+  // already use for a genuine write conflict); it is missing a precondition
+  // the caller must go and obtain. `details` carries
+  // `ConfirmationRequiredDetails`: the resource, why the confirmation was
+  // refused, the URL that mints a token for it, and the header to send it back
+  // in. See `api/destructive-confirmation.ts` and
+  // `docs/standards/super-confirmation.md`. Retryable only after obtaining a
+  // token — never by replaying the same request.
+  'CONFIRMATION_REQUIRED',
   'AGENT_UNAVAILABLE',
   'AGENT_AUTH_REQUIRED',
   'AGENT_EXECUTION_FAILED',

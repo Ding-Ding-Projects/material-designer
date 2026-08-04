@@ -41,6 +41,7 @@ import {
   registerProjectConversationRoutes,
   type RegisterProjectConversationRoutesDeps,
 } from '../src/routes/project/conversations.js';
+import { confirmedDeleteFetch } from './helpers/confirm-delete.js';
 
 type Db = ReturnType<typeof openDatabase>;
 
@@ -291,8 +292,11 @@ describe('DELETE project cancels its active runs (#5468)', () => {
 
     const app = await mountProjectApp(db, runs, tempDir);
     try {
-      const res = await fetch(`${app.base}/api/projects/p1`, { method: 'DELETE' });
-      expect(res.status).toBe(200);
+      // The DELETE is now gated on a single-use confirmation token bound to
+      // this project (tests/confirm-delete.test.ts owns that behaviour); this
+      // suite is about run cancellation, so it just performs the handshake.
+      const res = await confirmedDeleteFetch(`${app.base}/api/projects/p1`);
+      expect(res?.status).toBe(200);
     } finally {
       await app.close();
     }

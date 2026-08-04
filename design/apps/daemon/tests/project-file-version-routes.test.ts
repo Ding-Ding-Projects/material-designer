@@ -8,6 +8,7 @@ import { getProjectFileVersionRootStats } from '../src/project-file-versions.js'
 import { projectFileWriteTestHooks } from '../src/projects.js';
 import { snapshotAiHtmlVersionsForRun } from '../src/run-html-version-snapshots.js';
 import { startServer } from '../src/server.js';
+import { confirmedDeleteFetch } from './helpers/confirm-delete.js';
 
 describe('project file version routes', () => {
   let server: http.Server;
@@ -25,7 +26,8 @@ describe('project file version routes', () => {
 
   afterAll(async () => {
     for (const id of projectsToClean.splice(0)) {
-      await fetch(`${baseUrl}/api/projects/${id}`, { method: 'DELETE' }).catch(() => {});
+      // Project delete needs the daemon's confirmation handshake.
+      await confirmedDeleteFetch(`${baseUrl}/api/projects/${id}`);
     }
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });

@@ -485,17 +485,61 @@ describe('deleteProject tabs cache', () => {
     return store;
   }
 
+  // `deleteProject` performs the daemon's confirmation handshake: it mints a
+  // single-use token at `POST <resource>/confirm-delete` and sends it back on
+  // the DELETE. See `src/lib/confirm-delete.ts` and
+  // `docs/standards/super-confirmation.md` — the gate is enforced in the
+  // daemon's handler, so every caller has to complete the exchange.
+  function stubConfirmingDaemon(deleteStatus: number) {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.endsWith('/confirm-delete')) {
+        return new Response(
+          JSON.stringify({
+            token: 'tok-1',
+            expiresAt: Date.now() + 120_000,
+            expiresInMs: 120_000,
+            summary: { kind: 'project', id: 'p1', label: 'p1', items: [], reversible: false },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response(null, { status: deleteStatus });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
   it('prunes the project tabs cache on a successful delete', async () => {
     const store = stubWindowStore();
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 200 })));
+    const fetchMock = stubConfirmingDaemon(200);
     await expect(deleteProject('p1')).resolves.toBe(true);
     expect(store.has(tabsKey)).toBe(false);
+
+    // The token must ride in the header, never the URL — a URL-borne token
+    // lands in every access and proxy log on the way.
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/projects/p1/confirm-delete');
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe('/api/projects/p1');
+    const deleteHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
+    expect(deleteHeaders['x-od-confirm-token']).toBe('tok-1');
   });
 
   it('keeps the tabs cache when the delete fails', async () => {
     const store = stubWindowStore();
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 500 })));
+    stubConfirmingDaemon(500);
     await expect(deleteProject('p1')).resolves.toBe(false);
     expect(store.has(tabsKey)).toBe(true);
+  });
+
+  it('keeps the tabs cache when the daemon refuses to issue a confirmation', async () => {
+    const store = stubWindowStore();
+    // The 428 a caller sees when the resource is gone, or when confirmation is
+    // otherwise unavailable. No token means no DELETE is even attempted.
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 428 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(deleteProject('p1')).resolves.toBe(false);
+    expect(store.has(tabsKey)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

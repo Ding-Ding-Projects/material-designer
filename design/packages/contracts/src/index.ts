@@ -17,6 +17,7 @@ export * from './api/connectors.js';
 export * from './api/comments.js';
 export * from './api/connectionTest.js';
 export * from './api/data-export.js';
+export * from './api/destructive-confirmation.js';
 export * from './api/editor.js';
 export * from './api/export.js';
 export * from './api/files.js';

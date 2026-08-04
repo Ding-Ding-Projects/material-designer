@@ -213,12 +213,28 @@ describe('public MCP delete_project', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('issues DELETE /api/projects/:id when project + confirm are provided', async () => {
+  // `confirm: true` is this tool's own gate and it is not the boundary: the
+  // daemon refuses the DELETE without a single-use token minted for that exact
+  // project (apps/daemon/src/http/confirm-delete.ts). So the tool now performs
+  // the handshake, and this asserts the full exchange rather than a lone DELETE.
+  it('mints a confirmation and issues DELETE /api/projects/:id with the token', async () => {
     const base = nextBaseUrl();
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/api/projects')) {
         return new Response(
           JSON.stringify({ projects: [{ id: 'p1', name: 'Demo' }] }),
+          { status: 200 },
+        );
+      }
+      if (url.endsWith('/confirm-delete')) {
+        expect(init?.method).toBe('POST');
+        return new Response(
+          JSON.stringify({
+            token: 'tok-1',
+            expiresAt: Date.now() + 120_000,
+            expiresInMs: 120_000,
+            summary: { kind: 'project', id: 'p1', label: 'Demo', items: [], reversible: false },
+          }),
           { status: 200 },
         );
       }
@@ -232,8 +248,37 @@ describe('public MCP delete_project', () => {
       confirm: true,
     });
 
-    expect(fetchMock.mock.calls[1]?.[0]).toBe(`${base}/api/projects/p1`);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(`${base}/api/projects/p1/confirm-delete`);
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(`${base}/api/projects/p1`);
+    // The token rides in a header so it never lands in a request log.
+    const deleteHeaders = fetchMock.mock.calls[2]?.[1]?.headers as Record<string, string>;
+    expect(deleteHeaders['x-od-confirm-token']).toBe('tok-1');
     expect(JSON.parse(firstText(result))).toMatchObject({ ok: true });
+  });
+
+  it('reports the daemon refusing to issue a confirmation, and never sends the DELETE', async () => {
+    const base = nextBaseUrl();
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('/api/projects')
+        ? new Response(JSON.stringify({ projects: [{ id: 'p1', name: 'Demo' }] }), { status: 200 })
+        : new Response(
+            JSON.stringify({ error: { code: 'PROJECT_NOT_FOUND', message: 'not found' } }),
+            { status: 404 },
+          ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await handleMcpToolCall(base, 'delete_project', {
+      project: 'Demo',
+      confirm: true,
+    });
+
+    expect(result).toMatchObject({ isError: true });
+    expect(
+      fetchMock.mock.calls.some(
+        (call) => String(call[1]?.method ?? '').toUpperCase() === 'DELETE',
+      ),
+    ).toBe(false);
   });
 
   it('requires explicit confirm:true so agents cannot silently nuke a project', async () => {
