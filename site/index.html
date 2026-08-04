@@ -550,12 +550,12 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <h3 class="md-title-medium" data-i18n="in.download.title">Windows, 64-bit</h3>
       <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
       <div class="row" style="margin-top:0.75rem">
-        <a class="md-btn md-btn--filled"
+        <a class="md-btn md-btn--filled" data-release-href="installer"
            href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r19.1/material-designer-0.16.1-win-x64-setup.exe">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-        <span class="md-chip md-chip--mono">0.16.1 · x64 · 305 MB</span>
+        <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 305 MB</span>
         <button type="button" class="md-btn md-btn--text" data-goto-tab="releases">
           <span class="i18n-text" data-i18n="in.cta.releases" data-i18n-inline>Checksum, code name and full notes</span>
         </button>
@@ -574,7 +574,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
         <li data-i18n="in.will.installer">A Windows installer produced by the same run that published it, together with its checksum and a portable archive for running the application without installing it.</li>
         <li data-i18n="in.will.tag">Its own unique tag. No prior release is recycled or overwritten, so a downloaded file can always be traced back to one commit.</li>
         <li data-i18n="in.will.linecount">A line-count table for the exact released commit, produced by a committed counter that continuous integration runs, broken down by category and by whether a person or an agent wrote the surviving line.</li>
-        <li data-i18n="in.will.codename">A dim sum code name drawn from the catalogue bundled in this repository, with the dish's photograph — chosen only from dishes whose image is actually present.</li>
+        <li data-i18n="in.will.codename">A dim sum code name drawn from the public catalogue of 2,866 dishes, with the dish's photograph — chosen only from dishes whose image is actually published, and never reused between builds.</li>
         <li data-i18n="in.will.evidence">Evidence recorded as it really is: passed, failed, or not run. Never predicted.</li>
       </ul>
     </div>
@@ -636,12 +636,12 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
         <table>
           <caption class="visually-hidden" data-i18n="rl.latest.caption">The most recent published release and its assets</caption>
           <tbody>
-            <tr><th scope="row" data-i18n="rl.f.tag">Tag</th><td><code class="mono">v0.16.1-r19.1</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.version">Application version</th><td><code class="mono">0.16.1</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.codename">Code name</th><td>Cha Chaan Teng Baked Seafood Rice · <span lang="zh-HK">茶記焗海鮮飯</span></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.commit">Built from</th><td><code class="mono">b26c5cc</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.installer">Installer</th><td><code class="mono">material-designer-0.16.1-win-x64-setup.exe</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.sha">SHA-256</th><td><code class="mono" style="word-break:break-all">6fa440d22e22f8592cdc8fbe2995939dacb5521187dda2284d0cc06cf880b18c</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.tag">Tag</th><td><code class="mono" data-release="tag">v0.16.1-r19.1</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.version">Application version</th><td><code class="mono" data-release="version">0.16.1</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.codename">Code name</th><td data-release="codename">Cha Chaan Teng Baked Seafood Rice · <span lang="zh-HK">茶記焗海鮮飯</span></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.commit">Built from</th><td><code class="mono" data-release="commit">b26c5cc</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.installer">Installer</th><td><code class="mono" data-release="installer">material-designer-0.16.1-win-x64-setup.exe</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.sha">SHA-256</th><td><code class="mono" style="word-break:break-all" data-release="sha">6fa440d22e22f8592cdc8fbe2995939dacb5521187dda2284d0cc06cf880b18c</code></td></tr>
             <tr>
               <th scope="row" data-i18n="rl.f.smoke">Packaged smoke test</th>
               <td>
@@ -654,12 +654,12 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       </div>
 
       <div class="row" style="margin-top:1rem">
-        <a class="md-btn md-btn--filled"
+        <a class="md-btn md-btn--filled" data-release-href="installer"
            href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r19.1/material-designer-0.16.1-win-x64-setup.exe">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-        <span class="md-chip md-chip--mono">0.16.1 · x64 · 305 MB</span>
+        <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 305 MB</span>
       </div>
 
       <div class="row" style="margin-top:0.5rem">

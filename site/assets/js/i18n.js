@@ -1307,8 +1307,8 @@ const CATALOGUE = {
     yue: '一個對應嗰個發佈 commit 嘅行數表，由 continuous integration 行一個 commit 咗嘅計數器整出嚟，按類別分開，亦分開邊啲仲留低嘅行係人寫、邊啲係 agent 寫。',
   },
   'in.will.codename': {
-    en: 'A dim sum code name drawn from the catalogue bundled in this repository, with the dish’s photograph — chosen only from dishes whose image is actually present.',
-    yue: '一個點心代號，喺呢個 repository 自己帶嘅目錄度抽，連埋嗰味嘢嘅相 — 而且淨係揀真係有相嘅點心。',
+    en: 'A dim sum code name drawn from the public catalogue of 2,866 dishes, with the dish’s photograph — chosen only from dishes whose image is actually published, and never reused between builds.',
+    yue: '一個點心代號，喺公開嘅 2,866 味點心圖鑑度抽，連埋嗰味嘢嘅相 — 淨係揀真係出咗相嗰啲，而且每個 build 唔會撞名。',
   },
   'in.will.evidence': {
     en: ['Evidence recorded as it really is: passed, failed, or not run. Never predicted.', 'Evidence recorded as it really is: passed, failed, or not run. Never predicted.', 'Evidence recorded as it really is: passed, failed, or not run — never predicted.', 'Evidence recorded as it really is: passed, failed, or not run. Never what somebody expected it to be.', 'Evidence recorded as it really is: passed, failed, or not run. Never what somebody was rather hoping it would be.'],

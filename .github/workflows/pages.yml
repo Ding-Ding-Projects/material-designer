@@ -85,6 +85,112 @@ jobs:
           count=$(ls site/assets/dim-sum/images 2>/dev/null | wc -l)
           echo "staged $count dish image(s)"
 
+      - name: Fill in the newest release's facts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+        # The release table and the download button were hand-written, and they
+        # were forty-five releases out of date: the page advertised an installer
+        # from `r19.1` beside a SHA-256 that matched nothing currently shipped.
+        # A stale checksum is worse than no checksum — someone who verifies it
+        # concludes the file was tampered with.
+        #
+        # So the facts are filled in at publish time from the release that
+        # actually exists. The committed HTML keeps the last known values, which
+        # is what makes the page still readable when opened straight from a
+        # checkout with no workflow and no network.
+        #
+        # The link stays an immutable per-tag asset URL rather than a `latest`
+        # redirect. A moving link would make the checksum beside it meaningless,
+        # because the file behind it could change without the page changing.
+        run: |
+          set -uo pipefail
+
+          rel=$(gh release view --json tagName,name,assets 2>/dev/null) || {
+            echo "::warning::could not read the newest release; publishing the committed values unchanged"
+            exit 0
+          }
+
+          tag=$(printf '%s' "$rel" | jq -r '.tagName // empty')
+          title=$(printf '%s' "$rel" | jq -r '.name // empty')
+          installer=$(printf '%s' "$rel" | jq -r '[.assets[].name] | map(select(endswith("setup.exe")))[0] // empty')
+          bytes=$(printf '%s' "$rel" | jq -r --arg n "$installer" '[.assets[] | select(.name==$n) | .size][0] // empty')
+
+          if [ -z "$tag" ] || [ -z "$installer" ]; then
+            echo "::warning::the newest release has no Windows installer; leaving the committed values alone"
+            exit 0
+          fi
+
+          # The code name is the part of the title after the em dash, and is
+          # legitimately absent — a release ships without one rather than being
+          # blocked when no unused dish can be resolved.
+          codename=${title#*— }
+          [ "$codename" = "$title" ] && codename="none for this build"
+
+          version=$(printf '%s' "$installer" | sed -n 's/.*-\([0-9][0-9.]*\)-win-x64-setup\.exe/\1/p')
+          [ -z "$version" ] && version="unknown"
+
+          # The checksum comes from the release's own .sha256 asset, not from
+          # hashing anything here: the point is to publish what the build
+          # published, so re-deriving it locally would prove nothing.
+          sha=""
+          if gh release download "$tag" --pattern '*setup.exe.sha256' --dir "$RUNNER_TEMP/sha" --clobber 2>/dev/null; then
+            sha=$(cat "$RUNNER_TEMP"/sha/*.sha256 2>/dev/null | tr -d '\r' | awk '{print $1}' | head -1)
+          fi
+          [ -z "$sha" ] && sha="not published for this build"
+
+          commit=$(gh release view "$tag" --json body -q '.body' 2>/dev/null \
+            | sed -n 's/.*Built from `\([0-9a-f]\{7,40\}\)`.*/\1/p' | head -1)
+          [ -z "$commit" ] && commit="unknown"
+          commit=${commit:0:7}
+
+          mb=$(( (bytes + 524288) / 1048576 ))
+          chip="${version} · x64 · ${mb} MB"
+          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/${installer}"
+
+          f=site/index.html
+          set_field() {
+            local key=$1 value=$2
+            # Replace only the text inside the marked element, leaving every
+            # attribute on it untouched.
+            value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
+            sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$value|g" "$f"
+          }
+
+          set_field tag       "$tag"
+          set_field version   "$version"
+          set_field commit    "$commit"
+          set_field installer "$installer"
+          set_field sha       "$sha"
+          set_field chip      "$chip"
+
+          # The code-name cell holds markup (a `lang` span), so it is replaced
+          # whole rather than by the text-only rule above.
+          cn=$(printf '%s' "$codename" | sed 's/[&|\\]/\\&/g')
+          sed -i "s|\(data-release=\"codename\"[^>]*>\).*\(</td>\)|\1$cn\2|g" "$f"
+
+          # The href sits on the line after its marker attribute, so this
+          # targets the URL itself. It rewrites every download link on the page,
+          # which is the intent — there are two buttons and they must never
+          # offer different builds.
+          esc_url=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
+          sed -i "s|href=\"https://github.com/[^\"]*/releases/download/[^\"]*setup\.exe\"|href=\"$esc_url\"|g" "$f"
+
+          echo "Release facts on the published page:"
+          echo "  tag       $tag"
+          echo "  version   $version"
+          echo "  code name $codename"
+          echo "  commit    $commit"
+          echo "  installer $installer ($mb MB)"
+          echo "  sha256    ${sha:0:16}…"
+
+          # Publishing a page that still claims the old tag would defeat the
+          # entire step, so prove the substitution actually happened.
+          if ! grep -q "data-release=\"tag\"[^>]*>$tag<" "$f"; then
+            echo "::error::the release table was not updated; the page would publish stale facts"
+            exit 1
+          fi
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
