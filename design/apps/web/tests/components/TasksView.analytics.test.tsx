@@ -141,12 +141,14 @@ describe('TasksView analytics', () => {
   // Run / Pause / Delete each trigger a refresh + re-render, so each row
   // action gets an isolated render to avoid asserting against a stale node.
   it.each([
-    { button: 'Run', element: 'run_now' },
-    { button: 'Pause', element: 'pause' },
-    { button: 'History', element: 'history' },
-    { button: 'Edit', element: 'edit' },
-    { button: 'Delete automation', element: 'delete' },
-  ])('tracks the $element row action', async ({ button, element }) => {
+    { button: 'Run', element: 'run_now', role: 'button' },
+    // Pause/resume is the M3 switch now (roadmap Wave 4): one control with a
+    // stable name, reporting its state through aria-checked.
+    { button: 'Orbit digest enabled', element: 'pause', role: 'switch' },
+    { button: 'History', element: 'history', role: 'button' },
+    { button: 'Edit', element: 'edit', role: 'button' },
+    { button: 'Delete automation', element: 'delete', role: 'button' },
+  ])('tracks the $element row action', async ({ button, element, role }) => {
     // No `window.confirm` stub any more: Delete opens the destructive gate
     // instead of a browser dialog, and the click event this asserts is
     // emitted when the button is pressed, before the gate is authorized.
@@ -154,7 +156,7 @@ describe('TasksView analytics', () => {
     render(<TasksView />);
     const row = (await screen.findByText('Orbit digest')).closest('li')!;
 
-    fireEvent.click(within(row).getByRole('button', { name: button }));
+    fireEvent.click(within(row).getByRole(role, { name: button }));
     expect(lastClick()).toMatchObject({
       page_name: 'automations',
       area: 'automations',

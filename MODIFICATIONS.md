@@ -29,6 +29,541 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Give the version history a window, so the snapshots stop being a thing only `curl` can see
+
+**Reason:** the daemon has kept an append-only Git snapshot of every record and
+setting since the `2026-08-03` entry below — `apps/daemon/src/history/` and five
+`/api/history` routes — and nothing in the application could open it. A search
+of `apps/web/src` for `VersionHistory`, `versionHistory` or `version-history`
+returned no file, no importer and no reference. The undo existed; the door did
+not. This adds the panel.
+
+**What it does.** It lists revisions, filters them four ways at once, shows what
+a revision changed down to the stored bytes, restores one, and manages retention
+and pruning. Four decisions are worth writing down, because each is the opposite
+of what a shorter implementation would have done.
+
+*The action filter is derived, not declared.* The obvious version of "filter by
+action" is a fixed menu of the seven verbs the standard names — created,
+updated, deleted, restored, undone, imported, settings changed — and that menu
+is wrong the moment it disagrees with the store. Nothing in this daemon records
+an *import*, so an import filter would sit there offering a click that can never
+match. Here the facets are computed from the loaded revisions: an action appears
+only when a revision carries it, carrying the count that made it appear, and the
+day the store starts recording imports the filter turns up without a line
+changing in the panel. `recorded` is its own bucket rather than being folded
+into `updated`, because a revision that could not be classified is not evidence
+that something was updated.
+
+*The counts describe the loaded set, not the filtered one.* Clicking a facet
+must not rewrite the numbers that explained why it was worth clicking, or the
+row becomes a set of figures that move whenever they are used.
+
+*Restore is an ordinary button, not a destructive gate.* History is append-only:
+restoring writes the historical bytes back and records a NEW revision on top, so
+the state being replaced is still there and can be restored in turn. Dressing
+that up as an irreversible action would misdescribe the one operation in this
+application that genuinely cannot lose anything — and the panel says so in words
+above the button, because a history nobody trusts is a history nobody opens.
+
+*The dates are the user's, not UTC's.* A revision written at 23:30 has to fall
+inside the range that names the day it visibly happened, so the day a revision
+belongs to is computed locally and compared lexically against what the calendar
+hands back. The date control is the changelog's own `ChangelogDateRange` rather
+than a second calendar built to the same specification, and the search field is
+the shared `RegexSearchField` with a controller of its own — never one shared
+between two fields.
+
+The panel is mounted once in `App.tsx` and opened by event from Settings → About
+and from the entry help menu, the same shape the changelog viewer already uses.
+A failed history read never takes a surface down with it: every client call
+resolves with the daemon's own message instead of throwing, and the list already
+on screen stays there under the error line. Credential-adjacent domains keep
+their existing treatment — the daemon refuses to return their stored bytes, and
+the panel shows the size and the SHA-256 instead, so a revision stays verifiable
+without history becoming a side channel.
+
+The stylesheet's doubled `.dialog.dialog` selector is deliberate. `Dialog` puts
+the module class and the global `modal` class on the same element and keeps the
+shared rules inside `:where()`, so `.modal`'s `width: 520px` decides the card
+unless a selector genuinely outranks it; a single class would only tie, and be
+settled by stylesheet order that nothing guarantees.
+
+**Not done, and not claimed:** the panel is absent from the command palette, no
+capture has been taken of it, and nothing here has been executed — this checkout
+has no Node toolchain, so the types, the tests and the rendering are all
+unverified until CI runs them.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryHelpMenu.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/history/VersionHistoryDialog.module.css`
+- `apps/web/src/components/history/VersionHistoryDialog.tsx`
+- `apps/web/src/components/history/open-history.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/lib/history/actions.ts`
+- `apps/web/src/lib/history/client.ts`
+- `apps/web/src/lib/history/export.ts`
+- `apps/web/tests/lib/history-actions.test.ts`
+
+### 2026-08-04 — The conversation gets two bubbles instead of one
+
+**Reason:** roadmap § 2.4 Wave 5. The chat had a user bubble and, facing it,
+nothing: `.msg` sets `background: transparent; border: none` and no rule
+re-added a surface for the assistant, so one side of the conversation was a
+tinted card and the other was loose prose on the page. The bubble that did
+exist was a `--selected` fill with a hard-coded `#fff` foreground and a
+darkened 1px border — a colour outside the M3 role set, ink that cannot
+adapt, and a shadow on a surface that does not float.
+
+Both sides are Material Design 3 tonal bubbles now, with the asymmetric
+corner the standard specifies: three round corners and a small one on the
+side the message came from, so the shape says who is speaking rather than
+leaving the colour to do it alone. The user takes `primary-container`, the
+assistant `surface-container-high`. Both radii come off the corner scale —
+corner-l for the round corners and corner-xs for the tail. The mockup writes
+20px and 6px, and neither is a step on the documented scale; 16 and 4 are,
+and the shape reads the same.
+
+Only the prose takes the assistant's bubble. Tool cards, status pills and the
+message footer are siblings inside `.assistant-flow` and stay outside it,
+exactly as the mockup draws them: the bubble is the message, not the turn.
+The prose block's `max-width` grew by its own two insets, because `68ch` was
+tuned as a measure of TEXT and padding counts inside `max-width` — leaving it
+alone would have quietly shortened every line by 32px.
+
+**The tool-call card did not exist.** `.op-card` said `border: none;
+border-radius: 0; background: none` in `viewer/code.css`, and the `.app`-
+prefixed twin in `viewer/routines.css` said it again — two files agreeing
+that a card should not be drawn. It is a corner-m card on `surface-container`
+now, one tone above the bubble beside it, so a run of tool calls reads as a
+list of cards rather than as indented text. `padding: 0` on that rule is
+load-bearing rather than tidy: `.action-card-body > .op-card` sets `padding:
+4px 0` at the same specificity and in an earlier file, so without the reset
+the fill would have shown above and below the row instead of behind it.
+
+The typing indicator became the mockup's tonal pill — same tone as the
+bubble that follows it, fully rounded rather than tailed, because a transient
+status is not a message. It had been a bare line of shimmering text with no
+surface at all, indistinguishable from a paragraph that happened to be
+animating.
+
+**The composer is the interesting one, and it is a cascade trap in the
+opposite direction to the rest of this file.** Everywhere else in the chat,
+the `.app`-prefixed rule in `viewer/routines.css` wins over `chat.css`.
+`ChatPane` portals the composer to `document.body`, so for the composer the
+`.app` twins render **nowhere at all** and the `.chat-composer-fixed-layer`
+ones are live — one of the inert rules even carries a comment claiming it
+raises specificity, which it does, for an element that is no longer inside
+it. Every composer rule touched here was written in both places and the new
+test asserts both, because a rule that silently renders nothing is precisely
+how a fix gets written into the wrong file and reported as done.
+
+Send morphs on hover, corner-s to corner-l on the contract's spring — the
+same treatment Wave 2 gave the home screen's send button — and takes
+`primary`/`on-primary` in place of `--accent` and a literal `white`. Getting
+the morph to be visible needed a deletion as well as an addition: send sat
+in a grouped rule that flattened its corner to `--radius-sm`, and that rule
+outranks the base one, so the animation would have been written, shipped and
+pinned to a single value at both ends. It has left the group; the `+` button
+and the two import controls keep it. Two more defects were fixed on the way:
+the send button's focus style was `outline: none` with a soft box-shadow,
+which cancelled the app's own `button:focus-visible` ring and is not a
+visible focus indicator on a dark surface, and the stop state's
+`--text`-on-`--bg-panel` pair became the `inverse-surface` roles that
+actually mean "the opposite of the surface you are on" in both themes.
+
+**Not done in this pass:** the mockup's typing indicator animates three
+pulsing dots and this one keeps the existing shimmering label inside its new
+pill, because swapping the animation is a markup change in a 4,100-line
+component for no change in what the indicator communicates. The wave's own
+definition of done also asks for captures from an installed build in both
+themes, at four display scales, at narrow width and in bilingual mode. None
+of that is verified here — there is no build in this environment — so the
+wave's box stays unticked.
+
+**Changed files:**
+
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/styles/conversation-m3.test.ts`
+
+### 2026-08-04 — A switch that is 52×32, and the rows it sits in
+
+**Reason:** roadmap § 2.4 Wave 4. The application drew a toggle in five
+places and not one of them was a Material Design 3 switch: `.toggle-switch`
+at 36×20 with a 14px dot, `.toggle-switch-sm` at 30×17 with an 11px one,
+`.compact-toggle-switch`, `.viewer-toggle .switch`, and — in the MCP server
+list — a raw `<input type="checkbox">` with no styling at all. All five were
+a `<label>` wrapping a checkbox, which assistive technology announces as
+"checked"/"not checked" rather than as on or off, and which gives the host no
+way to refuse a change the daemon rejected.
+
+`Switch` is the component that was missing: a 52×32 track, `role="switch"`
+with `aria-checked`, a real `<button>` so Space and Enter come from the
+platform rather than from a `keydown` handler each call site has to remember,
+a primary focus ring, an optional icon, and a 40px state layer that sits on
+the handle rather than flashing the whole pill. **The handle changes size
+between states** — 16px off, 24px on, 28px pressed — which is the part every
+hand-rolled version dropped and the part that carries the affordance: off is
+a small dot in a hollow track, on is a full handle in a filled one, and a
+switch whose handle is one size is a switch you have to read the colour of.
+The geometry is written against the track's content box, which is 48×28
+rather than 52×32 because the 2px outline is drawn inside the border box; a
+handle M3 places 8dp from the outer edge therefore sits at 6px, and the
+selected handle's 22px is the number the mockup wrote, reached from the same
+rule. It is stateless: the host owns `checked` and is told which value the
+user asked for, so a rejected PATCH leaves the control telling the truth
+rather than showing a state that was never persisted.
+
+**The automation rows.** Both of them — the Automations page and the same
+feature in Settings, which were two different cards for one thing. They are
+M3 list rows now: an `outline-variant` hairline over `surface-container-low`
+at corner-l, rising by one surface tone on hover rather than by a shadow,
+because a row that lifts off the list it belongs to reads as a card that came
+loose. The leading glyph became the mockup's 44px tonal tile, the title line
+gained the enabled/paused state chip, and pause/resume — a button whose label
+flipped between two words — became the switch.
+
+The state chip is declared once and used by both surfaces, which is the Wave
+3 lesson applied before it could be re-learned. Its two states are chrome and
+take theme roles. The run-status chip beside it is a different animal: five
+colours encoding running/queued/succeeded/failed/canceled is a status
+palette, which the Material Design standard exempts as data rather than
+chrome, so those hues are untouched and only the chip's shape and type moved.
+
+**`.btn-primary` is declared nowhere.** Nor are `.btn-ghost` or
+`.btn-danger`, and all three are written on buttons across this codebase. The
+consequence was visible and had no obvious cause: in the Settings automation
+list, "Run now", "Edit", "History" and "Delete" rendered as four identical
+grey containers, because the only rule reaching them was the base `button`
+primitive. The row's high-emphasis action needed a variant that did not
+exist, so `button.tonal` joins the shared primitive sheet —
+`primary-container` under `on-primary-container`, which is M3's answer for a
+recurring row action; the filled button is not, because a list of rows each
+carrying a full accent reads as a page of calls to action. Delete now takes
+the `error` role. One subtlety is pinned by a test rather than left to be
+rediscovered: the row's own hover rule is 0,2,0 and `button.tonal` is 0,1,1,
+so without a `:not(.tonal)` the one high-emphasis action in the row would
+lose its container the moment it was pointed at.
+
+**The Integrations selector.** A four-column grid of two-line cards inside a
+shadowed panel, which is a tray of pills and not a component M3 defines — it
+read as four buttons rather than as one control with four positions. It is
+the same segmented button the four collection controls took in Wave 3, to the
+same contract, focus ring inset for the same reason: the container clips its
+own radius, so an offset ring is cut away on precisely the first and last
+segment. No copy was lost in the conversion — each tab's second line is
+stated below the strip for whichever area is selected, where a long localized
+string can wrap instead of being ellipsised away inside a segment. At narrow
+widths the strip stops hugging its content and its segments share the full
+width, because an `inline-flex` container that clips would otherwise cut the
+fourth segment off rather than shrink it.
+
+The MCP row's raw checkbox and the Skills row's 30×17 slider are both the new
+switch, and the connector status chip took M3 chip anatomy with its
+connected/error/pending palette left alone for the same reason the run-status
+one was.
+
+**Deliberately not done.** The three integration panels have three different
+row idioms — a flat bordered MCP row, a Skills row with an accent left-rail
+and three uppercase pills, and a connector *card grid* — and unifying them is
+a larger job than this wave, so the rows themselves are recorded as remaining
+Wave 4 work rather than half-converted. `.toggle-switch` still has three
+consumers outside the surfaces this wave names (`MemorySection`,
+`MemoryHooksPanel`, `DesignSystemsSection`); they should move to the new
+component in the wave that reaches them. Four translation keys —
+`routines.pause`, `routines.resume`, `automations.pause`,
+`automations.resume` — lost their last caller and are left declared rather
+than deleted from twenty locale files for a control that may return. The MCP
+switch's accessible name is still hard-coded English, exactly as the checkbox
+it replaced was; that is a real defect and a different one.
+
+**Also not done:** the wave's definition of done asks for captures from an
+installed build in both themes, at four display scales, at narrow width and
+in bilingual mode. There is no build in this environment, so the wave's box
+stays unticked.
+
+**Changed files:**
+
+- `apps/web/src/components/IntegrationsView.tsx`
+- `apps/web/src/components/McpClientSection.tsx`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/SkillsSection.tsx`
+- `apps/web/src/components/Switch.module.css`
+- `apps/web/src/components/Switch.tsx`
+- `apps/web/src/components/TasksView.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/styles/home/integrations.css`
+- `apps/web/src/styles/home/tasks.css`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/src/styles/viewer/templates-plugins.css`
+- `apps/web/src/styles/workspace/connectors.css`
+- `apps/web/tests/components/RoutinesSection.test.tsx`
+- `apps/web/tests/components/Switch.test.tsx`
+- `apps/web/tests/components/TasksView.analytics.test.tsx`
+- `apps/web/tests/components/TasksView.page.test.tsx`
+- `apps/web/tests/styles/lists-and-switches-m3.test.ts`
+
+
+### 2026-08-04 — Tab groups, and the four searches that find a tab in them
+
+**Reason:** roadmap § 4.1. The workspace strip already had pinning, drag
+reordering, an overflow surface and the two text-matched bulk closes. It had no
+groups at all, and exactly one search — a plain-text field over the open tabs,
+wired to nothing.
+
+**Groups.** A group is an id, a name, one of six palette colours and a collapsed
+flag; membership is a separate `tabId -> groupId` map. That split is the whole
+design. A group does not own an array of tab ids, because that array would
+immediately disagree with the strip's own order the first time a tab was
+dragged, and reconciling two orders on every drop is how a tab goes missing.
+Instead the strip's list is the only order there is, and
+`orderTabsByGroupMembership` rewrites it so each group's members are contiguous
+— the visible order and the stored order are the same order, so a drop that
+looks like "third in this group" lands third in this group.
+
+Groups can be created, named, recoloured, reordered, collapsed, expanded and
+removed; tabs move into, out of and between them by drag — a drop onto a tab in
+another group joins that group — and by the tab's own context menu, which lists
+every destination as a plain menu item so the whole operation is reachable with
+Tab and Enter. Removing a group releases its tabs rather than closing them, and
+an emptied group survives, because it is still a group somebody named.
+
+**Persistence.** The payload goes to v3 and carries the groups, the membership
+and the per-group decoration in the same write as the tabs, for the same reason
+the pins are already in it: a workspace that restored its tabs and lost which
+group they were in looks right and behaves wrong. Reading stays total — a v1 or
+v2 payload restores every tab in no group, and a hand-edited one with numbers,
+unknown colours or membership pointing at a deleted group restores a usable
+strip instead of throwing.
+
+**Four searches, four builders.** The requirement is four *separate* searches —
+the current strip, the inside of every individual group, groups by their visible
+name, and every open tab across every window — and each one now owns a
+`useRegexSearch` controller created by the component that renders its field. The
+tempting shape is one field with a scope selector, and it is a different
+feature: one query that means four things, which forgets what the user typed
+every time they narrow. The per-group search is its own component precisely so
+its hook call is per group instance rather than a hook inside a loop. Turning
+regex on in one field leaves the other three in plain text, which is the
+property a shared controller cannot have.
+
+The master search is the one that cannot read its answer out of React state,
+because most of its answer is in other windows. Each window publishes a snapshot
+of its strip to its own `localStorage` key and republishes on a heartbeat; the
+search reads them all, prunes anything past its TTL — a window that crashed
+rather than closed — and labels every result with its window, strip, group,
+pinned state and visible label. A result inside a collapsed group can be
+revealed without expanding it: the collapsed state is a preference the user set,
+and a search result is permission to see one tab, not permission to discard it.
+
+**Group appearance.** Right-click a group header for the full management menu,
+which includes **Edit group appearance…**; Shift+right-click opens that editor
+directly. It is an anchored non-modal popover that tracks its anchor, flips
+above when there is more room there, bounds itself to the viewport and scrolls
+inside that bound. Accent, label colour, header background, weight, size, radius
+and a badge each have their own reset, and reset means deletion — a reset group
+follows the theme afterwards rather than being pinned to a snapshot of it. The
+decoration reaches the strip as custom properties the stylesheet reads with
+fallbacks, and it never replaces the header's accessible name or its expanded
+state.
+
+**Tab semantics.** `role="tab"` moved from the wrapper `<div>` onto the button
+inside it, which is the element focus actually lands on; the wrapper is
+presentational and the close control sits outside the tab role. Every tab now
+carries `aria-controls` pointing at the shell body, which is the `tabpanel` it
+has always been in practice, and roving focus keeps exactly one tab in the tab
+order with the arrow keys, Home and End moving between the tabs that are on
+screen — a tab inside a collapsed group is skipped rather than being a focus
+stop nobody can see.
+
+**A truncating label is recoverable again.** A tab capped at 104px truncated to
+"Welcome t…" with no `title`, so a sighted user had no way back to the full
+text; the accessible name always carried it, which is exactly why nobody
+noticed. Every tab and every group header now carries its full text in `title`.
+An ordinary tab keeps its visible text as its only accessible name — the
+`aria-label` that used to duplicate it is gone — so the hover affordance does
+not become a second announcement.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.module.css`
+- `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.tsx`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
+- `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.tsx`
+- `apps/web/src/components/workspace-tabs/groupAppearance.ts`
+- `apps/web/src/components/workspace-tabs/tabGroups.ts`
+- `apps/web/src/components/workspace-tabs/tabPinning.ts`
+- `apps/web/src/components/workspace-tabs/windowRegistry.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.pinning.test.ts`
+- `apps/web/tests/components/workspace-tabs/groupAppearance.test.ts`
+- `apps/web/tests/components/workspace-tabs/tabGroups.test.ts`
+- `apps/web/tests/components/workspace-tabs/windowRegistry.test.ts`
+- `apps/web/tests/styles/workspace-tab-groups.test.ts`
+
+### 2026-08-04 — Bundle the three Material Design 3 faces, and move 94 icons onto the symbol font
+
+**Reason:** the token sheet has named `'Roboto Flex'` at the head of
+`--md-ref-typeface-plain` and `'Roboto Mono'` at the head of
+`--md-ref-typeface-mono` since `dea6b0a`, and nothing ever served either one —
+so every surface in the product rendered in the platform fallback behind them,
+silently, because a font stack has no error state. All eleven files now ship
+under `public/fonts/` beside Cairo: Roboto Flex in six subsets (OFL-1.1,
+261,888 bytes, `wght` 100–1000 plus the browser-driven `opsz`), Roboto Mono in
+six (OFL-1.1, 134,568 bytes, `wght` 100–700), and Material Symbols Rounded as
+one variable icon file (Apache-2.0, 1,376,348 bytes, with `FILL` and `opsz`
+live and `wght`/`GRAD` pinned to save 3.9 MB). Each is the exact byte stream
+Google Fonts served for a stated request; nothing was subsetted, re-encoded or
+generated here. Both text stacks gained a Windows, Apple and Noto family for
+Arabic, Thai, Simplified Chinese, Traditional Chinese, Japanese and Korean,
+because nine of the twenty shipped locales are written in a script neither
+Roboto face has one glyph for and bilingual mode puts English and 廣東話 on the
+same line.
+
+The icon half is a migration, not just a file. Remixicon had 61 distinct names
+across 95 call sites in seven files; 94 of them moved to a new `MaterialSymbol`
+component, and the four sites that pick a glyph indirectly now return a typed
+`MaterialSymbolName` so the compiler covers them. Material Symbols addresses a
+glyph by the ligature of its name, so an unknown name renders as English text in
+the toolbar rather than as a box — every mapping was therefore validated against
+the 4,268-name codepoints list published with the font, the icon face ships with
+no `font-display` and no fallback family, and a spec pins all of it.
+`SocialShareGrid.tsx` deliberately stays on the incumbent font: its nine glyphs
+are brand marks, Material Symbols carries no brand logos, and substituting one
+is a trademark question rather than an icon one. `lucide-react` was declared and
+imported by nothing, so it and its three lockfile entries are gone — the
+lockfile edit is not optional, because a manifest that disagrees with it fails
+`pnpm install --frozen-lockfile`.
+
+**Changed files:**
+
+- `apps/web/package.json`
+- `pnpm-lock.yaml`
+- `apps/web/src/index.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/roboto-flex.css`
+- `apps/web/src/styles/roboto-mono.css`
+- `apps/web/src/styles/material-symbols.css`
+- `apps/web/src/components/MaterialSymbol.tsx`
+- `apps/web/src/components/MaterialSymbol.module.css`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/PreviewDrawOverlay.tsx`
+- `apps/web/src/components/AvatarMenu.tsx`
+- `apps/web/src/components/DesignBrowserPanel.tsx`
+- `apps/web/src/components/WindowTitleBar.tsx`
+- `apps/web/src/components/AppChromeHeader.tsx`
+- `apps/web/tests/styles/bundled-fonts.test.ts`
+- `apps/web/tests/components/WindowTitleBar.test.tsx`
+- `apps/web/tests/components/AvatarMenu.test.tsx`
+- `apps/web/tests/components/PreviewDrawOverlay.test.tsx`
+- `apps/web/tests/components/DesignBrowserPanel.webview.test.tsx`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-latin.woff2`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-latin-ext.woff2`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-cyrillic.woff2`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-cyrillic-ext.woff2`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-greek.woff2`
+- `apps/web/public/fonts/roboto-flex/roboto-flex-vietnamese.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-latin.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-latin-ext.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-cyrillic.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-cyrillic-ext.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-greek.woff2`
+- `apps/web/public/fonts/roboto-mono/roboto-mono-vietnamese.woff2`
+- `apps/web/public/fonts/material-symbols/material-symbols-rounded.woff2`
+
+### 2026-08-04 — The one search bar that had no regex builder was the one whose requirement names regex
+
+**Reason:** every search bar in the product opens the regex builder anchored
+beside it — thirteen surfaces do. The changelog viewer's did not: it was a bare
+text input. That is the surface whose own stated requirement is *"regex-capable
+search that composes with the date filter"*, so it was both the most obviously
+required and the easiest to miss, because the feature it was missing is one you
+only notice by trying to use it.
+
+`filterChangelog` now takes an optional compiled predicate, and the dialog
+passes it **only in regex mode**. Plain text deliberately keeps its own path:
+it splits the query into terms that must all appear, so "density readout" finds
+an entry containing both words in either order. Routing plain text through a
+single compiled pattern would have quietly narrowed that to a contiguous
+substring match — a behaviour change nobody asked for, in the direction of
+finding less.
+
+The controller is this field's own, as the standard requires; no search bar in
+the application shares one.
+
+**Changed files:**
+
+- `apps/web/src/components/changelog/ChangelogDialog.tsx`
+- `apps/web/src/lib/changelog/filter.ts`
+- `apps/web/tests/changelog-filter.test.ts`
+
 ### 2026-08-04 — A collapse button that only collapsed, in a rail that starts collapsed
 
 **Reason:** driving a released build found "Collapse sidebar" doing nothing on

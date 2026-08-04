@@ -150,7 +150,7 @@ describe('AvatarMenu', () => {
       />,
     );
     expect(trigger().querySelector('img.agent-icon')).toBeTruthy();
-    expect(trigger().querySelector('.ri-link')).toBeNull();
+    expect(trigger().querySelector('[data-symbol="link"]')).toBeNull();
 
     rerender(
       <AvatarMenu
@@ -165,7 +165,7 @@ describe('AvatarMenu', () => {
       />,
     );
     expect(trigger().querySelector('img.agent-icon')).toBeNull();
-    expect(trigger().querySelector('.ri-link')).toBeTruthy();
+    expect(trigger().querySelector('[data-symbol="link"]')).toBeTruthy();
   });
 
   it('opens execution settings when Local CLI is selected while the daemon is offline', () => {

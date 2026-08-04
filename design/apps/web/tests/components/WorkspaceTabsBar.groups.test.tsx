@@ -1,0 +1,397 @@
+// @vitest-environment jsdom
+
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { WorkspaceTabsBar } from '../../src/components/WorkspaceTabsBar';
+import type { Route } from '../../src/router';
+import type { Project } from '../../src/types';
+
+// Deliberately NOT mocking i18n here: this file asserts on real rendered copy
+// (the group headings, the four search headings) and on the accessible names
+// they build, so a key that exists in `types.ts` but in no locale would show up
+// as a raw key in an assertion rather than passing quietly.
+vi.mock('../../src/router', async () => {
+  const actual = await vi.importActual<typeof import('../../src/router')>('../../src/router');
+  return { ...actual, navigate: vi.fn() };
+});
+
+afterEach(cleanup);
+
+const homeRoute: Route = { kind: 'home', view: 'home' };
+
+const LONG_NAME = 'Welcome to Material Designer — the very long project name';
+
+function project(id: string, name: string): Project {
+  return {
+    id,
+    name,
+    skillId: null,
+    designSystemId: null,
+    createdAt: 1,
+    updatedAt: 1,
+  } as Project;
+}
+
+const projects = [project('alpha', LONG_NAME), project('beta', 'Beta')];
+
+/** A v3 payload: two project tabs, the first filed into a group. */
+function seedWorkspace(collapsed = false) {
+  window.localStorage.setItem(
+    'open-design:workspace-tabs:v1',
+    JSON.stringify({
+      version: 3,
+      activeTabId: 'entry:home:seed',
+      tabs: [
+        { id: 'entry:home:seed', kind: 'entry', view: 'home', createdAt: 1, lastActiveAt: 9 },
+        {
+          id: 'project:alpha:seed',
+          kind: 'project',
+          projectId: 'alpha',
+          conversationId: null,
+          fileName: null,
+          createdAt: 2,
+          lastActiveAt: 3,
+        },
+        {
+          id: 'project:beta:seed',
+          kind: 'project',
+          projectId: 'beta',
+          conversationId: null,
+          fileName: null,
+          createdAt: 3,
+          lastActiveAt: 2,
+        },
+      ],
+      pinnedTabIds: [],
+      groups: [{ id: 'group:docs', name: 'Docs', color: 'moss', collapsed }],
+      groupMembership: { 'project:alpha:seed': 'group:docs' },
+      groupDecorations: {},
+    }),
+  );
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
+async function openTabSearch() {
+  fireEvent.click(screen.getByRole('button', { name: 'Search tabs' }));
+  return waitFor(() => screen.getByRole('dialog', { name: 'Search tabs' }));
+}
+
+describe('the strip restores a group and renders it', () => {
+  it('restores group name, colour and membership from the stored payload', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    expect(header.getAttribute('aria-expanded')).toBe('true');
+    // The colour is a stored NAME, not a hex value, so a theme change moves it.
+    expect(header.closest('[data-tab-group-id]')?.getAttribute('data-tab-group-color'))
+      .toBe('moss');
+    expect(header.closest('[data-tab-group-id]')?.getAttribute('data-tab-group-id'))
+      .toBe('group:docs');
+  });
+
+  it('restores a collapsed group collapsed, and hides its members', async () => {
+    seedWorkspace(true);
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    expect(header.getAttribute('aria-expanded')).toBe('false');
+    // Home and Beta remain; the grouped Alpha tab is behind the collapsed head.
+    expect(screen.queryByRole('tab', { name: LONG_NAME })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Beta' })).toBeTruthy();
+  });
+
+  it('collapses and expands from the header without losing the tab', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    fireEvent.click(header);
+    await waitFor(() => {
+      expect(screen.queryByRole('tab', { name: LONG_NAME })).toBeNull();
+    });
+    // The count in the accessible name still says one tab: it is hidden, not gone.
+    fireEvent.click(screen.getByRole('button', { name: /^Docs — 1 tabs$/u }));
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: LONG_NAME })).toBeTruthy();
+    });
+  });
+});
+
+describe('tab semantics', () => {
+  it('puts role=tab on the focusable element and points it at a real panel', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const tabs = await screen.findAllByRole('tab');
+    for (const tab of tabs) {
+      // The tab IS the button. A role="tab" wrapper around a button gives the
+      // tablist a tab focus never lands on.
+      expect(tab.tagName).toBe('BUTTON');
+      expect(tab.getAttribute('aria-controls')).toBe('workspace-tab-panel');
+    }
+  });
+
+  it('keeps exactly one tab in the tab order (roving focus)', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const tabs = await screen.findAllByRole('tab');
+    const inOrder = tabs.filter((tab) => tab.getAttribute('tabindex') === '0');
+    expect(inOrder).toHaveLength(1);
+    expect(inOrder[0]?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('moves focus along the strip with the arrow keys', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const home = await screen.findByRole('tab', { name: 'Home' });
+    home.focus();
+    fireEvent.keyDown(home, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(document.activeElement).not.toBe(home);
+    });
+    expect((document.activeElement as HTMLElement).getAttribute('role')).toBe('tab');
+  });
+});
+
+describe('a truncating label is recoverable with a pointer', () => {
+  // Reported against a released build: a tab capped at 104px truncated to
+  // "Welcome t…" with no `title`, so a sighted user had no way back to the full
+  // text. The accessible name always carried it, which is why it went unnoticed.
+  it('carries the full label in title, on every tab', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const tab = await screen.findByRole('tab', { name: LONG_NAME });
+    expect(tab.getAttribute('title')).toBe(LONG_NAME);
+  });
+
+  it('does not give an ordinary tab a second competing accessible name', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const tab = await screen.findByRole('tab', { name: LONG_NAME });
+    // The visible text is the accessible name. An `aria-label` carrying the
+    // same string as `title` is what makes some screen readers say it twice.
+    expect(tab.getAttribute('aria-label')).toBeNull();
+    expect(tab.textContent).toContain(LONG_NAME);
+  });
+
+  it('carries the full group name in the header title too', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    expect(header.getAttribute('title')).toBe('Docs');
+  });
+});
+
+describe('the four tab-discovery searches', () => {
+  it('renders all four, each with its own regex builder affordance', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    // 1. the current strip, 2. inside this group, 3. groups by name,
+    // 4. every open tab across every window.
+    for (const testId of [
+      'workspace-tabs-strip-search',
+      'workspace-tabs-group-tab-search-group:docs',
+      'workspace-tabs-group-search',
+      'workspace-tabs-master-search',
+    ]) {
+      expect(screen.getByTestId(testId)).toBeTruthy();
+      expect(screen.getByTestId(`${testId}-regex-toggle`)).toBeTruthy();
+    }
+  });
+
+  it('gives each field its own builder — turning regex on in one leaves the rest in text mode', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    fireEvent.click(screen.getByTestId('workspace-tabs-master-search-regex-toggle'));
+    const popover = await screen.findByTestId('workspace-tabs-master-search-regex-popover');
+    fireEvent.click(within(popover).getByTestId('workspace-tabs-master-search-regex-mode-regex'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('workspace-tabs-master-search').getAttribute('data-regex-mode'),
+      ).toBe('regex');
+    });
+    // The other three are untouched. One shared controller would have moved
+    // all four, and a pattern built here would silently start filtering them.
+    for (const testId of [
+      'workspace-tabs-strip-search',
+      'workspace-tabs-group-search',
+      'workspace-tabs-group-tab-search-group:docs',
+    ]) {
+      expect(screen.getByTestId(testId).getAttribute('data-regex-mode')).toBe('text');
+    }
+  });
+
+  it('filters the strip search without touching the group search', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    fireEvent.change(screen.getByTestId('workspace-tabs-strip-search'), {
+      target: { value: 'Beta' },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('workspace-tabs-strip-search')).toHaveProperty('value', 'Beta');
+    });
+    // The per-group field kept its own (empty) query.
+    expect(screen.getByTestId('workspace-tabs-group-tab-search-group:docs')).toHaveProperty(
+      'value',
+      '',
+    );
+  });
+
+  it('searches groups by their visible name', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    fireEvent.change(screen.getByTestId('workspace-tabs-group-search'), {
+      target: { value: 'nothing-matches-this' },
+    });
+    await waitFor(() => {
+      expect(screen.getByText('No groups match.')).toBeTruthy();
+    });
+  });
+
+  it('lists this window’s own tabs in the master search', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    // The window publishes its own strip, so the master search sees it without
+    // a second window being open.
+    await waitFor(() => {
+      expect(screen.getAllByText('This window · Workspace strip · Docs').length).toBeGreaterThan(0);
+    });
+  });
+});
+
+describe('revealing a result inside a collapsed group', () => {
+  it('shows the tab without expanding the group', async () => {
+    seedWorkspace(true);
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    const reveal = await screen.findAllByRole('button', { name: `Reveal — ${LONG_NAME}` });
+    fireEvent.click(reveal[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: LONG_NAME })).toBeTruthy();
+    });
+    // The collapsed preference is the user's; a search result is permission to
+    // see one tab, not permission to throw that preference away.
+    expect(
+      screen.getByRole('button', { name: /^Docs — 1 tabs$/u }).getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+});
+
+describe('group management from the panel', () => {
+  it('creates a group, and renames it in place', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    fireEvent.click(screen.getByRole('button', { name: 'New group' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('textbox', { name: 'Group name' })).toHaveLength(2);
+    });
+
+    const fields = screen.getAllByRole('textbox', { name: 'Group name' });
+    fireEvent.change(fields[1]!, { target: { value: 'Drafts' } });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /^Drafts — 0 tabs$/u })).toBeTruthy();
+    });
+  });
+
+  it('removes a group without closing the tab that was in it', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+    await openTabSearch();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove group' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /^Docs — 1 tabs$/u })).toBeNull();
+    });
+    // The tab is ungrouped, not closed. This is the difference between tidying
+    // and losing work.
+    expect(screen.getByRole('tab', { name: LONG_NAME })).toBeTruthy();
+  });
+});
+
+describe('the group appearance editor', () => {
+  it('opens anchored from the group header on Shift+right-click', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    fireEvent.contextMenu(header, { shiftKey: true });
+
+    const editor = await screen.findByTestId('tab-group-appearance-editor');
+    expect(within(editor).getByText('Appearance — Docs')).toBeTruthy();
+    // No menu in between: the modifier is the shortcut.
+    expect(screen.queryByRole('menu', { name: 'Docs' })).toBeNull();
+  });
+
+  it('offers Edit group appearance… from the plain right-click menu', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    fireEvent.contextMenu(header);
+
+    const menu = await screen.findByRole('menu', { name: 'Docs' });
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Edit group appearance…' }));
+    expect(await screen.findByTestId('tab-group-appearance-editor')).toBeTruthy();
+  });
+
+  it('reports an unset property as the theme default, and resets one back to it', async () => {
+    seedWorkspace();
+    render(<WorkspaceTabsBar route={homeRoute} projects={projects} />);
+
+    const header = await screen.findByRole('button', { name: /^Docs — 1 tabs$/u });
+    fireEvent.contextMenu(header, { shiftKey: true });
+    const editor = await screen.findByTestId('tab-group-appearance-editor');
+
+    const radius = within(editor).getByRole('slider', { name: 'Corner radius' });
+    fireEvent.change(radius, { target: { value: '10' } });
+
+    await waitFor(() => {
+      expect(within(editor).getByText('10px')).toBeTruthy();
+    });
+    // The value reaches the strip as a custom property the stylesheet reads.
+    expect(
+      screen
+        .getByRole('button', { name: /^Docs — 1 tabs$/u })
+        .closest('[data-tab-group-id]')
+        ?.getAttribute('style'),
+    ).toContain('--wt-group-radius: 10px');
+
+    fireEvent.click(
+      within(editor).getByRole('button', { name: 'Reset — Corner radius' }),
+    );
+    await waitFor(() => {
+      expect(within(editor).getAllByText('Theme default').length).toBeGreaterThan(0);
+    });
+    expect(
+      screen
+        .getByRole('button', { name: /^Docs — 1 tabs$/u })
+        .closest('[data-tab-group-id]')
+        ?.getAttribute('style'),
+    ).not.toContain('--wt-group-radius');
+  });
+});

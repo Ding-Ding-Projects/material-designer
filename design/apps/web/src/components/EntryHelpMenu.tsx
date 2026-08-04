@@ -21,6 +21,7 @@ import {
 } from '../analytics/events';
 import { Icon } from './Icon';
 import { openChangelogViewer } from './changelog/open-changelog';
+import { openVersionHistory } from './history/open-history';
 import { useT } from '../i18n';
 
 const REPO = 'https://github.com/nexu-io/open-design';
@@ -184,6 +185,23 @@ export function EntryHelpMenu() {
               <Icon name="history" size={14} />
             </span>
             <span>{t('changelog.title')}</span>
+          </button>
+          {/* And the other half of "what changed": the user's own records and
+              settings, not the build's. Same mounted-once-at-the-root panel,
+              same event. */}
+          <button
+            className="entry-help-popover__item entry-help-popover__item--button"
+            role="menuitem"
+            type="button"
+            onClick={() => {
+              openVersionHistory();
+              setOpen(false);
+            }}
+          >
+            <span className="entry-help-popover__icon" aria-hidden>
+              <Icon name="undo" size={14} />
+            </span>
+            <span>{t('history.title')}</span>
           </button>
           <div className="entry-help-popover__divider" aria-hidden />
           <a

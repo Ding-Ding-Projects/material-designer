@@ -260,8 +260,16 @@ describe('AppearanceControls: persistence and reset', () => {
 
     render(<AppearanceControls />);
 
-    expect(document.documentElement.getAttribute('data-seed')).toBe('teal');
-    expect(document.documentElement.getAttribute('data-density')).toBe('comfortable');
+    // The document attributes are `AppearanceRuntime`'s to write, not this
+    // component's — asserting them here made the test fail against perfectly
+    // correct code, because nothing in this render is responsible for them.
+    // What this component owes is that its controls come up showing the stored
+    // values rather than the defaults, which is what these assert.
+    expect(screen.getByTestId('appearance-seed-teal')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByTestId('appearance-density-comfortable')).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
     expect((screen.getByTestId('appearance-ui-scale') as HTMLInputElement).value).toBe('115');
   });
 

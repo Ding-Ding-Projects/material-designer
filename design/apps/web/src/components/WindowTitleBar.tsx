@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getOpenDesignHost, type OpenDesignHostWindowControls } from '@open-design/host';
 import { useT } from '../i18n';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import styles from './WindowTitleBar.module.css';
 
 // The renderer's replacement for the operating system's caption bar, drawn to
@@ -96,7 +96,7 @@ export function WindowTitleBar() {
             void controls.minimize();
           }}
         >
-          <RemixIcon name="subtract-line" size={16} />
+          <MaterialSymbol name="remove" size={16} />
         </button>
         <button
           type="button"
@@ -107,7 +107,7 @@ export function WindowTitleBar() {
             void controls.toggleMaximize();
           }}
         >
-          <RemixIcon name={maximized ? 'checkbox-multiple-blank-line' : 'checkbox-blank-line'} size={15} />
+          <MaterialSymbol name={maximized ? 'filter_none' : 'check_box_outline_blank'} size={15} />
         </button>
         <button
           type="button"
@@ -118,7 +118,7 @@ export function WindowTitleBar() {
             void controls.close();
           }}
         >
-          <RemixIcon name="close-line" size={17} />
+          <MaterialSymbol name="close" size={17} />
         </button>
       </div>
     </div>

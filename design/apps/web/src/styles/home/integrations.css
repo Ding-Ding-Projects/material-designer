@@ -52,62 +52,94 @@
   color: var(--accent);
 }
 
+/* ----- Area selector (roadmap § 2.4 Wave 4) ----------------------------
+   The Material Design 3 segmented button, written to the same contract the
+   four collection controls took in Wave 3: ONE fully-rounded `outline`
+   container whose segments run to its edge and are divided by that same
+   hairline, with `secondary-container` on the selected one.
+
+   What it replaced was a four-column grid of two-line cards inside a
+   shadowed panel — a tray of pills, which M3 does not define, and which
+   read as four buttons rather than as one control with four positions.
+   The second line moved out to `.integrations-view__tab-detail` below the
+   strip; a segment holds a label and nothing else. */
 .integrations-view__tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-xs);
+  display: inline-flex;
+  align-self: flex-start;
+  max-width: 100%;
+  height: 40px;
+  padding: 0;
+  gap: 0;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  box-shadow: var(--md-sys-elevation-0);
+  overflow: hidden;
 }
 
 .integrations-view__tab {
   appearance: none;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  height: 100%;
+  min-height: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   cursor: pointer;
-  text-align: left;
-  transition: background-color 120ms var(--ease-out), border-color 120ms var(--ease-out), color 120ms var(--ease-out);
+  text-align: center;
+  transition: background-color 120ms var(--md-sys-motion-emphasized), color 120ms var(--md-sys-motion-emphasized);
 }
 
-.integrations-view__tab:hover {
-  background: var(--bg-subtle);
-  color: var(--text);
+.integrations-view__tab + .integrations-view__tab {
+  border-left: 1px solid var(--md-sys-color-outline);
+}
+
+.integrations-view__tab:hover:not(.is-active) {
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+/* The ring is INSET. The container clips its own outer radius, so an
+   offset ring would be cut away on exactly the first and last segment —
+   the two a keyboard user reaches first. */
+.integrations-view__tab:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
 }
 
 .integrations-view__tab.is-active {
-  background: var(--accent-tint);
-  border-color: color-mix(in srgb, var(--accent) 24%, var(--border));
-  color: var(--accent-strong, var(--accent));
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 
 .integrations-view__tab-label {
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--text-strong);
-}
-
-.integrations-view__tab.is-active .integrations-view__tab-label {
-  color: var(--accent-strong, var(--accent));
-}
-
-.integrations-view__tab-hint {
+  min-width: 0;
   overflow: hidden;
-  max-width: 100%;
-  font-size: 11.5px;
-  line-height: 1.25;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font: inherit;
+  color: inherit;
+}
+
+/* The hint for whichever area is selected. It is a paragraph rather than a
+   line inside a segment, so a long localized string wraps here instead of
+   forcing the strip taller or being ellipsised away. */
+.integrations-view__tab-detail {
+  margin: 0;
+  max-width: 760px;
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
 .integrations-view__panel {
@@ -191,8 +223,17 @@
     flex-direction: column;
   }
 
+  /* Narrow: the strip stops hugging its content and shares the full width
+     between its segments, which keeps four labels legible instead of
+     letting the last one run past the container's clipped edge. */
   .integrations-view__tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    width: 100%;
+  }
+
+  .integrations-view__tab {
+    flex: 1 1 0;
+    padding: 0 8px;
   }
 
   .integrations-view__coming-soon {

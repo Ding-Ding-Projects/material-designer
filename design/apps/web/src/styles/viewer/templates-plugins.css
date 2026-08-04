@@ -395,12 +395,14 @@
   gap: 6px;
   min-width: 0;
 }
+/* The enable control's slot. The `input` rule that used to sit here went
+   with the raw checkbox it was correcting — the row draws the M3 switch
+   now, which brings its own 52x32 geometry from `Switch.module.css`. */
 .mcp-row-toggle {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
 }
-.mcp-row-toggle input { width: auto; }
 .mcp-row-label {
   flex: 1;
   min-width: 0;

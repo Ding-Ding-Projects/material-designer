@@ -1743,6 +1743,13 @@ export interface Dict {
   'automations.pause': string;
   'automations.resume': string;
   'automations.deleteAria': string;
+  /**
+   * Accessible name for the M3 switch that enables or pauses one automation.
+   * It names the automation and does NOT name the action: a switch reports
+   * its state through `aria-checked`, so a label that said "Pause" would be
+   * read as "Pause, on" — the opposite of what the control is about to do.
+   */
+  'automations.enabledSwitchAria': string;
   'automations.deleteTitle': string;
   'automations.deleteConfirm': string;
   'automations.proposalsTitle': string;
@@ -4661,6 +4668,72 @@ export interface Dict {
   'changelog.exportText': string;
   'changelog.exported': string;
 
+  // Local version history: the panel over the daemon's append-only snapshot
+  // repository. The `history.action*` keys name actions that are *derived
+  // from the recorded revisions*, never a fixed menu — an action the store
+  // has not recorded is simply never offered as a filter, so this list is an
+  // ordering rather than a promise that all nine can occur.
+  'history.title': string;
+  'history.subtitle': string;
+  'history.openButton': string;
+  'history.settingsHint': string;
+  'history.searchLabel': string;
+  'history.searchPlaceholder': string;
+  'history.refresh': string;
+  'history.unavailable': string;
+  'history.loadFailed': string;
+  'history.empty': string;
+  'history.emptyHint': string;
+  'history.noMatch': string;
+  'history.scopeAll': string;
+  'history.scopeFiltered': string;
+  'history.loadedOf': string;
+  'history.loadMore': string;
+  'history.filters': string;
+  'history.filtersHiding': string;
+  'history.actionsLabel': string;
+  'history.domainsLabel': string;
+  'history.actionInitial': string;
+  'history.actionCreated': string;
+  'history.actionUpdated': string;
+  'history.actionDeleted': string;
+  'history.actionRestored': string;
+  'history.actionUndone': string;
+  'history.actionPruned': string;
+  'history.actionSettings': string;
+  'history.actionRecorded': string;
+  'history.kindMutation': string;
+  'history.changeCount': string;
+  'history.restoredFrom': string;
+  'history.changesTitle': string;
+  'history.detailTitle': string;
+  'history.viewEntry': string;
+  'history.hideEntry': string;
+  'history.entryRedacted': string;
+  'history.sensitive': string;
+  'history.restore': string;
+  'history.restoreLabel': string;
+  'history.restoreLabelPlaceholder': string;
+  'history.restoreDone': string;
+  'history.restoreUnchanged': string;
+  'history.restoreFailed': string;
+  'history.appendOnly': string;
+  'history.retentionTitle': string;
+  'history.retentionRevisions': string;
+  'history.retentionDays': string;
+  'history.retentionUnlimited': string;
+  'history.retentionSaved': string;
+  'history.pruneTitle': string;
+  'history.prunePreview': string;
+  'history.pruneNothing': string;
+  'history.pruneWould': string;
+  'history.pruneApply': string;
+  'history.pruneDone': string;
+  'history.exportMarkdown': string;
+  'history.exportText': string;
+  'history.exportJson': string;
+  'history.exported': string;
+
   // Command palette: scopes, groups, commands and destinations.
   // The command palette (Cmd/Ctrl+Shift+P): its scopes, row groups, and
   // the commands it can run directly. Setting rows borrow their labels
@@ -4721,6 +4794,79 @@ export interface Dict {
   'workspaceTabs.bulkCloseTooLong': string;
   'workspaceTabs.bulkCloseNoMatches': string;
   'workspaceTabs.bulkCloseConfirm': string;
+
+  // Tab groups. A group is named, coloured, collapsible and reorderable, and
+  // its decoration never replaces its accessible name or its expanded state —
+  // `groupTabCount` is part of the header's accessible name for exactly that
+  // reason, so the count is announced once rather than twice.
+  'workspaceTabs.groupUntitled': string;
+  'workspaceTabs.groupNew': string;
+  'workspaceTabs.groupNewFromTab': string;
+  'workspaceTabs.groupNone': string;
+  'workspaceTabs.groupNoneYet': string;
+  'workspaceTabs.groupRemove': string;
+  'workspaceTabs.groupRemoveTab': string;
+  'workspaceTabs.groupAddTab': string;
+  'workspaceTabs.groupAddTabPlaceholder': string;
+  'workspaceTabs.groupCollapse': string;
+  'workspaceTabs.groupExpand': string;
+  'workspaceTabs.groupMoveEarlier': string;
+  'workspaceTabs.groupMoveLater': string;
+  'workspaceTabs.groupMoveTabHeading': string;
+  'workspaceTabs.groupRenameLabel': string;
+  'workspaceTabs.groupTabCount': string;
+  'workspaceTabs.groupEmpty': string;
+  'workspaceTabs.groupColorLabel': string;
+  'workspaceTabs.groupColorSky': string;
+  'workspaceTabs.groupColorGrape': string;
+  'workspaceTabs.groupColorCitrus': string;
+  'workspaceTabs.groupColorMoss': string;
+  'workspaceTabs.groupColorClay': string;
+  'workspaceTabs.groupColorSlate': string;
+
+  // The per-group appearance editor. Every property has its own reset, and
+  // resetting means the group follows the theme again rather than being pinned
+  // to a snapshot of it — `groupAppearanceDefault` is what an unset value reads.
+  'workspaceTabs.groupEditAppearance': string;
+  'workspaceTabs.groupAppearanceTitle': string;
+  'workspaceTabs.groupAppearanceClose': string;
+  'workspaceTabs.groupAppearanceAccent': string;
+  'workspaceTabs.groupAppearanceLabelColor': string;
+  'workspaceTabs.groupAppearanceBackground': string;
+  'workspaceTabs.groupAppearanceWeight': string;
+  'workspaceTabs.groupAppearanceSize': string;
+  'workspaceTabs.groupAppearanceRadius': string;
+  'workspaceTabs.groupAppearanceBadge': string;
+  'workspaceTabs.groupAppearanceBadgeHint': string;
+  'workspaceTabs.groupAppearanceReset': string;
+  'workspaceTabs.groupAppearanceResetAll': string;
+  'workspaceTabs.groupAppearanceDefault': string;
+  'workspaceTabs.groupAppearanceNote': string;
+
+  // The four tab-discovery searches: the current strip, inside each individual
+  // group, groups by their visible name, and every open tab across every
+  // window. The `…Field` keys name what a field searches; they are what the
+  // regex builder's own heading and toggle say, so they read as a noun phrase
+  // ("this tab strip"), not as a sentence.
+  'workspaceTabs.searchStripHeading': string;
+  'workspaceTabs.searchStripField': string;
+  'workspaceTabs.searchGroupsHeading': string;
+  'workspaceTabs.searchGroupsField': string;
+  'workspaceTabs.searchInGroupField': string;
+  'workspaceTabs.searchMasterHeading': string;
+  'workspaceTabs.searchMasterField': string;
+  'workspaceTabs.searchNoTabs': string;
+  'workspaceTabs.searchNoGroups': string;
+  'workspaceTabs.masterScope': string;
+  'workspaceTabs.resultPinned': string;
+  'workspaceTabs.resultUngrouped': string;
+  'workspaceTabs.resultCollapsedGroup': string;
+  'workspaceTabs.resultThisWindow': string;
+  'workspaceTabs.resultOtherWindow': string;
+  'workspaceTabs.resultStrip': string;
+  'workspaceTabs.otherWindowHint': string;
+  'workspaceTabs.reveal': string;
+  'workspaceTabs.revealHint': string;
 
   // Non-blocking notifications: the corner stack and the centre that keeps every
   // record a toast dropped. `notifications.severity*` are reached indirectly

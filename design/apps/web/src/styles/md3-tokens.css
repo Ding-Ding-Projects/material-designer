@@ -188,11 +188,34 @@
      product needs (code listings and long-form reading). Roboto Flex is
      the contract's face and leads the stack, and the platform chain behind
      it is the app's existing fallback kept intact — dropping it would
-     strip the CJK, Arabic and Thai faces the localized UI depends on. */
-  --md-ref-typeface-plain: 'Roboto Flex', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial, sans-serif;
+     strip the CJK, Arabic and Thai faces the localized UI depends on.
+
+     Both bundled faces now exist as local assets (`roboto-flex.css` and
+     `roboto-mono.css`), so the leading name finally resolves. Neither face
+     carries one CJK, Thai or Arabic glyph, and the application ships twenty
+     locales — nine of which are written in a script Roboto has nothing for.
+     The tail of each stack is therefore load-bearing, not decoration: it is
+     what stops `ja`, `ko`, `zh-CN`, `zh-TW`, `zh-HK`, `th`, `ar` and `fa`
+     rendering as tofu, and it is what keeps bilingual mode legible when
+     English and 廣東話 share one line. The order is Latin first so Latin
+     renders in Roboto, then Arabic, Thai, Simplified Chinese, Traditional
+     Chinese, Japanese and Korean, each with its Windows face, its Apple
+     face and its Noto face, because a fallback list only supplies glyphs
+     the faces ahead of it do not have. */
+  --md-ref-typeface-plain: 'Roboto Flex', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Helvetica Neue', Arial, 'Cairo', 'Segoe UI Arabic', 'Noto Sans Arabic', 'Leelawadee UI', 'Noto Sans Thai', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft JhengHei UI', 'PingFang TC', 'Noto Sans CJK TC', 'Yu Gothic UI', 'Hiragino Sans', 'Noto Sans CJK JP', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans CJK KR', sans-serif;
   --md-ref-typeface-brand: var(--md-ref-typeface-plain);
-  --md-ref-typeface-mono: 'Roboto Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  /* The mono tail is the same idea for technical text. The CJK faces named
+     here are proportional, which is correct rather than a compromise: CJK
+     glyphs are full-width, so they align on a monospace grid anyway, and a
+     path or a commit subject containing 中文 is far better set in YaHei than
+     in the box the generic `monospace` keyword would draw. */
+  --md-ref-typeface-mono: 'Roboto Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Noto Sans Mono CJK SC', 'Microsoft YaHei UI', 'PingFang SC', 'Microsoft JhengHei UI', 'Yu Gothic UI', 'Malgun Gothic', monospace;
   --md-ref-typeface-serif: 'Source Serif Pro', 'Source Serif 4', 'Iowan Old Style', 'Apple Garamond', Georgia, 'Times New Roman', serif;
+  /* The icon face has no fallback on purpose. Every glyph it carries lives in
+     the Private Use Area, so a second family in this list could only supply
+     the ligature's own name as literal text — a chevron would read
+     "keyboard_arrow_down". A missing glyph is better than a wrong word. */
+  --md-ref-typeface-icon: 'Material Symbols Rounded';
 
   /* ---- Type scale ----------------------------------------------------
      The contract declares no `--md-sys-typescale-*` tokens; every size in

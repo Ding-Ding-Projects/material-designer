@@ -7,7 +7,7 @@ import { useAnalytics } from '../analytics/provider';
 import { useT } from '../i18n';
 import { AgentIcon } from './AgentIcon';
 import { PlanBadge } from './PlanBadge';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol } from './MaterialSymbol';
 import { orderAgentsWithOpenDesignFirst } from './agentOrdering';
 import { defaultAgentModelId, effectiveAgentModelChoice } from './agentModelSelection';
 import {
@@ -342,9 +342,9 @@ export function AvatarMenu({
         {config.mode === 'daemon' && currentAgent ? (
           <AgentIcon id={currentAgent.id} size={20} />
         ) : (
-          <RemixIcon name="link" size={20} />
+          <MaterialSymbol name="link" size={20} />
         )}
-        <RemixIcon name="arrow-down-s-line" size={14} />
+        <MaterialSymbol name="keyboard_arrow_down" size={14} />
       </button>
       {open && popoverStyle ? createPortal(
         <div
@@ -399,7 +399,7 @@ export function AvatarMenu({
             disabled={!daemonLive && config.mode !== 'daemon'}
           >
             <span className="avatar-item-icon" aria-hidden>
-              <RemixIcon name="file-code-line" size={15} />
+              <MaterialSymbol name="code_blocks" size={15} />
             </span>
             <span>{t('avatar.useLocal')}</span>
             {!daemonLive ? (
@@ -407,7 +407,7 @@ export function AvatarMenu({
             ) : null}
             {config.mode === 'daemon' ? (
               <span className="avatar-item__check" aria-hidden>
-                <RemixIcon name="check-line" size={15} />
+                <MaterialSymbol name="check" size={15} />
               </span>
             ) : null}
           </button>
@@ -418,12 +418,12 @@ export function AvatarMenu({
             onClick={() => onModeChange('api')}
           >
             <span className="avatar-item-icon" aria-hidden>
-              <RemixIcon name="link" size={15} />
+              <MaterialSymbol name="link" size={15} />
             </span>
             <span>{t('avatar.useApi')}</span>
             {config.mode === 'api' ? (
               <span className="avatar-item__check" aria-hidden>
-                <RemixIcon name="check-line" size={15} />
+                <MaterialSymbol name="check" size={15} />
               </span>
             ) : null}
           </button>
@@ -648,7 +648,7 @@ export function AvatarMenu({
                 }}
               >
                 <span className="avatar-item-icon" aria-hidden>
-                  <RemixIcon name="refresh-line" size={15} />
+                  <MaterialSymbol name="refresh" size={15} />
                 </span>
                 <span>{t('avatar.rescan')}</span>
               </button>
@@ -698,7 +698,7 @@ export function AvatarMenu({
             }}
           >
             <span className="avatar-item-icon" aria-hidden>
-              <RemixIcon name="settings-3-line" size={15} />
+              <MaterialSymbol name="settings" size={15} />
             </span>
             <span>{t('inlineSwitcher.openFullSettings')}</span>
           </button>
@@ -714,7 +714,7 @@ export function AvatarMenu({
                 }}
               >
                 <span className="avatar-item-icon" aria-hidden>
-                  <RemixIcon name="arrow-left-line" size={15} />
+                  <MaterialSymbol name="arrow_back" size={15} />
                 </span>
                 <span>{t('avatar.backToProjects')}</span>
               </button>

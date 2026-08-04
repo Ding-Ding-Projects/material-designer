@@ -1,0 +1,44 @@
+/* Material Symbols Rounded, self-hosted.
+ *
+ * The Material Design 3 icon set, as a variable icon font. This file declares
+ * only the face; the class that renders a glyph is component-owned and lives
+ * beside its component in `components/MaterialSymbol.module.css`.
+ *
+ * Licence: Apache License 2.0, from google/material-design-icons
+ * (https://github.com/google/material-design-icons/blob/master/LICENSE).
+ *
+ * Provenance: the exact bytes the Google Fonts stylesheet serves for
+ * `Material Symbols Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0`, bundled as
+ * a local asset — no CDN, no third-party request. The served face has no
+ * `unicode-range`: every icon lives in the Private Use Area and is addressed by
+ * the ligature of its name, so one file carries the whole set.
+ *
+ * TWO AXES ARE LIVE, and the choice is a size decision worth stating because it
+ * is a one-line URL change to revisit. Google serves this family per requested
+ * axis range, and each additional live axis multiplies the file:
+ *
+ *   FILL 0..1 only, opsz/wght/GRAD pinned      536,884 bytes
+ *   FILL 0..1 + opsz 20..48   (what ships)   1,376,348 bytes
+ *   FILL 0..1 + wght 100..700                1,446,300 bytes
+ *   FILL 0..1 + opsz + wght                  3,079,568 bytes
+ *   all four axes at full range              5,349,652 bytes
+ *
+ * `FILL` is the axis the mockup drives — the active navigation icon is filled
+ * and the inactive ones are outlined — and `opsz` is the axis that keeps a
+ * glyph's stroke correct across the 14-48px range this application renders
+ * icons at, which the browser applies on its own. `wght` is pinned to 400 and
+ * `GRAD` to 0: nothing in the port drives either, and together they would cost
+ * another 3,973,304 bytes to leave open.
+ *
+ * `font-display` is deliberately absent, matching the served stylesheet. An
+ * icon font must not `swap`: the fallback face has no glyph at these
+ * codepoints, so a swap period renders the ligature's own name as literal text
+ * — "keyboard_arrow_down" in place of a chevron — before the real face
+ * arrives. Blocking briefly is the correct trade for an icon. */
+
+@font-face {
+  font-family: 'Material Symbols Rounded';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/fonts/material-symbols/material-symbols-rounded.woff2') format('woff2');
+}

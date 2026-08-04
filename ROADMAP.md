@@ -702,28 +702,88 @@ convenience and must not be ported. Separately, the *shipping* web application
 already has one genuine CDN dependency: an Arabic-supporting font imported at the
 first line of its main stylesheet. It must be bundled too.
 
-- [ ] **Bundle Roboto Flex** as a variable font, exposing the optical-size and
+- [x] **Bundle Roboto Flex** as a variable font, exposing the optical-size and
       weight axes the mockup uses.
-- [ ] **Bundle Roboto Mono** for all technical text — commit references, paths,
+      *Done* — six subsets (latin, latin-ext, cyrillic, cyrillic-ext, greek,
+      vietnamese; 261,888 bytes) under `public/fonts/roboto-flex/`, OFL-1.1, the
+      exact bytes served for `opsz,wght@8..144,100..1000`. `wght` is the
+      declared `font-weight` range; `opsz` has no CSS descriptor and is driven
+      by the browser under the default `font-optical-sizing: auto`. The token
+      sheet had named this face since `dea6b0a` — until now nothing served it,
+      so every surface rendered in the fallback with nothing reporting it.
+- [x] **Bundle Roboto Mono** for all technical text — commit references, paths,
       identifiers, flags, and counters.
-- [ ] **Bundle Material Symbols Rounded** as a variable icon font, exposing the
+      *Done* — the same six subsets (134,568 bytes) under
+      `public/fonts/roboto-mono/`, OFL-1.1, from `wght@100..700`. Note for the
+      record: Roboto Mono is widely described as Apache-2.0, which it was before
+      the Roboto family was relicensed; upstream says OFL-1.1 today.
+- [x] **Bundle Material Symbols Rounded** as a variable icon font, exposing the
       fill axis, which the mockup uses to fill the active navigation icon.
+      *Done* — one 1,376,348-byte file, Apache-2.0, from
+      `opsz,wght,FILL,GRAD@20..48,400,0..1,0`. Two axes are live: `FILL`, which
+      the mockup drives, and `opsz`, which the browser applies itself. `wght`
+      and `GRAD` are pinned because nothing in the port reads them and leaving
+      them open costs another 3,973,304 bytes; the measured menu of all five
+      options is in the stylesheet's own comment, so revisiting it is a one-line
+      URL change rather than a rediscovery.
+      *The trap this face sets:* it addresses glyphs by the **ligature of their
+      name**, so a name the font does not carry renders as English text in the
+      toolbar rather than as a box. That is why it ships with no
+      `font-display: swap`, no fallback family, and a mapping validated against
+      the published name list.
 - [x] **Remove the CDN font import from the web application's stylesheet** and
       *Done at `45ff210`* — three Cairo subsets ship under `public/fonts/cairo/`.
       Original wording:
       self-host that face. This is an edit under `design/` and needs an
       allowlist entry.
-- [ ] **Inventory and migrate icon call sites.** The incumbent icon font is a
-      self-hosted webfont loaded from the application's own public directory,
-      referenced from a small number of source files; the great majority of the
-      interface uses inline SVG components instead. The migration is therefore
-      mostly an SVG-to-symbol sweep across the component tree, not a font swap —
-      size it after a real inventory, not from this sentence.
-- [ ] **Remove any declared-but-unused icon dependency** discovered during the
+- [~] **Inventory and migrate icon call sites.** *The font swap is done; the SVG
+      sweep is not, and the inventory is why.* The real numbers: Remixicon had
+      **61 distinct names across 95 call sites in 7 files**, all funnelled
+      through one 27-line component with no raw `ri-` class strings anywhere —
+      and it was using 61 of the 3,229 classes its stylesheet defines, 1.9%, for
+      a 189 KB font plus a 157 KB sheet. The inline SVG system is one module,
+      `Icon.tsx`, with **93 glyphs behind a stable union, used at 859 sites
+      across 127 files**.
+      **94 of the 95 font sites migrated** to a `MaterialSymbol` component; the
+      four that pick a glyph indirectly now return `MaterialSymbolName` so the
+      compiler covers them. Every one of the 52 non-brand mappings was checked
+      against the 4,268-name codepoints list published with the font, because a
+      wrong name renders as English text rather than failing.
+      **The one that did not migrate is `SocialShareGrid.tsx`**, whose single
+      site draws nine brand marks — X, LinkedIn, Facebook, Reddit, Telegram,
+      WhatsApp, Weibo, LINE, Instagram. **Material Symbols has no brand logos**,
+      and drawing substitutes is a trademark question, not an icon one. So the
+      incumbent font cannot be deleted yet; freeing those 346 KB needs licensed
+      brand SVGs, which is its own scoped task.
+      **The 859 SVG sites were deliberately left.** The path is unusually good —
+      `Icon.tsx` is one `switch`, so converting it changes one file and zero call
+      sites — but it means choosing 93 symbol equivalents for hand-drawn glyphs,
+      where a wrong choice renders a *plausible wrong icon* no assertion can
+      see. Doing that without once looking at the result is guessing at scale.
+      It is now a one-file task, and it wants a capture run beside it.
+- [x] **Remove any declared-but-unused icon dependency** discovered during the
       sweep, so the dependency list describes what the application actually
       uses.
-- [ ] **Verify no network font request is made at runtime**, by inspecting the
+      *Done* — `lucide-react@1.16.0` was declared and imported by nothing: no
+      `.ts`, `.tsx`, `.css` or config file in the workspace. Removed with its
+      three `pnpm-lock.yaml` entries, because a manifest and a lockfile that
+      disagree fail `pnpm install --frozen-lockfile` and take the whole job with
+      them. Two lookalikes are *not* usages and were checked: RTL rules
+      targeting `svg[data-lucide=…]` inside generated artifact HTML, and a
+      reference-site link label in the locales.
+- [x] **Verify no network font request is made at runtime**, by inspecting the
       built artifact rather than the source.
+      *Done, by extending the check that already existed rather than adding a
+      second one.* The Pages workflow's inline self-contained rule became
+      `scripts/check-self-contained.sh`, and the release workflow now runs the
+      same script over the packed payload the packer reports. One
+      implementation, so the published site and the installed application cannot
+      drift into being held to two different standards.
+      *One property is deliberate and worth keeping:* the script **fails** when
+      handed a directory that does not exist or holds no stylesheet, markup or
+      script. A check that reports a pass for something it never opened is worse
+      than no check, because the green tick then means less across the whole
+      job.
 
 ### 2.3 Token sheet and mapping layer
 
@@ -828,6 +888,21 @@ rather than as one item that stays unchecked for months.
       56×32 pill indicator on the active destination, a 56px tall extended
       action button), top app bar with the Windows caption controls from 2.1,
       and the tab strip.
+
+      *Mostly built; the box stays open because a wave's stated definition of
+      done is capture-based and nothing here has been captured.* Present in the
+      source: the two rail widths as grid tracks with a 200ms transition, and
+      the 56×32 `corner-full` destination pill with its state layer at 0.08
+      hover / 0.12 press. Still open: the 56px extended action button, and the
+      tab strip beneath the title bar, which is its own item above.
+
+      **The rail's toggle was also inert until it was driven.** It called
+      `onClose` unconditionally in a rail whose default state is collapsed, so
+      the first click on a fresh profile set `false` to `false` — and both it
+      and the topbar toggle carried the same static label in either state,
+      telling a screen-reader user that pressing it would expand a rail that was
+      already expanded. Fixed, with a test that covers the *collapsed* case
+      specifically: "collapse collapses it" would have stayed green throughout.
 - [x] **Wave 2 — home.** *Done at `f99fb2b`* — 28dp prompt surface, assist-chip
       rail, scenario card grid, morphing send, tonal recent-project covers.
       Original wording: The prompt surface at 28dp with its chip rail, the
@@ -978,55 +1053,72 @@ present.
 
 ### 3.2 Funny-level sliders
 
-- [ ] **Two independent persisted sliders, 1–5** — one for English, one for
-      Cantonese — reachable from the settings surface and actually wired to the
-      copy the application renders. One shared slider does not satisfy this, and
-      neither does an unwired pair.
-- [ ] **Author five distinct samples per language per level.** The mockup
-      demonstrates the shape with a live preview panel; the real work is
-      authoring the variants for every message the application shows.
-- [ ] **Apply the level to every category with no exemptions**, including
-      destructive, security and error copy.
-- [ ] **Style voice, never facts.** At every level the message still names what
-      happened, what is affected, and what the options are, in unambiguous
-      words. A warning nobody can act on is a broken warning, not a funny one.
-- [ ] **Disclose the behaviour at first run and in the setting itself**, so a
-      user knows before opting in that the level styles errors too.
+- [x] **Two independent persisted sliders, 1–5** — one for English, one for
+      Cantonese, rendered per language from `['en', 'zh-HK']` in the settings
+      surface and persisted under separate keys. Deliberately two and not three:
+      only those two locales carry an override dictionary, and a third slider
+      that moved nothing would be a lie in the shape of a control.
+      *Verified by:* reading the render and the persistence path.
+- [ ] **Author five distinct samples per language per level.** Structurally
+      done, thinly populated. **216 of 4,635 declared keys carry an override —
+      4.7%**, identically in both languages. The maps are sparse in *both*
+      dimensions by design and `applyFunny` walks down to the nearest defined
+      step, so a key that defines only 3 and 5 still reads playfully at 4 rather
+      than snapping back to neutral. Level 1 is the neutral base by definition.
+      The remaining work is authoring, not engineering: the mechanism is
+      finished and 95% of the product's copy has nothing to say at any level.
+- [x] **Apply the level to every category with no exemptions.** There is no
+      category filter anywhere in the path — `stringFor` routes every key
+      through `applyFunny`, so destructive, security and error copy are styled
+      exactly like everything else. The exemption this item guards against
+      cannot exist without adding one.
+- [x] **Style voice, never facts.** `keepsTheFacts(base, candidate)` gates every
+      override: a variant that would drop a `{placeholder}` or a number the
+      neutral base states is discarded and the base is rendered instead. The
+      guard runs at read time, so an override authored badly later still cannot
+      remove a fact.
+- [x] **Disclose the behaviour at first run and in the setting itself.** The
+      disclosure renders in the settings surface until `funnyDisclosureSeen` is
+      set, and states that the level styles errors and warnings too.
 
 ### 3.3 Regex builder on every search bar
 
-- [ ] **Build the regex builder** — guided construction for literals, character
-      classes, anchors, groups, alternation and quantifiers; a raw pattern
-      editor; the six supported flags; sample text; syntax feedback; live
-      matches and capture groups; and copy or export. The mockup's version is a
-      good functional starting point: a pattern field with delimiter and flag
-      affixes, six flag toggles, fifteen token chips, and a live tester
-      reporting match counts, an empty state, and the actual error message when
-      a pattern throws.
-- [ ] **Anchor it to its field.** The mockup uses one shared floating panel at a
-      fixed viewport position that four different search fields all open. The
-      standard requires an anchored popover beside each field, bound to that
-      field's own query, pattern, flags and mode. This is a deliberate
-      improvement on the mockup, not a port of it.
-- [ ] **Wire it to every collection search bar**, keeping plain text the default
-      and regex an explicit opt-in, with query, pattern, flags, validation and
-      mode synchronised in both directions.
-- [ ] **Give every settings surface its own search bar wired to the same
-      builder** — the application's settings, every tab within them, every
-      properties panel, every appearance editor, and every configuration page on
-      the documentation site. Searching option labels, descriptions and current
-      values, and saying plainly when a match sits on another tab.
-      *Confirmed absent by a capture:* the settings dialog at `90e52d3` shows a
-      seventeen-item section list and **no search field anywhere on it**. The
-      command palette does index settings, which is a different thing — the
-      standard asks for search on the surface itself, because a user who has
-      already opened settings should not have to leave it to find a row.
-- [ ] **Evaluate locally and defensively** — bounded pattern and sample sizes,
-      safe zero-width handling, and protection against catastrophic
-      backtracking.
-- [ ] **Test against the real engine**: valid, invalid, no-match, Unicode,
-      multiline, zero-width, capture-group, adversarial, and plain-text versus
-      regex cases, exercised from every search surface.
+These six were built and never ticked. Each is ticked here after checking it
+against the source, not against the memory of having done it.
+
+- [x] **Build the regex builder** — `apps/web/src/components/regex/` carries
+      guided construction (`RegexPartRow`, `parts-ops.ts`), a raw pattern editor,
+      all six flags (`REGEX_FLAGS = ['g','i','m','s','u','y']`, defaulting to
+      `i`), a sample panel with live matches and capture groups, syntax feedback,
+      and copy via `copyToClipboard`.
+- [x] **Anchor it to its field.** Deliberately *not* the mockup's one shared
+      floating panel: `RegexSearchField` opens a popover portalled to the body
+      and positioned from its own host's rect, bound to that field's query,
+      pattern, flags and mode. Each field gets its own; none share hidden state.
+- [x] **Wire it to every collection search bar.** **Thirteen surfaces** consume
+      `RegexSearchField` — brands, design systems (both views), the entry
+      topbar, examples, the MCP client section, the notification centre,
+      plugins, the project reference modal, settings, skills and the rest.
+      Plain text stays the default and regex is an explicit opt-in.
+- [x] **Give every settings surface its own search bar wired to the same
+      builder.** `SettingsSearchResults` searches option labels, descriptions and
+      current values, and renders `settings.searchOtherTabBadge` naming the
+      section a match sits on, so a hit on another tab says so rather than
+      appearing to be missing.
+      *The capture that confirmed it absent was of `90e52d3`; it has since been
+      built, and the capture in the README shows the field.*
+- [x] **Evaluate locally and defensively** — the pattern is capped at
+      `MAX_PATTERN_LENGTH` and the sample at `MAX_SAMPLE_LENGTH` before either
+      reaches the engine, the match loop is bounded by `MAX_SAMPLE_MATCHES`, and
+      zero-width matches are advanced explicitly rather than looping forever.
+      `evaluate.ts` is honest in its own header that this is *bounding*, not
+      immunity: real catastrophic-backtracking protection needs a worker with a
+      timeout or a non-backtracking engine, and neither exists here. That
+      caveat is worth keeping visible rather than tidying away.
+- [x] **Test against the real engine** — `tests/components/regex/` holds
+      `evaluate.test.ts`, `parse.test.ts`, `pattern.test.ts` and
+      `RegexSearchField.test.tsx`, plus `CommandPalette.regex-filter.test.ts`
+      for the palette's own surface.
 
 ### 3.4 Dim sum surprise
 
@@ -1079,8 +1171,17 @@ recollection that they were done.
       the locale format and plain ISO, reporting incomplete or invalid input
       inline without discarding what the user typed. The mockup specifies this
       in full, including the bounded scrolling the overlay rules require.
-- [ ] **Regex-capable search that composes with the date filter** rather than
-      overriding it, with an honest no-match empty state.
+- [x] **Regex-capable search that composes with the date filter.** The viewer's
+      search bar was a bare text input until this was checked — the one surface
+      whose own requirement names regex, and the only one of the product's
+      fourteen search bars without the builder beside it. `filterChangelog` now
+      takes an optional compiled predicate and the dialog passes it only in
+      regex mode; the date range is applied independently, so the two compose
+      rather than override. Plain text deliberately keeps its term-splitting
+      path, because routing it through one compiled pattern would have narrowed
+      "density readout" from *both words, any order* to a contiguous substring.
+      *Verified by:* three added cases in `tests/changelog-filter.test.ts`,
+      including one asserting the plain-text behaviour did not change.
 - [ ] **Copy the current view and export to Markdown**, honouring the active
       filter and search so the export matches what the user sees, and stating
       the exported range in the file.
@@ -1090,22 +1191,31 @@ recollection that they were done.
 
 ### 3.6 Command palette
 
-- [ ] **One discoverable shortcut**, listing every command, setting and
-      destination the application has.
-- [ ] **Cover every setting in every settings surface**, not only top-level
-      actions, so a user who knows a setting's name can type it without knowing
-      which tab it lives under.
+- [x] **One discoverable shortcut**, listing every command, setting and
+      destination the application has. `Ctrl+Shift+P` and `Cmd/Ctrl+K` both
+      open it; the header chip advertises the one it names, which is the
+      property that matters — the mockup labels the control "Ctrl+K" too.
+- [x] **Cover every setting in every settings surface.** 44 indexed entries in
+      `command-palette/settingsIndex.ts`, each carrying the section it lives in
+      so a user who knows a setting's name never has to know its tab.
 - [ ] **Render live inline controls in the rows** — a switch for a toggle, a
-      text box for a value, a stepper for a number, a select for a choice —
-      changing the real setting with the same persistence and validation as the
-      settings surface.
-- [ ] **Teleport on selection:** open the surface, reveal the exact control, and
-      draw attention to it briefly. Landing the user on the right tab and
-      leaving them to hunt does not satisfy this.
-- [ ] **Two persisted sizes**, defaulting to the bounded card rather than the
-      full window.
-- [ ] **Its own search wired to the regex builder**, with live group filtering
-      that drops empty groups.
+      text box for a value, a stepper for a number, a select for a choice.
+      **Built, and covering three of the forty-four rows** (`appearance.theme`,
+      `appearance.accent` and one more) through `SettingRowControl`. The
+      mechanism is finished and typed against `Dict`; every other row is a
+      reveal anchor. Extending it is a `SettingsControlId` and a `switch` case
+      per setting — mechanical, and the only reason this box is not ticked.
+- [x] **Teleport on selection:** `reveal.ts` opens the surface, reveals the
+      exact control and flashes it, and the reveal is requested *before* the
+      section opens so the dialog does not consume it. Focus is deliberately
+      left on the revealed control rather than yanked back.
+- [x] **Two persisted sizes**, defaulting to the bounded card. The full-window
+      mode exists for small displays. In private-mode storage the palette still
+      opens and simply forgets the size, and a failed write never blocks the
+      resize itself.
+- [x] **Its own search wired to the regex builder**, running under its own
+      `createBoundedMatcher` so a pathological pattern cannot hang the palette,
+      with `CommandPalette.regex-filter.test.ts` covering it.
 
 ### 3.7 Tab pinning and bulk close
 
@@ -1434,7 +1544,7 @@ rows say so rather than counting their file size as progress.
 | 7 | Super-confirmation gate | 4.3 | **The boundary exists; the interface routing is unfinished.** The gate is built and mounted, its eight confirmed defects are closed, and the three irreversible deletes are now enforced in the daemon's own handler behind a single-use per-resource token — so a `curl`, a script or a third-party client cannot delete in one replayable request. That is the authorization boundary the standard asks for. What remains is affordance coverage: some delete buttons still reach the operation through a plain dialog rather than two keys and a slider. Nobody has operated any of it |
 | 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface and live inline controls whose union is exhaustive, so adding an indexed setting without its control is a typecheck error rather than a blank row. Unverified: whether the index covers every setting the dialog actually has |
 | 9 | In-app changelog viewer | 3.5 | **Built and mounted.** `ChangelogDialog` mounts in `App.tsx` with a date-range filter and generated entries. Unverified: commit-link validity at build time |
-| 10 | Local version history | 4.4 | **Partial.** Daemon endpoints, shared DTOs and `od` subcommands exist; a history *panel* with its date picker and action filters has not been confirmed present |
+| 10 | Local version history | 4.4 | **The panel now exists and is mounted.** The store was never the gap: `apps/daemon/src/history/` and five `/api/history` routes have been there since 2026-08-03, and a search of `apps/web/src` for `VersionHistory`/`versionHistory`/`version-history` returned nothing at all — the undo existed with no door. `VersionHistoryDialog` mounts in `App.tsx` and opens from Settings → About and the entry help menu, carrying the reused `ChangelogDateRange`, an action filter whose facets and counts are **derived from the loaded revisions rather than declared** (so no filter is offered that the store cannot produce — "imported" is the worked case, and it correctly never appears), a domain filter, and its own `RegexSearchField` controller. All four compose; 24 cases in `apps/web/tests/lib/history-actions.test.ts` pin that. Not done: it is absent from the command palette, discarding unsaved work is not yet recorded before a close completes, and **nobody has run or operated any of it** — this checkout has no Node toolchain, so types, tests and rendering are unverified until CI |
 | 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
 | 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |

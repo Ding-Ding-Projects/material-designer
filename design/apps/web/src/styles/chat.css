@@ -395,16 +395,35 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* ----- Message bubbles (roadmap § 2.4 Wave 5) --------------------------
+   The Material Design 3 tonal bubble with its asymmetric corner: three
+   round corners and a small one on the side the message came from, so the
+   shape itself says who is speaking rather than the colour alone doing it.
+
+   Read the note above `.app .msg.user .user-text` in
+   `styles/viewer/routines.css` before editing this rule. That one wins
+   inside the project shell, which is where the chat actually renders, so
+   this block on its own decides nothing there. The two are written to say
+   the same thing and a test compares them property by property.
+
+   Both radii come from the corner scale — corner-l for the round corners
+   and corner-xs for the tail. The mockup writes 20px and 6px, neither of
+   which is a step on the documented scale; 16 and 4 are, and the shape
+   reads identically. */
 .msg.user .user-text {
   white-space: pre-wrap;
-  color: var(--text);
-  background: var(--bg-fill-tertiary);
+  color: var(--md-sys-color-on-primary-container);
+  background: var(--md-sys-color-primary-container);
   border: none;
-  border-radius: var(--radius-lg);
-  padding: 8px 12px;
-  line-height: 1.5;
-  font-size: 14.5px;
-  box-shadow: none;
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs)
+    var(--md-sys-shape-corner-l);
+  padding: 12px 16px;
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  box-shadow: var(--md-sys-elevation-0);
 }
 .msg-run-context-row {
   display: flex;
@@ -742,17 +761,27 @@
   font-size: 11px;
   font-style: italic;
 }
+/* The user-side status card. It carried its own copy of the asymmetric
+   corner as two literals, so it stayed at 14/4 while the bubble beside it
+   moved — two shapes for one side of the conversation. It reads the same
+   corner tokens now. The fill stays a neutral surface rather than the
+   bubble's `primary-container`: this card reports something that happened,
+   it is not something the user said. */
 .user-status-card {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   max-width: min(320px, 100%);
   padding: 9px 11px;
-  border-radius: 14px 14px 4px 14px;
-  background: var(--bg-fill-tertiary);
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs)
+    var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-high);
   border: none;
-  box-shadow: none;
-  color: var(--text);
+  box-shadow: var(--md-sys-elevation-0);
+  color: var(--md-sys-color-on-surface);
   text-align: start;
 }
 .user-status-card__icon {
@@ -1055,12 +1084,18 @@
 .chat-composer-fixed-layer .composer {
   pointer-events: auto;
 }
+/* The composer surface. `surface-container-high` at corner-l is the
+   mockup's card; what was here was a fill named after a filled control and
+   a border named after a second one, neither of which is an M3 role. The
+   `.chat-composer-fixed-layer` twin in `styles/viewer/routines.css` sets no
+   background of its own, so THIS declaration is the live fill even though
+   that twin owns the padding and the radius. */
 .composer-shell {
   container-type: inline-size;
-  border: 1px solid var(--bg-fill-secondary);
-  border-radius: var(--radius-lg);
-  background: var(--bg-fill-tertiary);
-  box-shadow: none;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-0);
   padding: 8px 10px 6px;
   display: flex;
   flex-direction: column;
@@ -1773,6 +1808,18 @@
   border-radius: 50%;
   background: var(--accent);
 }
+/* The send button, and the morph (roadmap § 2.4 Wave 5). Material Design 3
+   asks a primary action to change SHAPE under the pointer rather than only
+   colour, and the mockup morphs this one from a rounded square toward a
+   pill on the spring curve — the same treatment Wave 2 gave the home
+   screen's send. `white` and `--accent` were neither of them roles;
+   `primary` and `on-primary` are, so the button now recolours with the seed.
+
+   Careful before editing: this rule does not render inside the project
+   shell. `ChatPane` portals the composer to `document.body`, so the
+   `.chat-composer-fixed-layer` twin in `styles/viewer/routines.css` is what
+   the user actually sees, and `.app .composer-send` next to it is inert.
+   All three are written to say the same thing. */
 .composer-send {
   display: inline-flex;
   align-items: center;
@@ -1782,34 +1829,47 @@
   white-space: nowrap;
   min-width: 0;
   height: 32px;
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  color: white;
+  background: var(--md-sys-color-primary);
+  border: 1px solid var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   font-weight: 650;
   padding: 0 11px;
   font-size: 12.5px;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-xs);
+  border-radius: var(--md-sys-shape-corner-s);
+  box-shadow: var(--md-sys-elevation-0);
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color 140ms var(--md-sys-motion-emphasized),
+    border-color 140ms var(--md-sys-motion-emphasized),
+    box-shadow 140ms var(--md-sys-motion-emphasized),
+    border-radius 260ms var(--md-sys-motion-spring),
+    transform 300ms var(--md-sys-motion-spring),
+    opacity 140ms var(--md-sys-motion-emphasized);
 }
 .composer-send:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  box-shadow: var(--shadow-sm);
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+  border-radius: var(--md-sys-shape-corner-l);
+  box-shadow: var(--md-sys-elevation-1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .composer-send { transition: none; }
 }
 .composer-send:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-xs); }
+/* `outline: none` with a soft box-shadow in its place was the focus style
+   here. It is the app's primary ring now, matching every other control and
+   the `button:focus-visible` primitive this rule had been cancelling — a
+   3px wash of `--selected-soft` is not a visible focus indicator on a dark
+   surface. */
 .composer-send:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--selected-soft);
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 .composer-send:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
-.composer-send.stop { background: var(--text); border-color: var(--text); color: var(--bg-panel); }
-.composer-send.stop:hover { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-panel); }
+/* Stop. M3 expresses "the opposite of the surface you are on" as the
+   inverse pair, which is exactly what this state wanted from `--text` on
+   `--bg-panel` and gets correctly in both themes. */
+.composer-send.stop { background: var(--md-sys-color-inverse-surface); border-color: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); }
+.composer-send.stop:hover { background: var(--md-sys-color-inverse-surface); border-color: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); }
 .composer-hint {
   font-size: 11px;
   color: var(--text-faint);

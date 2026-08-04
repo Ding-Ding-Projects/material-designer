@@ -311,3 +311,55 @@ describe('calendar arithmetic', () => {
     expect(withinRange('2026-08-04', null, null)).toBe(true);
   });
 });
+
+// The changelog's search bar gained the regex builder every other search bar in
+// the product already had. `filterChangelog` therefore takes an optional
+// predicate — passed ONLY in regex mode, because plain text keeps the
+// term-splitting path above and routing it through a single compiled pattern
+// would silently turn "dialog focus" from "both words, any order" into a
+// contiguous substring match.
+describe('filterChangelog with a regex predicate', () => {
+  const releases = [
+    release('1.1.0', [
+      entry('aaa1', 'Fixed the dialog focus trap', '2026-02-01'),
+      entry('bbb2', 'Added a density control', '2026-02-02'),
+      entry('ccc3', 'Fixed the density readout clipping', '2026-02-03'),
+    ]),
+  ];
+
+  function texts(result: ReturnType<typeof filterChangelog>): string[] {
+    return result.releases.flatMap((one) => one.categories.flatMap((c) => c.entries.map((e) => e.text)));
+  }
+
+  it('uses the predicate instead of the term split when one is given', () => {
+    const onlyDensity = filterChangelog(
+      releases,
+      { ...EMPTY_CHANGELOG_FILTER, query: '^Added' },
+      (text) => /Added/.test(text),
+    );
+    expect(texts(onlyDensity)).toEqual(['Added a density control']);
+  });
+
+  it('still applies the date range alongside the predicate', () => {
+    const ranged = filterChangelog(
+      releases,
+      { ...EMPTY_CHANGELOG_FILTER, query: 'Fixed', from: '2026-02-03', to: null },
+      (text) => /Fixed/.test(text),
+    );
+    expect(texts(ranged)).toEqual(['Fixed the density readout clipping']);
+  });
+
+  it('keeps the multi-term plain-text behaviour when no predicate is given', () => {
+    // Two words, neither contiguous in the source text: the term split finds
+    // it, a substring match would not. This is what the regex path must not
+    // quietly replace.
+    const both = filterChangelog(releases, { ...EMPTY_CHANGELOG_FILTER, query: 'density readout' });
+    expect(texts(both)).toEqual(['Fixed the density readout clipping']);
+
+    const reordered = filterChangelog(releases, {
+      ...EMPTY_CHANGELOG_FILTER,
+      query: 'readout density',
+    });
+    expect(texts(reordered)).toEqual(['Fixed the density readout clipping']);
+  });
+});

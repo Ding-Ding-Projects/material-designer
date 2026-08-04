@@ -10,6 +10,7 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon } from './Icon';
+import { Switch } from './Switch';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
 import { tv, useT, type TranslationVars } from '../i18n';
@@ -782,9 +783,18 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-main">
                     <div className="routines-item-title">
                       <strong>{r.name}</strong>
-                      {!r.enabled ? (
-                        <span className="routines-tag">{t('routines.tagPaused')}</span>
-                      ) : null}
+                      {/* The same state chip the Automations page draws, from
+                          the same single declaration — one shape, one rule.
+                          Both states are shown now rather than only the paused
+                          one, because a chip that appears and disappears reads
+                          as an alert rather than as the row's state. */}
+                      <span
+                        className={`automation-state-chip${r.enabled ? ' is-active' : ''}`}
+                      >
+                        {r.enabled
+                          ? t('automations.metricActive')
+                          : t('routines.tagPaused')}
+                      </span>
                     </div>
                     <div className="routines-item-line">{describeSchedule(r.schedule, t, r.nextRunAt)}</div>
                     <div className="routines-item-meta">
@@ -809,7 +819,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-actions">
                     <button
                       type="button"
-                      className="btn btn-primary"
+                      className="btn tonal"
                       onClick={() => { fireAutomation('run_now'); runNow(r.id); }}
                       disabled={isBusy}
                     >
@@ -830,15 +840,7 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn"
-                      onClick={() => { fireAutomation(r.enabled ? 'pause' : 'resume'); toggleEnabled(r); }}
-                      disabled={isBusy}
-                    >
-                      {r.enabled ? t('routines.pause') : t('routines.resume')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
+                      className="btn ghost"
                       onClick={() => { fireAutomation('history'); setExpandedId(isExpanded ? null : r.id); }}
                       aria-expanded={isExpanded}
                     >
@@ -846,13 +848,26 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-danger"
+                      className="btn ghost routines-item-delete"
                       onClick={() => { fireAutomation('delete'); setDeleteTarget(r); }}
                       disabled={isBusy}
                       title={t('routines.deleteTitle')}
                     >
                       {t('routines.delete')}
                     </button>
+                    {/* Pause/resume, as the M3 switch. It replaces a button
+                        whose label flipped between two words, which assistive
+                        technology announces as a button that renamed itself
+                        rather than as a control that is on or off. */}
+                    <Switch
+                      checked={r.enabled}
+                      disabled={isBusy}
+                      label={t('automations.enabledSwitchAria', { name: r.name })}
+                      onChange={() => {
+                        fireAutomation(r.enabled ? 'pause' : 'resume');
+                        toggleEnabled(r);
+                      }}
+                    />
                   </div>
                 </div>
                 {isExpanded ? (

@@ -13,14 +13,34 @@
 //    usable strip rather than throw, so parsing is total and reconciliation
 //    against the live tab list happens on every normalize, not only on load.
 
-/** Bumped when the payload gains a field. v1 payloads simply carry no version. */
-export const WORKSPACE_TABS_PAYLOAD_VERSION = 2;
+import {
+  sanitizeTabGroupMembership,
+  sanitizeTabGroups,
+  type WorkspaceTabGroup,
+} from './tabGroups';
+import {
+  sanitizeTabGroupDecorations,
+  type TabGroupDecoration,
+} from './groupAppearance';
+
+/**
+ * Bumped when the payload gains a field. v1 payloads simply carry no version;
+ * v2 carried pins but no groups; v3 carries the groups, their membership and
+ * their decorations in the same write as the tabs — for the same reason the
+ * pins are in it, stated in rule 1 above. A workspace that restored its tabs
+ * and lost which group they were in looks right and behaves wrong.
+ */
+export const WORKSPACE_TABS_PAYLOAD_VERSION = 3;
 
 export interface StoredWorkspaceTabsPayload {
   /** Left as `unknown[]`: reviving a tab is the tab bar's job, not this file's. */
   tabs: unknown[];
   activeTabId: string;
   pinnedTabIds: string[];
+  groups: WorkspaceTabGroup[];
+  /** `tabId -> groupId`, already reconciled against `groups`. */
+  groupMembership: Record<string, string>;
+  groupDecorations: Record<string, TabGroupDecoration>;
 }
 
 /**
@@ -47,6 +67,12 @@ export function parseStoredWorkspaceTabsPayload(
     // v1 payloads reach this line with `undefined`, which sanitizes to `[]`:
     // an upgrade restores every tab and simply starts with nothing pinned.
     pinnedTabIds: sanitizePinnedTabIds(record.pinnedTabIds),
+    // v1 and v2 payloads reach these with `undefined` too, and sanitize to
+    // empty: an upgrade restores every tab with no groups, which is exactly the
+    // state the user was already in.
+    groups: sanitizeTabGroups(record.groups),
+    groupMembership: sanitizeTabGroupMembership(record.groupMembership),
+    groupDecorations: sanitizeTabGroupDecorations(record.groupDecorations),
   };
 }
 
@@ -55,12 +81,18 @@ export function serializeWorkspaceTabsPayload(state: {
   tabs: unknown[];
   activeTabId: string;
   pinnedTabIds?: readonly string[];
+  groups?: readonly WorkspaceTabGroup[];
+  groupMembership?: Readonly<Record<string, string>>;
+  groupDecorations?: Readonly<Record<string, TabGroupDecoration>>;
 }): string {
   return JSON.stringify({
     version: WORKSPACE_TABS_PAYLOAD_VERSION,
     tabs: state.tabs,
     activeTabId: state.activeTabId,
     pinnedTabIds: sanitizePinnedTabIds(state.pinnedTabIds),
+    groups: sanitizeTabGroups(state.groups),
+    groupMembership: sanitizeTabGroupMembership(state.groupMembership),
+    groupDecorations: sanitizeTabGroupDecorations(state.groupDecorations),
   });
 }
 

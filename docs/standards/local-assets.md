@@ -5,12 +5,14 @@ third-party origin, and no analytics or third-party tracking ships — in the
 application, on the landing page, and on the documentation site alike.
 
 > [!IMPORTANT]
-> **Status: not met in the application, met on the documentation site.** The
-> interface loads a font family from a third-party font service, and the preview
-> runtime fetches a JavaScript framework and a compiler from a public package
-> mirror. The design mockup loads three further font families the same way. The
-> exact locations are named below, because a requirement stated without its
-> current violations is a requirement nobody can act on.
+> **Status: fonts met, the preview runtime not, and the site met.** Every
+> typeface the application uses now ships as a local asset — Cairo at
+> `45ff210`, then Roboto Flex, Roboto Mono and Material Symbols Rounded — so
+> the interface makes no font request at all. The preview runtime still fetches
+> a JavaScript framework and a compiler from a public package mirror, and the
+> design mockup still loads three font families the same way. The exact
+> locations are named below, because a requirement stated without its current
+> violations is a requirement nobody can act on.
 
 ## The requirement
 
@@ -52,22 +54,25 @@ origin served that day is a build that cannot be reproduced.
 
 ## Current implementation status
 
-Checked in the working tree at commit `dea6b0a` by searching for third-party
-origins in the interface source, the mockup and the site.
+Read in the working tree after the font bundling landed, by searching for
+third-party origins in the interface source, the mockup and the site. The font
+rows were last **not** met at commit `dea6b0a`.
 
 | Surface | Status |
 | --- | --- |
-| **The application — fonts** | **Not met.** `design/apps/web/src/index.css` opens with an `@import` of a font family from a third-party font service. It is the first line of the stylesheet, so it is fetched on every launch. |
+| **The application — fonts** | **Met.** All eleven font files ship under `design/apps/web/public/fonts/` and every `@font-face` names a local path. The CDN `@import` that used to open `design/apps/web/src/index.css` is gone. Provenance, licence and live variable axes for each file are recorded in [typography-and-icons.md](typography-and-icons.md). |
 | **The application — preview runtime** | **Not met.** The runtime that renders a preview of a generated component fetches a JavaScript framework, its DOM package and a standalone compiler from a public package mirror at runtime — see `design/apps/web/src/runtime/react-component.ts` and the equivalent script tags in `design/apps/web/src/components/DesignSystemFlow.tsx`. |
 | **The application — analytics** | **Unaudited.** No request audit of a running build has been performed. |
 | **The mockup** | **Not met, by design-file convention.** It loads two text faces and an icon face from a third-party font service. A mockup is not a shipped surface, but this is the source the port copies from, so the violation transfers unless it is deliberately removed. |
 | **The documentation site** | **Met.** The site's markup contains no third-party asset reference; its external URLs are anchors to the project's own repository and release assets, which are navigations the user chooses, not requests the page makes. |
 | **The site's publish-time gate** | **Implemented.** The deployment workflow enforces self-contained assets before publishing — see [../site/pages-deployment.md](../site/pages-deployment.md). |
+| **The application's build-time gate** | **Implemented.** The same check now runs against the packed payload in the release workflow. It lives in `scripts/check-self-contained.sh` so both surfaces are held to one implementation, and it fails rather than passes when handed a directory it cannot read — a check that reports a pass for something it never opened is worse than no check. |
 
 ### The preview-runtime case is the hard one
 
-The font violations have an obvious fix: vendor the faces and serve them from the
-product. `ROADMAP.md` §2.2 tracks exactly that.
+The font violations had an obvious fix: vendor the faces and serve them from the
+product. `ROADMAP.md` §2.2 tracked exactly that, and it is now done — see
+[typography-and-icons.md](typography-and-icons.md).
 
 The preview runtime is genuinely harder, and it is worth being precise about why
 rather than filing it beside the fonts:

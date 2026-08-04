@@ -33,6 +33,166 @@
   -webkit-app-region: no-drag;
 }
 
+/* -------- Tab groups in the strip ------------------------------------ */
+
+/* A group is a run of tabs behind one header. It is `display: contents`-adjacent
+   in spirit but not in fact: the wrapper is a real flex row so the header and
+   its members share a background, a border and a corner radius, which is what
+   makes the run read as one object rather than as tabs that happen to be
+   adjacent. */
+.groupSection {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  padding: 0 3px;
+  /* Every custom property below has a fallback, so an undecorated group follows
+     the theme and a decorated one overrides exactly what the user set. The
+     values come from `tabGroupDecorationStyle` in `groupAppearance.ts`; adding
+     one there without a `var()` here would persist a value nothing renders. */
+  border-radius: var(--wt-group-radius, var(--radius-sm));
+  background: var(--wt-group-bg, color-mix(in srgb, var(--wt-group-swatch) 12%, transparent));
+  -webkit-app-region: no-drag;
+}
+
+.groupSection[data-tab-group-color='sky'] {
+  --wt-group-swatch: #4c8dff;
+}
+
+.groupSection[data-tab-group-color='grape'] {
+  --wt-group-swatch: #a97bff;
+}
+
+.groupSection[data-tab-group-color='citrus'] {
+  --wt-group-swatch: #f0a02a;
+}
+
+.groupSection[data-tab-group-color='moss'] {
+  --wt-group-swatch: #3fb07a;
+}
+
+.groupSection[data-tab-group-color='clay'] {
+  --wt-group-swatch: #e2705a;
+}
+
+.groupSection[data-tab-group-color='slate'] {
+  --wt-group-swatch: #7c8899;
+}
+
+.groupHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Deliberately NOT `--control-h-sm` / `--control-pad-x`. Those are the
+     density-aware control tokens and are correct for controls that own their
+     own row — but this one sits inside a 42px chrome strip whose height does
+     not move with density, and `--control-h-sm` at comfortable density is 42px,
+     which is the whole strip. It matches the 36px tab beside it instead, which
+     is the thing it actually has to line up with. */
+  min-height: 24px;
+  align-self: center;
+  max-width: 168px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--wt-group-radius, var(--radius-sm));
+  background: transparent;
+  color: var(--wt-group-label, var(--text));
+  font-size: var(--wt-group-size, 11.5px);
+  font-weight: var(--wt-group-weight, 700);
+  white-space: nowrap;
+}
+
+.groupHeader:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wt-group-accent, var(--wt-group-swatch)) 22%, transparent);
+}
+
+.groupHeader:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* The label is the part that truncates. It carries the `title` from the
+   component, so the full name is recoverable with a pointer as well as through
+   the accessible name. */
+.groupLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.groupCount {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wt-group-accent, var(--wt-group-swatch)) 30%, transparent);
+  color: var(--wt-group-label, var(--text));
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.groupDot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: var(--wt-group-accent, var(--wt-group-swatch, var(--text-faint)));
+}
+
+.groupDot[data-tab-group-color='sky'] {
+  --wt-group-swatch: #4c8dff;
+}
+
+.groupDot[data-tab-group-color='grape'] {
+  --wt-group-swatch: #a97bff;
+}
+
+.groupDot[data-tab-group-color='citrus'] {
+  --wt-group-swatch: #f0a02a;
+}
+
+.groupDot[data-tab-group-color='moss'] {
+  --wt-group-swatch: #3fb07a;
+}
+
+.groupDot[data-tab-group-color='clay'] {
+  --wt-group-swatch: #e2705a;
+}
+
+.groupDot[data-tab-group-color='slate'] {
+  --wt-group-swatch: #7c8899;
+}
+
+.groupBadge {
+  flex: 0 0 auto;
+  font-size: var(--wt-group-size, 11.5px);
+  line-height: 1;
+}
+
+/* A tab a discovery search pulled out of a still-collapsed group. It is marked
+   because it is an exception: the group beside it is closed, and without this
+   the tab reads as evidence that the collapse silently failed. */
+.groupSection[data-tab-group-collapsed='true'] [data-workspace-tab-revealed='true'] {
+  outline: 1px dashed var(--wt-group-accent, var(--wt-group-swatch));
+  outline-offset: -1px;
+  border-radius: var(--wt-group-radius, var(--radius-sm));
+}
+
+/* Narrow chrome: the header keeps its dot, its count and its chevron and gives
+   up label width first, because those three are what identify and operate it.
+   It never disappears — a collapsed group with no header is a group whose tabs
+   are simply gone as far as the user can tell. */
+@media (max-width: 720px) {
+  .groupHeader {
+    max-width: 104px;
+  }
+}
+
+@media (max-width: 480px) {
+  .groupHeader {
+    max-width: 72px;
+  }
+}
+
 /* -------- Pin toggle in the searchable tab list ---------------------- */
 
 .listPin {

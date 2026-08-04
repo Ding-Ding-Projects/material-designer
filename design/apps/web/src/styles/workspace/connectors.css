@@ -1203,17 +1203,26 @@
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
 }
+/* The connector status chip (roadmap § 2.4 Wave 4). Material Design 3
+   anatomy: a 24px fully-rounded chip at label-medium with an `outline`
+   hairline. The four `.status-*` modifiers above keep their own hues
+   untouched — a connected/error/disabled/pending palette is a status
+   encoding, which the Material Design standard exempts as data rather than
+   chrome, so only the shape and the type are restated here. */
 .connector-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-medium-font);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: var(--md-sys-typescale-label-medium-weight);
+  line-height: var(--md-sys-typescale-label-medium-line-height);
 }
 .connector-description {
   margin: 0;

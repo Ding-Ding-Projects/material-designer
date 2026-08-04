@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeE
 import { createPortal, flushSync } from 'react-dom';
 
 import { Icon } from './Icon';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import { useT } from '../i18n';
 import type { PreviewVisualMarkKind } from '../types';
 import { requestPreviewSnapshot } from '../runtime/exports';
@@ -1292,7 +1292,7 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationAddToInput'),
       pendingLabel: t('chat.annotationAddingToInput'),
       title: t('chat.annotationAddToInput'),
-      icon: <RemixIcon name="input-field" size={15} />,
+      icon: <MaterialSymbol name="text_fields" size={15} />,
       enabled: canAddToInput,
     },
     {
@@ -1300,17 +1300,17 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationQueue'),
       pendingLabel: t('chat.annotationQueueing'),
       title: t('chat.annotationQueue'),
-      icon: <RemixIcon name="list-check-2" size={15} />,
+      icon: <MaterialSymbol name="checklist" size={15} />,
       enabled: canSubmit,
     },
   ];
   const currentSubmit = submitOptions.find((opt) => opt.action === submitAction) ?? submitOptions[0]!;
   // The one current-tool button and its dropdown share this list: box-select,
   // freehand pen, and drop-a-text-label.
-  const markToolOptions: { tool: MarkTool; label: string; icon: string }[] = [
-    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'checkbox-blank-line' },
-    { tool: 'pen', label: t('sketch.toolPen'), icon: 'pencil-line' },
-    { tool: 'text', label: t('fileViewer.textTool'), icon: 'text' },
+  const markToolOptions: { tool: MarkTool; label: string; icon: MaterialSymbolName }[] = [
+    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'check_box_outline_blank' },
+    { tool: 'pen', label: t('sketch.toolPen'), icon: 'edit' },
+    { tool: 'text', label: t('fileViewer.textTool'), icon: 'title' },
   ];
   const currentMarkTool = markToolOptions.find((item) => item.tool === markTool) ?? markToolOptions[0]!;
 
@@ -1616,8 +1616,8 @@ export function PreviewDrawOverlay({
                 className="preview-draw-subtool-action"
                 style={subToolButtonStyle}
               >
-                <RemixIcon name={currentMarkTool.icon} size={14} />
-                <RemixIcon name="arrow-down-s-line" size={12} style={{ opacity: 0.78 }} />
+                <MaterialSymbol name={currentMarkTool.icon} size={14} />
+                <MaterialSymbol name="keyboard_arrow_down" size={12} style={{ opacity: 0.78 }} />
               </button>
               {markToolMenuOpen ? (
                 <div role="menu" aria-label={t('fileViewer.markTool')} style={markToolMenuStyle}>
@@ -1635,10 +1635,10 @@ export function PreviewDrawOverlay({
                         style={submitMenuItemStyle(activeTool, !sending)}
                       >
                         <span style={submitMenuItemIconStyle}>
-                          <RemixIcon name={item.icon} size={14} />
+                          <MaterialSymbol name={item.icon} size={14} />
                         </span>
                         <span style={{ flex: '1 1 auto' }}>{item.label}</span>
-                        {activeTool ? <RemixIcon name="check-line" size={14} /> : null}
+                        {activeTool ? <MaterialSymbol name="check" size={14} /> : null}
                       </button>
                     );
                   })}
@@ -1653,7 +1653,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.undo')}
               title={t('manualEdit.undo')}
             >
-              <RemixIcon name="arrow-go-back-line" size={14} />
+              <MaterialSymbol name="undo" size={14} />
             </button>
             <button
               type="button"
@@ -1663,7 +1663,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.redo')}
               title={t('manualEdit.redo')}
             >
-              <RemixIcon name="arrow-go-forward-line" size={14} />
+              <MaterialSymbol name="redo" size={14} />
             </button>
             <input
               ref={fileInputRef}
@@ -1686,7 +1686,7 @@ export function PreviewDrawOverlay({
               className="preview-draw-icon-action"
               style={historyButtonStyle(!sending)}
             >
-              <RemixIcon name="image-add-line" size={14} />
+              <MaterialSymbol name="add_photo_alternate" size={14} />
             </button>
           </div>
           <div className="preview-draw-note-actions" style={drawToolbarNoteActionsStyle}>
@@ -1763,7 +1763,7 @@ export function PreviewDrawOverlay({
                   cursor: sending ? 'wait' : (canSubmit ? 'pointer' : 'not-allowed'),
                 }}
               >
-                <RemixIcon name={submitMenuOpen ? 'arrow-down-s-line' : 'arrow-up-s-line'} size={14} />
+                <MaterialSymbol name={submitMenuOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_up'} size={14} />
               </button>
               {submitMenuOpen ? (
                 <div role="menu" aria-label={t('chat.annotationSubmitOptions')} style={submitMenuStyle}>
@@ -1788,7 +1788,7 @@ export function PreviewDrawOverlay({
                       >
                         <span style={submitMenuItemIconStyle}>{opt.icon}</span>
                         <span style={{ flex: '1 1 auto' }}>{opt.label}</span>
-                        {active ? <RemixIcon name="check-line" size={14} /> : null}
+                        {active ? <MaterialSymbol name="check" size={14} /> : null}
                       </button>
                     );
                   })}

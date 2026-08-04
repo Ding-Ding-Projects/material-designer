@@ -101,11 +101,27 @@ export function entryWithinRange(
   return withinRange(entry.date, from, to);
 }
 
+/**
+ * Filter the changelog.
+ *
+ * `regexMatches` is the search field's compiled predicate, passed ONLY when the
+ * user has explicitly turned regex on. Plain text keeps its own path — it
+ * splits the query into terms that must all appear, so "dialog focus" finds an
+ * entry mentioning both words in either order. Routing plain text through the
+ * regex predicate instead would quietly turn that into a contiguous substring
+ * match and narrow a search nobody asked to narrow.
+ */
 export function filterChangelog(
   releases: readonly ChangelogRelease[],
   filter: ChangelogFilter,
+  regexMatches?: ((text: string) => boolean) | null,
 ): ChangelogFilterResult {
   const terms = searchTerms(filter.query);
+  const entryMatches = regexMatches
+    ? (entry: ChangelogEntry, release: ChangelogRelease) =>
+        regexMatches(entryHaystack(entry, release))
+    : (entry: ChangelogEntry, release: ChangelogRelease) =>
+        entryMatchesTerms(entry, release, terms);
   const ranged = filter.from != null || filter.to != null;
   const kept: ChangelogRelease[] = [];
   const dates: string[] = [];
@@ -118,7 +134,7 @@ export function filterChangelog(
     for (const category of release.categories) {
       const entries = category.entries.filter((entry) => {
         total += 1;
-        if (!entryMatchesTerms(entry, release, terms)) return false;
+        if (!entryMatches(entry, release)) return false;
         if (!entryWithinRange(entry, filter.from, filter.to)) {
           if (ranged && entry.date == null) undatedExcluded += 1;
           return false;

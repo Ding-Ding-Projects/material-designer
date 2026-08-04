@@ -30,6 +30,11 @@ describe('parseStoredWorkspaceTabsPayload', () => {
       tabs: [{ id: 'entry:1', kind: 'entry' }, { id: 'project:2', kind: 'project' }],
       activeTabId: 'project:2',
       pinnedTabIds: [],
+      // v3 added groups. A v1 payload has none, which is exactly the state the
+      // user was already in — every tab restores, in no group.
+      groups: [],
+      groupMembership: {},
+      groupDecorations: {},
     });
   });
 
@@ -43,6 +48,26 @@ describe('parseStoredWorkspaceTabsPayload', () => {
     expect(parseStoredWorkspaceTabsPayload(v2)?.pinnedTabIds).toEqual(['b']);
   });
 
+  it('round-trips a v3 payload with its groups, membership and decoration', () => {
+    // One write, one read, one shape — for the same reason the pins are in
+    // here. A workspace that restored its tabs and lost which group they were
+    // in looks right and behaves wrong.
+    const v3 = serializeWorkspaceTabsPayload({
+      tabs: [tab('a'), tab('b')],
+      activeTabId: 'a',
+      pinnedTabIds: [],
+      groups: [{ id: 'g1', name: 'Docs', color: 'moss', collapsed: true }],
+      groupMembership: { b: 'g1' },
+      groupDecorations: { g1: { radius: 8 } },
+    });
+    const restored = parseStoredWorkspaceTabsPayload(v3);
+    expect(restored?.groups).toEqual([
+      { id: 'g1', name: 'Docs', color: 'moss', collapsed: true },
+    ]);
+    expect(restored?.groupMembership).toEqual({ b: 'g1' });
+    expect(restored?.groupDecorations).toEqual({ g1: { radius: 8 } });
+  });
+
   it('returns null only when there is nothing usable at all', () => {
     expect(parseStoredWorkspaceTabsPayload(null)).toBeNull();
     expect(parseStoredWorkspaceTabsPayload('')).toBeNull();
@@ -52,11 +77,21 @@ describe('parseStoredWorkspaceTabsPayload', () => {
   });
 
   it('tolerates a stored shape whose fields are the wrong type', () => {
-    const broken = JSON.stringify({ tabs: 'nope', activeTabId: 7, pinnedTabIds: 'b' });
+    const broken = JSON.stringify({
+      tabs: 'nope',
+      activeTabId: 7,
+      pinnedTabIds: 'b',
+      groups: 'also nope',
+      groupMembership: ['not a map'],
+      groupDecorations: 9,
+    });
     expect(parseStoredWorkspaceTabsPayload(broken)).toEqual({
       tabs: [],
       activeTabId: '',
       pinnedTabIds: [],
+      groups: [],
+      groupMembership: {},
+      groupDecorations: {},
     });
   });
 

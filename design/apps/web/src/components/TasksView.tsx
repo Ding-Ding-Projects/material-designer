@@ -16,6 +16,7 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon, type IconName } from './Icon';
+import { Switch } from './Switch';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
 import { useT } from '../i18n';
@@ -724,7 +725,20 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                       <Icon name={r.skillId ? 'sparkles' : 'history'} size={15} />
                     </span>
                     <span className="automation-row__content">
-                      <span className="automation-row__title">{r.name}</span>
+                      <span className="automation-row__title-line">
+                        <span className="automation-row__title">{r.name}</span>
+                        {/* The state chip the mockup draws beside the name. It
+                            says the same thing the switch does, deliberately:
+                            the switch carries the state as `aria-checked`, and
+                            a row scanned visually needs a word for it too. */}
+                        <span
+                          className={`automation-state-chip${r.enabled ? ' is-active' : ''}`}
+                        >
+                          {r.enabled
+                            ? t('automations.metricActive')
+                            : t('automations.metricPaused')}
+                        </span>
+                      </span>
                       <span className="automation-row__meta">
                         <span>{scheduleStatusLabel(r, t)}</span>
                         <span aria-hidden="true">·</span>
@@ -762,7 +776,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                   <div className="automation-row__actions">
                     <button
                       type="button"
-                      className="automation-row__btn"
+                      className="automation-row__btn tonal"
                       onClick={() => {
                         fireClick('run_now');
                         runNow(r.id);
@@ -800,17 +814,6 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                     </button>
                     <button
                       type="button"
-                      className="automation-row__btn"
-                      onClick={() => {
-                        fireClick(r.enabled ? 'pause' : 'resume');
-                        togglePaused(r);
-                      }}
-                      disabled={isBusy}
-                    >
-                      {r.enabled ? t('automations.pause') : t('automations.resume')}
-                    </button>
-                    <button
-                      type="button"
                       className="automation-row__btn automation-row__btn--danger"
                       onClick={() => {
                         fireClick('delete');
@@ -822,6 +825,20 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                     >
                       <Icon name="trash" size={12} />
                     </button>
+                    {/* Pause/resume was a text button whose label flipped
+                        between two words. It is the M3 switch now: one control
+                        with a stable accessible name and the state carried in
+                        `aria-checked`, which is what a screen reader announces
+                        as on/off rather than as a button that renamed itself. */}
+                    <Switch
+                      checked={r.enabled}
+                      disabled={isBusy}
+                      label={t('automations.enabledSwitchAria', { name: r.name })}
+                      onChange={() => {
+                        fireClick(r.enabled ? 'pause' : 'resume');
+                        togglePaused(r);
+                      }}
+                    />
                   </div>
                   {isExpanded ? (
                     <AutomationRunHistory

@@ -33,7 +33,7 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > **The application ships, and what it ships is now most of the way through the
 > standards.** Continuous integration verifies the port, installs the workspace,
 > runs the guard, the craft lint and the translation check, typechecks on Linux and
-> Windows, runs **465 test files**, builds a Windows installer and publishes a
+> Windows, runs **563 test files** across five packages, builds a Windows installer and publishes a
 > release — and the packaged smoke test installs that build, launches it, has the
 > running process answer its own health endpoint and uninstalls it with no residue.
 > All observed, every push.
@@ -196,7 +196,7 @@ predictions:
 | Full workspace typecheck | *Verify* (Linux) and *Release* (Windows) | ✅ both |
 | Unit suites for `tools-pack`, `packaged`, `desktop` | *Verify*, Linux | ✅ |
 | Shared component primitives, incl. the dialog focus trap | *Verify*, Linux | ✅ |
-| **The web application suite** | *Verify*, Linux | ✅ **465 test files** |
+| **The web application suite** | *Verify*, Linux | ✅ **473 test files** |
 | Windows identity, paths, build targets, launcher payload | *Release*, Windows | ✅ |
 | Site deployment | *Pages* | ✅ published and serving |
 | Windows installer build | *Release*, Windows | ✅ |

@@ -55,6 +55,13 @@ version section when a release carries them.
   The field parses on every keystroke, so a paste was enough
   ([`87e0118`](https://github.com/Ding-Ding-Projects/material-designer/commit/87e0118)).
 
+- **The destructive check moved to the operation, not the interface.** Gating the
+  web interface and then the CLI still leaves the next caller ungated; the daemon
+  now refuses an unconfirmed destructive route itself, so the guarantee holds
+  wherever the request comes from ([`ecaad97`](https://github.com/Ding-Ding-Projects/material-designer/commit/ecaad97)). Three delete routes that had
+  never been gated at all — including memory and library — were routed through
+  the same check ([`9cb4e6c`](https://github.com/Ding-Ding-Projects/material-designer/commit/9cb4e6c)), ([`9d5c5d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/9d5c5d3)).
+
 ### Added
 
 - **CIELAB, LCH, OKLab and OKLCH.** The colour translator advertised twelve
@@ -110,6 +117,52 @@ version section when a release carries them.
   an error naming the import graph's entry file rather than the file at fault
   ([`635ec4f`](https://github.com/Ding-Ding-Projects/material-designer/commit/635ec4f)).
 
+- **Density did nothing.** Compact, Default and Comfortable rendered a
+  pixel-identical interface: the setting swapped five custom properties, four of
+  which had no reader anywhere in the codebase. Controls now read heights and
+  padding from tokens that actually move, and default density measures the same
+  to the pixel ([`fc5bef9`](https://github.com/Ding-Ding-Projects/material-designer/commit/fc5bef9)).
+- **Editing the dialog stylesheet had never changed anything on screen.** `Dialog`
+  puts its CSS-module class and the global `modal` class on the same element, and
+  the module writes its card inside `:where()` — zero specificity — so the global
+  rule had been deciding every dialog's appearance. The same dialog also had no
+  viewport height bound and no scroller, so a tall one pushed its own confirm
+  button off the screen with nothing to say it was there ([`fc5bef9`](https://github.com/Ding-Ding-Projects/material-designer/commit/fc5bef9)).
+- **The rail's collapse button did nothing on a fresh install.** It called
+  "close" unconditionally in a rail whose default state is collapsed, so the
+  first click set false to false; both it and the topbar toggle also carried the
+  same static label in either state, telling a screen-reader user that pressing
+  it would expand a rail that was already expanded ([`5544035`](https://github.com/Ding-Ding-Projects/material-designer/commit/5544035)).
+- **The UI scale magnified instead of reflowing.** CSS `zoom` scales painted
+  lengths without moving the layout viewport, so `100vw` still resolved to the
+  unscaled window and the layout overflowed at 125/150/200%. The desktop host now
+  scales its own web contents ([`cd0996d`](https://github.com/Ding-Ding-Projects/material-designer/commit/cd0996d)).
+- **Bilingual mode said interpolated values twice.** `t()` composed both languages
+  and *then* interpolated, so a translated variable was substituted into both
+  halves — "Default · 預設 density" became "Default · 預設 density · Default ·
+  預設密度". Rendering now interpolates per language and joins afterwards
+  ([`81cdbfd`](https://github.com/Ding-Ding-Projects/material-designer/commit/81cdbfd)).
+- **The first words of every launch said the old product name.** The loading shell
+  read "Loading Open Design…" inside a window titled Material Designer. The rename
+  was held back because 42 Playwright waits synchronised on that exact literal and
+  a wait for text the app never renders resolves instantly — silently disarming
+  every startup gate rather than failing. The literal is now declared once,
+  imported by all 42, and a gate proves the two still agree ([`ae0cc4d`](https://github.com/Ding-Ding-Projects/material-designer/commit/ae0cc4d)).
+- **The onboarding screen carried the wrong name** — the first screen any new user
+  sees, which no scripted capture reached because they all begin past it
+  ([`649f81d`](https://github.com/Ding-Ding-Projects/material-designer/commit/649f81d)).
+- **Every release since the 25th shipped with no code name**, and nothing went
+  red: the pool was 24 bundled dishes, a per-push cadence spent it in a day, and
+  running out was designed to be non-fatal. Names now resolve from the public
+  catalogue of 2,866 dishes ([`c357876`](https://github.com/Ding-Ding-Projects/material-designer/commit/c357876)).
+- **The download page advertised a build forty-five releases old**, beside a
+  SHA-256 that matched nothing shipped — worse than no checksum, because a reader
+  who verifies it concludes the file was tampered with. The release facts are now
+  filled in at publish time from the release that actually exists ([`085f58d`](https://github.com/Ding-Ding-Projects/material-designer/commit/085f58d)).
+- **Blocking browser dialogs were removed from the web application** ([`eafc402`](https://github.com/Ding-Ding-Projects/material-designer/commit/eafc402)),
+  and a tab was named by what it is called rather than by its hint, which had been
+  folding the hint into its accessible name ([`51ef6d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/51ef6d7)).
+
 ### Added
 
 - **The spoken narrator has a surface a user can reach.** Every part existed — the
@@ -132,6 +185,28 @@ version section when a release carries them.
   `CODE_OF_CONDUCT.md` — so the tabs GitHub renders above the README point at something
   ([`230b115`](https://github.com/Ding-Ding-Projects/material-designer/commit/230b115)).
 
+- **The appearance editor and its infinite colour picker became reachable.** Both
+  had been compiling and shipping in the bundle with **zero importers** — no
+  surface mounted them, so no user could open them. Judge a feature by whether
+  something renders it, never by whether its files exist ([`ab2a89c`](https://github.com/Ding-Ding-Projects/material-designer/commit/ab2a89c)).
+- **The navigation rail and the status bar are on the screen.** The rail had been
+  rendered into a zero-width grid track, so a fresh install showed no navigation
+  at all ([`90e52d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/90e52d3)).
+- **Settings became tabbed and searchable** — seventeen sections as a real tab
+  strip with an overflow surface, and a search field with its regex affordance
+  ([`a1c0027`](https://github.com/Ding-Ding-Projects/material-designer/commit/a1c0027)) — and the home screen gained the header search bar the mockup
+  specifies, routed into the command palette rather than owning a fourth result
+  list ([`b3d48cb`](https://github.com/Ding-Ding-Projects/material-designer/commit/b3d48cb)).
+- **The home content got Material Design 3 anatomy, not just its colours**
+  ([`f99fb2b`](https://github.com/Ding-Ding-Projects/material-designer/commit/f99fb2b)); collections followed with segmented buttons, filter chips and
+  outlined cards, and the appearance controls for seed, density, auto-fit and
+  typography were wired to a state layer that had existed with no UI at all
+  ([`fc5bef9`](https://github.com/Ding-Ding-Projects/material-designer/commit/fc5bef9)).
+- **The release smoke test captures nine named interface states** and proves each
+  one before shooting it ([`6918bb5`](https://github.com/Ding-Ding-Projects/material-designer/commit/6918bb5)).
+- **CI reports test counts per package** in the job summary, so a suite that
+  quietly stops running files is visible without opening logs ([`28af1f0`](https://github.com/Ding-Ding-Projects/material-designer/commit/28af1f0)).
+
 ### Changed
 
 - **The roadmap says what is built, what is merely written, and what is broken.** Its
@@ -145,6 +220,13 @@ version section when a release carries them.
   deliberately poisoned branch made it report `bytes differ 1` and exit 1, so its green
   ticks now mean something
   ([`b26c5cc`](https://github.com/Ding-Ding-Projects/material-designer/commit/b26c5cc)).
+- **The fast CI workflow supersedes stacked runs instead of queueing them.** Four
+  pushes in quick succession left four Verify runs each verifying a commit a later
+  push had already replaced, so the verdict that mattered arrived twenty minutes
+  late. Safe here because this workflow publishes nothing; the release workflow
+  still queues, since cancelling one halfway could leave a tag without its
+  installer ([`edad4ca`](https://github.com/Ding-Ding-Projects/material-designer/commit/edad4ca)).
+
 
 ## [v0.16.1-r8.1] — 2026-08-03
 

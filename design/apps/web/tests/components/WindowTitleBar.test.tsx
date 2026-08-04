@@ -55,8 +55,11 @@ function installHost(platform: string, windowControls?: OpenDesignHostWindowCont
   });
 }
 
-function iconClassOf(button: HTMLElement): string {
-  return button.querySelector('i')?.className ?? '';
+// The glyph moved from a class-named <i> to a Material Symbol, whose CSS
+// Module class is hashed and whose text content is a ligature. `data-symbol`
+// is the stable handle the component publishes in place of the old class.
+function glyphOf(button: HTMLElement): string {
+  return button.querySelector('[data-symbol]')?.getAttribute('data-symbol') ?? '';
 }
 
 afterEach(() => {
@@ -121,7 +124,7 @@ describe('WindowTitleBar', () => {
 
     const restore = await screen.findByRole('button', { name: en['titleBar.restore'] });
     expect(controls.isMaximized).toHaveBeenCalledTimes(1);
-    expect(iconClassOf(restore)).toContain('ri-checkbox-multiple-blank-line');
+    expect(glyphOf(restore)).toBe('filter_none');
     expect(screen.queryByRole('button', { name: en['titleBar.maximize'] })).toBeNull();
   });
 
@@ -131,13 +134,13 @@ describe('WindowTitleBar', () => {
     render(<WindowTitleBar />);
 
     const maximize = await screen.findByRole('button', { name: en['titleBar.maximize'] });
-    expect(iconClassOf(maximize)).toContain('ri-checkbox-blank-line');
+    expect(glyphOf(maximize)).toBe('check_box_outline_blank');
 
     // A snap layout or Win+Up never touches the button, so the push is the
     // only thing that can keep the glyph honest.
     push(true);
     const restore = screen.getByRole('button', { name: en['titleBar.restore'] });
-    expect(iconClassOf(restore)).toContain('ri-checkbox-multiple-blank-line');
+    expect(glyphOf(restore)).toBe('filter_none');
 
     push(false);
     expect(screen.getByRole('button', { name: en['titleBar.maximize'] })).toBeTruthy();

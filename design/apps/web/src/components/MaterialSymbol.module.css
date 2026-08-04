@@ -1,0 +1,55 @@
+/* Material Symbols Rounded — the rendered glyph.
+ *
+ * The @font-face for this family lives in `styles/material-symbols.css`; this
+ * file owns only how a glyph is drawn, and belongs beside its component. */
+
+.symbol {
+  font-family: var(--md-ref-typeface-icon);
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  word-wrap: normal;
+  /* The glyphs are addressed by the ligature of their name, so `liga` is not
+     an aesthetic preference here — without it the element renders the name. */
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  /* An icon font is never mirrored by writing direction. The nine RTL locales
+     lay out around it; the chevron itself keeps its drawn shape, and a
+     direction-sensitive glyph is chosen at the call site instead. */
+  direction: ltr;
+  /* User-select off matches the incumbent icon element: a glyph that
+     selects drops its ligature name into the clipboard. */
+  user-select: none;
+  flex: none;
+}
+
+/* The FILL axis, which is the whole reason this ships as a variable font: M3
+ * fills the selected navigation icon and outlines the rest. `font-variation-settings`
+ * names FILL only, so `opsz` stays under the browser's own optical sizing. */
+.symbol[data-filled='false'] {
+  font-variation-settings: 'FILL' 0;
+}
+
+.symbol[data-filled='true'] {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Motion between the two states is the contract's emphasized curve, and stops
+ * entirely when the user has asked for less of it. The duration is a literal
+ * for the reason `tokens.css` already gives at its own transitions: the
+ * contract declares no duration tokens, so there is no role to defer to. */
+.symbol {
+  transition: font-variation-settings 140ms var(--md-sys-motion-emphasized);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .symbol {
+    transition: none;
+  }
+}

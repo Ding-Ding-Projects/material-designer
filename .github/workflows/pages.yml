@@ -40,32 +40,12 @@ jobs:
         # The site must make no network request: no CDN script, stylesheet or
         # font, no remote image, no analytics. This is a published-surface rule,
         # so it is enforced at publish time rather than trusted.
-        run: |
-          set -uo pipefail
-          if [ ! -d site ]; then
-            echo "site/ does not exist yet; nothing to deploy." >&2
-            exit 1
-          fi
-          bad=0
-          # Each check names one way a remote resource gets loaded. Ordinary
-          # hyperlinks in prose (<a href="https://github.com/...">) are fine and
-          # are deliberately not matched by any of these.
-          check() {
-            local what=$1 glob=$2 pattern=$3
-            if grep -rnE "$pattern" site --include="$glob"; then
-              echo "::error::site/ $what"
-              bad=1
-            fi
-          }
-          check "loads a remote script"        '*.html' '<script[^>]+src="https?://'
-          check "loads a remote stylesheet"    '*.html' '<link[^>]+href="https?://'
-          check "loads a remote image"         '*.html' '<(img|source)[^>]+src(set)?="https?://'
-          check "imports a remote stylesheet"  '*.css'  '@import[[:space:]]*(url\()?["'"'"']?https?://'
-          check "loads a remote CSS asset"     '*.css'  'url\([[:space:]]*["'"'"']?https?://'
-          check "makes an external request"    '*.js'   '(fetch|XMLHttpRequest|WebSocket)[[:space:]]*\([[:space:]]*["'"'"']https?://'
-
-          [ "$bad" -eq 0 ] || exit 1
-          echo "site/ is self-contained."
+        #
+        # The rule used to be written out here. It moved into a script when the
+        # packaged application needed the same question asked of ITS build
+        # output — see the matching step in release.yml. One implementation, so
+        # the two artifacts cannot end up held to two different standards.
+        run: bash scripts/check-self-contained.sh site
 
       - name: Stage the dish catalogue into the site
         shell: bash

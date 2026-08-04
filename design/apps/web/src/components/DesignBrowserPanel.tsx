@@ -64,7 +64,7 @@ import {
 import { Icon } from './Icon';
 import { BoardComposerPopover } from './BoardComposerPopover';
 import { PreviewDrawOverlay } from './PreviewDrawOverlay';
-import { RemixIcon } from './RemixIcon';
+import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
 import type { TranslationVars } from '../i18n';
 
 type BrowserHistoryEntry = {
@@ -80,10 +80,10 @@ type BrowserNavigationEntry = {
   url: string;
 };
 
-function browserViewportIcon(viewport: BrowserViewportId): string {
-  if (viewport === 'tablet') return 'tablet-line';
-  if (viewport === 'mobile') return 'smartphone-line';
-  return 'computer-line';
+function browserViewportIcon(viewport: BrowserViewportId): MaterialSymbolName {
+  if (viewport === 'tablet') return 'tablet';
+  if (viewport === 'mobile') return 'smartphone';
+  return 'computer';
 }
 
 type ReferenceSite = {
@@ -2286,7 +2286,7 @@ export function DesignBrowserPanel({
               disabled={isBlank || screenshotSaving}
               onClick={takeScreenshot}
             >
-              <RemixIcon name="screenshot-2-line" size={15} />
+              <MaterialSymbol name="screenshot" size={15} />
             </IconTooltipButton>
           ) : null}
           <IconTooltipButton
@@ -2618,13 +2618,13 @@ function BrowserViewportControls({
         className={open ? 'is-active' : ''}
         onClick={() => setOpen((value) => !value)}
       >
-        <RemixIcon
+        <MaterialSymbol
           name={browserViewportIcon(activePreset.id)}
           size={14}
           className="db-viewport-icon"
         />
         <span className="db-viewport-label">{browserViewportLabel(t, activePreset.id)}</span>
-        <RemixIcon name="arrow-down-s-line" size={13} />
+        <MaterialSymbol name="keyboard_arrow_down" size={13} />
       </IconTooltipButton>
       {open ? (
         <div className="db-viewport-menu" role="listbox" aria-label={t('designBrowser.viewportAria')}>
@@ -2641,7 +2641,7 @@ function BrowserViewportControls({
               }}
             >
               <span className="db-viewport-menu-label">
-                <RemixIcon name={browserViewportIcon(preset.id)} size={14} />
+                <MaterialSymbol name={browserViewportIcon(preset.id)} size={14} />
                 <span>{browserViewportLabel(t, preset.id)}</span>
               </span>
               {preset.id === viewport ? <Icon name="check" size={13} /> : null}

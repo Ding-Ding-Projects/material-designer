@@ -36,11 +36,16 @@ describe('quantizeUiScale', () => {
   });
 
   it('produces a clean two-decimal number rather than a float artefact', () => {
-    // 7 * 0.05 is 0.35000000000000003 in binary floating point, and a stored
-    // scale that never compares equal to a preset's 0.35 is a bug that only
+    // 12 * 0.05 is 0.6000000000000001 in binary floating point, and a stored
+    // scale that never compares equal to a preset's 0.6 is a bug that only
     // shows up as "the preset never looks active".
-    expect(quantizeUiScale(0.35)).toBe(0.35);
-    expect(String(quantizeUiScale(0.34))).toBe('0.35');
+    //
+    // The value has to sit inside [MIN_UI_SCALE, MAX_UI_SCALE] to demonstrate
+    // anything: an out-of-range one is clamped first and the rounding never
+    // runs, which is how this assertion originally failed against a perfectly
+    // correct function.
+    expect(quantizeUiScale(0.6)).toBe(0.6);
+    expect(String(quantizeUiScale(0.59))).toBe('0.6');
   });
 
   it('holds the range and survives nonsense', () => {

@@ -763,7 +763,7 @@ describe('DesignBrowserPanel <webview> navigation', () => {
 
     expect(screen.queryByRole('button', { name: '标记' })).toBeNull();
     expect(screen.queryByRole('button', { name: '评论' })).toBeNull();
-    expect(container.querySelector('.ri-pencil-line')).toBeNull();
+    expect(container.querySelector('[data-symbol="edit"]')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Annotate page' })).toBeNull();
   });
 

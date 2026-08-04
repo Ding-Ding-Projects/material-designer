@@ -432,14 +432,23 @@
   white-space: nowrap;
 }
 
+/* Material Design 3 list row (roadmap § 2.4 Wave 4). The same anatomy the
+   Automations page uses: an `outline-variant` hairline over
+   `surface-container-low` at corner-l. This surface and that one are the
+   same feature seen from two places, and they were drawn as two different
+   cards. */
 .routines-card {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.routines-item:hover {
+  background: var(--md-sys-color-surface-container);
 }
 
 .routines-form { margin-top: 4px; }
@@ -687,18 +696,26 @@
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
-.routines-tag {
-  font-size: 11px;
-  background: var(--bg-muted);
-  color: var(--text-muted);
-  padding: 2px 8px;
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-}
+/* `.routines-tag` used to live here — a 11px uppercase pill that appeared
+   only when an automation was paused. It is gone because the row now draws
+   `.automation-state-chip` from `styles/home/tasks.css`, the same chip the
+   Automations page uses, so the two surfaces cannot drift into two shapes
+   for one piece of state. */
 
-.routines-item-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.routines-item-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* The delete action. `btn-danger` was written on this button and is declared
+   nowhere, so the destructive action rendered as the same neutral container
+   as Edit beside it. M3 puts destructive intent in the `error` role, and a
+   text button is the right emphasis for something the destructive gate has
+   to confirm anyway. */
+/* `button.` is not decoration. The delete action also carries `ghost`, and
+   `button.ghost` in `styles/primitives.css` is (0,1,1) — a bare
+   `.routines-item-delete` at (0,1,0) would lose to it and this rule would
+   have changed nothing on screen. Matching the element as well ties the
+   specificity, and this sheet is imported later, so the error colour wins. */
+button.routines-item-delete { color: var(--md-sys-color-error); }
+button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-error); }
 
 .routines-item-history {
   border-top: 1px solid var(--border);
@@ -1246,16 +1263,32 @@
   color: var(--text-soft);
   font-weight: 500;
 }
+/* The live user bubble. `.msg.user .user-text` in `styles/chat.css` is the
+   rule a reader finds first and is NOT the rule that renders here: this one
+   carries an extra `.app` and therefore outranks it everywhere the chat is
+   actually drawn. Both are written to say the same thing, and
+   `tests/styles/conversation-m3.test.ts` compares them property by
+   property, because the failure mode of letting them drift is an edit to
+   the obvious file that changes nothing on screen.
+
+   What this replaced: a `--selected` fill with white ink and a darkened
+   1px border — a colour outside the M3 role set, hard-coded `#fff`
+   foreground, and a shadow on a surface that does not float. */
 .app .msg.user .user-text {
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--selected) 88%, #000);
-  border-radius: 14px 14px 4px 14px;
-  background: var(--selected);
-  color: #fff;
-  line-height: 1.45;
-  font-size: 13.5px;
-  box-shadow: var(--shadow-xs);
+  padding: 12px 16px;
+  border: none;
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs)
+    var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  box-shadow: var(--md-sys-elevation-0);
 }
+
 .app .msg.user .user-copy-btn {
   color: var(--text-soft);
 }
@@ -1266,9 +1299,27 @@
 .app .msg.assistant .assistant-flow {
   gap: 14px;
 }
+/* The assistant's answer, as the mirrored tonal bubble. It had NO surface
+   at all — `.msg` sets `background: transparent; border: none` and nothing
+   re-added one — so an assistant turn was loose prose on the page and the
+   conversation had one bubble in it rather than two. The tail is on the
+   left here, which is the whole point of an asymmetric corner.
+
+   Only the prose takes the bubble. Tool cards, status pills and the footer
+   are siblings inside `.assistant-flow` and stay outside it, exactly as the
+   mockup draws them: the bubble is the message, not the turn. `max-width`
+   counts the padding, so it grows by the two 16px insets to keep the
+   measure at the 68 characters it was tuned to. */
 .app .msg.assistant .prose-block {
-  max-width: 68ch;
-  color: var(--text);
+  max-width: calc(68ch + 32px);
+  padding: 12px 16px;
+  border-radius:
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-l)
+    var(--md-sys-shape-corner-xs);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   font-size: var(--prose-font-size, 15px);
   line-height: var(--prose-line-height, 1.75);
 }
@@ -1389,23 +1440,42 @@
 .app .task-activity .action-card-body {
   padding: 8px 0;
 }
+/* ----- Tool-call cards (roadmap § 2.4 Wave 5) -------------------------
+   A tool call is a card in the mockup and was nothing at all here: this
+   rule set `border: none; border-radius: 0; background: none` and, being
+   `.app`-prefixed, won over the base rule that was already saying the same
+   thing. Two files agreed the card should not exist. It exists now — a
+   Material Design 3 card at corner-m on `surface-container`, one tone up
+   from the assistant bubble beside it so a run of tool calls reads as a
+   list of cards rather than as indented text.
+
+   `padding: 0` is load-bearing rather than tidy: `.action-card-body >
+   .op-card` in `styles/viewer/code.css` sets `padding: 4px 0` and ties this
+   rule's specificity, so without an explicit reset the card would carry
+   that padding OUTSIDE its own head and the fill would show through above
+   and below the row. */
 .app .op-card {
+  padding: 0;
   border: none;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  transition: background 160ms var(--ease-out);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-0);
+  overflow: hidden;
+  transition: background 160ms var(--md-sys-motion-emphasized);
 }
 .app .op-card:hover {
-  background: none;
+  background: var(--md-sys-color-surface-container-high);
 }
+/* The head fills the card, so it owns the card's padding and draws no
+   corner of its own — a second radius inside a clipped card is a corner
+   nobody sees and a hover fill that stops short of the edge. */
 .app .op-card-head {
-  padding: 4px;
-  gap: 6px;
-  border-radius: var(--radius);
+  padding: 10px 14px;
+  gap: 8px;
+  border-radius: 0;
 }
 .app .op-card-head:hover {
-  background: var(--bg-fill-tertiary);
+  background: var(--ripple);
 }
 /* `.app .op-card` above resets border/background to none; re-assert the live
    code box framing inside the app scope so the streaming panel stays boxed. */
@@ -1469,6 +1539,24 @@
   gap: 6px;
   padding: 4px 0;
   background: transparent;
+}
+
+/* The typing indicator. The mockup draws it as a tonal pill sitting on the
+   assistant's side of the conversation, and it was a bare line of shimmering
+   text with no surface — indistinguishable from a paragraph that happened to
+   be animating. The pill is `surface-container-high`, the same tone as the
+   assistant bubble it precedes, so the turn reads as one thing arriving.
+   Fully rounded rather than the bubble's asymmetric corner: this is a
+   transient status, not a message with a tail. */
+.app .task-activity-current-thinking {
+  width: fit-content;
+  max-width: 100%;
+  min-height: 40px;
+  gap: 10px;
+  padding: 0 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
 }
 .app .task-activity-current-row .op-card-head:hover {
   background: transparent;
@@ -1816,12 +1904,16 @@
   padding: 8px 10px 10px;
   background: transparent;
 }
+/* Inert: the composer is portaled out of `.app`. Kept in step with the
+   fixed-layer twin below anyway, so a reader who edits the file the import
+   graph points at is not editing a rule that says something different from
+   the one that renders. */
 .app .composer-shell {
   padding: 7px;
-  border-color: color-mix(in srgb, var(--border) 84%, var(--border-strong));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg-subtle));
-  box-shadow: var(--shadow-sm);
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-0);
 }
 .chat-composer-fixed-layer .composer-shell {
   /* Vertical breathing room only. The side inset is applied as a margin on the
@@ -1829,9 +1921,9 @@
      content-box width — which is what the shared label-collapse @container in
      chat.css measures — stays full and that breakpoint can remain generic. */
   padding: 6px 0;
-  border-color: var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: none;
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  box-shadow: var(--md-sys-elevation-0);
 }
 /* Inset the staged chips, the input field and the toolbar off the card's
    rounded frame (giving + and Send a real side margin) without shrinking the
@@ -1846,9 +1938,11 @@
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
 }
+/* Focus reads as the primary ring M3 uses everywhere else in this app,
+   rather than a 4%-of-text wash that is invisible on a dark surface. */
 .chat-composer-fixed-layer .composer-shell:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--text) 4%, transparent);
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
 }
 .app .composer.drag-active .composer-shell {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
@@ -1973,16 +2067,16 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-
 }
 .app .composer-row .icon-btn,
 .app .composer-import,
-.app .composer-research,
-.app .composer-send {
+.app .composer-research {
   /* radius-sm to match the unified 28px composer-row control system; this is
-     the later/winning stylesheet, so it owns the + and Send radius. */
+     the later/winning stylesheet, so it owns the + radius. Send is NOT in
+     this group any more: it morphs its own corner on hover (Wave 5) and a
+     flat radius here would have overridden both ends of that animation. */
   border-radius: var(--radius-sm);
 }
 .chat-composer-fixed-layer .composer-row .icon-btn,
 .chat-composer-fixed-layer .composer-import,
-.chat-composer-fixed-layer .composer-research,
-.chat-composer-fixed-layer .composer-send {
+.chat-composer-fixed-layer .composer-research {
   border-radius: var(--radius-sm);
 }
 .app .composer-row .icon-btn,
@@ -1996,6 +2090,12 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-
   min-height: 28px;
   box-sizing: border-box;
 }
+/* The send button's compact geometry, and the morph, stated on both twins.
+   The composer is portaled to `document.body`, so the `.app` copy renders
+   nowhere and the `.chat-composer-fixed-layer` copy is what the user sees;
+   they are kept identical apart from the `min-width` floor the shell copy
+   has always carried, because a rule that silently renders nothing is how a
+   fix gets written into the wrong file and reported as done. */
 .app .composer-send {
   height: 28px;
   min-height: 28px;
@@ -2003,7 +2103,11 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-
   padding: 0 12px;
   font-size: 12.5px;
   font-weight: 600;
-  box-shadow: none;
+  border-radius: var(--md-sys-shape-corner-s);
+  box-shadow: var(--md-sys-elevation-0);
+}
+.app .composer-send:hover:not(:disabled) {
+  border-radius: var(--md-sys-shape-corner-l);
 }
 .chat-composer-fixed-layer .composer-send {
   height: 28px;
@@ -2011,7 +2115,11 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-
   padding: 0 12px;
   font-size: 12.5px;
   font-weight: 600;
-  box-shadow: none;
+  border-radius: var(--md-sys-shape-corner-s);
+  box-shadow: var(--md-sys-elevation-0);
+}
+.chat-composer-fixed-layer .composer-send:hover:not(:disabled) {
+  border-radius: var(--md-sys-shape-corner-l);
 }
 /* The session-mode ("Design"/CLI) toggle and the agent avatar are authored in
    their own components and default to 32px. The composer now mounts under

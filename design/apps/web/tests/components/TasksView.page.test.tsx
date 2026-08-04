@@ -454,16 +454,22 @@ describe('TasksView page shell', () => {
     render(<TasksView />);
 
     const row = (await screen.findByText('Daily digest')).closest('li')!;
-    fireEvent.click(within(row).getByRole('button', { name: 'Pause' }));
+    // The M3 switch (roadmap Wave 4) replaced the Pause/Resume button: one
+    // control, a stable accessible name, state in aria-checked.
+    const toggle = () =>
+      within(row).getByRole('switch', { name: 'Daily digest enabled' });
+
+    expect(toggle().getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle());
 
     await waitFor(() => {
-      expect(within(row).getByRole('button', { name: 'Resume' })).toBeTruthy();
+      expect(toggle().getAttribute('aria-checked')).toBe('false');
     });
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Resume' }));
+    fireEvent.click(toggle());
 
     await waitFor(() => {
-      expect(within(row).getByRole('button', { name: 'Pause' })).toBeTruthy();
+      expect(toggle().getAttribute('aria-checked')).toBe('true');
     });
 
     expect(patchBodies).toEqual([{ enabled: false }, { enabled: true }]);

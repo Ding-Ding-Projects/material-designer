@@ -1,0 +1,173 @@
+/* ============================================================
+   Material Design 3 — Switch
+   ============================================================
+   The component the application never had. Five places in this codebase
+   draw a toggle by hand (`.toggle-switch`, `.compact-toggle-switch`,
+   `.viewer-toggle .switch`, …) and all five are a 36×20 or 30×17 slider
+   with a 14px dot — a shape Material Design 3 does not define. M3's switch
+   is 52×32 with a handle that CHANGES SIZE between states, which is the
+   part every hand-rolled version drops and the part that carries the
+   affordance: off reads as a small dot in a hollow track, on reads as a
+   full handle in a filled one, and the two are told apart by shape as well
+   as by colour.
+
+   Every measurement below is the M3 anatomy, and the geometry is written
+   against the track's CONTENT box, which is 48×28 rather than 52×32
+   because the 2px outline is drawn inside the border box. So a handle M3
+   places 8dp from the track's outer edge sits at 6px here, and one placed
+   4dp from the outer edge sits at 2px. The selected handle's 22px is the
+   same number the mockup wrote, arrived at from the same rule.
+
+   The switch is a `role="switch"` button, not a checkbox wearing CSS: the
+   host owns the state, this file owns the anatomy. Focus is an outline
+   ring rather than the state layer, per the token contract's own note that
+   it expresses focus as an outline.
+   ============================================================ */
+
+.switch {
+  /* The track. 52×32 including the 2px outline, per M3. */
+  position: relative;
+  flex: none;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 52px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    background 250ms var(--md-sys-motion-emphasized),
+    border-color 250ms var(--md-sys-motion-emphasized);
+}
+
+.switch:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+/* Focus is a ring, not a fill — the state layer is reserved for hover and
+   press so a keyboard user and a mouse user are never shown the same thing
+   for two different states. The offset puts the ring clear of the track's
+   own outline instead of doubling it. */
+.switch:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--md-sys-color-primary);
+  border-color: var(--md-sys-color-primary);
+}
+
+/* ---- Handle ---------------------------------------------------------- */
+
+.handle {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-outline);
+  color: var(--md-sys-color-surface-container-highest);
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition:
+    left 280ms var(--md-sys-motion-spring),
+    width 280ms var(--md-sys-motion-spring),
+    height 280ms var(--md-sys-motion-spring),
+    background 250ms var(--md-sys-motion-emphasized),
+    color 250ms var(--md-sys-motion-emphasized);
+}
+
+/* An unselected switch that carries an icon uses the larger handle, because
+   a 16px circle cannot hold a legible glyph. This is M3's own exception and
+   the reason the icon variant looks like the mockup's 24px thumb in both
+   states while the plain variant does not. */
+.switch[data-with-icons='true'] .handle {
+  left: 2px;
+  width: 24px;
+  height: 24px;
+}
+
+.switch[aria-checked='true'] .handle {
+  left: 22px;
+  width: 24px;
+  height: 24px;
+  background: var(--md-sys-color-on-primary);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.switch:hover:not(:disabled) .handle {
+  background: var(--md-sys-color-on-surface-variant);
+}
+
+.switch[aria-checked='true']:hover:not(:disabled) .handle {
+  background: var(--md-sys-color-on-primary);
+}
+
+/* Pressed grows the handle a further 4px, which is M3's press response for
+   this component — a switch has no room to depress, so it swells instead. */
+.switch:active:not(:disabled) .handle {
+  width: 28px;
+  height: 28px;
+}
+
+.switch:active:not(:disabled):not([aria-checked='true']) .handle {
+  left: 0;
+}
+
+.switch:active:not(:disabled)[aria-checked='true'] .handle {
+  left: 20px;
+}
+
+/* ---- State layer ------------------------------------------------------
+   A 40px disc centred on the handle. It is drawn on a pseudo-element of the
+   handle rather than of the track, so it travels with the handle instead of
+   flashing the whole 52px pill — which is what makes the hover read as
+   "this thumb" rather than "this row". */
+.handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  transform: translate(-50%, -50%);
+  transition: background 150ms var(--md-sys-motion-emphasized);
+}
+
+.switch:hover:not(:disabled) .handle::before,
+.switch:active:not(:disabled) .handle::before {
+  background: var(--ripple);
+}
+
+.icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* The icon is only legible on the larger handle, so the plain variant never
+   renders one; when it is present it is sized to the 24px handle. */
+.switch[aria-checked='true'] .icon,
+.switch[data-with-icons='true'] .icon {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .handle,
+  .handle::before {
+    transition: none;
+  }
+}

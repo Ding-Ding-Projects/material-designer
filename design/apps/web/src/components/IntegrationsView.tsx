@@ -133,11 +133,17 @@ export function IntegrationsView({
               data-testid={`integrations-tab-${tab.id}`}
             >
               <span className="integrations-view__tab-label">{integrationTabLabel(tab.id, t)}</span>
-              <span className="integrations-view__tab-hint">{integrationTabHint(tab.id, t)}</span>
             </button>
           );
         })}
       </nav>
+
+      {/* The per-tab hint used to be a second line inside each tab, which is
+          what forced the strip to be a four-column grid of two-line cards
+          rather than the segmented button Material Design 3 defines for a
+          single-select control. No copy is lost: the hint for the selected
+          area is stated here, and every other hint is one tab away. */}
+      <p className="integrations-view__tab-detail">{integrationTabHint(activeTab, t)}</p>
 
       <div className="integrations-view__panel">
         {activeTab === 'mcp' ? <McpClientSection /> : null}

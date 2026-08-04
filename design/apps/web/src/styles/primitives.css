@@ -80,6 +80,20 @@ button.primary {
 }
 button.primary:hover:not(:disabled) { box-shadow: var(--md-sys-elevation-1); }
 
+/* Filled tonal — the variant the app was missing, and the reason two
+ * automation surfaces had no emphasis hierarchy at all. `.btn-primary` and
+ * `.btn-danger` are written on buttons throughout this codebase and neither
+ * class is declared anywhere, so "Run now" rendered as the same grey
+ * container as "Edit" and "Delete" beside it. M3's answer for a recurring
+ * row action is not the filled button — a list of rows each carrying a full
+ * accent reads as a page of calls to action — it is this one:
+ * `primary-container` under `on-primary-container`. */
+button.tonal {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+button.tonal:hover:not(:disabled) { box-shadow: var(--md-sys-elevation-1); }
+
 /* Outlined — a medium-emphasis action that must not compete with the filled one. */
 button.primary-ghost {
   background: transparent;

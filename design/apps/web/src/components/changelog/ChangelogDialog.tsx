@@ -19,10 +19,12 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 
-import { Button, Dialog, DialogBody, DialogHeader, Input } from '@open-design/components';
+import { Button, Dialog, DialogBody, DialogHeader } from '@open-design/components';
 import { Icon } from '../Icon';
 import { useI18n } from '../../i18n';
 import { copyToClipboard } from '../../lib/copy-to-clipboard';
+import { RegexSearchField } from '../regex/RegexSearchField';
+import { useRegexSearch } from '../regex/useRegexSearch';
 import { changelogReleases, type ChangelogEntry, type ChangelogRelease } from '../../lib/changelog';
 import { formatIsoDate } from '../../lib/changelog/dates';
 import {
@@ -80,7 +82,18 @@ export function ChangelogDialog() {
   // Parsing is memoized inside `changelogReleases`, so this costs nothing after
   // the first open — and nothing at all until the viewer is first opened.
   const releases = useMemo<readonly ChangelogRelease[]>(() => (open ? changelogReleases() : []), [open]);
-  const result = useMemo(() => filterChangelog(releases, filter), [filter, releases]);
+  // This dialog's own regex controller, bound to this field's query — not
+  // shared with any other search bar in the application.
+  const searchRegex = useRegexSearch(filter.query, (next) =>
+    setFilter((current) => ({ ...current, query: next })),
+  );
+  // Only handed to the filter in regex mode; plain text keeps the term-splitting
+  // path, which is the behaviour every existing changelog test asserts.
+  const regexMatches = searchRegex.mode === 'regex' ? searchRegex.matches : null;
+  const result = useMemo(
+    () => filterChangelog(releases, filter, regexMatches),
+    [filter, regexMatches, releases],
+  );
 
   const bounds = useMemo(() => {
     let first: string | null = null;
@@ -203,14 +216,17 @@ export function ChangelogDialog() {
       <div className={styles.controls}>
         <label className={styles.search}>
           <span className={styles.searchLabel}>{t('changelog.searchLabel')}</span>
-          <Input
+          {/* This was a bare text input. Every search bar in the product
+              carries the regex builder anchored beside it, and this one — the
+              surface whose own stated requirement names regex search — did
+              not. */}
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('changelog.title')}
+            inputRef={searchRef}
             placeholder={t('changelog.searchPlaceholder')}
-            ref={searchRef}
-            type="search"
-            value={filter.query}
-            onChange={(event) =>
-              setFilter((current) => ({ ...current, query: event.currentTarget.value }))
-            }
+            ariaLabel={t('changelog.searchLabel')}
+            testId="changelog-search"
           />
         </label>
         <ChangelogDateRange

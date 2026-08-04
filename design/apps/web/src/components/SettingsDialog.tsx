@@ -180,6 +180,7 @@ import { ByokModelField } from './byok/ByokModelField';
 import { ByokProviderBaseUrl } from './byok/ByokProviderBaseUrl';
 import { ByokProviderPicker } from './byok/ByokProviderPicker';
 import { openChangelogViewer } from './changelog/open-changelog';
+import { openVersionHistory } from './history/open-history';
 import { byokPreflightBlockReason } from './byok/preflight';
 import {
   blockingByokDraftFields,
@@ -6129,6 +6130,22 @@ export function SettingsDialog({
                   onClick={openChangelogViewer}
                 >
                   {t('changelog.openButton')}
+                </Button>
+              </div>
+              {/* Beside the changelog because they answer the two halves of the
+                  same question: what changed in the build, and what changed in
+                  *your* records. The panel itself is mounted at the app root;
+                  this only dispatches the event. */}
+              <div className="settings-about-diagnostics">
+                <div className="settings-about-diagnostics-text">
+                  <h4>{t('history.title')}</h4>
+                  <p className="hint">{t('history.settingsHint')}</p>
+                </div>
+                <Button
+                  data-testid="settings-open-version-history"
+                  onClick={() => openVersionHistory()}
+                >
+                  {t('history.openButton')}
                 </Button>
               </div>
               <div className="settings-about-diagnostics settings-about-silent-updates">

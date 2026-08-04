@@ -207,6 +207,37 @@ jobs:
           # an assertion, and the error names a module rather than a cause.
           pnpm --filter @open-design/web run build:sidecar
 
+      - name: Rebuild the changelog module from the changelog
+        shell: bash
+        # `lib/changelog/generated.ts` embeds the changelog markdown and every
+        # commit it references, resolved against git. It is committed, so it can
+        # go stale the moment `CHANGELOG.md` is edited — and a stale copy means
+        # the in-app changelog viewer documents the past while claiming to
+        # document the present.
+        #
+        # Regenerating here rather than only checking means the built app always
+        # carries current data even when the committed copy has drifted. The
+        # drift itself is a warning, not a failure: it is untidy, not wrong.
+        #
+        # A commit that does NOT resolve is a different matter and fails the
+        # build, because that is a dead link in a document whose whole promise
+        # is that every entry is traceable to the code that made it.
+        run: |
+          set -euo pipefail
+          node scripts/generate-changelog.mjs
+          if ! git diff --quiet -- design/apps/web/src/lib/changelog/generated.ts; then
+            echo "::warning::the committed changelog module was stale; CI rebuilt it. Run 'node scripts/generate-changelog.mjs' and commit the result."
+          fi
+          # The generator records an abbreviation it could not resolve rather
+          # than emitting a link to it. Any entry in that list is a changelog
+          # line pointing at a commit this repository does not have.
+          unresolved=$(sed -n 's/.*unresolved: \[\(.*\)\].*/\1/p' design/apps/web/src/lib/changelog/generated.ts | tr -d " '\"" )
+          if [ -n "$unresolved" ]; then
+            echo "::error::changelog references commits that do not exist here: $unresolved"
+            exit 1
+          fi
+          echo "changelog module rebuilt; every referenced commit resolved"
+
       - name: Guard, craft lint and translation coverage
         working-directory: design
         shell: bash

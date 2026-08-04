@@ -33,6 +33,7 @@ import { AppearanceRuntime } from './components/appearance/AppearanceRuntime';
 import { NotificationHost } from './components/notifications/NotificationHost';
 import { notify } from './components/notifications/notificationStore';
 import { ChangelogDialog } from './components/changelog/ChangelogDialog';
+import { VersionHistoryDialog } from './components/history/VersionHistoryDialog';
 import { CenteredLoader } from './components/Loading';
 import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
 import { buildPetTaskCenter } from './components/pet/taskCenter';
@@ -41,7 +42,11 @@ import { ProjectView } from './components/ProjectView';
 import { AmrArtifactUpgradeGate } from './components/AmrArtifactUpgradeGate';
 import { AmrArtifactUpgradeHomeCard } from './components/AmrArtifactUpgradeHomeCard';
 import { TooltipLayer } from './components/TooltipLayer';
-import { openWorkspaceTab, WorkspaceTabsBar } from './components/WorkspaceTabsBar';
+import {
+  openWorkspaceTab,
+  WorkspaceTabsBar,
+  WORKSPACE_TAB_PANEL_ID,
+} from './components/WorkspaceTabsBar';
 import { WindowTitleBar } from './components/WindowTitleBar';
 import { AppStatusBar } from './components/AppStatusBar';
 import {
@@ -2760,7 +2765,17 @@ function AppInner() {
           projects={projects}
           onboardingCompleted={config.onboardingCompleted === true}
         />
-        <div className="workspace-shell__body">
+        {/* The panel every workspace tab controls. `aria-controls` has to
+            resolve to a real element, so the shell body — which is what
+            actually holds the active tab's content — is that element, and it
+            takes its id from the tab bar rather than from a second copy of the
+            same string. It is not in the tab order itself: focus belongs on the
+            tabs, and the panel's own controls are reachable from there. */}
+        <div
+          className="workspace-shell__body"
+          id={WORKSPACE_TAB_PANEL_ID}
+          role="tabpanel"
+        >
           {appMain}
         </div>
         {/* Last row of the shell. It is deliberately not listed in
@@ -2789,6 +2804,11 @@ function AppInner() {
           surface later — dispatches CHANGELOG_OPEN_EVENT, so no panel has to
           own its own copy of the viewer. */}
       <ChangelogDialog />
+      {/* Same shape, same reason: mounted once, renders nothing until a
+          surface dispatches HISTORY_OPEN_EVENT. Settings → Data is the way in
+          today; a record's own menu can open history *at* a revision later
+          without any of them owning a second copy of the panel. */}
+      <VersionHistoryDialog />
       <AmrArtifactUpgradeGate
         homeVisible={route.kind === 'home' && route.view === 'home'}
         activeProjectId={route.kind === 'project' ? route.projectId : null}

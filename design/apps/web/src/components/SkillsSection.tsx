@@ -7,6 +7,7 @@ import {
   localizeSkillName,
 } from '../i18n/content';
 import { Icon } from './Icon';
+import { Switch } from './Switch';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import type { AppConfig } from '../types';
@@ -747,18 +748,16 @@ function SkillRow({
               ) : null}
             </>
           )}
-          <label
-            className="toggle-switch toggle-switch-sm skills-row-enable"
-            title={t('settings.libraryToggleLabel')}
-          >
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => onToggleEnabled(e.target.checked)}
-              aria-label={t('settings.libraryToggleLabel')}
-            />
-            <span className="toggle-slider" />
-          </label>
+          {/* The M3 switch (roadmap § 2.4 Wave 4). This was a 30×17
+              `.toggle-switch` with an 11px dot — a shape Material Design 3
+              does not define, and a `<label>` wrapping a checkbox, which a
+              screen reader announces as "checked" rather than as on or off. */}
+          <Switch
+            className="skills-row-enable"
+            checked={enabled}
+            onChange={onToggleEnabled}
+            label={t('settings.libraryToggleLabel')}
+          />
         </div>
       </div>
 

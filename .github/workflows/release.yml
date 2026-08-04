@@ -235,6 +235,34 @@ jobs:
           "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
 
+      - name: Check the packaged application is self-contained
+        if: ${{ steps.pack.outputs.build_json != '' }}
+        shell: bash
+        # The same rule the published site is held to, asked of the artifact a
+        # user actually installs — and asked of the BUILD OUTPUT, not the
+        # source, because a bundler can inline a remote URL that no source file
+        # spells out. The four bundled faces (Roboto Flex, Roboto Mono,
+        # Material Symbols Rounded, Cairo) exist so that this step has nothing
+        # to find; if a font CDN import ever comes back, it fails here rather
+        # than on a stranger's machine with no network.
+        #
+        # It reads the payload path the packer already reported, so it inspects
+        # what was really built rather than a directory guessed at from a
+        # convention. A payload that cannot be read fails the step: the script
+        # refuses to report a pass for a directory it never opened.
+        run: |
+          set -euo pipefail
+          # readFileSync keeps a UTF-8 BOM, which JSON.parse rejects outright —
+          # and PowerShell's Set-Content is exactly the kind of writer that
+          # leaves one. Strip it rather than debug it later.
+          payload=$(node -e "const t=require('fs').readFileSync(process.argv[1],'utf8').replace(/^\uFEFF/,'');process.stdout.write(JSON.parse(t).payloadPath ?? '')" "${{ steps.pack.outputs.build_json }}")
+          if [ -z "$payload" ]; then
+            echo "::error::the packer reported no payload path, so nothing was verified" >&2
+            exit 1
+          fi
+          echo "payload: $payload"
+          bash scripts/check-self-contained.sh "$payload"
+
       - name: Upload the installer as a workflow artifact
         # Always, so a failed smoke test still leaves something to inspect.
         if: ${{ always() && steps.pack.outputs.staged_dir != '' }}

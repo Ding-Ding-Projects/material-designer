@@ -1,0 +1,538 @@
+/* Version-history panel.
+
+   The doubled `.dialog.dialog` selector is deliberate and load-bearing.
+   `Dialog` puts this module's class and the global `modal` class on the same
+   element, and the shared `dialog.module.css` keeps its own rules inside
+   `:where()` — zero specificity — so the global `.modal` in
+   `styles/workspace/mention-home.css` decides every declaration the two share.
+   `.modal` sets `width: 520px`, which is far too narrow for a two-column list
+   and detail. A single `.dialog` here ties `.modal` on specificity and would
+   then be decided by stylesheet order, which nothing in this build guarantees.
+   Doubling the class settles it at 0-2-0 and the panel gets the width it
+   asks for. */
+.dialog.dialog {
+  width: min(1020px, calc(100vw - 32px));
+  max-height: min(86vh, 900px);
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+}
+
+.header {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 22px 0;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 22px 0;
+}
+
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.searchLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.filterToggle {
+  flex: none;
+  gap: 6px;
+}
+
+.filterWarning {
+  margin: 6px 22px 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 22px 0;
+}
+
+.facetGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.facetLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.facets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.facetEmpty {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+/* Filter chip. 32px tall with 12px of horizontal padding is the M3 filter-chip
+   anatomy; the 8px corner is `corner-sm`. */
+.facet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  background: transparent;
+  color: var(--md-sys-color-on-surface, var(--text));
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.facet:hover {
+  background: var(--md-sys-color-surface-container-highest, var(--surface-2));
+}
+
+.facet:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, var(--accent));
+  outline-offset: 2px;
+}
+
+.facetActive {
+  background: var(--md-sys-color-secondary-container, var(--accent-soft));
+  color: var(--md-sys-color-on-secondary-container, var(--text));
+  border-color: transparent;
+}
+
+.facetCount {
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+.clearFilters {
+  align-self: flex-start;
+}
+
+.scopeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 22px 0;
+}
+
+.scope {
+  margin: 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.status {
+  margin: 8px 22px 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.error {
+  margin: 8px 22px 0;
+  font-size: 12px;
+  color: var(--md-sys-color-error, #b3261e);
+}
+
+/* Two columns: the list of revisions, and whatever is selected beside it.
+   `minmax(0, …)` on both tracks so a long label or a wide `<pre>` scrolls its
+   own column instead of pushing the dialog wider than the viewport. */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0;
+  padding: 14px 0 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 20px 22px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+}
+
+.revisions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.revision {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'kind label'
+    'kind meta';
+  column-gap: 10px;
+  row-gap: 2px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  border-radius: var(--md-sys-shape-corner-md, 12px);
+  background: transparent;
+  color: var(--md-sys-color-on-surface, var(--text));
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.revision:hover {
+  background: var(--md-sys-color-surface-container-highest, var(--surface-2));
+}
+
+.revision:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, var(--accent));
+  outline-offset: 2px;
+}
+
+.revisionActive {
+  background: var(--md-sys-color-secondary-container, var(--accent-soft));
+  color: var(--md-sys-color-on-secondary-container, var(--text));
+  border-color: transparent;
+}
+
+.revisionKind {
+  grid-area: kind;
+  align-self: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.revisionLabel {
+  grid-area: label;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.revisionMeta {
+  grid-area: meta;
+  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.loadMore {
+  align-self: center;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 0;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.detail {
+  border-inline-start: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 0 22px 20px;
+}
+
+.detailInner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 640;
+  color: var(--md-sys-color-on-surface, var(--text));
+  overflow-wrap: anywhere;
+}
+
+.detailMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.detailMeta div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detailMeta dt {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.detailMeta dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.details {
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.changeStatus {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.changePath {
+  overflow-wrap: anywhere;
+}
+
+.changeView {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  border-radius: var(--md-sys-shape-corner-sm, 8px);
+  background: transparent;
+  color: var(--md-sys-color-on-surface, var(--text));
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.changeView:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary, var(--accent));
+  outline-offset: 2px;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--md-sys-color-outline-variant, var(--border));
+  border-radius: var(--md-sys-shape-corner-md, 12px);
+  background: var(--md-sys-color-surface-container, var(--surface-1));
+}
+
+.entryMeta {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+  overflow-wrap: anywhere;
+}
+
+.entryRedacted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+/* Stored bytes can be anything a record store wrote, including one enormous
+   line of ciphertext. It scrolls inside its own box; the dialog never widens
+   to fit it. */
+.entryBody {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.restore {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--md-sys-color-outline-variant, var(--border));
+}
+
+.appendOnly {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.restoreLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.retentionFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.retentionField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 140px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.retentionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pruneTitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 640;
+  color: var(--md-sys-color-on-surface, var(--text));
+}
+
+.pruneNothing {
+  margin: 0;
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant, var(--text-muted));
+}
+
+.pruneReview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.pruneReview p {
+  margin: 0;
+}
+
+/* Narrow windows and high display scales get one column, list above detail,
+   rather than two columns squeezed to unreadable. */
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .detail {
+    border-inline-start: none;
+    border-top: 1px solid var(--md-sys-color-outline-variant, var(--border));
+    padding-top: 14px;
+  }
+
+  .list {
+    padding-inline: 22px;
+  }
+}

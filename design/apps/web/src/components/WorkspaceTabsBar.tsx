@@ -20,6 +20,43 @@ import {
   serializeWorkspaceTabsPayload,
   togglePinnedTabId,
 } from './workspace-tabs/tabPinning';
+import {
+  assignTabToGroup,
+  createTabGroup,
+  findTabGroup,
+  groupIdForTab,
+  moveTabGroup,
+  nextTabGroupColor,
+  orderTabsByGroupMembership,
+  partitionTabsByGroup,
+  reconcileTabGroupMembership,
+  removeTabGroup,
+  renameTabGroup,
+  setTabGroupColor,
+  tabGroupDisplayName,
+  toggleTabGroupCollapsed,
+  type TabGroupColor,
+  type TabGroupMembership,
+  type WorkspaceTabGroup,
+} from './workspace-tabs/tabGroups';
+import {
+  reconcileTabGroupDecorations,
+  resetTabGroupDecoration,
+  setTabGroupDecorationProperty,
+  tabGroupDecorationFor,
+  tabGroupDecorationStyle,
+  type TabGroupDecoration,
+  type TabGroupDecorationProperty,
+  type TabGroupDecorations,
+} from './workspace-tabs/groupAppearance';
+import { TabGroupAppearanceEditor } from './workspace-tabs/TabGroupAppearanceEditor';
+import { WorkspaceTabDiscovery } from './workspace-tabs/WorkspaceTabDiscovery';
+import {
+  createWorkspaceTabWindowId,
+  publishWorkspaceTabWindowSnapshot,
+  removeWorkspaceTabWindowSnapshot,
+  WORKSPACE_TAB_WINDOW_HEARTBEAT_MS,
+} from './workspace-tabs/windowRegistry';
 
 type WorkspaceChromeTab =
   | {
@@ -56,6 +93,16 @@ interface WorkspaceTabsState {
    * that function has one.
    */
   pinnedTabIds?: readonly string[];
+  /**
+   * Tab groups, in the order they appear in the strip. Optional for the same
+   * reason `pinnedTabIds` is: the many `{ tabs, activeTabId }` literals in this
+   * file stay valid, and `normalizeTabsState` always returns a reconciled value.
+   */
+  groups?: readonly WorkspaceTabGroup[];
+  /** `tabId -> groupId`. A tab with no entry is ungrouped. */
+  groupMembership?: TabGroupMembership;
+  /** Per-group appearance overrides, keyed by group id. */
+  groupDecorations?: TabGroupDecorations;
 }
 
 interface DisplayTab {
@@ -84,8 +131,16 @@ interface Props {
 }
 
 const STORAGE_KEY = 'open-design:workspace-tabs:v1';
+/**
+ * The id of the element every tab controls.
+ *
+ * `aria-controls` has to point at something that exists, so the shell's body —
+ * the element that actually holds the active tab's content — carries this id
+ * and `role="tabpanel"`. Exported so `App.tsx` sets the same string rather than
+ * a copy of it that can drift.
+ */
+export const WORKSPACE_TAB_PANEL_ID = 'workspace-tab-panel';
 const OPEN_WORKSPACE_TAB_EVENT = 'open-design:workspace-tabs:open';
-const MAX_SEARCH_RESULTS = 80;
 const TAB_DRAG_HAPTIC_MS = 8;
 const TAB_DROP_HAPTIC_MS = 12;
 
@@ -301,11 +356,38 @@ function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
   // what makes a stored pin list survive a tab being closed in another window,
   // a project disappearing, or a hand-edited payload.
   const pinnedTabIds = reconcilePinnedTabIds(state.pinnedTabIds, tabs.map((tab) => tab.id));
-  const ordered = orderTabsWithPinnedFirst(tabs, pinnedTabIds, (tab) => tab.kind === 'entry');
+  const pinnedFirst = orderTabsWithPinnedFirst(tabs, pinnedTabIds, (tab) => tab.kind === 'entry');
+
+  // Groups last, and after the id rewrite above, for the same reason the pins
+  // are: a membership entry can never point at an id that was just regenerated.
+  // Groups themselves survive whether or not anything is in them — an emptied
+  // group is still a group the user named and coloured, and removing it is an
+  // explicit act, never a side effect of dragging its last tab out.
+  const groups = state.groups ?? [];
+  const groupMembership = reconcileTabGroupMembership(
+    state.groupMembership,
+    groups,
+    pinnedFirst.map((tab) => tab.id),
+  );
+  const groupDecorations = reconcileTabGroupDecorations(
+    state.groupDecorations,
+    groups.map((group) => group.id),
+  );
+  // A pinned or permanent tab lives in the sticky region, which sits outside
+  // every group, so grouping only reorders the flowing remainder.
+  const ordered = orderTabsByGroupMembership(
+    pinnedFirst,
+    groups,
+    groupMembership,
+    (tab) => tab.kind === 'entry' || isTabPinned(pinnedTabIds, tab.id),
+  );
   return {
     tabs: ordered,
     activeTabId: activeTabId || ordered[0]!.id,
     pinnedTabIds,
+    groups,
+    groupMembership,
+    groupDecorations,
   };
 }
 
@@ -368,6 +450,13 @@ function initialTabsState(route: Route): WorkspaceTabsState {
         tabs,
         activeTabId: stored.activeTabId || tabs[0]!.id,
         pinnedTabIds: stored.pinnedTabIds,
+        // Group order, membership, collapsed state and per-group decoration all
+        // come back from the same payload as the tabs, so a restart restores
+        // the whole structure rather than a strip of correctly-named tabs in
+        // no groups at all.
+        groups: stored.groups,
+        groupMembership: stored.groupMembership,
+        groupDecorations: stored.groupDecorations,
       },
       route,
     );
@@ -462,10 +551,6 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   return normalizeTabsState({ ...current, tabs: nextTabs, activeTabId: replacement.id });
 }
 
-function normalizeSearch(value: string): string {
-  return value.trim().toLocaleLowerCase();
-}
-
 interface HoverPreviewState {
   tabId: string;
   anchorLeft: number;
@@ -480,8 +565,22 @@ interface TabContextMenuState {
   y: number;
 }
 
+/** Shift+right-click never reaches this: it opens the appearance editor
+ *  directly, so this state only ever describes the full menu. */
+interface GroupContextMenuState {
+  groupId: string;
+  x: number;
+  y: number;
+}
+
+interface GroupAppearanceTarget {
+  groupId: string;
+  anchor: DOMRect;
+}
+
 const HOVER_PREVIEW_DELAY_MS = 380;
 const TAB_CONTEXT_MENU_WIDTH = 208;
+const GROUP_CONTEXT_MENU_WIDTH = 232;
 /** Rows a bulk-close preview shows before it says "and N more". */
 const BULK_CLOSE_PREVIEW_LIMIT = 12;
 
@@ -489,7 +588,6 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   const t = useT();
   const [state, setState] = useState<WorkspaceTabsState>(() => initialTabsState(route));
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
   const [tabsOverflowing, setTabsOverflowing] = useState(false);
   const [tabContextMenu, setTabContextMenu] = useState<TabContextMenuState | null>(null);
@@ -503,7 +601,6 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   const menuRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const hoverTimerRef = useRef<number | null>(null);
   const previousOnboardingCompletedRef = useRef(onboardingCompleted);
   const resetEntryToHomeAfterOnboardingRef = useRef(false);
@@ -512,6 +609,23 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
   const dragHapticTargetRef = useRef<string | null>(null);
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<TabDragTarget | null>(null);
+  const [groupContextMenu, setGroupContextMenu] = useState<GroupContextMenuState | null>(null);
+  const [groupAppearanceTarget, setGroupAppearanceTarget] =
+    useState<GroupAppearanceTarget | null>(null);
+  /**
+   * A tab a discovery search asked to show while its group is collapsed.
+   *
+   * It is deliberately NOT `toggleTabGroupCollapsed`. The collapsed state is a
+   * preference the user set; a search result is permission to see one tab, not
+   * permission to throw that preference away. So the strip renders exactly this
+   * tab out of an otherwise still-collapsed group, and the group is still
+   * collapsed the moment the reveal is cleared.
+   */
+  const [revealedTabId, setRevealedTabId] = useState<string | null>(null);
+  const groupContextMenuRef = useRef<HTMLDivElement | null>(null);
+  /** This window's publisher id for the master search. See `windowRegistry`. */
+  const windowIdRef = useRef<string>('');
+  if (!windowIdRef.current) windowIdRef.current = createWorkspaceTabWindowId();
 
   // While the app is on the onboarding (Welcome) route, opening a new tab
   // would navigate away from onboarding and bypass the Connect gate. Key off
@@ -563,23 +677,10 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     () => new Map(displayTabs.map((tab) => [tab.id, tab])),
     [displayTabs],
   );
-  const filteredTabs = useMemo(() => {
-    const needle = normalizeSearch(query);
-    const source = needle
-      ? displayTabs.filter((tab) => {
-          const haystack = `${tab.title} ${tab.meta}`.toLocaleLowerCase();
-          return haystack.includes(needle);
-        })
-      : displayTabs;
-    return source
-      .slice()
-      .sort((a, b) => b.tab.lastActiveAt - a.tab.lastActiveAt)
-      .slice(0, MAX_SEARCH_RESULTS);
-  }, [displayTabs, query]);
-
-  // The strip's two regions. `normalizeTabsState` has already ordered
-  // `state.tabs` as permanent → pinned → rest, so this is a partition, not a
-  // sort: the sticky container simply takes the leading run.
+  // The strip's regions. `normalizeTabsState` has already ordered `state.tabs`
+  // as permanent → pinned → grouped (in group order) → ungrouped, so these are
+  // partitions, not sorts: the sticky container simply takes the leading run,
+  // and every group's members are already contiguous.
   const stickyTabs = useMemo(
     () => state.tabs.filter(
       (tab) => tab.kind === 'entry' || isTabPinned(state.pinnedTabIds, tab.id),
@@ -592,6 +693,30 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     ),
     [state.tabs, state.pinnedTabIds],
   );
+
+  const groups = useMemo(() => state.groups ?? [], [state.groups]);
+  const groupPartition = useMemo(
+    () => partitionTabsByGroup(flowTabs, groups, state.groupMembership),
+    [flowTabs, groups, state.groupMembership],
+  );
+
+  /** Tabs that are visible in the strip right now, in strip order. Roving focus
+   *  walks exactly this list, so a tab hidden inside a collapsed group is
+   *  skipped rather than being a focus stop nobody can see. */
+  const focusableTabIds = useMemo(() => {
+    const ids = stickyTabs.map((tab) => tab.id);
+    for (const section of groupPartition.sections) {
+      if (!section.group.collapsed) {
+        ids.push(...section.tabs.map((tab) => tab.id));
+        continue;
+      }
+      // A revealed tab is shown out of a collapsed group without expanding it,
+      // so it is focusable while it is on screen.
+      ids.push(...section.tabs.filter((tab) => tab.id === revealedTabId).map((tab) => tab.id));
+    }
+    ids.push(...groupPartition.ungrouped.map((tab) => tab.id));
+    return ids;
+  }, [stickyTabs, groupPartition, revealedTabId]);
 
   // ---- bulk close ----------------------------------------------------------
   // One matcher, two directions. `planBulkClose` is where the negation lives,
@@ -779,13 +904,92 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     }
   }, [state]);
 
+  // Publish this window's strip for the master search in every OTHER window.
+  // Republished on every state change and on a heartbeat, so a window that is
+  // idle but alive never ages past the TTL and vanishes from a search that is
+  // looking straight at it. Removed on unmount, so an orderly close is instant
+  // rather than waiting the TTL out.
   useEffect(() => {
-    if (!tabsMenuOpen) return;
+    if (typeof window === 'undefined') return;
+    const windowId = windowIdRef.current;
+    const publish = () => {
+      publishWorkspaceTabWindowSnapshot(window.localStorage, {
+        windowId,
+        stripId: 'workspace',
+        updatedAt: Date.now(),
+        tabs: displayTabs.map((display) => {
+          const group = findTabGroup(groups, groupIdForTab(state.groupMembership, display.id));
+          return {
+            id: display.id,
+            title: display.title,
+            meta: display.meta,
+            pinned: isTabPinned(state.pinnedTabIds, display.id),
+            active: display.id === state.activeTabId,
+            groupId: group?.id ?? null,
+            groupName: group ? group.name : null,
+            groupCollapsed: group?.collapsed === true,
+          };
+        }),
+      });
+    };
+    publish();
+    const timer = window.setInterval(publish, WORKSPACE_TAB_WINDOW_HEARTBEAT_MS);
+    return () => window.clearInterval(timer);
+  }, [displayTabs, groups, state.groupMembership, state.pinnedTabIds, state.activeTabId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const windowId = windowIdRef.current;
+    const drop = () => removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
+    window.addEventListener('pagehide', drop);
+    return () => {
+      window.removeEventListener('pagehide', drop);
+      drop();
+    };
+  }, []);
+
+  // A revealed tab is a temporary window into a collapsed group. Clear it once
+  // the group is no longer collapsed, or once the tab is gone, so the strip
+  // never keeps a stale exception around.
+  useEffect(() => {
+    if (!revealedTabId) return;
+    const group = findTabGroup(groups, groupIdForTab(state.groupMembership, revealedTabId));
+    const stillHidden = group !== null && group.collapsed
+      && state.tabs.some((tab) => tab.id === revealedTabId);
+    if (!stillHidden) setRevealedTabId(null);
+  }, [revealedTabId, groups, state.groupMembership, state.tabs]);
+
+  // The group context menu dismisses on exactly the same events as the tab one.
+  useEffect(() => {
+    if (!groupContextMenu) return;
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (groupContextMenuRef.current?.contains(target)) return;
+      setGroupContextMenu(null);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setGroupContextMenu(null);
+    }
+    const dismiss = () => setGroupContextMenu(null);
+    document.addEventListener('mousedown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', dismiss);
+    window.addEventListener('blur', dismiss);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', dismiss);
+      window.removeEventListener('blur', dismiss);
+    };
+  }, [groupContextMenu]);
+
+  useEffect(() => {
+    if (!groupContextMenu) return;
     const frame = window.requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
+      groupContextMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [tabsMenuOpen]);
+  }, [groupContextMenu]);
 
   useEffect(() => {
     if (!tabsMenuOpen) return;
@@ -1023,12 +1227,33 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     setState((current) => {
       const normalized = normalizeTabsState(current);
       const tabs = reorderTabsById(normalized.tabs, sourceId, targetId, edge);
-      if (tabs === normalized.tabs) return normalized;
+      // A drop onto a tab in another group moves the dragged tab into that
+      // group — including into no group, when the target is ungrouped. Done
+      // here rather than in `handleStripDrop` so the live drag-over preview and
+      // the committed drop cannot disagree about where the tab lands.
+      const targetGroupId = groupIdForTab(normalized.groupMembership, targetId);
+      const sourceGroupId = groupIdForTab(normalized.groupMembership, sourceId);
+      const groupChanged = targetGroupId !== sourceGroupId;
+      if (tabs === normalized.tabs && !groupChanged) return normalized;
       // Re-normalize so the Home tab is re-pinned to the leftmost slot even when
       // a drop would otherwise have placed a tab before it. Home is the one
       // permanent, non-closable tab and must always sit first.
-      return normalizeTabsState({ ...normalized, tabs });
+      return normalizeTabsState({
+        ...normalized,
+        tabs,
+        groupMembership: groupChanged
+          ? assignTabToGroup(normalized.groupMembership, sourceId, targetGroupId)
+          : normalized.groupMembership,
+      });
     });
+  }
+
+  /** Drop onto a group header: the tab joins that group and lands at its end. */
+  function dropTabIntoGroup(sourceId: string, groupId: string | null) {
+    dismissHoverPreview();
+    updateGroups((current) => ({
+      groupMembership: assignTabToGroup(current.groupMembership, sourceId, groupId),
+    }));
   }
 
   function findTabDropTarget(event: DragEvent<HTMLElement>, sourceId: string): TabDragTarget | null {
@@ -1049,6 +1274,13 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
       return isTabPinned(state.pinnedTabIds, tabId) ? 'pinned' : 'flow';
     };
     const sourceRegion = regionOf(sourceId);
+    // Within the flowing region, a drop onto a tab in ANOTHER group is allowed
+    // and means what it looks like: the dragged tab joins that group. This is
+    // the pointer half of "move tabs into, out of and between groups" — the
+    // keyboard half is the tab context menu. The pinned and permanent regions
+    // stay closed, because `normalizeTabsState` would re-sort a cross-region
+    // drop straight back and an indicator that promises a move which then does
+    // not happen is worse than no indicator.
     const sameRegion = (tabId: string) => regionOf(tabId) === sourceRegion;
 
     const eventTarget = event.target;
@@ -1087,6 +1319,128 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     });
     dismissHoverPreview();
     setTabContextMenu(null);
+  }
+
+  // ---- groups --------------------------------------------------------------
+  // Every mutation goes through `normalizeTabsState`, which is what reconciles
+  // membership against the tabs that actually exist and re-orders the strip so
+  // each group's members stay contiguous. None of them ever closes a tab: a
+  // group that is removed releases its tabs, it does not take them with it.
+
+  function updateGroups(
+    change: (current: WorkspaceTabsState) => Partial<WorkspaceTabsState>,
+  ) {
+    setState((current) => {
+      const normalized = normalizeTabsState(current);
+      return normalizeTabsState({ ...normalized, ...change(normalized) });
+    });
+  }
+
+  function createGroupWithTabs(tabIds: readonly string[] = []) {
+    const id = `group:${nowId()}`;
+    updateGroups((current) => {
+      const existing = current.groups ?? [];
+      const group = createTabGroup({ id, color: nextTabGroupColor(existing) });
+      let membership = current.groupMembership ?? {};
+      for (const tabId of tabIds) membership = assignTabToGroup(membership, tabId, id);
+      return { groups: [...existing, group], groupMembership: membership };
+    });
+    return id;
+  }
+
+  function renameGroup(groupId: string, name: string) {
+    updateGroups((current) => ({ groups: renameTabGroup(current.groups ?? [], groupId, name) }));
+  }
+
+  function recolorGroup(groupId: string, color: TabGroupColor) {
+    updateGroups((current) => ({ groups: setTabGroupColor(current.groups ?? [], groupId, color) }));
+  }
+
+  function toggleGroupCollapsed(groupId: string, next?: boolean) {
+    updateGroups((current) => ({
+      groups: toggleTabGroupCollapsed(current.groups ?? [], groupId, next),
+    }));
+  }
+
+  function reorderGroup(groupId: string, offset: number) {
+    updateGroups((current) => ({ groups: moveTabGroup(current.groups ?? [], groupId, offset) }));
+  }
+
+  function deleteGroup(groupId: string) {
+    updateGroups((current) => {
+      // `removeTabGroup` names its second field `membership`; the state's field is
+      // `groupMembership`. Mapping it explicitly rather than spreading is what
+      // stops the rename from being a silent no-op.
+      const next = removeTabGroup(current.groups ?? [], current.groupMembership, groupId);
+      return { groups: next.groups, groupMembership: next.membership };
+    });
+    setGroupContextMenu(null);
+    setGroupAppearanceTarget((target) => (target?.groupId === groupId ? null : target));
+  }
+
+  function moveTabToGroup(tabId: string, groupId: string | null) {
+    updateGroups((current) => ({
+      groupMembership: assignTabToGroup(current.groupMembership, tabId, groupId),
+    }));
+    setTabContextMenu(null);
+  }
+
+  function changeGroupDecoration<K extends TabGroupDecorationProperty>(
+    groupId: string,
+    property: K,
+    value: TabGroupDecoration[K] | undefined,
+  ) {
+    updateGroups((current) => ({
+      groupDecorations: setTabGroupDecorationProperty(
+        current.groupDecorations,
+        groupId,
+        property,
+        value,
+      ),
+    }));
+  }
+
+  function resetGroupDecoration(groupId: string) {
+    updateGroups((current) => ({
+      groupDecorations: resetTabGroupDecoration(current.groupDecorations, groupId),
+    }));
+  }
+
+  /**
+   * Roving focus across the strip.
+   *
+   * Exactly one tab is in the tab order at a time (the active one), and the
+   * arrow keys move focus between the tabs that are actually on screen —
+   * `focusableTabIds` skips anything inside a collapsed group, because a focus
+   * stop the user cannot see is worse than no focus stop at all. Home and End
+   * jump to the ends, which is what a `tablist` is expected to do.
+   */
+  function handleTabKeyDown(tabId: string, event: React.KeyboardEvent<HTMLElement>) {
+    const ids = focusableTabIds;
+    const index = ids.indexOf(tabId);
+    if (index < 0) return;
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % ids.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + ids.length) % ids.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = ids.length - 1;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    const nextId = ids[nextIndex];
+    if (!nextId) return;
+    // Found by walking rather than by building a selector: a tab id is
+    // generated text, and one stray quote in an attribute selector throws
+    // rather than missing.
+    const strip = stripRef.current;
+    if (strip) {
+      for (const element of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
+        if (element.dataset.workspaceTabId !== nextId) continue;
+        element.querySelector<HTMLElement>('.workspace-tab__main')?.focus();
+        break;
+      }
+    }
+    const nextTab = state.tabs.find((tab) => tab.id === nextId);
+    if (nextTab) activateTab(nextTab);
   }
 
   /**
@@ -1193,11 +1547,38 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
     setTabContextMenu({ tabId, x: event.clientX, y: event.clientY });
   }
 
+  /**
+   * Right-click on a group header.
+   *
+   * Plain right-click opens the full group menu, which carries **Edit group
+   * appearance…** among the rest. Shift+right-click skips the menu and opens
+   * that editor directly, anchored at the pointer — the platform can tell the
+   * modifier apart here, so the shortcut exists; the menu item is what makes it
+   * reachable when it cannot.
+   */
+  function openGroupContextMenu(groupId: string, event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    dismissHoverPreview();
+    if (event.shiftKey) {
+      setGroupContextMenu(null);
+      setGroupAppearanceTarget({
+        groupId,
+        anchor: event.currentTarget instanceof HTMLElement
+          ? event.currentTarget.getBoundingClientRect()
+          : new DOMRect(event.clientX, event.clientY, 0, 0),
+      });
+      return;
+    }
+    setGroupContextMenu({ groupId, x: event.clientX, y: event.clientY });
+  }
+
   function renderTabContextMenu(menu: TabContextMenuState) {
     const tab = state.tabs.find((item) => item.id === menu.tabId);
     if (!tab) return null;
     const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
     const pinned = isTabPinned(state.pinnedTabIds, tab.id);
+    const currentGroupId = groupIdForTab(state.groupMembership, tab.id);
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
     return (
@@ -1251,6 +1632,152 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         >
           <Icon name="search" size={13} aria-hidden />
           <span>{t('workspaceTabs.bulkCloseTitle')}</span>
+        </button>
+        {tab.kind === 'entry' ? null : (
+          <>
+            {/* The keyboard half of moving a tab into, out of and between
+                groups. Every destination is a real menu item rather than a
+                submenu, so it is reachable with Tab and Enter alone. */}
+            <p className={styles.contextMenuNote}>{t('workspaceTabs.groupMoveTabHeading')}</p>
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.contextMenuItem}
+              aria-current={currentGroupId === null ? 'true' : undefined}
+              onClick={() => moveTabToGroup(tab.id, null)}
+            >
+              <Icon name="minus" size={13} aria-hidden />
+              <span>{t('workspaceTabs.groupNone')}</span>
+            </button>
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                role="menuitem"
+                className={styles.contextMenuItem}
+                aria-current={currentGroupId === group.id ? 'true' : undefined}
+                onClick={() => moveTabToGroup(tab.id, group.id)}
+              >
+                <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
+                <span>{tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'))}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.contextMenuItem}
+              onClick={() => {
+                setTabContextMenu(null);
+                createGroupWithTabs([tab.id]);
+              }}
+            >
+              <Icon name="plus" size={13} aria-hidden />
+              <span>{t('workspaceTabs.groupNewFromTab')}</span>
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  /**
+   * The group header's own menu.
+   *
+   * Normal right-click keeps the complete group-management menu — collapse,
+   * reorder, recolour, remove — and includes **Edit group appearance…**.
+   * Shift+right-click opens that editor directly, and the caller decides which
+   * happened, so this renderer never has to know about the modifier.
+   */
+  function renderGroupContextMenu(menu: GroupContextMenuState) {
+    const group = groups.find((item) => item.id === menu.groupId);
+    if (!group) return null;
+    const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
+    const index = groups.findIndex((item) => item.id === group.id);
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    return (
+      <div
+        className={styles.contextMenu}
+        style={{
+          left: Math.max(4, Math.min(viewportWidth - GROUP_CONTEXT_MENU_WIDTH - 4, menu.x)),
+          top: Math.max(4, Math.min(viewportHeight - 200, menu.y)),
+          width: GROUP_CONTEXT_MENU_WIDTH,
+        }}
+        role="menu"
+        aria-label={name}
+        ref={groupContextMenuRef}
+      >
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          onClick={() => {
+            setGroupContextMenu(null);
+            toggleGroupCollapsed(group.id);
+          }}
+        >
+          <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={13} aria-hidden />
+          <span>
+            {group.collapsed
+              ? t('workspaceTabs.groupExpand')
+              : t('workspaceTabs.groupCollapse')}
+          </span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          disabled={index <= 0}
+          onClick={() => reorderGroup(group.id, -1)}
+        >
+          <Icon name="chevron-left" size={13} aria-hidden />
+          <span>{t('workspaceTabs.groupMoveEarlier')}</span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          disabled={index >= groups.length - 1}
+          onClick={() => reorderGroup(group.id, 1)}
+        >
+          <Icon name="chevron-right" size={13} aria-hidden />
+          <span>{t('workspaceTabs.groupMoveLater')}</span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          onClick={() => {
+            setGroupContextMenu(null);
+            setTabsMenuOpen(true);
+          }}
+        >
+          <Icon name="search" size={13} aria-hidden />
+          <span>{t('workspaceTabs.searchGroupsHeading')}</span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          onClick={() => {
+            setGroupContextMenu(null);
+            setGroupAppearanceTarget({
+              groupId: group.id,
+              anchor: new DOMRect(menu.x, menu.y, 0, 0),
+            });
+          }}
+        >
+          <Icon name="palette" size={13} aria-hidden />
+          <span>{t('workspaceTabs.groupEditAppearance')}</span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          className={styles.contextMenuItem}
+          onClick={() => deleteGroup(group.id)}
+        >
+          <Icon name="close" size={13} aria-hidden />
+          <span>{t('workspaceTabs.groupRemove')}</span>
         </button>
       </div>
     );
@@ -1438,9 +1965,17 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}${compactClass}`}
         data-workspace-tab-id={tab.id}
         data-workspace-tab-pinned={userPinned ? 'true' : undefined}
-        role="tab"
-        aria-selected={active}
-        aria-describedby={hoverPreview?.tabId === tab.id ? 'workspace-tab-preview' : undefined}
+        // Read by `.groupSection [data-workspace-tab-revealed='true']` in the
+        // module stylesheet, which is what visibly marks a tab that a search
+        // pulled out of a still-collapsed group.
+        data-workspace-tab-revealed={revealedTabId === tab.id ? 'true' : undefined}
+        // `role="presentation"` here and `role="tab"` on the button below. The
+        // tab is the thing that takes focus, so it has to BE the focusable
+        // element; a `role="tab"` wrapper around a button gives the tablist a
+        // tab that focus never lands on and a button the tablist does not know
+        // about. The close control stays outside the tab role for the same
+        // reason — a `tab` must not own another interactive element.
+        role="presentation"
         draggable={!isPinned && state.tabs.length > 1}
         onDragStart={(event) => handleTabDragStart(tab.id, event)}
         onDragEnd={handleTabDragEnd}
@@ -1451,9 +1986,30 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         <button
           type="button"
           className="workspace-tab__main od-tooltip"
+          id={`workspace-tab-${tab.id}`}
+          role="tab"
+          aria-selected={active}
+          aria-controls={WORKSPACE_TAB_PANEL_ID}
+          aria-describedby={hoverPreview?.tabId === tab.id ? 'workspace-tab-preview' : undefined}
+          // Roving focus: exactly one tab is in the tab order, and the arrows
+          // move between the rest.
+          tabIndex={active ? 0 : -1}
+          onKeyDown={(event) => handleTabKeyDown(tab.id, event)}
           onClick={() => openTab(tab)}
+          // A compact pinned tab renders icon-only, so its accessible name has
+          // to come from `aria-label`; an ordinary tab's name is its visible
+          // text and must NOT also carry an aria-label, or the same string
+          // becomes two competing names.
           aria-label={userPinned ? display.title : undefined}
-          title={userPinned ? display.title : undefined}
+          // `title` is for the sighted user, always. An ordinary tab's label is
+          // capped at 250px and truncates to an ellipsis — "Welcome t…" — and
+          // without this there is no way to recover the rest of it with a
+          // pointer. It bites hardest in bilingual mode, where every label
+          // carries both languages and is therefore the longest the product
+          // ever renders. Screen readers prefer the accessible name over
+          // `title`, so this adds a hover affordance rather than a second
+          // announcement.
+          title={display.title}
           data-tooltip={userPinned ? display.title : undefined}
           data-tooltip-placement="bottom"
           onFocus={(event) => scheduleHoverPreview(tab.id, event.currentTarget.parentElement ?? event.currentTarget)}
@@ -1477,6 +2033,82 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
             <Icon name="close" size={10} />
           </button>
         )}
+      </div>
+    );
+  }
+
+  /**
+   * One group: its header, then its members.
+   *
+   * The header is a `presentation` wrapper around a real button, exactly as a
+   * tab is, so the tablist's children stay tabs and the header is still a
+   * first-class keyboard control. Its decoration arrives as custom properties
+   * on the wrapper — `WorkspaceTabsBar.module.css` reads every one of them with
+   * a fallback, so an unset property follows the theme rather than a snapshot
+   * of it, and a decorated group still announces its real name and state.
+   */
+  function renderGroupSection(section: { group: WorkspaceTabGroup; tabs: WorkspaceChromeTab[] }) {
+    const { group } = section;
+    const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
+    const decoration = tabGroupDecorationFor(state.groupDecorations, group.id);
+    const visibleTabs = group.collapsed
+      ? section.tabs.filter((tab) => tab.id === revealedTabId)
+      : section.tabs;
+    return (
+      <div
+        key={group.id}
+        className={styles.groupSection}
+        data-tab-group-id={group.id}
+        data-tab-group-color={group.color}
+        data-tab-group-collapsed={group.collapsed ? 'true' : undefined}
+        style={tabGroupDecorationStyle(decoration)}
+        role="presentation"
+        onDragOver={(event) => {
+          if (!draggingTabIdRef.current) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+        }}
+        onDrop={(event) => {
+          const sourceId = draggingTabIdRef.current ?? event.dataTransfer.getData('text/plain');
+          if (!sourceId) return;
+          event.preventDefault();
+          event.stopPropagation();
+          dropTabIntoGroup(sourceId, group.id);
+          draggingTabIdRef.current = null;
+          setDragOverTarget(null);
+          setDraggingTabId(null);
+        }}
+      >
+        <button
+          type="button"
+          className={styles.groupHeader}
+          aria-expanded={!group.collapsed}
+          // One accessible name, built from the parts a reader needs: which
+          // group, and how many tabs are in it. The count is in the name rather
+          // than in a separate visually-hidden node so it cannot be announced
+          // twice.
+          aria-label={`${name} — ${t('workspaceTabs.groupTabCount', { count: section.tabs.length })}`}
+          // Sighted-user affordance only. A group name is capped in the strip
+          // and truncates exactly as a tab label does; bilingual mode makes
+          // that the common case rather than the edge one.
+          title={name}
+          onClick={() => toggleGroupCollapsed(group.id)}
+          onContextMenu={(event) => openGroupContextMenu(group.id, event)}
+        >
+          {decoration.badge ? (
+            <span className={styles.groupBadge} aria-hidden>
+              {decoration.badge}
+            </span>
+          ) : (
+            <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
+          )}
+          <span className={styles.groupLabel}>{name}</span>
+          <span className={styles.groupCount} aria-hidden>
+            {section.tabs.length}
+          </span>
+          <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={11} aria-hidden />
+        </button>
+        {visibleTabs.map((tab) => renderTab(tab, false))}
       </div>
     );
   }
@@ -1508,7 +2140,12 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
         <div className={styles.pinnedRegion} role="presentation">
           {stickyTabs.map((tab) => renderTab(tab, tab.kind !== 'entry'))}
         </div>
-        {flowTabs.map((tab) => renderTab(tab, false))}
+        {/* Grouped tabs first, in group order, each behind its own header;
+            then everything the user has not filed. `normalizeTabsState` has
+            already made each group's members contiguous in `state.tabs`, so
+            this renders the strip in exactly the order the payload stores. */}
+        {groupPartition.sections.map((section) => renderGroupSection(section))}
+        {groupPartition.ungrouped.map((tab) => renderTab(tab, false))}
         <button
           type="button"
           className="workspace-tabs-new-btn od-tooltip"
@@ -1561,90 +2198,40 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
                 aria-label="Search tabs"
                 ref={popoverRef}
               >
-                <div className="workspace-tabs-search">
-                  <Icon name="search" size={14} />
-                  <input
-                    ref={searchInputRef}
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search tabs"
-                    aria-label="Search tabs"
-                  />
-                </div>
-                <div className="workspace-tabs-popover__section">
-                  <span>Open tabs</span>
-                  <span>{state.tabs.length}</span>
-                </div>
-                <div className="workspace-tabs-list" role="listbox" aria-label="Open tabs">
-                  {filteredTabs.length > 0 ? (
-                    filteredTabs.map((display) => {
-                      const active = display.id === state.activeTabId;
-                      return (
-                        <div
-                          key={display.id}
-                          className={`workspace-tabs-list__item${active ? ' is-active' : ''}`}
-                          role="option"
-                          aria-selected={active}
-                        >
-                          <button
-                            type="button"
-                            className="workspace-tabs-list__main od-tooltip"
-                            onClick={() => openTab(display.tab)}
-                            title={display.title}
-                            data-tooltip={display.title}
-                            data-tooltip-placement="right"
-                          >
-                            <span className="workspace-tabs-list__icon" aria-hidden>
-                              <Icon name={display.icon} size={15} />
-                            </span>
-                            <span className="workspace-tabs-list__text">
-                              <span className="workspace-tabs-list__title">{display.title}</span>
-                              <span className="workspace-tabs-list__meta">{display.meta}</span>
-                            </span>
-                          </button>
-                          {display.tab.kind === 'entry' ? null : (
-                            <button
-                              type="button"
-                              className={`${styles.listPin} od-tooltip`}
-                              onClick={() => setTabPinned(
-                                display.id,
-                                !isTabPinned(state.pinnedTabIds, display.id),
-                              )}
-                              aria-pressed={isTabPinned(state.pinnedTabIds, display.id)}
-                              title={isTabPinned(state.pinnedTabIds, display.id)
-                                ? t('workspaceTabs.unpin')
-                                : t('workspaceTabs.pin')}
-                              data-tooltip={isTabPinned(state.pinnedTabIds, display.id)
-                                ? t('workspaceTabs.unpin')
-                                : t('workspaceTabs.pin')}
-                              data-tooltip-placement="left"
-                              aria-label={isTabPinned(state.pinnedTabIds, display.id)
-                                ? t('workspaceTabs.unpin')
-                                : t('workspaceTabs.pin')}
-                            >
-                              <Icon name="star" size={12} />
-                            </button>
-                          )}
-                          {display.tab.kind === 'entry' ? null : (
-                            <button
-                              type="button"
-                              className="workspace-tabs-list__close od-tooltip"
-                              onClick={() => closeTab(display.id)}
-                              title={t('common.close')}
-                              data-tooltip={t('common.close')}
-                              data-tooltip-placement="left"
-                              aria-label={t('common.close')}
-                            >
-                              <Icon name="close" size={11} />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="workspace-tabs-empty">No tabs found</div>
-                  )}
-                </div>
+                {/* All four discovery searches, each with its own controller
+                    and therefore its own anchored builder. See the header
+                    comment in `WorkspaceTabDiscovery.tsx` for why a single
+                    field with a scope selector is a different feature. */}
+                <WorkspaceTabDiscovery
+                  tabs={displayTabs.map((display) => ({
+                    id: display.id,
+                    title: display.title,
+                    meta: display.meta,
+                    pinned: isTabPinned(state.pinnedTabIds, display.id),
+                    permanent: display.tab.kind === 'entry',
+                    active: display.id === state.activeTabId,
+                    groupId: groupIdForTab(state.groupMembership, display.id),
+                  }))}
+                  groups={groups}
+                  windowId={windowIdRef.current}
+                  onActivate={(tabId) => {
+                    const tab = state.tabs.find((item) => item.id === tabId);
+                    if (tab) openTab(tab);
+                  }}
+                  onClose={closeTab}
+                  onTogglePin={(tabId) =>
+                    setTabPinned(tabId, !isTabPinned(state.pinnedTabIds, tabId))}
+                  onReveal={(tabId) => setRevealedTabId(tabId)}
+                  onCreateGroup={() => createGroupWithTabs()}
+                  onRenameGroup={renameGroup}
+                  onSetGroupColor={recolorGroup}
+                  onToggleCollapsed={(groupId) => toggleGroupCollapsed(groupId)}
+                  onMoveGroup={reorderGroup}
+                  onRemoveGroup={deleteGroup}
+                  onAssignTab={moveTabToGroup}
+                  onEditGroupAppearance={(groupId, anchor) =>
+                    setGroupAppearanceTarget({ groupId, anchor })}
+                />
                 {renderBulkClosePanel()}
               </div>,
               document.body,
@@ -1654,6 +2241,23 @@ export function WorkspaceTabsBar({ route, projects, onboardingCompleted = false 
       {tabContextMenu && typeof document !== 'undefined'
         ? createPortal(renderTabContextMenu(tabContextMenu), document.body)
         : null}
+      {groupContextMenu && typeof document !== 'undefined'
+        ? createPortal(renderGroupContextMenu(groupContextMenu), document.body)
+        : null}
+      {groupAppearanceTarget && findTabGroup(groups, groupAppearanceTarget.groupId) ? (
+        <TabGroupAppearanceEditor
+          group={findTabGroup(groups, groupAppearanceTarget.groupId)!}
+          decoration={tabGroupDecorationFor(
+            state.groupDecorations,
+            groupAppearanceTarget.groupId,
+          )}
+          anchor={groupAppearanceTarget.anchor}
+          onChange={(property, value) =>
+            changeGroupDecoration(groupAppearanceTarget.groupId, property, value)}
+          onResetAll={() => resetGroupDecoration(groupAppearanceTarget.groupId)}
+          onClose={() => setGroupAppearanceTarget(null)}
+        />
+      ) : null}
       {hoverPreview && typeof document !== 'undefined' && !tabsMenuOpen
         ? createPortal(
             (() => {

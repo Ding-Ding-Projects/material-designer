@@ -225,7 +225,7 @@ describe('PreviewDrawOverlay', () => {
     expect(subTools[0]?.style.color).toBe('rgb(255, 255, 255)');
     expect(subTools[0]?.parentElement?.style.background).toBe('transparent');
     expect(subTools[0]?.parentElement?.style.borderStyle).toBe('none');
-    expect(subTools[0]?.querySelector('.ri-arrow-down-s-line')).toBeTruthy();
+    expect(subTools[0]?.querySelector('[data-symbol="keyboard_arrow_down"]')).toBeTruthy();
     expect(noteActions?.style.flex).toBe('1 1 360px');
     expect(noteActions?.style.minWidth).toBe('0px');
     expect(noteActions?.style.maxWidth).toBe('420px');

@@ -173,14 +173,21 @@ describe('RoutinesSection', () => {
     const row = await screen.findByText('Morning briefing');
     const card = row.closest('li')!;
 
-    fireEvent.click(within(card).getByRole('button', { name: 'Pause' }));
+    // Pause/resume is the M3 switch now (roadmap Wave 4), so the control has
+    // ONE stable accessible name and reports its state through aria-checked
+    // rather than by renaming itself between two words.
+    const toggle = () =>
+      within(card).getByRole('switch', { name: 'Morning briefing enabled' });
+
+    expect(toggle().getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle());
     await waitFor(() => {
-      expect(within(card).getByRole('button', { name: 'Resume' })).toBeTruthy();
+      expect(toggle().getAttribute('aria-checked')).toBe('false');
     });
 
-    fireEvent.click(within(card).getByRole('button', { name: 'Resume' }));
+    fireEvent.click(toggle());
     await waitFor(() => {
-      expect(within(card).getByRole('button', { name: 'Pause' })).toBeTruthy();
+      expect(toggle().getAttribute('aria-checked')).toBe('true');
     });
 
     expect(patchBodies).toEqual([{ enabled: false }, { enabled: true }]);
@@ -842,11 +849,18 @@ describe('RoutinesSection', () => {
 
     const row = await screen.findByText('Morning briefing');
     const card = row.closest('li')!;
-    fireEvent.click(within(card).getByRole('button', { name: 'Pause' }));
+    const toggle = within(card).getByRole('switch', { name: 'Morning briefing enabled' });
+    fireEvent.click(toggle);
 
     expect((await screen.findByRole('alert')).textContent).toContain('scheduler unavailable');
-    expect(within(card).getByRole('button', { name: 'Pause' })).toBeTruthy();
-    expect(within(card).queryByRole('button', { name: 'Resume' })).toBeNull();
+    // The switch is stateless and the host owns `checked`: a failed PATCH
+    // leaves the automation enabled, so the control must still read as on
+    // rather than having flipped optimistically to a state the daemon
+    // rejected.
+    expect(
+      within(card).getByRole('switch', { name: 'Morning briefing enabled' })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
   });
 
   it('edits an existing routine and PATCHes the updated fields', async () => {

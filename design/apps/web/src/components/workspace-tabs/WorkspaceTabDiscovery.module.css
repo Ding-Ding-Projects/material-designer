@@ -1,0 +1,400 @@
+/* The four discovery searches. Component-owned, so it lives beside the
+   component rather than in a global sheet.
+
+   The whole panel is one scroll container with a bounded height: four sections,
+   each of which can list eighty results, must not push the last one past the
+   bottom of the viewport with nothing to say it is there. */
+
+.discovery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px;
+  max-height: min(520px, calc(100vh - 120px));
+  overflow-y: auto;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sectionNote {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* The field host. `RegexSearchField` puts the input and its builder affordance
+   side by side inside this, so it only has to be a flex row that fills. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  /* Bounded AND scrollable. Capping without this deletes the last rows with no
+     scrollbar to say anything is missing. */
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.rowMain:hover:not(:disabled) {
+  background: var(--bg-panel);
+}
+
+.rowMain:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.rowMain[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.rowMain:focus-visible,
+.rowAction:focus-visible,
+.groupAction:focus-visible,
+.groupColorSwatch:focus-visible,
+.newGroup:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.rowTitle {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.rowMeta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.rowAction {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.rowAction:hover:not(:disabled) {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.rowAction[aria-pressed='true'] {
+  color: var(--accent);
+}
+
+.empty {
+  margin: 0;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+/* -------- Groups ------------------------------------------------------- */
+
+.newGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.newGroup:hover:not(:disabled) {
+  background: var(--bg-panel);
+  color: var(--text);
+}
+
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.groupCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--wt-group-swatch);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+}
+
+/* The six group colours. The payload stores the NAME (`sky`), never a hex
+   value, so a theme change moves the colour and a stored group survives it.
+   Every selector is anchored on a local class so the module scopes it — a bare
+   `[data-tab-group-color]` rule would leak into the global cascade. */
+.groupCard[data-tab-group-color='sky'],
+.groupColorSwatch[data-tab-group-color='sky'] {
+  --wt-group-swatch: #4c8dff;
+}
+
+.groupCard[data-tab-group-color='grape'],
+.groupColorSwatch[data-tab-group-color='grape'] {
+  --wt-group-swatch: #a97bff;
+}
+
+.groupCard[data-tab-group-color='citrus'],
+.groupColorSwatch[data-tab-group-color='citrus'] {
+  --wt-group-swatch: #f0a02a;
+}
+
+.groupCard[data-tab-group-color='moss'],
+.groupColorSwatch[data-tab-group-color='moss'] {
+  --wt-group-swatch: #3fb07a;
+}
+
+.groupCard[data-tab-group-color='clay'],
+.groupColorSwatch[data-tab-group-color='clay'] {
+  --wt-group-swatch: #e2705a;
+}
+
+.groupCard[data-tab-group-color='slate'],
+.groupColorSwatch[data-tab-group-color='slate'] {
+  --wt-group-swatch: #7c8899;
+}
+
+.groupCardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.groupSwatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: var(--wt-group-swatch);
+}
+
+.groupName {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.groupName:hover {
+  border-color: var(--border);
+}
+
+.groupName:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.groupCount {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.groupActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.groupAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.groupAction:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+.groupAction:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.groupColors {
+  display: flex;
+  gap: 4px;
+}
+
+.groupColorSwatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--wt-group-swatch);
+}
+
+.groupColorSwatch[aria-pressed='true'] {
+  border-color: var(--text);
+  box-shadow: 0 0 0 2px var(--bg-panel), 0 0 0 3px var(--wt-group-swatch);
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addLabel {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.addSelect {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* Narrow chrome: the action pills wrap rather than overflowing, and the
+   sections lose their inner padding before they lose their content. */
+@media (max-width: 480px) {
+  .discovery {
+    padding: 6px;
+  }
+
+  .section {
+    padding: 6px;
+  }
+
+  .addRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowMain,
+  .rowAction,
+  .groupAction,
+  .newGroup {
+    transition: none;
+  }
+}

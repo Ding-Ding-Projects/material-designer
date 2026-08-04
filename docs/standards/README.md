@@ -54,6 +54,7 @@ each has its own article because each guards a distinct failure.
 | [context-menu-shortcuts.md](context-menu-shortcuts.md) | Every context-menu item shows the shortcut that actually works in that context, derived from the binding registry — and every context menu carries its own search. |
 | [long-operations.md](long-operations.md) | A long operation reports real progress in the surface that started it, guards against re-entry in the handler, and offers its recovery route where the failure appeared. |
 | [external-editor.md](external-editor.md) | Detect installed editors, persist the choice, degrade clearly — and open every export in one action, as a workspace root. |
+| [typography-and-icons.md](typography-and-icons.md) | The three Material Design 3 faces and the icon font: which files ship, from where, under which licence, which variable axes are live, and the CJK fallback the twenty locales depend on. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.
@@ -83,7 +84,7 @@ section names.
 | 12 | Startup dim sum surprise | **Not present in the application.** The bundled catalogue is complete and verified — 24 dishes, 24 images. The mockup draws the surprise with a forbidden off switch. | [dim-sum-surprise.md](dim-sum-surprise.md) |
 | 13 | Release code name + line count | **Machinery built, and releases have been published.** The release workflow now runs the counter with attribution enabled. Whether a published release's notes carried the resulting table has not been checked here. | [releases.md](releases.md) |
 | 14 | Accessibility and sizing | **Not started.** Stated as an intent in the mockup; never measured, because no interface has been audited. | [accessibility.md](accessibility.md) |
-| 15 | All assets bundled locally | **Not met in the application.** The interface stylesheet imports a font family from a third-party origin, and the preview runtime fetches a framework and a compiler at runtime. Met on the documentation site. | [local-assets.md](local-assets.md) |
+| 15 | All assets bundled locally | **Fonts met; the preview runtime is not.** Every typeface now ships locally — Cairo at `45ff210`, then Roboto Flex, Roboto Mono and Material Symbols Rounded, with the publish-time self-contained check extended to the packed application. The preview runtime still fetches a framework and a compiler. Met on the documentation site. | [local-assets.md](local-assets.md) |
 | 16 | Docs, changelog and roadmap current each task | **In force.** This documentation tree is the first instance. | [documentation-currency.md](documentation-currency.md) |
 
 | Rule | Status | File |
@@ -92,6 +93,7 @@ section names.
 | Context-menu shortcuts and menu search | **Shortcut labels designed and not built; the per-menu search is neither.** | [context-menu-shortcuts.md](context-menu-shortcuts.md) |
 | Long operations report progress | **Designed, not built.** | [long-operations.md](long-operations.md) |
 | External editor integration | **Partial upstream.** Editors are detected and a project opens in one; exports have no hand-off. | [external-editor.md](external-editor.md) |
+| The three M3 faces, bundled | **Bundled and wired; never seen rendered.** Roboto Flex, Roboto Mono and Material Symbols Rounded now ship as local assets with a CJK-safe fallback, and 94 of 95 icon call sites moved to the symbol font. No glyph has been photographed. | [typography-and-icons.md](typography-and-icons.md) |
 
 > [!NOTE]
 > **Some sibling files carry status text written before commit `dea6b0a`**, which

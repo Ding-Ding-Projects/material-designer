@@ -37,6 +37,7 @@ import { fetchAgents } from '../providers/registry';
 import type { AgentInfo } from '../types';
 import { isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { Icon } from './Icon';
+import { Switch } from './Switch';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { useT } from '../i18n';
@@ -780,14 +781,19 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
       }`}
     >
       <div className="mcp-row-head">
-        <label className="mcp-row-toggle" title={row.enabled ? 'Enabled' : 'Disabled'}>
-          <input
-            type="checkbox"
-            checked={row.enabled}
-            onChange={(e) => onChange({ enabled: e.target.checked })}
-            aria-label="Enable this MCP server"
-          />
-        </label>
+        {/* The M3 switch (roadmap § 2.4 Wave 4). This row enabled a server
+            with a RAW `<input type="checkbox">` — the browser's own control,
+            styled by nothing, announced as checked/not checked rather than
+            on/off, and the one place in the three integration panels that had
+            no toggle affordance at all. The accessible name is kept verbatim
+            from the checkbox it replaces; it is hard-coded English there and
+            still is here, which is a separate defect and is not this wave's. */}
+        <Switch
+          className="mcp-row-toggle"
+          checked={row.enabled}
+          onChange={(next) => onChange({ enabled: next })}
+          label="Enable this MCP server"
+        />
         {expanded ? (
           <input
             type="text"
