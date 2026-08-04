@@ -893,9 +893,13 @@ export function DesignFilesPanel({
               notAttempted: pick(report.notAttempted),
               cancelled: report.notAttempted.length > 0,
             }
-          : // A parent that reports nothing back is not evidence of success, so
-            // the panel says what it actually knows: the request was sent.
-            { succeeded: items, failed: [], notAttempted: [], cancelled: false };
+          : // A parent that reports nothing back is not evidence of success —
+            // and this branch used to claim every item succeeded, which turned
+            // a cancelled or half-failed delete into "N done." Nothing was
+            // confirmed, so nothing is counted as done: the run reads as
+            // stopped with everything unaccounted for, which is the one
+            // description that cannot be wrong.
+            { succeeded: [], failed: [], notAttempted: items, cancelled: true };
         reportBulkOutcome(result, review.plan);
       } finally {
         setDeleting(false);

@@ -105,6 +105,7 @@ import {
   type WorkspaceContextItem,
 } from '@open-design/contracts';
 import { createTerminal, killTerminal, listPlugins } from '../state/projects';
+import { runBulkAction } from './bulk/run';
 import { DesignFilesPanel, type DesignFilesNavState } from './DesignFilesPanel';
 import {
   DesignBrowserPanel,
@@ -2385,16 +2386,46 @@ export function FileWorkspace({
     }
   }
 
-  async function handleDeleteMany(names: string[]) {
-    if (names.length === 0) return;
-    if (!confirm(t('workspace.deleteSelectedFilesConfirm', { n: names.length }))) return;
-    const deleted: string[] = [];
-    const failed: string[] = [];
-    for (const name of names) {
-      const ok = await deleteProjectFile(projectId, name);
-      if (ok) deleted.push(name);
-      else failed.push(name);
-    }
+  /**
+   * Deletes each file in turn and reports back exactly what happened.
+   *
+   * The report is the point. The panel that calls this renders the outcome
+   * toast from it, so a run that returns nothing is a run the panel can only
+   * describe by guessing — and it guessed success, which turned a cancelled
+   * or half-failed delete into "N done." The three arrays here are what the
+   * user is actually told, so they must stay truthful: `deleted` only holds
+   * files the daemon confirmed gone, and anything left when the run stops
+   * early is `notAttempted` rather than quietly dropped.
+   *
+   * `signal` is checked between files, never mid-request, so the Stop control
+   * ends the run at the next boundary rather than abandoning a delete whose
+   * outcome nobody would then know.
+   */
+  async function handleDeleteMany(
+    names: string[],
+    options?: { onProgress?: (done: number, current: string | null) => void; signal?: { readonly aborted: boolean } },
+  ): Promise<{ deleted: string[]; failed: string[]; notAttempted: string[] }> {
+    if (names.length === 0) return { deleted: [], failed: [], notAttempted: [] };
+    // runBulkAction is the shared sequential runner: it reports progress,
+    // checks the abort signal between items, and — the part a hand-rolled
+    // loop here kept getting wrong — treats a helper that returns `false` as
+    // a failure rather than a success. `deleteProjectFile` is exactly such a
+    // helper, which is why this must not be re-implemented inline.
+    const outcome = await runBulkAction(
+      names.map((name) => ({ id: name, label: name })),
+      (item) => deleteProjectFile(projectId, item.id),
+      {
+        onProgress: (progress) => options?.onProgress?.(progress.done, progress.current),
+        signal: options?.signal,
+      },
+    );
+    const deleted = outcome.succeeded.map((item) => item.id);
+    const failed = outcome.failed.map((failure) => failure.item.id);
+    const notAttempted = outcome.notAttempted.map((item) => item.id);
+    // The bookkeeping below runs on both exits. A stopped run has still really
+    // deleted whatever it got through, so leaving its tabs open and its
+    // autosaved sketches behind would leave the workspace describing files
+    // that no longer exist.
     if (deleted.length > 0) {
       await onRefreshFiles();
       const deletedSet = new Set(deleted);
@@ -2418,9 +2449,10 @@ export function FileWorkspace({
         return next;
       });
     }
-    if (failed.length > 0) {
-      alert(t('workspace.deleteSelectedFilesPartial', { n: failed.length }));
-    }
+    // No alert() here any more. The caller renders one outcome message from
+    // the report below, and it states the failures precisely; a blocking
+    // dialog on top of it said the same thing worse, and twice.
+    return { deleted, failed, notAttempted };
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
@@ -3740,13 +3772,16 @@ export function FileWorkspace({
               });
               void handleDelete(name);
             }}
-            onDeleteFiles={(names) => {
+            onDeleteFiles={(names, options) => {
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
               });
-              return handleDeleteMany(names);
+              // `options` carries the panel's progress callback and its Stop
+              // signal. Dropping it — as this did — left the progress bar
+              // frozen at zero and made the Stop button decorative.
+              return handleDeleteMany(names, options);
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
