@@ -230,7 +230,9 @@ const PROJECT_STRING_FLAGS = new Set([
   'title', 'label', 'against', 'seed-from', 'fork-after', 'mode',
   'source',
 ]);
-const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow']);
+// `confirm` is the destructive-delete gate shared by `od project delete` and
+// `od files delete` — see `requireDeleteConfirmation`.
+const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow', 'confirm']);
 // `od templates …` mirrors NewProjectPanel / ExamplesTab. Same surface,
 // same /api/templates store. The CLI form is the embeddability contract:
 // external agents (hermes-agent, openclaw, ...) can snapshot, list, or
@@ -238,7 +240,7 @@ const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow']);
 const TEMPLATES_STRING_FLAGS = new Set([
   'daemon-url', 'name', 'description',
 ]);
-const TEMPLATES_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
+const TEMPLATES_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'confirm']);
 // `od deploy …` posts to /api/projects/:id/deploy. The CLI form is the
 // embeddability contract: external agents can deploy a project file to
 // Vercel or Cloudflare Pages without going through the web UI.
@@ -259,7 +261,7 @@ const AUTOMATION_STRING_FLAGS = new Set([
   'candidate-sinks', 'memory-type',
 ]);
 const AUTOMATION_BOOLEAN_FLAGS = new Set([
-  'help', 'h', 'json', 'disabled', 'enabled',
+  'help', 'h', 'json', 'disabled', 'enabled', 'confirm',
 ]);
 const MEMORY_STRING_FLAGS = new Set([
   'daemon-url', 'name', 'description', 'type', 'body', 'body-file',
@@ -318,7 +320,7 @@ const BRAND_STRING_FLAGS = new Set([
   'html-file', 'css-file', 'base-url',
 ]);
 const BRAND_BOOLEAN_FLAGS = new Set([
-  'help', 'h', 'json',
+  'help', 'h', 'json', 'confirm',
 ]);
 // Hoisted because `runAutomation` is reachable through the top-of-file
 // SUBCOMMAND_MAP dispatch, which runs during module evaluation —
@@ -2119,6 +2121,55 @@ function positionalArgs(argv, stringFlags = new Set()) {
     if (eq < 0 && stringFlags.has(key)) i++;
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Destructive-delete gate for the `od … delete` verbs.
+//
+// The web UI routes these same operations through the two-key-plus-slider gate
+// in `apps/web/src/components/destructive/`. That gate lives in the web layer
+// only, so an `od … delete` invocation reaches the daemon route around it —
+// which is exactly the hole `docs/standards/super-confirmation.md` names when
+// it says to enforce the gate at the operation, not at the affordance.
+//
+// A CLI cannot render a slider, so its form of the gate is an explicit flag.
+// This mirrors the existing `od plugin events purge` precedent verbatim: same
+// `--confirm` flag name, same refuse-on-stderr shape, same exit 2 (the code
+// every other missing-required-argument path in this file already uses, so a
+// caller's "bad invocation" branch keeps working unchanged).
+//
+// The one thing added on top of that precedent is `--json`. The CLI is the
+// embeddability contract (AGENTS.md "Capability exposure"), so an external
+// agent must be able to branch on the refusal programmatically rather than
+// scrape prose: under `--json` the refusal is emitted as the same
+// `{ error: { code, message, data } }` envelope every other CLI failure uses,
+// with the stable code `confirmation-required`. It is deliberately absent from
+// RECOVERABLE_EXIT_CODES — that table maps daemon-reported error codes onto
+// dedicated exit codes, and this refusal is a local usage error that never
+// reaches the daemon.
+//
+// No TTY prompt on purpose. `od` is driven by external agents far more often
+// than by a human at a terminal, and this file has no interactive-prompt
+// helper; a blocking stdin read inside a pipeline hangs the job instead of
+// failing it, which is strictly worse than refusing.
+//
+// Call this BEFORE the fetch, so a refused delete emits no HTTP request at all.
+function requireDeleteConfirmation({ confirmed, json, label, target, command }) {
+  if (confirmed) return;
+  const reason = `refusing without --confirm. This permanently deletes ${target}.`;
+  if (json) {
+    process.stderr.write(JSON.stringify({
+      error: {
+        code:    'confirmation-required',
+        message: `[${label}] ${reason} Re-run to proceed: ${command}`,
+        data:    { flag: '--confirm', command, target },
+      },
+    }) + '\n');
+  } else {
+    console.error(`[${label}] ${reason}`);
+    console.error(`  Re-run to proceed: ${command}`);
+  }
+  process.exit(2);
 }
 
 async function cliDaemonUrl(flags) {
@@ -6649,9 +6700,16 @@ async function runBrandDelete(rest) {
   }
   const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
   if (!id) {
-    console.error('Usage: od brand delete <id> [--json]');
+    console.error('Usage: od brand delete <id> --confirm [--json]');
     process.exit(2);
   }
+  requireDeleteConfirmation({
+    confirmed: Boolean(flags.confirm),
+    json:      Boolean(flags.json),
+    label:     'brand delete',
+    target:    `brand "${id}" and the user design system it registered`,
+    command:   `od brand delete ${id} --confirm`,
+  });
   const base = await cliDaemonBaseUrl(flags);
   let resp;
   try {
@@ -6787,7 +6845,9 @@ async function runProject(args) {
                     [--design-system <id>] [--json]
   od project list                         List projects.
   od project info <id>                    Print one project.
-  od project delete <id>                  Delete a project.
+  od project delete <id> --confirm        Delete a project, its files, and any
+                                          run still in flight. Refuses without
+                                          --confirm.
   od project editors                      List locally-installed editors that
                                           can open a project (hand-off targets).
   od project open-in <id> --editor <slug> Open the project's working directory
@@ -6799,6 +6859,7 @@ async function runProject(args) {
 
 Common options:
   --daemon-url <url>   Open Design daemon HTTP base.
+  --confirm            Authorize a destructive delete. Required by every delete subcommand.
   --json               Emit raw JSON.`);
     process.exit(args.length === 0 ? 2 : 0);
   }
@@ -6988,9 +7049,19 @@ Common options:
     case 'delete': {
       const id = rest.find((a) => !a.startsWith('-'));
       if (!id) {
-        console.error('Usage: od project delete <id>');
+        console.error('Usage: od project delete <id> --confirm');
         process.exit(2);
       }
+      // DELETE /api/projects/:id cancels any run still in flight, drops the
+      // database row, and removes the whole project directory from disk. There
+      // is no version-history record of the removal to restore from.
+      requireDeleteConfirmation({
+        confirmed: Boolean(flags.confirm),
+        json:      Boolean(flags.json),
+        label:     'project delete',
+        target:    `project "${id}", every file in its directory, and any run still in flight`,
+        command:   `od project delete ${id} --confirm`,
+      });
       const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
       if (!resp.ok) return structuredHttpFailure(resp, 'project-not-found');
       console.log(`[project] deleted ${id}`);
@@ -7480,7 +7551,9 @@ async function runFiles(args) {
                                                Write content from stdin.
   od files upload <projectId> <localpath> [--as <relpath>]
                                                Upload a local file.
-  od files delete <projectId> <name>           Delete a project file.
+  od files delete <projectId> <name> --confirm
+                                               Delete a project file. Refuses
+                                               without --confirm.
   od files diff   <projectId> <relpathA> [<relpathB> | --against -]
                                                Print a unified diff.
   od files versions <projectId> <relpath>      List saved HTML versions.
@@ -7496,6 +7569,7 @@ Common options:
   --prompt-file <path|->  Read a version prompt from file/stdin where supported.
   --source <ai|manual|restore>
                        Version provenance where supported.
+  --confirm            Authorize a destructive delete. Required by every delete subcommand.
   --json               Emit raw JSON.`);
     process.exit(args.length === 0 ? 2 : 0);
   }
@@ -7596,9 +7670,16 @@ Common options:
       const positional = rest.filter((a) => !a.startsWith('-'));
       const [id, name] = positional;
       if (!id || !name) {
-        console.error('Usage: od files delete <projectId> <name>');
+        console.error('Usage: od files delete <projectId> <name> --confirm');
         process.exit(2);
       }
+      requireDeleteConfirmation({
+        confirmed: Boolean(flags.confirm),
+        json:      Boolean(flags.json),
+        label:     'files delete',
+        target:    `file "${name}" from project "${id}"`,
+        command:   `od files delete ${id} ${name} --confirm`,
+      });
       const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}/files/${encodeURIComponent(name)}`, { method: 'DELETE' });
       if (!resp.ok) return structuredHttpFailure(resp);
       console.log(`[files] deleted ${name}`);
@@ -7878,10 +7959,12 @@ async function runTemplates(args) {
   od templates save  <projectId> --name <name>      Snapshot a project's current
                                                     files as a new template.
                      [--description <text>]
-  od templates delete <id>                          Delete a saved template by id.
+  od templates delete <id> --confirm                Delete a saved template by id.
+                                                    Refuses without --confirm.
 
 Common options:
   --daemon-url <url>   Open Design daemon HTTP base.
+  --confirm            Authorize a destructive delete. Required by every delete subcommand.
   --json               Emit raw JSON.`);
     process.exit(args.length === 0 ? 2 : 0);
   }
@@ -7996,9 +8079,16 @@ Common options:
     case 'delete': {
       const id = positionalArgs(rest)[0] ?? '';
       if (!id) {
-        console.error('Usage: od templates delete <id>');
+        console.error('Usage: od templates delete <id> --confirm');
         process.exit(2);
       }
+      requireDeleteConfirmation({
+        confirmed: Boolean(flags.confirm),
+        json:      Boolean(flags.json),
+        label:     'templates delete',
+        target:    `template "${id}" and the project-file snapshot it stores`,
+        command:   `od templates delete ${id} --confirm`,
+      });
       let resp;
       try {
         resp = await fetch(`${base}/api/templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -10744,7 +10834,8 @@ function printAutomationHelp() {
   od automation crystallize-run <routineId> <runId> [--json]    Turn a succeeded run into skill/memory proposals.
   od automation pause <id>                                     Mark disabled.
   od automation resume <id>                                    Mark enabled.
-  od automation delete <id>                                    Remove the automation (history retained).
+  od automation delete <id> --confirm                          Remove the automation (history retained).
+                                                               Refuses without --confirm.
 
 Schedule formats:
   hourly:<minute>                    Every hour at :MM.
@@ -10759,7 +10850,8 @@ Output:
   can drive the full automation lifecycle headlessly.
 
 Common options:
-  --daemon-url <url>   Open Design daemon HTTP base.`);
+  --daemon-url <url>   Open Design daemon HTTP base.
+  --confirm            Authorize a destructive delete. Required by every delete subcommand.`);
 }
 
 async function runAutomation(args) {
@@ -11329,6 +11421,13 @@ async function runAutomation(args) {
     }
     case 'delete': {
       const id = requireId('delete');
+      requireDeleteConfirmation({
+        confirmed: Boolean(flags.confirm),
+        json:      Boolean(flags.json),
+        label:     'automation delete',
+        target:    `automation "${id}" and unschedules it`,
+        command:   `od automation delete ${id} --confirm`,
+      });
       let resp;
       try {
         resp = await fetch(`${base}/api/routines/${encodeURIComponent(id)}`, {

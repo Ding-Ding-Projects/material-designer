@@ -307,7 +307,11 @@ describe('od templates CLI', () => {
     expect(result.stderr).toMatch(/projectId/i);
   });
 
-  it('DELETEs /api/templates/:id on `templates delete <id>`', async () => {
+  // `--confirm` is required by the destructive-delete gate added for the
+  // super-confirmation standard; see cli-delete-confirmation.test.ts for the
+  // gate's own coverage. Every `templates delete` case below carries it so
+  // these tests keep exercising what they were written to exercise.
+  it('DELETEs /api/templates/:id on `templates delete <id> --confirm`', async () => {
     stub.setResponder((req) => {
       if (req.method === 'DELETE' && req.url === '/api/templates/t-1') {
         return { status: 200, body: { ok: true } };
@@ -321,6 +325,7 @@ describe('od templates CLI', () => {
       't-1',
       '--daemon-url',
       stub.baseUrl,
+      '--confirm',
     ]);
 
     expect(result.code).toBe(0);
@@ -401,6 +406,7 @@ describe('od templates CLI', () => {
       't-1',
       '--daemon-url',
       unreachableDaemonUrl,
+      '--confirm',
     ]);
     expect(result.code).toBe(3);
     expect(result.stderr).toMatch(/failed to reach daemon at http:\/\/127\.0\.0\.1:/);
@@ -443,6 +449,7 @@ describe('od templates CLI', () => {
       '--daemon-url',
       stub.baseUrl,
       't-after-flag',
+      '--confirm',
     ]);
     expect(result.code).toBe(0);
     expect(stub.requests).toHaveLength(1);

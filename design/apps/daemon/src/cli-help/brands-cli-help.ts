@@ -27,7 +27,10 @@ export const BRAND_USAGE = `Usage:
                                        instead of fetching. --html-file reads from a file or
                                        stdin; --css-file folds in collected stylesheet text.
   od brand get <id> [--json]           Print one brand's full detail (meta + brand + guide).
-  od brand delete <id> [--json]        Remove a brand and its registered design system.
+  od brand delete <id> --confirm       Remove a brand and its registered design system.
+                                       Refuses without --confirm: this is irreversible, and
+                                       the web interface gates the same operation behind a
+                                       two-key slider.
 
 Output:
   Plain text by default; --json prints raw JSON for any subcommand.
