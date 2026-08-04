@@ -91,12 +91,13 @@ line survives, a reader cannot trust the ones beside it either.
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
 | Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
 | Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Two built and published** | `v0.16.1-r7.1` and `v0.16.1-r8.1`. **Both predate most of the redesign** — see the note above |
-| Material Design 3 anatomy | **Landed, unseen** | buttons, text fields, radii, elevation, navigation rail, dialogs, menus, cards and scrim. Verified by typecheck and unit tests; **not looked at** |
+| Windows installer | **Published on every green push** | Latest at the time of writing: `v0.16.1-r66.1`, the first to carry a dim sum code name after the pool fix (Classic Har Gow · 蝦餃). Each release attaches the installer, its `.sha256`, a portable archive and a dim sum photo |
+| Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
 | Notification centre · destructive-action gate · bulk actions · appearance editor · narrator · context-menu shortcuts | **Landed, unseen** | merged from `phase4-wip`; its adversarial verification lenses **never ran** — see section 4 |
-| Version history · export · external editor | **Landed, unseen** | daemon endpoints, shared DTOs and `od` subcommands |
+| Version history | **Daemon complete, UI now wired** | 2,369 daemon lines and `od history` existed with nothing in the app able to open them; a panel now mounts at `App.tsx`. **Unproven end to end** — see the loopback-guard question in §5b |
+| Export everything | **Not started** | No implementation exists. Handed to the backend — see §5b |
 
 ---
 
@@ -418,6 +419,95 @@ that has not gone green. This document exists partly as an example of that
 discipline; keep it that way when you update it.
 
 ---
+
+## 5b. Backend handoff — the frontend is where this session stopped
+
+The user's instruction was to finish the frontend for now and hand the backend
+to whoever picks this up next. This section is that handoff. It is deliberately
+specific: every item names the file, what is already there, and what would prove
+it works — because the recurring failure in this repository has been assuming a
+thing works from the fact that it exists.
+
+**Read section 4 first.** Nothing below has been rendered, run, or exercised
+against a live daemon, and the single most useful thing a successor can do is
+start the daemon once and look.
+
+### The one question that gates the rest
+
+**Can the web origin actually reach `/api/history`?** The daemon registers seven
+history routes in `apps/daemon/src/routes/history.ts`, all behind
+`requireLocalDaemonRequest` (`apps/daemon/src/http/local-daemon-request.ts:100`).
+That guard validates the request is loopback and echoes the origin back as
+`Access-Control-Allow-Origin`, with `Access-Control-Allow-Methods: GET, POST,
+OPTIONS` — which covers exactly the verbs those routes use. The web sidecar
+serves from loopback, so *by reading* it should pass.
+
+It has never been observed passing. If it does not, the new version-history
+panel renders its honest "history is unavailable" line rather than data, and the
+whole feature looks broken while being correctly wired. **Start the daemon, open
+the panel, and watch the network tab.** That is a five-minute answer to a
+question no amount of further reading will settle.
+
+### What is already built on the daemon side
+
+Worth knowing before building anything, because the last three features found
+here were *already implemented* and merely unreachable:
+
+| Surface | State |
+|---|---|
+| `apps/daemon/src/history/` | **2,369 lines** — `domains.ts`, `git.ts`, `service.ts`, `sqlite-domain.ts`, `store.ts`. Append-only guarantee, redaction of credential-adjacent domains, and paths derived from `RUNTIME_DATA_DIR` were all already correct. |
+| `/api/history` × 7 routes | Registered and guarded. |
+| `packages/contracts/src/api/history.ts` | Full DTO. |
+| `od history …` | Already in `apps/daemon/src/cli.ts` (`SUBCOMMAND_MAP` → `runHistory`), hitting the same routes the UI does. The dual-track rule is satisfied here. |
+
+So the version-history work left this session is **not** "build a backend". It is
+"prove the one that exists is reachable, then finish the two gaps below".
+
+### Backend work that genuinely remains
+
+1. **Discarding unsaved work must be recorded before the close completes.** The
+   standard requires the discard itself to be an append-only history action, so
+   it is auditable and restorable. Nothing implements this today. It belongs on
+   the daemon side because the history store owns the append.
+
+2. **Export everything (roadmap 4.5) has no implementation at all.** A search for
+   `toCsv`, `toYaml`, `toToml`, `'ndjson'` and friends across `apps/web/src`
+   returns nothing but syntax-highlighting labels. The standard asks for every
+   record, view, list, log, document, setting and generated artifact to be
+   exportable in every format that can faithfully represent it — JSON, JSONL,
+   YAML, TOML, XML, CSV, TSV, Markdown, HTML, SQL — plus ZIP and 7z archives with
+   the full 7z option surface (LZMA2/PPMd/BZip2, levels, dictionary and solid
+   block sizes, multithreading, split volumes, AES-256 **with encrypted headers**
+   so filenames are hidden too). Two rules that are easy to get wrong: state what
+   a format will drop *before* the export runs rather than truncating silently,
+   and never present an encrypted archive as protected while leaving its
+   filenames in the clear.
+
+3. **Destructive enforcement is at two interfaces, not at the operation.** The web
+   UI gates behind the two-key slider, the CLI refuses without `--confirm`, and
+   `ecaad97` moved a check into the daemon — but the recorded gap is that this is
+   still enforcement per-interface rather than a single guarantee at the
+   operation. The next caller that is neither the UI nor the CLI is ungated. That
+   gap is written down rather than implied closed; closing it properly is daemon
+   work.
+
+4. **Every new capability needs its `od` subcommand.** `design/AGENTS.md` is
+   explicit that a UI-only capability is a regression, because external agents
+   drive this product through `od` and never render the web UI. Tab groups and
+   the appearance controls landed this session **UI-first**; they need CLI
+   surfaces against the same `/api/*` endpoints, with `--json` and
+   `--prompt-file` where the shape calls for it. Land the endpoint, the UI and
+   the subcommand together — the repository's own rule is not to stage them
+   across pull requests.
+
+### What the frontend hands over in a working state
+
+So the successor knows what not to re-litigate: the port is byte-verbatim with
+**0 gaps**, all 20 locales are complete, the loading-shell gate agrees with all
+42 Playwright startup waits, every stylesheet balances, and the site publishes
+release facts read from the release that actually exists. Five pure-shell gates
+run in seconds and catch most of what CI reports 35 minutes later — they are
+listed in section 5.
 
 ## 6. Immediate next steps, in order
 
