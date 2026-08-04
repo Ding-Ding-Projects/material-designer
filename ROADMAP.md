@@ -571,6 +571,18 @@ meeting it.
       *installed identity* rather than as text in files, which is what this item
       was waiting for. The one part still unproved is the window title itself — no
       title has been read off a window, because nothing inspects the window.
+- [ ] **The navigation rail is mounted and invisible.** `EntryShell` renders
+      `EntryNavRail`, and `entry-layout.css` collapses its grid track to **`0`**
+      — so "collapsed" means the rail is gone, not narrow — while
+      `readStoredRailOpen()` defaults to `false`. A fresh install therefore
+      shows **no rail at all**, which is what the published capture shows.
+      Wave 1 below specifies 88px collapsed to 260px expanded; both current
+      states (0 and 56px) are wrong. **A Material Design 3 navigation rail is
+      persistent by definition** — this single default is the largest reason
+      the running screen does not read as M3.
+      *This is a second species of the "mounted by nothing" defect: mounted,
+      and still invisible. A diff cannot catch either one; a capture catches
+      both.*
 - [ ] **Add the tab strip and status bar beneath the title bar** as the mockup
       specifies — a 42px strip of 36px bottom-rounded tabs with a 250px cap and
       leading/close icons, and a 28px status bar carrying live daemon state,
@@ -1223,7 +1235,7 @@ rows say so rather than counting their file size as progress.
 | # | Standard | Phase | Status |
 | --- | --- | --- | --- |
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
-| 2 | Full Material Design 3 conformance | 2.1–2.4 | **Partial.** The token sheet, its mapping layer and the Windows frameless window with its custom title bar landed at `dea6b0a`. No component has been rewritten, so component anatomy is untouched — and nobody has looked at the result |
+| 2 | Full Material Design 3 conformance | 2.1–2.4 | **Colour landed; anatomy did not, and a capture proved it.** The token sheet, its mapping layer and the Windows frameless title bar are real, so every component inherits M3 roles. But the mockup's defining furniture is absent from the running screen: no persistent navigation rail (the component exists and collapses to a **zero-width** track, so a fresh install shows none), no header search bar, no 28px status bar. A reader comparing the shipped capture to `mockups/` would say it is still the upstream screen in new colours, and for the anatomy they would be right |
 | 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Built and reachable.** Theme, accent and density persist and are reachable from the settings dialog and the command palette. The editor behind them — the infinite colour picker, the colour translator, the contrast readout, presets and typography — had **zero importers** and is now mounted: the picker is the accent control, with the fixed swatches kept as a convenience layered on it rather than replacing it, and the runtime mounts in `App.tsx` so a chosen preset survives a reload. Unaudited: nobody has operated any of it |
 | 4 | Regex builder on every search bar | 3.3 | **Built and mounted.** The builder exists with guided token rows, a raw pattern editor, flags and a live sample panel. Unverified: whether *every* search bar reaches it and whether each is anchored to its own field rather than sharing one panel — the count of search inputs against the count of builders has not been taken |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial.** The tab strip, pinning and the text-matched bulk closes are built. Tab *groups* (4.1) and the four tab-discovery searches are absent |

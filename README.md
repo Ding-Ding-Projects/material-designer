@@ -125,12 +125,28 @@ application has been launched and has answered for itself. It does not prove the
 is *finished*: it exercises install, launch, a health check and uninstall, not the product's
 features. Statements about feature behaviour in this repository are still read from source or
 inherited from upstream's documentation unless they say otherwise. The Material Design 3
-redesign is **in progress**: the token layer, the Windows title bar and the Material
-Design 3 anatomy pass have landed — see [Standards](#standards).
+redesign is **in progress, and the screenshot above is the honest measure of how far**.
 
-The distinction that matters most here: a module can compile, pass its unit tests and ship
-in the bundle while being **mounted by nothing**. Three did. Judge a feature by whether a
-surface opens it, never by whether its files exist.
+> [!WARNING]
+> **Look at that capture against [the mockup](mockups/) before believing any claim about
+> the redesign.** The colour layer has landed — every token resolves to a Material
+> Design 3 role — but the *anatomy* has not. The mockup specifies a persistent left
+> navigation rail, a header search bar with its regex affordance, and a 28px status bar
+> carrying daemon state, model, design system, scale and density. **None of the three is
+> on that screen.** The rail component exists and is collapsed to a zero-width track by
+> default, so a fresh install shows no rail at all.
+>
+> A reader comparing the two would conclude the screen is still upstream's with new
+> colours, and for the parts that matter they would be right. Documents in this
+> repository have said "the anatomy pass landed"; that was true of the code and false of
+> the screen, which is the distinction this project keeps having to relearn.
+
+Two distinctions that keep proving load-bearing, both learned the same way:
+
+- A module can compile, pass its unit tests and ship in the bundle while being **mounted
+  by nothing**. Three did. Judge a feature by whether a surface opens it.
+- A component can be mounted and still be **invisible** — collapsed, zero-width, behind a
+  default nobody set. Judge a redesign by a capture, never by a diff.
 
 Separately, upstream ships 48 workflow files under `design/.github/workflows/`. GitHub
 Actions only reads workflows at the repository root, so every one of those is inert here.
