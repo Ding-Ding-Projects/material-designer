@@ -138,8 +138,9 @@ test('[P0] @critical entry chrome exposes the primary home creation surface and 
   await expect(page.getByTestId('entry-star-badge')).toBeVisible();
   await expect(page.getByTestId('entry-use-everywhere-button')).toBeVisible();
   await expect(page.getByTestId('recent-projects-strip')).toHaveCount(0);
-  // The nav rail is collapsed by default — only the topbar toggle shows.
-  // Expand it to assert the rail and its logo are reachable.
+  // The nav rail starts at its icon width, so the topbar toggle — the control
+  // that widens it to the labelled rail — is the one on screen. Widen it to
+  // assert the rail and its logo are reachable at full width.
   await expect(page.getByTestId('entry-rail-toggle')).toBeVisible();
   await page.getByTestId('entry-rail-toggle').click();
   await expect(page.locator('.entry-nav-rail')).toBeVisible();
@@ -2411,28 +2412,30 @@ test('[P0] @critical home hero attachment-only submit uploads the file and sends
   await expect(page.locator('.user-attachments').getByText('reference.txt', { exact: true })).toBeVisible();
 });
 
-test('[P1] collapsed rail stays out of the keyboard tab order on the home view', async ({ page }) => {
+test('[P1] persistent rail is keyboard reachable in both of its widths', async ({ page }) => {
   await gotoEntryHome(page);
 
-  // Collapsed by default: the rail must be inert so its still-mounted logo and
-  // nav buttons cannot receive keyboard focus before the visible toggle/hero.
+  // This test previously asserted the opposite — that the collapsed rail was
+  // `inert` and unreachable by Tab. That was correct while collapsing hid the
+  // rail; invisible controls must leave the tab order. The rail is now on
+  // screen in both states, so `inert` would hide an operable, visible
+  // navigation landmark from exactly the users who need it named.
   const rail = page.locator('.entry-nav-rail');
-  await expect(rail).toHaveAttribute('inert', '');
-
-  // Tabbing from the top of the document must never land inside the rail.
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-  for (let i = 0; i < 6; i++) {
-    await page.keyboard.press('Tab');
-    const inRail = await page.evaluate(
-      () => !!document.activeElement?.closest('.entry-nav-rail'),
-    );
-    expect(inRail).toBe(false);
-  }
-
-  // Once expanded the rail becomes interactive again and drops inert.
-  await ensureRailOpen(page);
+  await expect(rail).toBeVisible();
   await expect(rail).not.toHaveAttribute('inert', '');
+  await expect(rail).toHaveAttribute('data-rail-expanded', 'false');
+
+  // Focusable in the collapsed (icon) width.
+  const home = page.getByTestId('entry-nav-home');
+  await home.focus();
+  await expect(home).toBeFocused();
+
+  // And still focusable once expanded, where the labels are visible too.
+  await ensureRailOpen(page);
+  await expect(rail).toHaveAttribute('data-rail-expanded', 'true');
   await expect(page.getByTestId('entry-nav-new-project')).toBeVisible();
+  await page.getByTestId('entry-nav-new-project').focus();
+  await expect(page.getByTestId('entry-nav-new-project')).toBeFocused();
 });
 
 test('[P1] collapsed new-user templates gallery stays out of the keyboard tab order', async ({ page }) => {

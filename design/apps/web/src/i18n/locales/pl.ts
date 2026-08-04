@@ -4692,4 +4692,17 @@ export const pl: Dict = {
   'settings.mediaProviderClearGateAction': 'Wyczyść zapisane poświadczenia',
   'settings.mediaProviderClearGateItem': 'Zapisany klucz API {name}, bazowy adres URL i model. Klucz nigdy więcej nie zostanie pokazany, a aplikacja nie potrafi go odzyskać.',
   'sketch.closeDiscard': 'Odrzuć zmiany',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Nawigacja główna',
+  'statusBar.aria': 'Stan aplikacji',
+  'statusBar.daemonLive': 'Demon działa',
+  'statusBar.daemonOffline': 'Demon offline',
+  'statusBar.notSet': 'Nie ustawiono',
+  'statusBar.designSystem': 'System projektowy: {name}',
+  'statusBar.uiScale': 'Skala interfejsu {percent}%',
+  'statusBar.density': 'Gęstość: {level}',
+  'statusBar.densityCompact': 'Kompaktowa',
+  'statusBar.densityDefault': 'Domyślna',
+  'statusBar.densityComfortable': 'Komfortowa',
 };

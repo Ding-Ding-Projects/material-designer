@@ -472,13 +472,19 @@ test('[P1] home left rail expands and collapses from the shell controls', async 
   const rail = page.locator('.entry-nav-rail');
   const expand = page.getByTestId('entry-rail-toggle');
 
+  // Collapsed now means the 88px icon rail, not an absent one. This test used
+  // to assert `aria-hidden="true"` here, which described a rail that was
+  // removed from the layout entirely — the state a fresh install landed in,
+  // and the reason the home screen shipped with no navigation on it.
   await expect(shell).not.toHaveClass(/entry--rail-open/);
-  await expect(rail).toHaveAttribute('aria-hidden', 'true');
+  await expect(rail).toBeVisible();
+  await expect(rail).toHaveAttribute('data-rail-expanded', 'false');
+  await expect(page.getByTestId('entry-nav-home')).toBeVisible();
   await expect(expand).toHaveAttribute('aria-expanded', 'false');
 
   await expand.click();
   await expect(shell).toHaveClass(/entry--rail-open/);
-  await expect(rail).not.toHaveAttribute('aria-hidden', 'true');
+  await expect(rail).toHaveAttribute('data-rail-expanded', 'true');
   await expect(page.getByTestId('entry-nav-home')).toBeVisible();
   await expect(page.getByTestId('entry-nav-projects')).toBeVisible();
 
@@ -486,7 +492,8 @@ test('[P1] home left rail expands and collapses from the shell controls', async 
   await expect(collapse).toBeVisible();
   await collapse.click();
   await expect(shell).not.toHaveClass(/entry--rail-open/);
-  await expect(rail).toHaveAttribute('aria-hidden', 'true');
+  await expect(rail).toBeVisible();
+  await expect(rail).toHaveAttribute('data-rail-expanded', 'false');
   await expect(expand).toHaveAttribute('aria-expanded', 'false');
 });
 

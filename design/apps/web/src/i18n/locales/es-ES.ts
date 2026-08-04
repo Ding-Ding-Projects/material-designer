@@ -4692,4 +4692,17 @@ export const esES: Dict = {
   'settings.mediaProviderClearGateAction': 'Borrar las credenciales guardadas',
   'settings.mediaProviderClearGateItem': 'La clave de API de {name} guardada, la URL base y el modelo. La clave no se vuelve a mostrar y la aplicación no puede recuperarla.',
   'sketch.closeDiscard': 'Descartar los cambios',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Navegación principal',
+  'statusBar.aria': 'Estado de la aplicación',
+  'statusBar.daemonLive': 'Daemon activo',
+  'statusBar.daemonOffline': 'Daemon desconectado',
+  'statusBar.notSet': 'Sin definir',
+  'statusBar.designSystem': 'Sistema de diseño: {name}',
+  'statusBar.uiScale': 'Escala de la interfaz al {percent} %',
+  'statusBar.density': 'Densidad {level}',
+  'statusBar.densityCompact': 'Compacta',
+  'statusBar.densityDefault': 'Predeterminada',
+  'statusBar.densityComfortable': 'Cómoda',
 };

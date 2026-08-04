@@ -5149,4 +5149,17 @@ export const zhCN: Dict = {
   'settings.mediaProviderClearGateAction': '清除已保存的凭据',
   'settings.mediaProviderClearGateItem': '已保存的 {name} API 密钥、基础 URL 和模型。密钥不会再次显示，应用也无法恢复它。',
   'sketch.closeDiscard': '放弃更改',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': '主导航',
+  'statusBar.aria': '应用状态',
+  'statusBar.daemonLive': '守护进程运行中',
+  'statusBar.daemonOffline': '守护进程离线',
+  'statusBar.notSet': '未设置',
+  'statusBar.designSystem': '设计系统：{name}',
+  'statusBar.uiScale': '界面缩放 {percent}%',
+  'statusBar.density': '{level}密度',
+  'statusBar.densityCompact': '紧凑',
+  'statusBar.densityDefault': '默认',
+  'statusBar.densityComfortable': '宽松',
 };

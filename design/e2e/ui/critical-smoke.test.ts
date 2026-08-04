@@ -13,8 +13,9 @@ test.beforeEach(async ({ page }) => {
 test('[P0] @critical home loads with the primary entry controls', async ({ page }) => {
   await gotoEntryHome(page);
 
-  // The rail is collapsed by default — the hero owns the first screen and the
-  // only chrome affordance is the topbar toggle. Expand to reach the rail nav.
+  // The rail starts at its icon width, so the topbar toggle — the control
+  // that widens it to the labelled rail — is on screen. Widen it before
+  // asserting on the destinations, which is where their labels appear.
   await expect(page.getByTestId('entry-rail-toggle')).toBeVisible();
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await ensureRailOpen(page);

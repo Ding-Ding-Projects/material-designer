@@ -4692,4 +4692,17 @@ export const id: Dict = {
   'settings.mediaProviderClearGateAction': 'Hapus kredensial tersimpan',
   'settings.mediaProviderClearGateItem': 'Kunci API {name} yang tersimpan, URL dasar, dan modelnya. Kuncinya tidak pernah ditampilkan lagi dan aplikasi tidak bisa memulihkannya.',
   'sketch.closeDiscard': 'Buang perubahan',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Navigasi utama',
+  'statusBar.aria': 'Status aplikasi',
+  'statusBar.daemonLive': 'Daemon aktif',
+  'statusBar.daemonOffline': 'Daemon mati',
+  'statusBar.notSet': 'Belum diatur',
+  'statusBar.designSystem': 'Design system: {name}',
+  'statusBar.uiScale': 'Skala UI {percent}%',
+  'statusBar.density': 'Kerapatan {level}',
+  'statusBar.densityCompact': 'Rapat',
+  'statusBar.densityDefault': 'Bawaan',
+  'statusBar.densityComfortable': 'Longgar',
 };

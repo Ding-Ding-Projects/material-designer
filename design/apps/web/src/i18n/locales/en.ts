@@ -4706,4 +4706,17 @@ export const en: Dict = {
   'settings.mediaProviderClearGateAction': 'Clear saved credentials',
   'settings.mediaProviderClearGateItem': 'The saved {name} API key, base URL and model. The key is never shown again and the app cannot recover it.',
   'sketch.closeDiscard': 'Discard changes',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Primary navigation',
+  'statusBar.aria': 'Application status',
+  'statusBar.daemonLive': 'Daemon live',
+  'statusBar.daemonOffline': 'Daemon offline',
+  'statusBar.notSet': 'Not set',
+  'statusBar.designSystem': 'Design system: {name}',
+  'statusBar.uiScale': '{percent}% UI scale',
+  'statusBar.density': '{level} density',
+  'statusBar.densityCompact': 'Compact',
+  'statusBar.densityDefault': 'Default',
+  'statusBar.densityComfortable': 'Comfortable',
 };

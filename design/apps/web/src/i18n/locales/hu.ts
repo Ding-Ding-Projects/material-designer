@@ -4692,4 +4692,17 @@ export const hu: Dict = {
   'settings.mediaProviderClearGateAction': 'Mentett hitelesítő adatok törlése',
   'settings.mediaProviderClearGateItem': 'A mentett {name} API-kulcs, az alap-URL és a modell. A kulcs soha többé nem jelenik meg, és az alkalmazás nem tudja visszaállítani.',
   'sketch.closeDiscard': 'Változtatások elvetése',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Fő navigáció',
+  'statusBar.aria': 'Alkalmazás állapota',
+  'statusBar.daemonLive': 'A démon fut',
+  'statusBar.daemonOffline': 'A démon nem érhető el',
+  'statusBar.notSet': 'Nincs beállítva',
+  'statusBar.designSystem': 'Designrendszer: {name}',
+  'statusBar.uiScale': '{percent}%-os felületméret',
+  'statusBar.density': '{level} sűrűség',
+  'statusBar.densityCompact': 'Kompakt',
+  'statusBar.densityDefault': 'Alapértelmezett',
+  'statusBar.densityComfortable': 'Kényelmes',
 };

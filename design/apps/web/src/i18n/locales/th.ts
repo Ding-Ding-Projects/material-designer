@@ -4692,4 +4692,17 @@ export const th: Dict = {
   'settings.mediaProviderClearGateAction': 'ล้างข้อมูลรับรองที่บันทึกไว้',
   'settings.mediaProviderClearGateItem': 'คีย์ API ของ {name} ที่บันทึกไว้ เบส URL และโมเดล คีย์จะไม่ถูกแสดงอีกและแอปกู้คืนไม่ได้',
   'sketch.closeDiscard': 'ทิ้งการเปลี่ยนแปลง',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'การนำทางหลัก',
+  'statusBar.aria': 'สถานะแอป',
+  'statusBar.daemonLive': 'ดีมอนทำงานอยู่',
+  'statusBar.daemonOffline': 'ดีมอนออฟไลน์',
+  'statusBar.notSet': 'ยังไม่ได้ตั้งค่า',
+  'statusBar.designSystem': 'ดีไซน์ซิสเต็ม: {name}',
+  'statusBar.uiScale': 'สเกล UI {percent}%',
+  'statusBar.density': 'ความหนาแน่น {level}',
+  'statusBar.densityCompact': 'กระชับ',
+  'statusBar.densityDefault': 'ค่าเริ่มต้น',
+  'statusBar.densityComfortable': 'โปร่ง',
 };

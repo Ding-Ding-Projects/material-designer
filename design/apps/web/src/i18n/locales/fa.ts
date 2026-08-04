@@ -4687,4 +4687,17 @@ export const fa: Dict = {
   'settings.mediaProviderClearGateAction': 'پاک کردن اطلاعات ورود ذخیره‌شده',
   'settings.mediaProviderClearGateItem': 'کلید API ذخیره‌شدهٔ {name}، نشانی پایه و مدل. کلید دیگر هرگز نمایش داده نمی‌شود و برنامه نمی‌تواند آن را بازیابی کند.',
   'sketch.closeDiscard': 'دور انداختن تغییرات',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'ناوبری اصلی',
+  'statusBar.aria': 'وضعیت برنامه',
+  'statusBar.daemonLive': 'سرویس فعال است',
+  'statusBar.daemonOffline': 'سرویس آفلاین است',
+  'statusBar.notSet': 'تنظیم نشده',
+  'statusBar.designSystem': 'سیستم طراحی: {name}',
+  'statusBar.uiScale': 'مقیاس رابط {percent}٪',
+  'statusBar.density': 'تراکم {level}',
+  'statusBar.densityCompact': 'فشرده',
+  'statusBar.densityDefault': 'پیش‌فرض',
+  'statusBar.densityComfortable': 'راحت',
 };

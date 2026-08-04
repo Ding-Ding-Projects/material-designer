@@ -189,10 +189,18 @@ import {
 } from './providerModelsCache';
 import { resolveByokModelPreference } from './byok/validation';
 
-// Persist the entry nav-rail open/collapsed state so it survives both a
+// Persist the entry nav-rail expanded/collapsed state so it survives both a
 // home -> project -> home navigation (EntryShell unmounts on the project
 // route) and a full reload. Without this the rail always reset to its
 // collapsed default on return.
+//
+// The key and its two values are deliberately unchanged, because their
+// meaning maps one-for-one onto the rail's new anatomy: `false` used to mean
+// "hidden" and now means the 88px icon rail, `true` used to mean "docked" and
+// now means the 260px labelled rail. Somebody who folded the rail away last
+// week wanted less navigation, not none, and gets the narrow rail — which is
+// what a Material Design 3 rail does when you collapse it. Renaming the key
+// would have thrown that preference away to express the same thing.
 const RAIL_OPEN_STORAGE_KEY = 'od.entry.railOpen';
 
 function readStoredRailOpen(): boolean {
@@ -585,12 +593,12 @@ export function EntryShell({
     if (view !== 'design-systems') return;
     void onDesignSystemsRefresh?.();
   }, [onDesignSystemsRefresh, view]);
-  // The entry nav rail is collapsed by default (Manus-style) so the entry
-  // view opens clean and full-width; the panel toggle in the topbar opens it
-  // as an overlay that dismisses on selection / backdrop click / Escape.
-  // Its open/collapsed state is persisted (localStorage) so it survives a
-  // home -> project -> home round trip (EntryShell unmounts on the project
-  // route) and a reload, instead of snapping back to collapsed.
+  // The entry nav rail starts collapsed — meaning the 88px icon rail, which
+  // is on screen and operable, not absent. The panel toggle in the topbar
+  // widens it to 260px so the destinations carry their labels, and the rail's
+  // own control narrows it again. That state is persisted (localStorage) so
+  // it survives a home -> project -> home round trip (EntryShell unmounts on
+  // the project route) and a reload, instead of snapping back.
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
   useEffect(() => {
     writeStoredRailOpen(railOpen);

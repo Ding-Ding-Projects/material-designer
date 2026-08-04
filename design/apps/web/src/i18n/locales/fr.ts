@@ -4692,4 +4692,17 @@ export const fr: Dict = {
   'settings.mediaProviderClearGateAction': 'Effacer les identifiants enregistrés',
   'settings.mediaProviderClearGateItem': 'La clé API {name} enregistrée, l’URL de base et le modèle. La clé n’est plus jamais affichée et l’application ne peut pas la récupérer.',
   'sketch.closeDiscard': 'Abandonner les modifications',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Navigation principale',
+  'statusBar.aria': 'État de l’application',
+  'statusBar.daemonLive': 'Daemon actif',
+  'statusBar.daemonOffline': 'Daemon hors ligne',
+  'statusBar.notSet': 'Non défini',
+  'statusBar.designSystem': 'Système de design : {name}',
+  'statusBar.uiScale': 'Échelle de l’interface à {percent} %',
+  'statusBar.density': 'Densité {level}',
+  'statusBar.densityCompact': 'Compacte',
+  'statusBar.densityDefault': 'Par défaut',
+  'statusBar.densityComfortable': 'Confortable',
 };

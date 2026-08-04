@@ -4692,4 +4692,17 @@ export const ru: Dict = {
   'settings.mediaProviderClearGateAction': 'Удалить сохранённые учётные данные',
   'settings.mediaProviderClearGateItem': 'Сохранённый API-ключ {name}, базовый URL и модель. Ключ больше никогда не показывается, и приложение не может его восстановить.',
   'sketch.closeDiscard': 'Отменить изменения',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Основная навигация',
+  'statusBar.aria': 'Состояние приложения',
+  'statusBar.daemonLive': 'Демон работает',
+  'statusBar.daemonOffline': 'Демон недоступен',
+  'statusBar.notSet': 'Не задано',
+  'statusBar.designSystem': 'Дизайн-система: {name}',
+  'statusBar.uiScale': 'Масштаб интерфейса {percent}%',
+  'statusBar.density': 'Плотность: {level}',
+  'statusBar.densityCompact': 'Компактная',
+  'statusBar.densityDefault': 'Обычная',
+  'statusBar.densityComfortable': 'Просторная',
 };

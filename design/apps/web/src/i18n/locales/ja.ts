@@ -4692,4 +4692,17 @@ export const ja: Dict = {
   'settings.mediaProviderClearGateAction': '保存された認証情報を消去',
   'settings.mediaProviderClearGateItem': '保存された {name} の API キー、ベース URL、モデル。キーは二度と表示されず、アプリから復元することはできません。',
   'sketch.closeDiscard': '変更を破棄',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'メインナビゲーション',
+  'statusBar.aria': 'アプリの状態',
+  'statusBar.daemonLive': 'デーモン稼働中',
+  'statusBar.daemonOffline': 'デーモン停止中',
+  'statusBar.notSet': '未設定',
+  'statusBar.designSystem': 'デザインシステム: {name}',
+  'statusBar.uiScale': 'UI スケール {percent}%',
+  'statusBar.density': '密度: {level}',
+  'statusBar.densityCompact': 'コンパクト',
+  'statusBar.densityDefault': '標準',
+  'statusBar.densityComfortable': 'ゆったり',
 };

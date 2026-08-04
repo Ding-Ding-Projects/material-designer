@@ -4692,4 +4692,17 @@ export const ptBR: Dict = {
   'settings.mediaProviderClearGateAction': 'Limpar as credenciais salvas',
   'settings.mediaProviderClearGateItem': 'A chave de API do {name} salva, a URL base e o modelo. A chave nunca mais é exibida e o aplicativo não consegue recuperá-la.',
   'sketch.closeDiscard': 'Descartar as alterações',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Navegação principal',
+  'statusBar.aria': 'Status do aplicativo',
+  'statusBar.daemonLive': 'Daemon ativo',
+  'statusBar.daemonOffline': 'Daemon offline',
+  'statusBar.notSet': 'Não definido',
+  'statusBar.designSystem': 'Design system: {name}',
+  'statusBar.uiScale': 'Escala da interface em {percent}%',
+  'statusBar.density': 'Densidade {level}',
+  'statusBar.densityCompact': 'Compacta',
+  'statusBar.densityDefault': 'Padrão',
+  'statusBar.densityComfortable': 'Confortável',
 };

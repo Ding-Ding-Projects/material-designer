@@ -4692,4 +4692,17 @@ export const ko: Dict = {
   'settings.mediaProviderClearGateAction': '저장된 자격 증명 지우기',
   'settings.mediaProviderClearGateItem': '저장된 {name} API 키, 기본 URL, 모델. 키는 다시 표시되지 않으며 앱이 복구할 수 없습니다.',
   'sketch.closeDiscard': '변경 사항 버리기',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': '기본 탐색',
+  'statusBar.aria': '앱 상태',
+  'statusBar.daemonLive': '데몬 실행 중',
+  'statusBar.daemonOffline': '데몬 오프라인',
+  'statusBar.notSet': '설정 안 됨',
+  'statusBar.designSystem': '디자인 시스템: {name}',
+  'statusBar.uiScale': 'UI 배율 {percent}%',
+  'statusBar.density': '밀도: {level}',
+  'statusBar.densityCompact': '조밀',
+  'statusBar.densityDefault': '기본',
+  'statusBar.densityComfortable': '여유',
 };

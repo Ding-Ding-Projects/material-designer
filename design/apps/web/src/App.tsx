@@ -43,6 +43,7 @@ import { AmrArtifactUpgradeHomeCard } from './components/AmrArtifactUpgradeHomeC
 import { TooltipLayer } from './components/TooltipLayer';
 import { openWorkspaceTab, WorkspaceTabsBar } from './components/WorkspaceTabsBar';
 import { WindowTitleBar } from './components/WindowTitleBar';
+import { AppStatusBar } from './components/AppStatusBar';
 import {
   DesignSystemCreationFlow,
   DesignSystemDetailView,
@@ -2710,6 +2711,17 @@ function AppInner() {
         <div className="workspace-shell__body">
           {appMain}
         </div>
+        {/* Last row of the shell. It is deliberately not listed in
+            `grid-template-rows`: the shell declares two rows (three with the
+            Windows title bar), and a fourth child lands in an implicit `auto`
+            row that takes the strip's own 28px. Adding it to the template
+            would mean maintaining every combination of that template, in
+            every sheet that re-declares it. */}
+        <AppStatusBar
+          daemonLive={daemonLive}
+          config={config}
+          designSystems={designSystems}
+        />
       </div>
       {clientType === 'desktop' ? null : (
         <PetOverlay

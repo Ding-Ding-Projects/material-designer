@@ -4692,4 +4692,17 @@ export const ar: Dict = {
   'settings.mediaProviderClearGateAction': 'مسح بيانات الاعتماد المحفوظة',
   'settings.mediaProviderClearGateItem': 'مفتاح API المحفوظ لـ {name} وعنوان URL الأساسي والنموذج. لا يُعرض المفتاح مرة أخرى أبدًا ولا يستطيع التطبيق استعادته.',
   'sketch.closeDiscard': 'تجاهل التغييرات',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'التنقل الرئيسي',
+  'statusBar.aria': 'حالة التطبيق',
+  'statusBar.daemonLive': 'الخدمة تعمل',
+  'statusBar.daemonOffline': 'الخدمة غير متصلة',
+  'statusBar.notSet': 'غير محدد',
+  'statusBar.designSystem': 'نظام التصميم: {name}',
+  'statusBar.uiScale': 'مقياس الواجهة {percent}%',
+  'statusBar.density': 'كثافة {level}',
+  'statusBar.densityCompact': 'مضغوطة',
+  'statusBar.densityDefault': 'افتراضية',
+  'statusBar.densityComfortable': 'مريحة',
 };

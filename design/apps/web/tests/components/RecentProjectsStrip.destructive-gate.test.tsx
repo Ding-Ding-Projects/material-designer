@@ -57,8 +57,17 @@ const project: Project = {
  */
 function authorizeDestructiveGate(): void {
   const gate = screen.getByTestId('destructive-gate');
-  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
-  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
+  // Engage each key only if it is not already engaged. The keys are toggles,
+  // so a test that turns one on first — to prove the slider stays locked on
+  // one key — would otherwise have it turned back off here, and the gate would
+  // never arm. Reading `aria-checked` makes the helper safe to call from any
+  // state rather than only from an untouched gate.
+  for (const testId of ['destructive-gate-key-first', 'destructive-gate-key-second']) {
+    const key = within(gate).getByTestId(testId);
+    if (key.getAttribute('aria-checked') !== 'true') fireEvent.click(key);
+  }
+  // Five advances, because the slider rations how far one input event may
+  // carry it — a single jump to the end is refused by design.
   for (const value of ['20', '40', '60', '80', '100']) {
     fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
       target: { value },

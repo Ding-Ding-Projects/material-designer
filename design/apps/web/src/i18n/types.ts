@@ -4897,6 +4897,21 @@ export interface Dict {
   'settings.mediaProviderClearGateAction': string;
   'settings.mediaProviderClearGateItem': string;
   'sketch.closeDiscard': string;
+
+  // The entry view's navigation rail, and the shell's status bar.
+  // `entry.navLandmark` names the rail as a landmark for screen readers; it
+  // was previously a hard-coded English "Primary" on the `<nav>`.
+  'entry.navLandmark': string;
+  'statusBar.aria': string;
+  'statusBar.daemonLive': string;
+  'statusBar.daemonOffline': string;
+  'statusBar.notSet': string;
+  'statusBar.designSystem': string;
+  'statusBar.uiScale': string;
+  'statusBar.density': string;
+  'statusBar.densityCompact': string;
+  'statusBar.densityDefault': string;
+  'statusBar.densityComfortable': string;
 }
 
 // How many languages a rendered string carries. 'single' is the historical

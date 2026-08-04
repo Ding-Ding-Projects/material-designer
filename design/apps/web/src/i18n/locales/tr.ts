@@ -4692,4 +4692,17 @@ export const tr: Dict = {
   'settings.mediaProviderClearGateAction': 'Kayıtlı kimlik bilgilerini temizle',
   'settings.mediaProviderClearGateItem': 'Kayıtlı {name} API anahtarı, temel URL ve model. Anahtar bir daha asla gösterilmez ve uygulama onu kurtaramaz.',
   'sketch.closeDiscard': 'Değişiklikleri at',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Ana gezinme',
+  'statusBar.aria': 'Uygulama durumu',
+  'statusBar.daemonLive': 'Daemon çalışıyor',
+  'statusBar.daemonOffline': 'Daemon çevrimdışı',
+  'statusBar.notSet': 'Ayarlanmadı',
+  'statusBar.designSystem': 'Tasarım sistemi: {name}',
+  'statusBar.uiScale': 'Arayüz ölçeği %{percent}',
+  'statusBar.density': '{level} yoğunluk',
+  'statusBar.densityCompact': 'Sıkışık',
+  'statusBar.densityDefault': 'Varsayılan',
+  'statusBar.densityComfortable': 'Rahat',
 };

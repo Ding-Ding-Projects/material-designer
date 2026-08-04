@@ -3,11 +3,14 @@ import type { Locator } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 /**
- * The entry nav rail is collapsed by default; its destinations
- * (`entry-nav-*`) only become interactable once the rail is expanded via the
- * topbar toggle. This helper is idempotent — when the rail is already docked
- * the toggle is hidden, so it no-ops. Call it before clicking any rail nav
- * item or asserting the rail/logo is visible.
+ * Widen the entry nav rail to its labelled state.
+ *
+ * The rail is persistent: collapsed it is the 88px icon column, expanded it
+ * is 260px with a label beside every icon. Its destinations (`entry-nav-*`)
+ * are clickable in both, but only the expanded rail is wide enough for a
+ * click at the row's centre to land reliably, and only there do the labels
+ * exist to assert on. This helper is idempotent — once expanded, the topbar
+ * toggle is hidden, so it no-ops.
  */
 export async function ensureRailOpen(page: Page): Promise<void> {
   const toggle = page.getByTestId('entry-rail-toggle');
@@ -17,7 +20,7 @@ export async function ensureRailOpen(page: Page): Promise<void> {
     await toggle.click();
   }
   await expect(page.locator('.entry')).toHaveClass(/entry--rail-open/);
-  await expect(page.locator('.entry-nav-rail')).not.toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('.entry-nav-rail')).toHaveAttribute('data-rail-expanded', 'true');
 }
 
 export async function openNewProjectModal(page: Page): Promise<void> {

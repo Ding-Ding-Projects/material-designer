@@ -1,7 +1,7 @@
 /* ============================================================
    Entry layout — header-less variant
    - Single-row shell (`entry-shell--no-header`)
-   - Left icon-only nav rail (`entry-nav-rail`)
+   - Left persistent M3 navigation rail (`entry-nav-rail`)
    - Center scroll container (`entry-main--scroll`)
    ============================================================ */
 
@@ -10,7 +10,18 @@
    actions, so the entry view does not render `AppChromeHeader`. */
 .entry-shell--no-header {
   grid-template-rows: 1fr;
-  --entry-rail-width: 56px;
+  /* Material Design 3 navigation-rail widths. 88px is the icon-only rail —
+     a 56px destination pill centred in 16px of side padding — and 260px is
+     the same rail with labels beside the icons.
+
+     Both are non-zero on purpose. The collapsed track used to be 0, which
+     made "collapsed" mean *gone*: a fresh install, whose stored preference
+     does not exist yet, opened the home screen with no navigation at all.
+     An M3 navigation rail is persistent by definition — collapsing it
+     narrows it, it never removes it — so the toggle now switches between
+     icon rail and labelled rail rather than between hidden and shown. */
+  --entry-rail-width: 88px;
+  --entry-rail-width-expanded: 260px;
 }
 
 .entry-shell--onboarding {
@@ -32,25 +43,22 @@
   box-shadow: none;
 }
 
-/* Entry view collapses the rail by default (Manus-style): the grid's first
-   column animates between 0 and the rail width. Collapsed = clean full-width
-   entry for new users; expanded = the rail docks and pushes the main content
-   to the right (it stays docked until the user collapses it again). */
+/* The rail is always in the grid; only its width animates. `entry--rail-open`
+   is the *expanded* (labelled) state, not the *present* state — see the
+   width comment above for why that distinction is load-bearing. */
 .entry-shell--no-header .entry {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: var(--entry-rail-width, 88px) minmax(0, 1fr);
   transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .entry-shell--no-header .entry.entry--rail-open {
-  grid-template-columns: var(--entry-rail-width, 56px) minmax(0, 1fr);
+  grid-template-columns: var(--entry-rail-width-expanded, 260px) minmax(0, 1fr);
 }
 
-/* Left rail — docked column. Lives in the grid's first track; collapsed the
-   track is 0-wide so the rail is clipped away, expanded it occupies the rail
-   width. */
+/* Left rail — the docked navigation column. Lives in the grid's first track
+   and fills whichever of the two widths is current. */
 .entry-nav-rail {
-  /* Fill the grid track (0 collapsed → rail width expanded) rather than a
-     fixed width, so a 0-wide track truly hides the rail instead of letting a
-     56px rail overflow it. The inner groups keep the icon column's width.
+  /* Fill the grid track rather than carrying a fixed width, so the single
+     source of truth for how wide the rail is stays the grid template above.
      Border lives on the `::after` hairline below (from main), not on the box. */
   width: 100%;
   min-width: 0;
@@ -64,25 +72,29 @@
   gap: 8px;
   position: relative;
   z-index: 30;
-  /* Visibility is driven purely by the grid track width (0 collapsed) plus
-     the overflow clip below — no opacity fade, which previously crossed with
-     the topbar toggle's fade-out and caused a flash on expand. */
-  pointer-events: none;
-}
-.entry-nav-rail.is-open {
-  pointer-events: auto;
-}
-/* While collapsed (the grid track is 0) clip the rail's 56px of content so
-   nothing bleeds over the full-width entry. Expanded, descendants may escape
-   horizontally so hover tooltips and the help popover render to the right. */
-.entry:not(.entry--rail-open) .entry-nav-rail {
-  overflow: hidden;
-  /* Drop the right border too, otherwise a 1px seam shows on the
-     zero-width collapsed track. */
-  border-right: 0;
-}
-.entry--rail-open .entry-nav-rail {
+  /* Descendants may escape horizontally in both states so the icon-only
+     rail's hover tooltips and the help popover render to the right of it.
+     Clipping here is what used to hide the collapsed rail; nothing needs
+     hiding now, and clipping would swallow the tooltips that make an
+     icon-only rail usable in the first place. */
   overflow: visible;
+}
+
+/* Expanded: labels sit beside the icons, so the column stops centring its
+   children and gives them room to run full width. */
+.entry-nav-rail.is-open {
+  align-items: stretch;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.entry-nav-rail.is-open .entry-nav-rail__group,
+.entry-nav-rail.is-open .entry-nav-rail__footer {
+  align-items: stretch;
+}
+/* A visible label makes the hover bubble redundant, and two copies of the
+   same word — one in the row, one floating beside it — read as a bug. */
+.entry-nav-rail.is-open [data-tooltip]::after {
+  display: none;
 }
 
 /* Brand slot — the logo, with a collapse button that fades in on hover so the
@@ -130,12 +142,31 @@
     pointer-events: auto;
   }
 }
-/* When the rail is collapsed the brand element still sits at the top-left
-   under the cursor; force the absolutely-positioned collapse button inert so
-   it can't swallow clicks meant for the topbar toggle stacked beneath it. */
+/* Collapsed, the icon rail has no room for a second control beside the logo,
+   so the collapse button stays hidden and the topbar's panel toggle is the
+   one affordance that widens the rail. */
 .entry:not(.entry--rail-open) .entry-nav-rail__collapse {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Expanded, there is 260px of rail: the brand becomes a row with the logo at
+   the start and a permanently visible collapse control at the end. Revealing
+   it on hover was a compromise forced by a 56px column; at this width hiding
+   the only way back to the icon rail would just be a puzzle. */
+.entry-nav-rail.is-open .entry-nav-rail__brand {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: 4px;
+}
+.entry-nav-rail.is-open .entry-nav-rail__collapse {
+  position: static;
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
 }
 .entry-nav-rail__collapse:hover {
   background: var(--bg-hover, rgba(0, 0, 0, 0.05));
@@ -699,6 +730,50 @@
 .entry-nav-rail__btn:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
+}
+
+/* The destination label. It is rendered in both states and hidden by the
+   collapsed rail rather than conditionally mounted, so expanding cannot
+   remount the button and lose its focus — a keyboard user who widens the
+   rail from the row they are standing on stays standing on it. The button
+   keeps its own `aria-label`, which is what assistive technology reads, so
+   this text is decoration for sighted users and never a second name. */
+.entry-nav-rail__label {
+  display: none;
+  min-width: 0;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Expanded item anatomy: a full-width 56px pill, icon then label, 12px apart.
+   The collapsed 56x32 pill above is the M3 icon-only measurement and is left
+   exactly as it is — only the expanded variant is redefined here. */
+.entry-nav-rail.is-open .entry-nav-rail__btn {
+  width: 100%;
+  height: 56px;
+  justify-content: flex-start;
+  gap: 12px;
+  padding-inline: 16px;
+}
+.entry-nav-rail.is-open .entry-nav-rail__label {
+  display: block;
+}
+
+/* Nine 56px destinations need roughly 550px of rail. On a short window they
+   would push the footer off the bottom, and the rail deliberately does not
+   scroll — a scrollbar there would clip the hover tooltips that make the
+   icon width usable. Shrinking the row is the smaller loss; the collapsed
+   32px pill above is untouched, so only the expanded rail is affected. */
+@media (max-height: 780px) {
+  .entry-nav-rail.is-open .entry-nav-rail__btn {
+    height: 44px;
+  }
 }
 
 /* Avatar / settings dropdown — language picker section.
@@ -4437,8 +4512,12 @@
 }
 
 @media (max-width: 900px) {
-  .entry-nav-rail {
-    width: 56px;
+  /* Narrow window: tighten both rail widths rather than the rail element, so
+     the grid track and the rail keep agreeing. Setting a width on the rail
+     itself here would leave it floating inside a wider track. */
+  .entry-shell--no-header {
+    --entry-rail-width: 72px;
+    --entry-rail-width-expanded: 216px;
   }
   .entry-main__inner {
     padding: 24px 16px 56px;

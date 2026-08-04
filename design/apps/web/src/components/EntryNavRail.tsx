@@ -1,14 +1,19 @@
-// Lovart-style left navigation rail for the entry view.
+// Material Design 3 navigation rail for the entry view.
 //
-// Renders a narrow icon-only column. The first slot is the brand logo,
-// followed by the primary destinations users expect to keep in reach:
-// New project, home, projects, brand kit, automations, plugins,
-// and integrations. Footer controls are reserved for lower-frequency
-// support affordances such as the help launcher.
+// The first slot is the brand logo, followed by the primary destinations
+// users expect to keep in reach: New project, home, projects, brand kit,
+// automations, plugins, and integrations. Footer controls are reserved for
+// lower-frequency support affordances such as the help launcher.
 // Language switching and other account-scoped controls live behind the
 // floating settings cog in the top-right corner of the main content.
+//
+// The rail is persistent, which is what makes it a rail rather than a
+// drawer: it is on screen in both of its states, and the toggle switches
+// between the 88px icon column and the 260px labelled column. It used to
+// switch between shown and hidden, and because a fresh install has no stored
+// preference, the default state rendered no navigation at all.
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { EntryHelpMenu } from './EntryHelpMenu';
 import { Icon } from './Icon';
 import { useT } from '../i18n';
@@ -30,9 +35,12 @@ interface Props {
   onViewChange: (view: EntryView) => void;
   onNewProject: () => void;
   newProjectDisabled?: boolean;
-  /** When false the rail is collapsed (hidden off-canvas) on the entry view. */
+  /**
+   * True when the rail is expanded to its labelled width. False is the
+   * icon-only rail — still on screen, still operable, just narrower.
+   */
   open: boolean;
-  /** Collapse the rail — called after a destination is chosen or the user dismisses it. */
+  /** Narrow the rail back to icons. */
   onClose: () => void;
 }
 
@@ -59,6 +67,12 @@ function NavButton({ active, ariaLabel, tooltip, onClick, disabled, testId, chil
       {...(testId ? { 'data-testid': testId } : {})}
     >
       {children}
+      {/* Always rendered; the collapsed rail hides it in CSS. Mounting it
+          only when expanded would rebuild the button and drop keyboard
+          focus at exactly the moment a keyboard user widened the rail. The
+          button's `aria-label` above is the accessible name, so this span
+          is never announced twice. */}
+      <span className="entry-nav-rail__label">{ariaLabel}</span>
     </button>
   );
 }
@@ -82,29 +96,17 @@ export function EntryNavRail({
     onViewChange(next);
   };
 
-  // While collapsed the rail is visually hidden but its logo + nav buttons
-  // stay mounted. Mark the whole rail `inert` so those controls leave the
-  // keyboard tab order and pointer flow entirely — otherwise a fresh Tab on
-  // the home screen would land on invisible rail controls before the visible
-  // toggle/hero. `inert` is set imperatively to stay compatible across React
-  // versions whose JSX types don't yet declare the attribute.
-  const railRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const node = railRef.current;
-    if (!node) return;
-    if (open) {
-      node.removeAttribute('inert');
-    } else {
-      node.setAttribute('inert', '');
-    }
-  }, [open]);
-
+  // No `inert` and no `aria-hidden` in either state. Both were correct while
+  // collapsing meant hiding — invisible controls must leave the tab order —
+  // and both are wrong now: the collapsed rail is a visible navigation
+  // landmark, and hiding a visible control from assistive technology while
+  // sighted users can click it is exactly the defect those attributes exist
+  // to prevent elsewhere.
   return (
     <nav
-      ref={railRef}
       className={`entry-nav-rail${open ? ' is-open' : ''}`}
-      aria-label="Primary"
-      aria-hidden={open ? undefined : true}
+      aria-label={t('entry.navLandmark')}
+      data-rail-expanded={open ? 'true' : 'false'}
     >
       <div className="entry-nav-rail__group">
         <div className="entry-nav-rail__brand">

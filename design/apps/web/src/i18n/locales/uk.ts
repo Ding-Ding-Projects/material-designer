@@ -4692,4 +4692,17 @@ export const uk: Dict = {
   'settings.mediaProviderClearGateAction': 'Очистити збережені облікові дані',
   'settings.mediaProviderClearGateItem': 'Збережений API-ключ {name}, базова URL-адреса та модель. Ключ більше ніколи не показують, і застосунок не може його відновити.',
   'sketch.closeDiscard': 'Відхилити зміни',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Основна навігація',
+  'statusBar.aria': 'Стан застосунку',
+  'statusBar.daemonLive': 'Демон працює',
+  'statusBar.daemonOffline': 'Демон недоступний',
+  'statusBar.notSet': 'Не задано',
+  'statusBar.designSystem': 'Дизайн-система: {name}',
+  'statusBar.uiScale': 'Масштаб інтерфейсу {percent}%',
+  'statusBar.density': 'Щільність: {level}',
+  'statusBar.densityCompact': 'Компактна',
+  'statusBar.densityDefault': 'Звичайна',
+  'statusBar.densityComfortable': 'Просторна',
 };

@@ -4692,4 +4692,17 @@ export const de: Dict = {
   'settings.mediaProviderClearGateAction': 'Gespeicherte Zugangsdaten löschen',
   'settings.mediaProviderClearGateItem': 'Der gespeicherte {name}-API-Schlüssel, die Basis-URL und das Modell. Der Schlüssel wird nie wieder angezeigt und die App kann ihn nicht wiederherstellen.',
   'sketch.closeDiscard': 'Änderungen verwerfen',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': 'Hauptnavigation',
+  'statusBar.aria': 'Anwendungsstatus',
+  'statusBar.daemonLive': 'Daemon läuft',
+  'statusBar.daemonOffline': 'Daemon offline',
+  'statusBar.notSet': 'Nicht festgelegt',
+  'statusBar.designSystem': 'Designsystem: {name}',
+  'statusBar.uiScale': '{percent} % UI-Skalierung',
+  'statusBar.density': 'Dichte: {level}',
+  'statusBar.densityCompact': 'Kompakt',
+  'statusBar.densityDefault': 'Standard',
+  'statusBar.densityComfortable': 'Komfortabel',
 };

@@ -1,0 +1,91 @@
+/* The application status bar, transcribed from `mockups/open-design-m3`:
+   a 28px strip pinned under the workspace body, `surface-container` behind
+   it, one hairline `outline-variant` border along the top only, 16px of
+   horizontal padding, 14px between items, and 11px text in the
+   `on-surface-variant` role.
+
+   Every value that has a token is written as the token. The two that are not
+   — the 28px height and the 16px/14px spacing — are the measurements
+   themselves, exactly as the title bar's stylesheet treats its own 40px. */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 28px;
+  flex: none;
+  padding: 0 16px;
+  background: var(--md-sys-color-surface-container);
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--md-sys-color-on-surface-variant);
+  user-select: none;
+  overflow: hidden;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pushes everything after it to the right edge, the way the contract's own
+   flex spacer does. */
+.spacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The daemon indicator. Colour alone would carry the state, which fails for
+   a red/green-blind reader, so the dot always sits beside the word that says
+   which state it is — the dot is the glance, the text is the answer. */
+.dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-outline);
+}
+
+.dotLive {
+  background: var(--md-sys-color-success);
+  animation: statusBarPulse 2.4s ease-in-out infinite;
+}
+
+.dotOffline {
+  background: var(--md-sys-color-error);
+}
+
+@keyframes statusBarPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+/* A slow pulse on a permanently visible strip is exactly the sort of motion
+   a reduced-motion setting is asking to be rid of. The colour still says
+   live; only the movement stops. */
+@media (prefers-reduced-motion: reduce) {
+  .dotLive {
+    animation: none;
+  }
+}
+
+/* Below roughly a tablet width the strip cannot hold six items without
+   truncating the ones that matter most, so the two appearance readouts —
+   the least urgent, and the ones the user just set themselves — drop out
+   first and the daemon, model and design system keep their room. */
+@media (max-width: 760px) {
+  .appearanceItem {
+    display: none;
+  }
+}

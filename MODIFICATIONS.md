@@ -29,6 +29,65 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Put the navigation rail and the status bar on the screen
+
+**Reason:** a reader compared the published screenshot to the mockup and said
+the application still looked like the one it was forked from. They were right.
+The colour layer had landed — every component resolves Material Design 3 roles
+— but the mockup's structural furniture was not on screen, and structure is
+what makes a screen read as Material Design 3 rather than as a recolour.
+
+**The rail was mounted and invisible.** `EntryShell` rendered `EntryNavRail`
+into a grid track whose collapsed width was literally `0`, with
+`overflow: hidden`, `inert` and `aria-hidden` applied — present in the DOM,
+absent from the screen — and the stored preference defaulted to closed, so a
+fresh install showed no rail at all. "Collapsed" meant *gone*, which is a
+drawer; a Material Design 3 navigation rail is persistent by definition.
+
+It is now 88px as an icon rail and 260px with labels, the widths this
+roadmap's Wave 1 already specified, narrowing to 72/216 below 900px. The
+topbar control now means *widen* and the rail's own means *narrow*; neither
+means *hide*. `inert` and `aria-hidden` are gone, because both were correct
+while collapsing meant hiding and both now conceal a visible, operable
+landmark from assistive technology. The stored preference deliberately keeps
+its key and both values: `false` meant hidden and now means the icon rail,
+`true` meant docked and now means labels, so the mapping is exact and renaming
+the key would have discarded a real preference to say the same thing.
+
+**The status bar did not exist.** It is now the shell's last row at the
+mockup's 28px, carrying daemon state, model and execution mode, design system,
+and right-aligned scale and density. The daemon dot always sits beside the
+word naming the state, so colour is never the only channel, and only that
+segment is a live region — announcing a scale the user just chose is noise.
+The mockup's version segment is deliberately dropped: it arrives
+asynchronously and a wrong version is worse than none.
+
+**The header search bar was deliberately not attempted.** It needs a new
+surface bound to the regex builder, a shortcut route into the command palette
+and new filtering semantics — a third substantial blind change stacked on two,
+with no way to typecheck any of them.
+
+Four end-to-end tests changed meaning rather than breaking. Two of them
+**asserted the defect**: one required `aria-hidden="true"` on the default
+rail, and another was titled for the collapsed rail staying out of the tab
+order. An assertion that pins a rail out of the layout is not a test that was
+broken by this change; it is a test that was documenting the bug.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/AppStatusBar.tsx`
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/i18n/types.ts`
+- `e2e/lib/playwright/rail.ts`
+- `e2e/ui/critical-smoke.test.ts`
+- `e2e/ui/entry-chrome-flows.test.ts`
+- `e2e/ui/home-hero-rail.test.ts`
+
+
 ### 2026-08-04 — Capture nine named interface states instead of one, and prove each one before shooting it
 
 **Reason:** the entire visual evidence base for a Material Design 3 redesign was

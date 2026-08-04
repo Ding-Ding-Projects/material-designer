@@ -5157,4 +5157,17 @@ export const zhTW: Dict = {
   'settings.mediaProviderClearGateAction': '清除已儲存的憑證',
   'settings.mediaProviderClearGateItem': '已儲存的 {name} API 金鑰、基礎 URL 和模型。金鑰不會再次顯示，應用程式也無法還原它。',
   'sketch.closeDiscard': '捨棄變更',
+
+  // Entry navigation-rail landmark name and the shell status bar.
+  'entry.navLandmark': '主導覽',
+  'statusBar.aria': '應用程式狀態',
+  'statusBar.daemonLive': '常駐程式運作中',
+  'statusBar.daemonOffline': '常駐程式離線',
+  'statusBar.notSet': '未設定',
+  'statusBar.designSystem': '設計系統：{name}',
+  'statusBar.uiScale': '介面縮放 {percent}%',
+  'statusBar.density': '{level}密度',
+  'statusBar.densityCompact': '緊湊',
+  'statusBar.densityDefault': '預設',
+  'statusBar.densityComfortable': '寬鬆',
 };
