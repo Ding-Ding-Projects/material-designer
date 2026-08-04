@@ -222,7 +222,7 @@ export const esES: Dict = {
   'plugins.actions.openSource': 'Abrir código fuente',
   'plugins.actions.openHomepage': 'Abrir página de inicio',
   'plugins.actions.openMarketplace': 'Abrir en el marketplace',
-  'app.brand': 'Open Design',
+  'app.brand': 'Material Designer',
   'app.brandPill': 'Vista previa de investigación',
   'app.brandSubtitle': 'por Nexu Labs',
   'app.welcomeLoading': 'Cargando espacio de trabajo…',

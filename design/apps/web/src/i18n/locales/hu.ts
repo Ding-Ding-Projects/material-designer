@@ -222,7 +222,7 @@ export const hu: Dict = {
   'plugins.actions.openSource': 'Forrás megnyitása',
   'plugins.actions.openHomepage': 'Honlap megnyitása',
   'plugins.actions.openMarketplace': 'Megnyitás a piactéren',
-  'app.brand': 'Open Design',
+  'app.brand': 'Material Designer',
   'app.brandPill': 'Kutatási előzetes',
   'app.brandSubtitle': 'a Nexu Labs-tól',
   'app.welcomeLoading': 'Munkaterület betöltése…',

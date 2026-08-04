@@ -222,7 +222,7 @@ export const tr: Dict = {
   'plugins.actions.openSource': 'Kaynağı aç',
   'plugins.actions.openHomepage': 'Ana sayfayı aç',
   'plugins.actions.openMarketplace': 'Marketplace’te aç',
-  'app.brand': 'Open Design',
+  'app.brand': 'Material Designer',
   'app.brandPill': 'Önizleme Araştırması',
   'app.brandSubtitle': 'Nexu Labs tarafından',
   'app.welcomeLoading': 'Çalışma alanı yükleniyor…',
