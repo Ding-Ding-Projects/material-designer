@@ -299,6 +299,20 @@ groups, group order, collapsed state and membership persist across restarts. *Ra
 bulk close that runs on an empty query, an invalid pattern, or without a preview is a data
 loss event with a friendly button on it.*
 
+**Settings surfaces are tabbed too, with no exemption.** The application's own settings
+window, every per-project settings surface, every properties or details panel, every
+appearance editor, and every configuration page on the documentation site presents its
+sections as the same browser-style tabs — not a scrolling column, and not a bespoke
+left-hand section list that behaves like nothing else in the product. They carry the whole
+feature: overflow, reordering, pinning, grouping, the four discovery searches, the per-tab
+appearance editor, the bulk closes, and persistence across restarts. This is *separate
+from* the settings search bar standard 4 requires; a settings window with a search field
+and a scrolling column satisfies one rule and breaks this one. **Neither is true here
+yet** — the capture at `90e52d3` shows a seventeen-item section list, no tabs and no
+search. *Rationale: "it is only settings" and "it is a dialog" are the two exemptions
+people reach for, and a settings surface is where a user is most often hunting for one
+named thing.*
+
 **6. Non-blocking notifications; modals only for decisions.**
 Informational, success, progress and non-decision error messages appear as corner-anchored
 toasts that stack without overlapping and auto-dismiss — errors and warnings persist until
