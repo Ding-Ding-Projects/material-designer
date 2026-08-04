@@ -4326,6 +4326,10 @@ export const ptBR: Dict = {
   'regexSearch.toggleTitleRegex': 'Expressão regular ativa — abrir o construtor',
   'regexSearch.modeStatusText': 'Este campo está buscando texto simples.',
   'regexSearch.modeStatusRegex': 'Este campo está buscando com uma expressão regular.',
+  'entrySearch.placeholder': 'Buscar projetos, plugins, design systems…',
+  'entrySearch.aria': 'Buscar projetos, plugins e design systems',
+  'entrySearch.fieldLabel': 'busca do cabeçalho',
+  'entrySearch.paletteAria': 'Abrir a paleta de comandos',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const ptBR: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Alternar o texto bilíngue',
   'commandPalette.destinationLibrary': 'Biblioteca',
   'commandPalette.footerOpen': 'abrir',
+  'commandPalette.regexNote': 'Filtrando com a expressão regular {pattern} vinda da barra de busca.',
+  'commandPalette.regexClear': 'Usar texto simples',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

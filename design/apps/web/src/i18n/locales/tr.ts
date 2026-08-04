@@ -4326,6 +4326,10 @@ export const tr: Dict = {
   'regexSearch.toggleTitleRegex': 'Düzenli ifade açık — düzenli ifade oluşturucusunu aç',
   'regexSearch.modeStatusText': 'Bu alan düz metin eşleştiriyor.',
   'regexSearch.modeStatusRegex': 'Bu alan düzenli ifadeyle eşleştiriyor.',
+  'entrySearch.placeholder': 'Projelerde, eklentilerde, tasarım sistemlerinde ara…',
+  'entrySearch.aria': 'Projelerde, eklentilerde ve tasarım sistemlerinde ara',
+  'entrySearch.fieldLabel': 'başlık araması',
+  'entrySearch.paletteAria': 'Komut paletini aç',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const tr: Dict = {
   'commandPalette.commandToggleLanguageMode': 'İki dilli metni aç/kapat',
   'commandPalette.destinationLibrary': 'Kitaplık',
   'commandPalette.footerOpen': 'aç',
+  'commandPalette.regexNote': 'Arama çubuğundan gelen {pattern} düzenli ifadesiyle süzülüyor.',
+  'commandPalette.regexClear': 'Düz metin kullan',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

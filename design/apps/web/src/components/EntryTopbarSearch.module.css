@@ -1,0 +1,163 @@
+/* The header search field, transcribed from `mockups/open-design-m3`: a 48px
+   pill on `surface-container-high`, fully rounded, a leading search glyph in
+   `on-surface-variant`, and the trailing affordances inside the pill rather
+   than beside it.
+
+   Every colour, radius and curve here is a token. The two numbers that are not
+   — the pill's height and its padding — are the measurements themselves, the
+   same way `AppStatusBar.module.css` writes its own 28px.
+
+   The root class is the topbar's flex item, so its placement rules live here
+   rather than in `styles/home/entry-layout.css`. Nothing about the field is a
+   cross-component contract, and splitting a component's own geometry across two
+   files is how the next person changes one and not the other. */
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  /* Never grows past its basis and yields before anything else in the topbar.
+     The rail toggle's own `margin-right: auto` is what positions the whole
+     right-hand group, so the field deliberately claims no auto margin of its
+     own — two competing auto margins would place it differently depending on
+     whether the rail happened to be expanded. */
+  flex: 0 1 440px;
+  min-width: 0;
+  height: 48px;
+  padding: 0 6px 0 14px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  transition: box-shadow 250ms var(--md-sys-motion-emphasized, cubic-bezier(0.2, 0, 0, 1));
+}
+
+.field:hover {
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.14));
+}
+
+/* The focus ring belongs to the pill, not to the borderless input inside it:
+   an outline on a transparent 0-border input paints a rectangle through the
+   middle of a rounded surface. `:focus-within` also keeps the ring up while the
+   regex affordance has focus, which is still the field being used. */
+.field:focus-within {
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+
+.icon {
+  flex: none;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* `RegexSearchField` renders the input and its affordance inside this host, so
+   the host is what has to flex — and what has to be allowed to reach zero, or a
+   long placeholder would push the shortcut chip out of the pill instead of
+   being clipped inside it. */
+.host {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 8px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 1;
+}
+
+/* WebKit draws its own clear button inside `type="search"`, which lands on top
+   of the regex affordance and offers a second, unlabelled way to empty the
+   field. The input keeps `type="search"` for its semantics and loses the
+   decoration. */
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Shape and size only.
+   `RegexSearchField` owns the affordance's colours, including the accent
+   treatment that says regex is switched ON. Restating background or border here
+   would win on specificity and silently delete that state — the one thing about
+   the control that must never stop being visible. */
+.field .toggleShape {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.shortcut {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition: background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.shortcut:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.shortcut:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+.kbd {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+/* The star badge next to this field keeps its count above 1100px, and the model
+   switcher can carry a long model name. Give the room back to them rather than
+   letting the pill push the chip cluster into the window controls. */
+@media (max-width: 1100px) {
+  .field {
+    flex-basis: 320px;
+  }
+}
+
+/* At and below the shell's 900px minimum the chip cluster is hidden entirely
+   (`entry-layout.css`), so the pill has the row to itself again. */
+@media (max-width: 900px) {
+  .field {
+    flex-basis: 420px;
+  }
+}
+
+/* Bilingual mode pairs English with 廣東話 on the placeholder, so a string that
+   reads comfortably at 440px is roughly twice as long — and a placeholder does
+   not ellipsis, it is simply cut off at the edge of the box. Where the window
+   is wide enough to spend the pixels, spend them; where it is not, the
+   placeholder is clipped exactly as the single-language one would be at a
+   narrower width, and the accessible name still says both languages in full.
+
+   `data-od-language-mode` is published on <html> by the i18n provider, beside
+   the `lang` and `dir` it already sets there. */
+@media (min-width: 1280px) {
+  html[data-od-language-mode='bilingual'] .field {
+    flex-basis: 560px;
+  }
+}

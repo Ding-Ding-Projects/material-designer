@@ -4326,6 +4326,10 @@ export const id: Dict = {
   'regexSearch.toggleTitleRegex': 'Ekspresi reguler aktif — buka perakit ekspresi reguler',
   'regexSearch.modeStatusText': 'Bidang ini mencocokkan teks biasa.',
   'regexSearch.modeStatusRegex': 'Bidang ini mencocokkan dengan ekspresi reguler.',
+  'entrySearch.placeholder': 'Cari proyek, plugin, design system…',
+  'entrySearch.aria': 'Cari proyek, plugin, dan design system',
+  'entrySearch.fieldLabel': 'pencarian header',
+  'entrySearch.paletteAria': 'Buka palet perintah',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const id: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Nyalakan atau matikan teks dwibahasa',
   'commandPalette.destinationLibrary': 'Pustaka',
   'commandPalette.footerOpen': 'buka',
+  'commandPalette.regexNote': 'Difilter dengan ekspresi reguler {pattern} dari bilah pencarian.',
+  'commandPalette.regexClear': 'Gunakan teks biasa',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

@@ -4791,6 +4791,10 @@ export const zhTW: Dict = {
   "regexSearch.toggleTitleRegex": "正規表示式已開啟 — 開啟建構器",
   "regexSearch.modeStatusText": "這個欄位正在比對純文字。",
   "regexSearch.modeStatusRegex": "這個欄位正在用正規表示式比對。",
+  "entrySearch.placeholder": "搜尋專案、外掛、設計系統…",
+  "entrySearch.aria": "搜尋專案、外掛與設計系統",
+  "entrySearch.fieldLabel": "頂列搜尋",
+  "entrySearch.paletteAria": "開啟命令面板",
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4980,6 +4984,8 @@ export const zhTW: Dict = {
   "commandPalette.commandToggleLanguageMode": "開關雙語文案",
   "commandPalette.destinationLibrary": "素材庫",
   "commandPalette.footerOpen": "開啟",
+  "commandPalette.regexNote": "正在使用搜尋列傳來的正規表示式 {pattern} 篩選。",
+  "commandPalette.regexClear": "改用純文字",
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

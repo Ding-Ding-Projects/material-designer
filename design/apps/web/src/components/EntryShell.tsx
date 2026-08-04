@@ -99,6 +99,7 @@ import { DesignsTab } from './DesignsTab';
 import { DesignSystemsTab } from './DesignSystemsTab';
 import { BrandsTab } from './BrandsTab';
 import { EntryNavRail, type EntryView as EntryViewKind } from './EntryNavRail';
+import { EntryTopbarSearch } from './EntryTopbarSearch';
 import { LibrarySection } from './LibrarySection';
 import { UpdaterPopup } from './UpdaterPopup';
 import { WhatsNewPopup } from './WhatsNewPopup';
@@ -1024,6 +1025,11 @@ export function EntryShell({
             >
               <Icon name="panel-left" size={20} />
             </button>
+            {/* The mockup's header search, ahead of the chip cluster. It is the
+                command palette's typeable entry point rather than a fourth
+                search over collections that each already have one — see the
+                header comment in `EntryTopbarSearch.tsx`. */}
+            <EntryTopbarSearch />
             <div className="entry-main__topbar-chips entry-main__topbar-chips--icon-only">
               <GithubStarBadge />
               <a

@@ -4326,6 +4326,10 @@ export const uk: Dict = {
   'regexSearch.toggleTitleRegex': 'Регулярний вираз увімкнено — відкрити конструктор',
   'regexSearch.modeStatusText': 'Це поле шукає звичайний текст.',
   'regexSearch.modeStatusRegex': 'Це поле шукає за регулярним виразом.',
+  'entrySearch.placeholder': 'Пошук проєктів, плагінів, дизайн-систем…',
+  'entrySearch.aria': 'Пошук проєктів, плагінів і дизайн-систем',
+  'entrySearch.fieldLabel': 'пошук у шапці',
+  'entrySearch.paletteAria': 'Відкрити палітру команд',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const uk: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Увімкнути чи вимкнути двомовний текст',
   'commandPalette.destinationLibrary': 'Бібліотека',
   'commandPalette.footerOpen': 'відкрити',
+  'commandPalette.regexNote': 'Фільтрування регулярним виразом {pattern} з рядка пошуку.',
+  'commandPalette.regexClear': 'Використати звичайний текст',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

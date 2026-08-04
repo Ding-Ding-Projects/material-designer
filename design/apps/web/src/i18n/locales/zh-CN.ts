@@ -4783,6 +4783,10 @@ export const zhCN: Dict = {
   "regexSearch.toggleTitleRegex": "正则已开启 — 打开正则构建器",
   "regexSearch.modeStatusText": "这个输入框正在按普通文本匹配。",
   "regexSearch.modeStatusRegex": "这个输入框正在用正则表达式匹配。",
+  "entrySearch.placeholder": "搜索项目、插件、设计系统…",
+  "entrySearch.aria": "搜索项目、插件和设计系统",
+  "entrySearch.fieldLabel": "顶栏搜索",
+  "entrySearch.paletteAria": "打开命令面板",
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4972,6 +4976,8 @@ export const zhCN: Dict = {
   "commandPalette.commandToggleLanguageMode": "开关双语文案",
   "commandPalette.destinationLibrary": "素材库",
   "commandPalette.footerOpen": "打开",
+  "commandPalette.regexNote": "正在用搜索栏传来的正则表达式 {pattern} 进行筛选。",
+  "commandPalette.regexClear": "改用纯文本",
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

@@ -4481,6 +4481,14 @@ export interface Dict {
   'regexSearch.modeStatusText': string;
   'regexSearch.modeStatusRegex': string;
 
+  // The header search field in the entry topbar. It is the command palette's
+  // typeable entry point, so its copy names what the palette can find rather
+  // than promising a result list of its own.
+  'entrySearch.placeholder': string;
+  'entrySearch.aria': string;
+  'entrySearch.fieldLabel': string;
+  'entrySearch.paletteAria': string;
+
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
   // The anchored regex builder itself — mode, pattern editor, flags, the
@@ -4682,6 +4690,10 @@ export interface Dict {
   'commandPalette.commandToggleLanguageMode': string;
   'commandPalette.destinationLibrary': string;
   'commandPalette.footerOpen': string;
+  // Shown when the header search field handed the palette a pattern, so the
+  // list is being matched with that rather than with the words in the box.
+  'commandPalette.regexNote': string;
+  'commandPalette.regexClear': string;
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

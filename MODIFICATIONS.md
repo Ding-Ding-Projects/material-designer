@@ -29,6 +29,45 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The header search bar, routed into the palette rather than duplicating it
+
+**Reason:** the last of the three pieces of chrome the mockup specifies. The
+navigation rail and the status bar landed earlier; this is the search field.
+
+**The mockup settled a question the requirement left open.** It draws *two*
+adjacent controls — a search pill and a separate `Ctrl K` button wired to the
+palette — so the keyboard hint is a neighbour rather than the field's own
+behaviour, and the mockup's own query state is inert, filtering nothing. It
+specifies anatomy, not semantics.
+
+So the two became one control that routes into the palette. The three
+collections the placeholder names — projects, plugins, design systems — each
+already own a regex-search field of their own, and the palette already answers
+the question one level up with scopes for exactly those plus settings and
+files. A header field with its own result list would have been the fourth
+implementation of the same search, and two global searches twelve pixels apart
+is worse than one.
+
+**The builder is real rather than decorative**, which is what the standard
+actually requires: the pattern and flags travel into the palette's own
+filtering, the palette states on screen which pattern it is matching with, and
+it offers the way back to plain text. Two traps were closed on the way — the
+palette compiles its own matcher rather than borrowing the field's, because a
+`/g` expression carries `lastIndex` and would match every other row; and
+scope-prefix parsing switches off while a pattern is live, because `#\d+`
+would otherwise lose its `#` to the scope parser.
+
+`Cmd/Ctrl+K` now opens the palette, so the chip names a key that works.
+
+**Changed files:**
+
+- `apps/web/src/components/EntryTopbarSearch.tsx`
+- `apps/web/src/components/EntryTopbarSearch.module.css`
+- `apps/web/src/components/command-palette/open.ts`
+- `apps/web/tests/components/EntryTopbarSearch.test.tsx`
+- `apps/web/tests/components/CommandPalette.regex-filter.test.ts`
+
+
 ### 2026-08-04 — Give the home screen Material Design 3 anatomy, not just its colours
 
 **Reason:** a reader compared the shipped screenshot to the mockup and said the

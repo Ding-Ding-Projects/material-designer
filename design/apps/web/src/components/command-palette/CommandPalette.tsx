@@ -50,13 +50,17 @@ import { NARRATOR_LANGUAGES, NARRATOR_LANGUAGE_LABEL_KEYS } from '../narrator/se
 import type { SettingsSection } from '../SettingsDialog';
 import { openWorkspaceTab } from '../WorkspaceTabsBar';
 import styles from './CommandPalette.module.css';
+import { createBoundedMatcher } from '../regex/evaluate';
+import { compilePattern } from '../regex/pattern';
 import {
   PALETTE_SCOPES,
   buildPaletteRows,
   filterPaletteRows,
   parsePaletteQuery,
+  type PaletteRegexFilter,
   type PaletteRow,
   type PaletteScopeId,
+  type ParsedPaletteQuery,
 } from './commands';
 import { quickSwitcherScopeResults, useQuickSwitcherScope } from './quickSwitcherScope';
 import { requestSettingsReveal } from './reveal';
@@ -122,9 +126,28 @@ interface Props {
   onConfigChange: (next: AppConfig) => void;
   onOpenSettings: (section: SettingsSection) => void;
   onClose: () => void;
+  /**
+   * What the palette starts with, when something opened it on the user's
+   * behalf — today, the header search field. Absent when the shortcut opened
+   * it, which is why the palette still starts empty by default.
+   */
+  seedQuery?: string;
+  /**
+   * The pattern and flags that field had switched on. The palette compiles it
+   * under its own bounded matcher and filters with it until the user edits the
+   * query here, at which point it says so and steps back to plain text.
+   */
+  seedRegex?: { source: string; flags: string } | null;
 }
 
-export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose }: Props) {
+export function CommandPalette({
+  config,
+  onConfigChange,
+  onOpenSettings,
+  onClose,
+  seedQuery,
+  seedRegex,
+}: Props) {
   const {
     t,
     locale,
@@ -134,7 +157,12 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
     funnyLevels,
     setFunnyLevel,
   } = useI18n();
-  const [rawQuery, setRawQuery] = useState('');
+  const [rawQuery, setRawQuery] = useState(seedQuery ?? '');
+  // Seeded once, on mount. The palette is mounted fresh on every open, so a
+  // later prop change cannot smuggle a pattern in behind the user's edits.
+  const [regexSeed, setRegexSeed] = useState<{ source: string; flags: string } | null>(
+    () => seedRegex ?? null,
+  );
   const [scopeOverride, setScopeOverride] = useState<PaletteScopeId | null>(null);
   const [cursor, setCursor] = useState(0);
   const [displayMode, setDisplayMode] = useState<PaletteDisplayMode>(() => readPaletteDisplayMode());
@@ -170,7 +198,31 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
     node?.focus();
   }, []);
 
-  const parsed = parsePaletteQuery(rawQuery);
+  // The pattern the palette is actually matching with, or null for plain text.
+  //
+  // Compiled here rather than carried in from the field: a `RegExp` with the
+  // `g` flag keeps `lastIndex` between calls, so a shared instance would match
+  // every other row and look like a ranking bug. A pattern that no longer
+  // compiles drops the seed entirely instead of quietly matching nothing.
+  const regexFilter = useMemo<PaletteRegexFilter | null>(() => {
+    if (!regexSeed) return null;
+    const { regex } = compilePattern(regexSeed.source, regexSeed.flags);
+    if (!regex) return null;
+    const bounded = createBoundedMatcher(regex);
+    return {
+      source: regexSeed.source,
+      flags: regexSeed.flags,
+      matches: (text: string) => bounded.test(text),
+    };
+  }, [regexSeed]);
+
+  // A scope prefix and a regular expression cannot both own the first
+  // character. `#\d+` is a perfectly good pattern and `parsePaletteQuery` would
+  // eat its `#` as the files-scope prefix, so while a pattern is live the
+  // prefixes are off and the scope comes from the chips alone.
+  const parsed: ParsedPaletteQuery = regexFilter
+    ? { scope: null, query: rawQuery }
+    : parsePaletteQuery(rawQuery);
   const scope: PaletteScopeId = parsed.scope ?? scopeOverride ?? 'all';
   const query = parsed.query;
 
@@ -310,14 +362,20 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
     setLanguageMode(languageMode === 'bilingual' ? 'single' : 'bilingual');
   }, [languageMode, setLanguageMode]);
 
-  const setScope = useCallback((next: PaletteScopeId) => {
-    setScopeOverride(next);
-    // Drop any typed prefix so the chip and the query cannot disagree about
-    // which scope is live.
-    setRawQuery((current) => parsePaletteQuery(current).query);
-    setCursor(0);
-    inputRef.current?.focus();
-  }, []);
+  const setScope = useCallback(
+    (next: PaletteScopeId) => {
+      setScopeOverride(next);
+      // Drop any typed prefix so the chip and the query cannot disagree about
+      // which scope is live — but only when the box holds a query. While a
+      // pattern is live the prefixes are off, and `#\d+` would come back from
+      // the parser as `\d+`: a silently different pattern, from a click that
+      // was only ever about scope.
+      if (!regexSeed) setRawQuery((current) => parsePaletteQuery(current).query);
+      setCursor(0);
+      inputRef.current?.focus();
+    },
+    [regexSeed],
+  );
 
   const registryRows = useMemo(
     () =>
@@ -352,7 +410,16 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
     // happens to be open in the current project.
     if (scope !== 'files' && (scope !== 'all' || !query.trim())) return [];
     const limit = scope === 'files' ? 50 : FILE_ROWS_IN_ALL_SCOPE;
-    return quickSwitcherScopeResults(fileScope, query, limit).map((result) => ({
+    // The quick switcher scores plain text and knows nothing about patterns, so
+    // a live regex asks it for the unfiltered list and applies the same matcher
+    // the registry rows get. Files silently ignoring the pattern while commands
+    // honoured it would be the worst of both.
+    const results = regexFilter
+      ? quickSwitcherScopeResults(fileScope, '', 400)
+          .filter((result) => regexFilter.matches(result.title) || regexFilter.matches(result.detail))
+          .slice(0, limit)
+      : quickSwitcherScopeResults(fileScope, query, limit);
+    return results.map((result) => ({
       kind: 'destination' as const,
       id: `file:${result.id}`,
       title: result.title,
@@ -364,18 +431,18 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
         close({ restoreFocus: false });
       },
     }));
-  }, [close, fileScope, query, scope, t]);
+  }, [close, fileScope, query, regexFilter, scope, t]);
 
   const rows = useMemo<PaletteRow[]>(() => {
     if (scope === 'files') return fileRows;
     // `fileRows` is empty for every scope but `all` (and only once a query has
     // been typed), so this concatenation is a no-op elsewhere.
-    return [...filterPaletteRows(registryRows, query, scope), ...fileRows];
-  }, [fileRows, query, registryRows, scope]);
+    return [...filterPaletteRows(registryRows, query, scope, 60, regexFilter), ...fileRows];
+  }, [fileRows, query, regexFilter, registryRows, scope]);
 
   useEffect(() => {
     setCursor(0);
-  }, [rawQuery, scope]);
+  }, [rawQuery, regexFilter, scope]);
 
   useEffect(() => {
     const element = listRef.current?.querySelector<HTMLElement>(`[data-row-index="${cursor}"]`);
@@ -468,7 +535,14 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
             ref={setInputRef}
             className={styles.input}
             value={rawQuery}
-            onChange={(event) => setRawQuery(event.target.value)}
+            onChange={(event) => {
+              setRawQuery(event.target.value);
+              // Editing the text here is the user taking the query back. The
+              // pattern came from a builder that is no longer on screen, so
+              // keeping it live would leave the palette matching one thing
+              // while the box shows another.
+              setRegexSeed(null);
+            }}
             onKeyDown={onKeyDown}
             placeholder={t('commandPalette.placeholder')}
             aria-label={t('commandPalette.placeholder')}
@@ -497,6 +571,30 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
             <Icon name={displayMode === 'full' ? 'minimize' : 'maximize'} size={14} />
           </button>
         </div>
+
+        {/* A pattern arrived from the header field's builder, and the list is
+            being matched with it rather than with the text in the box. Saying
+            so is not decoration: without it the same query would produce two
+            different result sets on two different openings and nothing on
+            screen would explain why. `role="status"` so a screen-reader user
+            hears the mode change too, and the button is the way back out. */}
+        {regexFilter ? (
+          <p className={styles.regexNote} role="status" data-testid="command-palette-regex-note">
+            <span>
+              {t('commandPalette.regexNote', {
+                pattern: `/${regexFilter.source}/${regexFilter.flags}`,
+              })}
+            </span>
+            <button
+              type="button"
+              className={styles.regexClear}
+              data-testid="command-palette-regex-clear"
+              onClick={() => setRegexSeed(null)}
+            >
+              {t('commandPalette.regexClear')}
+            </button>
+          </p>
+        ) : null}
 
         <div className={styles.scopes} role="group" aria-label={t('commandPalette.scopeLabel')}>
           {PALETTE_SCOPES.map((definition) => (

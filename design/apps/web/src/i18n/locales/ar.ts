@@ -4326,6 +4326,10 @@ export const ar: Dict = {
   'regexSearch.toggleTitleRegex': 'التعبير النمطي مُفعّل — افتح مُنشئ التعبيرات النمطية',
   'regexSearch.modeStatusText': 'هذا الحقل يطابق نصًا عاديًا.',
   'regexSearch.modeStatusRegex': 'هذا الحقل يطابق بتعبير نمطي.',
+  'entrySearch.placeholder': 'ابحث في المشاريع والإضافات وأنظمة التصميم…',
+  'entrySearch.aria': 'ابحث في المشاريع والإضافات وأنظمة التصميم',
+  'entrySearch.fieldLabel': 'بحث الرأس',
+  'entrySearch.paletteAria': 'افتح لوحة الأوامر',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const ar: Dict = {
   'commandPalette.commandToggleLanguageMode': 'تبديل النص ثنائي اللغة',
   'commandPalette.destinationLibrary': 'المكتبة',
   'commandPalette.footerOpen': 'فتح',
+  'commandPalette.regexNote': 'تجري المطابقة بالتعبير النمطي {pattern} القادم من شريط البحث.',
+  'commandPalette.regexClear': 'استخدم النص العادي',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

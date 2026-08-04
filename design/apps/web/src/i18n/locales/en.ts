@@ -4340,6 +4340,10 @@ export const en: Dict = {
   'regexSearch.toggleTitleRegex': 'Regex is on — open the regex builder',
   'regexSearch.modeStatusText': 'This field is matching plain text.',
   'regexSearch.modeStatusRegex': 'This field is matching a regular expression.',
+  'entrySearch.placeholder': 'Search projects, plugins, design systems…',
+  'entrySearch.aria': 'Search projects, plugins and design systems',
+  'entrySearch.fieldLabel': 'header search',
+  'entrySearch.paletteAria': 'Open the command palette',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4529,6 +4533,8 @@ export const en: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Toggle bilingual copy',
   'commandPalette.destinationLibrary': 'Library',
   'commandPalette.footerOpen': 'open',
+  'commandPalette.regexNote': 'Matching with the regular expression {pattern} from the search bar.',
+  'commandPalette.regexClear': 'Use plain text',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

@@ -4326,6 +4326,10 @@ export const ru: Dict = {
   'regexSearch.toggleTitleRegex': 'Регулярное выражение включено — открыть конструктор',
   'regexSearch.modeStatusText': 'Это поле ищет обычный текст.',
   'regexSearch.modeStatusRegex': 'Это поле ищет по регулярному выражению.',
+  'entrySearch.placeholder': 'Поиск проектов, плагинов, дизайн-систем…',
+  'entrySearch.aria': 'Поиск проектов, плагинов и дизайн-систем',
+  'entrySearch.fieldLabel': 'поиск в шапке',
+  'entrySearch.paletteAria': 'Открыть палитру команд',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const ru: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Включить или выключить двуязычный текст',
   'commandPalette.destinationLibrary': 'Библиотека',
   'commandPalette.footerOpen': 'открыть',
+  'commandPalette.regexNote': 'Фильтрация регулярным выражением {pattern} из строки поиска.',
+  'commandPalette.regexClear': 'Использовать обычный текст',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

@@ -4326,6 +4326,10 @@ export const ja: Dict = {
   'regexSearch.toggleTitleRegex': '正規表現が有効です — 正規表現ビルダーを開く',
   'regexSearch.modeStatusText': 'このフィールドはプレーンテキストで検索しています。',
   'regexSearch.modeStatusRegex': 'このフィールドは正規表現で検索しています。',
+  'entrySearch.placeholder': 'プロジェクト、プラグイン、デザインシステムを検索…',
+  'entrySearch.aria': 'プロジェクト、プラグイン、デザインシステムを検索',
+  'entrySearch.fieldLabel': 'ヘッダー検索',
+  'entrySearch.paletteAria': 'コマンドパレットを開く',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const ja: Dict = {
   'commandPalette.commandToggleLanguageMode': '二言語表示を切り替える',
   'commandPalette.destinationLibrary': 'ライブラリ',
   'commandPalette.footerOpen': '開く',
+  'commandPalette.regexNote': '検索バーから渡された正規表現 {pattern} で絞り込んでいます。',
+  'commandPalette.regexClear': 'プレーンテキストを使う',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

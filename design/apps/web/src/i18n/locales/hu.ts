@@ -4326,6 +4326,10 @@ export const hu: Dict = {
   'regexSearch.toggleTitleRegex': 'A reguláris kifejezés be van kapcsolva — nyisd meg a szerkesztőt',
   'regexSearch.modeStatusText': 'Ez a mező sima szöveget keres.',
   'regexSearch.modeStatusRegex': 'Ez a mező reguláris kifejezéssel keres.',
+  'entrySearch.placeholder': 'Projektek, bővítmények, tervezőrendszerek keresése…',
+  'entrySearch.aria': 'Projektek, bővítmények és tervezőrendszerek keresése',
+  'entrySearch.fieldLabel': 'fejlécbeli keresés',
+  'entrySearch.paletteAria': 'Parancspaletta megnyitása',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const hu: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Kétnyelvű szöveg be- és kikapcsolása',
   'commandPalette.destinationLibrary': 'Könyvtár',
   'commandPalette.footerOpen': 'megnyitás',
+  'commandPalette.regexNote': 'A szűrés a keresősávból érkező {pattern} reguláris kifejezéssel történik.',
+  'commandPalette.regexClear': 'Egyszerű szöveg használata',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

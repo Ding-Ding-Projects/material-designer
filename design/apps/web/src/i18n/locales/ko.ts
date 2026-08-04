@@ -4326,6 +4326,10 @@ export const ko: Dict = {
   'regexSearch.toggleTitleRegex': '정규식이 켜져 있습니다 — 정규식 빌더 열기',
   'regexSearch.modeStatusText': '이 입력란은 일반 텍스트로 찾고 있습니다.',
   'regexSearch.modeStatusRegex': '이 입력란은 정규식으로 찾고 있습니다.',
+  'entrySearch.placeholder': '프로젝트, 플러그인, 디자인 시스템 검색…',
+  'entrySearch.aria': '프로젝트, 플러그인, 디자인 시스템 검색',
+  'entrySearch.fieldLabel': '헤더 검색',
+  'entrySearch.paletteAria': '명령 팔레트 열기',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const ko: Dict = {
   'commandPalette.commandToggleLanguageMode': '두 언어 표기 켜고 끄기',
   'commandPalette.destinationLibrary': '라이브러리',
   'commandPalette.footerOpen': '열기',
+  'commandPalette.regexNote': '검색창에서 넘어온 정규식 {pattern}으로 필터링하고 있습니다.',
+  'commandPalette.regexClear': '일반 텍스트 사용',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

@@ -4321,6 +4321,10 @@ export const fa: Dict = {
   'regexSearch.toggleTitleRegex': 'عبارت باقاعده روشن است — سازندهٔ عبارت باقاعده را باز کنید',
   'regexSearch.modeStatusText': 'این فیلد متن ساده را تطبیق می‌دهد.',
   'regexSearch.modeStatusRegex': 'این فیلد با عبارت باقاعده تطبیق می‌دهد.',
+  'entrySearch.placeholder': 'جستجوی پروژه‌ها، افزونه‌ها و سیستم‌های طراحی…',
+  'entrySearch.aria': 'جستجوی پروژه‌ها، افزونه‌ها و سیستم‌های طراحی',
+  'entrySearch.fieldLabel': 'جستجوی سربرگ',
+  'entrySearch.paletteAria': 'باز کردن پالت فرمان',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4510,6 +4514,8 @@ export const fa: Dict = {
   'commandPalette.commandToggleLanguageMode': 'روشن و خاموش کردن متن دوزبانه',
   'commandPalette.destinationLibrary': 'کتابخانه',
   'commandPalette.footerOpen': 'باز کردن',
+  'commandPalette.regexNote': 'تطبیق با عبارت باقاعده {pattern} از نوار جستجو انجام می‌شود.',
+  'commandPalette.regexClear': 'استفاده از متن ساده',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

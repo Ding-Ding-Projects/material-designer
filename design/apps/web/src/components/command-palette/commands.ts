@@ -305,16 +305,61 @@ function wordStarts(value: string): string[] {
   return value.split(/[\s/·—–-]+/u).filter(Boolean);
 }
 
+/**
+ * A compiled pattern handed in from a search field that had regex switched on.
+ *
+ * The palette never compiles a user's pattern twice or shares a `RegExp` with
+ * the field that built it: a global regex carries `lastIndex` between calls, so
+ * a borrowed one would match every other row. The caller passes source + flags
+ * and the palette builds its own bounded matcher.
+ */
+export interface PaletteRegexFilter {
+  /** The pattern as written, for display. Never re-parsed here. */
+  source: string;
+  flags: string;
+  /** Row predicate. Must never throw and must never hide rows on failure. */
+  matches: (text: string) => boolean;
+}
+
+/**
+ * Where a pattern hit, expressed on the same scale `scorePaletteRow` uses so
+ * the two ranking paths order a list the same way.
+ *
+ * A regex either matches or it does not — there is no "starts with" to reward —
+ * so the only ranking signal left is *which* field it matched. Title beats
+ * keyword beats hint, exactly as it does for text.
+ */
+export function scorePaletteRowByRegex(row: PaletteRow, filter: PaletteRegexFilter): number {
+  if (filter.matches(row.title)) return 600;
+  for (const keyword of row.keywords ?? []) {
+    if (filter.matches(keyword)) return 200;
+  }
+  if (row.hint && filter.matches(row.hint)) return 80;
+  return 0;
+}
+
 export function filterPaletteRows(
   rows: readonly PaletteRow[],
   query: string,
   scope: PaletteScopeId,
   limit = 60,
+  /** When present, `query` is ignored and this decides membership. */
+  regex: PaletteRegexFilter | null = null,
 ): PaletteRow[] {
   const needle = query.trim().toLocaleLowerCase();
   const inScope = scope === 'all'
     ? rows
     : rows.filter((row) => paletteRowScope(row) === scope);
+  if (regex) {
+    // Deliberately no empty-query shortcut: an empty pattern matches every
+    // row, which is the honest answer rather than a special case.
+    return inScope
+      .map((row, index) => ({ row, index, score: scorePaletteRowByRegex(row, regex) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => (b.score - a.score) || (a.index - b.index))
+      .slice(0, limit)
+      .map((entry) => entry.row);
+  }
   if (!needle) return inScope.slice(0, limit);
   return inScope
     .map((row, index) => ({ row, index, score: scorePaletteRow(row, needle) }))

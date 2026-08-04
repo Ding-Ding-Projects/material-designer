@@ -4326,6 +4326,10 @@ export const th: Dict = {
   'regexSearch.toggleTitleRegex': 'เปิดใช้นิพจน์ทั่วไปอยู่ — เปิดตัวสร้างนิพจน์ทั่วไป',
   'regexSearch.modeStatusText': 'ช่องนี้กำลังจับคู่ข้อความธรรมดา',
   'regexSearch.modeStatusRegex': 'ช่องนี้กำลังจับคู่ด้วยนิพจน์ทั่วไป',
+  'entrySearch.placeholder': 'ค้นหาโปรเจกต์ ปลั๊กอิน ดีไซน์ซิสเต็ม…',
+  'entrySearch.aria': 'ค้นหาโปรเจกต์ ปลั๊กอิน และดีไซน์ซิสเต็ม',
+  'entrySearch.fieldLabel': 'ช่องค้นหาส่วนหัว',
+  'entrySearch.paletteAria': 'เปิดคอมมานด์พาเลตต์',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const th: Dict = {
   'commandPalette.commandToggleLanguageMode': 'เปิดหรือปิดข้อความสองภาษา',
   'commandPalette.destinationLibrary': 'คลัง',
   'commandPalette.footerOpen': 'เปิด',
+  'commandPalette.regexNote': 'กำลังกรองด้วยนิพจน์ทั่วไป {pattern} จากแถบค้นหา',
+  'commandPalette.regexClear': 'ใช้ข้อความธรรมดา',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)

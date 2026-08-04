@@ -62,6 +62,12 @@ import {
 import { readLastSettingsSection } from './components/settings/settingsTabs';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { requestSettingsReveal } from './components/command-palette/reveal';
+import {
+  COMMAND_PALETTE_OPEN_EVENT,
+  clearPendingCommandPalette,
+  takePendingCommandPalette,
+  type CommandPaletteRequest,
+} from './components/command-palette/open';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -492,6 +498,8 @@ function AppInner() {
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  /** What the next palette opens with. Empty when the shortcut opened it. */
+  const [commandPaletteSeed, setCommandPaletteSeed] = useState<CommandPaletteRequest>({});
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -2378,10 +2386,50 @@ function AppInner() {
       if (e.key.toLowerCase() !== 'p') return;
       if (e.isComposing) return;
       e.preventDefault();
+      setCommandPaletteSeed({});
       setCommandPaletteOpen((open) => !open);
     };
     window.addEventListener('keydown', onKeyDown, { capture: true });
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, []);
+
+  // Cmd/Ctrl+K opens the same palette. It is the shortcut the header search
+  // field advertises on its own chip, so it has to be the one that works —
+  // a hint that names a key which does nothing is worse than no hint.
+  // `!e.shiftKey` keeps it clear of Cmd/Ctrl+Shift+K in the project view.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const primary = isMacPlatform() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+      if (!primary || e.shiftKey || e.altKey) return;
+      if (e.key.toLowerCase() !== 'k') return;
+      if (e.isComposing) return;
+      e.preventDefault();
+      // The shortcut opens an empty palette. Inheriting whatever is sitting in
+      // the header field would surprise a user who reached for the keyboard
+      // precisely because they were not looking at that field.
+      setCommandPaletteSeed({});
+      setCommandPaletteOpen((open) => !open);
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
+  }, []);
+
+  // Something asked for the palette on the user's behalf — today, the header
+  // search field submitting its query and its pattern. The request travels
+  // through a module rather than a prop because the field lives several levels
+  // below this state; see `command-palette/open.ts`.
+  useEffect(() => {
+    const onRequest = () => {
+      setCommandPaletteSeed(takePendingCommandPalette() ?? {});
+      setCommandPaletteOpen(true);
+    };
+    window.addEventListener(COMMAND_PALETTE_OPEN_EVENT, onRequest);
+    return () => {
+      window.removeEventListener(COMMAND_PALETTE_OPEN_EVENT, onRequest);
+      // An unconsumed request must not survive this component: it would open
+      // the next palette on a query nobody typed.
+      clearPendingCommandPalette();
+    };
   }, []);
 
   // Disarm any leftover reveal request when the palette OPENS, never when it
@@ -2771,6 +2819,8 @@ function AppInner() {
             onConfigChange={(next) => { void handleConfigPersist(next); }}
             onOpenSettings={openSettings}
             onClose={() => setCommandPaletteOpen(false)}
+            seedQuery={commandPaletteSeed.query}
+            seedRegex={commandPaletteSeed.regex ?? null}
           />
         ) : null}
       </AnimatePresence>

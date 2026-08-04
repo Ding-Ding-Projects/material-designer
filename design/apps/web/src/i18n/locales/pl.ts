@@ -4326,6 +4326,10 @@ export const pl: Dict = {
   'regexSearch.toggleTitleRegex': 'Wyrażenie regularne jest włączone — otwórz kreator',
   'regexSearch.modeStatusText': 'To pole szuka zwykłego tekstu.',
   'regexSearch.modeStatusRegex': 'To pole szuka za pomocą wyrażenia regularnego.',
+  'entrySearch.placeholder': 'Szukaj projektów, wtyczek, systemów projektowych…',
+  'entrySearch.aria': 'Szukaj projektów, wtyczek i systemów projektowych',
+  'entrySearch.fieldLabel': 'wyszukiwanie w nagłówku',
+  'entrySearch.paletteAria': 'Otwórz paletę poleceń',
 
   // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
   // and a live sample with its capture-group table.
@@ -4515,6 +4519,8 @@ export const pl: Dict = {
   'commandPalette.commandToggleLanguageMode': 'Włącz lub wyłącz tekst dwujęzyczny',
   'commandPalette.destinationLibrary': 'Biblioteka',
   'commandPalette.footerOpen': 'otwórz',
+  'commandPalette.regexNote': 'Filtrowanie wyrażeniem regularnym {pattern} z paska wyszukiwania.',
+  'commandPalette.regexClear': 'Użyj zwykłego tekstu',
 
   // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
   // (`workspaceTabs.project` and its neighbours are above.)
