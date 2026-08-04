@@ -579,13 +579,38 @@ meeting it.
       now, the widths Wave 1 specified. **A second species of the "mounted by
       nothing" defect: mounted, and still invisible.** A diff catches neither;
       a capture catches both.
-- [ ] **Bilingual mode clips at 900px, and the capture set found it.** The
-      status bar's density segment runs off the right edge
-      (`Default · 預設 density · Default · 預…`) and the Design control
-      truncates to an ellipsis. Bilingual produces the longest strings in the
-      product, which is why the capture set covers it — this is the first
-      defect it caught, on its first run, and the image is published in the
-      README rather than quietly retaken.
+- [ ] **The UI scale setting is broken at every value except 100%.** Captures
+      at 125, 150 and 200% all show a horizontal scrollbar, the home heading
+      cut off mid-word, the status bar pushed off the bottom of the screen,
+      and at 125% the scroll hint overlapping the template cards. At 200%
+      roughly half the interface is unreachable without scrolling.
+      **This repository predicted it.** § 2.5 below says: *"Replace the
+      mockup's scaling mechanism. It sets a custom property that nothing reads
+      and does the actual scaling with a non-standard CSS `zoom` property.
+      Implement scaling in a way that is standard, testable, and does not
+      break layout measurement."* The warning was written and the mechanism
+      was ported anyway, because nothing ever rendered it. `zoom` magnifies
+      the painted box without changing the layout viewport, so the page lays
+      out at 1280px and then draws 1.5× larger — the overflow is arithmetic,
+      not a styling accident.
+      A user who raises the scale for accessibility reasons currently gets a
+      broken window, which makes this a standard 14 blocker rather than
+      polish.
+- [ ] **Bilingual mode clips at 900px.** The status bar's density segment runs
+      off the right edge (`Default · 預設 density · Default · 預…`) and the
+      Design control truncates to an ellipsis. Bilingual pairs both languages
+      on every label, so it produces the longest strings in the product and is
+      where clipping appears first — which is why the capture set covers it.
+      The failing image is published in the README rather than quietly
+      retaken.
+
+> [!NOTE]
+> **All three defects above were found by looking at pictures, on the capture
+> set's first run.** Every one had passed 465 test files, a full typecheck, a
+> guard, a craft lint and a translation check. Not one is the kind of fault an
+> assertion was ever going to catch: a rail rendered into a zero-width track, a
+> layout that magnifies instead of reflowing, a label pair too long for its
+> bar. This is the argument for the capture path, made by the capture path.
 - [ ] **Add the tab strip and status bar beneath the title bar** as the mockup
       specifies — a 42px strip of 36px bottom-rounded tabs with a 250px cap and
       leading/close icons, and a 28px status bar carrying live daemon state,
@@ -1250,7 +1275,7 @@ rows say so rather than counting their file size as progress.
 | 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
 | 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
-| 14 | Accessibility and sizing as blockers | Every phase | **Not met, and now with one concrete finding rather than none.** A capture has finally been *reviewed* rather than merely size-asserted — it caught the window chrome branding the app with the upstream name — but nothing has been audited at any other display scale, at a narrow width, or in a second language. An adversarial pass confirmed a missing focus trap in the shared dialog: Tab walks out of an `aria-modal` alertdialog onto the content behind it |
+| 14 | Accessibility and sizing as blockers | Every phase | **Not met, and now with named defects instead of a shrug.** Nine interface states are captured on every release and the first set found three: the navigation rail rendered into a zero-width track (fixed), **the UI scale setting broken at 125/150/200% — horizontal overflow, clipped headings, the status bar off screen** (open, and a genuine accessibility blocker since raising the scale is an accessibility action), and bilingual clipping at the narrowest supported window (open). A missing focus trap in the shared dialog was also confirmed and fixed |
 | 15 | All assets bundled locally | 2.2, 1.3 | **Met for the application and the site.** The site is bundled and its deployment enforces that at publish time; the application's one CDN font import is gone, with the three Cairo subsets bundled under `apps/web/public/fonts/cairo/`. The mockup still carries three, and it ships to nobody. Roboto Flex, Roboto Mono and Material Symbols are not bundled because nothing consumes them yet — 2.2 tracks that as its own work, not as a violation of this row |
 | 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 
