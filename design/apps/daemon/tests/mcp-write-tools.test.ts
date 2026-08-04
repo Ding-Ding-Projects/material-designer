@@ -258,7 +258,11 @@ describe('public MCP delete_project', () => {
 
   it('reports the daemon refusing to issue a confirmation, and never sends the DELETE', async () => {
     const base = nextBaseUrl();
-    const fetchMock = vi.fn(async (url: string) =>
+    // The second parameter is declared even though this mock ignores it: the
+    // assertion below inspects `call[1].method` to prove no DELETE was sent,
+    // and a one-argument signature makes that index a type error rather than
+    // a readable test.
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) =>
       url.endsWith('/api/projects')
         ? new Response(JSON.stringify({ projects: [{ id: 'p1', name: 'Demo' }] }), { status: 200 })
         : new Response(
