@@ -115,13 +115,14 @@ ratio.
 
 ## Requirement 3 — every release carries a code name
 
-Every build or release carries a dish code name drawn from a bundled catalogue,
+Every build or release carries a dish code name drawn from the public catalogue
+at [`Ding-Ding-Projects/dim-sum-photos`](https://github.com/Ding-Ding-Projects/dim-sum-photos),
 in English and Traditional Chinese exactly as the catalogue records them. It is a
 label **beside** the version, never a replacement — the version number stays the
 thing a user and a machine identify a build by.
 
-- **Only pick a dish that already has its bundled image.** A code name whose
-  image is missing renders as a broken image, which is worse than no code name.
+- **Only pick a dish whose photo is actually published.** A code name whose image
+  is missing renders as a broken image, which is worse than no code name.
 - **Used once per project.** Pick the next unused dish, record which release took
   which dish so the mapping is auditable, and never silently reuse one — a
   repeated code name makes two builds indistinguishable in conversation, which is
@@ -253,8 +254,8 @@ user actually asked for; log it and carry on.
 | Any release at all | **Two published** — `v0.16.1-r7.1` and `v0.16.1-r8.1`, each by the run that built its installer, each named after a different dish. |
 | Line-counting script | **Exists** at `scripts/line-count.mjs`. Discovers files via `git ls-files`, forces every file into exactly one row with a mandatory catch-all, self-checks that rows sum to the tracked-file count, reports excluded paths as visible rows, separates the imported tree into its own scope, and attributes per surviving line with blame behind `--blame`. It fails loudly if the attribution total and the line total disagree. |
 | Line count in release notes | **Implemented** in both workflows, with an honest fallback line when the counter fails. |
-| Release code name | **Implemented** at `scripts/release-codename.sh`. Reads spent dishes from prior release bodies rather than a counter, skips any dish whose image is indexed but absent, and exits `0` with an empty id when all are spent so a release is never blocked. |
-| Dish catalogue | **Exists** — 24 dishes indexed at `assets/dim-sum/index.json` with 24 images present. Produced by `scripts/import-dim-sum.sh`; see [How the catalogue is produced](#how-the-catalogue-is-produced). |
+| Release code name | **Implemented** at `scripts/release-codename.sh`, and **fixed after a real failure**: it read from the 24 bundled dishes, spent them all inside one day of per-push releases, and every build afterwards shipped nameless without failing anything. It now resolves from the public catalogue, reads spent dishes from prior release bodies rather than a counter, picks only dishes whose photo is actually published, and exits `0` with an empty id if nothing can be resolved so a release is never blocked. |
+| Code-name pool | **2,866 dishes** in the public catalogue, with 2,928 published photo assets across its `catalog-v1*` releases. The 24 dishes at `assets/dim-sum/index.json` remain as the attached photo and as the offline fallback; see [code-names.md](../release/code-names.md) for why both exist. |
 | Startup surprise | **Not started.** Designed in the mockup **with a forbidden off switch**. |
 | Changelog viewer | **Designed, not built.** The design meets the requirement on paper, commit links included. |
 | Version history | **Designed, not built.** Settings only; documents and records are not covered by the design. |

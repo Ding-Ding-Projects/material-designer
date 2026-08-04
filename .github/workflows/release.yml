@@ -410,6 +410,8 @@ jobs:
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_ID: ${{ steps.codename.outputs.id }}
           DISH_IMAGE: ${{ steps.codename.outputs.image }}
+          DISH_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
+          DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
           DISH_ALT: ${{ steps.codename.outputs.alt_en }}
           SMOKE_RESULT: ${{ steps.smoke.outcome }}
         run: |
@@ -445,10 +447,26 @@ jobs:
             esac
             echo "- Built from \`${GITHUB_SHA}\` by [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
             echo ""
-            echo "### Lines of code"
-            echo ""
             cat "${{ steps.lines.outputs.path }}"
             echo ""
+            if [ -n "${CODENAME:-}" ]; then
+              echo "### Code name"
+              echo ""
+              echo "This build is **${CODENAME}**. Every build gets its own dish, so no two"
+              echo "are ever called the same thing in conversation."
+              echo ""
+              if [ -n "${DISH_PHOTO_URL:-}" ]; then
+                echo "<img src=\"${DISH_PHOTO_URL}\" alt=\"${DISH_ALT}\" width=\"320\">"
+                echo ""
+                echo "Photo from the public [dim sum catalog](https://github.com/Ding-Ding-Projects/dim-sum-photos), which is where the dish names come from too."
+                echo ""
+              fi
+            fi
+            if [ -n "${DISH_IMAGE_DISH:-}" ]; then
+              echo "A dim sum photo (\`codename-${DISH_IMAGE_DISH}.png\`) is attached below,"
+              echo "because a release should come with something to look at."
+              echo ""
+            fi
             echo "### Provenance"
             echo ""
             echo "Contains Open Design v0.16.1 (\`517f39acde402c1a7af2189167a8d6957a3dac71\`), Apache-2.0."
@@ -460,10 +478,15 @@ jobs:
             fi
           } > "$notes"
 
+          # The photo asset is keyed on the image, not on the code name: the two
+          # come from different places now, and a build that runs out of unused
+          # dishes must still ship a steamer basket.
           assets=("$STAGED"/*)
           if [ -n "${DISH_IMAGE:-}" ] && [ -f "$DISH_IMAGE" ]; then
-            cp "$DISH_IMAGE" "$STAGED/codename-${DISH_ID}.png"
+            cp "$DISH_IMAGE" "$STAGED/codename-${DISH_IMAGE_DISH:-dim-sum}.png"
             assets=("$STAGED"/*)
+          else
+            echo "::warning::no dim sum photo was attached to $TAG"
           fi
 
           gh release create "$TAG" \

@@ -1,16 +1,18 @@
 # Release code names
 
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
-names together, drawn from a catalogue bundled in this repository. It sits beside
-the version, never in place of it, and **a dish is used exactly once**.
+names together, resolved from the public catalogue at
+[`Ding-Ding-Projects/dim-sum-photos`](https://github.com/Ding-Ding-Projects/dim-sum-photos).
+It sits beside the version, never in place of it, and **a dish is used exactly
+once**.
 
 > [!IMPORTANT]
-> **Status: built and running.** `scripts/release-codename.sh` picks the name, the
-> `Release` workflow calls it, and the published releases carry a code name, its
-> image and its spent-marker. The catalogue holds **24 dishes** with 24 images.
-> The requirement that the code name also appear in the app's About surface, the
-> changelog viewer and the landing page's release section is **not met** — today
-> it appears in the release notes and nowhere else.
+> **Status: built and running, after a real failure.** `scripts/release-codename.sh`
+> picks the name, the `Release` workflow calls it, and published releases carry a
+> code name, a photo and a spent-marker. The requirement that the code name also
+> appear in the app's About surface, the changelog viewer and the landing page's
+> release section is **not met** — today it appears in the release notes and
+> nowhere else.
 
 ## Behaviour
 
@@ -27,17 +29,38 @@ releases, without a counter anybody has to maintain.
 
 ### Where the pool comes from
 
-`assets/dim-sum/index.json` indexes the catalogue: 24 dishes, each with an id, a
-slug, English and Traditional Chinese names, a Jyutping romanisation, a category,
-an image path, a byte count, a SHA-256, and bilingual alt text.
+The public catalogue's `catalog/index.json` holds **2,866 dishes**, each with an
+id, a slug, English and Traditional Chinese names, a Jyutping romanisation, a
+category, a description, and an image path. Its `name.en` and `name.zhHant` are
+authoritative for release names.
 
-The images are **bundled local assets**. `scripts/import-dim-sum.sh` copies each
-one byte-for-byte from a verified source catalogue and checks its SHA-256; nothing
-is generated, downloaded at build time, resized or re-encoded. That matters for
-three separate reasons: a release asset fetched from a third party is a third
-party in your release, an image regenerated per build is not the same image
-twice, and a catalogue whose contents cannot be checked cannot be trusted to
-contain what it says.
+Photos come from that repository's published `catalog-v1*` releases — **2,928
+assets across three of them** — and the release notes link the chosen dish's photo
+rather than copying it here.
+
+> [!NOTE]
+> **This used to read from 24 dishes bundled in this repository, and that is how
+> the exhaustion was found rather than predicted.** With a release per push, the
+> pool was spent inside a single day; every build afterwards shipped with no code
+> name at all, silently, because running out was designed to be non-fatal. The
+> earlier version of this document even said "the 25th release ships without a
+> code name" — correctly, and nobody was watching release 25.
+
+### The photo rule, and the tension in it
+
+Two standards pull in different directions here, so the resolution is written
+down rather than left implicit:
+
+- **Every release must attach a real dim sum photo** as a downloadable asset.
+- **A consumer repository must not copy public catalogue photos** or add to its
+  bundled set; it may *link* the public photo.
+
+Both are satisfied at once. The **code name and its photo link** come from the
+public catalogue. The **attached asset** is one of the twenty-four images already
+tracked here, rotated deterministically by the number of dishes spent. Nothing is
+fetched or vendored at publish time, and the release still carries a real photo
+you can download. The attached photo names its own dish, so it is never mistaken
+for the code name's.
 
 ### How the spent dishes are found
 
@@ -54,35 +77,34 @@ burns a dish on nothing.
 
 ### How a dish is chosen
 
-The script flattens the catalogue with a line-oriented pass — the index is written
-in a fixed shape by the importer, so this stays dependency-free and runs anywhere
-a POSIX shell does — then walks the dishes in catalogue order and takes the first
-that satisfies both conditions:
+The script fetches the public index, flattens it with a line-oriented `awk` pass —
+so it stays dependency-free and runs anywhere a POSIX shell does — then walks the
+dishes in catalogue order and takes the first that satisfies both conditions:
 
 1. **Its id is not in the spent set.**
-2. **Its image file actually exists on disk.**
+2. **Its photo is actually published** as an asset on a `catalog-v1*` release.
 
-The second check is the one people forget. A catalogue can index a record whose
-image has not been added yet, and choosing that record produces a release whose
-code name renders as a broken image — which is worse than having no code name at
-all. A skipped dish is reported on standard error, not silently passed over.
+The second check is the one people forget. A catalogue can describe a dish whose
+image has not been published yet, and choosing that record produces a release
+whose code name renders as a broken image — worse than having no code name.
+
+The flattening takes each field **once per record**, because `description` carries
+its own `en` and the `name`/`alt` objects span several lines; a naive "last match
+wins" pass silently names the build after a sentence from the description.
 
 ### It never blocks a release
 
-If every dish is spent, or the catalogue is missing entirely, the script prints an
-explanation to standard error, emits an empty id, and **exits `0`**. The workflow's
-title expression then omits the code-name suffix and the release ships with its
-version alone.
+Three degradations, in order:
+
+| Situation | Behaviour |
+| --- | --- |
+| Public catalogue unreachable | Falls back to the bundled index, says so on standard error |
+| No unused dish resolvable anywhere | Emits an empty `id`, exits `0`, release ships with its version alone |
+| No photo available to attach | Emits a workflow warning; the release still publishes |
 
 This is deliberate and worth preserving. A code name is decoration with a purpose;
-a release must never be blocked, delayed or renamed because the catalogue is
+a release must never be blocked, delayed or renamed because a catalogue is
 unavailable.
-
-> [!NOTE]
-> With 24 dishes, **the 25th release ships without a code name.** That is the
-> designed behaviour, not a bug to discover in production. Extending the catalogue
-> means importing more dishes through the importer, byte-for-byte, from the
-> verified source — never generating one.
 
 ### Output
 
@@ -94,13 +116,15 @@ The script prints key-value lines suitable for a workflow output file:
 | `slug` | The dish's slug. |
 | `name_en` / `name_zh` | English and Traditional Chinese names. |
 | `jyutping` | Romanisation. |
-| `image` | Repository-relative path to the bundled image. |
-| `alt_en` / `alt_yue` | Bilingual alt text. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
+| `photo_url` | Public asset URL for the code name's photo. Empty on the bundled fallback. |
+| `image` | Repository-relative path to the bundled image that gets attached. |
+| `image_dish` | Which dish that attached image depicts. |
+| `source` | `public` or `bundled`, so the notes can say where the name came from. |
 
-The workflow uses `codename` in the release title and the notes, `id` in the
-spent-marker comment, and `image` to attach the picture as a release asset named
-after the id.
+The workflow uses `codename` in the release title and notes, `id` in the
+spent-marker comment, `photo_url` for the inline picture, and `image` to attach a
+photo asset named after `image_dish`.
 
 ### The dish's names stay factual
 
@@ -115,55 +139,63 @@ names the dish, so the code name reaches screen-reader users too.
 | `scripts/release-codename.sh` | Reads spent ids from standard input, one per line. |
 | `scripts/release-codename.sh --used a,b,c` | Reads them inline, comma-separated. |
 
-The catalogue location is fixed at `assets/dim-sum/index.json`, resolved from the
-repository root. There is no override, deliberately: a code name picked from an
-unversioned catalogue is not auditable.
+The public catalogue URL and the bundled fallback path are both fixed in the
+script. There is no override, deliberately: a code name picked from an unversioned
+catalogue is not auditable.
 
 ## Failure modes
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
+| Releases stop carrying a code name | Every dish in the reachable pool is spent | Read the step log: the script says which pool it used and how many were spent. This is what the 24-dish bundled pool did. |
 | The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
-| A release ships with no code name unexpectedly | Every dish spent, or the catalogue is absent | Both print a reason on standard error. Read the step log before assuming a bug. |
-| The code name image is missing from the release | The indexed image file does not exist | The script skips such a dish and says so. If it was chosen anyway, the existence check was bypassed. |
+| The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
+| The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
+| No photo attached at all | `assets/dim-sum/images` is empty or unreadable | The workflow emits a warning rather than failing the publish. |
 | Only some prior releases were consulted | The release listing is capped at 200 | Fine for now; if this project ever exceeds it, the cap becomes a correctness bug rather than a performance one. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
-| The picked dish is always the same early one | The spent set is arriving empty | Check the extraction of the marker from prior release bodies; an empty set makes every dish look unused. |
 
 ## Security considerations
 
 - **Reading prior releases needs a token**, resolved through the workflow's usual
   chain and passed through the environment convention the tooling expects. It is
-  never printed, and the script itself never touches it — the workflow does the
-  listing and hands the script a list of ids.
-- **The images are local and verified.** No network request happens at release
-  time to obtain them. An image fetched at publish time would be an unreviewed
-  binary in a signed-off release.
-- **The script executes nothing from the catalogue.** It reads a text index and
-  checks whether files exist.
+  never printed, and the script itself never receives it for that purpose — the
+  workflow does the listing and hands the script a list of ids.
+- **Nothing binary is fetched at publish time.** The catalogue index is JSON that
+  is parsed as text; the attached photo is already in the tree and reviewed. An
+  image downloaded during publishing would be an unreviewed binary in a release.
+- **The script executes nothing from the catalogue.** It reads a text index, tests
+  set membership, and checks whether files exist.
+- **A catalogue fetch failure degrades, never fails open.** An unreachable public
+  index falls back to reviewed local content rather than to an unchecked one.
 
 ## Verification
 
-**Observed:** the published releases carry a code name, its image as an attached
-asset, and the spent-marker comment in their notes — and the second release picked
-a *different* dish from the first, which is the property that actually matters.
+**Observed**, run against the live public catalogue:
+
+```
+release-codename: public catalogue — 2866 dishes, 2928 published photos, 0 already spent
+id=hk-dish-0001
+codename=Classic Har Gow · 蝦餃
+photo_url=https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-classic-har-gow.png
+```
+
+- That `photo_url` returns **HTTP 200**.
+- With `hk-dish-0001,hk-dish-0002,hk-dish-0003` spent, it picks `hk-dish-0004`.
+- With **24 spent** — the exact point the old bundled pool ran dry and started
+  shipping nameless builds — it picks `hk-dish-0025` and carries on.
 
 ```bash
 # what would be picked right now, with nothing spent
 scripts/release-codename.sh --used ''
 
-# with two dishes already spent
-scripts/release-codename.sh --used hk-dish-0296,hk-dish-0297
-
-# the catalogue's own integrity: every indexed image present and correctly sized
-node -e "const i=require('./assets/dim-sum/index.json');const fs=require('fs');\
-for(const d of i.dishes){const p='assets/dim-sum/'+d.image;\
-if(!fs.existsSync(p))console.log('missing',d.id);\
-else if(fs.statSync(p).size!==d.bytes)console.log('size mismatch',d.id);}"
+# the old exhaustion point, which no longer exhausts
+scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-**Not verified here:** that the SHA-256 of every image still matches the index.
-The importer checks it at import time; nothing re-checks it since.
+**Not verified here:** that the attached bundled image still matches the SHA-256 the
+old importer recorded. The importer checked it at import time; nothing re-checks
+it since.
 
 ## Suggested reading
 
