@@ -673,7 +673,6 @@
   pointer-events: none;
   transition: opacity 200ms var(--ease-out);
 }
-}
 .entry-nav-rail__btn > svg {
   width: 18px;
   height: 18px;
