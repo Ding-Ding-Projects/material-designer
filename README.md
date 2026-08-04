@@ -13,9 +13,20 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Material Designer running on Windows — the Material Design 3 home screen, showing the custom title bar, the prompt surface and the template rail](assets/screenshots/home-windows.png)
 
 <sub>Not a mockup. This is the packaged application, captured by the smoke test that
-installs the built installer, launches it and uninstalls it — from the run that
-published <code>v0.16.1-r38.1</code>, built from commit <code>4526b6d</code>. The
-capture path is the project's own, and the image is committed unedited.</sub>
+installs the built installer, launches it and uninstalls it — built from commit
+<code>90e52d3</code>. The capture path is the project's own and the image is committed
+unedited. The navigation rail on the left and the 28px status bar along the bottom are
+new: until <code>90e52d3</code> the rail was rendered into a zero-width track, so a
+fresh install showed no rail at all.</sub>
+
+![The same screen in bilingual mode at a 900px window — Chinese and English paired on every label, with the status bar's density readout running off the right edge](assets/screenshots/home-bilingual-narrow.png)
+
+<sub>The same build in bilingual mode at the narrowest supported window, and the reason
+that capture exists: <b>it is showing a real defect.</b> The status bar's density segment
+runs off the right edge and the Design control truncates to an ellipsis. Bilingual mode
+produces the longest strings in the product, so it is where clipping appears first —
+which is exactly why the capture set covers it, and why this image is published rather
+than quietly retaken.</sub>
 
 > [!NOTE]
 > **The application ships, and what it ships is now most of the way through the
@@ -128,18 +139,17 @@ inherited from upstream's documentation unless they say otherwise. The Material 
 redesign is **in progress, and the screenshot above is the honest measure of how far**.
 
 > [!WARNING]
-> **Look at that capture against [the mockup](mockups/) before believing any claim about
-> the redesign.** The colour layer has landed — every token resolves to a Material
-> Design 3 role — but the *anatomy* has not. The mockup specifies a persistent left
-> navigation rail, a header search bar with its regex affordance, and a 28px status bar
-> carrying daemon state, model, design system, scale and density. **None of the three is
-> on that screen.** The rail component exists and is collapsed to a zero-width track by
-> default, so a fresh install shows no rail at all.
+> **Compare those captures to [the mockup](mockups/) before believing any claim about
+> the redesign.** Two of the three pieces of structural furniture the mockup specifies
+> are now on screen — the persistent navigation rail and the status bar — and the third,
+> a header search bar with its regex affordance, is not. Neither is the home screen's
+> own content: the prompt surface and template rail are still upstream's layout wearing
+> Material Design 3 colours, which is roadmap Wave 2 and unstarted.
 >
-> A reader comparing the two would conclude the screen is still upstream's with new
-> colours, and for the parts that matter they would be right. Documents in this
-> repository have said "the anatomy pass landed"; that was true of the code and false of
-> the screen, which is the distinction this project keeps having to relearn.
+> This warning exists because a reader looked at an earlier capture, compared it to the
+> mockup, and said the application still looked like the one it was forked from — while
+> documents here said "the anatomy pass landed". That was true of the code and false of
+> the screen. **Judge this by the images above, not by the sentence next to them.**
 
 Two distinctions that keep proving load-bearing, both learned the same way:
 

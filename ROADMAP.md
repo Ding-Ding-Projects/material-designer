@@ -571,18 +571,21 @@ meeting it.
       *installed identity* rather than as text in files, which is what this item
       was waiting for. The one part still unproved is the window title itself — no
       title has been read off a window, because nothing inspects the window.
-- [ ] **The navigation rail is mounted and invisible.** `EntryShell` renders
-      `EntryNavRail`, and `entry-layout.css` collapses its grid track to **`0`**
-      — so "collapsed" means the rail is gone, not narrow — while
-      `readStoredRailOpen()` defaults to `false`. A fresh install therefore
-      shows **no rail at all**, which is what the published capture shows.
-      Wave 1 below specifies 88px collapsed to 260px expanded; both current
-      states (0 and 56px) are wrong. **A Material Design 3 navigation rail is
-      persistent by definition** — this single default is the largest reason
-      the running screen does not read as M3.
-      *This is a second species of the "mounted by nothing" defect: mounted,
-      and still invisible. A diff cannot catch either one; a capture catches
-      both.*
+- [x] **The navigation rail was mounted and invisible.** *Closed at `90e52d3`,
+      and confirmed by a capture.* `entry-layout.css` collapsed its grid track
+      to `0` with `inert` and `aria-hidden` applied, and the stored preference
+      defaulted to closed — so "collapsed" meant *gone* and a fresh install
+      showed no rail at all. It is 88px as an icon rail and 260px with labels
+      now, the widths Wave 1 specified. **A second species of the "mounted by
+      nothing" defect: mounted, and still invisible.** A diff catches neither;
+      a capture catches both.
+- [ ] **Bilingual mode clips at 900px, and the capture set found it.** The
+      status bar's density segment runs off the right edge
+      (`Default · 預設 density · Default · 預…`) and the Design control
+      truncates to an ellipsis. Bilingual produces the longest strings in the
+      product, which is why the capture set covers it — this is the first
+      defect it caught, on its first run, and the image is published in the
+      README rather than quietly retaken.
 - [ ] **Add the tab strip and status bar beneath the title bar** as the mockup
       specifies — a 42px strip of 36px bottom-rounded tabs with a 250px cap and
       leading/close icons, and a 28px status bar carrying live daemon state,
