@@ -311,9 +311,21 @@ Now the gaps.
   were derived by reading route definitions; no daemon has been started here, and
   at least one route pair was missed by that reading. See
   [`docs/api/README.md`](docs/api/README.md).
-- **Nothing but Windows is published.** There is no macOS or Linux artifact, no
-  updater feed, and no code-signing certificate — so every installer trips the
-  operating system's reputation warning on first run.
+- **Windows is the only target, by decision rather than by omission.** There is
+  no macOS or Linux artifact, no updater feed, and no code-signing certificate —
+  so every installer trips the operating system's reputation warning on first
+  run. Read the absence of the other two platforms as scope, not as a backlog:
+  nothing here is waiting on a macOS build, and work that would only pay off on
+  another platform is out of scope until that changes.
+
+  Two things this does **not** mean, because both look like contradictions.
+  The *Verify* workflow runs on Linux — that is the runner, not the target, and
+  it is deliberate: several imported suites assert a Unix executable bit that a
+  Windows filesystem cannot store, so they run there and the Windows-specific
+  ones run on `windows-latest`. And the imported tree still contains macOS and
+  Linux packaging builders, which the rebrand had to touch for identity;
+  leaving them consistent costs nothing and deleting them would be a fork of
+  upstream's packaging tool for no gain.
 
 Separately, and unchanged: the 48 workflow files that came in with the upstream
 tree under `design/.github/workflows/` are **inert here**. Workflows are only read
