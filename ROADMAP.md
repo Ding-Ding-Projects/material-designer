@@ -8,19 +8,34 @@ remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
 
 > [!IMPORTANT]
-> **Phase 1 has produced results; almost nothing after it has.** All three
-> workflows at the repository root have run: the port verifies at zero gaps on a
-> clean checkout, two Windows installers were built and published under their own
-> tags, the packaged smoke test installed one of those builds and launched it,
-> and the documentation site is deployed. A "Verified by" line under Phase 0 or
-> Phase 1 now generally names something that happened.
+> **Read this before the checkboxes below — several of them are behind the
+> tree.** Sections written before 2026-08-04 describe Phases 3 and 4 as
+> unstarted. They are not: the Cantonese locale, both funny sliders, the regex
+> builder, the command palette, the changelog viewer, the dim sum surprise, tab
+> pinning, the notification centre, the confirmation gate, bulk actions and the
+> narrator are all on `main`, and as of `v0.16.1-r18.1` they are in a build a
+> person can download. The **conformance matrix at the foot of this file was
+> rewritten on 2026-08-04 and is the current reading**; where it disagrees with
+> a phase section above it, believe the matrix.
 >
-> **From Phase 2 onward it usually does not.** A "Verified by" line there
-> describes a check that will exist, unless it names the commit or the run that
-> satisfied it. Two things in particular are worth carrying into every section
-> below: **no workflow has been observed failing**, so every gate is known to pass
-> and not yet known to gate; and **nobody has looked at the running interface**,
-> so no claim about how anything renders is evidence of anything.
+> **Three cautions carry into every section below.**
+>
+> 1. **A module that nothing mounts is not a shipped feature.** An audit on
+>    2026-08-04 found three written, typechecking, entirely unreachable: the
+>    appearance editor, its infinite colour picker, and the whole spoken
+>    narrator. The narrator is now wired; the other two are not. Judge a
+>    surface by whether a user can open it, never by whether its files exist.
+> 2. **Passing a gate is not the same as the gate working, but one gate has now
+>    been watched biting.** A deliberately poisoned branch made the port
+>    verifier go red exactly as designed
+>    ([run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696)),
+>    so its green ticks now mean something. The Pages bundle gate has still
+>    only ever been watched passing.
+> 3. **Nobody has audited the running interface.** One capture has finally been
+>    *looked at* — it caught the window chrome carrying the upstream brand —
+>    but nothing has been checked at a second display scale, at a narrow width,
+>    or in a second language. No claim below about how anything renders is
+>    evidence of anything.
 
 ---
 
@@ -1028,6 +1043,56 @@ installed build.
       exportable and importable as a file so a customised appearance survives a
       reinstall and can be shared, with per-element and global reset. Absent
       from the mockup entirely.
+### 4.0 The verification that never ran, and what it found
+
+The Phase 4 surfaces were written by agents that hit a session limit before
+their adversarial review lenses executed. Those lenses ran on **2026-08-04**.
+They produced 44 findings, of which **15 were confirmed by an independent
+refutation pass**; the remaining 29 are unverified because the verification
+half hit a session limit of its own, which is the same failure repeating and
+is recorded rather than hidden.
+
+The confirmed findings are listed here as work, because a finding that lives
+only in a report is a finding that gets rediscovered.
+
+- [x] **Three modules were unreachable.** `AppearanceRuntime`,
+      `InfiniteColorPicker` and `NarratorSettingsPanel` had zero importers.
+      The narrator was additionally *unmountable*: it imported a stylesheet
+      that did not exist, so wiring it would have failed the build.
+      *Closed for the narrator at `92ed8c6`* — stylesheet written, settings
+      section added, command palette indexed with two live inline controls.
+      **The appearance editor and colour picker are still orphaned**, tracked
+      at 4.10–4.12.
+- [x] **The Design Files bulk delete reported success it never had.**
+      `handleDeleteMany` returned nothing, so the panel counted every selected
+      item as succeeded — "3 done." after a cancelled confirmation, and after
+      a run where every delete was refused. It also dropped the caller's
+      options, freezing the progress bar at zero and making Stop decorative.
+      *Closed at `6e90fbd`*, routed through the shared `runBulkAction` runner
+      with five tests pinning the invariants.
+- [ ] **Destructive actions bypass the confirmation gate.** Confirmed for
+      whole-project delete via the design-system workspace tab, bulk file
+      deletion (a plain dialog, not the gate), memory entries, extraction
+      records, and library assets — single-asset delete there has no
+      confirmation at all. A further ten actions fire behind a plain
+      `confirm()`. The gate exists and is good; the routing is the gap.
+- [ ] **The gate's own state machine has five confirmed defects.** Armed keys
+      survive a target swap, so keys operated for one action stay engaged for
+      the next; the slider's "full range" is satisfiable in a single pointer
+      jump or one `End` keypress; dismissing mid-flight swallows the action's
+      failure; Escape and the emergency exit report `cancelled` for an action
+      that already ran; and focus does not return to the originating control
+      on some paths.
+- [ ] **The shared dialog has no focus trap.** Tab walks out of an
+      `aria-modal` alertdialog onto the content behind it. This is an
+      accessibility blocker under standard 14, not a polish item.
+- [ ] **Re-run the 29 unverified findings.** They are real claims that simply
+      never got their refutation pass — including that the colour translator
+      implements none of CIELAB/LCH/OKLab/OKLCH, that `parseColor` walks the
+      prototype chain on input like `constructor`, and that the contrast
+      readout rounds across the WCAG boundary. Verify before acting: an
+      unrefuted finding is a lead, not a fact.
+
 - [ ] **4.13 Remaining Cantonese waves.** The dictionary keys not reached in
       Phase 3, tracked wave by wave alongside the component waves.
 - [ ] **4.14 Remaining Material Design 3 waves.** Whatever the audit in 2.4
@@ -1039,26 +1104,36 @@ installed build.
 <details>
 <summary><strong>Standards conformance matrix</strong> — all sixteen standards, the phase that lands each, and today's honest status</summary>
 
-Every row is "not implemented" today. The matrix exists so that stops being
-true one row at a time, visibly.
+The matrix exists so "not implemented" stops being true one row at a time,
+visibly. Most rows have now moved, and the honest reading of that movement is
+**built, and in one downloadable build as of `v0.16.1-r18.1`** — not
+*audited*. Where a surface has been operated by a human, the row says so; no
+row below claims that yet, because nobody has driven this interface.
+
+One distinction runs through several rows and is worth stating once: a module
+that exists and typechecks is not a shipped feature if nothing mounts it. An
+audit on 2026-08-04 found three that nothing did — the appearance editor, its
+infinite colour picker, and the whole spoken narrator. The narrator is now
+wired to a real settings section; the other two are still orphaned, and their
+rows say so rather than counting their file size as progress.
 
 | # | Standard | Phase | Status |
 | --- | --- | --- | --- |
-| 1 | Language modes and two funny-level sliders | 3.1, 3.2 | Not implemented — no Hong Kong Chinese locale exists at all |
+| 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
 | 2 | Full Material Design 3 conformance | 2.1–2.4 | **Partial.** The token sheet, its mapping layer and the Windows frameless window with its custom title bar landed at `dea6b0a`. No component has been rewritten, so component anatomy is untouched — and nobody has looked at the result |
-| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | Not implemented |
-| 4 | Regex builder on every search bar | 3.3 | Not implemented |
-| 5 | Browser-style tabs everywhere | 3.7, 4.1 | Not implemented |
-| 6 | Non-blocking notifications | 4.2 | Not implemented |
-| 7 | Super-confirmation gate | 4.3 | Not implemented — absent from the mockup too |
-| 8 | Command palette | 3.6 | Not implemented |
-| 9 | In-app changelog viewer | 3.5 | Not implemented |
-| 10 | Local version history | 4.4 | Not implemented |
-| 11 | Export everything, bulk actions | 4.5, 4.6 | Not implemented |
-| 12 | Dim sum surprise | 3.4 | Not implemented in the application. A 24-dish catalogue with bundled local images exists under `assets/dim-sum/` |
+| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Split, and the split is the point.** Theme, accent and density persist through `state/appearance.ts` and are reachable from the settings dialog and the command palette. The *editor* — `components/appearance/`, carrying the infinite colour picker, the colour translator, the contrast readout, presets and typography — has **zero importers**: it is written, it typechecks, and no user can open it. Counted as unimplemented until something mounts it |
+| 4 | Regex builder on every search bar | 3.3 | **Built and mounted.** The builder exists with guided token rows, a raw pattern editor, flags and a live sample panel. Unverified: whether *every* search bar reaches it and whether each is anchored to its own field rather than sharing one panel — the count of search inputs against the count of builders has not been taken |
+| 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial.** The tab strip, pinning and the text-matched bulk closes are built. Tab *groups* (4.1) and the four tab-discovery searches are absent |
+| 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
+| 7 | Super-confirmation gate | 4.3 | **Built, mounted, and demonstrably not covering the ground.** The two-key-plus-slider gate exists and is used by `DesignsTab` and `PrivacySection`. An adversarial pass confirmed **eight** real defects, the worst being that irreversible deletes elsewhere — whole projects, memory entries, library assets, bulk file deletion — do not route through it at all, plus a missing focus trap in the underlying dialog. Not met |
+| 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface and live inline controls whose union is exhaustive, so adding an indexed setting without its control is a typecheck error rather than a blank row. Unverified: whether the index covers every setting the dialog actually has |
+| 9 | In-app changelog viewer | 3.5 | **Built and mounted.** `ChangelogDialog` mounts in `App.tsx` with a date-range filter and generated entries. Unverified: commit-link validity at build time |
+| 10 | Local version history | 4.4 | **Partial.** Daemon endpoints, shared DTOs and `od` subcommands exist; a history *panel* with its date picker and action filters has not been confirmed present |
+| 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
+| 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
-| 14 | Accessibility and sizing as blockers | Every phase | Not implemented — a build exists now, and nothing has been audited against it. The smoke test captures one screenshot and asserts only that the file is non-zero |
-| 15 | All assets bundled locally | 2.2, 1.3 | **Partial.** The site is bundled and its deployment enforces that at publish time; the application still has one CDN font import, and the mockup three |
+| 14 | Accessibility and sizing as blockers | Every phase | **Not met, and now with one concrete finding rather than none.** A capture has finally been *reviewed* rather than merely size-asserted — it caught the window chrome branding the app with the upstream name — but nothing has been audited at any other display scale, at a narrow width, or in a second language. An adversarial pass confirmed a missing focus trap in the shared dialog: Tab walks out of an `aria-modal` alertdialog onto the content behind it |
+| 15 | All assets bundled locally | 2.2, 1.3 | **Met for the application and the site.** The site is bundled and its deployment enforces that at publish time; the application's one CDN font import is gone, with the three Cairo subsets bundled under `apps/web/public/fonts/cairo/`. The mockup still carries three, and it ships to nobody. Roboto Flex, Roboto Mono and Material Symbols are not bundled because nothing consumes them yet — 2.2 tracks that as its own work, not as a violation of this row |
 | 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 
 </details>
