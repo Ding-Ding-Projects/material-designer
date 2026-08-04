@@ -2,7 +2,7 @@
 // account of what each one costs.
 //
 // The interesting part is not the conversion — `color.ts` does that — it
-// is `loss`. A translator that lists ten formats and copies them out
+// is `loss`. A translator that lists a dozen formats and copies them out
 // without comment is telling the user they are interchangeable, and they
 // are not: `#c96442` drops the alpha the picker is holding, `hsl()` rounds
 // the hue to a tenth of a degree, `device-cmyk()` is not a colour anything
@@ -15,7 +15,9 @@
 // the value is formatted at the precision the user will copy, converted
 // back, and compared to the source. That way the rounding rules live in
 // exactly one place (the formatters) and this file cannot disagree with
-// them.
+// them. That applies to alpha too — a row that carries alpha proves it the
+// same way, because "lossless" measured on three channels out of four is
+// not a measurement, it is a hope.
 
 import {
   clamp,
@@ -27,16 +29,28 @@ import {
   formatHsla,
   formatHsv,
   formatHwb,
+  formatLab,
+  formatLch,
+  formatOklab,
+  formatOklch,
   formatRgb,
   formatRgba,
   hslToRgb,
   hsvToRgb,
   hwbToRgb,
+  labToRgb,
+  lchToRgb,
+  oklabToRgb,
+  oklchToRgb,
   parseHex,
   rgbToCmyk,
   rgbToHsl,
   rgbToHsv,
   rgbToHwb,
+  rgbToLab,
+  rgbToLch,
+  rgbToOklab,
+  rgbToOklch,
   type Rgb,
   type Rgba,
 } from './color';
@@ -52,6 +66,10 @@ export type ColorRepresentationId =
   | 'hsla'
   | 'hsv'
   | 'hwb'
+  | 'lab'
+  | 'lch'
+  | 'oklab'
+  | 'oklch'
   | 'cmyk';
 
 /**
@@ -70,8 +88,15 @@ export type ColorLoss =
   /** Not colour-managed: no profile, no ink limit, no paper. */
   | 'unmanaged';
 
-/** The colour space the numbers are in. Everything but CMYK is sRGB. */
-export type ColorSpaceId = 'srgb' | 'device-cmyk';
+/**
+ * The colour space the numbers are in.
+ *
+ * These are CSS Color 4's own space keywords rather than names invented
+ * here, so `lab` and `lch` are listed separately even though LCH is only
+ * CIELAB in polar form — CSS treats them as two spaces and a user pasting
+ * either one is choosing between two different function names.
+ */
+export type ColorSpaceId = 'srgb' | 'lab' | 'lch' | 'oklab' | 'oklch' | 'device-cmyk';
 
 export interface ColorRepresentation {
   id: ColorRepresentationId;
@@ -86,6 +111,24 @@ export interface ColorRepresentation {
 /** How far two colours may differ and still count as the same colour. */
 const ROUNDING_TOLERANCE = 0.5;
 
+/**
+ * How far alpha may move and still count as the same alpha.
+ *
+ * Not `ROUNDING_TOLERANCE / 255`, which is the tempting symmetry and is
+ * wrong. The colour tolerance is half of an 8-bit step because r/g/b end up
+ * in a byte on a display, so a difference below that renders identically.
+ * Alpha does not: the picker holds it as a float and CSS carries it as a
+ * float, so nothing quantises it on the way out and a move of 0.002 is a
+ * real move.
+ *
+ * Half a step of the three decimals every alpha-carrying formatter here
+ * writes is the honest bar. It clears `rgba()`, `hsla()`, `hwb()` and the
+ * four perceptual notations, which all round to exactly that. It does not
+ * clear HEX8, which stores alpha in one byte: 0.5 writes as `80` and reads
+ * back as 0.501961, four times this tolerance out. That row now says so.
+ */
+const ALPHA_TOLERANCE = 0.0005;
+
 function sameColor(a: Rgb, b: Rgb): boolean {
   return (
     Math.abs(a.r - b.r) < ROUNDING_TOLERANCE
@@ -94,8 +137,30 @@ function sameColor(a: Rgb, b: Rgb): boolean {
   );
 }
 
-function withRounding(source: Rgb, roundTripped: Rgb, loss: ColorLoss[]): ColorLoss[] {
-  return sameColor(source, roundTripped) ? loss : [...loss, 'rounding'];
+/**
+ * The alpha a representation carries and the alpha it gives back.
+ *
+ * Omitted for a representation that cannot express alpha at all — those
+ * declare `'alpha'` outright and there is nothing to round-trip. Supplied
+ * by every representation that does carry it, because a row claiming a
+ * lossless trip on the strength of three channels while quietly dropping
+ * precision on the fourth is the same lie the `rounding` flag exists to
+ * stop telling.
+ */
+interface AlphaTrip {
+  source: number;
+  roundTripped: number;
+}
+
+function withRounding(
+  source: Rgb,
+  roundTripped: Rgb,
+  loss: ColorLoss[],
+  alpha?: AlphaTrip,
+): ColorLoss[] {
+  const colorHeld = sameColor(source, roundTripped);
+  const alphaHeld = !alpha || Math.abs(alpha.source - alpha.roundTripped) < ALPHA_TOLERANCE;
+  return colorHeld && alphaHeld ? loss : [...loss, 'rounding'];
 }
 
 /**
@@ -133,22 +198,49 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
   const hsl = rgbToHsl(source);
   const hsv = rgbToHsv(source);
   const hwb = rgbToHwb(source);
+  const lab = rgbToLab(source);
+  const lch = rgbToLch(source);
+  const oklab = rgbToOklab(source);
+  const oklch = rgbToOklch(source);
   const cmyk = rgbToCmyk(source);
 
   // Every round trip below starts from the FORMATTED string, not from the
   // component object, so a formatter that rounds to one decimal is caught
   // by its own output.
   const hexBack = parseHex(hex);
+  const hex8Back = parseHex(hex8);
+  const rgbaText = formatRgba({ ...source, a: alpha });
+  const rgbaBack = numbersIn(rgbaText);
   const rgbText = formatRgb(source);
   const rgbBack = numbersIn(rgbText);
   const hslText = formatHsl(hsl);
   const hslBack = numbersIn(hslText);
+  const hslaText = formatHsla(hsl, alpha);
+  const hslaBack = numbersIn(hslaText);
   const hsvText = formatHsv(hsv);
   const hsvBack = numbersIn(hsvText);
   const hwbText = formatHwb(hwb, alpha);
   const hwbBack = numbersIn(hwbText);
+  const labText = formatLab(lab, alpha);
+  const labBack = numbersIn(labText);
+  const lchText = formatLch(lch, alpha);
+  const lchBack = numbersIn(lchText);
+  const oklabText = formatOklab(oklab, alpha);
+  const oklabBack = numbersIn(oklabText);
+  const oklchText = formatOklch(oklch, alpha);
+  const oklchBack = numbersIn(oklchText);
   const cmykText = formatCmyk(cmyk);
   const cmykBack = numbersIn(cmykText);
+
+  /**
+   * The alpha a slash-syntax formatter wrote back, or 1 when it wrote none.
+   *
+   * `formatHwb`, `formatLab` and their neighbours omit `/ A` entirely at
+   * full opacity, so the fourth number is simply absent — reading index 3
+   * regardless would find nothing, fall back to 0, and report every opaque
+   * colour as having lost its alpha.
+   */
+  const trailingAlpha = (values: number[]): number => (opaque ? 1 : channelAt(values, 3));
 
   const representations: ColorRepresentation[] = [];
 
@@ -159,9 +251,13 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
       label: 'Name',
       value: name,
       space: 'srgb',
-      // A named colour is a name for an exact hex, so it never rounds; it
-      // simply has no way to say "half transparent".
-      loss: opaque ? [] : ['alpha'],
+      // The name is looked up FROM `hex`, so it inherits whatever `hex`
+      // lost on the way — it is not a second, exact statement of the
+      // colour. It used to claim `opaque ? [] : ['alpha']` and nothing
+      // else, which put "Name: gray" with a clean badge directly above
+      // "HEX: #808080 · rounding" for the single colour r=g=b=127.5. Same
+      // hex, same rounding, so: same check.
+      loss: withRounding(source, hexBack ?? source, opaque ? [] : ['alpha']),
     });
   }
 
@@ -183,9 +279,13 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     value: hex8,
     space: 'srgb',
     // HEX8 carries alpha, but only to 1/255 — an alpha of 0.5 stores as
-    // 0x80 and reads back as 0.502. The colour channels are what the
-    // rounding flag reports on; the alpha step is stated in the panel.
-    loss: withRounding(source, hexBack ?? source, []),
+    // 0x80 and reads back as 0.502. That is a real round-trip failure and
+    // it is now measured rather than described: the alpha goes through the
+    // same format-then-reparse the colour channels do.
+    loss: withRounding(source, hex8Back ?? source, [], {
+      source: alpha,
+      roundTripped: hex8Back?.a ?? alpha,
+    }),
   });
 
   representations.push({
@@ -204,9 +304,14 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     representations.push({
       id: 'rgba',
       label: 'RGBA',
-      value: formatRgba({ ...source, a: alpha }),
+      value: rgbaText,
       space: 'srgb',
-      loss: withRounding(source, { r: channelAt(rgbBack, 0), g: channelAt(rgbBack, 1), b: channelAt(rgbBack, 2) }, []),
+      loss: withRounding(
+        source,
+        { r: channelAt(rgbaBack, 0), g: channelAt(rgbaBack, 1), b: channelAt(rgbaBack, 2) },
+        [],
+        { source: alpha, roundTripped: channelAt(rgbaBack, 3) },
+      ),
     });
   }
 
@@ -226,9 +331,14 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     representations.push({
       id: 'hsla',
       label: 'HSLA',
-      value: formatHsla(hsl, alpha),
+      value: hslaText,
       space: 'srgb',
-      loss: withRounding(source, hslToRgb({ h: channelAt(hslBack, 0), s: channelAt(hslBack, 1), l: channelAt(hslBack, 2) }), []),
+      loss: withRounding(
+        source,
+        hslToRgb({ h: channelAt(hslaBack, 0), s: channelAt(hslaBack, 1), l: channelAt(hslaBack, 2) }),
+        [],
+        { source: alpha, roundTripped: channelAt(hslaBack, 3) },
+      ),
     });
   }
 
@@ -254,7 +364,68 @@ export function translateColor(rgba: Rgba): ColorRepresentation[] {
     value: hwbText,
     space: 'srgb',
     // `hwb()` takes `/ alpha` in CSS Color 4, so this one is complete.
-    loss: withRounding(source, hwbToRgb({ h: channelAt(hwbBack, 0), w: channelAt(hwbBack, 1), b: channelAt(hwbBack, 2) }), []),
+    loss: withRounding(
+      source,
+      hwbToRgb({ h: channelAt(hwbBack, 0), w: channelAt(hwbBack, 1), b: channelAt(hwbBack, 2) }),
+      [],
+      { source: alpha, roundTripped: trailingAlpha(hwbBack) },
+    ),
+  });
+
+  // The four perceptual notations. All are CSS Color 4, all carry alpha
+  // behind a slash, and all are colour-managed against a defined white —
+  // so unlike `hsv()` and `device-cmyk()` they have nothing to declare
+  // beyond whatever their own rounding costs.
+  representations.push({
+    id: 'lab',
+    label: 'CIELAB',
+    value: labText,
+    space: 'lab',
+    loss: withRounding(
+      source,
+      labToRgb({ l: channelAt(labBack, 0), a: channelAt(labBack, 1), b: channelAt(labBack, 2) }),
+      [],
+      { source: alpha, roundTripped: trailingAlpha(labBack) },
+    ),
+  });
+
+  representations.push({
+    id: 'lch',
+    label: 'LCH',
+    value: lchText,
+    space: 'lch',
+    loss: withRounding(
+      source,
+      lchToRgb({ l: channelAt(lchBack, 0), c: channelAt(lchBack, 1), h: channelAt(lchBack, 2) }),
+      [],
+      { source: alpha, roundTripped: trailingAlpha(lchBack) },
+    ),
+  });
+
+  representations.push({
+    id: 'oklab',
+    label: 'OKLab',
+    value: oklabText,
+    space: 'oklab',
+    loss: withRounding(
+      source,
+      oklabToRgb({ l: channelAt(oklabBack, 0), a: channelAt(oklabBack, 1), b: channelAt(oklabBack, 2) }),
+      [],
+      { source: alpha, roundTripped: trailingAlpha(oklabBack) },
+    ),
+  });
+
+  representations.push({
+    id: 'oklch',
+    label: 'OKLCH',
+    value: oklchText,
+    space: 'oklch',
+    loss: withRounding(
+      source,
+      oklchToRgb({ l: channelAt(oklchBack, 0), c: channelAt(oklchBack, 1), h: channelAt(oklchBack, 2) }),
+      [],
+      { source: alpha, roundTripped: trailingAlpha(oklchBack) },
+    ),
   });
 
   representations.push({

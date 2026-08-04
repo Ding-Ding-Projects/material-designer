@@ -226,6 +226,317 @@ export function cmykToRgb(cmyk: Cmyk): Rgb {
   };
 }
 
+/* ---- CIE XYZ, CIELAB and OKLab --------------------------------------
+
+   Everything above this line is algebra on r/g/b. HSL, HSV, HWB and device
+   CMYK re-slice the same cube and none of them knows what a colour looks
+   like: the midpoint of two HSL lightnesses is not the colour halfway
+   between them to an eye.
+
+   Lab and OKLab do know. Getting there costs three stages, and skipping any
+   one of them produces numbers that look plausible and are wrong:
+
+     1. Undo the transfer function. sRGB channels are stored non-linearly,
+        so 128 is not half the light of 255. Matrices only work on light.
+     2. Matrix into CIE XYZ, which is linear light in a device-independent
+        basis.
+     3. Compress non-linearly again, this time the way the eye compresses,
+        so that equal numeric steps are roughly equal perceived steps.
+
+   One deliberate wrinkle, and it is the one thing here most likely to look
+   like a bug: `lab()` and `lch()` in CSS Color 4 are **D50**-referenced,
+   while `oklab()`, `oklch()` and sRGB itself are D65. So the CIELAB path
+   carries a Bradford chromatic adaptation from D65 to D50 that the OKLab
+   path does not, and the two report different numbers for the same colour
+   on purpose. Dropping the adaptation would still produce a well-formed
+   `lab(...)` string — it would simply be a different colour from the one
+   the picker is holding once a browser read it back, which is exactly the
+   sort of quiet surprise `translate.ts` exists to prevent. -------------- */
+
+/**
+ * CIELAB, D50-referenced to match CSS `lab()`.
+ *
+ * `Lab` and `Oklab` are structurally identical, so TypeScript will let you
+ * hand one to a function expecting the other. It will not stop you; the
+ * ranges are what tell them apart — Lab lightness runs 0–100 and OKLab
+ * lightness runs 0–1, so a mix-up is off by a factor of a hundred and shows
+ * up immediately rather than subtly.
+ */
+export interface Lab {
+  /** Lightness, 0 (black) to 100 (diffuse white). */
+  l: number;
+  /** Green (negative) to red (positive). sRGB reaches roughly ±95. */
+  a: number;
+  /** Blue (negative) to yellow (positive). sRGB reaches roughly ±110. */
+  b: number;
+}
+
+/** CIELAB in polar form: the same colour, chroma and hue instead of a/b. */
+export interface Lch {
+  l: number;
+  /** Chroma. 0 is grey; sRGB reaches roughly 132. */
+  c: number;
+  /** Hue angle in degrees, 0–360. */
+  h: number;
+}
+
+/** OKLab, D65-referenced to match CSS `oklab()`. Lightness is 0–1. */
+export interface Oklab {
+  /** Lightness, 0 to 1 — NOT 0 to 100. CSS `oklab()` takes it this way. */
+  l: number;
+  a: number;
+  b: number;
+}
+
+/** OKLab in polar form. Chroma is 0–~0.32 across sRGB, not 0–132. */
+export interface Oklch {
+  l: number;
+  c: number;
+  h: number;
+}
+
+/** Linear light, device-independent. Only ever an intermediate here. */
+type Xyz = readonly [number, number, number];
+
+/**
+ * The sRGB transfer function, decoding a stored channel to linear light.
+ *
+ * Threshold and exponent are IEC 61966-2-1: below 0.04045 the curve is the
+ * straight segment `/12.92`, above it the offset power curve. The encoding
+ * direction crosses over at 0.0031308, which is the same point mapped
+ * through the linear segment and is deliberately not the same number.
+ *
+ * Both directions mirror a negative input through zero. The spec does not
+ * define negatives because a display cannot emit them, but Lab can name a
+ * colour outside sRGB and the inverse conversion lands there; mirroring
+ * keeps the function monotonic across zero instead of folding negative
+ * light back into positive and inventing a colour.
+ */
+function srgbToLinear(channel: number): number {
+  const sign = channel < 0 ? -1 : 1;
+  const c = Math.abs(channel);
+  return sign * (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+}
+
+function linearToSrgb(channel: number): number {
+  const sign = channel < 0 ? -1 : 1;
+  const c = Math.abs(channel);
+  return sign * (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
+}
+
+/**
+ * Linear sRGB → CIE XYZ, D65-referenced (the sRGB primaries as tabulated by
+ * Lindbloom).
+ *
+ * Each row sums to the matching component of the D65 white point
+ * (0.95047, 1, 1.08883), and that is the arithmetic check that the matrix
+ * has been transcribed correctly: white in must be white out. A single
+ * mistyped digit breaks that sum, which is why the rows are written out in
+ * full rather than folded into a loop over a flat array.
+ */
+function linearRgbToXyz(r: number, g: number, b: number): Xyz {
+  return [
+    0.4124564 * r + 0.3575761 * g + 0.1804375 * b,
+    0.2126729 * r + 0.7151522 * g + 0.072175 * b,
+    0.0193339 * r + 0.119192 * g + 0.9503041 * b,
+  ];
+}
+
+function xyzToLinearRgb(x: number, y: number, z: number): Xyz {
+  return [
+    3.2404542 * x - 1.5371385 * y - 0.4985314 * z,
+    -0.969266 * x + 1.8760108 * y + 0.041556 * z,
+    0.0556434 * x - 0.2040259 * y + 1.0572252 * z,
+  ];
+}
+
+/**
+ * Bradford chromatic adaptation between the D65 white sRGB is defined
+ * against and the D50 white CSS `lab()` is defined against.
+ *
+ * Same self-check as above, one step further along: pushing the D65 white
+ * (0.95047, 1, 1.08883) through this must land on the D50 white
+ * (0.96422, 1, 0.82521). It does, to five decimal places.
+ */
+function xyzD65ToD50(x: number, y: number, z: number): Xyz {
+  return [
+    1.0478112 * x + 0.0228866 * y - 0.050127 * z,
+    0.0295424 * x + 0.9904844 * y - 0.0170491 * z,
+    -0.0092345 * x + 0.0150436 * y + 0.7521316 * z,
+  ];
+}
+
+function xyzD50ToD65(x: number, y: number, z: number): Xyz {
+  return [
+    0.9555766 * x - 0.0230393 * y + 0.0631636 * z,
+    -0.0282895 * x + 1.0099416 * y + 0.0210077 * z,
+    0.0122982 * x - 0.020483 * y + 1.3299098 * z,
+  ];
+}
+
+/**
+ * The white Lab is measured against, derived rather than tabulated.
+ *
+ * Hard-coding (0.96422, 1, 0.82521) here would be the usual thing to do and
+ * would be very slightly wrong: it is not exactly the image of sRGB white
+ * under the two matrices above, so pure white would come out as
+ * `lab(100 0.01 -0.01)` and every grey would carry a trace of colour.
+ * Running white through the same pipeline the conversion uses makes
+ * neutrality exact by construction instead of exact to five decimals.
+ */
+const LAB_WHITE: Xyz = xyzD65ToD50(...linearRgbToXyz(1, 1, 1));
+
+/**
+ * CIE 1976 constants, in the exact-integer form the CIE adopted in 2004.
+ *
+ * They are usually quoted as 0.008856 and 903.3, and those decimals leave a
+ * visible discontinuity at the join between the two branches. 216/24389 and
+ * 24389/27 are the values that make the curve continuous.
+ */
+const LAB_EPSILON = 216 / 24389;
+const LAB_KAPPA = 24389 / 27;
+
+function labF(t: number): number {
+  return t > LAB_EPSILON ? Math.cbrt(t) : (LAB_KAPPA * t + 16) / 116;
+}
+
+function labFInverse(f: number): number {
+  const cubed = f ** 3;
+  return cubed > LAB_EPSILON ? cubed : (116 * f - 16) / LAB_KAPPA;
+}
+
+export function rgbToLab(rgb: Rgb): Lab {
+  const [x, y, z] = xyzD65ToD50(
+    ...linearRgbToXyz(
+      srgbToLinear(clamp(rgb.r, 0, 255) / 255),
+      srgbToLinear(clamp(rgb.g, 0, 255) / 255),
+      srgbToLinear(clamp(rgb.b, 0, 255) / 255),
+    ),
+  );
+  const fx = labF(x / LAB_WHITE[0]);
+  const fy = labF(y / LAB_WHITE[1]);
+  const fz = labF(z / LAB_WHITE[2]);
+  return { l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+export function labToRgb(lab: Lab): Rgb {
+  const fy = (lab.l + 16) / 116;
+  const fx = lab.a / 500 + fy;
+  const fz = fy - lab.b / 200;
+  // Y gets the shortcut the other two axes do not: L is defined from Y
+  // alone, so it inverts directly. `LAB_KAPPA * LAB_EPSILON` is exactly 8,
+  // the lightness at which the curve changes branch.
+  const yr = lab.l > LAB_KAPPA * LAB_EPSILON ? fy ** 3 : lab.l / LAB_KAPPA;
+  const [lr, lg, lb] = xyzToLinearRgb(
+    ...xyzD50ToD65(labFInverse(fx) * LAB_WHITE[0], yr * LAB_WHITE[1], labFInverse(fz) * LAB_WHITE[2]),
+  );
+  // Deliberately unclamped, per this file's first rule: an out-of-gamut Lab
+  // value comes back as an out-of-range channel so the caller can say so.
+  return { r: linearToSrgb(lr) * 255, g: linearToSrgb(lg) * 255, b: linearToSrgb(lb) * 255 };
+}
+
+/**
+ * Below this chroma there is no hue to report.
+ *
+ * `Math.atan2` is perfectly happy to turn floating-point noise into an
+ * angle: a pure grey whose `a` lands on -1e-16 comes back as hue 180,
+ * which then formats as a confident `lch(53.59 0 180)`. Hue at zero chroma
+ * is undefined, so this file picks 0 and states the convention rather than
+ * letting a rounding artefact pick it. The thresholds are far below
+ * anything an eye or an 8-bit channel can resolve.
+ */
+const LAB_ACHROMATIC = 1e-4;
+const OKLAB_ACHROMATIC = 1e-6;
+
+function toPolar(a: number, b: number, achromatic: number): { c: number; h: number } {
+  const c = Math.hypot(a, b);
+  return { c, h: c < achromatic ? 0 : normalizeHue((Math.atan2(b, a) * 180) / Math.PI) };
+}
+
+export function labToLch(lab: Lab): Lch {
+  const { c, h } = toPolar(lab.a, lab.b, LAB_ACHROMATIC);
+  return { l: lab.l, c, h };
+}
+
+export function lchToLab(lch: Lch): Lab {
+  const radians = (normalizeHue(lch.h) * Math.PI) / 180;
+  // Negative chroma is not a colour, it is the same colour half a turn
+  // away; CSS clamps it to 0 and so does this.
+  const c = Math.max(0, lch.c);
+  return { l: lch.l, a: c * Math.cos(radians), b: c * Math.sin(radians) };
+}
+
+export function rgbToLch(rgb: Rgb): Lch {
+  return labToLch(rgbToLab(rgb));
+}
+
+export function lchToRgb(lch: Lch): Rgb {
+  return labToRgb(lchToLab(lch));
+}
+
+/**
+ * OKLab, per Björn Ottosson's definition.
+ *
+ * Two matrices with a cube root between them: linear sRGB into a
+ * cone-response (LMS) basis, the cube root of each of those, then a second
+ * matrix into the opponent axes. The cube root is the whole trick — it is
+ * what makes the space behave under interpolation, and applying the second
+ * matrix to raw LMS instead produces a space that is neither OKLab nor
+ * useful.
+ *
+ * These are Ottosson's linear-sRGB coefficients rather than the XYZ ones,
+ * which is the same transform with the sRGB matrix folded in; it saves a
+ * hop and, more usefully, every row sums to exactly 1, so white maps to
+ * LMS (1, 1, 1) and out to `oklab(1 0 0)` with no residue at all. The
+ * second matrix's rows sum to 1, 0 and 0 for the same reason.
+ */
+export function rgbToOklab(rgb: Rgb): Oklab {
+  const r = srgbToLinear(clamp(rgb.r, 0, 255) / 255);
+  const g = srgbToLinear(clamp(rgb.g, 0, 255) / 255);
+  const b = srgbToLinear(clamp(rgb.b, 0, 255) / 255);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return {
+    l: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    a: 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    b: 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  };
+}
+
+export function oklabToRgb(oklab: Oklab): Rgb {
+  // Cubed, not cube-rooted: this is the inverse of the forward direction's
+  // `Math.cbrt`. `**` on a negative base is fine here and is meant to be —
+  // an out-of-gamut OKLab value has negative cone responses.
+  const l = (oklab.l + 0.3963377774 * oklab.a + 0.2158037573 * oklab.b) ** 3;
+  const m = (oklab.l - 0.1055613458 * oklab.a - 0.0638541728 * oklab.b) ** 3;
+  const s = (oklab.l - 0.0894841775 * oklab.a - 1.291485548 * oklab.b) ** 3;
+  return {
+    r: linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s) * 255,
+    g: linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s) * 255,
+    b: linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s) * 255,
+  };
+}
+
+export function oklabToOklch(oklab: Oklab): Oklch {
+  const { c, h } = toPolar(oklab.a, oklab.b, OKLAB_ACHROMATIC);
+  return { l: oklab.l, c, h };
+}
+
+export function oklchToOklab(oklch: Oklch): Oklab {
+  const radians = (normalizeHue(oklch.h) * Math.PI) / 180;
+  const c = Math.max(0, oklch.c);
+  return { l: oklch.l, a: c * Math.cos(radians), b: c * Math.sin(radians) };
+}
+
+export function rgbToOklch(rgb: Rgb): Oklch {
+  return oklabToOklch(rgbToOklab(rgb));
+}
+
+export function oklchToRgb(oklch: Oklch): Rgb {
+  return oklabToRgb(oklchToOklab(oklch));
+}
+
 /* ---- Formatting -----------------------------------------------------
    Every formatter rounds, and rounding is the only place a value is lost.
    `translate.ts` detects that loss by parsing the formatted string back
@@ -279,6 +590,44 @@ export function formatCmyk(cmyk: Cmyk): string {
   return `device-cmyk(${round(cmyk.c, 1)}% ${round(cmyk.m, 1)}% ${round(cmyk.y, 1)}% ${round(cmyk.k, 1)}%)`;
 }
 
+/**
+ * CSS Color 4's four perceptual notations, all space-separated with alpha
+ * behind a slash — `lab(54.29 80.81 69.89 / 0.5)`.
+ *
+ * Precision is chosen per space, and the temptation to use one number
+ * everywhere is a trap: these ranges differ by two orders of magnitude.
+ * A Lab axis spans about ±128 and gets two decimals; an OKLab axis spans
+ * about ±0.4, so the SAME resolution needs five, and the four decimals that
+ * look generous next to `hsl()`'s one are in fact six times coarser than
+ * what CIELAB is getting. The cost of getting that wrong shows up on
+ * saturated primaries, where a channel sits at 0 and the sRGB transfer
+ * function multiplies any error there by 12.92 on the way back.
+ *
+ * Hue gets more places than the one HSL uses for the same reason inverted:
+ * chroma multiplies it. At the edge of the sRGB gamut a Lab chroma of 130
+ * turns a tenth of a degree into a fifth of a unit, where the same tenth of
+ * a degree in HSL is bounded by a saturation that never exceeds 100.
+ */
+export function formatLab(lab: Lab, alpha: number): string {
+  const base = `lab(${round(lab.l, 2)} ${round(lab.a, 2)} ${round(lab.b, 2)}`;
+  return alpha >= 1 ? `${base})` : `${base} / ${round(alpha, 3)})`;
+}
+
+export function formatLch(lch: Lch, alpha: number): string {
+  const base = `lch(${round(lch.l, 2)} ${round(lch.c, 2)} ${round(lch.h, 2)}`;
+  return alpha >= 1 ? `${base})` : `${base} / ${round(alpha, 3)})`;
+}
+
+export function formatOklab(oklab: Oklab, alpha: number): string {
+  const base = `oklab(${round(oklab.l, 5)} ${round(oklab.a, 5)} ${round(oklab.b, 5)}`;
+  return alpha >= 1 ? `${base})` : `${base} / ${round(alpha, 3)})`;
+}
+
+export function formatOklch(oklch: Oklch, alpha: number): string {
+  const base = `oklch(${round(oklch.l, 5)} ${round(oklch.c, 5)} ${round(oklch.h, 3)}`;
+  return alpha >= 1 ? `${base})` : `${base} / ${round(alpha, 3)})`;
+}
+
 /* ---- Parsing --------------------------------------------------------
    `parseColor` is what the numeric-entry field runs on every keystroke,
    so it never throws and it reports what it had to change rather than
@@ -290,7 +639,18 @@ export function formatCmyk(cmyk: Cmyk): string {
 export interface ParsedColor {
   rgba: Rgba;
   /** The syntax that matched, for the "you are editing sRGB" readout. */
-  format: 'hex' | 'named' | 'rgb' | 'hsl' | 'hsv' | 'hwb' | 'cmyk';
+  format:
+    | 'hex'
+    | 'named'
+    | 'rgb'
+    | 'hsl'
+    | 'hsv'
+    | 'hwb'
+    | 'cmyk'
+    | 'lab'
+    | 'lch'
+    | 'oklab'
+    | 'oklch';
   /** Component names that were outside their legal range and got clamped. */
   clipped: string[];
 }
@@ -377,13 +737,57 @@ function noteClipped(name: string, value: number, min: number, max: number, into
   return clamp(value, min, max);
 }
 
+/**
+ * A percentage in a CSS colour function means a fraction of that
+ * component's reference range, and the range differs per notation:
+ * `50%` is 62.5 on a `lab()` a-axis, 0.2 on an `oklab()` one, and 50 on a
+ * lightness. Passing the full-scale value in beats a `percent` boolean at
+ * every call site guessing which is which.
+ */
+function scaledOf(arg: Arg, fullScale: number): number {
+  return arg.percent ? (arg.value / 100) * fullScale : arg.value;
+}
+
+/**
+ * Lab, LCH, OKLab and OKLCH can all name colours sRGB cannot display —
+ * that is much of the point of them. Converting one back lands outside
+ * 0–255, and the honest answer is the nearest displayable colour plus a
+ * note that it moved, which is the same contract the other notations use
+ * for an out-of-range component.
+ *
+ * The half-step of slack is not politeness, it is noise suppression: a
+ * `lab(100 0 0)` white comes back through two matrices and a transfer
+ * function as 255.0000000004, and warning that plain white was clipped
+ * would teach the user to ignore the warning.
+ */
+function clipToGamut(name: string, value: number, into: string[]): number {
+  if (value < -0.5 || value > 255.5) into.push(name);
+  return clamp(value, 0, 255);
+}
+
+function gamutClipped(rgb: Rgb, into: string[]): Rgb {
+  return {
+    r: clipToGamut('r', rgb.r, into),
+    g: clipToGamut('g', rgb.g, into),
+    b: clipToGamut('b', rgb.b, into),
+  };
+}
+
 const FUNCTION_PATTERN = /^([a-z-]+)\(([^)]*)\)$/i;
 
 export function parseColor(input: string, names: Record<string, string>): ParsedColor | null {
   const text = input.trim();
   if (!text) return null;
 
-  const named = names[text.toLowerCase()];
+  // Object.hasOwn, not a bare index. The name map is a plain object literal,
+  // so it inherits Object.prototype — and typing `constructor`, `toString`,
+  // `valueOf` or `__proto__` into the colour field returned an inherited
+  // function, which is truthy, which then reached parseHex and threw
+  // `text.trim is not a function` out of a React change handler. The entry
+  // field parses on every keystroke, so this was reachable by paste, and it
+  // broke this function's own documented promise never to throw.
+  const key = text.toLowerCase();
+  const named = Object.hasOwn(names, key) ? names[key] : undefined;
   if (named) {
     const rgba = parseHex(named);
     if (rgba) return { rgba, format: 'named', clipped: [] };
@@ -453,6 +857,64 @@ export function parseColor(input: string, names: Record<string, string>): Parsed
     return {
       rgba: { ...rgb, a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
       format: 'hwb',
+      clipped,
+    };
+  }
+
+  // The four perceptual notations. Their percentage reference ranges are
+  // CSS Color 4's, and they are not interchangeable: 100% is 125 on a
+  // `lab()` a/b axis, 150 on an `lch()` chroma, and 0.4 on either OKLab
+  // one. Lightness is clamped because CSS clamps it; a and b are not,
+  // because a Lab value outside the sRGB gamut is legal input and gets
+  // reported through `clipped` after conversion rather than refused here.
+  if (name === 'lab' && args.length >= 3) {
+    const rgb = labToRgb({
+      l: noteClipped('l', scaledOf(arg0, 100), 0, 100, clipped),
+      a: scaledOf(arg1, 125),
+      b: scaledOf(arg2, 125),
+    });
+    return {
+      rgba: { ...gamutClipped(rgb, clipped), a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
+      format: 'lab',
+      clipped,
+    };
+  }
+
+  if (name === 'lch' && args.length >= 3) {
+    const rgb = lchToRgb({
+      l: noteClipped('l', scaledOf(arg0, 100), 0, 100, clipped),
+      c: noteClipped('c', scaledOf(arg1, 150), 0, Number.POSITIVE_INFINITY, clipped),
+      h: arg2.value,
+    });
+    return {
+      rgba: { ...gamutClipped(rgb, clipped), a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
+      format: 'lch',
+      clipped,
+    };
+  }
+
+  if (name === 'oklab' && args.length >= 3) {
+    const rgb = oklabToRgb({
+      l: noteClipped('l', scaledOf(arg0, 1), 0, 1, clipped),
+      a: scaledOf(arg1, 0.4),
+      b: scaledOf(arg2, 0.4),
+    });
+    return {
+      rgba: { ...gamutClipped(rgb, clipped), a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
+      format: 'oklab',
+      clipped,
+    };
+  }
+
+  if (name === 'oklch' && args.length >= 3) {
+    const rgb = oklchToRgb({
+      l: noteClipped('l', scaledOf(arg0, 1), 0, 1, clipped),
+      c: noteClipped('c', scaledOf(arg1, 0.4), 0, Number.POSITIVE_INFINITY, clipped),
+      h: arg2.value,
+    });
+    return {
+      rgba: { ...gamutClipped(rgb, clipped), a: noteClipped('a', alphaOf(arg3), 0, 1, clipped) },
+      format: 'oklch',
       clipped,
     };
   }
