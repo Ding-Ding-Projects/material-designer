@@ -1240,11 +1240,12 @@ only in a report is a finding that gets rediscovered.
         it, and it is capped at 200.)
       The confirmed ones are tracked as their own items above and below.
       **The standing lesson: an unrefuted finding is a lead, not a fact.**
-- [ ] **A second flake, in the desktop suite.** A range-request assertion
+- [ ] **A second flake, in the desktop suite — now proved rather than
+      suspected.** A range-request assertion
       (`expected [] to deeply equal [ StringMatching /^bytes=\d+-$/ ]`) failed
       on a **documentation-and-image-only commit**, which cannot have caused
-      it. Same signature as the connectors flake: a red gate on a tree that
-      changed no code. Two intermittent tests is the point at which people
+      it, and a second run of the byte-identical tree **passed**. One tree,
+      two verdicts: that is the definition, not an inference. Two intermittent tests is the point at which people
       start re-running rather than reading, so this needs the same treatment —
       find the non-determinism, do not raise a timeout.
 - [ ] **`App.connectors.test.tsx` is flaky, and that matters more now.**
