@@ -12,6 +12,20 @@ on:
 permissions:
   contents: read
 
+# Supersede rather than queue. Several pushes in quick succession used to leave
+# four Verify runs stacked behind each other, each spending its full time on a
+# commit that a later one had already replaced — so the verdict that actually
+# mattered arrived twenty minutes after the push that needed it.
+#
+# `cancel-in-progress` is safe HERE and would not be on the release workflow:
+# this job publishes nothing and has no side effects, so a cancelled run leaves
+# nothing half-done. It costs the superseded commit its verdict, which is the
+# intended trade — nobody is waiting on the result for a commit that is no
+# longer the tip.
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     name: Verify port integrity
