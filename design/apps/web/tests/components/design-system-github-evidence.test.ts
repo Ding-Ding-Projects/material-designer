@@ -6,11 +6,16 @@ import {
   designSystemNeedsRepoConnect,
   repoConnectCopy,
 } from '../../src/components/design-system-github-evidence';
+import type { TranslationVars } from '../../src/i18n';
 import { en } from '../../src/i18n/locales/en';
 import type { Dict } from '../../src/i18n/types';
 import type { DesignSystemSummary } from '../../src/types';
 
-const t = (key: keyof Dict, vars?: Record<string, string | number>) => {
+// `TranslationVars`, not `Record<string, string | number>`. A variable may now
+// be a `tv(key)` marker rather than a finished string, so a stub declaring the
+// narrower type is not assignable where the real translator is expected. This
+// stub only ever receives plain values, hence the String() below.
+const t = (key: keyof Dict, vars?: TranslationVars) => {
   let value = en[key];
   for (const [name, replacement] of Object.entries(vars ?? {})) {
     value = value.replaceAll(`{${name}}`, String(replacement));
