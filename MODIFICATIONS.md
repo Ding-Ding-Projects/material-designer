@@ -29,6 +29,50 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Green the five web suites that had never been run, and make the suite a gate
+
+**Reason:** wiring the web suite into continuous integration made it run for
+the first time in this repository's history: **454 of 459 files passed**. All
+five failures were pre-existing, and fixing them turns the largest suite in
+the workspace from decoration into a gate.
+
+Four were tests describing behaviour the product had deliberately moved on
+from, each failing because nothing had run them since the change landed:
+
+- **`DesignFilesPanel`** clicked batch-delete and expected the delete callback
+  immediately. Bulk delete now opens a preview dialog first — which is the
+  entire point of that dialog — and the callback gained an options argument.
+- **`DesignFilesPanel`** queried a row-menu item by the `button` role. Menu
+  items are now `<button role="menuitem">`, and an explicit role overrides the
+  implicit one: the markup got more correct and the query got stale.
+- **`WorkspaceTabsBar`** expected a cross-region tab drop to resolve to "after
+  Home". A drag is now confined to its own region and the entry tab is the
+  sole member of its own, so the drop is skipped entirely. Home still stays
+  leftmost, which is what the test is named for and now asserts directly.
+- **`changelog-parse`** expected a folded bullet to lose the full stop that
+  closes its sentence. The period sits outside the commit-link parenthetical,
+  so it correctly survives the link's removal.
+
+One was a mistaken fixture: **`dim-sum`** interleaved a selecting roll after
+each deciding roll, but a losing draw short-circuits and consumes only one —
+so the second draw's *deciding* roll became the `0` meant as a selector, and
+`0` wins. It now supplies one roll per losing draw and asserts the roll count,
+which is what actually proves the short-circuit.
+
+One was a genuine defect: **`buildHighlightSegments`** let zero-width matches
+advance the cursor, so `/(?:)/g` over `"ab"` emitted `"a"` and `"b"` as two
+adjacent unhighlighted runs instead of one `"ab"`. They render identically and
+are not the same — the function owes its caller the invariant that no two
+adjacent segments are both plain.
+
+**Changed files:**
+
+- `apps/web/src/components/regex/evaluate.ts`
+- `apps/web/tests/dim-sum.test.ts`
+- `apps/web/tests/changelog-parse.test.ts`
+- `apps/web/tests/components/DesignFilesPanel.test.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
+
 ### 2026-08-04 — Declare the changelog test's fixture paths to the guard that flagged them
 
 **Reason:** wiring `pnpm guard` into continuous integration — where it had

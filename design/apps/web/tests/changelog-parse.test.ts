@@ -206,8 +206,14 @@ describe('parsing a Keep a Changelog file', () => {
   it('folds a wrapped bullet back into one entry and splits its bold lead', () => {
     const entry = entriesOf(releases[0]!)[0]!;
     expect(entry.title).toBe('A toast that shows a dish.');
+    // The fixture bullet ends `… the whole point ([`aaa1111`](…)).` — the
+    // period closes the sentence and sits outside the parenthetical, so once
+    // the commit link and the empty parentheses it leaves behind are removed,
+    // the sentence keeps its full stop. This expectation used to omit it,
+    // which asked the parser to swallow punctuation that was never the
+    // reference's to begin with.
     expect(entry.text).toBe(
-      'It draws once per launch and never blocks anything, which is the whole point',
+      'It draws once per launch and never blocks anything, which is the whole point.',
     );
   });
 

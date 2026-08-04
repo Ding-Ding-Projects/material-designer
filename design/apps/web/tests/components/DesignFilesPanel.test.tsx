@@ -287,8 +287,24 @@ describe("DesignFilesPanel selection", () => {
     fireEvent.click(
       container.querySelector('[data-testid="design-files-batch-delete"]')!,
     );
+
+    // Batch delete no longer fires on that click. It opens a preview dialog
+    // first, which states how many files will go and lets the user back out —
+    // deleting several files at once on a single click is exactly what that
+    // dialog exists to prevent. This test predates it and asserted the old
+    // one-click flow, which is why it was failing.
+    const confirm = container.querySelector(
+      '[data-testid="design-files-bulk-review-confirm"]',
+    );
+    expect(confirm, "the delete preview dialog should be open").toBeTruthy();
+    expect(onDeleteFiles).not.toHaveBeenCalled();
+
+    fireEvent.click(confirm!);
+
     expect(onDeleteFiles).toHaveBeenCalledTimes(1);
-    expect(onDeleteFiles).toHaveBeenCalledWith([firstName, secondName]);
+    // The second argument carries the progress callback and the Stop signal,
+    // so the call is asserted on its file list rather than on exact arity.
+    expect(onDeleteFiles.mock.calls[0]![0]).toEqual([firstName, secondName]);
   });
 
   it("does not preview or open files from row controls", () => {
@@ -328,8 +344,12 @@ describe("DesignFilesPanel selection", () => {
       ]);
 
       fireEvent.click(screen.getByTestId("design-file-menu-alpha.html"));
+      // The row menu's items are `<button role="menuitem">`. An explicit role
+      // overrides the implicit one, so querying by "button" stopped matching
+      // when the context menu gained proper menu semantics — the markup got
+      // more correct and this query got stale, not the other way round.
       fireEvent.click(
-        screen.getByRole("button", { name: "Copy local file path" }),
+        screen.getByRole("menuitem", { name: "Copy local file path" }),
       );
 
       await waitFor(() => {

@@ -60,14 +60,23 @@ describe('dim sum draw probability', () => {
   });
 
   it('never returns a dish when the first roll loses', () => {
-    // Two rolls per draw: the first decides, the second selects. A losing
-    // first roll must short-circuit, whatever the second one would have been.
-    const rolls = [0.1, 0, 0.5, 0, 0.99, 0];
+    // A winning draw takes two rolls — one to decide, one to select — but a
+    // losing draw short-circuits and takes only the first. So three losing
+    // draws consume exactly three rolls, and the count is what proves the
+    // short-circuit: if the selecting roll were ever taken on a loss, `i`
+    // would end above three.
+    //
+    // This array used to interleave a selecting roll after each deciding one,
+    // which meant the second draw's *deciding* roll was the 0 intended as a
+    // selector — and 0 wins, so the draw handed back a dish and the assertion
+    // that it should not was correct all along.
+    const rolls = [0.1, 0.5, 0.99];
     let i = 0;
     const random = () => rolls[i++] ?? 0;
     expect(drawDimSum(random)).toBeNull();
     expect(drawDimSum(random)).toBeNull();
     expect(drawDimSum(random)).toBeNull();
+    expect(i).toBe(3);
   });
 
   it('reaches every dish in the catalogue and never falls off the end', () => {

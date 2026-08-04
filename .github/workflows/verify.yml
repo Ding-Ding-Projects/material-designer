@@ -233,28 +233,22 @@ jobs:
         # accessibility contract rather than a detail.
         run: pnpm --filter @open-design/components run test
 
-      # The web suite is deliberately NOT wired in yet, and this comment is the
-      # reason rather than an oversight.
-      #
-      # It was wired in at 741df0a and ran for the first time in this
-      # repository's history. The measurement is worth keeping:
-      #
-      #     Test Files  5 failed | 454 passed (459)
-      #
-      # All five failures are pre-existing and none is caused by the change
-      # that ran them. The clearest is
-      # tests/components/DesignFilesPanel.test.tsx, which clicks batch-delete
-      # and expects onDeleteFiles to have been called immediately — the code
-      # has since grown a bulk preview dialog in front of that call, so the
-      # test asserts a flow the product no longer has. That regression landed
-      # with the Phase 4 bulk-actions work and went unnoticed for exactly one
-      # reason: nothing ran this suite.
-      #
-      # The five files are named in ROADMAP.md § 4.0. They are not fixed here
-      # because they cannot be verified here — this repository builds only in
-      # CI, so each attempt is a push, and five unrelated suites iterated blind
-      # is guessing rather than fixing.
-      #
-      # Wiring it back in is a one-line change once those five are green. What
-      # must NOT happen is wiring it in with `|| true`: a check that reports a
-      # failure and passes anyway devalues every other tick in this job.
+      - name: Test the web application
+        working-directory: design
+        shell: bash
+        # The largest suite in the workspace by a wide margin — 459 files. It
+        # runs last so a failure here does not delay the verdict of the
+        # cheaper checks above, and in its own step so a failure says "the web
+        # suite" rather than "the tests".
+        #
+        # Its first run in this repository's history reported 454 of 459
+        # passing. Every one of the five failures was a test describing
+        # behaviour the product had deliberately moved on from — a one-click
+        # batch delete that now opens a preview dialog, menu items that gained
+        # proper `role="menuitem"` semantics, a tab drop that is now confined
+        # to its own region — plus one genuine defect in the regex highlighter
+        # and two mistaken fixtures. All are fixed; the suite is a gate again.
+        #
+        # Its own config pins the worker count, so this adds no parallelism
+        # flags of its own.
+        run: pnpm --filter @open-design/web run test

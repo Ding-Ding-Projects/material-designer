@@ -869,8 +869,18 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     });
 
     // Dragging a project tab onto Home's left edge must not place anything
-    // before Home. Home is the permanent, pinned-leftmost tab; the drop should
-    // resolve to "after Home" so Home stays first.
+    // before Home. Home is the permanent, pinned-leftmost tab.
+    //
+    // How that is achieved changed: a drag may now only reorder WITHIN its own
+    // region, and the entry tab is the sole member of the `permanent` region,
+    // so nothing can target it at all. The drop is therefore skipped rather
+    // than resolved to "after Home", which this test used to expect. Skipping
+    // is the better behaviour and the reason is in `findTabDropTarget`: a live
+    // drop indicator that promises a move `normalizeTabsState` would then
+    // re-sort away is worse than no indicator.
+    //
+    // What matters — and what this test exists for — is unchanged: Home stays
+    // leftmost, and nothing lands before it.
     const [homeTab, , betaTab] = screen.getAllByRole('tab');
     mockTabRect(homeTab! as HTMLElement, 0);
     const dataTransfer = createDataTransfer();
@@ -882,8 +892,8 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
       expect(labels).toEqual([
         expect.stringContaining('Home'),
-        expect.stringContaining('Project Beta'),
         expect.stringContaining('Project Alpha'),
+        expect.stringContaining('Project Beta'),
       ]);
     });
 
@@ -894,10 +904,13 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
       expect(labels).toEqual([
         expect.stringContaining('Home'),
-        expect.stringContaining('Project Beta'),
         expect.stringContaining('Project Alpha'),
+        expect.stringContaining('Project Beta'),
       ]);
     });
+    // The assertion that carries this test's name: whatever else the drop did
+    // or did not do, Home is still the first tab.
+    expect(screen.getAllByRole('tab')[0]!.textContent).toContain('Home');
 
     expect(navigate).not.toHaveBeenCalled();
     expect(vibrate).toHaveBeenCalledWith(8);

@@ -140,10 +140,17 @@ export function buildHighlightSegments(
   let cursor = 0;
   matches.forEach((found, index) => {
     if (found.index < cursor) return;
+    // A zero-width match has nothing to paint, so it must not move the cursor
+    // either. Letting it through split the surrounding plain text at every
+    // match position — `/(?:)/g` over "ab" produced "a" and "b" as two
+    // adjacent unhighlighted runs rather than one "ab". They render the same
+    // and are not the same: the invariant this function owes its caller is
+    // that no two adjacent segments are both plain.
+    if (found.text.length === 0) return;
     if (found.index > cursor) {
       segments.push({ text: text.slice(cursor, found.index), match: null });
     }
-    if (found.text.length > 0) segments.push({ text: found.text, match: index });
+    segments.push({ text: found.text, match: index });
     cursor = found.index + found.text.length;
   });
   if (cursor < text.length) segments.push({ text: text.slice(cursor), match: null });
