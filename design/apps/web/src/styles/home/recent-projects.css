@@ -52,18 +52,25 @@
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
+/* M3 outlined card. The hover LIFT rides the contract's spring curve, which
+   overshoots and therefore needs its full period to read; the colour and
+   elevation halves stay on the house ease-out. Cancelled at
+   `prefers-reduced-motion` at the foot of this file. */
 .recent-projects__card {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
   text-align: left;
   overflow: visible;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out), transform 120ms var(--ease-out);
+  transition:
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
 }
 .recent-projects__card-main {
   appearance: none;
@@ -83,9 +90,9 @@
   overflow: hidden;
 }
 .recent-projects__card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-3);
+  transform: translateY(-3px);
 }
 .recent-projects__card.is-design-system-project {
   border-color: color-mix(in srgb, var(--red) 62%, var(--border));
@@ -97,9 +104,16 @@
     0 0 0 1px color-mix(in srgb, var(--red) 54%, transparent),
     var(--shadow-sm);
 }
+/* Tonal cover. A project with no rendered preview yet still gets a real M3
+   surface behind its glyph — a `secondary-container` → `surface-container`
+   wash — rather than a tinted-accent gradient mixed from the legacy palette. */
 .recent-projects__card-thumb {
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, var(--accent-tint) 0%, var(--bg-subtle) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-secondary-container) 0%,
+    var(--md-sys-color-surface-container) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -328,6 +342,17 @@
 @media (hover: none) {
   .recent-projects__card-more {
     opacity: 1;
+    transform: none;
+  }
+}
+/* The spring lift is decorative motion; elevation alone still marks hover. */
+@media (prefers-reduced-motion: reduce) {
+  .recent-projects__card {
+    transition:
+      border-color 220ms var(--ease-out),
+      box-shadow 220ms var(--ease-out);
+  }
+  .recent-projects__card:hover {
     transform: none;
   }
 }

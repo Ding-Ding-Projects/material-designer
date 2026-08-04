@@ -2045,8 +2045,18 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
       {activeCreateChip ? null : (
         <div className="home-hero__template-section" data-testid="home-hero-template-section">
+          {/* M3 section header: a title-medium heading with the supporting
+              line set beside it on the same baseline, left-aligned above the
+              scenario grid. The supporting line reuses the rail's own
+              description string rather than introducing a second one — it is
+              already the sentence that describes what the grid is for. */}
           <div className="home-hero__template-heading">
-            {t('homeHero.startWithTemplate')}
+            <h2 className="home-hero__template-heading-title">
+              {t('homeHero.startWithTemplate')}
+            </h2>
+            <span className="home-hero__template-heading-hint">
+              {t('homeHero.railAria')}
+            </span>
           </div>
           <RailGroup
             group="create"

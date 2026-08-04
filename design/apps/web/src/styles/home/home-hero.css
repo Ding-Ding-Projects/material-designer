@@ -17,6 +17,10 @@
 
 /* Hero — large centered prompt input */
 .home-hero {
+  /* One content-column width shared by the prompt surface and the scenario
+     grid, so the two blocks line up on a single left/right edge instead of
+     the composer sitting narrower than the cards beneath it. */
+  --home-hero-surface-width: min(900px, 100%);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -48,22 +52,29 @@
   font-size: 16px;
   color: var(--text-strong);
 }
+/* M3: the hero heading is display-large on the brand face, not the product's
+   legacy serif. The serif was the single loudest "old app" cue on this screen
+   — it is the only place the display scale is used, so it is read as the
+   product's voice rather than as one component's choice. */
 .home-hero__title {
   margin: 0;
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 40px;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+  font-size: var(--md-sys-typescale-display-large-size);
+  line-height: var(--md-sys-typescale-display-large-line-height);
+  letter-spacing: var(--md-sys-typescale-display-large-tracking);
+  color: var(--md-sys-color-on-surface);
   text-align: center;
+  text-wrap: pretty;
 }
 .home-hero__subtitle {
   margin: 0;
-  color: var(--text-muted);
-  font-size: 13.5px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
   text-align: center;
   max-width: 540px;
-  line-height: 1.55;
 }
 .home-hero__subtitle kbd {
   font: inherit;
@@ -400,22 +411,38 @@
   white-space: nowrap;
 }
 
+/* ---------- Prompt surface (M3) ----------
+   The screen's centre of gravity. Material Design 3 draws this as an
+   extra-large-corner raised container, not an outlined panel: 28dp corners,
+   `surface-container-high` fill, and elevation instead of a 1px hairline. The
+   border is kept at 1px *transparent* so the box metrics (and therefore the
+   Lexical editor's measured max-height) do not shift when the drag/focus
+   states colour it in.
+
+   Width tracks `--home-hero-surface-width`, shared with the scenario grid
+   below so the two blocks share one left/right edge the way the mockup's
+   single content column does. */
 .home-hero__input-card {
   position: relative;
   --home-hero-prompt-max-height: 180px;
   z-index: 2;
   width: 100%;
-  max-width: 720px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: none;
-  padding: 14px 14px 10px;
+  max-width: var(--home-hero-surface-width);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-1);
+  padding: 18px 18px 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 0;
-  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+  transition:
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+.home-hero__input-card:hover {
+  box-shadow: var(--md-sys-elevation-3);
 }
 /* While one of the composer's popovers is open, the whole card (a stacking
    context) is lifted so the popover escapes above the static home content
@@ -435,16 +462,23 @@
   overflow: visible;
 }
 .home-hero__input-card--compact-authoring {
-  max-width: 640px;
-  padding-block: 12px 10px;
+  max-width: calc(var(--home-hero-surface-width) - 100px);
+  padding-block: 14px 10px;
 }
+/* Focus is a primary-coloured ring rather than a tinted hairline: at 28dp with
+   no resting border there is nothing for a border-colour change to read
+   against, and this surface must stay obviously focused for keyboard users. */
 .home-hero__input-card:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  box-shadow: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow:
+    var(--md-sys-elevation-2),
+    0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 38%, transparent);
 }
 .home-hero__input-card.is-drag-active {
-  border-color: color-mix(in srgb, var(--accent) 56%, var(--border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: var(--md-sys-color-primary);
+  box-shadow:
+    var(--md-sys-elevation-3),
+    0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent);
 }
 .home-hero__active {
   display: flex;
@@ -613,18 +647,28 @@
   width: 100%;
   min-width: 0;
 }
+/* The home prompt is the product's headline input, so it is set at body-large
+   rather than the project composer's 13.5px. The editable, the Lexical
+   placeholder and the typewriter carousel below MUST carry identical
+   font-size/line-height: the carousel is an absolutely-positioned overlay
+   pinned to the same origin as the placeholder, and any divergence shows up
+   as a caret drifting off the text it is trailing. */
 .home-hero__lexical .composer-input-editor {
-  min-height: 64px;
+  min-height: 72px;
   max-height: var(--home-hero-prompt-max-height, 180px);
 }
 .home-hero__lexical .composer-editable {
-  min-height: 64px;
+  min-height: 72px;
   padding: 8px 4px;
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
 }
 .home-hero__lexical .composer-input-placeholder {
   top: 8px;
   left: 4px;
-  color: var(--text-soft);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
 }
 /* Typewriter placeholder carousel — a pointer-events-none overlay aligned to
    the editor's first text line (matches .composer-input-placeholder metrics).
@@ -639,9 +683,9 @@
   align-items: center;
   pointer-events: none;
   user-select: none;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--text-soft);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface-variant);
   overflow: hidden;
 }
 .home-hero__carousel-text {
@@ -986,20 +1030,32 @@
   color: var(--text-muted);
   font-size: 11px;
 }
+/* ---------- Composer control row → M3 chip rail ----------
+   Material Design 3 renders this row as assist chips: 36dp tall, fully
+   rounded, a 1dp `outline-variant` hairline over a transparent fill, and
+   `on-surface-variant` label text at label-large. The controls in this row are
+   individually-owned components (`ComposerPlusMenu`, `TemplatePicker`, the
+   plugin footer options, the session-mode and execution switchers), so the
+   chip contract is declared once here and applied to each trigger rather than
+   restated in five places. `--home-hero-chip-*` is the single knob; change it
+   here and the whole rail moves together. */
 .home-hero__input-foot {
+  --home-hero-chip-height: 36px;
+  --home-hero-chip-border: 1px solid var(--md-sys-color-outline-variant);
   position: relative;
   z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   border-top: 0;
   padding-top: 8px;
+  flex-wrap: wrap;
 }
 .home-hero__foot-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   flex: 1 1 auto;
   flex-wrap: nowrap;
@@ -1018,17 +1074,30 @@
 }
 .home-hero__mode-switcher .session-mode-toggle,
 .home-hero__mode-switcher .session-mode-toggle__trigger {
-  height: 32px;
-  min-height: 32px;
+  height: var(--home-hero-chip-height);
+  min-height: var(--home-hero-chip-height);
   box-sizing: border-box;
 }
+/* Assist chip (see the chip-rail contract on `.home-hero__input-foot`). */
 .home-hero__mode-switcher .session-mode-toggle__trigger {
-  max-width: 118px;
-  border-radius: var(--radius-sm);
+  /* 118px was measured against the old 8px chip padding; the M3 assist chip
+     pads 14px a side, so the cap moves with it or "Design" ellipsises. */
+  max-width: 130px;
+  padding-inline: 14px;
+  border: var(--home-hero-chip-border);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
   box-shadow: none;
+  transition: background-color 200ms var(--ease-out);
 }
-/* 118px was measured against "Design". In bilingual mode the same control
-   renders "Design · 設計", which does not fit, and the label ellipsised away
+.home-hero__mode-switcher .session-mode-toggle__trigger:hover:not(:disabled) {
+  background: var(--ripple);
+}
+/* The cap above was measured against "Design". In bilingual mode the same
+   control renders "Design · 設計", which does not fit, and the label ellipsised away
    the half a 廣東話 reader was actually there for — the cap truncated a
    correct translation rather than a long one. The extra room is granted only
    in that mode, so a single-language window keeps the 118px pill it has
@@ -1037,7 +1106,7 @@
 html[data-od-language-mode='bilingual']
   .home-hero__mode-switcher
   .session-mode-toggle__trigger {
-  max-width: 156px;
+  max-width: 168px;
 }
 .home-hero__mode-switcher .session-mode-toggle__popover {
   right: 0;
@@ -1053,17 +1122,23 @@ html[data-od-language-mode='bilingual']
 }
 .home-hero__execution-switcher .inline-switcher {
   min-width: 0;
-  width: 58px;
-  max-width: 58px;
+  width: 62px;
+  max-width: 62px;
 }
+/* The agent/model selector is the rail's one FILLED chip — M3 marks the
+   selected-value control as `secondary-container` so it reads as a current
+   choice rather than another action, exactly as the mockup's model chip does. */
 .home-hero__execution-switcher .inline-switcher__chip {
-  width: 58px;
-  height: 32px;
-  max-width: 58px;
+  width: 62px;
+  height: var(--home-hero-chip-height);
+  max-width: 62px;
   justify-content: space-between;
-  padding: 0 8px 0 9px;
+  padding: 0 8px 0 10px;
   gap: 4px;
-  border-radius: var(--radius-sm);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 .home-hero__execution-switcher .inline-switcher__chip-icon {
   width: 20px;
@@ -1408,33 +1483,36 @@ html[data-od-language-mode='bilingual']
 .home-hero__footer-options {
   display: contents;
 }
+/* Assist chip (see the chip-rail contract on `.home-hero__input-foot`). The
+   Template picker and every plugin footer field render through this class, so
+   the whole rail inherits the 36dp outlined pill from one place. */
 .home-hero__footer-option {
   position: relative;
-  height: 32px;
+  height: var(--home-hero-chip-height, 36px);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   max-width: 220px;
   min-width: 0;
   flex-shrink: 1;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 400;
-  box-shadow: var(--shadow-xs);
+  padding: 0 14px;
+  border: var(--home-hero-chip-border, 1px solid var(--md-sys-color-outline-variant));
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
+  box-shadow: none;
   transition:
-    background-color 120ms var(--ease-out),
-    border-color 120ms var(--ease-out),
-    color 120ms var(--ease-out);
+    background-color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
 }
 .home-hero__footer-option.is-open,
 .home-hero__footer-option:hover {
-  background: var(--bg-subtle);
-  border-color: var(--border-strong);
-  color: var(--accent);
+  background: var(--ripple);
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface);
 }
 .home-hero__footer-option.is-open {
   z-index: 120;
@@ -1462,7 +1540,7 @@ html[data-od-language-mode='bilingual']
   width: 100px;
 }
 .home-hero__footer-option--select {
-  padding-right: 11px;
+  padding-right: 12px;
 }
 .home-hero__footer-option--select[data-field-name='designSystem'] {
   max-width: min(280px, 100%);
@@ -1480,8 +1558,8 @@ html[data-od-language-mode='bilingual']
   background: transparent;
   color: currentColor;
   font: inherit;
-  font-size: 12px;
-  font-weight: 400;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
   letter-spacing: 0;
   outline: none;
   cursor: pointer;
@@ -1517,7 +1595,7 @@ html[data-od-language-mode='bilingual']
 }
 .home-hero__footer-switch {
   appearance: none;
-  height: 32px;
+  height: var(--home-hero-chip-height, 36px);
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -2094,6 +2172,14 @@ html[data-od-language-mode='bilingual']
     content: none;
   }
 }
+/* The primary action, and the one control on this screen that MORPHS.
+   M3 Expressive gives the send affordance a shape change on hover — the
+   corner travels from `corner-l` to `corner-xl` while the button springs up a
+   few percent — so the rail's one filled `primary` button announces itself
+   without changing colour. The spring curve is the M3 contract's own
+   `--md-sys-motion-spring`; it overshoots, so it needs its full ~320ms period
+   to read (a 200ms ease-out here just looks like a jump). Everything that is
+   not the morph keeps the house ease-out at house durations. */
 .home-hero__submit {
   appearance: none;
   display: inline-flex;
@@ -2101,35 +2187,57 @@ html[data-od-language-mode='bilingual']
   justify-content: center;
   gap: 6px;
   min-width: 64px;
-  height: 32px;
-  padding: 0 16px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: white;
-  box-shadow: var(--shadow-xs);
+  height: 40px;
+  padding: 0 20px;
+  border-radius: var(--md-sys-shape-corner-l);
+  border: 0;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-1);
   cursor: pointer;
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
   line-height: 1;
   transition:
-    background-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color 200ms var(--ease-out),
+    box-shadow 250ms var(--ease-out),
+    opacity 140ms var(--ease-out),
+    border-radius 300ms var(--md-sys-motion-emphasized),
+    transform 320ms var(--md-sys-motion-spring);
 }
 .home-hero__submit:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--md-sys-shape-corner-xl);
+  transform: scale(1.06);
+  box-shadow: var(--md-sys-elevation-3);
 }
-.home-hero__submit:active:not(:disabled) { transform: translateY(1px); box-shadow: var(--shadow-xs); }
+.home-hero__submit:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 3px;
+}
+.home-hero__submit:active:not(:disabled) {
+  transform: scale(0.94);
+  box-shadow: var(--md-sys-elevation-1);
+}
 .home-hero__submit:disabled {
   opacity: 0.5;
   cursor: default;
   box-shadow: none;
+}
+/* The morph is decorative motion: at `reduce` the button keeps its resting
+   shape and elevation still communicates hover. */
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__submit {
+    transition:
+      background-color 200ms var(--ease-out),
+      box-shadow 250ms var(--ease-out),
+      opacity 140ms var(--ease-out);
+  }
+  .home-hero__submit:hover:not(:disabled),
+  .home-hero__submit:active:not(:disabled) {
+    transform: none;
+    border-radius: var(--md-sys-shape-corner-l);
+  }
 }
 .home-hero__error {
   color: var(--red);
@@ -2772,8 +2880,8 @@ html[data-od-language-mode='bilingual']
   }
   .home-hero__execution-switcher .inline-switcher,
   .home-hero__execution-switcher .inline-switcher__chip {
-    width: 58px;
-    max-width: 58px;
+    width: 62px;
+    max-width: 62px;
   }
 }
 
@@ -2810,18 +2918,37 @@ html[data-od-language-mode='bilingual']
    The section is one flex child of the centered hero column. */
 .home-hero__template-section {
   width: 100%;
+  max-width: var(--home-hero-surface-width);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 24px;
 }
+/* M3 section header: title-medium heading + an inline supporting line on the
+   same baseline, left-aligned over the grid. The old centred caption read as a
+   label floating above a carousel; a section header says "this is a section". */
 .home-hero__template-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   padding: 0 2px;
-  color: var(--text-muted);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.3;
-  text-align: center;
+  text-align: left;
+}
+.home-hero__template-heading-title {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+.home-hero__template-heading-hint {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: var(--md-sys-typescale-body-small-line-height);
 }
 .home-hero__blank-project {
   appearance: none;
@@ -2857,19 +2984,33 @@ html[data-od-language-mode='bilingual']
 }
 .home-hero__scenario-cards-wrap {
   position: relative;
-  max-width: min(900px, 100%);
-  margin: 2px auto 0;
-}
-.home-hero__type-tabs.home-hero__scenario-cards {
   width: 100%;
-  flex-wrap: nowrap;
-  justify-content: safe center;
+  max-width: var(--home-hero-surface-width);
+  margin: 0 auto;
+}
+/* Wave 2: the scenario starters are a CARD GRID, not a horizontal carousel.
+   `auto-fill` at a 190px minimum gives four columns at the default 1280px
+   window and reflows down to one without a media query, so every scenario is
+   on screen at once instead of hidden behind an edge-scroll the user has to
+   discover. This overrides the flex `.home-hero__type-tabs` base (`display`
+   wins over the inherited `inline-flex`, and the flex-only properties below
+   are simply inert on a grid container). */
+.home-hero__type-tabs.home-hero__scenario-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  width: 100%;
+  max-width: none;
   align-items: stretch;
-  gap: 10px;
-  padding: 2px 12px 10px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
+  gap: var(--gap);
+  padding: 2px 0 4px;
+  overflow: visible;
+}
+/* The grid never overflows horizontally, so the edge auto-scroll zones can
+   never activate. `EdgeAutoScroll` stays mounted (it is inert once
+   scrollWidth === clientWidth) but its gradients must not paint over the
+   first and last column. */
+.home-hero__scenario-cards-wrap .home-hero__rail-edge {
+  display: none;
 }
 
 /* Edge hover zones: hovering an edge auto-scrolls the rail in that direction so
@@ -2931,41 +3072,120 @@ html[data-od-language-mode='bilingual']
   }
 }
 
+/* M3 card anatomy: one padded column — a tonal icon tile, then the title,
+   then the supporting text. The old card was a full-bleed art band above a
+   caption strip, which is a media card; a scenario starter is an action, so it
+   reads better as an outlined card with a leading tonal container.
+
+   The hover LIFT uses the M3 contract's spring curve, which overshoots and so
+   needs its full period; the colour/elevation parts stay on the house
+   ease-out. Disabled at `prefers-reduced-motion` further down. */
 .home-hero__scenario-card.home-hero__type-tab {
-  flex: 0 0 156px;
+  flex: initial;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: flex-start;
-  gap: 0;
+  gap: 10px;
   min-height: 0;
-  padding: 0;
-  border-radius: var(--radius-lg);
-  background: var(--bg-panel);
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: none;
   text-align: left;
   overflow: hidden;
+  transition:
+    background-color 220ms var(--ease-out),
+    border-color 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    transform 300ms var(--md-sys-motion-spring);
 }
 .home-hero__scenario-card.home-hero__type-tab:hover:not(:disabled) {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+  border-color: var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-2);
 }
 .home-hero__scenario-card.home-hero__type-tab.is-active {
-  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  box-shadow: none;
+}
+.home-hero__scenario-card.home-hero__type-tab.is-active:hover:not(:disabled) {
+  background: var(--md-sys-color-primary-container);
+}
+/* The pill-era rule `.home-hero:focus-within .home-hero__type-tab.is-active`
+   glows the selected tab whenever the composer holds focus. On a filled
+   `primary-container` card that reads as a stray halo, so the card opts out —
+   selection is already carried by the fill and the outline. */
+.home-hero:focus-within .home-hero__scenario-card.home-hero__type-tab.is-active {
+  box-shadow: none;
+}
+.home-hero__scenario-card.home-hero__type-tab:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
+/* Leading tonal container. `ScenarioArt` draws in a 60×42 viewBox with
+   `--text-muted` ink and one `--accent` highlight, so the tile deliberately
+   stays a LIGHT surface even on the selected card — the illustration would
+   lose its two-tone reading on `primary-container`. */
 .home-hero__scenario-card-art {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 74px;
+  width: 44px;
+  height: 44px;
   color: var(--accent);
-  background: radial-gradient(
-    120% 120% at 30% 20%,
-    color-mix(in srgb, var(--accent-tint) 78%, var(--bg-panel)),
-    var(--bg-subtle)
-  );
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  /* `ScenarioArt` fills its occluding shapes (the slide stack's rear card, the
+     web-clone source window) with `var(--bg-panel)` to hide the outlines
+     stacked behind them. That constant means "whatever the art is drawn on",
+     so it is re-pointed at the tile's own fill here — leaving it at the page
+     value would paint those occluders in a visibly different shade. */
+  --bg-panel: var(--md-sys-color-surface-container-highest);
+  background: var(--md-sys-color-surface-container-highest);
+  border-radius: var(--md-sys-shape-corner-l);
+  border-bottom: 0;
+}
+.home-hero__scenario-card.is-active .home-hero__scenario-card-art {
+  --bg-panel: var(--md-sys-color-surface-container-lowest);
+  background: var(--md-sys-color-surface-container-lowest);
+}
+.home-hero__scenario-card-art .home-hero__scenario-art-svg {
+  width: 32px;
+  height: auto;
+}
+/* The title shares `.home-hero__type-tab-label`, whose single-line ellipsis was
+   right for a pill and wrong for a card: in a 190px column a two-word scenario
+   name should wrap, not be cut off. */
+.home-hero__scenario-card-title.home-hero__type-tab-label {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+/* The overflow "more scenarios" trigger is a grid cell like every other card,
+   so it fills its column instead of leaving a 34px button adrift in a 190px
+   cell. A dashed outline and no fill keep it visually secondary. */
+.home-hero__scenario-cards .home-hero__shortcut-menu {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.home-hero__scenario-cards .home-hero__shortcut-menu > .home-hero__type-tab--more {
+  width: 100%;
+  flex: 1 1 auto;
+  padding: 16px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: transparent;
+  box-shadow: none;
+}
+.home-hero__scenario-cards .home-hero__shortcut-menu > .home-hero__type-tab--more:hover:not(:disabled) {
+  border-color: var(--md-sys-color-outline);
+  background: var(--ripple);
+  transform: none;
 }
 /* Illustrative intent thumbnail (ScenarioArt). A small hover lift on the art
    keeps the card feeling responsive now that the hint no longer animates. */
@@ -2978,30 +3198,37 @@ html[data-od-language-mode='bilingual']
 .home-hero__scenario-card-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 9px 11px 11px;
+  gap: 6px;
+  padding: 0;
+  min-width: 0;
 }
 .home-hero__scenario-card-title {
-  color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 650;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
   line-height: 1.25;
 }
 .home-hero__scenario-card.is-active .home-hero__scenario-card-title {
-  color: var(--accent);
+  color: var(--md-sys-color-on-primary-container);
 }
 .home-hero__scenario-card-desc {
-  color: var(--text-muted);
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1.3;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
+  font-weight: var(--md-sys-typescale-body-small-weight);
+  line-height: 1.4;
   white-space: normal;
+}
+.home-hero__scenario-card.is-active .home-hero__scenario-card-desc {
+  color: color-mix(in srgb, var(--md-sys-color-on-primary-container) 82%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-hero__scenario-card.home-hero__type-tab,
   .home-hero__scenario-art-svg {
     transition: none;
+  }
+  .home-hero__scenario-card.home-hero__type-tab:hover:not(:disabled) {
+    transform: none;
   }
 }
 

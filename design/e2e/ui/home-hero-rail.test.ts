@@ -1238,25 +1238,44 @@ test('[P1] brand-backed design system previews as a Brand Kit and carries into p
   expect(body.designSystemId).toBe(BRAND_DESIGN_SYSTEM.id);
 });
 
-test('[P1] home template carousel scrolls horizontally without page overflow', async ({ page }) => {
+// Wave 2 turned the scenario starters from a horizontally-scrolling carousel
+// into a wrapping card grid, so the old expectation — scrollWidth exceeds
+// clientWidth, and an edge zone scrolls it — now describes a surface that no
+// longer exists. What must still hold is the property that test was really
+// protecting: every scenario is reachable and the page never grows a
+// horizontal scrollbar. In a grid that is stronger, because nothing is hidden
+// off the right edge in the first place.
+test('[P1] home scenario grid wraps every card into view without page overflow', async ({ page }) => {
   await page.setViewportSize({ width: 920, height: 820 });
   await gotoEntryHome(page);
 
-  const rail = page.locator('.home-hero__scenario-cards').first();
-  await expect(rail).toBeVisible();
-  const initial = await rail.evaluate((el) => ({
-    scrollLeft: el.scrollLeft,
-    scrollWidth: el.scrollWidth,
-    clientWidth: el.clientWidth,
-    pageOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
-  }));
-  expect(initial.scrollWidth).toBeGreaterThan(initial.clientWidth);
-  expect(initial.pageOverflow).toBeLessThanOrEqual(2);
+  const grid = page.locator('.home-hero__scenario-cards').first();
+  await expect(grid).toBeVisible();
 
-  await page.locator('.home-hero__rail-edge--right').first().click({ force: true });
-  await expect
-    .poll(() => rail.evaluate((el) => el.scrollLeft), { timeout: 3_000 })
-    .toBeGreaterThan(initial.scrollLeft);
+  const layout = await grid.evaluate((el) => {
+    const cards = Array.from(el.querySelectorAll<HTMLElement>('.home-hero__scenario-card'));
+    const gridBox = el.getBoundingClientRect();
+    return {
+      display: getComputedStyle(el).display,
+      horizontalOverflow: el.scrollWidth - el.clientWidth,
+      pageOverflow: Math.max(
+        0,
+        document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      ),
+      cardCount: cards.length,
+      // Distinct top offsets prove the cards wrapped onto several rows rather
+      // than queueing up on one scrolling line.
+      rowCount: new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))).size,
+      widest: Math.max(0, ...cards.map((card) => card.getBoundingClientRect().right - gridBox.right)),
+    };
+  });
+
+  expect(layout.display).toBe('grid');
+  expect(layout.cardCount).toBeGreaterThan(4);
+  expect(layout.rowCount).toBeGreaterThan(1);
+  expect(layout.horizontalOverflow).toBeLessThanOrEqual(2);
+  expect(layout.widest).toBeLessThanOrEqual(2);
+  expect(layout.pageOverflow).toBeLessThanOrEqual(2);
 });
 
 test('[P1] first-run home template reveal opens from wheel gesture', async ({ page }) => {

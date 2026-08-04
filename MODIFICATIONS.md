@@ -29,6 +29,48 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Give the home screen Material Design 3 anatomy, not just its colours
+
+**Reason:** a reader compared the shipped screenshot to the mockup and said the
+application still looked like the one it was forked from. The chrome half of
+that — a persistent navigation rail and a status bar — landed earlier. This is
+the other half: the home screen's own content, which was upstream's anatomy
+wearing Material Design 3 colours. Roadmap § 2.4 Wave 2.
+
+The loudest "old app" cue was a centred 40px serif heading; it is now
+`display-large` on the sans face. The prompt surface moved from a 16px
+hairline-bordered flat card to the specified **28dp** corners on
+`surface-container-high`, resting at elevation 1 and lifting to 3, with a
+primary focus ring in place of a tinted border. Its control row is a 36dp
+assist-chip rail — fully rounded, `outline-variant` hairline, transparent
+fill — with the model switcher as the rail's single filled chip, mirroring the
+mockup. The send button morphs on hover, corner-l to corner-xl with a spring.
+
+The template rail became a **card grid**. It was a horizontally scrolling strip
+of fixed-width cards whose later entries were reachable only through hover
+edge-zones; it is now `auto-fill` columns of outlined M3 cards with a tonal
+tile for the scenario art and a spring lift, so every scenario is simply on
+screen. Recent-project cards gained the same treatment with tonal covers.
+
+**One test changed meaning rather than breaking, and it is the interesting
+one.** `home-hero-rail` asserted `scrollWidth > clientWidth` and then clicked
+the rail's right edge-zone to prove it scrolls — a test that *described the old
+design*. Neither can hold in a grid. The rewrite keeps the property it was
+really protecting, that every scenario is reachable without page overflow, and
+strengthens it: the container is a grid, it has more than one row, no card
+extends past its right edge, and page overflow stays within two pixels.
+
+Deliberately not done: restructuring the control row's JSX into literal chip
+components. The chip contract is applied to the existing triggers through CSS;
+doing it structurally would touch four shared components and their suites for
+an identical rendered result.
+
+**Changed files:**
+
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/home/recent-projects.css`
+
+
 ### 2026-08-04 — Finish the rebrand on the surfaces a user actually reads first
 
 **Reason:** driving the packaged build from a clean profile lands on
