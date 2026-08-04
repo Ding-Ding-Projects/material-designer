@@ -50,9 +50,17 @@ function authorizeDestructiveGate(): void {
   const gate = screen.getByTestId('destructive-gate');
   fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
   fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
-  fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
-    target: { value: '100' },
-  });
+  // The slider rations forward travel, so a single jump to the end no longer
+  // authorizes — that was the whole defect: one click at the far end, or one
+  // End keypress, satisfied a control whose point is deliberate full-range
+  // movement. Five advances is the minimum the ration allows, and driving it
+  // that way here is not a workaround but this helper performing the gesture
+  // a user actually has to make.
+  for (const value of ['20', '40', '60', '80', '100']) {
+    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
+      target: { value },
+    });
+  }
 }
 
 describe('DesignsTab select mode', () => {

@@ -12,9 +12,33 @@
 // which one key plus an already-full slider can fire the action. Without that,
 // arming both keys, sliding to the end and then turning a key back off would
 // leave a gate that looks disarmed and is not.
+//
+// Its twin is **the travel cannot be skipped**. The range control is happy to
+// hand over its whole span for one click or one `End` press, which would turn
+// the deliberate drag back into the single reflex the gate exists to refuse, so
+// forward movement is rationed per input event here rather than trusted from
+// the DOM.
 
 export const SLIDER_MIN = 0;
 export const SLIDER_MAX = 100;
+
+/**
+ * The furthest one input event may carry the slider forward.
+ *
+ * A `<input type="range">` hands out the whole range for free: clicking the far
+ * end of the track, pressing `End`, or flicking the thumb across all arrive as a
+ * *single* change event carrying 100. That turned the deliberate full-range
+ * drag this gate is built around back into a one-gesture button — the exact
+ * thing two keys and a slider exist to prevent.
+ *
+ * Rationing forward movement per event is what makes the travel real: no single
+ * click, key or flick can cross more than a fifth of the range, so authorizing
+ * costs at least five separate deliberate advances however it is driven. It
+ * deliberately does not close the keyboard route — `End` and `PageUp` still
+ * work, they simply have to be pressed again, and the arrow keys still walk the
+ * range a step at a time as they always did.
+ */
+export const SLIDER_ADVANCE_MAX = 20;
 
 export type GateKeyId = 'first' | 'second';
 
@@ -70,12 +94,19 @@ export function toggleKey(state: GateState, key: GateKeyId): GateState {
  * Move the slider. A locked slider ignores the move entirely rather than
  * clamping it to zero — the difference matters for the `<input type="range">`,
  * whose DOM value would otherwise drift away from the state behind it.
+ *
+ * Forward movement is rationed by `SLIDER_ADVANCE_MAX`; backward movement is
+ * not. Letting go and falling back to zero is the safe direction, and a user
+ * who wants to abandon the travel should not have to walk it back one step at a
+ * time to do it.
  */
 export function moveSlider(state: GateState, value: number): GateState {
   if (!sliderUnlocked(state)) return state;
   const clamped = Math.min(SLIDER_MAX, Math.max(SLIDER_MIN, Math.round(value)));
-  if (clamped === state.slider) return state;
-  return { ...state, slider: clamped };
+  const next =
+    clamped > state.slider ? Math.min(clamped, state.slider + SLIDER_ADVANCE_MAX) : clamped;
+  if (next === state.slider) return state;
+  return { ...state, slider: next };
 }
 
 /** Both keys turned AND the slider run to the end AND nothing already running. */
@@ -103,4 +134,38 @@ export function failGate(state: GateState): GateState {
 /** 0…1, for the charge bar. */
 export function gateProgress(state: GateState): number {
   return state.slider / SLIDER_MAX;
+}
+
+/**
+ * How the gate ended, as the host will be told.
+ *
+ * `cancelled` is a promise that nothing ran. `dismissed` is the honest middle
+ * case the gate previously had no word for: the user closed it after the action
+ * had already been started, so whether anything was destroyed is not the gate's
+ * to claim. `completed` is the action having run to a result.
+ */
+export type GateOutcome = 'cancelled' | 'dismissed' | 'completed';
+
+/**
+ * The outcome to report when the user closes the gate — Escape, the emergency
+ * exit, or the backdrop.
+ *
+ * Escape is always available and always closes, but what it *means* depends on
+ * how far the gate got. Reporting `cancelled` for a phase in which `onConfirm`
+ * has already been called tells the host — and through it the user — that
+ * nothing happened, at the one moment when something already has. The emergency
+ * exit closes the gate; it has never been able to stop the action.
+ */
+export function dismissOutcome(state: GateState): GateOutcome {
+  switch (state.phase) {
+    case 'completed':
+      return 'completed';
+    // `failed` counts as run, not cancelled: the action was called and reported
+    // a failure, which is not the same as it never having been attempted.
+    case 'authorizing':
+    case 'failed':
+      return 'dismissed';
+    default:
+      return 'cancelled';
+  }
 }
