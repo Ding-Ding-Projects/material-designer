@@ -49,6 +49,31 @@ than quietly retaken.</sub>
 > scale, at a narrow width, or in a second language, and bilingual mode is where
 > clipping appears first. See [Status](#status).
 
+<details>
+<summary><b>More captures</b> — the command palette, the settings dialog, and the one that is broken</summary>
+
+Every image here comes from the packaged Windows build at commit `90e52d3`, taken by the
+project's own capture path during the release smoke test. Nine states are captured on
+every release; these are four of them.
+
+**Command palette** — scope chips, grouped rows, keyboard hints in the footer.
+
+![The command palette open over the home screen, with Everything / Commands / Settings / Go to / Files and tabs scope chips and a grouped result list](assets/screenshots/command-palette.png)
+
+**Settings** — and note "Spoken narrator" in the list. That surface had zero importers
+until `92ed8c6`; this capture is how it was confirmed reachable rather than merely wired.
+
+![The settings dialog showing its section list including Language, Appearance, Spoken narrator, Notifications and Design Systems](assets/screenshots/settings-dialog.png)
+
+**The UI scale at 200%, and it is broken.** Horizontal scrollbar, the heading cut off
+mid-word, the status bar pushed off the bottom of the screen. Published because it is
+true: raising the UI scale is something a user does for accessibility reasons, and what
+they currently get is a window they have to scroll sideways.
+
+![The home screen at 200% UI scale, overflowing horizontally with the heading cut off mid-word and no status bar visible](assets/screenshots/home-scale-200-broken.png)
+
+</details>
+
 ## What this is
 
 Material Designer is a Material Design 3 rebuild of a local-first design tool. The

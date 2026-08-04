@@ -882,6 +882,11 @@ present.
       properties panel, every appearance editor, and every configuration page on
       the documentation site. Searching option labels, descriptions and current
       values, and saying plainly when a match sits on another tab.
+      *Confirmed absent by a capture:* the settings dialog at `90e52d3` shows a
+      seventeen-item section list and **no search field anywhere on it**. The
+      command palette does index settings, which is a different thing — the
+      standard asks for search on the surface itself, because a user who has
+      already opened settings should not have to leave it to find a row.
 - [ ] **Evaluate locally and defensively** — bounded pattern and sample sizes,
       safe zero-width handling, and protection against catastrophic
       backtracking.
