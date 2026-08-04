@@ -1100,12 +1100,39 @@ only in a report is a finding that gets rediscovered.
       something moves it out, and returns to the opening control on close.
       Fixed in the shared primitive, so every dialog in the product gained it
       at once.
-- [ ] **Enforce the gate at the operation, not in each interface.** This is
-      the remaining half and the standard is explicit about it: the daemon's
-      `DELETE` routes still accept the call from any caller, so the CLI and
-      the web app each gate themselves and a third client would gate nothing.
-      A confirmation token on the destructive routes is the shape that fixes
-      it properly.
+- [x] **Enforce the gate at the operation, not in each interface.** *Closed at
+      `ecaad97`.* The audit assumed two interface gates; there were **three** —
+      the web app's, the CLI's `--confirm`, and an MCP tool's own
+      `confirm: true`. Three gates and zero boundaries, so anything that was
+      none of the three deleted freely. The three irreversible deletes
+      (project, brand, library asset) now require a single-use token minted
+      per resource at `POST <resource>/confirm-delete` and returned in a
+      header: bound to kind and id, 120-second expiry, consumed on success,
+      held in memory so a restart invalidates outstanding grants.
+      **What it does not prove is written down rather than glossed:** the
+      token does not establish that a human moved a slider — the web app mints
+      it at authorization and spends it immediately. What it buys is that no
+      caller reaches the operation in one replayable request, and that every
+      route now converges on one enforcement point where policy can be
+      strengthened.
+      **The line was drawn on restorability, not on the verb:** deletes whose
+      records sit in a registered version-history domain — memory entries,
+      project files, templates, automations, BYOK profiles, connectors, MCP
+      servers — are deliberately *not* gated, because gating a restorable
+      delete adds ceremony without safety and dilutes the signal that the gate
+      means irreversible.
+- [ ] **Finish the interface-side routing.** The boundary holds, but the web
+      gate is still mounted on some affordances and not others — whole-project
+      delete from the recent-projects strip goes through a plain one-button
+      dialog. Every such route now completes the daemon handshake, so none can
+      delete in a single request; a user reaching a delete through an ungated
+      affordance still does not meet two keys and a slider.
+- [ ] **Three adjacent routes were found and deliberately left.**
+      `DELETE /api/projects/:id/folders` removes a project subtree with no
+      version record; `DELETE /api/design-systems/:id` deletes a user-authored
+      design system no history domain covers; and `od library rm` has no
+      `--confirm` at all, where adding one would break existing scripts. Each
+      is a real gap held out of scope rather than missed.
 - [x] **Fix the five failing web suites, then wire the web suite into CI.**
       *Closed at `ca03246`.* It ran for the first time in this repository's
       history at 454 of 459, and is now **464 files, all passing, gating every
@@ -1201,7 +1228,7 @@ rows say so rather than counting their file size as progress.
 | 4 | Regex builder on every search bar | 3.3 | **Built and mounted.** The builder exists with guided token rows, a raw pattern editor, flags and a live sample panel. Unverified: whether *every* search bar reaches it and whether each is anchored to its own field rather than sharing one panel — the count of search inputs against the count of builders has not been taken |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial.** The tab strip, pinning and the text-matched bulk closes are built. Tab *groups* (4.1) and the four tab-discovery searches are absent |
 | 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
-| 7 | Super-confirmation gate | 4.3 | **Built, mounted, and now actually covering the ground.** The two-key-plus-slider gate exists, and the eight confirmed defects against it are closed: five in its own state machine (armed keys surviving a target swap, a "full range" satisfiable in one gesture, a swallowed mid-flight failure, `cancelled` reported for an action that had run, focus not returning), plus the routing — memory entries, library assets single and bulk, and the `od` CLI's five delete subcommands, which reached the daemon route around the gate entirely. **Still not met:** enforcement lives in each interface rather than in the handler, so a third client would gate nothing |
+| 7 | Super-confirmation gate | 4.3 | **The boundary exists; the interface routing is unfinished.** The gate is built and mounted, its eight confirmed defects are closed, and the three irreversible deletes are now enforced in the daemon's own handler behind a single-use per-resource token — so a `curl`, a script or a third-party client cannot delete in one replayable request. That is the authorization boundary the standard asks for. What remains is affordance coverage: some delete buttons still reach the operation through a plain dialog rather than two keys and a slider. Nobody has operated any of it |
 | 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface and live inline controls whose union is exhaustive, so adding an indexed setting without its control is a typecheck error rather than a blank row. Unverified: whether the index covers every setting the dialog actually has |
 | 9 | In-app changelog viewer | 3.5 | **Built and mounted.** `ChangelogDialog` mounts in `App.tsx` with a date-range filter and generated entries. Unverified: commit-link validity at build time |
 | 10 | Local version history | 4.4 | **Partial.** Daemon endpoints, shared DTOs and `od` subcommands exist; a history *panel* with its date picker and action filters has not been confirmed present |
