@@ -2323,13 +2323,18 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     resourceId: (req) => String(req.params.id ?? ''),
     resourcePath: (_req, id) => `/api/projects/${encodeURIComponent(id)}`,
   }), async (req, res) => {
+    // Narrowed once, up front. Composing the confirmation middleware onto this
+    // route widens Express's inferred `params` to `string | string[]
+    // | undefined`, so each use below would otherwise need its own cast — and
+    // three casts of the same value is three chances to write a different one.
+    const projectId = String(req.params.id ?? '');
     try {
       // Stop any live agent run in this project before its row and directory
       // are removed, otherwise the CLI subprocess is orphaned — it keeps
       // billing and writes into a directory that no longer exists (#5468).
-      await cancelRunsOwnedBy(design.runs, { projectId: req.params.id });
-      dbDeleteProject(db, req.params.id);
-      await removeProjectDir(PROJECTS_DIR, req.params.id).catch(() => {});
+      await cancelRunsOwnedBy(design.runs, { projectId });
+      dbDeleteProject(db, projectId);
+      await removeProjectDir(PROJECTS_DIR, projectId).catch(() => {});
       /** @type {import('@open-design/contracts').OkResponse} */
       const body = { ok: true };
       res.json(body);

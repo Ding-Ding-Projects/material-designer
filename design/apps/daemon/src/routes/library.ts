@@ -533,7 +533,12 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     resourceId: (req) => String(req.params.id ?? ''),
     resourcePath: (_req, id) => `/api/library/assets/${encodeURIComponent(id)}`,
   }), async (req, res) => {
-    const asset = getLibraryAsset(db, req.params.id);
+    // Composing the confirmation middleware onto this route widens Express's
+    // inferred `params` to `string | string[] | undefined`, so the id is
+    // narrowed here rather than at the call. The `raw` route below is not
+    // gated and keeps the narrower inference, which is why only this one
+    // needs it.
+    const asset = getLibraryAsset(db, String(req.params.id ?? ''));
     if (!asset) return sendApiError(res, 404, 'NOT_FOUND', 'asset not found');
     // Only unlink bytes we own and that live under LIBRARY_DIR.
     if (asset.storage === 'owned' && asset.filePath) {
