@@ -147,6 +147,11 @@ vi.mock('../../src/components/pet/pets', () => ({
 
 vi.mock('../../src/components/WorkspaceTabsBar', () => ({
   WorkspaceTabsBar: () => null,
+  // `App` reads this to point the shell body's `aria-controls` at the panel
+  // the tabs describe. A module mock replaces the WHOLE module, so omitting a
+  // newly added export turns every test in the file into an import error that
+  // names the export rather than the change that introduced it.
+  WORKSPACE_TAB_PANEL_ID: 'workspace-tab-panel',
 }));
 
 vi.mock('../../src/components/MemoryToast', () => ({

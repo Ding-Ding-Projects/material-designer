@@ -29,6 +29,29 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — A module mock is all-or-nothing, and two suites found out
+
+**Reason:** the tab work added a `WORKSPACE_TAB_PANEL_ID` export so the shell
+body can carry the `aria-controls` the tab strip points at. Two suites mock that
+whole module, and `vi.mock` replaces the *entire* module rather than merging with
+it — so both suites died at import with `No "WORKSPACE_TAB_PANEL_ID" export is
+defined on the ... mock`, an error that names the export and says nothing about
+the change that introduced it. Eight tests, none of them about tabs.
+
+Also fixes a real defect in the changelog's new regex search rather than only its
+test. `entryHaystack` lowercases, because the plain-text path folds its query
+too — but handing that folded string to a user's pattern makes `/Added/`
+impossible to satisfy and quietly strips the `i` flag of any meaning, since there
+is no case left for it to ignore. The regex path now receives
+`entryHaystackRaw`, and a test pins that it gets the original case.
+
+**Changed files:**
+
+- `apps/web/src/lib/changelog/filter.ts`
+- `apps/web/tests/changelog-filter.test.ts`
+- `apps/web/tests/components/App.previewKeepAlive.test.tsx`
+- `apps/web/tests/components/App.project-create-race.test.tsx`
+
 ### 2026-08-04 — Give the version history a window, so the snapshots stop being a thing only `curl` can see
 
 **Reason:** the daemon has kept an append-only Git snapshot of every record and

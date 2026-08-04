@@ -58,7 +58,15 @@ export function searchTerms(query: string): string[] {
  * plus the version and the commit abbreviation, so `29c1476` finds its entries
  * and `0.16.0` finds its release.
  */
-export function entryHaystack(entry: ChangelogEntry, release: ChangelogRelease): string {
+/**
+ * Everything about an entry that a search can match, in its original case.
+ *
+ * The regex path needs this one, not the folded one below: handing a
+ * lowercased string to a user's pattern makes `/Added/` impossible to satisfy
+ * and quietly strips the `i` flag of its meaning, because there is no longer
+ * any case for it to ignore.
+ */
+export function entryHaystackRaw(entry: ChangelogEntry, release: ChangelogRelease): string {
   return [
     entry.title ?? '',
     entry.text,
@@ -68,9 +76,12 @@ export function entryHaystack(entry: ChangelogEntry, release: ChangelogRelease):
     release.title ?? '',
     entry.commit.state === 'verified' ? entry.commit.shortSha : '',
     entry.date ?? '',
-  ]
-    .join(' ')
-    .toLowerCase();
+  ].join(' ');
+}
+
+/** The same text folded for the plain-text path, whose terms are folded too. */
+export function entryHaystack(entry: ChangelogEntry, release: ChangelogRelease): string {
+  return entryHaystackRaw(entry, release).toLowerCase();
 }
 
 export function entryMatchesTerms(
@@ -119,7 +130,7 @@ export function filterChangelog(
   const terms = searchTerms(filter.query);
   const entryMatches = regexMatches
     ? (entry: ChangelogEntry, release: ChangelogRelease) =>
-        regexMatches(entryHaystack(entry, release))
+        regexMatches(entryHaystackRaw(entry, release))
     : (entry: ChangelogEntry, release: ChangelogRelease) =>
         entryMatchesTerms(entry, release, terms);
   const ranged = filter.from != null || filter.to != null;

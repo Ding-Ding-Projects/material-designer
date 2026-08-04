@@ -349,6 +349,19 @@ describe('filterChangelog with a regex predicate', () => {
     expect(texts(ranged)).toEqual(['Fixed the density readout clipping']);
   });
 
+  it('hands the predicate the original case, not the folded search text', () => {
+    // The plain-text path folds both the query and the haystack, which is
+    // right for it and wrong for a regex: a lowercased haystack makes
+    // /Added/ unsatisfiable and strips the `i` flag of any meaning, because
+    // there is no case left to ignore. This is the assertion that caught it.
+    const seen: string[] = [];
+    filterChangelog(releases, { ...EMPTY_CHANGELOG_FILTER, query: 'Added' }, (text) => {
+      seen.push(text);
+      return /Added/.test(text);
+    });
+    expect(seen.some((text) => text.includes('Added a density control'))).toBe(true);
+  });
+
   it('keeps the multi-term plain-text behaviour when no predicate is given', () => {
     // Two words, neither contiguous in the source text: the term split finds
     // it, a substring match would not. This is what the regex path must not
