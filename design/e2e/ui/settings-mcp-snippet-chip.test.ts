@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { T } from '@/timeouts';
 
@@ -28,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 test('[P1] MCP server snippet code stays transparent, not the inline-code chip (#4509)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.medium });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.medium });
   const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
   if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /I get it|not now|got it|don't share/i }).click();
@@ -126,7 +127,7 @@ test('[P1] MCP OAuth connect callback updates status and supports disconnect', a
 
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.medium });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.medium });
   const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
   if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /I get it|not now|got it|don't share/i }).click();

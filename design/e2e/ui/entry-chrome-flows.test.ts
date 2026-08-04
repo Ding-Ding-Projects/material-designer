@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen } from '@/playwright/rail';
@@ -276,7 +277,7 @@ test('[P1] onboarding recommendation creates a project with prefilled first prom
     });
   });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
   await page.getByRole('button', { name: LOCAL_CLI_LABEL }).click();
   await page.getByRole('button', { name: /^Continue$/i }).click();
   await page.getByRole('button', { name: /Engineer$/i }).click();
@@ -2508,7 +2509,7 @@ async function gotoEntryHome(page: Page) {
     )
     .catch(() => null);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
   await projectsSettled;
   const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
   if (await privacyDialog.isVisible()) {

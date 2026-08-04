@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { T } from '@/timeouts';
@@ -15,7 +16,7 @@ type MockAmrWalletOptions = {
 };
 
 export async function waitForLoadingToClear(page: Page) {
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long }).catch(() => {});
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long }).catch(() => {});
 }
 
 export async function dismissPrivacyDialog(page: Page) {

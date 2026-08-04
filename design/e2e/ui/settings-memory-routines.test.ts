@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen } from '@/playwright/rail';
 import { routeAgents } from '@/playwright/mock-factory';
@@ -91,7 +92,7 @@ async function seedSettingsBase(page: Page) {
 }
 
 async function waitForLoadingToClear(page: Page) {
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function gotoEntryHome(page: Page) {

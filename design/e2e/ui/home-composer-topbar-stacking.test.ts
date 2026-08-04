@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import type { Page } from '@playwright/test';
 import { routeAgents } from '@/playwright/mock-factory';
@@ -91,7 +92,7 @@ test('[P1] sticky topbar chips stay above the composer card while its switcher p
   // cluster stays visible.
   await page.setViewportSize({ width: 1120, height: 640 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: 15_000 });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: 15_000 });
   await expect(page.getByTestId('entry-star-badge')).toBeVisible();
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
 
@@ -269,7 +270,7 @@ async function openNestedModelPicker(page: Page) {
   // leaving too little room below it for the full nested model list.
   await page.setViewportSize({ width: 546, height: 640 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
   await expect(page.getByTestId('home-hero-input')).toBeVisible();
   await revealCommunityTemplates(page);
 

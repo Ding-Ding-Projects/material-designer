@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import type { Page } from '@playwright/test';
 import {
@@ -334,7 +335,7 @@ const PROMPT_TEMPLATES = [
 ];
 
 async function waitForLoadingToClear(page: Page) {
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: 15_000 });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: 15_000 });
 }
 
 async function seedBrowserConfig(page: Page, config: Record<string, unknown>) {

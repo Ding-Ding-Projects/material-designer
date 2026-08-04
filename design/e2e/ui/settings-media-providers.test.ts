@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { openNewProjectModal } from '@/playwright/rail';
 import type { Page, Route } from '@playwright/test';
@@ -191,7 +192,7 @@ async function routeBootstrapApis(
 }
 
 async function waitForLoadingToClear(page: Page) {
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function gotoEntryHome(page: Page) {

@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { openNewProjectModal } from '@/playwright/rail';
 import { T } from '@/timeouts';
@@ -25,7 +26,7 @@ test('[P2] captures the onboarding cloud sign-in surface', async ({ page }) => {
   });
 
   await page.goto('/onboarding', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
   // The connect step opens on the cloud sign-in landing. Local CLI and BYOK
   // remain available as secondary paths from the same first screen.
   await expect(

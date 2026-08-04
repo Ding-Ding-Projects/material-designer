@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen, openNewProjectModal } from '@/playwright/rail';
 import { openAllProjectFiles } from '@/playwright/workspace';
@@ -128,7 +129,7 @@ async function stubEmptyProjectsNewProjectData(page: Page): Promise<void> {
 
 async function openNewProjectFromEmptyProjects(page: Page): Promise<void> {
   await page.goto('/projects', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
   await expect(page.locator('.designs-empty-state')).toBeVisible();
   await page.getByTestId('designs-empty-new-project').click();
 
@@ -141,7 +142,7 @@ async function openNewProjectFromLeftRail(page: Page): Promise<void> {
     window.localStorage.setItem('od.entry.railOpen', 'true');
   });
   await page.goto('/projects', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
   await ensureRailOpen(page);
   await expect(page.getByTestId('entry-nav-new-project')).toBeVisible();
   await page.getByTestId('entry-nav-new-project').click();
@@ -3504,7 +3505,7 @@ async function routeComposerPlusFixtures(page: Page) {
 
 async function expectWorkspaceReady(page: Page) {
   await expect(page).toHaveURL(/\/projects\//);
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long }).catch(() => {});
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long }).catch(() => {});
   await dismissPrivacyDialog(page);
   await expect(page.getByTestId('project-title')).toBeVisible();
   await expect(page.getByTestId('chat-composer')).toBeVisible();

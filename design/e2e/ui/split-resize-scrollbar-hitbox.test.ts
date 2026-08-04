@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { openNewProjectModal } from '@/playwright/rail';
 import type { Locator, Page } from '@playwright/test';
@@ -178,7 +179,7 @@ async function switchLocaleToArabic(page: Page) {
 
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'detached', timeout: 10_000 }).catch(() => {});
   const privacyDialog = page.getByRole('dialog').filter({ hasText: 'Help us improve Open Design' });
   if (await privacyDialog.isVisible()) {
     await privacyDialog.getByRole('button', { name: /I get it|not now|got it|don't share/i }).click();
@@ -197,7 +198,7 @@ async function createProject(page: Page, projectName: string) {
 
 async function expectWorkspaceReady(page: Page) {
   await expect(page).toHaveURL(/\/projects\//);
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0);
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0);
   await expect(page.getByTestId('chat-composer')).toBeVisible();
   await expect(page.getByTestId('chat-composer-input')).toBeVisible();
   await expect(page.getByTestId('file-workspace')).toBeVisible();

@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen, openNewProjectModal } from '@/playwright/rail';
 import { expectStableCount } from '@/playwright/assertions';
@@ -389,7 +390,7 @@ async function routeConnectors(page: Page, connectors: typeof CONNECTORS) {
 
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
   await expect(page.getByTestId('home-hero')).toBeVisible({ timeout: T.long });
   await expect(page.getByTestId('home-hero-input')).toBeVisible({ timeout: T.long });
 }

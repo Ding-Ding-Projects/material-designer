@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { expectStableCount } from '@/playwright/assertions';
 import { openNewProjectModal as openNewProjectModalFromProjects } from '@/playwright/rail';
@@ -914,7 +915,7 @@ async function openDesignFile(page: Page, fileName: string) {
 }
 
 async function waitForLoadingToClear(page: Page) {
-  await page.getByText('Loading Open Design…').waitFor({ state: 'hidden', timeout: T.long });
+  await page.getByText(LOADING_SHELL_TEXT).waitFor({ state: 'hidden', timeout: T.long });
 }
 
 async function expectFileSource(page: Page, projectId: string, fileName: string, snippets: string[]) {

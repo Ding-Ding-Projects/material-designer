@@ -74,6 +74,14 @@ jobs:
         # so rather than silently passing the locale.
         run: bash scripts/check-i18n-keys.sh
 
+      - name: Check the startup waits match the text the app renders
+        shell: bash
+        # The one string in the product whose mismatch nothing reports: 42
+        # Playwright waits synchronise on the loading shell being hidden, and a
+        # wait for text the app never renders is satisfied immediately. Drift
+        # here does not go red, it quietly disarms every startup gate.
+        run: bash scripts/check-loading-shell.sh
+
       - name: Report port integrity
         if: ${{ always() }}
         shell: bash

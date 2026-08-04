@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { expect, test } from '@/playwright/suite';
 import { routeAgents } from '@/playwright/mock-factory';
 import type { Page } from '@playwright/test';
@@ -74,7 +75,7 @@ async function seedEntryHome(page: Page, options?: { locale?: string }) {
 
 async function gotoEntryHome(page: Page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
   await expect(page.getByRole('button', { name: OPEN_SETTINGS_LABEL })).toBeVisible();
 }
 

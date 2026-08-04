@@ -29,6 +29,72 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — The first words of every launch, and the 42 waits that never checked them
+
+**Reason:** the loading shell is the very first thing the application paints,
+and it said `Loading Open Design…` inside a window titled Material Designer.
+
+It was left until last because the string is not really one string. Forty-two
+Playwright waits across thirty-four UI test files synchronise startup on it,
+using hidden and count assertions — and that pairing has a failure mode no
+suite reports. A wait for text the application never renders is satisfied the
+instant it is evaluated. Rename the product string on its own and nothing goes
+red; every startup gate quietly becomes a no-op, and the UI suite begins
+failing later, elsewhere, for reasons that do not reproduce.
+
+So the duplication went first. `e2e/lib/loading-shell.ts` now exports the text
+once and every wait imports it, which means drift needs two files to disagree
+rather than one file to be forgotten. `scripts/check-loading-shell.sh` proves
+on every push that they still agree, reading the rendered text straight out of
+the loading element and rejecting any literal that escapes back into `e2e/`.
+It is pure shell, so it answers in milliseconds without a toolchain — and it
+was verified to fail on a deliberately drifted constant before being trusted.
+
+**Changed files:**
+
+- `apps/desktop/src/main/runtime.ts`
+- `apps/web/app/[[...slug]]/client-app.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/src/observability/white-screen.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/tests/observability/white-screen.test.ts`
+- `e2e/lib/loading-shell.ts`
+- `e2e/lib/playwright/amr.ts`
+- `e2e/lib/playwright/visual.ts`
+- `e2e/ui/amr-login-pill.test.ts`
+- `e2e/ui/api-empty-response.test.ts`
+- `e2e/ui/app-design-files.test.ts`
+- `e2e/ui/app-manual-edit.test.ts`
+- `e2e/ui/app-restoration.test.ts`
+- `e2e/ui/app.test.ts`
+- `e2e/ui/automations-page.test.ts`
+- `e2e/ui/critical-smoke.test.ts`
+- `e2e/ui/design-systems-manager.test.ts`
+- `e2e/ui/diagnostics-export.test.ts`
+- `e2e/ui/entry-chrome-flows.test.ts`
+- `e2e/ui/entry-configuration-flows.test.ts`
+- `e2e/ui/entry-topbar.test.ts`
+- `e2e/ui/home-composer-topbar-stacking.test.ts`
+- `e2e/ui/home-hero-rail.test.ts`
+- `e2e/ui/message-center.test.ts`
+- `e2e/ui/project-file-link-routing.test.ts`
+- `e2e/ui/project-management-flows.test.ts`
+- `e2e/ui/real-daemon-run.test.ts`
+- `e2e/ui/reload-spurious-failed-run.test.ts`
+- `e2e/ui/settings-api-protocol.test.ts`
+- `e2e/ui/settings-connectors-auth-happy-path.test.ts`
+- `e2e/ui/settings-connectors-auth-recovery.test.ts`
+- `e2e/ui/settings-design-systems.test.ts`
+- `e2e/ui/settings-local-cli-codex-fallback.test.ts`
+- `e2e/ui/settings-mcp-snippet-chip.test.ts`
+- `e2e/ui/settings-media-providers.test.ts`
+- `e2e/ui/settings-memory-routines.test.ts`
+- `e2e/ui/split-resize-scrollbar-hitbox.test.ts`
+- `e2e/ui/updater-popup-stacking.test.ts`
+- `e2e/ui/visual-entry.test.ts`
+- `e2e/ui/workspace-keyboard-flows.test.ts`
+- `e2e/lib/loading-shell.ts` (new)
+
 ### 2026-08-04 — The header search bar, routed into the palette rather than duplicating it
 
 **Reason:** the last of the three pieces of chrome the mockup specifies. The

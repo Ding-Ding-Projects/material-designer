@@ -1,3 +1,4 @@
+import { LOADING_SHELL_TEXT } from '@/loading-shell';
 import { execFile } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -83,7 +84,7 @@ async function gotoEntryHome(page: Page) {
 }
 
 async function waitForLoadingToClear(page: Page) {
-  await expect(page.getByText('Loading Open Design…')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText(LOADING_SHELL_TEXT)).toHaveCount(0, { timeout: 15_000 });
 }
 
 async function unzipList(zipPath: string): Promise<string[]> {
