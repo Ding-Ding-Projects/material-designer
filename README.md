@@ -21,12 +21,13 @@ fresh install showed no rail at all.</sub>
 
 ![The same screen in bilingual mode at a 900px window — Chinese and English paired on every label, with the status bar's density readout running off the right edge](assets/screenshots/home-bilingual-narrow.png)
 
-<sub>The same build in bilingual mode at the narrowest supported window, and the reason
-that capture exists: <b>it is showing a real defect.</b> The status bar's density segment
-runs off the right edge and the Design control truncates to an ellipsis. Bilingual mode
-produces the longest strings in the product, so it is where clipping appears first —
-which is exactly why the capture set covers it, and why this image is published rather
-than quietly retaken.</sub>
+<sub>Bilingual mode at the narrowest supported window, after the fix. The previous image
+here showed the status bar's density readout running off the right edge and the Design
+control truncated to <code>Design · …</code> — the segments were flex containers with
+<code>text-overflow: ellipsis</code>, which does nothing to an anonymous flex item, so
+text hard-clipped mid-glyph with no ellipsis and no way to read the rest. Bilingual pairs
+both languages on every label, so it produces the longest strings in the product and is
+where clipping appears first; that is why the capture set covers it.</sub>
 
 > [!NOTE]
 > **The application ships, and what it ships is now most of the way through the

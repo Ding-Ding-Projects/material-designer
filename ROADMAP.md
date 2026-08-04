@@ -589,13 +589,20 @@ meeting it.
       layout viewport. The capture run reports `innerWidth` 640 at 200% (was
       1280), `overflowX` 0 at all four scales, and the images show the heading
       wrapping instead of clipping with the status bar on screen.
-- [ ] **Bilingual mode clips at 900px.** The status bar's density segment runs
-      off the right edge (`Default · 預設 density · Default · 預…`) and the
-      Design control truncates to an ellipsis. Bilingual pairs both languages
-      on every label, so it produces the longest strings in the product and is
-      where clipping appears first — which is why the capture set covers it.
-      The failing image is published in the README rather than quietly
-      retaken.
+- [x] **Bilingual mode clipped at 900px.** *Closed at `cd0996d`, confirmed by a
+      capture.* The cause was not width: the status bar's segments were
+      `display: flex` with `text-overflow: ellipsis`, and `text-overflow` does
+      nothing to an anonymous flex item — so text hard-clipped mid-glyph with
+      no ellipsis and no way to read the rest. Segments now ellipsise properly
+      and carry their full text in a tooltip, the daemon segment never yields
+      room, and the appearance readouts step aside at narrow widths through
+      the repository's own screen-reader-only pattern so they stay announced.
+      `Design · 設計` renders in full.
+- [ ] **Bottom overlap at a narrow window.** The scroll hint
+      (`Scroll up to explore more templates · 向上捲動以探索更多範本`) is drawn
+      on top of the template cards behind it, and the card row is cut by the
+      28px status bar — the content area does not appear to account for the
+      bar's height, which is new.
 - [ ] **`t()` doubles a bilingual value used as an interpolation variable.**
       Found while fixing the clipping above, and it is the biggest single
       contributor to that overflow. `t()` composes the two languages **and
