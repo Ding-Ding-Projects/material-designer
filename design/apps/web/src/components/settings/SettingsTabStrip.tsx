@@ -245,12 +245,23 @@ export function SettingsTabStrip({
                 dimmed ? ` ${styles.tabNoMatch}` : ''
               }`}
               onClick={() => onSelect(tab.section)}
+              // The tab's accessible name is its title alone. The hint below is
+              // `aria-hidden` and repeated here as the tooltip, because a hint
+              // folded into the name makes the tab match text it does not
+              // announce itself as — the Execution tab's hint is "Choose Local
+              // CLI or BYOK", which made `getByRole('tab', {name: /Local CLI/})`
+              // find both this tab and the Local CLI control inside its own
+              // panel. A tab should be findable by what it is called.
+              aria-label={t(tab.titleKey)}
+              title={t(tab.hintKey)}
             >
               <Icon name={tab.icon} size={16} />
               <span className={styles.tabLabel}>
                 <strong>{t(tab.titleKey)}</strong>
               </span>
-              <small className={styles.tabHint}>{t(tab.hintKey)}</small>
+              <small className={styles.tabHint} aria-hidden>
+                {t(tab.hintKey)}
+              </small>
               {count !== null && count > 0 ? (
                 <span className={styles.tabCount} aria-hidden>
                   {count}

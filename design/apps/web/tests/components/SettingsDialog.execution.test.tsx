@@ -5827,7 +5827,9 @@ describe('SettingsDialog about interactions', () => {
     expect(onPersist).not.toHaveBeenCalled();
 
     // Concurrent persisted edit while the silent-update request is in flight.
-    fireEvent.click(screen.getByRole('button', { name: /Appearance/i }));
+    // The settings sections are a real tablist now, so navigating to one means
+    // clicking a tab rather than a button.
+    fireEvent.click(screen.getByRole('tab', { name: /Appearance/i }));
     fireEvent.click(screen.getByRole('radio', { name: '#059669' }));
 
     // Resolve silent-update AFTER the concurrent edit is in draft. The success
