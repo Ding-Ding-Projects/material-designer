@@ -12,20 +12,40 @@ packaged smoke test installed one of them, launched it, made the running process
 answer its own health endpoint from inside its renderer, and uninstalled it with
 no residue.
 
-**What that does not mean.** Two things, and they are the ones most likely to be
-overclaimed by someone skimming:
+> [!IMPORTANT]
+> **Updated 2026-08-04.** The two warnings that used to head this file — that
+> nobody had looked at the interface, and that no installer contained the
+> redesign — are both now out of date, and what replaced them is more
+> interesting.
+>
+> 1. **A capture has been reviewed, and it caught a real defect.** The window
+>    title bar and the home hero were both branding the application with the
+>    upstream name. The rebrand had been proved as *installed identity* —
+>    uninstaller, registry entries, process version, all asserted green — while
+>    the two strings a user actually reads were never checked by anything.
+>    Fixed, and confirmed fixed by looking at the artifact of `v0.16.1-r19.1`.
+>    That is one capture, at one display scale, in one language: the audit
+>    described in section 4 is still almost entirely undone.
+> 2. **The redesign ships.** `v0.16.1-r18.1` was the first build to contain it;
+>    `v0.16.1-r19.1` carries the rebrand fix on top.
+> 3. **A new warning replaces them, and it is the one to carry forward: some
+>    surfaces exist without being reachable.** An adversarial audit found three
+>    modules with zero importers — the appearance editor, its infinite colour
+>    picker, and the whole spoken narrator. They compiled, they shipped in the
+>    bundle, and no user could open them. The narrator is now wired; the other
+>    two are not. **Judge a feature by whether a surface mounts it, never by
+>    whether its files exist.**
 
-1. **Nobody has looked at the running interface.** The smoke test captures one
-   screenshot and asserts it is more than zero bytes. Nothing has inspected what
-   is actually on it. Every statement in this repository about how the product
-   *looks* is read from source or from the design mockup, never observed.
-2. **The most recent installer predates most of the redesign.** The published
-   releases were built before the Material Design 3 anatomy pass, the Cantonese
-   locale, the regex builder, the command palette, the changelog viewer, the
-   notification centre, the destructive-action gate, the bulk actions, the
-   appearance editor, the narrator, and the daemon's version history, export and
-   editor capabilities. All of that is on `main` and verified by continuous
-   integration; none of it is in a downloadable build yet.
+**What that does not mean.** The claims most likely to be overclaimed by
+someone skimming:
+
+1. **"Landed" still does not mean "audited".** The interface has been looked at
+   once. Nothing has been checked at a second display scale, at a narrow width,
+   or in a second language, and bilingual mode is where clipping appears first.
+2. **The confirmation gate does not cover the ground it appears to.** It is
+   built and mounted, and irreversible deletes elsewhere — whole projects,
+   memory entries, library assets, bulk file deletion — do not route through it
+   at all. See `ROADMAP.md` § 4.0.
 
 **The one habit worth inheriting.** Every claim in this repository is written so
 a reader can check it — a command to run, a run to open, a counter to compare.
@@ -403,43 +423,66 @@ the window title still has not been read off a window.
 
 </details>
 
-1. **Watch something fail on purpose.** Every gate in this repository has been
-   observed passing and none has been observed rejecting anything, which means
-   none of them is yet known to work. Introduce an undeclared change under
-   `design/` and confirm the port verifier goes red; introduce a remote asset into
-   the site and confirm the deployment refuses it. Both are cheap, both are
-   reversible, and until they are done the green ticks mean less than they look
-   like they mean.
+<details>
+<summary><b>Steps 1–5 are done or superseded</b> — kept because two of them turned out differently than expected</summary>
 
-2. **Look at the running interface.** The packaged smoke test already captures a
-   screenshot into its report and asserts only that the file is non-zero. Review
-   that capture, then extend the capture path to the display scales and narrow
-   widths the standards require. This is the single largest gap in the project's
-   evidence: a Material Design 3 redesign is exactly the kind of work that can be
-   entirely correct in source and visibly wrong on screen, and nothing here would
-   currently catch that.
+1. **Watch something fail on purpose.** *Done for the port verifier.* A
+   deliberately poisoned branch made it report `bytes differ 1`, name the file,
+   and exit 1 — [run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696).
+   **Not done for the Pages gate, and it turned out not to be cheap:** the
+   `github-pages` environment refuses deployments from a non-default ref before
+   any step runs, so a branch cannot reach the gate at all. Its six checks were
+   run verbatim against the poisoned tree locally and caught the planted remote
+   script, so the logic is demonstrated and the wiring is not.
 
-3. **Cut a release that actually contains the work.** Both published installers
-   predate the Material Design 3 anatomy pass, the language modes, and every
-   Phase 3 and Phase 4 surface. `main` is green; the next *Release* run produces
-   the first build a person could install and see any of it in. Until then, the
-   download link on the site is honest but stale.
+2. **Look at the running interface.** *Done once, and it paid immediately* —
+   see the note at the top. Extending the capture path to more display scales,
+   narrow widths and a second language is still entirely undone, and remains
+   the largest gap in this project's evidence.
 
-4. **Run the verification that never ran.** The Phase 4 surfaces — notification
-   centre, destructive-action gate, bulk actions, appearance editor, narrator —
-   were written by agents that hit a session limit before their adversarial
-   review lenses executed. Typecheck and unit tests pass, which proves the code
-   compiles and its units behave; it does not prove that the confirmation gate
-   cannot be bypassed, that every destructive action routes through it, that no
-   control merely *looks* operable, or that the colour translator's arithmetic
-   is right. Those four questions are written up in the workflow script under
-   the session's workflow directory and are worth re-running verbatim.
+3. **Cut a release that actually contains the work.** *Done.* `v0.16.1-r18.1`
+   was the first; `v0.16.1-r19.1` carries the rebrand fix.
 
-5. **Bundle the fonts and icons locally.** The application's stylesheet still
-   carries one font import from a public font service, and the mockup carries
-   three. The site is already fully bundled and its deployment enforces that at
-   publish time; the application has no equivalent gate, so add one rather than
-   relying on review.
+4. **Run the verification that never ran.** *Ran, and found plenty.* 44
+   findings, 15 confirmed by an independent refutation pass, written up as
+   `ROADMAP.md` § 4.0. The verification half then hit a session limit of its
+   own, leaving **29 findings unverified** — they are leads, not facts, and
+   re-running them is now step 1 below.
+
+5. **Bundle the fonts locally.** *Done for the application* — Cairo ships as
+   three local subsets and the one network font request is gone. A CI gate
+   preventing a new one is not in place; the site's equivalent gate is.
+
+</details>
+
+1. **Route every destructive action through the confirmation gate.** This is
+   the most serious open finding. Whole-project delete via the design-system
+   workspace tab, memory entries, extraction records, library assets (single
+   delete there has *no* confirmation at all) and bulk file deletion all bypass
+   it, and roughly ten more actions fire behind a plain `confirm()`. The gate
+   is built, mounted and good; the routing is the gap, and a gate that guards
+   two of a dozen doors is closer to a false assurance than to a safety
+   feature.
+
+2. **Fix the gate's own five confirmed defects.** Armed keys survive a target
+   swap, so keys engaged for one action stay engaged for the next; the
+   "full-range" slider is satisfiable in one pointer jump or a single `End`
+   press; dismissing mid-flight swallows the action's failure; and Escape
+   reports `cancelled` for an action that already ran.
+
+3. **Verify the 29 unverified findings before acting on any of them.** They
+   include claims that the colour translator implements none of
+   CIELAB/LCH/OKLab/OKLCH, that `parseColor` walks the prototype chain on input
+   like `constructor`, and that the contrast readout rounds across the WCAG
+   boundary. Each is plausible and none has survived a refutation pass.
+
+4. **Mount the appearance editor and its infinite colour picker**, the two
+   modules still reachable by nobody. Wiring the narrator took a missing
+   stylesheet and one settings section; these are a larger job, and standard 3
+   stays unimplemented until they are openable.
+
+5. **Extend the capture path**, per the note above: 100/125/150/200% display
+   scale, a narrow width, and bilingual mode where labels are longest.
 
 6. **Broaden what the release actually tests.** The suites that run were chosen
    because the rebrand changed what they assert, so the current gate is on product
