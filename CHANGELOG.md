@@ -23,8 +23,74 @@ Two rules this file is held to:
 
 ## [Unreleased]
 
-Nothing yet. Changes land here as they are committed, each with its commit link, and
-move into a version section when a release carries them.
+Changes land here as they are committed, each with its commit link, and move into a
+version section when a release carries them.
+
+### Fixed
+
+- **The Design Files bulk delete no longer reports a success it never had.** It said
+  "3 done." after a cancelled confirmation, and after a run where every delete was
+  refused — `handleDeleteMany` returned nothing, so the panel fell through to a branch
+  that counted every selected item as succeeded. The same call site dropped the caller's
+  options, which froze the progress bar at zero and made the Stop control decorative.
+  The loop is now `runBulkAction`, the shared runner that already existed for this and
+  was used by nothing; five tests pin the invariants, including that a helper resolving
+  `false` counts as a failure
+  ([`6e90fbd`](https://github.com/Ding-Ding-Projects/material-designer/commit/6e90fbd)).
+- **Every dialog keeps the promise its own markup makes.** All of them render
+  `aria-modal="true"`, which tells assistive technology the rest of the page is inert,
+  and nothing enforced it: Tab walked out of the dialog onto the controls behind the
+  backdrop — for a confirmation dialog, the exact controls the user had been asked to
+  stop and think about. Focus now moves in on open, stays in, and returns to the opening
+  control on close. Fixed in the shared primitive, so every dialog gains it at once
+  ([`3f30a12`](https://github.com/Ding-Ding-Projects/material-designer/commit/3f30a12)).
+- **The window chrome says the product's own name.** The custom title bar and the home
+  hero both rendered "Open Design": `app.brand` carried upstream's name in all nineteen
+  declaring locales, and the hero hardcoded the wordmark beyond any dictionary's reach.
+  Found by reviewing a smoke capture — the first time one had been looked at rather than
+  size-asserted — and confirmed fixed in the `v0.16.1-r19.1` artifact. Open Design Cloud
+  keeps its name, because that hosted service is upstream's
+  ([`b4bf583`](https://github.com/Ding-Ding-Projects/material-designer/commit/b4bf583)).
+- **A stray brace stopped failing every build at minute 35.** One extra `}` in
+  `entry-layout.css` failed four consecutive Release runs, each after half an hour, with
+  an error naming the import graph's entry file rather than the file at fault
+  ([`635ec4f`](https://github.com/Ding-Ding-Projects/material-designer/commit/635ec4f)).
+
+### Added
+
+- **The spoken narrator has a surface a user can reach.** Every part existed — the
+  serialized queue, the per-category cooldown, the screen-reader yield, the preference
+  store, the panel, and 19 dictionary keys in all twenty locales — and nothing imported
+  any of it. It was unmountable rather than merely unmounted: it imported a stylesheet
+  that did not exist, so wiring it would have failed the build. The stylesheet is
+  written, the panel is its own settings section, and the command palette indexes it
+  with two live inline controls. Still off by default
+  ([`92ed8c6`](https://github.com/Ding-Ding-Projects/material-designer/commit/92ed8c6)).
+- **Cairo ships locally, ending the application's one network font request.** Three
+  variable-font subsets (~81 KB) under `apps/web/public/fonts/cairo/`, with the served
+  `unicode-range` values kept verbatim so per-page subsetting still works
+  ([`45ff210`](https://github.com/Ding-Ding-Projects/material-designer/commit/45ff210)).
+- **A brace-balance gate over every tracked stylesheet**, in the fast Verify job. All
+  507 balance today, so a mismatch is a defect rather than noise, and the fault class
+  that cost four half-hour runs now fails in seconds naming the right file
+  ([`a64f241`](https://github.com/Ding-Ding-Projects/material-designer/commit/a64f241)).
+- **The four root governance files** — `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md` and
+  `CODE_OF_CONDUCT.md` — so the tabs GitHub renders above the README point at something
+  ([`230b115`](https://github.com/Ding-Ding-Projects/material-designer/commit/230b115)).
+
+### Changed
+
+- **The roadmap says what is built, what is merely written, and what is broken.** Its
+  matrix claimed every standard was unimplemented while eleven were on `main` and in a
+  downloadable build. The rewrite turns on one distinction: a module that nothing mounts
+  is not a shipped feature. New section 4.0 records the adversarial pass Phase 4 never
+  got — 44 findings, 15 confirmed — including that irreversible deletes bypass the
+  confirmation gate entirely
+  ([`a40b8b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/a40b8b8)).
+- **The port verifier has been observed rejecting a bad tree**, not merely passing. A
+  deliberately poisoned branch made it report `bytes differ 1` and exit 1, so its green
+  ticks now mean something
+  ([`b26c5cc`](https://github.com/Ding-Ding-Projects/material-designer/commit/b26c5cc)).
 
 ## [v0.16.1-r8.1] — 2026-08-03
 
