@@ -62,6 +62,7 @@ export type {
   OpenDesignHostUpdaterOpenDialogListener,
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostWindowControls,
+  OpenDesignHostUiScale,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";

@@ -29,6 +29,51 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Make the UI scale reflow instead of magnify, and stop bilingual clipping
+
+**Reason:** captures at 125, 150 and 200% showed a horizontal scrollbar, the
+home heading cut off mid-word, and the status bar pushed off the bottom of the
+screen. The UI scale setting was broken at every value except 100%, and
+raising it is something people do for accessibility reasons.
+
+**The cause was `zoom`, and this repository had already written the warning.**
+Roadmap § 2.5 said to replace the mockup's scaling mechanism because it uses a
+non-standard `zoom` property; it was ported anyway, because nothing had ever
+rendered it. `zoom` multiplies painted lengths without moving the layout
+viewport, so `100vw` on a 1280px window still resolved to 1280 and was then
+drawn twice as wide. The overflow was arithmetic.
+
+The desktop host now scales its own web contents through `setZoomFactor`,
+which divides the real layout viewport — a 1280×900 window at 200% lays out as
+640×450. Viewport units and width media queries become truthful at once, with
+no stylesheet sweep, and `getBoundingClientRect` keeps agreeing with pointer
+coordinates, which is the roadmap's "does not break layout measurement".
+
+A root-font-size approach was considered and rejected as a fix that would look
+like one: this application is overwhelmingly px-based, and scaling `:root`
+would not have touched the `100vw`/`100vh` that actually overflow. In a plain
+browser tab, where no host bridge exists, `zoom` is kept and the window-level
+boxes derive their size from it — that stops the *window* overflowing but is
+honestly partial, since `@media` cannot read a custom property.
+
+**Bilingual clipping had a different cause than it appeared.** The status bar's
+segments were `display: flex` with `text-overflow: ellipsis`, and
+`text-overflow` does nothing to an anonymous flex item — so text hard-clipped
+mid-glyph against the strip's padding with no ellipsis and no way to read the
+rest. Each segment's text now lives in a real element that can ellipsise, every
+segment carries its full text in `title`, and the daemon segment — the one a
+user acts on — never yields room. The two appearance readouts step aside at
+narrow widths through the repository's own screen-reader-only pattern rather
+than `display: none`, so they stay in the accessibility tree.
+
+**Changed files:**
+
+- `apps/desktop/src/main/ui-scale.ts`
+- `apps/desktop/tests/main/ui-scale.test.ts`
+- `apps/web/src/styles/home/home-hero.css`
+- `apps/web/tests/state/appearance.test.ts`
+
+
 ### 2026-08-04 — Put the navigation rail and the status bar on the screen
 
 **Reason:** a reader compared the published screenshot to the mockup and said

@@ -8,7 +8,13 @@
    * The split keeps explicit `grid-row: 2` for layout compatibility. */
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
-  height: 100vh;
+  /* `--od-vh`, not `100vh`, because the UI-scale control can be scaling this
+     page with CSS `zoom` — which magnifies without moving the layout
+     viewport, so a bare `100vh` here is the window's height drawn N times
+     larger and pushes the status bar off the bottom edge. See the UI scale
+     block in `styles/md3-tokens.css`. Falls back to `100vh` for any document
+     that renders this sheet without the token sheet. */
+  height: var(--od-vh, 100vh);
   background: var(--bg-app);
   overflow: hidden;
 }
@@ -18,9 +24,12 @@
 
 .workspace-shell {
   --workspace-tabs-chrome-height: 38px;
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
+  /* Scale-aware window lengths, exactly as `.app` above. This is the
+     outermost box the product paints, so it is the one whose overflow shows
+     as a scrollbar on the window itself. */
+  width: var(--od-vw, 100vw);
+  max-width: var(--od-vw, 100vw);
+  height: var(--od-vh, 100vh);
   min-width: 0;
   min-height: 0;
   display: grid;
@@ -395,8 +404,8 @@
   position: fixed;
   top: calc(var(--workspace-tabs-chrome-height, 38px) + 7px);
   right: max(10px, env(safe-area-inset-right));
-  width: min(380px, calc(100vw - 24px));
-  max-height: min(620px, calc(100vh - var(--workspace-tabs-chrome-height, 38px) - 24px));
+  width: min(380px, calc(var(--od-vw, 100vw) - 24px));
+  max-height: min(620px, calc(var(--od-vh, 100vh) - var(--workspace-tabs-chrome-height, 38px) - 24px));
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);

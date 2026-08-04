@@ -1027,6 +1027,18 @@
   border-radius: var(--radius-sm);
   box-shadow: none;
 }
+/* 118px was measured against "Design". In bilingual mode the same control
+   renders "Design · 設計", which does not fit, and the label ellipsised away
+   the half a 廣東話 reader was actually there for — the cap truncated a
+   correct translation rather than a long one. The extra room is granted only
+   in that mode, so a single-language window keeps the 118px pill it has
+   always had at every width; the trigger is content-sized, so the cap is not
+   what draws the control in either mode, only what bounds it. */
+html[data-od-language-mode='bilingual']
+  .home-hero__mode-switcher
+  .session-mode-toggle__trigger {
+  max-width: 156px;
+}
 .home-hero__mode-switcher .session-mode-toggle__popover {
   right: 0;
   left: auto;

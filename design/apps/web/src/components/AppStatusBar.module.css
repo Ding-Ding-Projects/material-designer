@@ -9,6 +9,11 @@
    themselves, exactly as the title bar's stylesheet treats its own 40px. */
 
 .bar {
+  /* Containing block for the segments the narrow-width rules take out of the
+     picture but leave in the accessibility tree: they are positioned, and a
+     1px clipped box belongs to this strip rather than to whatever positioned
+     ancestor it would otherwise escape to. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -29,9 +34,30 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
+  flex: 0 1 auto;
   white-space: nowrap;
+}
+
+/* The text of a segment, and the reason it is an element of its own.
+
+   `.item` is a flex container, so its text is an anonymous flex item —
+   and `text-overflow: ellipsis` does nothing to one of those. Declared on
+   `.item`, as it was, the overflow rule clipped the last segment mid-glyph
+   against the strip's padding with no ellipsis and no way to read the rest:
+   in bilingual mode at the shell's 900px minimum that is where the density
+   readout went. A real element takes the ellipsis, and `min-width: 0`
+   overrides the auto minimum size a nowrap flex item would otherwise keep. */
+.label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The daemon state is the one readout a user acts on, so it is the one that
+   never gives up room; every other segment shrinks around it. */
+.daemonItem {
+  flex: none;
 }
 
 /* Pushes everything after it to the right edge, the way the contract's own
@@ -83,9 +109,51 @@
 /* Below roughly a tablet width the strip cannot hold six items without
    truncating the ones that matter most, so the two appearance readouts —
    the least urgent, and the ones the user just set themselves — drop out
-   first and the daemon, model and design system keep their room. */
+   first and the daemon, model and design system keep their room.
+
+   They drop out of the *picture*, not out of the product: the clip pattern
+   below leaves both readouts in the accessibility tree, so a screen-reader
+   user still hears the whole strip at a width where it cannot all be drawn.
+   `display: none` would have taken the information away from the reader
+   least able to go and look it up in the appearance settings instead. */
 @media (max-width: 760px) {
   .appearanceItem {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Bilingual mode pairs English with 廣東話 on every label, so the same six
+   segments carry roughly twice the text and the strip runs out of room a
+   long way above the tablet breakpoint — by string length it is somewhere
+   around a thousand pixels, which is above the 900px minimum the shell
+   allows, so at the narrowest window the product offers the strip could not
+   hold its contents at all. The appearance readouts step aside earlier in
+   that mode, and only in that mode: a single-language window at 1000px still
+   shows all six, exactly as it did. The breakpoint is deliberately generous
+   rather than exact — the density readout's length depends on which density
+   is selected, and an over-eager breakpoint costs a readout that is still in
+   the accessibility tree, while a tight one costs a clipped strip.
+
+   `data-od-language-mode` is published on <html> by the i18n provider, beside
+   the `lang` and `dir` it already sets there. */
+@media (max-width: 1120px) {
+  html[data-od-language-mode='bilingual'] .appearanceItem {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }

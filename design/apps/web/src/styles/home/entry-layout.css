@@ -29,14 +29,17 @@
   display: flex;
   align-items: stretch;
   justify-content: stretch;
-  min-height: 100vh;
+  /* Scale-aware window height; see the UI scale block in
+     `styles/md3-tokens.css`. The entry shell is the home screen's outermost
+     box, so a bare `100vh` here is what a scaled window overflows by. */
+  min-height: var(--od-vh, 100vh);
   padding: 0;
   background: var(--bg);
 }
 
 .entry-onboarding-modal {
   width: 100%;
-  height: 100vh;
+  height: var(--od-vh, 100vh);
   overflow: auto;
   border-radius: 0;
   background: var(--bg);
@@ -972,9 +975,9 @@
   right: 0;
   z-index: 90;
   width: 320px;
-  max-width: calc(100vw - 24px);
-  max-height: min(760px, calc(100vh - 92px));
-  max-height: min(760px, calc(100dvh - 92px));
+  max-width: calc(var(--od-vw, 100vw) - 24px);
+  max-height: min(760px, calc(var(--od-vh, 100vh) - 92px));
+  max-height: min(760px, calc(var(--od-dvh, 100dvh) - 92px));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -4562,7 +4565,7 @@
   }
 
   .entry-onboarding-modal {
-    height: 100vh;
+    height: var(--od-vh, 100vh);
     border-radius: 0;
   }
 
@@ -4627,7 +4630,7 @@
   }
 
   .entry-onboarding-modal {
-    height: 100vh;
+    height: var(--od-vh, 100vh);
     border-radius: 0;
   }
 

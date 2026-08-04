@@ -330,6 +330,31 @@ export type OpenDesignHostWindowControls = {
   toggleMaximize(): Promise<boolean>;
 };
 
+/**
+ * The renderer's route to the host's own page-scaling control.
+ *
+ * This exists because a page cannot scale itself correctly. CSS `zoom` (and
+ * `transform: scale()`) magnify the painted result while leaving the layout
+ * viewport at its original size, so the document still lays out for a
+ * 1280px-wide window and is then drawn `factor`x larger: viewport units and
+ * width media queries keep answering with the unscaled window, and everything
+ * overflows to the right and off the bottom. The host, by contrast, can change
+ * what a CSS pixel *is* — Chromium's zoom factor divides the layout viewport,
+ * exactly as the browser's own zoom shortcut does — so the layout genuinely
+ * reflows instead of being magnified.
+ *
+ * Fire-and-forget, like `pet.setVisible`: the host clamps and applies, and the
+ * renderer's evidence that the route exists is the namespace being present.
+ *
+ * Optional, because a host predating this cannot supply it and a plain browser
+ * has no host at all. Callers MUST feature-detect and keep a scaling path of
+ * their own for when it is absent.
+ */
+export type OpenDesignHostUiScale = {
+  /** Scale the host surface by `factor`, where 1 is 100%. */
+  set(factor: number): void;
+};
+
 export type OpenDesignHostBridge = {
   browser: {
     clearData(options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult>;
@@ -355,6 +380,10 @@ export type OpenDesignHostBridge = {
     openExternal(url: string): Promise<OpenDesignHostActionResult>;
     openPath(projectId: string): Promise<OpenDesignHostActionResult>;
   };
+  // Optional, and absent on a host predating it. The renderer feature-detects
+  // and falls back to scaling the document itself; see `OpenDesignHostUiScale`
+  // for why that fallback is a worse answer than this one.
+  uiScale?: OpenDesignHostUiScale;
   updater: {
     check(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     "clear-cache"(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;

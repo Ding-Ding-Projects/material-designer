@@ -51,6 +51,13 @@ describe("desktop preload host boundary", () => {
     // Optional namespace, exposed on win32 only, so every other platform's
     // renderer feature-detects it away instead of drawing dead buttons.
     expect(source).toContain("process.platform === 'win32' ? { windowControls } : {}");
+    // UI scale is applied by the host to the window's web contents, because
+    // only the host can move the layout viewport. Pin the literal channel
+    // name for the same reason as the window controls: the preload cannot
+    // import `main/ui-scale.ts`, so the two copies can only be kept honest
+    // here. Exposed on every platform — the defect it fixes is not win32-only.
+    expect(source).toContain("uiScale");
+    expect(source).toContain("'od:ui-scale:set'");
     expect(source).not.toContain("@open-design/contracts");
     expect(source).not.toContain("exposeInMainWorld('electronAPI'");
     expect(source).not.toContain('exposeInMainWorld("__odDesktop"');

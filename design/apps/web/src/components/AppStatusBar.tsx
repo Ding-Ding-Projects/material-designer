@@ -66,6 +66,15 @@ export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
 
   const daemonLabel = daemonLive ? t('statusBar.daemonLive') : t('statusBar.daemonOffline');
 
+  // Each segment's full text is computed once and used three ways: rendered,
+  // carried in `title` so a segment the strip had to shorten is still
+  // readable on hover, and left intact in the accessibility tree — a CSS
+  // ellipsis shortens the pixels, never the text a screen reader reads.
+  const modelSummary = `${modelLabel} · ${modeLabel}`;
+  const designSystemSummary = t('statusBar.designSystem', { name: designSystemLabel });
+  const scaleSummary = t('statusBar.uiScale', { percent: scalePercent });
+  const densitySummary = t('statusBar.density', { level: densityLabel });
+
   return (
     <footer
       className={styles.bar}
@@ -79,24 +88,29 @@ export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
         a live region. Announcing the scale or the density here would repeat
         back to the user what they had just set, which is noise; a daemon
         that has gone away is news.
+
+        It is also the one segment a user acts on, so it is the one segment
+        the stylesheet refuses to shrink — everything else yields to it.
       */}
-      <span className={styles.item} role="status">
+      <span className={`${styles.item} ${styles.daemonItem}`} role="status">
         <span
           className={`${styles.dot} ${daemonLive ? styles.dotLive : styles.dotOffline}`}
           aria-hidden="true"
         />
-        {daemonLabel}
+        <span className={styles.label}>{daemonLabel}</span>
       </span>
-      <span className={styles.item} title={`${modelLabel} · ${modeLabel}`}>
-        {modelLabel} · {modeLabel}
+      <span className={styles.item} title={modelSummary}>
+        <span className={styles.label}>{modelSummary}</span>
       </span>
-      <span className={styles.item}>{t('statusBar.designSystem', { name: designSystemLabel })}</span>
+      <span className={styles.item} title={designSystemSummary}>
+        <span className={styles.label}>{designSystemSummary}</span>
+      </span>
       <div className={styles.spacer} />
-      <span className={`${styles.item} ${styles.appearanceItem}`}>
-        {t('statusBar.uiScale', { percent: scalePercent })}
+      <span className={`${styles.item} ${styles.appearanceItem}`} title={scaleSummary}>
+        <span className={styles.label}>{scaleSummary}</span>
       </span>
-      <span className={`${styles.item} ${styles.appearanceItem}`}>
-        {t('statusBar.density', { level: densityLabel })}
+      <span className={`${styles.item} ${styles.appearanceItem}`} title={densitySummary}>
+        <span className={styles.label}>{densitySummary}</span>
       </span>
     </footer>
   );

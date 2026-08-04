@@ -81,6 +81,8 @@ export type PackagedUiStatesResult = {
 
 type ProbeSnapshot = {
   cjk: boolean;
+  /** `--od-css-zoom`: the factor CSS is carrying, `1` when the host scaled. */
+  cssZoom: string;
   homeVisible: boolean;
   innerHeight: number;
   innerWidth: number;
@@ -89,6 +91,16 @@ type ProbeSnapshot = {
   mounted: string | null;
   navMark: string | null;
   odScale: string;
+  /**
+   * How far the document overflows its own viewport, in CSS pixels. This is
+   * the number the 200% capture was published for: a scaled layout that
+   * MAGNIFIES rather than reflowing overflows to the right and off the
+   * bottom, and the frame shows a horizontal scrollbar and no status bar.
+   * Recorded rather than asserted on purpose — a state that fails this must
+   * still produce its frame, because the picture is the evidence.
+   */
+  overflowX: number;
+  overflowY: number;
   paletteOpen: boolean;
   readyState: string;
   settingsOpen: boolean;
@@ -151,6 +163,7 @@ const PROBE_EXPRESSION = `
     };
     return {
       cjk: /[\\u4e00-\\u9fff]/.test(text),
+      cssZoom: root.style.getPropertyValue('--od-css-zoom'),
       homeVisible: home instanceof HTMLElement && home.getClientRects().length > 0,
       innerHeight: window.innerHeight,
       innerWidth: window.innerWidth,
@@ -159,6 +172,8 @@ const PROBE_EXPRESSION = `
       mounted: root.getAttribute('data-od-app-mounted'),
       navMark: typeof window.__odSmokeNavMark === 'string' ? window.__odSmokeNavMark : null,
       odScale: root.style.getPropertyValue('--od-scale'),
+      overflowX: Math.max(0, root.scrollWidth - root.clientWidth),
+      overflowY: Math.max(0, root.scrollHeight - root.clientHeight),
       paletteOpen: document.querySelector('[data-testid="command-palette"]') instanceof HTMLElement,
       readyState: document.readyState,
       settingsOpen: document.querySelector('.modal-settings[role="dialog"]') instanceof HTMLElement,
@@ -301,10 +316,17 @@ export async function capturePackagedUiStates(
   //
   // Driven through the app's own persisted appearance preference rather than
   // through the operating system's display scale. `applyAppearancePreferences-
-  // ToDocument` reads that preference at boot and writes both `--od-scale` and
-  // `zoom`, so each frame is evidence the product honours a saved scale on a
-  // cold render — the behaviour a user actually meets — and the runner's own
-  // display setting stays out of it entirely.
+  // ToDocument` reads that preference at boot, writes `--od-scale`, and asks
+  // the desktop host to scale its own web contents — so each frame is evidence
+  // the product honours a saved scale on a cold render, the behaviour a user
+  // actually meets, and the runner's own display setting stays out of it.
+  //
+  // `overflowX`/`overflowY` in each frame's verified block are the number this
+  // set exists for. Scaling that MAGNIFIES rather than reflowing overflows the
+  // window, and the published 200% frame showed exactly that: a horizontal
+  // scrollbar, a heading cut off mid-word, no status bar. Zero on both axes at
+  // every scale is the claim; the frame beside it is how you check the claim
+  // is about the right thing.
 
   for (const scale of UI_SCALES) {
     const percent = Math.round(scale * 100);
@@ -606,12 +628,15 @@ async function waitForProbe(
 function summarizeProbe(probe: ProbeSnapshot): Record<string, unknown> {
   return {
     cjk: probe.cjk,
+    cssZoom: probe.cssZoom,
     homeVisible: probe.homeVisible,
     innerHeight: probe.innerHeight,
     innerWidth: probe.innerWidth,
     languageMode: probe.languageMode,
     locale: probe.locale,
     odScale: probe.odScale,
+    overflowX: probe.overflowX,
+    overflowY: probe.overflowY,
     zoom: probe.zoom,
   };
 }
@@ -626,6 +651,7 @@ function asProbeSnapshot(value: unknown): ProbeSnapshot | null {
   if (typeof innerWidth !== 'number' || typeof readyState !== 'string') return null;
   return {
     cjk: value.cjk === true,
+    cssZoom: typeof value.cssZoom === 'string' ? value.cssZoom.trim() : '',
     homeVisible: value.homeVisible === true,
     innerHeight: typeof value.innerHeight === 'number' ? value.innerHeight : 0,
     innerWidth,
@@ -637,6 +663,8 @@ function asProbeSnapshot(value: unknown): ProbeSnapshot | null {
     // which may keep the leading whitespace the declaration had. Trim before
     // comparing, so a state is never reported unreachable over a space.
     odScale: typeof value.odScale === 'string' ? value.odScale.trim() : '',
+    overflowX: typeof value.overflowX === 'number' ? value.overflowX : 0,
+    overflowY: typeof value.overflowY === 'number' ? value.overflowY : 0,
     paletteOpen: value.paletteOpen === true,
     readyState,
     settingsOpen: value.settingsOpen === true,

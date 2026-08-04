@@ -123,9 +123,37 @@
   /* ---- UI scale ------------------------------------------------------
      The mockup exposes a 50–200% control in five-point steps and emits it
      as `--od-scale`, a unitless factor; 1 is 100%, the default. The name is
-     the contract's, kept verbatim like every other invention it makes, so a
-     control wired to this later writes the property the mockup writes. */
+     the contract's, kept verbatim like every other invention it makes. */
   --od-scale: 1;
+
+  /* The factor CSS is responsible for, which is NOT always the factor above.
+     Scaling a page from inside it is the weaker of the two available
+     mechanisms: CSS `zoom` magnifies the painted result and leaves the
+     layout viewport alone, so `100vw`/`100vh` keep reporting the unscaled
+     window and the shell is drawn `--od-scale` times too large — a
+     horizontal scrollbar, a heading cut off mid-word, a status bar below the
+     bottom edge. The desktop shell therefore scales its own web contents
+     instead (`webContents.setZoomFactor`), which divides the real layout
+     viewport and makes the layout REFLOW, and tells the page to scale
+     nothing by writing `1` here.
+
+     A plain browser tab has no such host, falls back to `zoom`, and writes
+     its factor here so the viewport lengths below can be divided back down
+     to the window they are actually drawn into. `var(--od-scale)` is the
+     declared default for exactly that case; `state/appearance.ts` always
+     writes this property explicitly, so the default only ever applies before
+     the appearance runtime has run — when the scale is 1 regardless. */
+  --od-css-zoom: var(--od-scale, 1);
+
+  /* The viewport, expressed in the coordinate space the app is laid out in.
+     Identical to the bare units whenever CSS is not scaling anything, which
+     is every install at 100% and every desktop install at any scale. Use
+     these instead of `100vw`/`100vh` for anything sized to the WINDOW; a
+     length that must stay a true fraction of the physical screen (a media
+     asset, a captured deck) keeps the bare unit deliberately. */
+  --od-vw: calc(100vw / var(--od-css-zoom));
+  --od-vh: calc(100vh / var(--od-css-zoom));
+  --od-dvh: calc(100dvh / var(--od-css-zoom));
 
   /* ---- Reference typefaces -------------------------------------------
      M3 names `brand` and `plain`; `mono` and `serif` are additions this

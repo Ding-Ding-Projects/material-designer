@@ -21,7 +21,10 @@ body {
 }
 
 .od-loading-shell {
-  min-height: 100vh;
+  /* Scale-aware window height; see the UI scale block in
+     `styles/md3-tokens.css` for why a bare `100vh` overflows under a CSS
+     `zoom` the browser fallback applies. */
+  min-height: var(--od-vh, 100vh);
   display: grid;
   place-items: center;
   color: var(--text-muted);

@@ -41,6 +41,7 @@ function clearAppliedAppearance(): void {
   root.removeAttribute('data-seed');
   root.removeAttribute('data-density');
   root.style.removeProperty('--od-scale');
+  root.style.removeProperty('--od-css-zoom');
   root.style.removeProperty('zoom');
   root.style.removeProperty('--accent');
 }

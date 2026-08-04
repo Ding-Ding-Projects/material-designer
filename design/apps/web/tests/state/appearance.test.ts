@@ -6,6 +6,7 @@ import {
   applyAppearanceToDocument,
   normalizeAccentColor,
   resolveAccentColor,
+  uiScaleApplication,
 } from '../../src/state/appearance';
 
 describe('normalizeAccentColor', () => {
@@ -91,5 +92,43 @@ describe('applyAppearanceToDocument', () => {
 
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe(DEFAULT_ACCENT_COLOR);
+  });
+});
+
+// The UI scale used to be CSS `zoom` on `<html>` unconditionally, which
+// magnified the paint and left the layout viewport alone: at 150% and 200%
+// the packaged window grew a horizontal scrollbar, the home heading was cut
+// off mid-word, and the status bar was pushed off the bottom edge. The host
+// now scales its own web contents where it can, because that moves the real
+// layout viewport; CSS scales the page only where there is no such host.
+// These cases pin which of the two is in charge, and pin that 100% still
+// writes nothing that could move a pixel.
+describe('uiScaleApplication', () => {
+  it('removes zoom entirely at 100%, so an untouched install is unchanged', () => {
+    expect(uiScaleApplication(1, false)).toEqual({ cssZoom: '1', odScale: '1', zoom: null });
+  });
+
+  it('scales the page itself when no host took the job', () => {
+    expect(uiScaleApplication(1.5, false)).toEqual({ cssZoom: '1.5', odScale: '1.5', zoom: '1.5' });
+    expect(uiScaleApplication(2, false)).toEqual({ cssZoom: '2', odScale: '2', zoom: '2' });
+  });
+
+  // The important one. Leaving `zoom` on here would scale twice — once in the
+  // host's viewport and once in the page — and leaving `--od-css-zoom` at the
+  // user's factor would make the stylesheets divide the window lengths by a
+  // zoom that was never applied, shrinking the shell into a corner.
+  it('scales nothing in CSS when the host scaled its own web contents', () => {
+    expect(uiScaleApplication(2, true)).toEqual({ cssZoom: '1', odScale: '2', zoom: null });
+    expect(uiScaleApplication(1.25, true)).toEqual({ cssZoom: '1', odScale: '1.25', zoom: null });
+  });
+
+  // The status bar reads this, and the packaged capture harness verifies the
+  // scale it asked for by reading it back off the document — so it carries
+  // the user's factor on every route, including the one where CSS is idle.
+  it('always reports the factor the user chose as --od-scale', () => {
+    for (const scale of [0.5, 0.9, 1, 1.15, 1.25, 1.5, 2]) {
+      expect(uiScaleApplication(scale, false).odScale).toBe(String(scale));
+      expect(uiScaleApplication(scale, true).odScale).toBe(String(scale));
+    }
   });
 });

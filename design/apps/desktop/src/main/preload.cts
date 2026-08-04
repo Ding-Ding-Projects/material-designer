@@ -33,6 +33,9 @@ const WINDOW_TOGGLE_MAXIMIZE_IPC_CHANNEL = 'od:window:toggle-maximize';
 const WINDOW_CLOSE_IPC_CHANNEL = 'od:window:close';
 const WINDOW_IS_MAXIMIZED_IPC_CHANNEL = 'od:window:is-maximized';
 const WINDOW_MAXIMIZED_EVENT = 'od:window:maximized-changed';
+// Duplicated from main/ui-scale.ts for the same reason as the channels above:
+// a sandboxed preload may only require `electron`.
+const UI_SCALE_IPC_CHANNEL = 'od:ui-scale:set';
 
 // Mirror of the argv prefix used by main's `applyOsLocaleSwitch` and
 // runtime's `additionalArguments`. Duplicated literal on purpose: the
@@ -325,6 +328,21 @@ const windowControls = {
   toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke(WINDOW_TOGGLE_MAXIMIZE_IPC_CHANNEL),
 };
 
+// The appearance editor's UI scale, applied by the host to the window's web
+// contents so the layout viewport actually changes. Fire-and-forget: the
+// renderer has no decision to make on the result, and a rejected message (a
+// destroyed window, a guest frame that is not the main window) must not throw
+// into the layout effect that applies the saved appearance at boot.
+const uiScale = {
+  set: (factor: number): void => {
+    const applied: Promise<unknown> = ipcRenderer.invoke(UI_SCALE_IPC_CHANNEL, factor);
+    // A refused request — a destroyed window, or a guest frame that is not the
+    // main window — must not reject into the layout effect that applies the
+    // whole saved appearance at boot.
+    void applied.catch(() => undefined);
+  },
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -356,6 +374,7 @@ const hostBridge = {
     setVisible: (visible: boolean): void =>
       ipcRenderer.send('desktop-pet:set-visible', Boolean(visible)),
   },
+  uiScale,
   updater,
   // win32 only: every other platform keeps its native title bar, so the
   // namespace is absent there and the renderer feature-detects rather than

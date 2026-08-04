@@ -41,6 +41,7 @@ import {
   parseUpdateActionRequest,
   updateRestartSafetyError,
 } from "./update-preflight.js";
+import { registerUiScaleHandler } from "./ui-scale.js";
 import {
   attachWindowMaximizedBroadcast,
   registerWindowControlHandlers,
@@ -2456,6 +2457,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // the bridge that reaches them is exposed on win32 only.
   const disposeWindowControls = registerWindowControlHandlers(ipcMain, window);
 
+  // The appearance editor's UI scale. Applied to the window's web contents
+  // rather than to the document, because only the host can move the layout
+  // viewport — see `ui-scale.ts` for what CSS `zoom` does instead. Same
+  // main-window-only sender check as the block above.
+  const disposeUiScale = registerUiScaleHandler(ipcMain, window);
+
   ipcMain.removeAllListeners("desktop-pet:set-visible");
   ipcMain.on("desktop-pet:set-visible", (event, visible: unknown) => {
     if (petWindow.isDestroyed() || event.sender !== petWindow.webContents) return;
@@ -2837,6 +2844,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
       unsubscribeUpdater();
       disposeWindowControls();
+      disposeUiScale();
       ipcMain.removeAllListeners("desktop-pet:set-visible");
       for (const channel of UPDATER_IPC_CHANNELS) {
         ipcMain.removeHandler(channel);

@@ -1,3 +1,5 @@
+import { getOpenDesignHost } from '@open-design/host';
+
 import type { AppTheme } from '../types';
 
 const ACCENT_VARS = [
@@ -232,7 +234,7 @@ export interface AppearanceTypography {
 export interface AppearancePreferences {
   seed: AppearanceSeed;
   density: AppearanceDensity;
-  /** Unitless zoom factor, 0.5–2, written as `--od-scale`. */
+  /** Unitless scale factor, 0.5–2, written as `--od-scale`. */
   uiScale: number;
   typography: AppearanceTypography;
 }
@@ -348,21 +350,95 @@ export function writeStoredAppearancePreferences(prefs: AppearancePreferences): 
   }
 }
 
+/* ============================================================
+   UI scale.
+
+   A page cannot scale itself correctly, and this is the file where
+   that fact bites. CSS `zoom` — which the M3 mockup this contract was
+   transcribed from used, and which was ported with it — multiplies the
+   painted result without moving the layout viewport. A 1280px window at
+   150% still lays out as 1280px and is then drawn 1.5x larger, so
+   `100vw`/`100vh` keep meaning the *unscaled* window, every width media
+   query keeps answering for a width the content no longer has, and the
+   shell overflows: a horizontal scrollbar, the home heading cut off
+   mid-word, the status bar pushed off the bottom edge. That is arithmetic
+   rather than a styling accident, and no per-rule patching reaches it.
+
+   The host can do what the page cannot. `webContents.setZoomFactor`
+   divides the layout viewport by the factor, exactly as the browser's own
+   zoom shortcut does, so a 1280x900 window at 200% becomes a 640x450
+   layout viewport: the layout genuinely REFLOWS, viewport units and media
+   queries stay truthful, and `getBoundingClientRect` keeps reporting in
+   the same space pointer events do. So the desktop shell is asked first,
+   and CSS scales nothing at all when it answers.
+
+   Where there is no such host — a plain browser tab served by the daemon —
+   the page falls back to `zoom`, and declares the factor it is carrying as
+   `--od-css-zoom` so `styles/md3-tokens.css` can divide the viewport units
+   the app shell is sized in back down. That keeps the window from
+   overflowing, which is the visible half of the defect; it cannot fix the
+   width media queries, which have no way to read a custom property. The
+   fallback is therefore a smaller magnifying glass, not the same fix.
+   ============================================================ */
+
+/** What one scale factor means for the document's own properties. */
+export interface UiScaleApplication {
+  /**
+   * `--od-css-zoom`: the factor CSS `zoom` is actually carrying, so the
+   * token sheet can compensate the viewport units by exactly that much.
+   * `'1'` whenever CSS is not doing the scaling — including when the host
+   * is — because compensating for a zoom that was never applied would
+   * shrink the shell to a fraction of the window.
+   */
+  cssZoom: string;
+  /** `--od-scale`: the factor the user chose. Always written. */
+  odScale: string;
+  /** The CSS `zoom` property, or `null` to remove it. */
+  zoom: string | null;
+}
+
+/**
+ * Pure: what to write for `uiScale`, given whether the host took the job.
+ *
+ * At scale 1 the `zoom` property is REMOVED rather than written as `1`, so
+ * an install whose owner never touches the control has exactly the layout
+ * it had before any of this existed.
+ */
+export function uiScaleApplication(uiScale: number, hostScaled: boolean): UiScaleApplication {
+  const factor = String(uiScale);
+  if (hostScaled || uiScale === 1) {
+    return { cssZoom: '1', odScale: factor, zoom: null };
+  }
+  return { cssZoom: factor, odScale: factor, zoom: factor };
+}
+
+/**
+ * Ask the desktop shell to scale its own web contents, and report whether
+ * the request was delivered.
+ *
+ * Feature-detected rather than assumed: the namespace is optional on the
+ * bridge, absent in a browser, and absent on a host build that predates it.
+ * A throw is treated as "not delivered" so a host that refuses cannot take
+ * down the layout effect that applies the whole saved appearance at boot.
+ */
+function requestHostUiScale(factor: number): boolean {
+  const uiScale = getOpenDesignHost()?.uiScale;
+  if (uiScale == null) return false;
+  try {
+    uiScale.set(factor);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Apply seed, density, UI scale and typography to `<html>`.
  *
  * Everything is written as an attribute or a custom property the token
- * sheet already reads, with one exception: `zoom`. `--od-scale` is the
- * contract's name for the factor but the sheet declares it and nothing
- * consumes it, so the factor alone would change nothing on screen. The M3
- * mockup this contract was transcribed from emits `--od-scale` and `zoom`
- * together, and this does the same.
- *
- * At scale 1 the `zoom` property is REMOVED rather than written as `1`, so
- * an install whose owner never touches the control has exactly the layout
- * it had before this existed. That bounds the blast radius of zoom's known
- * awkwardness — measured rectangles in portalled popovers — to users who
- * deliberately asked for a scaled UI.
+ * sheet already reads — `--od-scale` included, which the sheet now consumes
+ * as the default source of `--od-css-zoom` rather than declaring and
+ * ignoring.
  */
 export function applyAppearancePreferencesToDocument(prefs: AppearancePreferences): void {
   const root = document.documentElement;
@@ -381,11 +457,17 @@ export function applyAppearancePreferencesToDocument(prefs: AppearancePreference
     root.setAttribute('data-density', normalized.density);
   }
 
-  root.style.setProperty('--od-scale', String(normalized.uiScale));
-  if (normalized.uiScale === 1) {
+  const scale = uiScaleApplication(normalized.uiScale, requestHostUiScale(normalized.uiScale));
+  root.style.setProperty('--od-scale', scale.odScale);
+  // Written even at 1, never removed: the sheet's own fallback for this
+  // property is `var(--od-scale)`, which is right for a browser that has to
+  // scale itself and exactly wrong for a host that already did. An explicit
+  // value leaves no case where the two disagree.
+  root.style.setProperty('--od-css-zoom', scale.cssZoom);
+  if (scale.zoom === null) {
     root.style.removeProperty('zoom');
   } else {
-    root.style.setProperty('zoom', String(normalized.uiScale));
+    root.style.setProperty('zoom', scale.zoom);
   }
 
   const stack = FONT_STACKS[normalized.typography.fontStackId];

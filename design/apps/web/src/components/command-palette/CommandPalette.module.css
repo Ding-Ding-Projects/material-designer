@@ -40,9 +40,12 @@
 /* The opt-in. Full window for the user who is browsing the registry rather
    than firing one known command. */
 .full {
-  width: 100vw;
-  height: 100vh;
-  max-height: 100vh;
+  /* Scale-aware window lengths; see the UI scale block in
+     `styles/md3-tokens.css`. "Full window" has to mean the window the user
+     can see, not the window the layout viewport still thinks it has. */
+  width: var(--od-vw, 100vw);
+  height: var(--od-vh, 100vh);
+  max-height: var(--od-vh, 100vh);
   border-radius: 0;
   border: 0;
 }

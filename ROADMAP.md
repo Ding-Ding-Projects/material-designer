@@ -603,6 +603,21 @@ meeting it.
       where clipping appears first — which is why the capture set covers it.
       The failing image is published in the README rather than quietly
       retaken.
+- [ ] **`t()` doubles a bilingual value used as an interpolation variable.**
+      Found while fixing the clipping above, and it is the biggest single
+      contributor to that overflow. `t()` composes the two languages **and
+      then** interpolates, so a `t()` result passed in as a variable is
+      already bilingual when the bilingual template consumes it:
+      `densityLabel` is `Default · 預設`, the template is
+      `{level} density · {level}密度`, and the output is
+      **`Default · 預設 density · Default · 預設密度`** — roughly 38
+      characters that say "Default density" twice in English.
+      The fix needs a per-language interpolation path that `t()` does not
+      expose today. `tForLanguageTag` exists but bypasses the funny-level
+      sliders, so reaching for it would regress a shipped feature. Worth a red
+      spec of its own: **every** bilingual string built from a translated
+      variable is wrong this way, not just this one, and the layout work only
+      made it ellipsise politely rather than run off the edge.
 
 > [!NOTE]
 > **All three defects above were found by looking at pictures, on the capture
