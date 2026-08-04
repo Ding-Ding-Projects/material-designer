@@ -373,11 +373,15 @@ Not by a local build — local builds do not happen here.
       *Verified by:* `AGENTS.md` — the repository-path table, the byte-verbatim
       and CI-only invariants, the sixteen standards, and a definition-of-done
       checklist that requires an actual CI verdict rather than a predicted one.
-- [ ] **`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`.** These render
+- [x] **`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`.** *Added at
+      `230b115`.* All three exist at the repository root and render as tabs.
+      Superseded text follows:
+- [ ] ~~`CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`.~~ These render
       as tabs above the README, so keeping them real and current is free
       navigation. Do not paste their contents into the README as well.
       *Genuinely absent* — none of the three exists at the repository root.
-- [ ] **`LICENSE`** at the root, matching the imported Apache-2.0 licence.
+- [x] **`LICENSE`** at the root, matching the imported Apache-2.0 licence.
+      *Added at `230b115`* — the same text the imported tree ships.
       *Genuinely absent* at the root; the licence text ships at `design/LICENSE`.
 - [x] **`CHANGELOG.md`**, started now rather than at the first release, with
       every entry carrying its commit reference.
@@ -598,7 +602,8 @@ meeting it.
       room, and the appearance readouts step aside at narrow widths through
       the repository's own screen-reader-only pattern so they stay announced.
       `Design · 設計` renders in full.
-- [ ] **Onboarding still carries the upstream brand**, on the first screen a
+- [x] **Onboarding carried the upstream brand.** *Closed at `649f81d`.*
+      Originally recorded as:, on the first screen a
       new user ever sees: "Sign in to Open Design", "Welcome to Open Design",
       "© 2026 Open Design". The window title beside it says Material Designer,
       which is what makes the mismatch obvious. **The release smoke test
@@ -619,7 +624,9 @@ meeting it.
       on top of the template cards behind it, and the card row is cut by the
       28px status bar — the content area does not appear to account for the
       bar's height, which is new.
-- [ ] **`t()` doubles a bilingual value used as an interpolation variable.**
+- [x] **`t()` doubled a bilingual value used as an interpolation variable.**
+      *Closed at `81cdbfd`* — rendering is per language before the join now,
+      with `tv(key)` for a translated variable. Originally recorded as:
       Found while fixing the clipping above, and it is the biggest single
       contributor to that overflow. `t()` composes the two languages **and
       then** interpolates, so a `t()` result passed in as a variable is
@@ -660,7 +667,9 @@ first line of its main stylesheet. It must be bundled too.
       identifiers, flags, and counters.
 - [ ] **Bundle Material Symbols Rounded** as a variable icon font, exposing the
       fill axis, which the mockup uses to fill the active navigation icon.
-- [ ] **Remove the CDN font import from the web application's stylesheet** and
+- [x] **Remove the CDN font import from the web application's stylesheet** and
+      *Done at `45ff210`* — three Cairo subsets ship under `public/fonts/cairo/`.
+      Original wording:
       self-host that face. This is an edit under `design/` and needs an
       allowlist entry.
 - [ ] **Inventory and migrate icon call sites.** The incumbent icon font is a
@@ -778,7 +787,9 @@ rather than as one item that stays unchecked for months.
       56×32 pill indicator on the active destination, a 56px tall extended
       action button), top app bar with the Windows caption controls from 2.1,
       and the tab strip.
-- [ ] **Wave 2 — home.** The prompt surface at 28dp with its chip rail, the
+- [x] **Wave 2 — home.** *Done at `f99fb2b`* — 28dp prompt surface, assist-chip
+      rail, scenario card grid, morphing send, tonal recent-project covers.
+      Original wording: The prompt surface at 28dp with its chip rail, the
       scenario card grid, the recent-project cards with tonal covers and a
       spring lift, and the primary action button that morphs on hover.
 - [ ] **Wave 3 — collections.** Project, design-system, library and plugin
@@ -817,7 +828,9 @@ labels are longest — and when no legacy design element remains in them.
       mockup ships four fixed swatches, which is *not* sufficient for the
       standards; the continuous picker that replaces them is Phase 4.
 - [ ] **UI scale** — 50–200% in steps of 5, default 100.
-- [ ] **Replace the mockup's scaling mechanism.** It sets a custom property that
+- [x] **Replace the mockup's scaling mechanism.** *Done at `cd0996d`* — the
+      host scales its own web contents, so the layout viewport divides and the
+      page reflows. Original wording: It sets a custom property that
       nothing reads and does the actual scaling with a non-standard CSS zoom
       property. Implement scaling in a way that is standard, testable, and does
       not break layout measurement.
