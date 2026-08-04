@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackSettingsPrivacyClick } from '../analytics/events';
-import { useT } from '../i18n';
+import { tv, useT } from '../i18n';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
 import { notify } from './notifications/notificationStore';
@@ -164,7 +164,9 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
           target={cfg.installationId ?? t('settings.privacyOptedOut')}
           items={[
             t('privacy.deleteGateIdItem', {
-              id: cfg.installationId ?? t('settings.privacyOptedOut'),
+              // An installation id is a literal value; the opted-out
+              // stand-in is copy, so it travels as a key.
+              id: cfg.installationId ?? tv('settings.privacyOptedOut'),
             }),
             t('privacy.deleteGateSharingItem'),
           ]}

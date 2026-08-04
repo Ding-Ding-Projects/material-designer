@@ -19,7 +19,7 @@ import { useAnalytics } from '../analytics/provider';
 import { getResolvedDeviceId } from '../analytics/client';
 import { trackChatPanelClick, trackMessageQueueClick, trackRunFailedToastSurfaceView } from '../analytics/events';
 import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
-import { useT } from '../i18n';
+import { tv, useT, type TranslationVars } from '../i18n';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import {
@@ -95,7 +95,7 @@ import { repoConnectCopy } from './design-system-github-evidence';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import type { SettingsSection } from './SettingsDialog';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 // Featured starter prompts shown on the empty chat. Clicking one fills
 // the composer (does not auto-send) so users can tweak before sending.
@@ -2776,9 +2776,13 @@ export function ChatPane({
           }
           items={[
             t('conv.deleteGateItem', {
+              // The fallback is copy, so it travels as a key: read as a string
+              // it would already be bilingual and end up said twice inside the
+              // bilingual template. A real conversation title is the user's
+              // own text and passes through untouched.
               title:
                 deleteConversationTarget.title ||
-                t('chat.untitledConversation'),
+                tv('chat.untitledConversation'),
             }),
           ]}
           irreversible

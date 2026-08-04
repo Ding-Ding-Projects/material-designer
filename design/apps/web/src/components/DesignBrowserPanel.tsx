@@ -65,6 +65,7 @@ import { Icon } from './Icon';
 import { BoardComposerPopover } from './BoardComposerPopover';
 import { PreviewDrawOverlay } from './PreviewDrawOverlay';
 import { RemixIcon } from './RemixIcon';
+import type { TranslationVars } from '../i18n';
 
 type BrowserHistoryEntry = {
   iconUrl?: string;
@@ -151,7 +152,7 @@ function browserUseActionInputKey(action: BrowserUseAction): keyof Dict {
 }
 
 function localizedBrowserUseInput(
-  t: (key: keyof Dict, vars?: Record<string, string | number>) => string,
+  t: (key: keyof Dict, vars?: TranslationVars) => string,
   action: BrowserUseAction,
 ): string {
   const key = browserUseActionInputKey(action);

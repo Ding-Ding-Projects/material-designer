@@ -12,7 +12,7 @@ import type {
 import { Icon } from './Icon';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
-import { useT } from '../i18n';
+import { tv, useT, type TranslationVars } from '../i18n';
 import { localizeRunFailureReason } from '../i18n/runErrors';
 import type { Dict } from '../i18n/types';
 import { useAnalytics } from '../analytics/provider';
@@ -20,7 +20,7 @@ import { trackAutomationsClick } from '../analytics/events';
 
 // Shared translator signature: every sub-component in this file is module-scoped,
 // so `t` from `useT()` is threaded down as a prop rather than re-hooked.
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 type ProjectSummary = { id: string; name: string };
 
@@ -155,7 +155,9 @@ function describeSchedule(
       tz,
     });
   }
-  const day = t(`routines.weekday.long.${schedule.weekday}`);
+  // The weekday name is copy, so it travels as a key: read as a string it
+  // would already be bilingual and be said twice inside the sentence.
+  const day = tv(`routines.weekday.long.${schedule.weekday}` as keyof Dict);
   return t('routines.describe.weekly', {
     day,
     time: formatTime12h(schedule.time, t),

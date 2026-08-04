@@ -6,8 +6,9 @@
 import type { Dict } from '../i18n/types';
 import type { IconName } from '../components/Icon';
 import type { SkillSummary } from '../types';
+import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 export type DesignToolboxActionId =
   | 'auto-match'

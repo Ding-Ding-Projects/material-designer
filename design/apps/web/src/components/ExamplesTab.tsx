@@ -15,8 +15,9 @@ import { PreviewModal } from './PreviewModal';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { AnimatePresence } from 'motion/react';
+import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 interface Props {
   skills: SkillSummary[];

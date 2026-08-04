@@ -29,6 +29,92 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Interpolate per language, so a bilingual value stops being said twice
+
+**Reason:** `t()` composed the two languages **and then** interpolated, so a
+variable whose value was itself translated copy arrived already bilingual and
+the bilingual template substituted it into both halves. `{level} density ·
+{level}密度` with a `densityLabel` of `Default · 預設` produced **`Default ·
+預設 density · Default · 預設密度`** — thirty-seven characters saying "Default
+density" twice in English. It was found as a clipping symptom; it is the cause
+of the width, and it affected every bilingual string built from a translated
+variable, not the one that happened to overflow.
+
+Rendering now happens **per language before the join**, and a caller marks a
+variable that is itself copy with `tv(key, vars?, transform?)` rather than
+passing a `t()` result. `tv` resolves through the same per-language read that
+renders the outer template, which is what keeps both funny-level sliders
+applying — to the nested value as well as to the template around it.
+
+Two shortcuts were rejected for stated reasons. Composing two
+`tForLanguageTag` calls would have bypassed the funny-level machinery and
+silently un-shipped a feature. Interpolating first and then composing the
+rendered halves would have made the join decision read rendered text rather
+than the template, so `{n}m` would compose at one value of `n` and decline at
+another — the same chip behaving differently at 5 minutes and 1234. The join
+now reads templates for the structural guards and rendered text only for
+emptiness, which also fixes two identical templates carrying a per-language
+variable, where the old guard collapsed them to one half.
+
+Seventeen direct call sites are converted. Roughly sixteen indirect ones —
+where the value comes from a helper that returns `t()` output — are recorded
+rather than chased, because changing those helpers' return types cascades
+much further than this change should; the mechanism handles them whenever
+someone does.
+
+**And the bottom overlap it was found beside.** The scroll hint and collapse
+pill are `position: fixed`, so they sit against the viewport and knew nothing
+about where the scrolling column ends — anything scrolled to the bottom was
+painted underneath them. The shell's grid already accounted for the status
+bar; the unreserved fixed overlay was the problem. The bar's height is now a
+published token, consumed by the bar itself so the number is stated once, and
+the scroll column reserves the pill's band so content clips above it instead
+of sliding under.
+
+**Changed files:**
+
+- `AGENTS.md`
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/AppStatusBar.tsx`
+- `apps/web/src/components/AssistantMessage.tsx`
+- `apps/web/src/components/BoardComposerPopover.tsx`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/ConversationsMenu.tsx`
+- `apps/web/src/components/DesignBrowserPanel.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/src/components/DesignKitView.tsx`
+- `apps/web/src/components/DesignSystemSwitchPicker.tsx`
+- `apps/web/src/components/ExamplesTab.tsx`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/NewAutomationModal.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/NextStepActions.tsx`
+- `apps/web/src/components/PluginsView.tsx`
+- `apps/web/src/components/PreviewModal.tsx`
+- `apps/web/src/components/PrivacySection.tsx`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/bulk/messages.ts`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/design-system-github-evidence.ts`
+- `apps/web/src/components/routineScheduleLabels.ts`
+- `apps/web/src/components/workspace/TabLauncherMenu.tsx`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/i18n/interpolate.ts`
+- `apps/web/src/i18n/runErrors.ts`
+- `apps/web/src/runtime/design-toolbox.ts`
+- `apps/web/src/styles/home/plugins-home.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/utils/chatTime.ts`
+- `apps/web/tests/i18n/interpolation.test.ts`
+- `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
+
+
 ### 2026-08-04 — Make the settings surface tabbed and searchable
 
 **Reason:** two standards, both unmet and both visible in one capture. The

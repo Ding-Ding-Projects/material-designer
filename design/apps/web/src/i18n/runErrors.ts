@@ -1,6 +1,7 @@
 import type { Dict } from './types';
+import type { TranslationVars } from './interpolate';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 const LEGACY_AGENT_EMPTY_OUTPUT_EN =
   'Agent completed without producing any output. The model or provider may have returned an empty response — check the agent logs for upstream errors.';

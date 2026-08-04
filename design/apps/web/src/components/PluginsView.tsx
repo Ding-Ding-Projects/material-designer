@@ -46,7 +46,7 @@ import { useRegexSearch, type RegexSearchMode } from './regex/useRegexSearch';
 import { PluginDetailsModal } from './PluginDetailsModal';
 import { PluginsHomeSection } from './PluginsHomeSection';
 import { TrustBadge } from './TrustBadge';
-import { useI18n } from '../i18n';
+import { tv, useI18n } from '../i18n';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import type { PluginUseAction } from './plugins-home/useActions';
@@ -1240,8 +1240,11 @@ function AvailablePluginDetailsModal({
               {selectedVersionInfo?.deprecated ? (
                 <p className="plugin-details-modal__section-hint">
                   {t('plugins.availableDetails.deprecatedPrefix', {
+                    // `true` means "deprecated, no reason given", so the
+                    // stand-in reason is our own copy and travels as a key;
+                    // a string is the registry's own text and does not.
                     message: selectedVersionInfo.deprecated === true
-                      ? t('plugins.availableDetails.deprecatedFallback')
+                      ? tv('plugins.availableDetails.deprecatedFallback')
                       : selectedVersionInfo.deprecated,
                   })}
                 </p>

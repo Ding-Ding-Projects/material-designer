@@ -25,11 +25,12 @@ import {
   trackUpdateInstallResult,
   trackUpdatePromptSurfaceView,
 } from '../analytics/events';
+import type { TranslationVars } from '../i18n';
 
 const INSTALL_HANDOFF_WATCHDOG_MS = 10_000;
 
 type InstallState = 'idle' | 'opening' | 'handoff' | 'quitting' | 'recoverable';
-type Translator = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type Translator = (key: keyof Dict, vars?: TranslationVars) => string;
 type UpdaterPopupProps = {
   allowSilentUpdates?: boolean;
   /**

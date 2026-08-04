@@ -10,7 +10,7 @@
 // needs the decorative-looking-UI treatment that a fake control would: the
 // strip is a readout, and it is styled like one.
 
-import { useT } from '../i18n';
+import { tv, useT } from '../i18n';
 import type { AppConfig, DesignSystemSummary } from '../types';
 import { useAppearancePreferences } from './appearance/store';
 import styles from './AppStatusBar.module.css';
@@ -57,12 +57,17 @@ export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
   // control that writes this value; the stored factor is unitless, so it is
   // converted here rather than stored twice.
   const scalePercent = Math.round(preferences.uiScale * 100);
-  const densityLabel =
+  // The density name is copy, not a value, so it travels to `t()` as its KEY:
+  // read as a string here it would already be bilingual, and the bilingual
+  // `{level} density · {level}密度` template would then say "Default density"
+  // twice inside a 28px strip. See `tv` in `i18n/index.tsx`.
+  const densityLabel = tv(
     preferences.density === 'compact'
-      ? t('statusBar.densityCompact')
+      ? 'statusBar.densityCompact'
       : preferences.density === 'comfortable'
-        ? t('statusBar.densityComfortable')
-        : t('statusBar.densityDefault');
+        ? 'statusBar.densityComfortable'
+        : 'statusBar.densityDefault',
+  );
 
   const daemonLabel = daemonLive ? t('statusBar.daemonLive') : t('statusBar.daemonOffline');
 

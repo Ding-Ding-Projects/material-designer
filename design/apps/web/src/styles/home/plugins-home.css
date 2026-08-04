@@ -1254,6 +1254,41 @@ button.plugins-home__use-menu-item:focus-visible {
   display: flex;
   flex-direction: column;
 }
+
+/* Stop the entry view's scroll column above the pinned pill.
+
+   Both the hint and the collapse pill below are `position: fixed`, so they
+   are placed against the VIEWPORT — which still includes the 28px status bar,
+   and which knows nothing about where this scroll column ends. Left to
+   itself that means the pill is drawn over whatever happens to be scrolled
+   beneath it; in bilingual mode at the shell's 900px minimum that is the
+   template card row, and the hint's own text lands on top of the cards.
+
+   Reserving the band is what makes a pinned pill honest: the column stops
+   above it, so the pill always sits on the page's own background and nothing
+   is ever painted underneath it. The card row is still cut where the column
+   ends — that is a scroll edge, and the rest of the row is one scroll away —
+   but it is no longer cut by something drawn on top of it.
+
+   `.entry-main--scroll` is a stretched grid item, so a bottom margin reduces
+   its height, and with it the region its content can be painted in. The
+   status bar already sits below the column, so only the part of the band that
+   clears the strip is reserved here.
+
+   `:has()` scopes this to the one case that mounts a pinned pill — the
+   new-user templates reveal, collapsed or expanded — so every other entry
+   route keeps the full column. */
+.entry-main--scroll:has(.home-templates-reveal) {
+  /* 18px is the pills' own `bottom` offset, 30px their height (6px padding
+     either side of an 18px line box), 4px the peak of the hint arrow's bob,
+     and the last 4px is breathing room so a descender never meets the
+     clipped edge. */
+  --home-templates-pill-band: 56px;
+  margin-bottom: max(
+    0px,
+    calc(var(--home-templates-pill-band) - var(--od-status-bar-height, 28px))
+  );
+}
 /* Collapsed: clip the gallery to zero height and fade it out. Uses the repo's
    canonical auto-height pattern (grid-template-rows 0fr -> 1fr) so the expand
    animates to the gallery's NATURAL height — a fixed max-height ceiling (was

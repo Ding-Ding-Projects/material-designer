@@ -155,6 +155,17 @@
   --od-vh: calc(100vh / var(--od-css-zoom));
   --od-dvh: calc(100dvh / var(--od-css-zoom));
 
+  /* The application status bar's height, published so the rest of the app can
+     say "clear of the strip" rather than repeating `28px` and drifting from
+     it. `components/AppStatusBar.module.css` is the one place that consumes
+     this as its own height; everything else consumes it to stay off the
+     strip. Anything pinned to the bottom of the WINDOW — a `position: fixed`
+     affordance, a floating pill — is positioned against the viewport, which
+     still includes this strip even though the app's scrollable body stops
+     above it. Such an element must add this length to its own offset, or
+     reserve it, or it is drawn on top of the readout. */
+  --od-status-bar-height: 28px;
+
   /* ---- Reference typefaces -------------------------------------------
      M3 names `brand` and `plain`; `mono` and `serif` are additions this
      product needs (code listings and long-form reading). Roboto Flex is

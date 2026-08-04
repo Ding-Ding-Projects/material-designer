@@ -40,7 +40,7 @@ import {
   trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
-import { FUNNY_LEVELS, LANGUAGE_MODES, LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
+import { FUNNY_LEVELS, LANGUAGE_MODES, LOCALE_LABEL, LOCALES, tv, useI18n } from '../i18n';
 import type { FunnyLanguage, FunnyLevel, LanguageMode, Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
@@ -242,6 +242,7 @@ import {
 } from './settings/settingsSearchMatch';
 import { SETTINGS_TAB_DEFS, writeLastSettingsSection } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
+import type { TranslationVars } from '../i18n';
 
 export type SettingsSection =
   | 'execution'
@@ -5938,7 +5939,7 @@ export function SettingsDialog({
                         value={level}
                         aria-valuetext={t('settings.funnyLevelValue', {
                           level,
-                          name: t(FUNNY_LEVEL_LABEL_KEYS[level]),
+                          name: tv(FUNNY_LEVEL_LABEL_KEYS[level]),
                         })}
                         onChange={(e) => {
                           const next = Number(e.target.value);
@@ -5949,7 +5950,7 @@ export function SettingsDialog({
                       <output className="settings-funny-value" htmlFor={sliderId}>
                         {t('settings.funnyLevelValue', {
                           level,
-                          name: t(FUNNY_LEVEL_LABEL_KEYS[level]),
+                          name: tv(FUNNY_LEVEL_LABEL_KEYS[level]),
                         })}
                       </output>
                     </div>
@@ -6793,7 +6794,7 @@ export function isOrbitRunDisabled(isBusy: boolean, connectedCount: number | nul
 
 function formatRelative(
   iso: string | undefined | null,
-  t: (key: keyof Dict, vars?: Record<string, string | number>) => string,
+  t: (key: keyof Dict, vars?: TranslationVars) => string,
 ): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();

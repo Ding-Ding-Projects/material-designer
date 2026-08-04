@@ -17,7 +17,11 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 28px;
+  /* The strip's own height, and the single source of it. The token is
+     declared in `styles/md3-tokens.css` so anything pinned to the bottom of
+     the window can position itself clear of the strip without hard-coding
+     the same 28px a second time and drifting from it later. */
+  height: var(--od-status-bar-height, 28px);
   flex: none;
   padding: 0 16px;
   background: var(--md-sys-color-surface-container);

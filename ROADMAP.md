@@ -1240,6 +1240,13 @@ only in a report is a finding that gets rediscovered.
         it, and it is capped at 200.)
       The confirmed ones are tracked as their own items above and below.
       **The standing lesson: an unrefuted finding is a lead, not a fact.**
+- [ ] **A second flake, in the desktop suite.** A range-request assertion
+      (`expected [] to deeply equal [ StringMatching /^bytes=\d+-$/ ]`) failed
+      on a **documentation-and-image-only commit**, which cannot have caused
+      it. Same signature as the connectors flake: a red gate on a tree that
+      changed no code. Two intermittent tests is the point at which people
+      start re-running rather than reading, so this needs the same treatment —
+      find the non-determinism, do not raise a timeout.
 - [ ] **`App.connectors.test.tsx` is flaky, and that matters more now.**
       "keeps telemetry and content sharing enabled when the first-run banner
       share choice is clicked" failed on a **documentation-only commit** and

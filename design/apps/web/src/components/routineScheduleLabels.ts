@@ -1,8 +1,9 @@
 import type { RoutineSchedule } from '@open-design/contracts';
 
+import { tv, type TranslationVars } from '../i18n';
 import type { Dict } from '../i18n/types';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 export type RoutineScheduleSummaryParts =
   | { kind: 'hourly'; kindLabel: string; minute: string }
@@ -108,7 +109,9 @@ export function describeRoutineSchedule(
     return t('routines.describe.weekdays', { time, tz });
   }
   return t('routines.describe.weekly', {
-    day: t(`routines.weekday.long.${schedule.weekday}` as keyof Dict),
+    // The weekday name is copy, so the bilingual sentence reads its own
+    // language's name in each half rather than repeating both.
+    day: tv(`routines.weekday.long.${schedule.weekday}` as keyof Dict),
     time,
     tz,
   });

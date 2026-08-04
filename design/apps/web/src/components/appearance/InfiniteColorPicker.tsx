@@ -33,7 +33,7 @@ import {
 } from 'react';
 
 import { Icon } from '../Icon';
-import { useT } from '../../i18n';
+import { tv, useT } from '../../i18n';
 import { copyToClipboard } from '../../lib/copy-to-clipboard';
 import {
   clamp,
@@ -490,7 +490,7 @@ export function InfiniteColorPicker({
             ratio: formatRatio(contrast.ratio),
             rating:
               contrast.normalText === 'fail'
-                ? t('appearance.color.ratingFail')
+                ? tv('appearance.color.ratingFail')
                 : contrast.normalText,
           })}
           {contrast.composited ? ` · ${t('appearance.color.compositedNote')}` : ''}

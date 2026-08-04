@@ -8,8 +8,9 @@ import type { WorkspaceContextItem } from '@open-design/contracts';
 import type { TabLauncherClickProps } from '@open-design/contracts/analytics';
 import type { LauncherAction, LauncherContext } from './tab-launcher';
 import styles from './TabLauncherMenu.module.css';
+import type { TranslationVars } from '../../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 // Page/area/project_id are filled by the host (FileWorkspace); the menu only
 // supplies the event-specific fields.

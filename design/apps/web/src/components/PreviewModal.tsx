@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useT } from '../i18n';
+import { tv, useT } from '../i18n';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import {
   exportAsHtml,
@@ -1053,8 +1053,13 @@ export function PreviewModal({
             ) : activeHtml === null || activeHtml === undefined ? (
               <div className="ds-modal-empty">
                 {t('preview.loading', {
+                  // The lower-casing rides along with the key so it is applied
+                  // to each language's own word. Applied to a `t()` result it
+                  // would have hit an already-composed bilingual string, and
+                  // the fallback would then have been said twice.
                   label:
-                    activeView?.label.toLowerCase() ?? t('common.preview').toLowerCase(),
+                    activeView?.label.toLowerCase() ??
+                    tv('common.preview', undefined, (value) => value.toLowerCase()),
                 })}
               </div>
             ) : (

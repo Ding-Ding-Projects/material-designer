@@ -22,8 +22,9 @@ import type { IconName } from '../Icon';
 import type { Dict } from '../../i18n/types';
 import { LIBRARY_UI_VISIBLE } from '../../features/libraryUi';
 import { SETTINGS_INDEX, type SettingsIndexEntry } from './settingsIndex';
+import type { TranslationVars } from '../../i18n';
 
-export type PaletteTranslate = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+export type PaletteTranslate = (key: keyof Dict, vars?: TranslationVars) => string;
 
 /**
  * Scopes. `all` is the default; the rest are reachable from the scope chips and

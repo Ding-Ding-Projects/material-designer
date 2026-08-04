@@ -1,7 +1,8 @@
 import type { Dict } from '../i18n/types';
 import type { DesignSystemSummary } from '../types';
+import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 export interface DesignSystemGithubEvidence {
   /** The design system references at least one GitHub repo in its provenance. */

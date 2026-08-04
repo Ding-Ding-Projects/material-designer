@@ -13,8 +13,9 @@
 import type { Dict } from '../../i18n/types';
 import type { BulkItem, BulkPlan } from './plan';
 import { bulkRunVerdict, type BulkRunResult } from './run';
+import type { TranslationVars } from '../../i18n';
 
-type Translate = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type Translate = (key: keyof Dict, vars?: TranslationVars) => string;
 
 export interface BulkOutcomeMessage {
   readonly message: string;

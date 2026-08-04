@@ -54,8 +54,9 @@ import {
 } from './shortcuts/useShortcuts';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import { Toast } from './Toast';
+import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
 /**
  * What a batch delete actually did, reported back to the panel.

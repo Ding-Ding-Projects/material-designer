@@ -30,9 +30,10 @@ import {
   LANGUAGE_MODES,
   LOCALES,
   LOCALE_LABEL,
+  tv,
   useI18n,
 } from '../../i18n';
-import type { FunnyLanguage, FunnyLevel, LanguageMode, Locale } from '../../i18n';
+import type { FunnyLanguage, FunnyLevel, LanguageMode, Locale, TranslationVars } from '../../i18n';
 import type { Dict } from '../../i18n/types';
 import { navigate, type Route } from '../../router';
 import {
@@ -600,7 +601,7 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
 interface SettingRowControlProps {
   control: SettingsControlId;
   tabIndex: number;
-  t: (key: keyof Dict, vars?: Record<string, string | number>) => string;
+  t: (key: keyof Dict, vars?: TranslationVars) => string;
   locale: Locale;
   setLocale: (next: Locale) => void;
   languageMode: LanguageMode;
@@ -831,11 +832,13 @@ function FunnyLevelSlider({
   level: FunnyLevel;
   setFunnyLevel: (language: FunnyLanguage, level: FunnyLevel) => void;
   tabIndex: number;
-  t: (key: keyof Dict, vars?: Record<string, string | number>) => string;
+  t: (key: keyof Dict, vars?: TranslationVars) => string;
 }) {
   const valueText = t('settings.funnyLevelValue', {
+    // The level's name is copy, so each language of the readout reads its
+    // own name for the level rather than repeating the pair.
     level,
-    name: t(FUNNY_LEVEL_LABEL_KEYS[level]),
+    name: tv(FUNNY_LEVEL_LABEL_KEYS[level]),
   });
   return (
     <span className={styles.slider}>

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useT } from '../i18n';
+import { tv, useT } from '../i18n';
 import { conversationMetaLabel } from './ChatPane';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import type { Conversation } from '../types';
@@ -111,7 +111,9 @@ export function ConversationsMenu({
           target={deleteTarget.title || t('conv.untitled')}
           items={[
             t('conv.deleteGateItem', {
-              title: deleteTarget.title || t('conv.untitled'),
+              // Copy travels as a key so each language of the gate line gets
+              // its own reading of it; a real title is the user's own text.
+              title: deleteTarget.title || tv('conv.untitled'),
             }),
           ]}
           irreversible

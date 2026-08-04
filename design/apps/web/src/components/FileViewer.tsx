@@ -52,7 +52,7 @@ import {
   measureEditorBlockOffsets,
   measurePreviewBlockOffsets,
 } from './markdown-scroll-sync';
-import { useT, useI18n } from '../i18n';
+import { tv, useT, useI18n, type TranslationVars } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
 import {
   fetchLiveArtifact,
@@ -231,7 +231,7 @@ function resolveChromeActionsHost(): HTMLElement | null {
     ?? document.getElementById(APP_CHROME_FILE_ACTIONS_ID);
 }
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 type SlideState = { active: number; count: number };
 type BoardTool = 'inspect' | 'pod';
 type StrokePoint = { x: number; y: number };
@@ -1909,7 +1909,7 @@ export function LiveArtifactViewer({
         ) : currentRefreshStatus === 'failed' ? (
           <LiveArtifactRefreshNotice
             tone="error"
-            message={t('liveArtifact.refresh.previousFailure', { message: t('liveArtifact.refresh.genericFailure') })}
+            message={t('liveArtifact.refresh.previousFailure', { message: tv('liveArtifact.refresh.genericFailure') })}
             action={t('liveArtifact.refresh.failureAction')}
           />
         ) : null}
@@ -10799,7 +10799,7 @@ function HtmlViewer({
         }
         if (!nextConfig?.configured) {
           const option = getDeployProviderOption(deployProviderId);
-          throw new Error(t(option.tokenRequiredKey, { provider: t(option.labelKey) }));
+          throw new Error(t(option.tokenRequiredKey, { provider: tv(option.labelKey) }));
         }
       }
       setDeployPhase('preparing-link');
@@ -10832,9 +10832,12 @@ function HtmlViewer({
       const option = getDeployProviderOption(deployProviderId);
       const message = err instanceof Error
         ? err.message
-        : t('fileViewer.deployProviderFailed', { provider: t(option.labelKey) });
+        : t('fileViewer.deployProviderFailed', { provider: tv(option.labelKey) });
+      // Both sides of this comparison are built the same way, so the
+      // provider name has to be a key on both — a raw `t()` on one side
+      // would render bilingually and never match the thrown message.
       const tokenRequired =
-        message === t(option.tokenRequiredKey, { provider: t(option.labelKey) });
+        message === t(option.tokenRequiredKey, { provider: tv(option.labelKey) });
       if (tokenRequired) {
         setDeployActionToast(message);
         deployTokenInputRef.current?.focus();
