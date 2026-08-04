@@ -116,7 +116,9 @@ pass.
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/ChatComposer.search.test.tsx`
 - `apps/web/tests/components/EntryShell.onboarding.test.tsx`
+- `apps/web/tests/components/preview-modal-unavailable-state.test.tsx`
 - `apps/web/tests/components/SettingsDialog.execution.test.tsx`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 - `apps/web/tests/components/UpdaterPopup.test.tsx`
