@@ -5,10 +5,21 @@ an input the user did not intend: two independently operated keys, then a
 full-range slider, with an always-available emergency exit.
 
 > [!WARNING]
-> **Status: not started, and not designed.** This is the largest undesigned gap
-> in the whole standards set. Every other unmet standard has at least a
-> specification to build from; this one has to be designed before it can be built
-> — and it guards the actions where getting it wrong destroys the user's work.
+> **Status: built and mounted, and it does not yet cover the ground it appears
+> to.** The gate exists — `apps/web/src/components/destructive/` carries the
+> two-key-plus-slider machine, its dialog, and an emergency exit — and it is
+> rendered from the designs tab and the privacy section. What is unfinished is
+> **routing**: irreversible actions elsewhere in the product still fire without
+> it, including whole-project delete via the design-system workspace tab,
+> memory entries, extraction records, library assets, and the `od` CLI's own
+> delete subcommands, which reach the daemon route around the web layer
+> entirely.
+>
+> That is the more dangerous state of the two this document has described. An
+> absent gate is honestly absent; a gate that guards two doors of a dozen reads
+> as protection the product does not have. This section said "not started, and
+> not designed" for some time after the gate shipped, which is how a reviewer
+> comes to believe a defended surface is undefended and vice versa.
 
 ## The requirement
 
@@ -120,16 +131,19 @@ exist.
 
 ## Current implementation status
 
+Read this table as of 2026-08-04. "Built" means the code exists and a surface
+mounts it; it does not mean anyone has operated it, because nobody has.
+
 | Requirement | Status |
 | --- | --- |
-| The gate itself | **Not started, and not designed.** |
-| Exact action and affected data named | **Not designed.** |
-| Two independent key controls | **Not designed.** |
-| Full-range slider gated on both keys | **Not designed.** |
-| Progress and completion animations | **Not designed.** |
-| Emergency exit and platform cancellation path | **Not designed.** |
-| Focus return to the originating control | **Not designed.** |
-| Enforcement at the operation rather than the button | **Not designed.** |
+| The gate itself | **Built and mounted.** `destructive/DestructiveGate.tsx` with its state machine in `gateMachine.ts`; rendered from the designs tab and the privacy section. |
+| Exact action and affected data named | **Built.** The gate names the target rather than asking whether the user is sure. |
+| Two independent key controls | **Built.** Both must be engaged before the slider unlocks. |
+| Full-range slider gated on both keys | **Built**, and an audit found the range satisfiable in a single gesture — a click at the far end or one `End` press. Tracked in `ROADMAP.md` § 4.0. |
+| Progress and completion animations | **Built.** |
+| Emergency exit and platform cancellation path | **Built.** An audit found Escape and the exit reporting `cancelled` for an action that had already begun. Tracked in § 4.0. |
+| Focus return to the originating control | **Partly.** The shared `Dialog` primitive now traps focus and restores it on close; the gate's own paths were found not to restore on every route. Tracked in § 4.0. |
+| Enforcement at the operation rather than the button | **Not met, and this is the important row.** The gate is enforced in the interface. The daemon's `DELETE` routes accept the operation from any caller, so the `od` CLI deletes projects, files, brands, templates and automations with no gate at all. |
 | Destructive actions that will need it | **Present in the mockup** — a delete in the bulk-selection bar and a delete in the item context menu, the latter styled in the error colour. Both are plain actions with no gate. |
 
 The mockup draws the destructive actions and none of the protection. That is the
@@ -193,8 +207,10 @@ Two things vary, and neither is a switch:
 
 ## Verification
 
-**Nothing to verify yet.** The gate does not exist, and unlike the rest of the
-standards set, no design specifies it.
+**The gate exists; none of the list below has been observed passing.** Its unit
+suite covers the state machine, and no capture, keyboard walk-through or
+assistive-technology check has been performed on the rendered gate. Treat every
+unticked box as genuinely unknown rather than merely unrecorded.
 
 Conformance requires all of, **for every destructive action in the product**:
 

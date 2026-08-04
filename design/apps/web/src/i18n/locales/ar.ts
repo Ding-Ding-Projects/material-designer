@@ -4651,6 +4651,7 @@ export const ar: Dict = {
   'appearance.preset.lime': 'ليموني',
   'appearance.preset.compact': 'مضغوط',
   'appearance.preset.readable': 'سهل القراءة',
+  'appearance.presets': 'الإعدادات الجاهزة',
 
   // الراوي المنطوق الاختياري.
   'narrator.title': 'الراوي المنطوق',

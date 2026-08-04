@@ -4651,6 +4651,7 @@ export const de: Dict = {
   'appearance.preset.lime': 'Limette',
   'appearance.preset.compact': 'Kompakt',
   'appearance.preset.readable': 'Gut lesbar',
+  'appearance.presets': 'Voreinstellungen',
 
   // Der optionale gesprochene Erzähler.
   'narrator.title': 'Gesprochener Erzähler',

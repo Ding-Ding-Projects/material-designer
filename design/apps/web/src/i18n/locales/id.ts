@@ -4651,6 +4651,7 @@ export const id: Dict = {
   'appearance.preset.lime': 'Hijau limau',
   'appearance.preset.compact': 'Padat',
   'appearance.preset.readable': 'Mudah dibaca',
+  'appearance.presets': 'Prasetel',
 
   // Narator suara opsional.
   'narrator.title': 'Narator suara',

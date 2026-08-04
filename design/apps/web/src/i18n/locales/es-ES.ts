@@ -4651,6 +4651,7 @@ export const esES: Dict = {
   'appearance.preset.lime': 'Lima',
   'appearance.preset.compact': 'Compacto',
   'appearance.preset.readable': 'Legible',
+  'appearance.presets': 'Preajustes',
 
   // El narrador hablado opcional.
   'narrator.title': 'Narrador hablado',

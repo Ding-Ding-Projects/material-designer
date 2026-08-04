@@ -5116,6 +5116,7 @@ export const zhTW: Dict = {
   "appearance.preset.lime": "青檸",
   "appearance.preset.compact": "緊湊",
   "appearance.preset.readable": "易讀",
+  "appearance.presets": "預設樣式",
 
   // 可選的語音旁白。
   "narrator.title": "語音旁白",

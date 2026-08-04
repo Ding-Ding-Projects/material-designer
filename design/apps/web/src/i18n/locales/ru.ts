@@ -4651,6 +4651,7 @@ export const ru: Dict = {
   'appearance.preset.lime': 'Лаймовый',
   'appearance.preset.compact': 'Компактный',
   'appearance.preset.readable': 'Читаемый',
+  'appearance.presets': 'Пресеты',
 
   // Необязательный голосовой диктор.
   'narrator.title': 'Голосовой диктор',

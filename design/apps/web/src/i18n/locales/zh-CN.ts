@@ -5108,6 +5108,7 @@ export const zhCN: Dict = {
   "appearance.preset.lime": "青柠",
   "appearance.preset.compact": "紧凑",
   "appearance.preset.readable": "易读",
+  "appearance.presets": "预设",
 
   // 可选的语音旁白。
   "narrator.title": "语音旁白",

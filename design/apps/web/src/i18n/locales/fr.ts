@@ -4651,6 +4651,7 @@ export const fr: Dict = {
   'appearance.preset.lime': 'Citron vert',
   'appearance.preset.compact': 'Compact',
   'appearance.preset.readable': 'Lisible',
+  'appearance.presets': 'Préréglages',
 
   // Le narrateur vocal facultatif.
   'narrator.title': 'Narrateur vocal',

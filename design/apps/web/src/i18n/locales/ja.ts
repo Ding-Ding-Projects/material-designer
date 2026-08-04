@@ -4651,6 +4651,7 @@ export const ja: Dict = {
   'appearance.preset.lime': 'ライム',
   'appearance.preset.compact': 'コンパクト',
   'appearance.preset.readable': '読みやすい',
+  'appearance.presets': 'プリセット',
 
   // 任意で使える音声ナレーター。
   'narrator.title': '音声ナレーター',

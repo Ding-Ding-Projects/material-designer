@@ -29,6 +29,7 @@ import { MemoryToast } from './components/MemoryToast';
 import { UpdateDialog } from './components/UpdateDialog';
 import { Toast } from './components/Toast';
 import { DimSumSurprise } from './components/DimSumSurprise';
+import { AppearanceRuntime } from './components/appearance/AppearanceRuntime';
 import { NotificationHost } from './components/notifications/NotificationHost';
 import { notify } from './components/notifications/notificationStore';
 import { ChangelogDialog } from './components/changelog/ChangelogDialog';
@@ -2813,6 +2814,13 @@ function AppInner() {
           never takes focus. The centre that reviews the same records lives in
           the chrome header (`WorkspaceTabsBar`). */}
       <NotificationHost />
+      {/* Renders nothing. It applies the persisted seed, density, UI scale and
+          typography to the document in a layout effect, and it belongs here
+          rather than inside the settings dialog: mounted there, the
+          preferences only took effect while that dialog was open, so a chosen
+          preset silently reverted on the next reload. Mounted once by App,
+          they apply at boot with no flash of the previous appearance. */}
+      <AppearanceRuntime />
       {/* One launch in ten shows a dish. It is deliberately the last thing
           allowed to speak: the daemon config has to have hydrated (so a first
           run is knowable rather than assumed), onboarding and the privacy

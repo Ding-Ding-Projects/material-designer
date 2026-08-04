@@ -4651,6 +4651,7 @@ export const th: Dict = {
   'appearance.preset.lime': 'เขียวมะนาว',
   'appearance.preset.compact': 'กระชับ',
   'appearance.preset.readable': 'อ่านง่าย',
+  'appearance.presets': 'ค่าที่ตั้งไว้ล่วงหน้า',
 
   // ผู้บรรยายเสียงที่จะเปิดใช้หรือไม่ก็ได้
   'narrator.title': 'ผู้บรรยายเสียง',

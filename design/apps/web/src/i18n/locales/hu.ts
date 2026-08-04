@@ -4651,6 +4651,7 @@ export const hu: Dict = {
   'appearance.preset.lime': 'Lime',
   'appearance.preset.compact': 'Kompakt',
   'appearance.preset.readable': 'Jól olvasható',
+  'appearance.presets': 'Előbeállítások',
 
   // A választható beszélő narrátor.
   'narrator.title': 'Beszélő narrátor',

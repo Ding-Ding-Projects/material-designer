@@ -4837,13 +4837,15 @@ export interface Dict {
   'appearance.color.lossUnmanaged': string;
 
   // Names of the built-in appearance presets. Reached through `BuiltInPreset.
-  // nameKey` rather than a literal `t()` call.
+  // nameKey` rather than a literal `t()` call. `appearance.presets` is the
+  // group itself — the one key in this block a component names directly.
   'appearance.preset.sunset': string;
   'appearance.preset.violet': string;
   'appearance.preset.teal': string;
   'appearance.preset.lime': string;
   'appearance.preset.compact': string;
   'appearance.preset.readable': string;
+  'appearance.presets': string;
 
   // The optional spoken narrator: its settings panel, the three language
   // choices (reached through `LANGUAGE_LABEL`), and the line the "speak a

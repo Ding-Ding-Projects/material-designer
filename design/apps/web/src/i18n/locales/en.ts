@@ -4665,6 +4665,7 @@ export const en: Dict = {
   'appearance.preset.lime': 'Lime',
   'appearance.preset.compact': 'Compact',
   'appearance.preset.readable': 'Readable',
+  'appearance.presets': 'Presets',
 
   // The optional spoken narrator.
   'narrator.title': 'Spoken narrator',

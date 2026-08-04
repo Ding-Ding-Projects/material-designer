@@ -201,7 +201,14 @@ import {
   applyAppearanceToDocument,
   normalizeAccentColor,
   resolveAccentColor,
+  type AppearanceTypography,
 } from '../state/appearance';
+import { AppearanceRuntime } from './appearance/AppearanceRuntime';
+import { InfiniteColorPicker } from './appearance/InfiniteColorPicker';
+import { formatHex, parseColor, type Rgb, type Rgba } from './appearance/color';
+import { CSS_COLOR_NAMES } from './appearance/colorNames';
+import { BUILT_IN_PRESETS } from './appearance/presets';
+import { useAppearancePreferences } from './appearance/store';
 import { isAutosaveDraftOnlyChange } from '../App';
 import {
   FAILURE_SOUNDS,
@@ -8779,6 +8786,62 @@ const THEMES: Array<{ value: AppTheme; labelKey: 'settings.themeSystem' | 'setti
   { value: 'dark', labelKey: 'settings.themeDark', icon: 'moon' },
 ];
 
+/**
+ * What the picker's contrast readout measures the accent against.
+ *
+ * Read from the live token rather than written as a literal, so the ratio
+ * follows whatever theme and seed are actually on the document instead of
+ * describing whichever one happened to be current when this was written.
+ * The fallback is the light `surface-container-low` the token sheet
+ * declares, used only where there is no computed style to ask — a server
+ * render, or a test environment that does not resolve custom properties.
+ */
+const FALLBACK_PANEL_BACKGROUND: Rgb = { r: 0xff, g: 0xf1, b: 0xec };
+
+function readPanelBackground(): Rgb {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return FALLBACK_PANEL_BACKGROUND;
+  }
+  const raw = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue('--md-sys-color-surface-container-low')
+    .trim();
+  const parsed = raw ? parseColor(raw, CSS_COLOR_NAMES) : null;
+  return parsed ? { r: parsed.rgba.r, g: parsed.rgba.g, b: parsed.rgba.b } : FALLBACK_PANEL_BACKGROUND;
+}
+
+/**
+ * The accent as the picker wants it.
+ *
+ * The stored accent is either a hex or the M3 `primary` role, and a role is
+ * not a colour anything can put a thumb on, so the role resolves to the
+ * concrete terracotta the product used before the default became a role —
+ * exactly what the old `<input type="color">` opened on. Alpha is always 1
+ * because the accent is stored as a six-digit hex.
+ */
+function accentToRgba(accent: string): Rgba {
+  const parsed = parseColor(
+    normalizeAccentColor(accent) ?? CUSTOM_ACCENT_FALLBACK,
+    CSS_COLOR_NAMES,
+  );
+  return parsed ? parsed.rgba : { r: 0xc9, g: 0x64, b: 0x42, a: 1 };
+}
+
+/** Field-by-field rather than a stringify, so key order cannot decide it. */
+function sameTypography(a: AppearanceTypography, b: AppearanceTypography): boolean {
+  return (
+    a.fontStackId === b.fontStackId &&
+    a.fontSizePx === b.fontSizePx &&
+    a.fontWeight === b.fontWeight &&
+    a.lineHeight === b.lineHeight &&
+    a.letterSpacingEm === b.letterSpacingEm &&
+    a.opticalSize === b.opticalSize &&
+    a.grade === b.grade &&
+    a.smallCaps === b.smallCaps &&
+    a.glow === b.glow
+  );
+}
+
 function AppearanceSection({
   cfg,
   setCfg,
@@ -8793,15 +8856,36 @@ function AppearanceSection({
   const accentLabel = t('pet.fieldAccent');
   const defaultAccentLabel = t('pet.fieldAccentDefault');
   const customAccentLabel = t('pet.fieldAccentCustom');
+  const presetsLabel = t('appearance.presets');
+  const { preferences, setPreferences } = useAppearancePreferences();
+  const [pickerBackground, setPickerBackground] = useState<Rgb>(FALLBACK_PANEL_BACKGROUND);
 
   // Apply the draft theme immediately so the user sees a live preview
   // before hitting Save. SettingsDialog's cleanup reverts this on cancel.
+  //
+  // The panel colour is re-read in the same effect, after the write, so the
+  // picker's contrast ratio describes the surface the accent is actually
+  // about to sit on rather than the one it sat on before the theme flipped.
   useLayoutEffect(() => {
     applyAppearanceToDocument({
       theme: current,
       accentColor: currentAccent,
     });
+    setPickerBackground(readPanelBackground());
   }, [current, currentAccent]);
+
+  const accentRgba = useMemo(() => accentToRgba(currentAccent), [currentAccent]);
+
+  const activePresetId =
+    BUILT_IN_PRESETS.find(
+      (preset) =>
+        preset.theme === current &&
+        preset.accentColor === currentAccent &&
+        preset.preferences.seed === preferences.seed &&
+        preset.preferences.density === preferences.density &&
+        preset.preferences.uiScale === preferences.uiScale &&
+        sameTypography(preset.preferences.typography, preferences.typography),
+    )?.id ?? null;
 
   const setAccentColor = (color: string) => {
     // The default swatch is the M3 `primary` role, not a hex, so it never
@@ -8813,6 +8897,10 @@ function AppearanceSection({
 
   return (
     <section className="settings-section">
+      {/* Renders nothing. It applies the persisted seed, density, UI scale
+          and typography to the document, so a preset picked below is real
+          on screen for as long as this editor is open. */}
+      <AppearanceRuntime />
       <div className="seg-control" role="group" aria-label={t('settings.appearance')} data-od-setting="appearance.theme" style={{ '--seg-cols': THEMES.length } as React.CSSProperties}>
         {THEMES.map(({ value, labelKey, icon }) => (
           <button
@@ -8865,16 +8953,52 @@ function AppearanceSection({
               />
             );
           })}
-          <input
-            type="color"
-            aria-label={customAccentLabel}
-            className="pet-swatch-picker"
-            // A color input can only hold a hex, so while the accent is the
-            // default (the `primary` role) it opens on the concrete colour
-            // that role started from rather than being coerced to black.
-            value={normalizeAccentColor(currentAccent) ?? CUSTOM_ACCENT_FALLBACK}
-            onChange={(e) => setAccentColor(e.target.value)}
-          />
+        </div>
+        {/* The swatches above are shortcuts; this is the whole of sRGB.
+            It replaces the old `<input type="color">`, which reached the
+            same space through the operating system's picker but could not
+            show what a colour costs — no typed entry in another notation,
+            no translation table, and no contrast ratio against the surface
+            the accent is about to be drawn on. */}
+        <InfiniteColorPicker
+          value={accentRgba}
+          onChange={(next) => setAccentColor(formatHex(next))}
+          label={customAccentLabel}
+          background={pickerBackground}
+          // The accent is stored as a six-digit hex, so an alpha the user
+          // drags in would be dropped on save. The axis stays live and the
+          // picker says so rather than pretending the control is absent.
+          alphaWillBeDropped
+        />
+      </div>
+      <div className="field">
+        <span className="field-label">{presetsLabel}</span>
+        <div
+          role="group"
+          aria-label={presetsLabel}
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+        >
+          {BUILT_IN_PRESETS.map((preset) => (
+            <Button
+              key={preset.id}
+              variant={activePresetId === preset.id ? 'subtle' : 'ghost'}
+              aria-pressed={activePresetId === preset.id}
+              onClick={() => {
+                // A preset is one complete look, so it writes through both
+                // halves: theme and accent live in AppConfig, everything
+                // else in the appearance store, which persists and applies
+                // in the same call.
+                setCfg((c) => ({
+                  ...c,
+                  theme: preset.theme,
+                  accentColor: preset.accentColor,
+                }));
+                setPreferences(preset.preferences);
+              }}
+            >
+              {t(preset.nameKey)}
+            </Button>
+          ))}
         </div>
       </div>
     </section>

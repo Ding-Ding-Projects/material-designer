@@ -4651,6 +4651,7 @@ export const pl: Dict = {
   'appearance.preset.lime': 'Limonka',
   'appearance.preset.compact': 'Kompaktowy',
   'appearance.preset.readable': 'Czytelny',
+  'appearance.presets': 'Ustawienia wstępne',
 
   // Opcjonalny lektor głosowy.
   'narrator.title': 'Lektor głosowy',

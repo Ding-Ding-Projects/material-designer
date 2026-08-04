@@ -4651,6 +4651,7 @@ export const ko: Dict = {
   'appearance.preset.lime': '라임',
   'appearance.preset.compact': '조밀하게',
   'appearance.preset.readable': '읽기 쉽게',
+  'appearance.presets': '프리셋',
 
   // 선택 사항인 음성 내레이터.
   'narrator.title': '음성 내레이터',

@@ -4646,6 +4646,7 @@ export const fa: Dict = {
   'appearance.preset.lime': 'لیمویی',
   'appearance.preset.compact': 'فشرده',
   'appearance.preset.readable': 'خوانا',
+  'appearance.presets': 'پیش‌تنظیم‌ها',
 
   // گویندهٔ صوتی اختیاری.
   'narrator.title': 'گویندهٔ صوتی',

@@ -1109,12 +1109,33 @@ only in a report is a finding that gets rediscovered.
         leftmost when a tab is dropped on its left edge.
       - `tests/components/regex/evaluate.test.ts` — zero-width matches must
         paint nothing.
-- [ ] **Re-run the 29 unverified findings.** They are real claims that simply
-      never got their refutation pass — including that the colour translator
-      implements none of CIELAB/LCH/OKLab/OKLCH, that `parseColor` walks the
-      prototype chain on input like `constructor`, and that the contrast
-      readout rounds across the WCAG boundary. Verify before acting: an
-      unrefuted finding is a lead, not a fact.
+- [x] **Re-run the unverified findings.** Done on 2026-08-04 by a read-only
+      refutation pass. Of the 15 substantive claims settled: **7 confirmed, 4
+      refuted, 3 already fixed, 1 informational.** Refuting four of them was
+      worth as much as confirming the rest — each looked entirely plausible:
+      - *Refuted:* the contrast readout does **not** round across the WCAG
+        boundary. It rounds to nearest for display but computes the pass/fail
+        verdict from the **unrounded** ratio, and its relative-luminance
+        formula is correct sRGB. The finder confused the displayed string with
+        the verdict.
+      - *Refuted:* the colour sliders' off-grid `step` values cause a thumb
+        offset of ≤0.07% of the track, not drift or a stuck control — a
+        programmatic value set fires no `change` event, so no feedback loop
+        exists.
+      - *Refuted:* typing `100` into a 0–255 channel field is never clamped
+        mid-keystroke; every intermediate (`1`, `10`, `100`) is already in
+        range.
+      - *Refuted:* the notification centre **does** retain dismissed records —
+        dismissing clears `live` and never removes. (Two real caveats it
+        raised in passing: the history is in-memory only, so a reload loses
+        it, and it is capped at 200.)
+      The confirmed ones are tracked as their own items above and below.
+      **The standing lesson: an unrefuted finding is a lead, not a fact.**
+- [ ] **Give the colour module a test file.** Five of the seven confirmed
+      findings live in `components/appearance/` — `color.ts`, `translate.ts`,
+      `contrast.ts`, `colorNames.ts`, `InfiniteColorPicker.tsx` — and the whole
+      module has **no test anywhere** under `apps/web/tests/`. Those two facts
+      are the same fact.
 
 - [ ] **4.13 Remaining Cantonese waves.** The dictionary keys not reached in
       Phase 3, tracked wave by wave alongside the component waves.

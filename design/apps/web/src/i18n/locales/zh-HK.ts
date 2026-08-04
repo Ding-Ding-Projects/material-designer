@@ -1063,6 +1063,7 @@ export const zhHK: Dict = {
   "appearance.preset.lime": "青檸",
   "appearance.preset.compact": "緊湊",
   "appearance.preset.readable": "易睇",
+  "appearance.presets": "預設款",
 
   // 想要先有嘅語音旁白。
   "narrator.title": "語音旁白",

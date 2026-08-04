@@ -4651,6 +4651,7 @@ export const tr: Dict = {
   'appearance.preset.lime': 'Misket limonu',
   'appearance.preset.compact': 'Sıkışık',
   'appearance.preset.readable': 'Kolay okunur',
+  'appearance.presets': 'Hazır ayarlar',
 
   // İsteğe bağlı sesli anlatıcı.
   'narrator.title': 'Sesli anlatıcı',

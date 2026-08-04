@@ -29,6 +29,151 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Add the four colour spaces the translator never had, and stop it overstating losslessness
+
+**Reason:** the appearance standard requires bidirectional conversion across
+named, hex and hex-with-alpha, RGB/RGBA, HSL/HSLA, HSV/HSB, HWB, **CIELAB and
+LCH, OKLab and OKLCH**, and CMYK. Four of those were absent outright: the
+translator offered ten representations, none of them from the Lab family, and
+typing `oklch(…)` into the entry field was rejected as invalid.
+
+The perceptual stack is now real: the sRGB transfer function, linear sRGB ↔ CIE
+XYZ, Bradford chromatic adaptation, CIELAB and LCH, and OKLab and OKLCH with
+Ottosson's matrices. `lab()` and `lch()` are computed against **D50** and
+`oklab()`/`oklch()` against D65, because CSS Color 4 defines them that way —
+emitting D65 numbers inside a `lab()` string produces a well-formed value that
+a browser renders as a *different colour*, which is exactly the silent
+surprise this module's loss machinery exists to prevent.
+
+The arithmetic is checked against published reference values rather than
+against itself; that cross-check caught a wrong digit in the Bradford D50→D65
+matrix, which had been pushing D50 white to Z = 1.0579 instead of 1.08883.
+
+Two honesty fixes came with it. The **Name** row hard-coded its loss and so
+reported a clean round trip while the HEX row it is derived from reported
+rounding for the very same colour. And **alpha was exempt from every
+round-trip check**, so HEX8, RGBA, HSLA and HWB claimed a losslessness that
+had never been tested — alpha `0.5` survives a hex byte as `0.50196`, which is
+a real loss the panel was silent about.
+
+Also fixed here: `parseColor` indexed the named-colour map without an
+ownership check. The map is a plain object literal, so typing `constructor`,
+`toString` or `__proto__` into the colour field returned an inherited
+function, which is truthy, which reached the hex parser and threw
+`text.trim is not a function` out of a React change handler — breaking the
+function's own documented promise never to throw. The field parses on every
+keystroke, so a paste was enough.
+
+The module had **no test file at all** before this, which is the same fact as
+it having held five of the seven confirmed audit findings.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/color.ts`
+- `apps/web/src/components/appearance/translate.ts`
+- `apps/web/tests/components/appearance/color.test.ts`
+- `apps/web/tests/components/appearance/translate.test.ts`
+
+### 2026-08-04 — Close the confirmation gate's five defects, and gate the CLI it was reaching around
+
+**Reason:** an adversarial audit confirmed the gate could be defeated, and a
+verification pass then confirmed the `od` CLI bypassed it entirely.
+
+**The gate's own defects.** Armed keys survived a target swap, so keys operated
+for one action stayed engaged when the gate was re-pointed at the next; the
+surface is now keyed on the action's identity, so a new target mounts fresh
+while an equal-but-new items array does not reset it. The "full-range" slider
+was satisfiable in a single gesture — one far-end click or one `End` press —
+and now rations forward travel to a fifth of the range per input event, so
+reaching the end costs at least five deliberate advances however it is driven.
+Retreat stays unrationed, because abandoning the travel must never be work, and
+the keyboard path stays fully operable: arrows still step, `End` still works
+and is simply pressed again. Dismissing mid-flight discarded the action's
+failure, which is now raised as a notification rather than dropped. Escape and
+the emergency exit reported `cancelled` for an action that had already begun,
+which was a false statement about the user's data; the outcome union gained
+`dismissed` to say the true thing. Focus now returns to the originating control
+before `onClose` on every path, guarded so it never yanks focus from somewhere
+the host deliberately moved it.
+
+**The CLI.** `od project|files|brand|templates|automation delete` executed
+irreversible deletions with no confirmation of any kind, while the web
+interface gated the same operations behind the two-key slider — so the CLI
+reached the daemon route around the gate. All five now refuse without
+`--confirm`, mirroring the `od plugin events purge` precedent already in the
+file: same flag name, same exit code, same refusal shape. The refusal names
+what would be deleted and prints the exact command that would proceed, emits
+the CLI's standard JSON error envelope under `--json`, and fires before the
+request, so a refused delete makes no HTTP call at all.
+
+This is enforcement in two interfaces rather than at the operation, which the
+standard asks for and this does not yet achieve — the daemon route still
+accepts the call from any caller. Recorded in
+`docs/standards/super-confirmation.md` rather than implied to be finished.
+
+**Changed files:**
+
+- `apps/web/src/components/destructive/DestructiveGate.tsx`
+- `apps/web/src/components/destructive/gateMachine.ts`
+- `apps/web/tests/components/destructive/gateMachine.test.ts`
+- `apps/web/tests/components/destructive/DestructiveGate.test.tsx`
+- `apps/web/tests/components/DesignsTab.select-mode.test.tsx`
+- `apps/daemon/src/cli.ts`
+- `apps/daemon/src/cli-help/brands-cli-help.ts`
+- `apps/daemon/tests/cli-delete-confirmation.test.ts`
+- `apps/daemon/tests/cli-templates.test.ts`
+
+### 2026-08-04 — Make the appearance editor and its infinite colour picker reachable
+
+**Reason:** both were written, typechecking, shipping in the bundle, and
+mounted by nothing — an audit found zero importers for either. A module no
+surface mounts is not a shipped feature, whatever its files contain.
+
+`InfiniteColorPicker` is now the accent control in the settings dialog's
+appearance section: a continuous two-dimensional field with hue, saturation,
+brightness and alpha axes, typed entry, numeric channel entry, the colour-space
+translation table with copy, and a contrast readout. The nine fixed swatches
+stay exactly as they were — the standard wants swatches layered on a continuous
+picker, never replacing one. The `<input type="color">` that reached the same
+space through the operating system's own picker is gone, superseded.
+
+`AppearanceRuntime` is mounted in `App.tsx` rather than inside the dialog. It
+renders nothing and applies the persisted seed, density, scale and typography
+in a layout effect; mounted in the dialog it would only take effect while that
+dialog was open, so a chosen preset silently reverted on the next reload. It
+also drives a presets row wired to the built-in presets, a third module that
+had no consumer.
+
+One new key, `appearance.presets`, added to the `Dict` and all twenty locales.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/appearance/color.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/AppearanceEditor.test.tsx`
+
 ### 2026-08-04 — Green the five web suites that had never been run, and make the suite a gate
 
 **Reason:** wiring the web suite into continuous integration made it run for

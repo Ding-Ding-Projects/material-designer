@@ -4651,6 +4651,7 @@ export const ptBR: Dict = {
   'appearance.preset.lime': 'Limão',
   'appearance.preset.compact': 'Compacto',
   'appearance.preset.readable': 'Legível',
+  'appearance.presets': 'Predefinições',
 
   // O narrador falado opcional.
   'narrator.title': 'Narrador falado',
