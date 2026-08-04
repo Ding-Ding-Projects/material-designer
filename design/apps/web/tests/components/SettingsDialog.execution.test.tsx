@@ -4855,7 +4855,12 @@ describe('SettingsDialog appearance interactions', () => {
       {},
     );
 
-    fireEvent.change(screen.getByLabelText('Custom color'), {
+    // The custom accent used to be an `<input type="color">`, which handed the
+    // choice to the operating system's own picker. It is now the app's
+    // continuous picker, whose typed-value field accepts any supported
+    // notation — the same job, done inside the product and themeable like the
+    // rest of it, which is what the appearance standard asks for.
+    fireEvent.change(screen.getByTestId('appearance-color-entry'), {
       target: { value: '#123456' },
     });
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#123456');
