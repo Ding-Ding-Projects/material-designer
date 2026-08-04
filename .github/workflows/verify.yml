@@ -64,6 +64,16 @@ jobs:
           done < <(git ls-files '*.css')
           exit "$bad"
 
+      - name: Check every translation key is declared and every locale complete
+        shell: bash
+        # Pure shell, so it runs in this job rather than behind the workspace
+        # install: a component using a key no locale declares is a typecheck
+        # failure forty minutes into the Windows build and a four-second
+        # failure here. `zh-HK` satisfies Dict by spreading `zh-TW`, so its
+        # completeness is the compiler's to prove, not this script's — it says
+        # so rather than silently passing the locale.
+        run: bash scripts/check-i18n-keys.sh
+
       - name: Report port integrity
         if: ${{ always() }}
         shell: bash
@@ -168,6 +178,29 @@ jobs:
         run: |
           pnpm --filter @open-design/daemon run build
           pnpm --filter @open-design/desktop run build
+          # The web sidecar's declaration output is the third thing upstream's
+          # own CI builds here, and it was the one missing. `apps/packaged`
+          # imports `@open-design/web/sidecar`, which resolves to dist/ — so
+          # without this the packaged suite dies at import time rather than on
+          # an assertion, and the error names a module rather than a cause.
+          pnpm --filter @open-design/web run build:sidecar
+
+      - name: Guard, craft lint and translation coverage
+        working-directory: design
+        shell: bash
+        # Three checks the workspace ships and nothing ran. They are grouped
+        # because they share the install above and each takes seconds; they are
+        # separate commands rather than one so a failure names which of the
+        # three it was.
+        #
+        # `|| true` appears nowhere here on purpose. A check wired in to be
+        # ignored is worse than one that is not wired in at all, because the
+        # green tick then means less than it appears to across the whole job.
+        run: |
+          set -euo pipefail
+          pnpm guard
+          pnpm lint:craft
+          pnpm i18n:check
 
       - name: Typecheck
         working-directory: design
@@ -191,3 +224,23 @@ jobs:
           pnpm --filter @open-design/tools-pack run test
           pnpm --filter @open-design/packaged run test
           pnpm --filter @open-design/desktop run test
+
+      - name: Test the shared component primitives
+        working-directory: design
+        shell: bash
+        # Small and fast, and it covers the one primitive every dialog in the
+        # application is built from — including its focus trap, which is an
+        # accessibility contract rather than a detail.
+        run: pnpm --filter @open-design/components run test
+
+      - name: Test the web application
+        working-directory: design
+        shell: bash
+        # The largest suite in the workspace by a wide margin. It runs last
+        # because a failure here should not delay the verdict of the cheaper
+        # checks above, and it is its own step so a failure says "the web
+        # suite" rather than "the tests".
+        #
+        # Its own config pins the worker count, so this deliberately adds no
+        # parallelism flags of its own.
+        run: pnpm --filter @open-design/web run test
