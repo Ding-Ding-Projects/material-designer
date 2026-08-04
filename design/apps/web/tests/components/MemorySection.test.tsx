@@ -12,27 +12,6 @@ const originalFetch = globalThis.fetch;
 const originalEventSource = globalThis.EventSource;
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
-/**
- * Drive the super-confirmation gate all the way: both keys, then the slider to
- * the end. Clearing the extraction history used to be one browser confirm; it
- * is now this, and the sequence is what these tests have to perform to reach
- * the delete.
- */
-function authorizeDestructiveGate(): void {
-  const gate = screen.getByTestId('destructive-gate');
-  fireEvent.click(within(gate).getByTestId('destructive-gate-key-first'));
-  fireEvent.click(within(gate).getByTestId('destructive-gate-key-second'));
-  // The slider rations forward travel, so a single jump to the end does not
-  // authorize — five advances is the minimum the ration allows, and driving it
-  // that way here is not a workaround but this helper performing the gesture a
-  // user actually has to make.
-  for (const value of ['20', '40', '60', '80', '100']) {
-    fireEvent.change(within(gate).getByTestId('destructive-gate-slider'), {
-      target: { value },
-    });
-  }
-}
-
 class StubEventSource {
   url: string;
   listeners = new Map<string, Array<(event: MessageEvent) => void>>();
