@@ -920,10 +920,13 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       tabs?: Array<{ id?: string }>;
     };
     expect(stored.activeTabId).toBe('project:project-alpha');
+    // Persisted order matches what the strip shows: the cross-region drop was
+    // skipped, so nothing moved. Home first is the invariant under test; the
+    // two project tabs keep the order they started in.
     expect(stored.tabs?.map((tab) => tab.id)).toEqual([
       'entry:home:seed',
-      'project:project-beta',
       'project:project-alpha',
+      'project:project-beta',
     ]);
   });
 
