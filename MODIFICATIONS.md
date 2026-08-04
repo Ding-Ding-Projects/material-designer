@@ -29,6 +29,25 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Bundle the Cairo face, and end the application's one network font request
+
+**Reason:** every asset ships locally. The web application's stylesheet began
+with an `@import` of a font CDN stylesheet — the single network font request
+in the shipped product, and the one the roadmap's asset standard called out.
+The three variable-font subsets that stylesheet served (weight axis 400–700:
+arabic, latin-ext, latin) are now bundled under `public/fonts/cairo/` exactly
+as `remixicon.woff2` already is, with the served `unicode-range` values copied
+verbatim so per-page subsetting keeps working. The import line now points at
+the local `@font-face` sheet; rendering is unchanged, the request is gone.
+
+**Changed files:**
+
+- `apps/web/src/index.css`
+- `apps/web/src/styles/cairo.css`
+- `apps/web/public/fonts/cairo/cairo-arabic.woff2`
+- `apps/web/public/fonts/cairo/cairo-latin-ext.woff2`
+- `apps/web/public/fonts/cairo/cairo-latin.woff2`
+
 ### 2026-08-04 — The 124 keys the notification, gate, bulk, colour and narrator surfaces were written against
 
 **Reason:** the same gate as the entry below, one merge later. The notification
