@@ -3,18 +3,23 @@
 The step that decides whether a build is a release or a pile of bytes. It takes
 the installer the run just produced, **installs it**, **launches the installed
 application**, makes the **running process answer its own health endpoint**,
-**screenshots it**, then **uninstalls it and asserts nothing was left behind**.
+**photographs it in a named set of states** — four display scales, a bilingual
+UI, the narrowest supported window, the settings dialog, the command palette —
+then **uninstalls it and asserts nothing was left behind**.
 
 Everything else in the pipeline checks that source is well-formed. This is the
 only step that checks the product works.
 
 > [!IMPORTANT]
-> **Status: run, and passing.** The `core` profile has installed, launched,
-> health-checked, screenshotted and uninstalled a real built Windows application
-> inside the `Release` workflow, with zero residue on every check. The `full`
-> profile — which additionally exercises the auto-updater, reinstall over a
-> running instance, and upgrade data persistence — **is not run**, because this
-> fork deliberately ships no updater feed.
+> **Status: run, and passing — except for the newest part of it.** The `core`
+> profile has installed, launched, health-checked, screenshotted and uninstalled
+> a real built Windows application inside the `Release` workflow, with zero
+> residue on every check. The **named UI-state set** described below is new and
+> **has never run**; read
+> [Verification](#verification) for what the first run should be inspected for.
+> The `full` profile — which additionally exercises the auto-updater, reinstall
+> over a running instance, and upgrade data persistence — **is not run**, because
+> this fork deliberately ships no updater feed.
 
 ## Behaviour
 
@@ -95,7 +100,11 @@ version.
 **8 — Confirm the application shell mounted**, then capture a screenshot, assert
 the file is non-zero, and save it into the report.
 
-**9 — Uninstall**, removing product user data, and assert **seven** residue
+**9 — Capture the named UI-state set.** See
+[the section below](#the-named-ui-state-set); it runs strictly after step 8 so
+nothing it does can disturb the frame that step took.
+
+**10 — Uninstall**, removing product user data, and assert **seven** residue
 conditions, all of which must be clean:
 
 | Residue check | Must be |
@@ -113,13 +122,68 @@ real. Uninstall can only remove what it knows about, so a file written outside t
 resolved data root survives an uninstall that reports success — see
 [../architecture/data-directory.md](../architecture/data-directory.md).
 
-**10 — Save the report**: the health result, the install detail, the timings, the
-terminal probe, the start record, the uninstall record, and the screenshots.
+**11 — Save the report**: the health result, the install detail, the timings, the
+terminal probe, the start record, the uninstall record, the screenshots, and the
+UI-state index.
 
-**11 — Clean up regardless.** A `finally` block restores the environment, prints
+**12 — Clean up regardless.** A `finally` block restores the environment, prints
 the packaged application's own logs when the test failed, and stops and uninstalls
 anything still running. A smoke test that leaves an application installed on a
 runner is a smoke test that poisons the next run.
+
+### The named UI-state set
+
+For most of this repository's life the screenshot in step 8 was the *entire*
+visual evidence base for a Material Design 3 redesign: the home screen, at the
+default window size, in English, at 100% UI scale. One frame. The standards this
+product holds itself to name four display scales, a narrow width, and a
+bilingual mode — and none of them had ever been photographed, nor had any
+surface other than home.
+
+Step 9 captures a named set of further states from the **same running
+application**, each one driven into place through the app's own persisted
+settings and its own keyboard shortcuts:
+
+| Frame | The state | How it is driven |
+| --- | --- | --- |
+| `settings-dialog.png` | The settings dialog, open | <kbd>Ctrl</kbd>+<kbd>,</kbd> dispatched at the window — the shortcut the app itself binds |
+| `command-palette.png` | The command palette, open | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, likewise |
+| `home-scale-100.png` … `home-scale-200.png` | Home at 100%, 125%, 150% and 200% UI scale | The app's own persisted appearance preference, then a reload, so the frame proves the product applies a saved scale on a cold render |
+| `home-bilingual.png` | Home in bilingual mode (English · 廣東話) | The app's own persisted locale and language mode, then a reload |
+| `home-bilingual-narrow-900.png` | Bilingual home at the narrowest supported window | A renderer-driven resize to the desktop shell's own `minWidth` floor |
+| `home-narrow-900.png` | The same narrow window in English | Language mode returned to single, then a reload |
+
+Three properties make this evidence rather than decoration.
+
+**Each frame is the real application.** Nothing is synthesised, no placeholder
+is ever written, and no frame is republished under a second name. A state that
+cannot be reached produces **no file** — and a named reason, in the run log, in
+the report's `ui-states.json`, and as a warning annotation on the run page. A
+capture path that quietly skips is worse than one that does not exist, because
+the report then looks complete.
+
+**Each frame is verified before it is taken.** Not "the preference was written"
+but the observable consequence: the scale the document actually carries, the Han
+characters bilingual mode actually renders, the viewport width the window
+actually has. An unverified capture is a capture that can lie.
+
+**Each frame records its own hash.** `capturePage` returns the last *composited*
+frame, so a compositor that has stopped producing frames would hand back the
+previous state's pixels under the new state's name — a failure mode no assertion
+about the DOM can see. Every capture therefore carries a `sha256`, and a frame
+whose bytes match an earlier, differently-named frame is reported as a duplicate
+rather than silently trusted.
+
+The set adds roughly a minute and a half to a twelve-minute budget. Failing to
+capture one state does not fail the build; capturing **none** does, because that
+means the mechanism itself is broken rather than one surface being awkward.
+
+Two states were deliberately left out. **Changing the operating system's display
+scale** is not driven, because the appearance preference reaches the same layout
+consequence without a machine-wide setting the runner would have to be trusted
+to restore. **A window narrower than 900px** is not attempted, because the
+desktop shell declares `minWidth: 900` and refuses to go below it — that floor
+*is* the narrow case.
 
 ### The two profiles
 
@@ -153,11 +217,14 @@ quoted line in a release.
 
 **It does not prove:**
 
-- that the interface is *correct*. Nothing asserts a rendered pixel beyond the
-  screenshot being non-zero in size. A blank window with a working health endpoint
-  passes.
+- that the interface is *correct*. No rendered pixel is asserted. The state set
+  proves each state was **reached and photographed**, and that its frames are
+  distinct from one another; it does not judge what is in them. A window that
+  renders the wrong thing consistently at every scale still passes.
 - that any standard is met — not Material Design 3 conformance, not the language
-  modes, not accessibility, not the regex builder.
+  modes, not accessibility, not the regex builder. The state set gives a human a
+  frame to look at for four scales, two languages and two widths; looking is
+  still a person's job.
 - anything about macOS or Linux.
 - anything about upgrading from a previous version, or about the updater.
 - anything about a user's real data, since it runs against a clean namespace and
@@ -217,7 +284,17 @@ runner, against a real built installer, with every assertion above satisfied and
 all seven residue checks clean. The report — manifest, packaging output, test log,
 result record, summary and screenshots — was uploaded as a workflow artifact.
 
-**Not observed:** the `full` profile, any non-Windows platform, and a *failing*
+**Not observed:** the **named UI-state set**, which has never run — it was
+written against the harness's existing renderer-eval and screenshot channels and
+has not yet executed on a runner. Nothing here claims it works. The first run to
+carry it should be read for three things: how many of the nine states the
+`ui-states.json` index says were captured, whether any two frames share a
+`sha256` (which would mean the compositor, not the app, is at fault), and
+whether the narrow states were reached at all — a renderer-driven window resize
+is the one mechanism in the set that could turn out to be unavailable, in which
+case both narrow frames are absent with that reason recorded.
+
+Also not observed: the `full` profile, any non-Windows platform, and a *failing*
 smoke test whose failure was correctly reported in published release notes. The
 notes mechanism reads the step's real outcome, so a failure would be published as
 one; that path has not been exercised.

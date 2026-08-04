@@ -19,6 +19,7 @@ import {
   applyPackagedUpdateEnv,
   resolvePackagedUpdateScenario,
 } from '@/vitest/packaged-update-scenario';
+import { capturePackagedUiStates, type PackagedUiStatesResult } from '@/vitest/packaged-ui-states';
 import { releaseAppVersionArgs, resolvePackagedWinInstallIdentity } from '@/vitest/packaged-win-identity';
 import { resolvePackagedSmokeNamespace } from '@/vitest/suite';
 import { startToolsServeUpdaterFixture, type ToolsServeUpdaterFixture } from '@/vitest/tools-serve-updater-fixture';
@@ -63,6 +64,11 @@ const launcherNamespaceRoot = join(
 );
 const screenshotPath = join(toolsPackDir, 'screenshots', `${namespace}.png`);
 const preUpdateScreenshotPath = join(toolsPackDir, 'screenshots', `${namespace}-before-update.png`);
+// Scratch root for the named UI-state frames (display scales, bilingual mode,
+// the narrow window, the settings dialog, the command palette). Kept separate
+// from the two frames above so the state set can never overwrite the capture
+// other things reference by name.
+const uiStateScreenshotDir = join(toolsPackDir, 'screenshots', `${namespace}-states`);
 const readinessExpression = `
   (() => ({
     href: location.href,
@@ -545,6 +551,7 @@ winDescribe('packaged windows runtime smoke', () => {
     let stop: WinStopResult | { skipped: true } = { skipped: true };
     let postUpdateHealth: HealthEvalValue | { skipped: true } = { skipped: true };
     let upgradePersistence: UpgradePersistenceSeed | { skipped: true } = { skipped: true };
+    let uiStates: PackagedUiStatesResult | { skipped: true } = { skipped: true };
     let payloadFixture: ToolsServeUpdaterFixture | null = null;
     let intermediateUpdateFixture: Awaited<ReturnType<typeof resolveLocalUpdateFixture>> | null = null;
     let localUpdateFixture: Awaited<ReturnType<typeof resolveLocalUpdateFixture>> | null = null;
@@ -818,6 +825,48 @@ winDescribe('packaged windows runtime smoke', () => {
         expect(screenshot.screenshot?.path).toBe(screenshotPath);
         expect(await fileSizeBytes(screenshotPath)).toBeGreaterThan(0);
         await report.saveScreenshot(screenshotPath);
+
+        // Everything above this line captures the home screen at the default
+        // window size, in English, at 100% UI scale — which was, until now, the
+        // whole visual evidence base for a Material Design 3 redesign. The named
+        // state set below runs AFTER that frame precisely so it cannot disturb
+        // it: by the time any preference is written or the window is resized,
+        // `open-design-win-smoke.png` has already been taken and published.
+        //
+        // `capturePackagedUiStates` never throws for a state it could not
+        // reach — it names it and its reason, in the log and in
+        // `ui-states.json`, and produces no file for it. The one thing that
+        // does fail the suite is capturing NOTHING, because that means the
+        // mechanism is broken rather than one surface being awkward.
+        uiStates = await measureSmokeStep(timings, 'named ui state captures', async () =>
+          capturePackagedUiStates({
+            capture: async (absolutePath) => {
+              await mkdir(dirname(absolutePath), { recursive: true });
+              const frame = await runToolsPackJson<WinInspectResult>('inspect', ['--path', absolutePath]);
+              if (frame.screenshot?.path !== absolutePath) {
+                throw new Error(
+                  `the desktop reported no screenshot at ${absolutePath}: ${JSON.stringify(frame.screenshot)}`,
+                );
+              }
+            },
+            evaluate: async (expression) => {
+              const evaluated = await runToolsPackJson<WinInspectResult>('inspect', ['--expr', expression]);
+              return evaluated.eval ?? { error: 'the desktop returned no eval result', ok: false };
+            },
+            log: (message) => {
+              console.info(message);
+            },
+            publish: async (reportRelpath, bytes) => {
+              await report.report.save(reportRelpath, bytes);
+            },
+            screenshotDir: uiStateScreenshotDir,
+          }),
+        );
+        await report.report.json('ui-states.json', uiStates);
+        expect(
+          uiStates.captured.length,
+          `no packaged UI state could be captured; skipped:\n${JSON.stringify(uiStates.skipped, null, 2)}`,
+        ).toBeGreaterThan(0);
       }
 
       if (!verifyCoreOnly) {
@@ -881,6 +930,7 @@ winDescribe('packaged windows runtime smoke', () => {
         },
         stop,
         timings,
+        uiStates,
         uninstall,
         update: {
           before: value,

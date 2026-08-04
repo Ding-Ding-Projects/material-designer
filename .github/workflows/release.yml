@@ -277,6 +277,70 @@ jobs:
           path: ${{ runner.temp }}/release-report/win
           if-no-files-found: warn
 
+      - name: Report the captured UI states
+        # The smoke report is a downloadable artifact, which means nobody opens
+        # it unless something has already gone wrong. The visual evidence base
+        # is exactly the thing that shrinks silently — one state stops being
+        # reachable, the report still looks complete, and nobody finds out for
+        # months. So the state set is printed on the run page itself, and every
+        # state that produced no file is raised as a warning annotation.
+        if: ${{ always() && steps.smoke.outcome != 'skipped' }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          # RUNNER_TEMP is a Windows path with backslashes, and this step runs
+          # under Git Bash. Normalize the separators once rather than hoping
+          # every consumer below tolerates the mix.
+          states="${RUNNER_TEMP//\\//}/release-report/win/ui-states.json"
+          if [ ! -f "$states" ]; then
+            {
+              echo "### 📷 Packaged UI states"
+              echo ""
+              echo "\`ui-states.json\` is absent — the smoke run never reached the capture step."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # The path travels in the environment rather than as an argument:
+          # `node -` reads the script from stdin, and what argv[1] then holds
+          # is not worth depending on.
+          OD_UI_STATES_JSON="$states" node - >> "$GITHUB_STEP_SUMMARY" <<'NODE'
+          const { readFileSync } = require('node:fs');
+          const report = JSON.parse(readFileSync(process.env.OD_UI_STATES_JSON, 'utf8'));
+          const captured = Array.isArray(report.captured) ? report.captured : [];
+          const skipped = Array.isArray(report.skipped) ? report.skipped : [];
+          const duplicates = captured.filter((entry) => entry.duplicateOf);
+          // A newline or a pipe inside a reason would silently break the table
+          // and hide the very row that matters most.
+          const cell = (value) => String(value == null ? '' : value).replace(/\s*[\r\n]+\s*/g, ' ').replace(/\|/g, '\\|');
+          const out = [];
+          out.push(`### 📷 Packaged UI states — ${captured.length} captured, ${skipped.length} not reachable`);
+          out.push('');
+          out.push('Every frame below is the real running packaged application, driven into that');
+          out.push('state through the app’s own settings and shortcuts.');
+          out.push('');
+          out.push('| State | File | Bytes | How it was reached |');
+          out.push('|---|---|---:|---|');
+          for (const entry of captured) {
+            const note = entry.duplicateOf ? ` ⚠️ identical bytes to \`${cell(entry.duplicateOf)}\`` : '';
+            out.push(`| \`${cell(entry.name)}\`${note} | \`${cell(entry.reportRelpath)}\` | ${entry.bytes} | ${cell(entry.driver)} |`);
+          }
+          if (skipped.length > 0) {
+            out.push('');
+            out.push('| Not captured | Why |');
+            out.push('|---|---|');
+            for (const entry of skipped) out.push(`| \`${cell(entry.name)}\` | ${cell(entry.reason)} |`);
+          }
+          for (const entry of skipped) {
+            console.error(`::warning title=UI state not captured::${cell(entry.name)}: ${cell(entry.reason)}`);
+          }
+          for (const entry of duplicates) {
+            console.error(
+              `::warning title=UI state frame is a duplicate::${entry.name} is byte-identical to ${entry.duplicateOf}; the window compositor may be returning a stale frame`,
+            );
+          }
+          console.log(out.join('\n'));
+          NODE
+
       - name: Upload build logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4

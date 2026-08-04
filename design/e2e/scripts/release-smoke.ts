@@ -38,6 +38,12 @@ async function main(): Promise<void> {
     reportPath: report.root,
     screenshot: `screenshots/open-design-${platform}-smoke.png`,
     spec,
+    // Index of the named UI-state frames the spec captures beside the single
+    // screenshot above — one entry per state, each with the way it was driven,
+    // the app properties that proved it was applied, and its sha256. States the
+    // run could not reach are listed there too, with a reason and no file, so a
+    // report that looks complete is complete.
+    uiStates: 'ui-states.json',
   });
   await saveRequiredSource(report, 'tools-pack.json', process.env.OD_PACKAGED_E2E_BUILD_JSON_PATH);
   await saveOptionalSource(report, 'tools-pack.log', process.env.OD_PACKAGED_E2E_BUILD_LOG_PATH);
