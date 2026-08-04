@@ -1086,6 +1086,29 @@ only in a report is a finding that gets rediscovered.
 - [ ] **The shared dialog has no focus trap.** Tab walks out of an
       `aria-modal` alertdialog onto the content behind it. This is an
       accessibility blocker under standard 14, not a polish item.
+- [ ] **Fix the five failing web suites, then wire the web suite into CI.**
+      It was wired in once, ran for the first time in this repository's
+      history, and measured **454 of 459 test files passing**. All five
+      failures are pre-existing; none was caused by the change that ran them.
+      The step is commented out in `verify.yml` with that measurement recorded
+      beside it — deliberately not left in with `|| true`, because a check that
+      reports a failure and passes anyway devalues every other tick in the job.
+      The five:
+      - `tests/components/DesignFilesPanel.test.tsx` (two cases) — clicks
+        batch-delete and expects `onDeleteFiles` immediately, but the code
+        grew a bulk preview dialog in front of that call, and the callback's
+        signature gained an options argument. **The test asserts a flow the
+        product no longer has**; this is the Phase 4 bulk-actions work
+        regressing a suite nothing was running.
+      - `tests/changelog-parse.test.ts` — folding a wrapped bullet into one
+        entry and splitting its bold lead.
+      - `tests/dim-sum.test.ts` — the draw must return nothing when the first
+        roll loses. Worth treating as a real defect until proved otherwise:
+        this is the 10%-per-launch contract.
+      - `tests/components/WorkspaceTabsBar.test.tsx` — Home stays pinned
+        leftmost when a tab is dropped on its left edge.
+      - `tests/components/regex/evaluate.test.ts` — zero-width matches must
+        paint nothing.
 - [ ] **Re-run the 29 unverified findings.** They are real claims that simply
       never got their refutation pass — including that the colour translator
       implements none of CIELAB/LCH/OKLab/OKLCH, that `parseColor` walks the
