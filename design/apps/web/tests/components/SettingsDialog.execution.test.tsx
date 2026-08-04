@@ -558,26 +558,15 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     vi.unstubAllGlobals();
   });
 
-  it('collapses the settings sidebar and toggles fullscreen from dialog chrome', () => {
-    const { container } = renderSettingsDialog();
+  // The collapsible 240px section rail this test used to drive is gone: the
+  // sections are a browser-style tab strip now, and a strip that can be hidden
+  // is a settings surface with no navigation. Fullscreen is the chrome control
+  // that survived, and the strip itself is covered in SettingsDialog.tabs.test.
+  it('toggles fullscreen from dialog chrome', () => {
+    renderSettingsDialog();
     const dialog = screen.getByRole('dialog');
-    const sidebar = container.querySelector('#settings-sidebar');
 
-    expect(dialog.classList.contains('settings-sidebar-collapsed')).toBe(false);
-    expect(sidebar?.getAttribute('aria-hidden')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse settings sidebar' }));
-    expect(dialog.classList.contains('settings-sidebar-collapsed')).toBe(true);
-    expect(sidebar?.getAttribute('aria-hidden')).toBe('true');
-    expect(
-      screen
-        .getByRole('button', { name: 'Expand settings sidebar' })
-        .getAttribute('aria-pressed'),
-    ).toBe('true');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Expand settings sidebar' }));
-    expect(dialog.classList.contains('settings-sidebar-collapsed')).toBe(false);
-    expect(sidebar?.getAttribute('aria-hidden')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Collapse settings sidebar' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Fullscreen' }));
     expect(dialog.classList.contains('settings-fullscreen')).toBe(true);

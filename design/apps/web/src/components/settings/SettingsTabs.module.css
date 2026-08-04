@@ -1,0 +1,354 @@
+/* The settings tab strip, its overflow menu, and the search results panel.
+   Component-owned styles, so nothing here leaks into the global cascade; the
+   tab buttons keep their legacy `settings-nav-item` class as well, which is
+   what the existing hover-contrast and navigation e2e locators match on. */
+
+.strip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+  min-width: 0;
+}
+
+/* Horizontal scroll is the floor, not the overflow surface: it guarantees a
+   tab is never clipped away with no route to it, while the button beside the
+   strip is the surface a user actually reaches for. */
+.tablist {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.tablist::-webkit-scrollbar {
+  height: 0;
+}
+
+.tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 190px;
+  padding: 8px 12px 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: 500;
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  cursor: pointer;
+  transition:
+    color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    background-color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    border-color 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)),
+    opacity 200ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+.tab:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+.tabActive,
+.tabActive:hover {
+  color: var(--md-sys-color-primary);
+  border-bottom-color: var(--md-sys-color-primary);
+  background: transparent;
+  font-weight: 600;
+}
+
+.tab svg {
+  flex: 0 0 auto;
+  opacity: 0.8;
+}
+
+.tabActive svg {
+  opacity: 1;
+}
+
+.tabLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The `<small>` line the old rail carried is kept in the markup for assistive
+   technology and hidden visually, exactly as the rail hid it. */
+.tabHint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* While a search is running, a tab with no match is dimmed rather than removed:
+   taking it out of the strip would move every other tab under the user's
+   pointer, and would quietly change what the tablist's arrow keys traverse. */
+.tabNoMatch {
+  opacity: 0.38;
+}
+
+.tabCount {
+  flex: 0 0 auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.overflow {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+
+.overflow:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.overflow:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.overflowCount {
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+}
+
+/* Portalled, because `.modal-body` clips its overflow — an anchored menu
+   rendered inside the strip would be cut off at the first tab row. */
+.menu {
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-lowest);
+  box-shadow: var(--md-sys-elevation-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.menuItem:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+.menuItemActive {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-weight: 600;
+}
+
+.menuItemLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuItemMarker {
+  flex: 0 0 auto;
+  font-size: var(--md-sys-typescale-label-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.searchHost {
+  flex: 0 1 260px;
+  min-width: 140px;
+  margin-bottom: 8px;
+}
+
+.searchInput {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 20%, transparent);
+}
+
+/* ---- Search results ------------------------------------------------- */
+
+.results {
+  flex: 0 0 auto;
+  max-height: 40%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.resultsHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: var(--md-sys-typescale-label-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.resultsCount {
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+/* The one line that stops a filtered surface from reading as an empty one. */
+.resultsElsewhere {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultRow:hover {
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.resultRow:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: -2px;
+}
+
+.resultTitle {
+  flex: 0 0 auto;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: 600;
+}
+
+.resultHint {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.resultBadge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  font-weight: 600;
+}
+
+.resultsEmpty {
+  margin: 0;
+  font-size: var(--md-sys-typescale-body-medium-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+@media (max-width: 760px) {
+  .strip {
+    padding: 8px 12px 0;
+    flex-wrap: wrap;
+  }
+
+  .searchHost {
+    flex: 1 1 100%;
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    transition: none;
+  }
+}

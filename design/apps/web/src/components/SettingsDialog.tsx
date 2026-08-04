@@ -221,9 +221,27 @@ import {
 } from '../utils/notifications';
 import {
   SETTINGS_REVEAL_EVENT,
+  requestSettingsReveal,
   revealAnchor,
   takePendingSettingsReveal,
 } from './command-palette/reveal';
+import { SETTINGS_INDEX } from './command-palette/settingsIndex';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
+import {
+  SETTINGS_TABPANEL_ID,
+  SettingsTabStrip,
+  settingsTabId,
+} from './settings/SettingsTabStrip';
+import { SettingsSearchResults } from './settings/SettingsSearchResults';
+import {
+  matchSettingsIndex,
+  settingsHitCountsBySection,
+  settingsHitsElsewhere,
+  type SettingsSearchHit,
+} from './settings/settingsSearchMatch';
+import { SETTINGS_TAB_DEFS, writeLastSettingsSection } from './settings/settingsTabs';
+import settingsTabStyles from './settings/SettingsTabs.module.css';
 
 export type SettingsSection =
   | 'execution'
@@ -1651,8 +1669,54 @@ export function SettingsDialog({
       : {},
   );
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  const [settingsSidebarCollapsed, setSettingsSidebarCollapsed] = useState(false);
   const [settingsFullscreen, setSettingsFullscreen] = useState(false);
+  // The settings surface's own search field.
+  //
+  // The controller is created here and handed to `RegexSearchField`, exactly as
+  // every other wired search bar in the product does it: this field owns its own
+  // mode, flags and compiled pattern, plain text is the default, and regex is an
+  // explicit opt-in made from the builder anchored beside the field.
+  const [settingsQuery, setSettingsQuery] = useState('');
+  const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
+  const settingsSearchActive = settingsQuery.trim().length > 0;
+  const settingsSearchMatches = settingsSearch.matches;
+  // A tab's visible label, which is also a search term: typing "Appearance"
+  // should surface everything on the Appearance tab, not only the row whose
+  // title happens to repeat the word.
+  const settingsSectionLabel = useCallback(
+    (section: SettingsSection): string => {
+      const def = SETTINGS_TAB_DEFS[section];
+      return def ? t(def.titleKey) : section;
+    },
+    [t],
+  );
+  const settingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
+    if (!settingsSearchActive) return [];
+    // `SETTINGS_INDEX` is the command palette's index of what settings
+    // contains. It is reused verbatim rather than mirrored, so the palette and
+    // this field can never disagree about whether a setting exists.
+    return matchSettingsIndex({
+      entries: SETTINGS_INDEX,
+      matches: settingsSearchMatches,
+      translate: t,
+      sectionLabel: settingsSectionLabel,
+      activeSection,
+    });
+  }, [settingsSearchActive, settingsSearchMatches, t, settingsSectionLabel, activeSection]);
+  const settingsSearchCounts = useMemo(
+    () => (settingsSearchActive ? settingsHitCountsBySection(settingsSearchHits) : null),
+    [settingsSearchActive, settingsSearchHits],
+  );
+  const settingsSearchElsewhere = useMemo(
+    () => settingsHitsElsewhere(settingsSearchHits, activeSection),
+    [settingsSearchHits, activeSection],
+  );
+  const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
+    setActiveSection(hit.section);
+    // The dialog already listens for this and polls for the anchor, so the
+    // control does not have to exist yet at the moment of the click.
+    requestSettingsReveal(hit.entry.id);
+  }, []);
   // Scroll the right-hand content pane back to the top whenever the user
   // picks a different settings section. Without this, switching from a
   // long section the user had scrolled (e.g. Library) into a short one
@@ -2058,6 +2122,14 @@ export function SettingsDialog({
   useEffect(() => {
     const el = settingsContentRef.current;
     if (el) el.scrollTop = 0;
+  }, [activeSection]);
+
+  // Tab persistence. Written here rather than read here: `App.openSettings`
+  // reads it when the caller did not name a section, so a dialog rendered with
+  // an explicit `initialSection` (every test, every "open Settings on Privacy"
+  // call site) still opens exactly where it was told to.
+  useEffect(() => {
+    writeLastSettingsSection(activeSection);
   }, [activeSection]);
 
   // Reveal a control the command palette asked for.
@@ -4266,9 +4338,6 @@ export function SettingsDialog({
     );
   };
 
-  const settingsSidebarToggleLabel = settingsSidebarCollapsed
-    ? 'Expand settings sidebar'
-    : 'Collapse settings sidebar';
   const settingsFullscreenLabel = settingsFullscreen
     ? t('common.exitFullscreen')
     : t('common.fullscreen');
@@ -4278,7 +4347,6 @@ export function SettingsDialog({
       <div
         className={
           'modal modal-settings' +
-          (settingsSidebarCollapsed ? ' settings-sidebar-collapsed' : '') +
           (settingsFullscreen ? ' settings-fullscreen' : '')
         }
         role="dialog"
@@ -4367,215 +4435,36 @@ export function SettingsDialog({
         </header>
 
         <div className="modal-body">
-          <button
-            type="button"
-            className="settings-sidebar-toggle"
-            onClick={() => setSettingsSidebarCollapsed((current) => !current)}
-            aria-label={settingsSidebarToggleLabel}
-            aria-pressed={settingsSidebarCollapsed}
-            aria-controls="settings-sidebar"
-            title={settingsSidebarToggleLabel}
-          >
-            <Icon
-              name={settingsSidebarCollapsed ? 'chevron-right' : 'chevron-left'}
-              size={15}
-              strokeWidth={2}
+          {/* Browser-style tabs, one per settings section — the same idiom the
+              workspace uses, replacing a seventeen-item scrolling rail that
+              behaved like nothing else in the product. The strip owns the
+              overflow surface and the surface's search field; the panel below
+              is the one `tabpanel` every tab controls. */}
+          <SettingsTabStrip
+            activeSection={activeSection}
+            onSelect={setActiveSection}
+            matchCounts={settingsSearchCounts}
+            searchField={
+              <RegexSearchField
+                search={settingsSearch}
+                fieldLabel={t('settings.searchAria')}
+                ariaLabel={t('settings.searchAria')}
+                placeholder={t('settings.searchPlaceholder')}
+                className={settingsTabStyles.searchInput}
+                hostClassName={settingsTabStyles.searchHost}
+                testId="settings-search"
+              />
+            }
+          />
+          {settingsSearchActive ? (
+            <SettingsSearchResults
+              hits={settingsSearchHits}
+              activeSection={activeSection}
+              elsewhere={settingsSearchElsewhere}
+              sectionLabel={settingsSectionLabel}
+              onPick={handleSettingsSearchPick}
             />
-          </button>
-          <aside
-            id="settings-sidebar"
-            className="settings-sidebar"
-            aria-label="Settings sections"
-            aria-hidden={settingsSidebarCollapsed ? true : undefined}
-          >
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
-              onClick={() => setActiveSection('execution')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('settings.envConfigure')}</strong>
-                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'instructions' ? ' active' : ''}`}
-              onClick={() => setActiveSection('instructions')}
-            >
-              <Icon name="edit" size={18} />
-              <span>
-                <strong>{t('settings.instructionsTitle')}</strong>
-                <small>{t('settings.instructionsNavSub')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
-              onClick={() => setActiveSection('memory')}
-            >
-              <Icon name="history" size={18} />
-              <span>
-                <strong>{t('settings.memory')}</strong>
-                <small>{t('settings.memoryHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
-              onClick={() => setActiveSection('media')}
-            >
-              <Icon name="image" size={18} />
-              <span>
-                <strong>{t('settings.mediaProviders')}</strong>
-                <small>Image / video / audio</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'mcpClient' ? ' active' : ''}`}
-              onClick={() => setActiveSection('mcpClient')}
-            >
-              <Icon name="sparkles" size={18} />
-              <span>
-                <strong>{t('settings.externalMcpTitle')}</strong>
-                <small>{t('settings.externalMcpHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'composio' ? ' active' : ''}`}
-              onClick={() => setActiveSection('composio')}
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('connectors.title')}</strong>
-                <small>{t('settings.connectorsNavHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('integrations')}
-            >
-              <Icon name="link" size={18} />
-              <span>
-                <strong>{t('settings.mcpServerTitle')}</strong>
-                <small>{t('settings.mcpServerHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'language' ? ' active' : ''}`}
-              onClick={() => setActiveSection('language')}
-            >
-              <Icon name="languages" size={18} />
-              <span>
-                <strong>{t('settings.language')}</strong>
-                <small>{t('settings.languageHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'appearance' ? ' active' : ''}`}
-              onClick={() => setActiveSection('appearance')}
-            >
-              <Icon name="sun-moon" size={18} />
-              <span>
-                <strong>{t('settings.appearance')}</strong>
-                <small>{t('settings.appearanceHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'narrator' ? ' active' : ''}`}
-              onClick={() => setActiveSection('narrator')}
-            >
-              <Icon name="volume" size={18} />
-              <span>
-                <strong>{t('narrator.title')}</strong>
-                <small>{t('narrator.hint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'critiqueTheater' ? ' active' : ''}`}
-              onClick={() => setActiveSection('critiqueTheater')}
-            >
-              <Icon name="comment" size={18} />
-              <span>
-                <strong>{t('critiqueTheater.settingsNav')}</strong>
-                <small>{t('critiqueTheater.settingsNavHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'notifications' ? ' active' : ''}`}
-              onClick={() => setActiveSection('notifications')}
-            >
-              <Icon name="bell" size={18} />
-              <span>
-                <strong>{t('settings.notifications')}</strong>
-                <small>{t('settings.notificationsHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'pet' ? ' active' : ''}`}
-              onClick={() => setActiveSection('pet')}
-            >
-              <Icon name="sparkles" size={18} />
-              <span>
-                <strong>{t('pet.navTitle')}</strong>
-                <small>{t('pet.navHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'designSystems' ? ' active' : ''}`}
-              onClick={() => setActiveSection('designSystems')}
-            >
-              <Icon name="draw" size={18} />
-              <span>
-                <strong>{t('settings.designSystems')}</strong>
-                <small>{t('settings.designSystemsHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'projectLocations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('projectLocations')}
-            >
-              <Icon name="folder" size={18} />
-              <span>
-                <strong>{t('settings.projectLocations')}</strong>
-                <small>{t('settings.projectLocationsHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
-              onClick={() => setActiveSection('privacy')}
-            >
-              <Icon name="eye" size={18} />
-              <span>
-                <strong>{t('settings.privacy')}</strong>
-                <small>{t('settings.privacyHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
-              onClick={() => setActiveSection('about')}
-            >
-              <Icon name="settings" size={18} />
-              <span>
-                <strong>{t('settings.about')}</strong>
-                <small>{t('settings.aboutHint')}</small>
-              </span>
-            </button>
-          </aside>
+          ) : null}
           {/* The reveal anchor every whole-section entry in the palette's
               settings index points at. Stamped once, from the live section, so
               nineteen sections cannot drift out of sync one attribute at a
@@ -4584,6 +4473,15 @@ export function SettingsDialog({
           <div
             className="settings-content"
             ref={settingsContentRef}
+            id={SETTINGS_TABPANEL_ID}
+            role="tabpanel"
+            // `orbit` and `routines` have panels but no tab — they are opened
+            // from their own surfaces. Pointing at a tab id that does not exist
+            // would be worse than naming the panel by nothing at all.
+            aria-labelledby={
+              SETTINGS_TAB_DEFS[activeSection] ? settingsTabId(activeSection) : undefined
+            }
+            tabIndex={-1}
             data-od-setting={`section:${activeSection}`}
           >
           {activeSection === 'execution' ? (

@@ -524,6 +524,15 @@ export interface Dict {
   'settings.privacyDataDeletionHint': string;
   'settings.about': string;
   'settings.aboutHint': string;
+  'settings.searchPlaceholder': string;
+  'settings.searchAria': string;
+  'settings.searchResultsHeading': string;
+  'settings.searchElsewhereNote': string;
+  'settings.searchOtherTabBadge': string;
+  'settings.searchNoMatches': string;
+  'settings.tabsAria': string;
+  'settings.tabsOverflow': string;
+  'settings.tabsOffscreen': string;
   'settings.appVersion': string;
   'settings.appChannel': string;
   'settings.appRuntime': string;

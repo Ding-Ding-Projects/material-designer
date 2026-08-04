@@ -29,6 +29,52 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Make the settings surface tabbed and searchable
+
+**Reason:** two standards, both unmet and both visible in one capture. The
+settings dialog showed a seventeen-item scrolling section list with no search
+field anywhere on it — while standard 4 requires every settings surface to
+carry its own search wired to the regex builder, and standard 5, extended
+today, requires those sections to be browser-style tabs rather than a bespoke
+list that behaves like nothing else in the product.
+
+**The search reuses the index that already existed.** `SETTINGS_INDEX` was
+built for the command palette; the new matcher takes that table as its input
+rather than declaring a second one that would drift from it, and uses the
+regex controller's own predicate rather than a second matching implementation.
+Each field is tested separately, so an anchored pattern like `^theme` anchors
+to something the user can see instead of to a joined blob. Hits on the active
+tab come first, hits elsewhere carry an "On {tab}" badge and a count — which
+is the standard's requirement to say plainly when a match sits on another tab.
+Entries whose section has no tab are filtered out, because a result that
+cannot be opened from here is worse than no result.
+
+**The seventeen hand-written navigation buttons became a real tab strip** with
+`role="tablist"`, roving focus, arrow-key traversal that wraps, and the panel
+promoted to a single labelled `tabpanel`. Overflow scrolls rather than
+clipping, with a persistent overflow menu listing every section and badging
+the ones measured out of view — portalled, because the modal body clips. The
+active tab persists across restarts, and is read only when no section was
+named, so every explicit call site keeps working unchanged.
+
+**Reordering, pinning, groups, the four discovery searches and the per-tab
+appearance editor are not attempted**, and are recorded as remaining rather
+than implied. The strip and the search are already a large change across a
+9,000-line component; pinning needs its own persistence schema and a region
+that interacts with overflow.
+
+**Changed files:**
+
+- `apps/web/src/components/settings/settingsTabs.ts`
+- `apps/web/src/components/settings/settingsSearchMatch.ts`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsSearchResults.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+- `apps/web/tests/components/settingsSearchMatch.test.ts`
+
+
 ### 2026-08-04 — Make the UI scale reflow instead of magnify, and stop bilingual clipping
 
 **Reason:** captures at 125, 150 and 200% showed a horizontal scrollbar, the

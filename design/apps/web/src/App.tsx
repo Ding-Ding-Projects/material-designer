@@ -59,6 +59,7 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
+import { readLastSettingsSection } from './components/settings/settingsTabs';
 import { CommandPalette } from './components/command-palette/CommandPalette';
 import { requestSettingsReveal } from './components/command-palette/reveal';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
@@ -2285,8 +2286,11 @@ function AppInner() {
     };
   }, [route, loadedActiveProject, projects, daemonLive, beginProjectListRequest, reconcileFetchedProjects, t]);
 
+  // The default is read, not hard-coded: "open Settings" with no section named
+  // lands on the tab the user was last on, which is the persistence half of the
+  // tab strip. Every caller that names a section is untouched by this.
   const openSettings = useCallback((
-    section: SettingsSection = 'execution',
+    section: SettingsSection = readLastSettingsSection(),
     opts?: { highlight?: SettingsHighlight },
   ) => {
     if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
