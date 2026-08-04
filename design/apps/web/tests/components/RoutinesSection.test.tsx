@@ -371,7 +371,11 @@ describe('RoutinesSection', () => {
     // Pressing Delete opens the gate and does nothing else. The gate names the
     // automation, so the user can check what the slider is about to do.
     const gate = screen.getByTestId('destructive-gate');
-    expect(within(gate).getByText(/Morning briefing/)).toBeTruthy();
+    // getAllByText, because the gate names the automation more than once — as
+    // the target it is about to act on and again in the list of what will go.
+    // Naming it twice is the gate doing its job; the assertion only needs it
+    // to appear at all.
+    expect(within(gate).getAllByText(/Morning briefing/).length).toBeGreaterThan(0);
     expect(deletedUrls).toEqual([]);
 
     authorizeDestructiveGate();
@@ -439,7 +443,9 @@ describe('RoutinesSection', () => {
       expect(screen.queryByTestId('destructive-gate')).toBeNull();
     });
     expect(deletedUrls).toEqual([]);
-    expect(screen.getByText('Morning briefing')).toBeTruthy();
+    // Same reason as above: assert the automation is still listed, without
+    // depending on how many places render its name.
+    expect(screen.getAllByText('Morning briefing').length).toBeGreaterThan(0);
   });
 
   it('opens the project referenced by a routine run from history', async () => {
@@ -968,7 +974,15 @@ describe('RoutinesSection', () => {
     // automation that is demonstrably still in the list.
     const failure = await screen.findByTestId('destructive-gate-failure');
     expect(failure.textContent).toContain('delete failed upstream');
-    expect(screen.getByTestId('destructive-gate')).toBeTruthy();
-    expect(screen.getByText('Morning briefing')).toBeTruthy();
+    const gate = screen.getByTestId('destructive-gate');
+    expect(gate).toBeTruthy();
+    // Scoped outside the gate deliberately. The gate names the automation it
+    // failed to delete, so a bare query matches there too — and the claim
+    // being made is that the automation is still in the LIST, which a match
+    // inside the gate would not show.
+    const stillListed = screen
+      .getAllByText('Morning briefing')
+      .some((node) => !gate.contains(node));
+    expect(stillListed).toBe(true);
   });
 });
