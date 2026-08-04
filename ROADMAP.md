@@ -598,6 +598,22 @@ meeting it.
       room, and the appearance readouts step aside at narrow widths through
       the repository's own screen-reader-only pattern so they stay announced.
       `Design · 設計` renders in full.
+- [ ] **Onboarding still carries the upstream brand**, on the first screen a
+      new user ever sees: "Sign in to Open Design", "Welcome to Open Design",
+      "© 2026 Open Design". The window title beside it says Material Designer,
+      which is what makes the mismatch obvious. **The release smoke test
+      cannot catch this** — its captures begin past onboarding, so the surface
+      is outside the fixed state list entirely. Found by launching the
+      published portable build on an off-screen desktop and driving it through
+      its own DevTools protocol.
+      *The lesson for the capture set: a fixed list of states photographs the
+      states someone thought of. Driving the app reaches the ones nobody did.*
+- [x] **Settings is tabbed and searchable, and it has been seen.** *Confirmed
+      by a live capture* — a horizontal tab strip with an overflow control
+      reading 13, a Search settings field with its regex affordance beside it,
+      and an active-tab underline. That surface had never been photographed
+      after the work landed, because it is not one of the smoke test's nine
+      states.
 - [ ] **Bottom overlap at a narrow window.** The scroll hint
       (`Scroll up to explore more templates · 向上捲動以探索更多範本`) is drawn
       on top of the template cards behind it, and the card row is cut by the

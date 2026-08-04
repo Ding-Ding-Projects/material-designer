@@ -61,10 +61,21 @@ every release; these are four of them.
 
 ![The command palette open over the home screen, with Everything / Commands / Settings / Go to / Files and tabs scope chips and a grouped result list](assets/screenshots/command-palette.png)
 
-**Settings** — and note "Spoken narrator" in the list. That surface had zero importers
-until `92ed8c6`; this capture is how it was confirmed reachable rather than merely wired.
+**Settings, tabbed and searchable.** Seventeen sections as a real tab strip with an
+overflow button, and a search field with its regex affordance beside it. This is the
+first capture of that surface after the work landed — and it was taken by driving the
+running application through its own DevTools protocol, not by the release smoke test,
+because the smoke test photographs a fixed list of states and this one was not on it.
 
-![The settings dialog showing its section list including Language, Appearance, Spoken narrator, Notifications and Design Systems](assets/screenshots/settings-dialog.png)
+![The settings dialog with a horizontal tab strip — Execution mode, Instructions / Rules, Memory, Media providers — an overflow button reading 13, and a Search settings field with a regex toggle](assets/screenshots/settings-tabbed.png)
+
+**The first screen a new user sees, and it carries the wrong name.** Driving the app from
+a clean profile lands on onboarding, which the release smoke test never reaches because
+its captures start past this point. It reads "Sign in to Open Design" and "© 2026 Open
+Design". The window title bar beside it says Material Designer, which is what makes the
+mismatch obvious.
+
+![The onboarding screen reading "Sign in to Open Design" with a footer reading copyright 2026 Open Design, inside a window titled Material Designer](assets/screenshots/onboarding-brand-defect.png)
 
 **The UI scale at 200% — the fix, and the reason the capture set exists.** The previous
 image here showed this same state overflowing horizontally with the heading cut off
