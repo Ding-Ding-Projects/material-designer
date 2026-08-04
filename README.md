@@ -51,11 +51,14 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > clipping appears first. See [Status](#status).
 
 <details>
-<summary><b>More captures</b> — the command palette, the settings dialog, and the one that is broken</summary>
+<summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
 
-Every image here comes from the packaged Windows build at commit `90e52d3`, taken by the
-project's own capture path during the release smoke test. Nine states are captured on
-every release; these are four of them.
+The command palette and the 200% scale images come from the packaged Windows build at
+commit `90e52d3`, taken by the project's own capture path during the release smoke test —
+nine states are captured on every release and these are two of them. The rest were taken
+by driving a packaged build through its own DevTools protocol, because the smoke test
+photographs a fixed list of states and these surfaces are not on it; each names the build
+it came from.
 
 **Command palette** — scope chips, grouped rows, keyboard hints in the footer.
 
@@ -69,13 +72,35 @@ because the smoke test photographs a fixed list of states and this one was not o
 
 ![The settings dialog with a horizontal tab strip — Execution mode, Instructions / Rules, Memory, Media providers — an overflow button reading 13, and a Search settings field with a regex toggle](assets/screenshots/settings-tabbed.png)
 
-**The first screen a new user sees, and it carries the wrong name.** Driving the app from
-a clean profile lands on onboarding, which the release smoke test never reaches because
-its captures start past this point. It reads "Sign in to Open Design" and "© 2026 Open
-Design". The window title bar beside it says Material Designer, which is what makes the
-mismatch obvious.
+**The first screen a new user saw, carrying the wrong name — since fixed.** Driving the
+app from a clean profile lands on onboarding, which the release smoke test never reaches
+because its captures start past this point. It read "Sign in to Open Design" and "© 2026
+Open Design", inside a window whose title bar said Material Designer — which is what made
+the mismatch obvious.
 
-![The onboarding screen reading "Sign in to Open Design" with a footer reading copyright 2026 Open Design, inside a window titled Material Designer](assets/screenshots/onboarding-brand-defect.png)
+This capture is kept as the **before**. The rename covered 64 of the 111 occurrences in
+the English dictionary and the matching strings in eighteen other locales; the other 47
+genuinely name upstream and were deliberately left. Two calls are worth knowing about:
+the cloud sign-in button reads **"Sign in to Open Design Cloud"** on purpose, because it
+authenticates against upstream's real service and there is no Material Designer account
+to sign into — and the **copyright line is unchanged**, because it is an attribution
+rather than a product name, Apache-2.0 requires retaining it, and it is the only place a
+user sees upstream credited.
+
+![The onboarding screen as it was, reading "Sign in to Open Design" with a footer reading copyright 2026 Open Design, inside a window titled Material Designer](assets/screenshots/onboarding-brand-defect.png)
+
+And the **after**, from the portable build of release `v0.16.1-r64.1` (commit `6b87e7f`),
+driven from a clean profile over the DevTools protocol. **One word is the whole visible
+difference**, and it is the one that matters: the heading now reads "Sign in to Open
+Design **Cloud**", which names upstream's hosted service instead of appearing to name
+this product. The footer is unchanged on purpose, for the attribution reason above.
+
+The rename's other onboarding string is in the tab, not the body — `settings.welcomeTitle`
+now reads "Welcome to Material Designer" — but the tab is 104px wide, so it renders as
+"Welcome t…" and carries no `title` tooltip to recover the rest. The full text is in the
+accessibility tree, so screen readers get it; a sighted user does not.
+
+![The same onboarding screen after the rename, reading "Sign in to Open Design Cloud" — the heading gains the word Cloud — with the unchanged copyright 2026 Open Design footer, the Continue (signed in) button, and a tab truncated to "Welcome t..."](assets/screenshots/onboarding-brand-fixed.png)
 
 **The UI scale at 200% — the fix, and the reason the capture set exists.** The previous
 image here showed this same state overflowing horizontally with the heading cut off
@@ -85,6 +110,20 @@ desktop host now scales its own web contents, which divides the real layout view
 1280×900 window at 200% lays out as 640×450, and the heading wraps instead of clipping.
 
 ![The home screen at 200% UI scale after the fix — the heading wraps onto two lines, the navigation rail and status bar are both present, and there is no horizontal scrollbar](assets/screenshots/home-scale-200.png)
+
+**The header search bar, which the hero image above predates.** The hero comes from
+`90e52d3`; the search field and the Material Design 3 home content landed after it, so
+this is the first capture of that chrome. The field carries its regex affordance as a
+`.*` chip and routes into the palette rather than owning a fourth result list.
+
+The keyboard chip beside it reads **`Ctrl K`**, and that is the key that actually opens
+the palette — the bindings are `Ctrl+K` and `Ctrl+Shift+P`, verified both in the shipped
+build and in `apps/web/src/App.tsx`. That matches the mockup, which labels the control
+"Command palette — Ctrl+K", and it satisfies the standard, which requires a command
+palette on *a* single discoverable shortcut without naming which one. The chip and the
+binding agree, which is the property that actually matters.
+
+![The home screen from release v0.16.1-r64.1 — an icon-only navigation rail on the left, a header search bar reading "Search projects, plugins, design systems…" with a .* regex chip and a Ctrl K chip beside it, the Material Designer wordmark over the heading "What will you design with your agent today?", a prompt composer, and a grid of template cards](assets/screenshots/home-header-search.png)
 
 </details>
 

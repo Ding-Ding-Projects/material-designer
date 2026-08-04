@@ -42,6 +42,8 @@ interface Props {
   open: boolean;
   /** Narrow the rail back to icons. */
   onClose: () => void;
+  /** Widen the rail to its labelled form. */
+  onOpen: () => void;
 }
 
 interface NavButtonProps {
@@ -84,6 +86,7 @@ export function EntryNavRail({
   newProjectDisabled = false,
   open,
   onClose,
+  onOpen,
 }: Props) {
   const t = useT();
   const brandLabel = t('app.brand');
@@ -122,12 +125,23 @@ export function EntryNavRail({
               aria-hidden="true"
             />
           </button>
+          {/* This used to call `onClose` unconditionally and was always
+              labelled "Collapse sidebar" — in a rail that starts collapsed. So
+              on a fresh profile the first thing a user clicks here sets `false`
+              to `false`: nothing moves, nothing is announced, and the control
+              reads as broken because in that state it is.
+
+              It is a toggle, so it says which way it goes and goes that way.
+              `aria-expanded` carries the state for assistive technology; the
+              label carries the *action*, which is why it flips rather than
+              describing where the rail currently is. */}
           <button
             type="button"
             className="entry-nav-rail__collapse"
-            onClick={onClose}
-            aria-label={t('entry.navCollapse')}
-            title={t('entry.navCollapse')}
+            onClick={open ? onClose : onOpen}
+            aria-label={open ? t('entry.navCollapse') : t('entry.navExpand')}
+            aria-expanded={open}
+            title={open ? t('entry.navCollapse') : t('entry.navExpand')}
             data-testid="entry-nav-collapse"
           >
             <Icon name="panel-left" size={20} />

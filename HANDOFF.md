@@ -32,9 +32,27 @@ no residue.
 >    surfaces exist without being reachable.** An adversarial audit found three
 >    modules with zero importers — the appearance editor, its infinite colour
 >    picker, and the whole spoken narrator. They compiled, they shipped in the
->    bundle, and no user could open them. The narrator is now wired; the other
->    two are not. **Judge a feature by whether a surface mounts it, never by
->    whether its files exist.**
+>    bundle, and no user could open them. All three are now wired. **Judge a
+>    feature by whether a surface mounts it, never by whether its files exist.**
+>
+> 4. **The sharper version of that warning, found later the same day: a feature
+>    can be mounted, reachable, persisted — and still do nothing.** The density
+>    setting had a control, wrote a `data-density` attribute, survived restarts,
+>    and rendered a *pixel-identical* interface at all three levels, because the
+>    five custom properties it swapped had one reader between them and four had
+>    none. Every check anyone would think to run said it worked.
+>
+>    Two others of the same shape, both found by reading rather than by any
+>    test: the shared `Dialog` had **no viewport height bound at all**, so a tall
+>    dialog pushed its own confirm button off the bottom of the screen with no
+>    scrollbar to say so; and editing `dialog.module.css` changed nothing on
+>    screen for anyone, because `Dialog` puts that module class and the global
+>    `modal` class on the same element and the module writes its card inside
+>    `:where()` — zero specificity, so the global rule wins every time.
+>
+>    **The lesson to carry: "the value is stored" and "the class is applied" are
+>    not evidence that anything renders.** Follow the property to a reader, and
+>    follow the selector to the rule that actually wins.
 
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:

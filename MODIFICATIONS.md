@@ -29,6 +29,30 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — A collapse button that only collapsed, in a rail that starts collapsed
+
+**Reason:** driving a released build found "Collapse sidebar" doing nothing on
+the home screen. It was not a layout bug: the button called `onClose`
+unconditionally, and the rail's default state is collapsed. So on a fresh
+profile the first click sets `false` to `false` — nothing moves, nothing is
+announced, and the control reads as broken because in that state it is.
+
+It is a toggle now, and it says which way it goes. Both this button and the
+topbar toggle carried the same static label in both states, which told a
+screen-reader user that pressing it would expand a rail that was already
+expanded; `aria-expanded` reports where the rail *is*, and the label reports
+where the button will *take* it, so only the label flips.
+
+The test covers the collapsed case specifically. The expanded case always
+worked, so a test asserting only "collapse collapses it" would have stayed
+green through the entire life of the defect.
+
+**Changed files:**
+
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/tests/components/EntryNavRail.toggle.test.tsx` (new)
+
 ### 2026-08-04 — The four collections stop being four different products
 
 **Reason:** roadmap § 2.4 Wave 3. The application has four collection surfaces

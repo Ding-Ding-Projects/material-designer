@@ -1012,14 +1012,21 @@ export function EntryShell({
           }}
           open={railOpen}
           onClose={() => setRailOpen(false)}
+          onOpen={() => setRailOpen(true)}
         />
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
           <div className="entry-main__topbar">
+            {/* The label names the action, not the current state, so it has to
+                flip with the rail. It read "Expand sidebar" in both states,
+                which told a screen-reader user the button would widen a rail
+                that was already wide. `aria-expanded` says where the rail is;
+                the label says where the button takes it. */}
             <button
               type="button"
               className="entry-rail-toggle"
               onClick={() => setRailOpen((prev) => !prev)}
-              aria-label={t('entry.navExpand')}
+              aria-label={railOpen ? t('entry.navCollapse') : t('entry.navExpand')}
+              title={railOpen ? t('entry.navCollapse') : t('entry.navExpand')}
               aria-expanded={railOpen}
               data-testid="entry-rail-toggle"
             >

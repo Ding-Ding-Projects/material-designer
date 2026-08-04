@@ -875,6 +875,16 @@ labels are longest — and when no legacy design element remains in them.
       Original wording: Note that the mockup declares a base spacing unit and a
       card variable that no density level redefines and nothing reads; the port
       should either drive them or drop them.
+
+      *Still dead, and named here so it is not rediscovered as a surprise:*
+      `--row` has **zero readers** and `--pad` and `--card` have one each. They
+      move with the level and change nothing, which is precisely the defect the
+      rest of this item fixed — smaller, but the same shape. Either give them a
+      reader or delete them; leaving a token that moves and is never read is how
+      the pixel-identical density levels happened in the first place.
+      *Verified by:* counting `var(--token)` occurrences across `styles/` and
+      `components/` — `--sp` 8, `--gap` 8, `--control-h` 5, `--control-pad-x` 2,
+      `--card` 1, `--pad` 1, `--row` 0.
 - [x] **Seed colour** — the four documented seeds, as swatches that each paint
       their own seed rather than the active one. The continuous picker the
       standards require already ships beside them on the accent field
@@ -1020,22 +1030,38 @@ present.
 
 ### 3.4 Dim sum surprise
 
-- [ ] **Add a bundled local image catalog** with dish names in English and
-      Traditional Chinese. None exists in this repository today. Images are
-      bundled assets — no network fetch, no third-party host, no tracking.
-- [ ] **Draw fresh at each launch, 10% chance, at most once per launch.**
-- [ ] **Present it non-blocking and auto-dismissing.** It never gates startup,
-      never steals focus, and never appears during a first run, an error path,
-      an update, or any flow where the user is mid-task.
-- [ ] **Name the dish in both languages**, honouring the active language mode,
-      with the funny level styling the surrounding copy while the dish name
-      stays correct.
-- [ ] **Give it meaningful alternative text** naming the dish, and respect
-      reduced-motion and quiet settings.
-- [ ] **Ship no off switch.** The mockup shows this as a row with an ON switch,
-      which the standard forbids — the surprise cannot be opted out of, and the
-      non-blocking rules above are what keep that polite. Remove the control and
-      migrate any stored preference forward.
+These six were all built and the boxes were simply never ticked. They are
+ticked here after checking each against the source rather than against the
+recollection that they were done.
+
+- [x] **Add a bundled local image catalog** with dish names in English and
+      Traditional Chinese. `assets/dim-sum/index.json` plus `assets/dim-sum/images`.
+      Bundled assets, no network fetch, no third-party host, no tracking.
+      *Original wording: none exists in this repository today.*
+- [x] **Draw fresh at each launch, 10% chance, at most once per launch.**
+      `DIM_SUM_CHANCE = 0.1` in `apps/web/src/lib/dim-sum/surprise.ts`, and a
+      module-scoped `launchDrawSpent` that is set **before** the draw is taken —
+      so an exception inside the draw still spends it rather than leaving a
+      launch that can be re-rolled. Module state is per JavaScript context, which
+      is exactly one launch.
+- [x] **Present it non-blocking and auto-dismissing.** A `Toast` with a 7s TTL,
+      never a dialog. The `eligible` prop is computed in `App.tsx` and is false
+      while the daemon config is hydrating, during onboarding, during the privacy
+      disclosure, and while any app-level error is on screen; the component adds
+      the one condition App cannot see — an updater state outside
+      `idle`/`not-available`/`unsupported` — and waits 1600ms after the app is
+      already interactive so a dish never lands in the same beat as first paint.
+- [x] **Name the dish in both languages**, honouring the active language mode.
+      `dimSumDishName` and `dimSumAltText` both take the locale and the language
+      mode; the surrounding blurb goes through `t('dimSum.blurb')`, so the funny
+      sliders style the copy while the dish's own name stays exact.
+- [x] **Give it meaningful alternative text** naming the dish. `dimSumAltText`
+      per locale and language mode, on an image marked `decoding="async"` and
+      `loading="lazy"` so decoration never holds up a paint.
+- [x] **Ship no off switch.** There is none: a search across every `.ts` and
+      `.tsx` for a dim-sum enable/disable preference returns nothing, and the
+      component takes no such prop. The mockup's ON switch was not ported.
+      *Verified by:* `tests/dim-sum.test.ts`, and by reading every call site.
 
 ### 3.5 Changelog viewer
 
