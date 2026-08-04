@@ -29,6 +29,30 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Declare the changelog test's fixture paths to the guard that flagged them
+
+**Reason:** wiring `pnpm guard` into continuous integration — where it had
+never run — immediately caught something this fork introduced. An earlier
+change to `apps/web/tests/changelog-parse.test.ts` gave its two in-memory
+fixtures `path` values naming real files under `docs/CHANGELOG/`, a surface
+upstream classifies as certain-tier exempt and requires skippable merge-gate
+lanes to leave unconsumed.
+
+The consumption is nominal rather than real: those strings are the provenance
+field of `ChangelogSourceFile` objects constructed inside the test, and the
+parser only carries the value through to `buildRelease`. No changelog file is
+opened. Upstream's check offers exactly two remedies — move the dependency, or
+record a justified allowlist entry — and since there is no dependency to move,
+this is the second, written in the same form as the three entries beside it.
+
+Rewriting the fixture paths to dodge the literal scanner was considered and
+rejected: it would have satisfied the check without changing what the test
+does, which is gaming a gate rather than answering it.
+
+**Changed files:**
+
+- `scripts/check-certain-exempt-consumption.ts`
+
 ### 2026-08-04 — Make the shared dialog keep the promise its own markup makes
 
 **Reason:** every dialog in the application renders `aria-modal="true"`, which

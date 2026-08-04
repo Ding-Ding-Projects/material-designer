@@ -70,6 +70,10 @@ const allowedConsumers = new Map<string, string>([
     "apps/daemon/tests/project-classifiers.test.ts",
     "file-kind classifier input; the LICENSE literal is never resolved or opened",
   ],
+  [
+    "apps/web/tests/changelog-parse.test.ts",
+    "in-memory ChangelogSourceFile fixtures; the docs/CHANGELOG literals are the `path` provenance field of objects built in the test, and the parser only carries that string through to buildRelease — no changelog file is opened",
+  ],
   // NOTE: apps/daemon/tests/runtimes/trae-cli.test.ts is a conditional
   // exception added in checkCertainExemptConsumption(), not here: it genuinely
   // reads docs/agent-adapters.md, and its exemption holds only while the
