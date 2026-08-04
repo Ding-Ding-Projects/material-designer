@@ -10,17 +10,33 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Design](https://img.shields.io/badge/Material%20Design-3%20Expressive-6750A4)
 ![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.16.1-lightgrey)
 
+![Material Designer running on Windows — the Material Design 3 home screen, showing the custom title bar, the prompt surface and the template rail](assets/screenshots/home-windows.png)
+
+<sub>Not a mockup. This is the packaged application, captured by the smoke test that
+installs the built installer, launches it and uninstalls it — from the run that
+published <code>v0.16.1-r38.1</code>, built from commit <code>4526b6d</code>. The
+capture path is the project's own, and the image is committed unedited.</sub>
+
 > [!NOTE]
-> **There is an installer, and the application has been launched.** Continuous
-> integration has verified the port, installed the workspace, typechecked it, run its
-> unit suites, built Windows installers and published two releases — and its packaged
-> smoke test has installed a built application, launched it, had the running process
-> answer its own health endpoint and uninstalled it. All observed. The documentation
-> site is published. What the application does **not** have yet is the Cantonese
-> locale, the tone sliders, the in-app regex builder, the startup surprise and the
-> changelog viewer — the site demonstrates those, the application does not carry them.
-> Everything claimed as verified below says exactly how it was verified; everything
-> else is stated as not yet done. See [Status](#status).
+> **The application ships, and what it ships is now most of the way through the
+> standards.** Continuous integration verifies the port, installs the workspace,
+> runs the guard, the craft lint and the translation check, typechecks on Linux and
+> Windows, runs **465 test files**, builds a Windows installer and publishes a
+> release — and the packaged smoke test installs that build, launches it, has the
+> running process answer its own health endpoint and uninstalls it with no residue.
+> All observed, every push.
+>
+> The Cantonese locale, both tone sliders, the regex builder, the command palette,
+> the changelog viewer, the startup surprise, tab pinning, the notification centre,
+> the destructive-action gate, bulk actions, the appearance editor and the narrator
+> are **in the application**, not only on the site. An earlier version of this note
+> said otherwise and was months behind the tree.
+>
+> **The honest gap is no longer "is it built" but "has anyone looked".** One capture
+> has been reviewed — the one above — and reviewing it caught the window chrome
+> still carrying the upstream brand. Nothing has been checked at a second display
+> scale, at a narrow width, or in a second language, and bilingual mode is where
+> clipping appears first. See [Status](#status).
 
 ## What this is
 
@@ -59,9 +75,15 @@ but an allowlist a script enforces.
 **The port verifies, and every rebrand change is declared.** `design/` holds all **11,799**
 files of upstream Open Design v0.16.1. [`scripts/verify-port.sh`](scripts/verify-port.sh)
 reports **0 gaps — exit 0**: 0 missing, 0 differing bytes, 0 mode mismatches, 0 object-id
-mismatches, 0 extra paths, 0 untracked files, 0 stale notices, with **67** paths declared as
-changed in `MODIFICATIONS.md`. Those 67 are the rebrand to *Material Designer*; every one of
-them carries its Apache-2.0 notice, which is exactly what the allowlist exists to force.
+mismatches, 0 extra paths, 0 untracked files, 0 stale notices.
+
+The number of *declared* paths is deliberately not quoted here. It was 67 when this
+paragraph was written and is several hundred now — it climbs with every change to the
+ported tree, so any figure in prose is stale within a day. **`gaps` is the number that
+means something, and it must be 0.** Every declared path carries its Apache-2.0 notice,
+which is what the allowlist exists to force: change a file and forget to write it down and
+verification fails; write one down and later revert it and verification fails too, as a
+stale notice.
 
 That run was performed locally in this working tree on a checkout with LF line endings, and
 it is the only kind of claim in this repository that a reader can reproduce in one command
@@ -71,7 +93,6 @@ with no toolchain at all:
 scripts/verify-port.sh
 ```
 
-`declared` moves as more of the rebrand lands; **`gaps` is the number that must stay at 0**.
 Prefer the script's answer over this paragraph's.
 
 **What continuous integration has actually proven.** These are observed run outcomes, not
@@ -79,23 +100,37 @@ predictions:
 
 | Check | Where | Outcome |
 | --- | --- | --- |
-| Port integrity on a clean checkout | *Verify*, Linux | ✅ 11,799 files, 67 declared, 0 gaps |
-| Workspace install — native modules compiled from source | *Release*, Windows | ✅ |
-| Full workspace typecheck, with the rebrand in place | *Release*, Windows | ✅ |
+| Port integrity on a clean checkout | *Verify*, Linux | ✅ 11,799 files, 0 gaps |
+| Stylesheet brace balance across every tracked `.css` | *Verify*, Linux | ✅ |
+| Translation keys declared, every locale complete | *Verify*, Linux | ✅ |
+| Workspace guard, craft lint, translation coverage | *Verify*, Linux | ✅ |
+| Full workspace typecheck | *Verify* (Linux) and *Release* (Windows) | ✅ both |
 | Unit suites for `tools-pack`, `packaged`, `desktop` | *Verify*, Linux | ✅ |
-| Windows identity, paths, build targets, launcher payload | *Release*, Windows | ✅ 20 files, 121 tests |
+| Shared component primitives, incl. the dialog focus trap | *Verify*, Linux | ✅ |
+| **The web application suite** | *Verify*, Linux | ✅ **465 test files** |
+| Windows identity, paths, build targets, launcher payload | *Release*, Windows | ✅ |
 | Site deployment | *Pages* | ✅ published and serving |
-| Windows installer build | *Release*, Windows | ✅ two installers built and attached |
+| Windows installer build | *Release*, Windows | ✅ |
 | Packaged smoke test — install, launch, health check, uninstall | *Release*, Windows | ✅ passed |
-| Release publication | *Release* | ✅ `v0.16.1-r7.1` and `v0.16.1-r8.1` |
+| Release publication | *Release* | ✅ one per successful run, each with its own tag |
+
+**And one gate has been watched rejecting a bad tree**, which is a different claim from
+being watched passing. A deliberately poisoned branch made the port verifier report
+`bytes differ 1`, name the offending file and exit 1
+([run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696)).
+Until that happened, every green tick above meant only that nothing had been caught.
 
 **What that does and does not prove.** The smoke test starts a real installed build, so the
 application has been launched and has answered for itself. It does not prove the application
 is *finished*: it exercises install, launch, a health check and uninstall, not the product's
 features. Statements about feature behaviour in this repository are still read from source or
 inherited from upstream's documentation unless they say otherwise. The Material Design 3
-redesign is **in progress**: the token layer and the Windows title bar have landed, and no
-component has been rewritten — see [Standards](#standards).
+redesign is **in progress**: the token layer, the Windows title bar and the Material
+Design 3 anatomy pass have landed — see [Standards](#standards).
+
+The distinction that matters most here: a module can compile, pass its unit tests and ship
+in the bundle while being **mounted by nothing**. Three did. Judge a feature by whether a
+surface opens it, never by whether its files exist.
 
 Separately, upstream ships 48 workflow files under `design/.github/workflows/`. GitHub
 Actions only reads workflows at the repository root, so every one of those is inert here.
@@ -586,10 +621,13 @@ Its Install page links one specific published build — the immutable release-as
 named tag, never a "latest" redirect — so the checksum shown beside it describes exactly the
 file the button hands you.
 
-A caveat the site states and this file repeats: the Cantonese locale, the tone sliders, the
-in-app regex builder, the startup surprise and the changelog viewer are demonstrated **on the
-site**. They are not in the application yet. [`docs/standards/`](docs/standards/) records the
-honest position for each.
+That caveat used to continue: the Cantonese locale, the tone sliders, the regex builder,
+the startup surprise and the changelog viewer were demonstrated on the site and absent from
+the application. **They are in the application now**, along with the command palette, tab
+pinning, the notification centre, the destructive-action gate, bulk actions, the appearance
+editor and the narrator. [`docs/standards/`](docs/standards/) records the honest position
+for each — and the position that matters is no longer *built or not built* but *seen or not
+seen*: almost none of it has been operated by a human at any display scale but the default.
 
 ---
 

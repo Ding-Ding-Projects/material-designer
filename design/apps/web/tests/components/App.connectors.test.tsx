@@ -300,7 +300,12 @@ describe('App connectors settings flows', () => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
     });
     mockedSyncConfigToDaemon.mockClear();
-    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+    // Wait for the banner, then re-query at click time. Holding the node
+    // across the `await` risks clicking an element React has already
+    // replaced, and a click on a detached node never reaches React's
+    // delegated root listener — the handler silently does not run.
+    await screen.findByRole('button', { name: 'Share' });
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
     await waitFor(() => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(
@@ -328,7 +333,12 @@ describe('App connectors settings flows', () => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
     });
     mockedSyncConfigToDaemon.mockClear();
-    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+    // Wait for the banner, then re-query at click time. Holding the node
+    // across the `await` risks clicking an element React has already
+    // replaced, and a click on a detached node never reaches React's
+    // delegated root listener — the handler silently does not run.
+    await screen.findByRole('button', { name: 'Share' });
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
     await waitFor(() => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(
@@ -356,7 +366,12 @@ describe('App connectors settings flows', () => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
     });
     mockedSyncConfigToDaemon.mockClear();
-    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+    // Wait for the banner, then re-query at click time. Holding the node
+    // across the `await` risks clicking an element React has already
+    // replaced, and a click on a detached node never reaches React's
+    // delegated root listener — the handler silently does not run.
+    await screen.findByRole('button', { name: 'Share' });
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
 
     await waitFor(() => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(
@@ -377,7 +392,9 @@ describe('App connectors settings flows', () => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
     });
     mockedSyncConfigToDaemon.mockClear();
-    fireEvent.click(await screen.findByRole('button', { name: "Don't share" }));
+    // Re-query at click time; see the note on the Share cases above.
+    await screen.findByRole('button', { name: "Don't share" });
+    fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
 
     await waitFor(() => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(
@@ -404,7 +421,9 @@ describe('App connectors settings flows', () => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalled();
     });
     mockedSyncConfigToDaemon.mockClear();
-    fireEvent.click(await screen.findByRole('button', { name: "Don't share" }));
+    // Re-query at click time; see the note on the Share cases above.
+    await screen.findByRole('button', { name: "Don't share" });
+    fireEvent.click(screen.getByRole('button', { name: "Don't share" }));
 
     await waitFor(() => {
       expect(mockedSyncConfigToDaemon).toHaveBeenCalledWith(

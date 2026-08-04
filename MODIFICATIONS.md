@@ -29,6 +29,37 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Fix the animation mock that made five tests race, and one of them flaky
+
+**Reason:** a test failed on a documentation-only commit and passed on a re-run
+of the byte-identical tree — the definition of a flake, and a corrosive one now
+that this suite gates every push, because an intermittent red trains readers to
+re-run a gate instead of reading it.
+
+The cause was not in the test. `tests/helpers/motion-mock.tsx` stands in for
+the animation library, and its proxy **constructed a fresh `forwardRef`
+component on every property read** — so `motion.div` was a different value each
+time it was evaluated. The real library memoises. React reconciles function
+components by identity, so a changed type unmounts the whole subtree: the
+consent banner was being destroyed and recreated on *every render of `App`*.
+
+A test that resolved `await screen.findByRole('button')` and then clicked that
+node was therefore holding a reference that any unrelated bootstrap promise
+could detach in the gap. React 18 delegates events at the root container, so a
+click on a detached node reaches nothing — silently, with no error. The
+assertion then failed on a call that never happened rather than on a wrong
+argument, which is exactly what the reported failure said.
+
+The mock now memoises per property name, matching the real library. Five cases
+in the connectors suite shared the racy shape and all now query at click time
+rather than holding a node across an await — belt and braces, since the mock
+fix alone closes the window.
+
+**Changed files:**
+
+- `apps/web/tests/helpers/motion-mock.tsx`
+- `apps/web/tests/components/App.connectors.test.tsx`
+
 ### 2026-08-04 — Move the destructive-action check out of the interfaces and into the handler
 
 **Reason:** the standard is explicit that this is an authorization boundary and
