@@ -42,6 +42,28 @@ jobs:
         shell: bash
         run: bash scripts/verify-port.sh
 
+      - name: Balance-check every tracked stylesheet
+        shell: bash
+        # A single stray brace in a web stylesheet fails the Windows build at
+        # minute 35, with an error that names the import graph's entry file
+        # rather than the file at fault — four Release runs in a row died
+        # exactly that way. Typecheck does not read CSS and the port verifier
+        # only compares bytes, so this is the one gate that can catch the
+        # fault class in seconds. A raw brace count is deliberate: all 507
+        # tracked stylesheets balance today, comments included, so a mismatch
+        # is a defect, not noise.
+        run: |
+          set -uo pipefail
+          bad=0
+          while IFS= read -r f; do
+            n=$(awk '{o+=gsub(/{/,"{"); c+=gsub(/}/,"}")} END{print o-c}' "$f")
+            if [ "$n" != "0" ]; then
+              echo "::error file=$f::unbalanced braces (open minus close = $n)"
+              bad=1
+            fi
+          done < <(git ls-files '*.css')
+          exit "$bad"
+
       - name: Report port integrity
         if: ${{ always() }}
         shell: bash
