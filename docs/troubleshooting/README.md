@@ -22,6 +22,7 @@ would restate its own subject. That is the one declared exemption in the tree.
 | [unbuilt-package-imports.md](unbuilt-package-imports.md) | Three suites died at import time with a missing module, because they import built output that the install step does not build. |
 | [test-timeouts.md](test-timeouts.md) | Two platform-gated specs that do real filesystem work, inheriting a five-second default budget written for a fast local disk. |
 | [packaging-schema-drift.md](packaging-schema-drift.md) | An installer build rejected before packing anything, because a configuration property moved between major versions of the build tool and now fails schema validation on sight. |
+| [css-brace-collapse.md](css-brace-collapse.md) | One stray `}` in a web stylesheet failed **four** Release runs at minute 35 each, with the error naming the import graph's entry file instead of the file at fault. Typecheck never reads CSS; the fast gate now counts braces. |
 
 ## How to read a failure quickly
 

@@ -482,6 +482,30 @@ objects and also proved the table still matches them.
 To reproduce the self-test, append a line to any file under `design/`, run the
 script, then restore the file with `git checkout -- design/`.
 
+### The CI gate has been observed rejecting a bad tree
+
+For a long time every workflow here had only ever been watched *passing*, so
+none was yet known to gate. That is closed for this gate: a deliberately
+poisoned branch (`prove/gates-actually-bite`, an edit to `design/QUICKSTART.md`
+with no `MODIFICATIONS.md` entry) made the *Verify* workflow fail exactly as
+designed —
+[run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696)
+reports `bytes differ 1`, names `QUICKSTART.md` in both the bytes-differ and
+blob-id lists, and exits 1. The branch existed only for that demonstration and
+was deleted after the run; the run record is the durable evidence.
+
+The *Pages* bundle gate could not be exercised the same way: the
+`github-pages` environment refuses deployments from a non-default ref before
+any step runs
+([run 30864712524](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864712524)
+failed with zero steps executed), which is a protection in its own right but
+means a branch cannot reach the gate. Its six check commands, run verbatim
+against the same poisoned tree locally, caught the planted remote script tag
+(`site/index.html: loads a remote script`). So the gate's *logic* is
+demonstrated; its *wiring* has still only been watched passing, and proving it
+in CI would need a deliberate red commit on `main`, which has not been judged
+worth it.
+
 ## Suggested reading
 
 - [verbatim-import.md](verbatim-import.md) — how the copy was made in the first place
