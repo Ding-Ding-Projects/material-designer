@@ -43,6 +43,9 @@ import {
 } from '../../state/appearance';
 import type { AppConfig, AppTheme } from '../../types';
 import { Icon } from '../Icon';
+import { useNarrator } from '../narrator/narrator';
+import type { NarratorLanguage } from '../narrator/queue';
+import { NARRATOR_LANGUAGES, NARRATOR_LANGUAGE_LABEL_KEYS } from '../narrator/settings';
 import type { SettingsSection } from '../SettingsDialog';
 import { openWorkspaceTab } from '../WorkspaceTabsBar';
 import styles from './CommandPalette.module.css';
@@ -258,6 +261,23 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
       writeConfig({ ...config, notifications: { ...current, ...patch } });
     },
     [config, writeConfig],
+  );
+
+  // The narrator keeps its own store rather than riding in AppConfig, so the
+  // palette reads it through the same hook the settings panel uses. Changing
+  // it here changes it there: one store, two surfaces.
+  const narrator = useNarrator();
+  const setNarratorEnabled = useCallback(
+    (enabled: boolean) => {
+      narrator.setPreferences({ ...narrator.preferences, enabled });
+    },
+    [narrator],
+  );
+  const setNarratorLanguage = useCallback(
+    (language: NarratorLanguage) => {
+      narrator.setPreferences({ ...narrator.preferences, language });
+    },
+    [narrator],
   );
 
   const pet = config.pet;
@@ -546,6 +566,10 @@ export function CommandPalette({ config, onConfigChange, onOpenSettings, onClose
                           soundEnabled={notifications?.soundEnabled ?? false}
                           desktopEnabled={notifications?.desktopEnabled ?? false}
                           setNotification={setNotification}
+                          narratorEnabled={narrator.preferences.enabled}
+                          setNarratorEnabled={setNarratorEnabled}
+                          narratorLanguage={narrator.preferences.language}
+                          setNarratorLanguage={setNarratorLanguage}
                           petEnabled={pet?.enabled ?? false}
                           setPetEnabled={setPetEnabled}
                           metricsEnabled={config.telemetry?.metrics === true}
@@ -590,6 +614,10 @@ interface SettingRowControlProps {
   soundEnabled: boolean;
   desktopEnabled: boolean;
   setNotification: (patch: Partial<NonNullable<AppConfig['notifications']>>) => void;
+  narratorEnabled: boolean;
+  setNarratorEnabled: (next: boolean) => void;
+  narratorLanguage: NarratorLanguage;
+  setNarratorLanguage: (next: NarratorLanguage) => void;
   petEnabled: boolean;
   setPetEnabled: (next: boolean) => void;
   metricsEnabled: boolean;
@@ -705,6 +733,32 @@ function SettingRowControl(props: SettingRowControlProps) {
           tabIndex={tabIndex}
           t={t}
         />
+      );
+    case 'narrator.enable':
+      return (
+        <SettingSwitch
+          label={t('narrator.enable')}
+          checked={props.narratorEnabled}
+          onChange={props.setNarratorEnabled}
+          tabIndex={tabIndex}
+          t={t}
+        />
+      );
+    case 'narrator.language':
+      return (
+        <Select
+          className={styles.select}
+          tabIndex={tabIndex}
+          aria-label={t('narrator.language')}
+          value={props.narratorLanguage}
+          onChange={(event) => props.setNarratorLanguage(event.target.value as NarratorLanguage)}
+        >
+          {NARRATOR_LANGUAGES.map((language) => (
+            <option key={language} value={language}>
+              {t(NARRATOR_LANGUAGE_LABEL_KEYS[language])}
+            </option>
+          ))}
+        </Select>
       );
     case 'pet.enabled':
       return (

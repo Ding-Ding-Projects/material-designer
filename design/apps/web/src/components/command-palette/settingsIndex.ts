@@ -37,6 +37,8 @@ export type SettingsControlId =
   | 'language.mode'
   | 'language.funnyEn'
   | 'language.funnyZhHk'
+  | 'narrator.enable'
+  | 'narrator.language'
   | 'notifications.sound'
   | 'notifications.desktop'
   | 'pet.enabled'
@@ -224,6 +226,29 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'pet.fieldAccent',
     keywords: ['accent', 'colour', 'color', 'swatch'],
     control: 'appearance.accent',
+  },
+  {
+    id: sectionAnchorFor('narrator'),
+    section: 'narrator',
+    titleKey: 'narrator.title',
+    hintKey: 'narrator.hint',
+    keywords: ['narrator', 'speech', 'spoken', 'voice', 'tts', 'read aloud', 'cantonese'],
+  },
+  {
+    id: 'narrator.enable',
+    section: 'narrator',
+    titleKey: 'narrator.enable',
+    hintKey: 'narrator.enableHint',
+    keywords: ['narrator', 'speak', 'voice', 'off', 'on'],
+    control: 'narrator.enable',
+  },
+  {
+    id: 'narrator.language',
+    section: 'narrator',
+    titleKey: 'narrator.language',
+    hintKey: 'narrator.languageBothHint',
+    keywords: ['narrator language', 'spoken language', 'english', 'cantonese', 'both'],
+    control: 'narrator.language',
   },
   {
     id: sectionAnchorFor('critiqueTheater'),

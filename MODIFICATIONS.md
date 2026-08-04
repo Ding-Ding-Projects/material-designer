@@ -29,6 +29,58 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Give the spoken narrator a surface a user can actually reach
+
+**Reason:** the narrator shipped as unreachable code. Every piece existed —
+the serialized queue, the per-category cooldown, the screen-reader yield, the
+preference store, the settings panel, and 19 dictionary keys in all twenty
+locales — and nothing mounted any of it. `NarratorSettingsPanel` had zero
+importers, so no user could turn it on however hard they looked.
+
+It was also unmountable rather than merely unmounted: the panel imports
+`NarratorSettingsPanel.module.css`, and that file did not exist. Wiring it up
+without writing the stylesheet would have failed the build, which is the most
+likely reason it was left unwired in the first place.
+
+The panel is now its own section in the settings dialog, and the command
+palette indexes it: the section, the on/off switch and the spoken-language
+select, the latter two as live inline controls that change the real store
+rather than links to it. The language label map moved into `settings.ts` so
+the panel and the palette cannot drift into calling the same three languages
+different things.
+
+**Changed files:**
+
+- `apps/web/src/components/narrator/NarratorSettingsPanel.module.css`
+- `apps/web/src/components/narrator/NarratorSettingsPanel.tsx`
+- `apps/web/src/components/narrator/settings.ts`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+
+### 2026-08-04 — Make the Design Files bulk delete report what actually happened
+
+**Reason:** the bulk delete told the user it had succeeded whatever it did.
+`handleDeleteMany` returned nothing, so the panel took its documented "a
+parent that reports nothing back is not evidence of success" branch — which
+then claimed every selected item succeeded. A delete the user cancelled at
+the confirmation, and a delete where every file was refused, both produced
+"N done." The same call site dropped the panel's `options` argument, so the
+progress bar stayed frozen at zero and the Stop control was decorative.
+
+The loop is now the shared `runBulkAction` runner rather than a second
+hand-rolled one: it checks the abort signal between files, reports progress
+against the file in flight, and counts a helper that resolves `false` as a
+failure — which `deleteProjectFile` does on every refusal. The redundant
+native `confirm()` is gone with it; the panel's own preview dialog is the
+confirmation, and the two together asked twice.
+
+**Changed files:**
+
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/DesignFilesPanel.tsx`
+- `apps/web/tests/components/bulk/run.test.ts`
+
 ### 2026-08-04 — Bundle the Cairo face, and end the application's one network font request
 
 **Reason:** every asset ships locally. The web application's stylesheet began

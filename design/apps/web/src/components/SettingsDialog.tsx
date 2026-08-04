@@ -163,6 +163,7 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
+import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
@@ -227,6 +228,7 @@ export type SettingsSection =
   | 'mcpClient'
   | 'language'
   | 'appearance'
+  | 'narrator'
   | 'critiqueTheater'
   | 'notifications'
   | 'pet'
@@ -4478,6 +4480,17 @@ export function SettingsDialog({
             </button>
             <button
               type="button"
+              className={`settings-nav-item${activeSection === 'narrator' ? ' active' : ''}`}
+              onClick={() => setActiveSection('narrator')}
+            >
+              <Icon name="volume" size={18} />
+              <span>
+                <strong>{t('narrator.title')}</strong>
+                <small>{t('narrator.hint')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
               className={`settings-nav-item${activeSection === 'critiqueTheater' ? ' active' : ''}`}
               onClick={() => setActiveSection('critiqueTheater')}
             >
@@ -6046,6 +6059,10 @@ export function SettingsDialog({
 
           {activeSection === 'appearance' ? (
             <AppearanceSection cfg={cfg} setCfg={setCfg} />
+          ) : null}
+
+          {activeSection === 'narrator' ? (
+            <NarratorSettingsPanel />
           ) : null}
 
           {activeSection === 'critiqueTheater' ? (

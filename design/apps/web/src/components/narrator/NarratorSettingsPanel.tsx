@@ -12,19 +12,15 @@ import { Button } from '@open-design/components';
 import { Icon } from '../Icon';
 import { useI18n } from '../../i18n';
 import { useNarrator } from './narrator';
-import { NARRATOR_LANGUAGES } from './settings';
+import { NARRATOR_LANGUAGES, NARRATOR_LANGUAGE_LABEL_KEYS } from './settings';
 import { isSpeechAvailable, pickVoice } from './speech';
 import type { NarratorLanguage } from './queue';
 import styles from './NarratorSettingsPanel.module.css';
 
-const LANGUAGE_LABEL: Record<
-  NarratorLanguage,
-  'narrator.languageEnglish' | 'narrator.languageCantonese' | 'narrator.languageBoth'
-> = {
-  'en': 'narrator.languageEnglish',
-  'zh-HK': 'narrator.languageCantonese',
-  'both': 'narrator.languageBoth',
-};
+// The label map lives in `settings.ts` so the command palette's inline
+// language control and this panel name the three languages identically. Two
+// copies drift, and the palette is precisely where a user would notice.
+const LANGUAGE_LABEL = NARRATOR_LANGUAGE_LABEL_KEYS;
 
 export function NarratorSettingsPanel() {
   const { t } = useI18n();
@@ -50,13 +46,16 @@ export function NarratorSettingsPanel() {
   }, []);
 
   return (
-    <section className={styles.panel} data-od-setting="appearance.narrator">
+    // The reveal anchors below must match the ids in `settingsIndex.ts`
+    // exactly — the palette polls for `[data-od-setting="<id>"]`, so an
+    // anchor that names a section nobody indexes teleports the user nowhere.
+    <section className={styles.panel} data-od-setting="section:narrator">
       <div className={styles.head}>
         <h4>{t('narrator.title')}</h4>
         <p className="hint">{t('narrator.hint')}</p>
       </div>
 
-      <label className={styles.row}>
+      <label className={styles.row} data-od-setting="narrator.enable">
         <input
           type="checkbox"
           checked={preferences.enabled}
@@ -70,7 +69,7 @@ export function NarratorSettingsPanel() {
         </span>
       </label>
 
-      <label className={styles.field}>
+      <label className={styles.field} data-od-setting="narrator.language">
         <span className={styles.fieldLabel}>{t('narrator.language')}</span>
         <select
           className={styles.select}

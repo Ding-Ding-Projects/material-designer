@@ -37,6 +37,22 @@ export const DEFAULT_NARRATOR_PREFERENCES: NarratorPreferences = {
 
 export const NARRATOR_LANGUAGES: readonly NarratorLanguage[] = ['en', 'zh-HK', 'both'];
 
+/**
+ * What each spoken language is called on screen.
+ *
+ * Shared rather than restated: the settings panel and the command palette's
+ * inline language control both render this list, and two copies of a label
+ * map are two chances to call the same setting different things.
+ */
+export const NARRATOR_LANGUAGE_LABEL_KEYS: Record<
+  NarratorLanguage,
+  'narrator.languageEnglish' | 'narrator.languageCantonese' | 'narrator.languageBoth'
+> = {
+  'en': 'narrator.languageEnglish',
+  'zh-HK': 'narrator.languageCantonese',
+  'both': 'narrator.languageBoth',
+};
+
 const STORAGE_KEY = 'open-design:narrator';
 
 export function normalizeNarratorPreferences(value: unknown): NarratorPreferences {
