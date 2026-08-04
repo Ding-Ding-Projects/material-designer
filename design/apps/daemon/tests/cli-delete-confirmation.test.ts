@@ -256,6 +256,61 @@ describe('od delete confirmation gate', () => {
     });
   }
 
+  // `od library rm` is the one destructive verb that shipped without
+  // `--confirm`, so arming the refusal today would break every script already
+  // calling it — and break it at exit 2, which most callers read as "I typed
+  // the command wrong" rather than "the contract moved". A safety change that
+  // trains people to write `|| true` has made things worse.
+  //
+  // Phase one is therefore: the flag exists, adopting it is safe, and a caller
+  // who has not adopted it is told rather than refused. What is asserted here
+  // is exactly that split — the notice is real, it is on stderr only, and the
+  // exit code and request sequence are unchanged either way, which is what
+  // makes this non-breaking.
+  //
+  // The delete is not unguarded in the meantime: the daemon still refuses it
+  // without a token, which is why both cases below emit the mint-then-DELETE
+  // pair. What is missing is only the local half.
+  describe('od library rm (deprecation phase)', () => {
+    const args = ['library', 'rm', 'asset-1'];
+    const expected: CapturedRequest[] = [
+      { method: 'POST', url: '/api/library/assets/asset-1/confirm-delete' },
+      { method: 'DELETE', url: '/api/library/assets/asset-1', confirmToken: STUB_TOKEN },
+    ];
+
+    it('still deletes without --confirm, and says the flag is coming', async () => {
+      const result = await runCli([...args, '--daemon-url', stub.baseUrl]);
+
+      // Unchanged exit code and unchanged request sequence: that is the whole
+      // difference between a deprecation and a break.
+      expect(result.code).toBe(0);
+      expect(stub.requests).toEqual(expected);
+      expect(result.stderr).toMatch(/future release will refuse this without --confirm/);
+      // A useful notice names the asset and prints the exact command that will
+      // keep working, rather than telling the reader to consult release notes.
+      expect(result.stderr).toContain('asset-1');
+      expect(result.stderr).toContain('od library rm asset-1 --confirm');
+    });
+
+    it('accepts --confirm today and says nothing when it is given', async () => {
+      const result = await runCli([...args, '--daemon-url', stub.baseUrl, '--confirm']);
+
+      expect(result.code).toBe(0);
+      expect(stub.requests).toEqual(expected);
+      expect(result.stderr).not.toMatch(/--confirm/);
+    });
+
+    // The notice must never reach stdout: a pipeline doing `od library rm x
+    // --json | jq` would otherwise start parsing prose.
+    it('keeps --json stdout parseable while the notice goes to stderr', async () => {
+      const result = await runCli([...args, '--daemon-url', stub.baseUrl, '--json']);
+
+      expect(result.code).toBe(0);
+      expect(() => JSON.parse(result.stdout) as unknown).not.toThrow();
+      expect(result.stderr).toMatch(/future release will refuse this without --confirm/);
+    });
+  });
+
   // The refusal must not swallow a genuinely malformed invocation: a missing
   // id is still a usage error, reported as one, before the gate is consulted.
   // (`templates` is the verb used here because it resolves positionals through

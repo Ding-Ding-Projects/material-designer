@@ -5,17 +5,17 @@ an input the user did not intend: two independently operated keys, then a
 full-range slider, with an always-available emergency exit.
 
 > [!WARNING]
-> **Status: the boundary now exists for the irreversible deletes; the
-> interface gate still does not cover every affordance.**
+> **Status: the boundary covers every irreversible delete, and every web
+> affordance that reaches one now goes through the gate. What the token proves
+> is still narrower than what this document asks for.**
 >
 > The gate exists — `apps/web/src/components/destructive/` carries the
 > two-key-plus-slider machine, its dialog, and an emergency exit — and it is
 > rendered from the designs tab and the privacy section.
 >
-> What changed: the three deletes that local version history genuinely cannot
-> undo — **project**, **brand**, **library asset** — are now enforced in the
-> daemon's own handler. Each `DELETE` is refused without a single-use
-> confirmation token minted for that exact resource at
+> What changed: the deletes that local version history genuinely cannot undo
+> are enforced in the daemon's own handler. Each `DELETE` is refused without a
+> single-use confirmation token minted for that exact resource at
 > `POST <resource>/confirm-delete` and sent back in the `x-od-confirm-token`
 > header. See `apps/daemon/src/http/confirm-delete.ts` and
 > `packages/contracts/src/api/destructive-confirmation.ts`. That is the
@@ -23,22 +23,56 @@ full-range slider, with an always-available emergency exit.
 > holds for callers no interface can see: `curl`, a third-party client, a
 > script.
 >
-> What is still unfinished is **routing on the interface side**. The web gate
-> is mounted on some affordances and not others — whole-project delete from the
-> recent-projects strip still goes through a plain one-button dialog — and the
-> `od` CLI's `--confirm` flag and the MCP `delete_project` tool's `confirm:true`
-> are each a gate on their own surface. All three now have to complete the
-> daemon's handshake, so none of them can delete in a single unauthenticated
-> request; but a user reaching a delete through an ungated affordance still does
-> not meet two keys and a slider.
+> **The gated resources, and the one question that decides membership** — not
+> "is it a `DELETE`", but "can local version history bring it back?"
+>
+> | Resource | Route | Why history cannot restore it |
+> | --- | --- | --- |
+> | project | `DELETE /api/projects/:id` | `projects/` is excluded from every history domain; the delete also cancels in-flight runs and removes the directory |
+> | brand | `DELETE /api/brands/:id` | removes the brand tree and the design system it registered; installed-extension trees are excluded from history |
+> | library asset | `DELETE /api/library/assets/:id` | unlinks the library's content-addressed bytes; `LIBRARY_DIR` is in no domain |
+> | project folder | `DELETE /api/projects/:id/folders` | a recursive `rm` of a subtree that writes **no** revision — unlike the single-file delete beside it, which tombstones the file's version manifest and stays restorable |
+> | design system (user-authored) | `DELETE /api/design-systems/:id`, `user:` ids only | `design-systems/` is a named absence in `history/domains.ts`; the whole directory goes |
+>
+> The design-system row is the one that needs reading twice. The same URL also
+> serves the **marketplace uninstall** for non-`user:` ids, answered earlier by
+> `apps/daemon/src/routes/static-resource.ts`, and that one is **not** gated:
+> it removes a checkout `POST /api/design-systems/install` fetches again from
+> its source, so gating it would spend the gate's meaning on a one-click undo.
+> The project-folder token is bound to the (project, folder) pair rather than to
+> the project, because the folder travels in the request body — a grant to
+> remove `drafts/` must not remove `final/`.
+>
+> **Interface routing is now complete on the web side.** Every affordance that
+> reaches a gated operation renders `DestructiveGate`: the designs tab (single,
+> kanban and bulk), the recent-projects strip on Home, the design-system project
+> menu, the brand card, the design-systems manager, and the library's card,
+> bulk and preview-modal deletes. The strip was the last plain one-button
+> confirm, and it mattered because it and the designs tab call the same handler
+> — so the route a user happened to take decided how much stood between them and
+> the same irreversible deletion.
+>
+> What the token still does **not** prove is that a human moved a slider: the
+> web app mints it at the moment of authorization and spends it immediately.
+> What it buys is that no caller reaches the operation in one replayable
+> request, and that every route converges on one enforcement point.
+>
+> **`od library rm` is mid-deprecation.** Every other destructive `od` verb
+> refuses without `--confirm`; that one shipped without the flag, so requiring
+> it today would break existing scripts at exit code 2 — which reads as "you
+> typed it wrong", not "the contract moved". Phase one ships the flag as
+> accepted-and-optional plus a stderr notice naming the exact command that will
+> keep working. The daemon's token still covers the operation meanwhile; what is
+> missing is only the local refusal that fires before any HTTP request.
 >
 > **Deliberately not gated, with reasons.** Deletes whose records are captured
 > by local version history (`apps/daemon/src/history/domains.ts`) are
 > restorable, and this document says to prefer an undo notification for those:
 > memory entries, project files, project templates, automations, BYOK profiles,
-> connector accounts and MCP servers all fall there. Gating a restorable delete
-> adds ceremony without safety and dilutes the signal that the gate means
-> *irreversible*.
+> connector accounts and MCP servers all fall there — as does the marketplace
+> uninstall above, which is reversible by re-installing rather than by history.
+> Gating a restorable delete adds ceremony without safety and dilutes the signal
+> that the gate means *irreversible*.
 >
 > An absent gate is honestly absent; a gate that guards two doors of a dozen
 > reads as protection the product does not have. This section said "not started,
@@ -167,7 +201,7 @@ mounts it; it does not mean anyone has operated it, because nobody has.
 | Progress and completion animations | **Built.** |
 | Emergency exit and platform cancellation path | **Built.** An audit found Escape and the exit reporting `cancelled` for an action that had already begun. Tracked in § 4.0. |
 | Focus return to the originating control | **Partly.** The shared `Dialog` primitive now traps focus and restores it on close; the gate's own paths were found not to restore on every route. Tracked in § 4.0. |
-| Enforcement at the operation rather than the button | **Met for the irreversible deletes; not yet for the rest.** `DELETE /api/projects/:id`, `/api/brands/:id` and `/api/library/assets/:id` are refused in the handler without a single-use, resource-bound, short-lived confirmation token (428 `CONFIRMATION_REQUIRED`). The web app, the `od` CLI and the MCP `delete_project` tool all complete the handshake. Restorable deletes are deliberately ungated — see the status note above. Nothing yet enforces *two keys and a slider* at the operation; the token proves a deliberate two-step exchange against a named resource, not that a human moved a slider. |
+| Enforcement at the operation rather than the button | **Met for every irreversible delete.** `DELETE /api/projects/:id`, `/api/brands/:id`, `/api/library/assets/:id`, `/api/projects/:id/folders` and `/api/design-systems/:id` (`user:` ids only) are refused in the handler without a single-use, resource-bound, short-lived confirmation token (428 `CONFIRMATION_REQUIRED`). The web app, the `od` CLI and the MCP `delete_project` tool all complete the handshake. Restorable deletes — including the marketplace design-system uninstall on that same URL — are deliberately ungated; see the status note above. Nothing yet enforces *two keys and a slider* at the operation; the token proves a deliberate two-step exchange against a named resource, not that a human moved a slider. |
 | Destructive actions that will need it | **Present in the mockup** — a delete in the bulk-selection bar and a delete in the item context menu, the latter styled in the error colour. Both are plain actions with no gate. |
 
 The mockup draws the destructive actions and none of the protection. That is the

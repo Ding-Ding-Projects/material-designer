@@ -12,6 +12,8 @@ import {
   type ProjectFileVersionPromptSource,
   type ProjectFileVersionSource,
   type ProjectFileVersionWarning,
+  normalizeProjectFolderPath,
+  projectFolderResourceId,
 } from '@open-design/contracts';
 import { readMeta as readBrandMeta } from '../../brands/store.js';
 import { createProjectArtifactFile } from '../../artifacts/create.js';
@@ -3199,7 +3201,21 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     }
   });
 
-  app.delete('/api/projects/:id/folders', async (req, res) => {
+  // Mint the confirmation the folder DELETE below requires.
+  //
+  // This route is a recursive `rm` of a project subtree, and unlike
+  // `DELETE /api/projects/:id/files/:name` — which tombstones the file's
+  // version manifest through `markProjectFileVersionStoreDeleted`, leaving
+  // every revision restorable, and is therefore deliberately ungated — it
+  // writes no revision at all. Nothing in `history/domains.ts` covers
+  // `projects/`, so once the subtree is gone the app has no account of what
+  // was in it. That is the same "outside every history domain" test the other
+  // gated kinds pass, applied to the one project-scoped delete that fails it.
+  //
+  // The folder travels in the body rather than the URL, so the token is bound
+  // to the (project, folder) pair via `projectFolderResourceId` — a token for
+  // `drafts/` must not authorize removing `final/`.
+  app.post('/api/projects/:id/folders/confirm-delete', async (req, res) => {
     try {
       const { path: folderPath } = req.body || {};
       if (typeof folderPath !== 'string' || !folderPath.trim()) {
@@ -3209,9 +3225,79 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
+      // Never mint for a folder that is not there: a token for a phantom path
+      // would report the delete as authorized and then fail, and the caller
+      // could not tell that apart from a race.
+      const folders = await listProjectFolders(PROJECTS_DIR, req.params.id, {
+        metadata: project.metadata,
+      });
+      const wanted = normalizeProjectFolderPath(folderPath);
+      const folder = folders.find(
+        (candidate: { path?: string; name?: string }) =>
+          normalizeProjectFolderPath(candidate.path ?? candidate.name ?? '') === wanted,
+      );
+      if (!folder) {
+        return sendApiError(res, 404, 'FOLDER_NOT_FOUND', 'folder not found');
+      }
+      // The blast radius, counted from the same tree the delete will remove
+      // rather than guessed at by the interface: the subtree's own nested
+      // folders and every file beneath it.
+      const prefix = `${wanted}/`;
+      const nested = folders.filter(
+        (candidate: { path?: string; name?: string }) =>
+          normalizeProjectFolderPath(candidate.path ?? candidate.name ?? '').startsWith(prefix),
+      ).length;
+      const files = await listFiles(PROJECTS_DIR, req.params.id, {
+        metadata: project.metadata,
+      });
+      const fileCount = files.filter((candidate: { path?: string; name?: string }) =>
+        normalizeProjectFolderPath(candidate.path ?? candidate.name ?? '').startsWith(prefix),
+      ).length;
+      const items = [
+        `The folder "${wanted}" and everything beneath it`,
+        `${fileCount} file${fileCount === 1 ? '' : 's'}${nested > 0 ? ` in ${nested} nested folder${nested === 1 ? '' : 's'}` : ''}`,
+      ];
+      res.json(
+        issueDeleteConfirmation({
+          kind: 'project-folder',
+          id: projectFolderResourceId(req.params.id, folderPath),
+          label: wanted,
+          items,
+          reversible: false,
+        }),
+      );
+    } catch (err: any) {
+      sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
+    }
+  });
+
+  app.delete('/api/projects/:id/folders', requireDeleteConfirmation({
+    kind: 'project-folder',
+    // Reads the same raw body value the mint route hashed, so the two legs
+    // cannot disagree about how a trailing slash spells a folder.
+    resourceId: (req) => projectFolderResourceId(
+      String(req.params.id ?? ''),
+      typeof req.body?.path === 'string' ? req.body.path : '',
+    ),
+    resourcePath: (req) => `/api/projects/${encodeURIComponent(String(req.params.id ?? ''))}/folders`,
+  }), async (req, res) => {
+    // Narrowed once, up front: composing the confirmation middleware onto this
+    // route widens Express's inferred `params` to `string | string[] |
+    // undefined`, and three casts of the same value are three chances to write
+    // a different one.
+    const projectId = String(req.params.id ?? '');
+    try {
+      const { path: folderPath } = req.body || {};
+      if (typeof folderPath !== 'string' || !folderPath.trim()) {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'path required');
+      }
+      const project = getProject(db, projectId);
+      if (!project) {
+        return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      }
       await deleteProjectFolder(
         PROJECTS_DIR,
-        req.params.id,
+        projectId,
         folderPath,
         project.metadata,
       );

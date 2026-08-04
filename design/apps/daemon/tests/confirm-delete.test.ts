@@ -75,10 +75,25 @@ interface ApiErrorBody {
 
 // Mounted the same way `delete-cancels-active-runs.test.ts` mounts it, so the
 // route under test is the production registrar rather than a re-implementation.
+/**
+ * The folder tree the folders routes read, mutable per test.
+ *
+ * `ctx.projectFiles` is the seam the production registrar reads its filesystem
+ * helpers through, so stubbing it here exercises the real route — the mint's
+ * existence check, the token binding, and the middleware — without needing a
+ * real project directory on disk.
+ */
+interface ProjectTree {
+  folders: Array<{ name: string; path: string }>;
+  files: Array<{ name: string; path: string }>;
+}
+
 async function mountProjectApp(db: Db, tempDir: string) {
   const app = express();
   app.use(express.json());
   const noop = vi.fn();
+  const tree: ProjectTree = { folders: [], files: [] };
+  const deleteProjectFolder = vi.fn(async () => {});
   const runs = createChatRunService({
     createSseResponse: () => ({ send: vi.fn(() => true), end: vi.fn(), cleanup: vi.fn() }),
     createSseErrorPayload: (code: string, message: string) => ({ error: { code, message } }),
@@ -114,7 +129,10 @@ async function mountProjectApp(db: Db, tempDir: string) {
     },
     projectFiles: {
       ensureProject: noop,
-      listFiles: noop,
+      listFiles: vi.fn(async () => tree.files),
+      listProjectFolders: vi.fn(async () => tree.folders),
+      createProjectFolder: noop,
+      deleteProjectFolder,
       listTabs: vi.fn(() => ({ tabs: [] })),
       setTabs: noop,
       readProjectFile: noop,
@@ -162,6 +180,8 @@ async function mountProjectApp(db: Db, tempDir: string) {
   return {
     base,
     removeProjectDir,
+    deleteProjectFolder,
+    tree,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
 }
@@ -296,6 +316,138 @@ describe('DELETE /api/projects/:id requires a confirmation token', () => {
 
     const missing = await fetch(`${app.base}/api/projects/nope/confirm-delete`, { method: 'POST' });
     expect(missing.status).toBe(404);
+  });
+});
+
+// The folder route is the one gated subject that is not fully in the URL: the
+// folder travels in the body, so a token bound to the project alone would let a
+// grant for `drafts/` remove `final/`. That is the property this block exists
+// for, alongside the wiring the block above proves for projects.
+//
+// It is gated where `DELETE /api/projects/:id/files/:name` deliberately is not,
+// and the difference is not the verb. The file route tombstones the file's
+// version manifest, so every revision survives and the delete is undoable; this
+// route is an `rm -rf` that writes no revision at all.
+describe('DELETE /api/projects/:id/folders requires a confirmation token', () => {
+  let tempDir: string;
+  let db: Db;
+  let app: Awaited<ReturnType<typeof mountProjectApp>>;
+
+  function mint(projectId: string, folderPath: string) {
+    return fetch(`${app.base}/api/projects/${projectId}/folders/confirm-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: folderPath }),
+    });
+  }
+
+  function del(projectId: string, folderPath: string, token?: string) {
+    return fetch(`${app.base}/api/projects/${projectId}/folders`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { [CONFIRM_DELETE_HEADER]: token } : {}),
+      },
+      body: JSON.stringify({ path: folderPath }),
+    });
+  }
+
+  beforeEach(async () => {
+    tempDir = mkdtempSync(path.join(os.tmpdir(), 'od-confirm-folders-'));
+    db = openDatabase(tempDir, { dataDir: tempDir });
+    const now = Date.now();
+    insertProject(db, { id: 'p1', name: 'First', createdAt: now, updatedAt: now });
+    app = await mountProjectApp(db, tempDir);
+    app.tree.folders = [
+      { name: 'drafts', path: 'drafts' },
+      { name: 'drafts/old', path: 'drafts/old' },
+      { name: 'final', path: 'final' },
+    ];
+    app.tree.files = [
+      { name: 'drafts/a.html', path: 'drafts/a.html' },
+      { name: 'drafts/old/b.png', path: 'drafts/old/b.png' },
+      { name: 'final/c.html', path: 'final/c.html' },
+    ];
+  });
+
+  afterEach(async () => {
+    await app.close();
+    closeDatabase();
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('refuses a bare DELETE with 428 and removes nothing', async () => {
+    const res = await del('p1', 'drafts');
+
+    expect(res.status).toBe(428);
+    const body = (await res.json()) as ApiErrorBody;
+    expect(body.error?.code).toBe('CONFIRMATION_REQUIRED');
+    expect(body.error?.details?.reason).toBe('missing');
+    expect(body.error?.details?.resource?.kind).toBe('project-folder');
+    expect(body.error?.details?.confirmUrl).toBe('/api/projects/p1/folders/confirm-delete');
+    expect(app.deleteProjectFolder).not.toHaveBeenCalled();
+  });
+
+  it('deletes with a token minted for that exact folder', async () => {
+    const minted = (await (await mint('p1', 'drafts')).json()) as ConfirmDeleteResponse;
+
+    const res = await del('p1', 'drafts', minted.token);
+    expect(res.status).toBe(200);
+    expect(app.deleteProjectFolder).toHaveBeenCalledTimes(1);
+  });
+
+  // The headline property of binding to the pair rather than to the project.
+  it('refuses a token minted for a sibling folder, and leaves that token usable', async () => {
+    const forDrafts = (await (await mint('p1', 'drafts')).json()) as ConfirmDeleteResponse;
+
+    const wrong = await del('p1', 'final', forDrafts.token);
+    expect(wrong.status).toBe(428);
+    expect(((await wrong.json()) as ApiErrorBody).error?.details?.reason).toBe('resource-mismatch');
+    expect(app.deleteProjectFolder).not.toHaveBeenCalled();
+
+    // A token sent at the wrong folder must not be burned: the caller who
+    // legitimately holds it did nothing wrong.
+    const right = await del('p1', 'drafts', forDrafts.token);
+    expect(right.status).toBe(200);
+  });
+
+  // Mint and consume each read the body on their own leg. If a trailing slash
+  // produced a different binding, the correct caller would be refused.
+  it('reads one folder the same way however the two legs spelled it', async () => {
+    const minted = (await (await mint('p1', 'drafts/')).json()) as ConfirmDeleteResponse;
+
+    const res = await del('p1', 'drafts', minted.token);
+    expect(res.status).toBe(200);
+  });
+
+  it('names the real blast radius, counted from the tree the delete will remove', async () => {
+    const minted = (await (await mint('p1', 'drafts')).json()) as ConfirmDeleteResponse;
+
+    expect(minted.summary).toMatchObject({
+      kind: 'project-folder',
+      label: 'drafts',
+      reversible: false,
+    });
+    // Two files under `drafts/`, in one nested folder. `final/c.html` is a
+    // sibling and must not be counted.
+    expect(minted.summary.items.join(' ')).toContain('2 files');
+    expect(minted.summary.items.join(' ')).toContain('1 nested folder');
+  });
+
+  it('refuses to mint for a folder that is not in the project', async () => {
+    const res = await mint('p1', 'nope');
+    expect(res.status).toBe(404);
+    expect(((await res.json()) as ApiErrorBody).error?.code).toBe('FOLDER_NOT_FOUND');
+  });
+
+  it('spends a folder token once', async () => {
+    const minted = (await (await mint('p1', 'drafts')).json()) as ConfirmDeleteResponse;
+
+    expect((await del('p1', 'drafts', minted.token)).status).toBe(200);
+    const second = await del('p1', 'drafts', minted.token);
+    expect(second.status).toBe(428);
+    expect(((await second.json()) as ApiErrorBody).error?.details?.reason).toBe('unknown');
+    expect(app.deleteProjectFolder).toHaveBeenCalledTimes(1);
   });
 });
 

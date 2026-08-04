@@ -17,6 +17,7 @@ import { mkdir, readdir, readFile, realpath, stat, symlink, writeFile } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { CONFIRM_DELETE_HEADER } from '@open-design/contracts';
 
 import { startServer } from '../../src/server.js';
 
@@ -922,8 +923,11 @@ describe('GET /api/projects/:id resolvedDir', () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'orphan' }),
       }),
-      fetch(`${baseUrl}/api/projects/${missingProjectId}/folders`, {
-        method: 'DELETE',
+      // The mint route carries the same guard as the two above: no token is
+      // issued for a project that is not there, so a caller cannot obtain the
+      // authorization the DELETE now needs.
+      fetch(`${baseUrl}/api/projects/${missingProjectId}/folders/confirm-delete`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: 'orphan' }),
       }),
@@ -934,6 +938,21 @@ describe('GET /api/projects/:id resolvedDir', () => {
       const body = (await response.json()) as { error?: { code?: string } };
       expect(body.error?.code).toBe('PROJECT_NOT_FOUND');
     }
+
+    // The DELETE itself no longer reaches the handler at all: the confirmation
+    // middleware refuses it first (`http/confirm-delete.ts`). That is stronger
+    // than the 404 this case originally asserted, not weaker — the request is
+    // turned away before anything looks at the filesystem — so what is checked
+    // here is that it fails closed, and the ENOENT below is unchanged.
+    const bareDelete = await fetch(`${baseUrl}/api/projects/${missingProjectId}/folders`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: 'orphan' }),
+    });
+    expect(bareDelete.status).toBe(428);
+    expect(((await bareDelete.json()) as { error?: { code?: string } }).error?.code).toBe(
+      'CONFIRMATION_REQUIRED',
+    );
 
     const dataDir = process.env.OD_DATA_DIR;
     if (!dataDir) throw new Error('OD_DATA_DIR is required for daemon route tests');
@@ -970,9 +989,26 @@ describe('GET /api/projects/:id resolvedDir', () => {
     const listed = (await listResp.json()) as { folders: Array<{ path: string }> };
     expect(listed.folders.some((f) => f.path.includes('references'))).toBe(true);
 
+    // Removing a folder is a recursive `rm` that writes no version record, so
+    // it now needs a token bound to this project AND this folder — the folder
+    // travels in the body, so the mint has to be told the same one the DELETE
+    // will name.
+    const mintResp = await fetch(`${baseUrl}/api/projects/${projectId}/folders/confirm-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: created.folder.path }),
+    });
+    expect(mintResp.status).toBe(200);
+    const minted = (await mintResp.json()) as { token: string; summary: { label: string } };
+    expect(minted.token).toBeTruthy();
+    expect(minted.summary.label).toContain('references');
+
     const deleteResp = await fetch(`${baseUrl}/api/projects/${projectId}/folders`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        [CONFIRM_DELETE_HEADER]: minted.token,
+      },
       body: JSON.stringify({ path: created.folder.path }),
     });
     expect(deleteResp.status).toBe(200);
@@ -1008,12 +1044,27 @@ describe('GET /api/projects/:id resolvedDir', () => {
     await mkdir(path.dirname(marker), { recursive: true });
     await writeFile(marker, '{}');
 
+    // Two closed doors now, not one. `collectFolders` never lists a dotted
+    // directory, so the mint route cannot find `.file-versions` and refuses to
+    // issue a token for it; and without a token the DELETE never reaches the
+    // handler's own 400. Both are asserted, because a guard that only holds at
+    // the outer layer stops being checked the day the layering changes.
+    const mintResp = await fetch(`${baseUrl}/api/projects/${projectId}/folders/confirm-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: '.file-versions' }),
+    });
+    expect(mintResp.status).toBe(404);
+    expect(((await mintResp.json()) as { error?: { code?: string } }).error?.code).toBe(
+      'FOLDER_NOT_FOUND',
+    );
+
     const deleteResp = await fetch(`${baseUrl}/api/projects/${projectId}/folders`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: '.file-versions' }),
     });
-    expect(deleteResp.status).toBe(400);
+    expect(deleteResp.status).toBe(428);
     expect((await stat(marker)).isFile()).toBe(true);
   });
 

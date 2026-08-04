@@ -709,15 +709,22 @@ export async function updateDesignSystemDraft(
   }
 }
 
+/**
+ * Delete a user-authored, editable design system (`user:<id>`).
+ *
+ * The daemon now refuses this without a confirmation token: the system's whole
+ * directory is removed and `history/domains.ts` covers none of it, so nothing
+ * in the product puts it back. `DesignSystemsTab` already puts the two-key gate
+ * in front of the button; this is the half that holds for every other caller.
+ *
+ * A non-`user:` id lands on the marketplace uninstall in
+ * `routes/static-resource.ts` instead, which is ungated on purpose — see
+ * `uninstallDesignSystem` below. Passing one here still works: the mint 404s,
+ * this returns `false`, and the caller sees the same "not an editable system"
+ * outcome it saw before.
+ */
 export async function deleteDesignSystemDraft(id: string): Promise<boolean> {
-  try {
-    const resp = await fetch(`/api/design-systems/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-    });
-    return resp.ok;
-  } catch {
-    return false;
-  }
+  return confirmedDelete(`/api/design-systems/${encodeURIComponent(id)}`);
 }
 
 export async function importLocalDesignSystem(
@@ -1496,20 +1503,26 @@ export async function createProjectFolder(
   }
 }
 
+/**
+ * Remove a project subtree.
+ *
+ * The daemon refuses this without a single-use token bound to *this* project
+ * and *this* folder — see `apps/daemon/src/routes/project/index.ts`. It is
+ * gated where `deleteProjectFile` is not, and the difference is not the verb:
+ * the file route tombstones the file's version manifest so every revision
+ * survives, and this one is an `rm -rf` that writes no revision at all.
+ *
+ * The folder therefore has to reach both legs of the handshake, so it is passed
+ * as the shared payload rather than being spelled out twice.
+ */
 export async function deleteProjectFolder(
   projectId: string,
   folderPath: string,
 ): Promise<boolean> {
-  try {
-    const resp = await fetch(`/api/projects/${encodeURIComponent(projectId)}/folders`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: folderPath }),
-    });
-    return resp.ok;
-  } catch {
-    return false;
-  }
+  return confirmedDelete(
+    `/api/projects/${encodeURIComponent(projectId)}/folders`,
+    { path: folderPath },
+  );
 }
 
 export async function fetchLiveArtifacts(projectId: string): Promise<LiveArtifactSummary[]> {
@@ -2509,6 +2522,16 @@ export async function installDesignSystem(
   }
 }
 
+/**
+ * Uninstall an installed/marketplace design system.
+ *
+ * Deliberately *not* routed through `confirmedDelete`, and the same URL as
+ * `deleteDesignSystemDraft` above is not a mistake: `routes/static-resource.ts`
+ * keeps every non-`user:` id and hands the `user:` ones on. This half removes a
+ * checkout that `POST /api/design-systems/install` fetches again from its
+ * source, so it is reversible in the sense the standard cares about, and gating
+ * it would spend the gate's meaning on a one-click undo.
+ */
 export async function uninstallDesignSystem(
   id: string,
 ): Promise<{ ok: true } | { error: string }> {

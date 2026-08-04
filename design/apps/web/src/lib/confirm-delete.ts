@@ -33,9 +33,22 @@ import {
  */
 export async function requestDeleteConfirmation(
   resourcePath: string,
+  payload?: unknown,
 ): Promise<ConfirmDeleteResponse | null> {
   try {
-    const resp = await fetch(confirmDeleteUrlFor(resourcePath), { method: 'POST' });
+    const resp = await fetch(confirmDeleteUrlFor(resourcePath), {
+      method: 'POST',
+      // Most gated resources are named entirely by their URL, so the mint is a
+      // bare POST. `DELETE /api/projects/:id/folders` is the exception — the
+      // folder is in the body — and the mint has to be told the same folder the
+      // DELETE will name, or it would bind the token to the wrong thing.
+      ...(payload === undefined
+        ? {}
+        : {
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }),
+    });
     if (!resp.ok) return null;
     const body = (await resp.json()) as ConfirmDeleteResponse;
     if (typeof body?.token !== 'string' || body.token.length === 0) return null;
@@ -59,13 +72,23 @@ export async function requestDeleteConfirmation(
  * and holds itself open, which is the correct outcome for all three: the record
  * is still there.
  */
-export async function confirmedDelete(resourcePath: string): Promise<boolean> {
-  const confirmation = await requestDeleteConfirmation(resourcePath);
+export async function confirmedDelete(
+  resourcePath: string,
+  payload?: unknown,
+): Promise<boolean> {
+  // The same value goes to both legs, deliberately: the daemon binds the token
+  // to what the mint was told, and re-deriving the body for the DELETE is how
+  // the two come to name different folders and every correct caller gets a 428.
+  const confirmation = await requestDeleteConfirmation(resourcePath, payload);
   if (!confirmation) return false;
   try {
     const resp = await fetch(resourcePath, {
       method: 'DELETE',
-      headers: { [CONFIRM_DELETE_HEADER]: confirmation.token },
+      headers: {
+        [CONFIRM_DELETE_HEADER]: confirmation.token,
+        ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
     return resp.ok;
   } catch {

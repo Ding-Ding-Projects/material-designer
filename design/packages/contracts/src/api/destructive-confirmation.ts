@@ -40,7 +40,7 @@
  * reversible through the local version history, prefer a notification with an
  * undo action."
  *
- * These three are outside every domain, deliberately and permanently:
+ * These five are outside every domain, deliberately and permanently:
  *
  * - `project` — `projects/` is excluded from history on purpose (mirroring
  *   every artifact byte would double the largest thing on disk). The delete
@@ -51,8 +51,28 @@
  *   has no other copy.
  * - `library-asset` — unlinks the library's own content-addressed bytes and
  *   drops the row. `LIBRARY_DIR` is in no history domain.
+ * - `project-folder` — `DELETE /api/projects/:id/folders` is an `rm -rf` of a
+ *   subtree. It is deliberately NOT the same case as a single project file:
+ *   that route calls `markProjectFileVersionStoreDeleted`, which tombstones the
+ *   per-file version manifest and leaves every revision restorable, which is
+ *   exactly why `od files delete` is ungated. The folder route writes no
+ *   revision of any kind, and takes every non-versioned byte in the subtree —
+ *   images, data files, build output — with it.
+ * - `design-system` — a *user-authored*, editable design system under the data
+ *   root's `design-systems/` tree, which `history/domains.ts` names in its list
+ *   of deliberate absences. Only the `user:`-prefixed ids reach this: the same
+ *   URL also serves a marketplace **uninstall** for non-`user:` ids, and that
+ *   one is re-installable from its source, so it is not gated. See
+ *   `routes/static-resource.ts`, which handles the uninstall and hands the
+ *   `user:` ids on to `routes/design-systems.ts`.
  */
-export const DESTRUCTIVE_RESOURCE_KINDS = ['project', 'brand', 'library-asset'] as const;
+export const DESTRUCTIVE_RESOURCE_KINDS = [
+  'project',
+  'brand',
+  'library-asset',
+  'project-folder',
+  'design-system',
+] as const;
 
 export type DestructiveResourceKind = (typeof DESTRUCTIVE_RESOURCE_KINDS)[number];
 
@@ -148,4 +168,45 @@ export type ConfirmationRefusalReason =
 export function confirmDeleteUrlFor(resourcePath: string): string {
   const trimmed = resourcePath.endsWith('/') ? resourcePath.slice(0, -1) : resourcePath;
   return `${trimmed}/${CONFIRM_DELETE_PATH_SEGMENT}`;
+}
+
+/**
+ * One folder path, spelled one way.
+ *
+ * Exported because the daemon needs the same reading twice for one request —
+ * once to bind the token and once to describe the subtree it is about to
+ * remove — and two copies of a normalization rule is how the two legs come to
+ * disagree about whether `drafts` and `drafts/` are the same folder.
+ *
+ * Deliberately not a sanitizer: it strips surrounding separators and
+ * whitespace and settles on forward slashes, and nothing else. Containment and
+ * escape checks belong to `deleteProjectFolder`, which does them against the
+ * real filesystem; a second, weaker copy here would only invite callers to
+ * trust the wrong one.
+ */
+export function normalizeProjectFolderPath(folderPath: string): string {
+  return folderPath.trim().replace(/\\/gu, '/').replace(/^\/+|\/+$/gu, '');
+}
+
+/**
+ * The resource id a `project-folder` token is bound to.
+ *
+ * `DELETE /api/projects/:id/folders` is the one gated route whose subject is
+ * not fully in the URL: the folder comes from the request body, so the project
+ * id alone would be the wrong binding — a token minted to delete `drafts/`
+ * would then authorize deleting `final/` in the same project, which is exactly
+ * the "authorizes one execution of one captured set" property the token exists
+ * to hold.
+ *
+ * Both sides call this on the *raw* value they were given rather than on a
+ * separately normalized one, so mint and consume cannot disagree about a
+ * trailing slash. Normalization here is limited to stripping surrounding
+ * separators and whitespace: it exists to stop `drafts` and `drafts/` reading
+ * as two different grants, not to sanitize a path (`deleteProjectFolder` does
+ * the containment checks, and doing them twice in two places is how they drift).
+ */
+export function projectFolderResourceId(projectId: string, folderPath: string): string {
+  // A separator no path segment and no project id can contain, so two
+  // different (project, folder) pairs cannot spell one another's id.
+  return `${projectId}${String.fromCharCode(31)}${normalizeProjectFolderPath(folderPath)}`;
 }

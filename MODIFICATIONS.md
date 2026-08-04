@@ -29,6 +29,83 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Capture nine named interface states instead of one, and prove each one before shooting it
+
+**Reason:** the entire visual evidence base for a Material Design 3 redesign was
+**one** screenshot — the home screen, default window, English, 100% scale. A
+reader comparing that capture to the mockup could see the redesign had not
+arrived; nothing automated could.
+
+The packaged smoke test now captures the settings dialog, the command palette,
+the home screen at 100/125/150/200% scale, bilingual mode, and both at a narrow
+window. Scale and language are driven through the application's own persisted
+appearance and locale stores and a reload, rather than through the operating
+system, so the run does not mutate a shared machine.
+
+Three properties matter more than the coverage. **Each state is verified before
+it is photographed** — the scale variable actually on the document, Han
+characters actually in the rendered text, the window actually at the narrower
+width — with a sentinel that proves the reload happened, because a still-mounted
+old document answers a probe perfectly well. **Nothing is skipped silently**: an
+unreachable state produces no file, a named reason in the log, an entry in
+`ui-states.json` and a workflow annotation, and capturing nothing at all fails
+the suite, since that means the mechanism broke rather than one surface being
+awkward. And **every frame is hashed**, because `capturePage` returns the last
+composited frame — a stalled compositor could hand back the previous state's
+pixels under a new name, which is a lie no assertion about the DOM can catch.
+
+Two states were rejected rather than shipped shaky: a window narrower than
+900px is impossible (the shell sets that as its minimum, documented as the
+breakpoint where the layout clips), and opening settings on a named tab would
+need an nth-child click, which is exactly the brittleness that must stay out of
+a suite gating every push.
+
+**Changed files:**
+
+- `e2e/lib/vitest/packaged-ui-states.ts`
+- `e2e/scripts/release-smoke.ts`
+- `e2e/specs/win.spec.ts`
+
+### 2026-08-04 — Gate the last ungated delete affordance, and two routes beside it
+
+**Reason:** the confirmation gate was mounted on every route to a project
+delete except one. `RecentProjectsStrip` — the home screen's own card menu —
+used a plain one-button dialog while `DesignsTab` put the same operation, via
+the same handler, behind two keys and a slider. **The route the user happened
+to take decided the ceremony, and the shortest route had the least.**
+
+Two adjacent daemon routes are now gated too, both chosen on the same
+restorability test used before. `DELETE /api/projects/:id/folders` removes a
+subtree and writes no revision, while the file delete beside it tombstones a
+version manifest and stays restorable — same verb, opposite answer. Its token
+binds to the **project and folder together**, because the folder arrives in the
+body and a grant for one directory must not remove another.
+`DELETE /api/design-systems/:id` is two operations sharing one URL: the
+marketplace uninstall is re-installable from source and stays ungated, while a
+user-authored system is a directory no history domain covers and is gated. The
+mint route uses the user-file listing as both an existence check and a
+"this is not the uninstall" check, so no token can be minted for a marketplace
+id.
+
+`od library rm` is deliberately **not** armed yet. Refusing today breaks every
+existing script at an exit code callers read as "you typed it wrong" rather
+than "the contract moved" — and a safety change that teaches people to write
+`|| true` has made things worse. The flag is accepted and optional now, so
+adopting it is safe across the change, with a notice naming the command that
+will keep working; the arming step is written into the code for a release whose
+notes can say so. The daemon's token already covers the operation meanwhile.
+
+**Changed files:**
+
+- `apps/daemon/src/routes/design-systems.ts`
+- `apps/daemon/tests/design-systems/import-auto-rebuild-route.test.ts`
+- `apps/daemon/tests/routes/design-systems-confirm-delete.test.ts`
+- `apps/daemon/tests/routes/projects.test.ts`
+- `apps/web/src/components/RecentProjectsStrip.tsx`
+- `apps/web/tests/components/RecentProjectsStrip.destructive-gate.test.tsx`
+- `apps/web/tests/lib/confirm-delete.test.ts`
+
+
 ### 2026-08-04 — Fix the animation mock that made five tests race, and one of them flaky
 
 **Reason:** a test failed on a documentation-only commit and passed on a re-run

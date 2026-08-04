@@ -498,12 +498,28 @@ describe('project file version routes', () => {
     });
     expect(createResponse.status).toBe(400);
 
+    // The folder DELETE is now behind the confirmation boundary, and the
+    // internal version store is doubly out of reach: `collectFolders` never
+    // lists a dotted directory, so no token can be minted for it, and without a
+    // token the request is refused before the handler's own 400. Both are
+    // asserted rather than only the outer one — a guard that stops being
+    // checked when the layering changes is a guard that quietly disappears.
+    const mintResponse = await fetch(
+      `${baseUrl}/api/projects/${projectId}/folders/confirm-delete`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ path: '.file-versions' }),
+      },
+    );
+    expect(mintResponse.status).toBe(404);
+
     const deleteResponse = await fetch(`${baseUrl}/api/projects/${projectId}/folders`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ path: '.file-versions' }),
     });
-    expect(deleteResponse.status).toBe(400);
+    expect(deleteResponse.status).toBe(428);
   });
 
   it('captures concurrent JSON HTML writes as distinct recoverable checkpoints', async () => {

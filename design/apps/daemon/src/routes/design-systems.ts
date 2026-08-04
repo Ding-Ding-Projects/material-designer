@@ -18,6 +18,10 @@ import type {
 } from '../design-systems/generation-jobs.js';
 import type { openDatabase } from '../db.js';
 import type { Project, ProjectFile } from '@open-design/contracts';
+import {
+  issueDeleteConfirmation,
+  requireDeleteConfirmation,
+} from '../http/confirm-delete.js';
 
 type DbHandle = ReturnType<typeof openDatabase>;
 
@@ -355,9 +359,73 @@ export function registerDesignSystemRoutes(app: Express, ctx: RegisterDesignSyst
     }
   });
 
-  app.delete('/api/design-systems/:id', async (req, res) => {
+  // Mint the confirmation the DELETE below requires.
+  //
+  // **Only the `user:` half of this URL is gated, and the distinction is the
+  // whole point.** `routes/static-resource.ts` registers its own handler for
+  // `DELETE /api/design-systems/:id` ahead of this file and keeps every
+  // non-`user:` id: that is the marketplace/installed *uninstall*, which
+  // removes a checkout that `POST /api/design-systems/install` can fetch again
+  // from its source. Re-installable is reversible, and gating it would spend
+  // the gate's meaning on an action that costs a user one click to undo. It
+  // calls `next()` for `user:` ids, which is how a request reaches here.
+  //
+  // What reaches here is a design system the user authored and edits in the
+  // app — tokens, type scale, palette, revisions, every file under its
+  // directory — and `deleteUserDesignSystem` is an `rm -rf` of that directory.
+  // `history/domains.ts` names `design-systems/` in its list of deliberate
+  // absences (installed-extension trees carry their own nested `.git`), so no
+  // revision is recorded and nothing in the product puts it back. That is the
+  // same test `project`, `brand` and `library-asset` pass.
+  app.post('/api/design-systems/:id/confirm-delete', async (req, res) => {
     try {
-      const ok = await deleteUserDesignSystem(USER_DESIGN_SYSTEMS_DIR, req.params.id);
+      // `listUserDesignSystemFiles` returns null for anything that is not an
+      // existing `user:` system, so it is both the existence check and the
+      // "this is not the uninstall route" check in one call. Minting for an id
+      // this route will not delete would report an authorization the DELETE
+      // then refuses to honour.
+      const files = await listUserDesignSystemFiles(USER_DESIGN_SYSTEMS_DIR, req.params.id);
+      if (!files) {
+        return res.status(404).json({ error: 'editable design system not found' });
+      }
+      const systems = await listAllDesignSystems();
+      const summary = systems.find((candidate) => candidate.id === req.params.id);
+      // The system's own title, falling back to its id — this is the string the
+      // user has to be able to check the slider against, so it is resolved once
+      // and used for both the target and the item line.
+      const label = summary?.title.trim() || req.params.id;
+      const fileCount = files.filter((file) => file.kind !== 'folder').length;
+      res.json(
+        issueDeleteConfirmation({
+          kind: 'design-system',
+          id: req.params.id,
+          label,
+          // Counted from the same directory listing the delete removes, so the
+          // gate's copy and the operation cannot describe different scopes.
+          items: [
+            `The design system "${label}" and its ${fileCount} file${fileCount === 1 ? '' : 's'}`,
+            'Its tokens, type scale and palette on this device',
+            'Every stored revision of it',
+          ],
+          reversible: false,
+        }),
+      );
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
+  app.delete('/api/design-systems/:id', requireDeleteConfirmation({
+    kind: 'design-system',
+    resourceId: (req) => String(req.params.id ?? ''),
+    resourcePath: (_req, id) => `/api/design-systems/${encodeURIComponent(id)}`,
+  }), async (req, res) => {
+    // Narrowed once, up front: composing the confirmation middleware onto this
+    // route widens Express's inferred `params` to `string | string[] |
+    // undefined`.
+    const id = String(req.params.id ?? '');
+    try {
+      const ok = await deleteUserDesignSystem(USER_DESIGN_SYSTEMS_DIR, id);
       if (!ok) {
         return res.status(404).json({ error: 'editable design system not found' });
       }

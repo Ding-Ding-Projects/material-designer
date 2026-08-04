@@ -15,6 +15,7 @@ import {
   CONFIRM_DELETE_TTL_MS,
   DESTRUCTIVE_RESOURCE_KINDS,
   confirmDeleteUrlFor,
+  projectFolderResourceId,
 } from '../src/api/destructive-confirmation';
 
 describe('destructive-delete confirmation contract', () => {
@@ -31,7 +32,40 @@ describe('destructive-delete confirmation contract', () => {
     // Adding a kind here is a claim that its delete is irreversible. If a
     // history domain covers it (apps/daemon/src/history/domains.ts), the
     // standard says to prefer an undo notification instead.
-    expect([...DESTRUCTIVE_RESOURCE_KINDS]).toEqual(['project', 'brand', 'library-asset']);
+    expect([...DESTRUCTIVE_RESOURCE_KINDS]).toEqual([
+      'project',
+      'brand',
+      'library-asset',
+      'project-folder',
+      'design-system',
+    ]);
+  });
+
+  // The one gated subject that is not fully in the URL. A token bound to the
+  // project alone would authorize deleting any folder in it, which is the
+  // single-captured-set property the whole scheme rests on.
+  it('binds a project-folder token to the folder, not just the project', () => {
+    expect(projectFolderResourceId('p1', 'drafts')).not.toBe(
+      projectFolderResourceId('p1', 'final'),
+    );
+    expect(projectFolderResourceId('p1', 'drafts')).not.toBe(
+      projectFolderResourceId('p2', 'drafts'),
+    );
+  });
+
+  // Mint and consume read the raw body value on their own legs; if a trailing
+  // slash produced a different id, the correct caller would be refused.
+  it('reads one folder the same way however it was spelled', () => {
+    const canonical = projectFolderResourceId('p1', 'assets/drafts');
+    for (const spelling of ['assets/drafts/', '/assets/drafts', ' assets/drafts ', 'assets\\drafts']) {
+      expect(projectFolderResourceId('p1', spelling)).toBe(canonical);
+    }
+  });
+
+  // A separator a path segment could contain would let two different pairs
+  // spell one id — ('p1/a', 'b') and ('p1', 'a/b') are different grants.
+  it('cannot be spelled into a collision by where the words break', () => {
+    expect(projectFolderResourceId('p1/a', 'b')).not.toBe(projectFolderResourceId('p1', 'a/b'));
   });
 
   it('builds the mint URL from a resource path, with or without a trailing slash', () => {

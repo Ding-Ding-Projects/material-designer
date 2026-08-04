@@ -207,7 +207,10 @@ const LIBRARY_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const LIBRARY_ASSET_STRING_FLAGS = new Set([
   'daemon-url', 'kind', 'tag', 'source', 'date', 'query', 'project', 'label', 'out', 'dir',
 ]);
-const LIBRARY_ASSET_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
+// `confirm` is accepted but NOT yet required — see the deprecation note on
+// `od library rm`. Adding it to the set is what lets a script adopt the flag
+// today, ahead of the release that starts refusing without it.
+const LIBRARY_ASSET_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'confirm']);
 const DIAGNOSTICS_STRING_FLAGS = new Set(['daemon-url', 'output']);
 const DIAGNOSTICS_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const CONFIG_STRING_FLAGS = new Set(['daemon-url', 'value', 'value-json']);
@@ -8657,7 +8660,8 @@ function printLibraryHelp() {
 Commands:
   list                      List library assets. Filters: --kind --tag --source --date
   get <id>                  Print one asset (JSON).
-  rm <id>                   Delete an asset.
+  rm <id>                   Delete an asset. Pass --confirm: a future release
+                            will refuse without it, as every other od delete does.
   search <query>            Keyword search across captions / tags / titles.
   import <file|url>...      Import one or more local files / remote URLs into the library.
                             Restricted to design formats (images, fonts, text, HTML, JSON);
@@ -8670,6 +8674,8 @@ Commands:
 
 Options:
   --json                    Machine-readable output.
+  --confirm                 Acknowledge a destructive delete (rm). Optional today,
+                            required in a future release; adopting it now is safe.
   --daemon-url <url>        Override daemon URL (default: auto-discover).
   --kind <image|design-system|video|...>
                             Filter/declare asset kind.
@@ -8740,17 +8746,41 @@ async function runLibrary(args) {
       case 'rm': {
         const id = pos[0];
         if (!id) {
-          console.error('Usage: od library rm <id>');
+          console.error('Usage: od library rm <id> [--confirm]');
           process.exit(2);
         }
-        // The daemon refuses this DELETE without a token bound to this asset.
+        // Phase one of a deprecation, not a refusal.
         //
-        // Note this verb has no `--confirm` flag, unlike `od project delete`
-        // and friends — a pre-existing gap in the CLI's own interface gate, not
-        // one this change introduces. Adding the flag would break every script
-        // already calling `od library rm`, so it is left for a deliberate
-        // decision; the daemon-side boundary now covers the operation either
-        // way, which is the half that was actually missing.
+        // Every other destructive `od` verb refuses without `--confirm`. This
+        // one shipped without the flag, so making it required today would
+        // break every script that already calls `od library rm <id>` — and
+        // break it at exit code 2, which most callers read as "I typed the
+        // command wrong" rather than "the contract moved". A safety change
+        // that trains people to add `|| true` has made things worse.
+        //
+        // So the flag exists now and does nothing but suppress this notice:
+        // `--confirm` is accepted, the refusal is not yet armed, and a caller
+        // who adopts it today keeps working across the change. The notice goes
+        // to stderr and never to stdout, so `--json` output stays parseable and
+        // a pipeline reading stdout is untouched. Exit code is unchanged.
+        //
+        // The delete is not unguarded in the meantime: the daemon refuses this
+        // DELETE without a single-use token bound to this asset, and that
+        // boundary is the half that actually covers every caller. What is
+        // missing is only the local half — the refusal that happens before any
+        // HTTP request at all — which is a convenience for the person typing,
+        // not the thing standing between a script and the bytes.
+        //
+        // To arm it: delete this block and call `requireDeleteConfirmation`
+        // with `label: 'library rm'`, `target: \`library asset "${id}"\`` and
+        // `command: \`od library rm ${id} --confirm\``, exactly as the five
+        // verbs above do. Do it in a release whose notes say so.
+        if (!flags.confirm) {
+          process.stderr.write(
+            `[library rm] deleting library asset "${id}". A future release will refuse this without --confirm; `
+            + `add it now to keep this command working: od library rm ${id} --confirm\n`,
+          );
+        }
         const resp = await confirmedDeleteRequest(
           base,
           `/api/library/assets/${encodeURIComponent(id)}`,

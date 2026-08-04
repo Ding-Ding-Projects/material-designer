@@ -75,6 +75,12 @@ export const API_ERROR_CODES = [
   'CONVERSATION_NOT_FOUND',
   'EMPTY_TRANSCRIPT',
   'FILE_NOT_FOUND',
+  // `POST /api/projects/:id/folders/confirm-delete`: the folder named in the
+  // body is not in the project's tree. Distinct from FILE_NOT_FOUND because
+  // the mint route refuses to issue a token for a path it cannot see, and a
+  // caller retrying on a stale folder list needs to know which of the two it
+  // got wrong.
+  'FOLDER_NOT_FOUND',
   'ARTIFACT_NOT_FOUND',
   // The agent emitted a new artifact whose body is dramatically smaller than
   // a prior artifact sharing the same metadata.identifier. Almost always means

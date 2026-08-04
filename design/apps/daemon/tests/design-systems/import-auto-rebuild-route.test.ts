@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { TOKEN_SCHEMA } from '@open-design/contracts/design-systems/token-schema';
+import { CONFIRM_DELETE_HEADER } from '@open-design/contracts';
 
 import { startServer } from '../../src/server.js';
 
@@ -55,9 +56,26 @@ describe('design-system import token contract auto-rebuild route', () => {
 
   afterEach(async () => {
     for (const id of importedDesignSystems.splice(0)) {
-      await fetch(`${baseUrl}/api/design-systems/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
+      // An imported system is catalogued as `user:<dir>`, so this cleanup lands
+      // on the gated half of `DELETE /api/design-systems/:id` and needs the
+      // handshake. Without the token the delete is refused with 428 and the
+      // imported tree is left behind in the daemon's data root — which fails
+      // silently here, because a cleanup nobody asserts on is a cleanup nobody
+      // notices has stopped working.
+      const resource = `${baseUrl}/api/design-systems/${encodeURIComponent(id)}`;
+      const minted = await fetch(`${resource}/confirm-delete`, {
+        method: 'POST',
         headers: { Origin: baseUrl },
+      }).catch(() => null);
+      const token = minted?.ok
+        ? ((await minted.json().catch(() => ({}))) as { token?: string }).token
+        : undefined;
+      await fetch(resource, {
+        method: 'DELETE',
+        headers: {
+          Origin: baseUrl,
+          ...(token ? { [CONFIRM_DELETE_HEADER]: token } : {}),
+        },
       }).catch(() => {});
     }
     for (const dir of tempDirs.splice(0)) {
