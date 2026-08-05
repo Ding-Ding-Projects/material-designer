@@ -276,9 +276,16 @@ describe('the icon migration', () => {
     // The helpers that pick an icon by viewport or provider return literals of
     // their own; they are typed `MaterialSymbolName`, so the compiler covers
     // them, but list them here so the count below means what it says.
+    //
+    // 'mobile', not 'smartphone': the two viewport switchers were moved onto
+    // the table's own value (`ac37ac7`) after `MaterialSymbolName` refused
+    // the literal 'smartphone' — the table publishes 'mobile' for that glyph,
+    // and typing against the font rather than the table is exactly the drift
+    // that commit closed. This list has to keep naming what the source now
+    // says, not what it used to.
     for (const name of [
       'tablet',
-      'smartphone',
+      'mobile',
       'computer',
       'article',
       'cloud_upload',

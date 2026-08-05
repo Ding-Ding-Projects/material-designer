@@ -100,7 +100,10 @@ describe('CommandPalette shell', () => {
     opener.focus();
 
     const { props, unmount } = renderPalette();
-    const input = screen.getByRole('textbox');
+    // Named explicitly: the default result list also renders an inline
+    // `SettingTextField` (the "Global rules" row), a second textbox that
+    // `getByRole('textbox')` alone can no longer resolve unambiguously.
+    const input = screen.getByRole('textbox', { name: /search commands/i });
     expect(document.activeElement).toBe(input);
 
     fireEvent.keyDown(input, { key: 'Escape' });
@@ -115,7 +118,7 @@ describe('CommandPalette shell', () => {
 
   it('does not steer the list while an IME composition is open', () => {
     const { props } = renderPalette();
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('textbox', { name: /search commands/i });
     fireEvent.keyDown(input, { key: 'Escape', isComposing: true });
     expect(props.onClose).not.toHaveBeenCalled();
   });
@@ -316,7 +319,7 @@ describe('CommandPalette destinations', () => {
   it('filters the list as the user types', () => {
     renderPalette();
     const before = document.querySelectorAll('#command-palette-list [role="option"]').length;
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'zzzz-no-such-row' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /search commands/i }), { target: { value: 'zzzz-no-such-row' } });
     const after = document.querySelectorAll('#command-palette-list [role="option"]').length;
     expect(before).toBeGreaterThan(0);
     expect(after).toBe(0);
@@ -324,7 +327,7 @@ describe('CommandPalette destinations', () => {
 
   it('reports honestly when no project has published a file scope', () => {
     renderPalette();
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: '#index' } });
+    fireEvent.change(screen.getByRole('textbox', { name: /search commands/i }), { target: { value: '#index' } });
     expect(document.querySelectorAll('#command-palette-list [role="option"]')).toHaveLength(0);
   });
 });

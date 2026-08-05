@@ -319,11 +319,19 @@ describe('calendar arithmetic', () => {
 // would silently turn "dialog focus" from "both words, any order" into a
 // contiguous substring match.
 describe('filterChangelog with a regex predicate', () => {
+  // `category: 'Changed'` is explicit here, not incidental: `entry()`'s
+  // default is `'Added'`, which is also the word this block's own regex
+  // tests filter on. Left at the default, `entryHaystackRaw` folds the
+  // category into every entry's haystack, so /Added/ is satisfied by ALL
+  // three entries regardless of what their text says — the predicate looks
+  // broken while it is actually reading a fixture that quietly answers its
+  // own question. 'Changed' shares no substring with 'Added' or 'Fixed', so
+  // only the entry text drives the match, which is what these tests are for.
   const releases = [
     release('1.1.0', [
-      entry('aaa1', 'Fixed the dialog focus trap', '2026-02-01'),
-      entry('bbb2', 'Added a density control', '2026-02-02'),
-      entry('ccc3', 'Fixed the density readout clipping', '2026-02-03'),
+      entry('aaa1', 'Fixed the dialog focus trap', '2026-02-01', { category: 'Changed' }),
+      entry('bbb2', 'Added a density control', '2026-02-02', { category: 'Changed' }),
+      entry('ccc3', 'Fixed the density readout clipping', '2026-02-03', { category: 'Changed' }),
     ]),
   ];
 

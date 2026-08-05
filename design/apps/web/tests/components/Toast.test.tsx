@@ -73,8 +73,13 @@ describe('Toast', () => {
 
   it('distinguishes the error status glyph from the dismiss icon', () => {
     const { container } = render(<Toast message="Could not read the page" tone="error" onDismiss={() => {}} />);
+    // The prefix pins the Material Symbols 'warning' glyph (`Icon.tsx`'s
+    // `alert-triangle` entry) specifically, not merely "a path exists" — the
+    // dismiss button beside it renders its own `<path>` for 'close', with a
+    // completely different `d`, so a selector loose enough to match either
+    // one would not actually be distinguishing anything.
     expect(
-      container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="m21.73 18"]'),
+      container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="M109 -120"]'),
     ).not.toBeNull();
   });
 

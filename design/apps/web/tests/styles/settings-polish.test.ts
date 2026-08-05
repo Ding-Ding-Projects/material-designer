@@ -21,7 +21,13 @@ function cssBlock(css: string, selector: string): string {
 }
 
 function ruleValue(block: string, property: string): string {
-  const match = new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+);`).exec(block);
+  // Comments stripped first: `(?:^|;)\s*` only skips whitespace before the
+  // property, and several rules in this file document *why* a value is what
+  // it is in a comment sitting directly above it — the exact position that
+  // whitespace-only lookbehind cannot cross. Without this, a property is
+  // "missing" precisely when it is the most explained one in the block.
+  const uncommented = block.replace(/\/\*[\s\S]*?\*\//g, '');
+  const match = new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+);`).exec(uncommented);
   if (!match) throw new Error(`Missing CSS property ${property}`);
   return match[1]!.trim();
 }

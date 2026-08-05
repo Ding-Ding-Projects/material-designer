@@ -92,12 +92,25 @@ import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 // the accessible name is right — it is only a raw `textContent` read that sees
 // the ligature. This strips the hidden nodes so these assertions keep testing
 // the label rather than the icon set.
+//
+// Recurses rather than filtering `item.childNodes` one level deep: several
+// menu items wrap the icon in its own `<span className="share-menu-icon">`
+// (`<span class="share-menu-icon"><MaterialSymbol .../></span>`), so the
+// `aria-hidden="true"` attribute sits on a grandchild, not a direct child. A
+// shallow filter walks past that wrapper and lets the ligature name back in —
+// exactly the bug this helper exists to prevent, one level down from where it
+// was checking.
 function menuItemText(item: Element): string {
-  return Array.from(item.childNodes)
-    .filter((node) => !(node instanceof Element && node.getAttribute('aria-hidden') === 'true'))
-    .map((node) => node.textContent ?? '')
-    .join('')
-    .trim();
+  function collect(node: Node): string {
+    if (node instanceof Element && node.getAttribute('aria-hidden') === 'true') return '';
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+    let text = '';
+    node.childNodes.forEach((child) => {
+      text += collect(child);
+    });
+    return text;
+  }
+  return collect(item).trim();
 }
 
 

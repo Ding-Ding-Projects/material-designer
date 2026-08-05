@@ -29,6 +29,71 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-05 — Six `Test the web application` failures that were the test, not the code
+
+**Reason:** `Verify` run 31022544564 (and the branch run behind it) failed
+`Unit tests → Test the web application` at 15 assertions across 9 files. Nine
+of those fifteen, in six files, turned out to be the assertion asking a
+question its own fixture or helper could no longer answer honestly — each
+confirmed by reading the actual rendered markup or CSS the assertion reads,
+not guessed. (List prose below is deliberately not bulleted — a leading
+`` - `path` `` is this file's declaration syntax, and a bullet here would be
+misread as one.)
+
+**`changelog-filter.test.ts`.** The new regex-predicate describe block used
+`entry()`'s default `category: 'Added'` for all three fixture entries, so
+`entryHaystackRaw` folded the literal word "Added" into every entry's
+haystack regardless of its text. The `/Added/` predicate test then matched
+all three entries instead of the one whose *text* says "Added" — the
+fixture was quietly answering its own question. Given an explicit
+non-colliding `category: 'Changed'`, only the intended entry matches.
+
+**`CommandPalette.test.tsx`** (4 assertions). `screen.getByRole('textbox')` is
+no longer unique: the default result list also renders an inline
+`SettingTextField` (`aria-label="Global rules"`), a second textbox added
+alongside the search input. Scoped each call to `{ name: /search commands/i }`.
+
+**`FileViewer.test.tsx`** (2 assertions). `menuItemText()` stripped
+`aria-hidden` nodes only one level deep, but the two failing menu items
+wrap their `MaterialSymbol` in an extra `<span class="share-menu-icon">`,
+putting `aria-hidden="true"` on a grandchild rather than a direct child.
+The ligature name (`"description"`, `"link"`) leaked through exactly the
+bug this helper exists to prevent, one level lower than it was checking.
+Made the strip recursive.
+
+**`Toast.test.tsx`.** Asserted `path[d^="m21.73 18"]`, the old RemixIcon glyph
+data, against a component that migrated to a Material Symbols vector path
+(`Icon.tsx`'s `alert-triangle` entry, `d="M109 -120…"`). Updated the prefix
+to the glyph actually rendered.
+
+**`styles/bundled-fonts.test.ts`.** Its manually-maintained supplementary name
+list still listed `'smartphone'`, stale since `ac37ac7` moved the two
+viewport switchers onto the symbol table's own value, `'mobile'`. Updated
+the list entry to match.
+
+**`styles/settings-polish.test.ts`.** Its `ruleValue()` helper matched
+`(?:^|;)\s*property:` directly against the CSS block, so a property
+preceded by a comment (rather than directly by `;`) failed to match even
+though the value on disk is correct — hit by `.page`'s `z-index: 100`,
+which carries a nine-line comment explaining the number just above it.
+Strips comments before matching now, the same way the sibling helper in
+`workspace-tabs-chrome.test.ts` already did.
+
+None of the source these tests exercise changed. The remaining six failures —
+four CSS-value mismatches in `wave8-overlay-m3.test.ts` and
+`workspace-tabs-chrome.test.ts`, and one `inert`-attribute assertion in
+`SettingsDialog.execution.test.tsx` — are written up instead of guess-fixed;
+see `docs/troubleshooting/2026-08-05-web-suite-and-self-contained-check.md`.
+
+**Changed files:**
+
+- `apps/web/tests/changelog-filter.test.ts`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+- `apps/web/tests/components/FileViewer.test.tsx`
+- `apps/web/tests/components/Toast.test.tsx`
+- `apps/web/tests/styles/bundled-fonts.test.ts`
+- `apps/web/tests/styles/settings-polish.test.ts`
+
 ### 2026-08-04 — Two call sites naming a glyph the type no longer publishes
 
 **Reason:** the symbol table publishes `mobile` for the phone glyph, and two
