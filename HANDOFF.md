@@ -878,3 +878,42 @@ the reader has no way to know.
   routing, the gate's own confirmed defects, the 29 unverified findings, the
   capture matrix, broadening what the release tests, and sending the request
   collection against a live daemon — remains exactly as recorded there.
+
+## Post-handoff CI verification (2026-08-05)
+
+- Commit `0521779` ("fix(web-tests): six fixtures/helpers were lying about
+  five red suites") fixed nine confirmed test bugs across six files under
+  `design/apps/web/tests/` — `changelog-filter`, `CommandPalette` (four
+  bugs), `FileViewer` (two bugs), `Toast`, `bundled-fonts`, and
+  `settings-polish` — and added two troubleshooting docs. It merged
+  fast-forward onto `main`.
+- All three CI runs for `0521779` have completed and been log-verified, and
+  the honest answer is that all three still say **failure**:
+  [Verify (main) run 31027136238](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31027136238),
+  [Verify (branch) run 31027121968](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31027121968),
+  and [Release (main) run 31027136212](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31027136212).
+  What changed is the shape of the red: unit-test failures dropped from nine
+  files / fifteen assertions down to exactly the five deliberately deferred
+  assertions documented in
+  [`docs/troubleshooting/web-suite-regex-css-helpers-and-inert.md`](docs/troubleshooting/web-suite-regex-css-helpers-and-inert.md)
+  (`SettingsDialog` inert, the `wave8-overlay-m3` side sheet, and
+  `workspace-tabs-chrome` ×3). Zero regressions; 488 files / 5,682 tests
+  pass; "Verify port integrity" is green.
+- Release fails at a single step, "Check the packaged application is
+  self-contained," and only on bundled upstream example templates — see
+  [`docs/troubleshooting/self-contained-check-bundled-template-examples.md`](docs/troubleshooting/self-contained-check-bundled-template-examples.md).
+  The raw match count drifted from 435 to 491 for environmental reasons
+  (floating transitive dependencies), including six dev-dependency
+  telemetry `fetch()` lines. None of that drift was caused by any commit
+  made this session.
+- Three maintainer decisions still stand between this and a green board:
+  (1) scope the self-contained gate — narrow it to `resources/app`, or make
+  all 174 bundled example files offline; (2) the two CSS assertions that
+  disagree with the un-nested rules need a rendered-UI check to settle which
+  side is actually right; (3) the media-query-blind CSS test helpers need
+  either a smarter parser or a fixture change.
+- This session's outbound proxy blocked GraphQL and org-scoped REST outright,
+  so a GitHub Discussions post and a Projects update were unreachable on
+  every route tried; the resulting 403 responses were captured as evidence.
+  Repo-scoped REST through `gh` worked normally. The issue scan turned up
+  nothing to triage — zero open issues.
