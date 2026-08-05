@@ -82,7 +82,10 @@ type BrowserNavigationEntry = {
 
 function browserViewportIcon(viewport: BrowserViewportId): MaterialSymbolName {
   if (viewport === 'tablet') return 'tablet';
-  if (viewport === 'mobile') return 'smartphone';
+  // `mobile`, not `smartphone`. Both are real ligature names in the bundled
+  // face and both draw the identical glyph, but the mapping table publishes
+  // `mobile`, so `MaterialSymbolName` is the set that contains that one.
+  if (viewport === 'mobile') return 'mobile';
   return 'computer';
 }
 

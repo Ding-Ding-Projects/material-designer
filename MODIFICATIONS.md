@@ -29,6 +29,22 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Two call sites naming a glyph the type no longer publishes
+
+**Reason:** the symbol table publishes `mobile` for the phone glyph, and two
+viewport switchers returned the literal `'smartphone'` instead of going through
+the table. Both names are real ligatures in the bundled face and both draw the
+identical glyph — 4,268 addressable names resolve to 3,967 distinct glyphs, and
+that pair is one of the aliases making up the difference — so nothing would have
+looked wrong. `MaterialSymbolName` is the set of names the *table* publishes,
+though, so the typecheck refused it, which is the check doing exactly its job:
+it caught a divergence that no rendered pixel would have revealed.
+
+**Changed files:**
+
+- `apps/web/src/components/DesignBrowserPanel.tsx`
+- `apps/web/src/components/FileViewer.tsx`
+
 ### 2026-08-04 — Settings stops being a modal and becomes a page
 
 **Reason:** roadmap § 2.4 Wave 6, and the non-blocking standard it points at.
