@@ -855,3 +855,26 @@ belongs in [section 3](#3-verification-evidence) and its subject leaves
 [section 4](#4-what-is-not-verified). A handoff document that describes a state
 the repository left behind is worse than none, because it is confidently wrong and
 the reader has no way to know.
+
+---
+
+## 2026-08-05 — Branch closed out, restarted from main
+
+- All prior work on `claude/handoff-sonnet-orchestration-1zshjv`, through commit
+  `ac37ac7` ("fix(icons): name the glyph the type actually publishes"), is merged
+  into `origin/main`, and the remote copy of that branch was deleted after the
+  merge.
+- This branch has been restarted from the current `origin/main` tip,
+  `ac37ac77b476451428fc1fed6618e1691e80d440`, and carries only this closing
+  entry on top of that commit.
+- Nothing under `design/` changed in this closing entry, so
+  `scripts/verify-port.sh` is unaffected — that claim is checkable by running
+  the script against this commit.
+- This closing session ran orchestrator-only: every edit, commit and push was
+  carried out by delegated Sonnet subagents, and the orchestrating session made
+  no direct edits.
+- No CI run, release or capture is claimed for this commit. The open work
+  recorded in [section 6](#6-immediate-next-steps-in-order) — destructive-action
+  routing, the gate's own confirmed defects, the 29 unverified findings, the
+  capture matrix, broadening what the release tests, and sending the request
+  collection against a live daemon — remains exactly as recorded there.
