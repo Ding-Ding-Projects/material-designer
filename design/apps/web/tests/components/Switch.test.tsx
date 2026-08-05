@@ -69,6 +69,29 @@ describe('Switch', () => {
     expect(document.activeElement).toBe(control);
   });
 
+  /**
+   * The five hand-rolled toggles this component replaced were a `<label>`
+   * wrapping a checkbox, and three of those labels carried a `title` — a
+   * hover tooltip on a control with no adjacent text. Dropping it in the
+   * migration was a real regression, so the prop exists and is passed at the
+   * call sites that had one. It is opt-in rather than derived from `label`:
+   * a switch sitting beside a name that already reads "Morning briefing"
+   * does not want a tooltip repeating it.
+   */
+  it('carries a tooltip only when the caller asks for one', () => {
+    const { rerender } = render(
+      <Switch checked onChange={() => {}} label="Toggle" />,
+    );
+    expect(
+      screen.getByRole('switch', { name: 'Toggle' }).getAttribute('title'),
+    ).toBeNull();
+
+    rerender(<Switch checked onChange={() => {}} label="Toggle" title="Toggle" />);
+    expect(
+      screen.getByRole('switch', { name: 'Toggle' }).getAttribute('title'),
+    ).toBe('Toggle');
+  });
+
   it('refuses interaction when disabled', () => {
     const onChange = vi.fn();
     render(<Switch checked onChange={onChange} label="Enabled" disabled />);

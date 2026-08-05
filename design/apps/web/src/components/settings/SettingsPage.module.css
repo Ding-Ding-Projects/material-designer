@@ -1,0 +1,139 @@
+/* The settings surface's shell — a page, not a dialog.
+ *
+ * Roadmap § 2.4 Wave 6. Settings used to be a 920×720 card floating on a
+ * blurred scrim with `aria-modal="true"`: the whole application went
+ * unreachable behind it, which the non-blocking standard reserves for
+ * decisions the user has to make before continuing. Choosing a theme is not
+ * one. So the surface is a page now — it fills the shell's content area,
+ * paints its own opaque background, and leaves the title bar, the workspace
+ * tab strip and the status bar interactive above and below it.
+ *
+ * Two things here are load-bearing rather than decorative:
+ *
+ *   * `grid-area: 1 / 1` is how the page overlays the workspace without
+ *     `position: absolute`. `styles/shell.css` makes `.workspace-shell__body`
+ *     a single-cell grid and puts every child in that cell, so this surface
+ *     and the app underneath it share one box that the shell already sized.
+ *     Absolute positioning would have needed a positioned ancestor, and
+ *     making the shell body one changes the containing block of every
+ *     absolutely-positioned descendant in the product.
+ *
+ *   * The scroll stays in `.settings-content`, not here. The header and the
+ *     tab strip are pinned, exactly as they were in the card, and the section
+ *     body is the part that moves — which is what keeps `scrollTop = 0` on a
+ *     tab change and the command palette's reveal working unchanged.
+ *
+ * The inner column is capped at 1180px and centred, which is the settings
+ * screen's own width in `mockups/open-design-m3`. Full-bleed settings text
+ * running 2560px wide on a large display is a reading measure nobody wants.
+ */
+
+.page {
+  /* The inner rhythm every settings section already reads. Declared here
+     because the property used to live on `.modal-settings`, and the sections
+     underneath — fields, cards, the content padding — resolve it from their
+     ancestor rather than restating a number each. */
+  --modal-padding: 24px;
+  grid-area: 1 / 1;
+  /* Above the workspace it covers. A grid item takes `z-index` without
+     needing `position`, which is the whole reason this is a grid cell.
+
+     100 rather than the 2 that would be enough to beat `.app` itself: it is
+     the exact layer `.modal-backdrop` gave this surface as a card, so every
+     other layer in the product — the privacy banner at 110, the window
+     chrome at 120, the palette at 1500, notifications at 1400, tooltips at
+     4000 — keeps the relationship to Settings it already had. A smaller
+     number would be correct against `.app` and wrong against everything
+     inside it that sits above 2. */
+  z-index: 100;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  /* Opaque. A page that lets the workspace read through it is the
+     transparent-overlay defect with a larger footprint. */
+  background: var(--md-sys-color-surface);
+  color: var(--text);
+  /* The frameless shell drags the window by its chrome; a page that is
+     mostly text must not join in. */
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+  animation: settings-page-rise 220ms var(--md-sys-motion-emphasized-decel) both;
+}
+
+.surface {
+  /* Anchor for `.settings-chrome`, which is absolutely positioned against
+     the column rather than the viewport so the close button lands at the
+     column's corner on a wide display instead of the screen's. */
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 1180px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The header band. Pinned above the scrolling section body, painted a step
+   away from the page so the boundary is visible without a rule, and given a
+   right-hand gutter so the title cannot run under the chrome strip — 64px is
+   the 28px close button plus the gap plus room for the autosave pill's
+   leading edge. */
+.page :global(.modal-head) {
+  position: relative;
+  z-index: 2;
+  padding: var(--modal-padding) calc(var(--modal-padding) + 64px) var(--modal-padding) var(--modal-padding);
+  background: var(--bg-elevated);
+}
+
+.page :global(.modal-head-line) {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 4px;
+}
+
+.page :global(.modal-head-line) > h2 {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.page :global(.modal-head-line) > :global(.subtitle) {
+  margin: 0;
+  flex: 1 1 240px;
+  font-size: 12.5px;
+  /* Override the 72ch cap the stacked welcome variant wants, so the subtitle
+     takes the remaining inline width before it wraps. */
+  max-width: none;
+}
+
+/* Tab strip, search results and the section body. `overflow: hidden` here is
+   what makes `.settings-content` the scroller rather than this box. */
+.page :global(.modal-body) {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+@keyframes settings-page-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page { animation: none; }
+}
+
+/* Narrow widths and high display scales land in the same place: the layout
+   viewport gets small, so the gutters shrink rather than the content. */
+@media (max-width: 760px) {
+  .page { --modal-padding: 16px; }
+}

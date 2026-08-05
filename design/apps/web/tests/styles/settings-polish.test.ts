@@ -6,6 +6,11 @@ import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 const indexCss = readFileSync(new URL('../../src/index.css', import.meta.url), 'utf8');
 const expandedIndexCss = readExpandedIndexCss();
 const mentionHomeCss = readFileSync(new URL('../../src/styles/workspace/mention-home.css', import.meta.url), 'utf8');
+const settingsPageCss = readFileSync(
+  new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
+  'utf8',
+);
+const shellCss = readFileSync(new URL('../../src/styles/shell.css', import.meta.url), 'utf8');
 const artifactsCss = readFileSync(new URL('../../src/styles/workspace/artifacts.css', import.meta.url), 'utf8');
 
 function cssBlock(css: string, selector: string): string {
@@ -43,8 +48,8 @@ describe('settings polish CSS', () => {
   });
 
   it('keeps the settings header above scrolling content rows', () => {
-    const head = cssBlock(mentionHomeCss, '.modal-settings .modal-head');
-    const body = cssBlock(mentionHomeCss, '.modal-settings .modal-body');
+    const head = cssBlock(settingsPageCss, '.page :global(.modal-head)');
+    const body = cssBlock(settingsPageCss, '.page :global(.modal-body)');
     const content = cssBlock(mentionHomeCss, '.settings-content');
 
     expect(ruleValue(body, 'overflow')).toBe('hidden');
@@ -53,6 +58,50 @@ describe('settings polish CSS', () => {
     expect(ruleValue(head, 'background')).toBe('var(--bg-elevated)');
     expect(ruleValue(content, 'position')).toBe('relative');
     expect(ruleValue(content, 'z-index')).toBe('1');
+  });
+
+  it('renders settings as an opaque page in the shell body, not a floating card', () => {
+    // Roadmap § 2.4 Wave 6. The three properties below are the whole
+    // difference between a page and the modal it replaced: it takes the
+    // shell body's single grid cell rather than being centred on a scrim, it
+    // stacks above the workspace it shares that cell with, and it is opaque,
+    // because a settings surface the chat reads through is the
+    // transparent-overlay defect at full size.
+    const page = cssBlock(settingsPageCss, '.page');
+
+    expect(ruleValue(page, 'grid-area')).toBe('1 / 1');
+    // The layer the card had, so every overlay that used to sit above or
+    // below Settings still does.
+    expect(ruleValue(page, 'z-index')).toBe('100');
+    expect(ruleValue(page, 'background')).toBe('var(--md-sys-color-surface)');
+
+    // And the card's own shell rules are gone from the global sheet rather
+    // than left behind to style an element nothing renders any more.
+    expect(mentionHomeCss).not.toContain('.modal-settings');
+    expect(mentionHomeCss).not.toContain('.settings-fullscreen');
+  });
+
+  it('keeps the shared dialog content rhythm reaching the settings page', () => {
+    // The page dropped the `modal` class, and these four rules are the ones
+    // the settings sections were written against — every hint, every field
+    // label, every section heading. Losing them would not have thrown
+    // anything; it would just have unstyled nineteen sections at once.
+    expect(mentionHomeCss).toContain('.settings-page h2 {');
+    expect(mentionHomeCss).toContain('.settings-page label {');
+    expect(mentionHomeCss).toContain('.settings-page .hint {');
+    expect(mentionHomeCss).toContain('.settings-page .row {');
+  });
+
+  it('gives the shell body one grid cell so the page can cover the workspace', () => {
+    // Without this the page would need `position: absolute`, which would make
+    // the shell body a positioned ancestor and silently re-home every
+    // absolutely-positioned descendant in the product.
+    const body = cssBlock(shellCss, '.workspace-shell__body');
+    const children = cssBlock(shellCss, '.workspace-shell__body > *');
+
+    expect(ruleValue(body, 'display')).toBe('grid');
+    expect(ruleValue(body, 'grid-template-rows')).toBe('minmax(0, 1fr)');
+    expect(ruleValue(children, 'grid-area')).toBe('1 / 1');
   });
 
   it('keeps the silent-update checkbox native-sized and aligned horizontally', () => {

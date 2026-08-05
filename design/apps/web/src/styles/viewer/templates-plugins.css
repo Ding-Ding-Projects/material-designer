@@ -1039,7 +1039,7 @@
   position: fixed;
   inset: 0;
   z-index: 920;
-  background: rgba(28, 27, 26, 0.42);
+  background: var(--md-sys-color-scrim);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -1050,10 +1050,10 @@
   width: 100%;
   max-width: 920px;
   max-height: calc(100vh - 64px);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-3);
   display: flex;
   flex-direction: column;
   overflow: hidden;

@@ -244,6 +244,7 @@ import {
 } from './settings/settingsSearchMatch';
 import { SETTINGS_TAB_DEFS, writeLastSettingsSection } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
+import settingsPageStyles from './settings/SettingsPage.module.css';
 import type { TranslationVars } from '../i18n';
 
 export type SettingsSection =
@@ -1672,7 +1673,9 @@ export function SettingsDialog({
       : {},
   );
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  const [settingsFullscreen, setSettingsFullscreen] = useState(false);
+  // The page's own root, so the surfaces it covers can be taken out of the
+  // keyboard path while it is open — see the `inert` effect below.
+  const settingsPageRef = useRef<HTMLDivElement | null>(null);
   // The settings surface's own search field.
   //
   // The controller is created here and handed to `RegexSearchField`, exactly as
@@ -3520,8 +3523,9 @@ export function SettingsDialog({
     };
   }, [onPersist]);
 
-  // Global Escape closes the dialog. With no footer button anymore the
-  // close affordances are: top-right X · backdrop click · Escape.
+  // Global Escape closes the surface. With no footer button anymore, and no
+  // scrim to click now that this is a page rather than a modal, the two close
+  // affordances are: the top-right X · Escape.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
@@ -3530,6 +3534,32 @@ export function SettingsDialog({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  // The page covers the workspace it shares a grid cell with, so the workspace
+  // leaves the keyboard path while it is covered.
+  //
+  // Visually covered is not the same as unreachable: without this, Tab walks
+  // out of the last settings control and into a chat composer nobody can see,
+  // and a screen reader reads a screen that is not on screen. `inert` is the
+  // one attribute that removes focus, pointer events and the accessibility
+  // tree together — `aria-hidden` alone would hide it from assistive tech
+  // while leaving it tabbable, which is the worse half of the two.
+  //
+  // Only siblings, and only the ones not already inert: the shell's title
+  // bar, tab strip and status bar are outside this parent and stay live,
+  // which is the point of the surface being non-blocking at all.
+  useLayoutEffect(() => {
+    const page = settingsPageRef.current;
+    const parent = page?.parentElement;
+    if (!page || !parent) return;
+    const covered = Array.from(parent.children).filter(
+      (element) => element !== page && !element.hasAttribute('inert'),
+    );
+    for (const element of covered) element.setAttribute('inert', '');
+    return () => {
+      for (const element of covered) element.removeAttribute('inert');
+    };
+  }, []);
 
   const protocolProviders = useMemo(
     () => KNOWN_PROVIDERS.filter((p) => p.protocol === apiProtocol),
@@ -4341,25 +4371,34 @@ export function SettingsDialog({
     );
   };
 
-  const settingsFullscreenLabel = settingsFullscreen
-    ? t('common.exitFullscreen')
-    : t('common.fullscreen');
-
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className={
-          'modal modal-settings' +
-          (settingsFullscreen ? ' settings-fullscreen' : '')
-        }
-        role="dialog"
-        aria-modal="true"
+    // Roadmap § 2.4 Wave 6: a page, not a modal. No scrim, no `aria-modal`,
+    // no click-outside-to-close — there is no outside. It fills the shell's
+    // content area and leaves the title bar, the workspace tabs and the
+    // status bar live, because nothing in Settings is a decision the user has
+    // to make before the rest of the application may be used again.
+    <div
+      // Two classes, two jobs. The module class carries the page's own
+      // anatomy. The plain `settings-page` name is the global hook: it is
+      // what `styles/workspace/mention-home.css` names beside `.modal` so the
+      // shared label/hint/heading rhythm still reaches this subtree now that
+      // it is not a modal, and it is what a test or an e2e selector can
+      // write — a hashed module class cannot be.
+      className={`settings-page ${settingsPageStyles.page}`}
+      ref={settingsPageRef}
+      data-testid="settings-page"
+    >
+      <section
+        className={settingsPageStyles.surface}
+        // A named landmark rather than a dialog. `role="dialog"` on a surface
+        // with nothing behind it to return to would announce a modality that
+        // no longer exists.
+        role="region"
         aria-labelledby="settings-dialog-title"
-        onClick={(e) => e.stopPropagation()}
       >
-        {/* Top-right chrome strip — anchored to the modal corner so the
+        {/* Top-right chrome strip — anchored to the column's corner so the
             autosave indicator and the close button float above the
-            sidebar/content rhythm without competing with the title.
+            tab-strip/content rhythm without competing with the title.
             We use `position: absolute` instead of putting these inside
             `.modal-head` so the welcome variant's tall hero (kicker /
             title / subtitle / pet teaser) keeps its centred reading
@@ -4395,20 +4434,11 @@ export function SettingsDialog({
               </>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="settings-chrome-btn settings-fullscreen-toggle"
-            onClick={() => setSettingsFullscreen((current) => !current)}
-            aria-label={settingsFullscreenLabel}
-            aria-pressed={settingsFullscreen}
-            title={settingsFullscreenLabel}
-          >
-            <Icon
-              name={settingsFullscreen ? 'minimize' : 'maximize'}
-              size={15}
-              strokeWidth={2}
-            />
-          </button>
+          {/* The fullscreen toggle that used to sit here went with the card
+              it grew: this surface is already the whole content area, so a
+              control offering to make it bigger would have been a button
+              that changes nothing — the decorative-control failure,
+              shipped. */}
           <button
             type="button"
             className="settings-chrome-btn settings-close"
@@ -6277,7 +6307,7 @@ export function SettingsDialog({
           ) : null}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

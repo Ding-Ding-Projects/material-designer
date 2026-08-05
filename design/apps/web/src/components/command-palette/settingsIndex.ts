@@ -33,6 +33,16 @@ import type { SettingsSection } from '../SettingsDialog';
 export type SettingsControlId =
   | 'appearance.theme'
   | 'appearance.accent'
+  | 'appearance.seed'
+  | 'appearance.density'
+  | 'appearance.uiScale'
+  | 'appearance.autoFit'
+  | 'appearance.fontFamily'
+  | 'appearance.fontSize'
+  | 'appearance.fontWeight'
+  | 'appearance.lineHeight'
+  | 'appearance.letterSpacing'
+  | 'instructions.customInstructions'
   | 'language.locale'
   | 'language.mode'
   | 'language.funnyEn'
@@ -124,6 +134,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'settings.customInstructionsTitle',
     hintKey: 'settings.customInstructionsDesc',
     keywords: ['custom instructions', 'prompt', 'rules'],
+    control: 'instructions.customInstructions',
   },
   {
     id: sectionAnchorFor('media'),
@@ -228,29 +239,31 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['accent', 'colour', 'color', 'swatch'],
     control: 'appearance.accent',
   },
-  // The runtime controls. Reveal anchors rather than inline controls: each
-  // one teleports to the exact element in `AppearanceControls`, which is
-  // what makes them findable by name. Rendering them live in the palette
-  // as well needs a `SettingsControlId` and a `SettingRowControl` case
-  // each, and is deliberately a separate piece of work.
+  // The runtime controls. Every one of these writes through
+  // `useAppearancePreferences`, which is the same store `AppearanceControls`
+  // writes through — one value, two surfaces, so a seed picked here IS the
+  // seed, persisted and applied to the document in the same call.
   {
     id: 'appearance.seed',
     section: 'appearance',
     titleKey: 'appearance.seedLabel',
     hintKey: 'appearance.seedHint',
     keywords: ['seed', 'palette', 'colour', 'color', 'sunset', 'violet', 'teal', 'lime'],
+    control: 'appearance.seed',
   },
   {
     id: 'appearance.density',
     section: 'appearance',
     titleKey: 'appearance.densityLabel',
     keywords: ['density', 'compact', 'comfortable', 'spacing', 'padding'],
+    control: 'appearance.density',
   },
   {
     id: 'appearance.uiScale',
     section: 'appearance',
     titleKey: 'appearance.uiScaleLabel',
     keywords: ['ui scale', 'zoom', 'bigger', 'smaller', 'percent'],
+    control: 'appearance.uiScale',
   },
   {
     id: 'appearance.autoFit',
@@ -258,8 +271,14 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'appearance.autoFit',
     hintKey: 'appearance.autoFitHint',
     keywords: ['auto fit', 'autofit', 'fit to window', 'responsive'],
+    control: 'appearance.autoFit',
   },
   {
+    // Deliberately still a reveal anchor. This entry names the typography
+    // CARD — a face list plus eight properties — and no single inline
+    // control can be "the typography setting". The properties it holds are
+    // indexed individually below and each of those IS live; a row here
+    // would have to pick one of them and call it the whole card.
     id: 'appearance.typography',
     section: 'appearance',
     titleKey: 'appearance.typography',
@@ -271,6 +290,35 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     section: 'appearance',
     titleKey: 'appearance.fontFamily',
     keywords: ['font', 'family', 'typeface', 'serif', 'mono', 'cjk'],
+    control: 'appearance.fontFamily',
+  },
+  {
+    id: 'appearance.fontSize',
+    section: 'appearance',
+    titleKey: 'appearance.fontSize',
+    keywords: ['font size', 'text size', 'bigger text', 'smaller text', 'px'],
+    control: 'appearance.fontSize',
+  },
+  {
+    id: 'appearance.fontWeight',
+    section: 'appearance',
+    titleKey: 'appearance.fontWeight',
+    keywords: ['font weight', 'bold', 'light', 'regular'],
+    control: 'appearance.fontWeight',
+  },
+  {
+    id: 'appearance.lineHeight',
+    section: 'appearance',
+    titleKey: 'appearance.lineHeight',
+    keywords: ['line height', 'leading', 'line spacing'],
+    control: 'appearance.lineHeight',
+  },
+  {
+    id: 'appearance.letterSpacing',
+    section: 'appearance',
+    titleKey: 'appearance.letterSpacing',
+    keywords: ['letter spacing', 'tracking', 'em'],
+    control: 'appearance.letterSpacing',
   },
   {
     id: sectionAnchorFor('narrator'),

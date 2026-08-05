@@ -41,11 +41,10 @@ import {
   MIN_UI_SCALE,
   UI_SCALE_STEP,
   quantizeUiScale,
-  type AppearanceDensity,
   type AppearanceSeed,
   type AppearanceTypography,
-  type FontStackId,
 } from '../../state/appearance';
+import { DENSITY_LABEL_KEY, FONT_LABEL_KEY, SEED_LABEL_KEY } from './labels';
 import { useAppearancePreferences } from './store';
 import {
   TYPEFACE_PREVIEW_SAMPLE,
@@ -79,34 +78,9 @@ const SEED_SWATCH: Record<AppearanceSeed, string> = {
   lime: '#4C6700',
 };
 
-/**
- * The seed labels reuse the built-in presets' names.
- *
- * Not a shortcut to avoid four translation keys: the four colour presets
- * ARE these four seeds, named after them, so two key sets would be two
- * places for the same word to be translated differently and drift.
- */
-const SEED_LABEL_KEY: Record<AppearanceSeed, keyof Dict> = {
-  sunset: 'appearance.preset.sunset',
-  violet: 'appearance.preset.violet',
-  teal: 'appearance.preset.teal',
-  lime: 'appearance.preset.lime',
-};
-
-const DENSITY_LABEL_KEY: Record<AppearanceDensity, keyof Dict> = {
-  compact: 'statusBar.densityCompact',
-  default: 'statusBar.densityDefault',
-  comfortable: 'statusBar.densityComfortable',
-};
-
-const FONT_LABEL_KEY: Record<FontStackId, keyof Dict> = {
-  'default': 'appearance.font.default',
-  'system': 'appearance.font.system',
-  'grotesque': 'appearance.font.grotesque',
-  'humanist': 'appearance.font.humanist',
-  'serif': 'appearance.font.serif',
-  'mono': 'appearance.font.mono',
-};
+/* The seed, density and font-stack label maps moved to `./labels.ts` when the
+   command palette started rendering these same choices as live rows: one map
+   read by both surfaces cannot drift the way two copies of it can. */
 
 const UNSUPPORTED_REASON_KEY: Record<UnsupportedReason, keyof Dict> = {
   'no-variable-font': 'appearance.unsupportedNoVariableFont',

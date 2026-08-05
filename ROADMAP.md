@@ -920,6 +920,21 @@ rather than as one item that stays unchecked for months.
 - [ ] **Wave 6 — settings.** Convert the settings modal into a full-page surface
       with a searchable section list, which the standards require to be
       non-blocking anyway.
+
+      *Converted; the box stays open on the same rule as Wave 1, because a
+      wave's definition of done is capture-based and nothing here has been
+      captured.* The surface is a page: it mounts inside
+      `.workspace-shell__body` as a second child of that one grid cell, paints
+      an opaque `--md-sys-color-surface`, and centres a 1180px column — the
+      settings screen's own width in the mockup. Gone with the card: the
+      scrim, `aria-modal="true"`, click-outside-to-close, and the fullscreen
+      toggle, which on a surface that is already the whole content area was a
+      button that could only change nothing. The title bar, the workspace tab
+      strip and the status bar stay live above and below it, which is the
+      whole point of the surface being non-blocking; the workspace it covers
+      is marked `inert` while it is open, so a page that is visually covered
+      is not still reachable by Tab. The searchable section list is the tab
+      strip that landed at `a1c0027`, unchanged.
 - [ ] **Wave 7 — overlays.** Menus, popovers, sheets and dialogs. Every one must
       paint its own background, border, elevation and shape; an overlay that
       renders transparent lets the content behind read through it. Every one
@@ -1198,13 +1213,23 @@ recollection that they were done.
 - [x] **Cover every setting in every settings surface.** 44 indexed entries in
       `command-palette/settingsIndex.ts`, each carrying the section it lives in
       so a user who knows a setting's name never has to know its tab.
-- [ ] **Render live inline controls in the rows** — a switch for a toggle, a
-      text box for a value, a stepper for a number, a select for a choice.
-      **Built, and covering three of the forty-four rows** (`appearance.theme`,
-      `appearance.accent` and one more) through `SettingRowControl`. The
-      mechanism is finished and typed against `Dict`; every other row is a
-      reveal anchor. Extending it is a `SettingsControlId` and a `switch` case
-      per setting — mechanical, and the only reason this box is not ticked.
+- [x] **Render live inline controls in the rows** — a switch for a toggle, a
+      text box for a value, a stepper for a number, a select for a choice. All
+      four kinds now exist, and **22 of the index's 43 rows carry one**.
+      Twenty of the remaining twenty-one are the section anchors — a row that
+      names a whole tab is a destination, not a setting, and there is no
+      control for "Privacy" as such. The twenty-first is `appearance.typography`,
+      which names the typography *card*: its nine properties are indexed
+      individually and four of them are live steppers, so a control here would
+      have to pick one of them and call it the whole card.
+      The appearance rows write through `useAppearancePreferences`, the same
+      store `AppearanceControls` writes through, so a seed chosen in the
+      palette is applied and persisted by the same call that does it in
+      Settings; the desktop-notification switch asks for the platform
+      permission first, exactly as the settings panel does, rather than
+      storing an "on" the browser has refused. Verified by
+      `CommandPalette.test.tsx` — which has not been run in this checkout,
+      because it has no Node toolchain. CI is the first thing to execute it.
 - [x] **Teleport on selection:** `reveal.ts` opens the surface, reveals the
       exact control and flashes it, and the reveal is requested *before* the
       section opens so the dialog does not consume it. Focus is deliberately

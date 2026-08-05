@@ -1394,7 +1394,7 @@
 .prompt-template-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 15, 18, 0.45);
+  background: var(--md-sys-color-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1403,15 +1403,15 @@
 }
 .prompt-template-modal {
   position: relative;
-  background: var(--bg-panel);
-  border-radius: var(--radius-lg);
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: var(--md-sys-shape-corner-xl);
   width: min(820px, 100%);
   max-height: calc(100vh - 48px);
   max-height: min(90vh, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--md-sys-color-outline-variant);
   overflow: hidden;
   box-shadow: 0 32px 80px rgba(0, 0, 0, 0.25);
 }

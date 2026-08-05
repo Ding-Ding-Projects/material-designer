@@ -300,6 +300,13 @@ function renderSettingsDialog(
     providerModelsCache?: Record<string, ProviderModelOption[]>;
     welcome?: boolean;
     onSilentUpdatePreferenceChange?: (allowSilentUpdates: boolean) => Promise<void>;
+    /**
+     * Render into a container the caller already owns, so a test can put
+     * something beside the settings surface and ask what the page does to
+     * the surfaces it covers. The page's parent IS the container, so a node
+     * placed there first is a genuine sibling of it.
+     */
+    container?: HTMLElement;
   } = {},
 ) {
   const onPersist = vi.fn();
@@ -339,6 +346,7 @@ function renderSettingsDialog(
       onClose={onClose}
       onRefreshAgents={onRefreshAgents}
     />,
+    options.container ? { container: options.container } : undefined,
   );
 
   return {
@@ -558,22 +566,60 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     vi.unstubAllGlobals();
   });
 
-  // The collapsible 240px section rail this test used to drive is gone: the
-  // sections are a browser-style tab strip now, and a strip that can be hidden
-  // is a settings surface with no navigation. Fullscreen is the chrome control
-  // that survived, and the strip itself is covered in SettingsDialog.tabs.test.
-  it('toggles fullscreen from dialog chrome', () => {
-    renderSettingsDialog();
-    const dialog = screen.getByRole('dialog');
+  // Two chrome controls this test used to drive are gone, and for the same
+  // reason each time: the surface changed shape under them.
+  //
+  // The collapsible 240px section rail went first — the sections are a
+  // browser-style tab strip now, and a strip that can be hidden is a settings
+  // surface with no navigation. Fullscreen went with roadmap § 2.4 Wave 6:
+  // the surface IS the whole content area now, so a button offering to make
+  // it bigger would have been a control that changes nothing.
+  //
+  // What replaces both assertions is the property that matters about a page —
+  // it does not seize the application while it is open.
+  it('renders as a non-blocking page rather than a modal dialog', () => {
+    const { onClose } = renderSettingsDialog();
+    const page = document.querySelector('.settings-page') as HTMLElement;
 
+    expect(page).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Collapse settings sidebar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Fullscreen' })).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Fullscreen' }));
-    expect(dialog.classList.contains('settings-fullscreen')).toBe(true);
-    expect(screen.getByRole('button', { name: 'Exit fullscreen' })).toBeTruthy();
+    // No scrim, and nothing claiming modality to assistive technology.
+    expect(document.querySelector('.modal-backdrop')).toBeNull();
+    expect(document.querySelector('[aria-modal="true"]')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Exit fullscreen' }));
-    expect(dialog.classList.contains('settings-fullscreen')).toBe(false);
+    // A named landmark instead, so a screen-reader user can reach it by name.
+    const region = screen.getByRole('region', { name: /Settings/ });
+    expect(region).toBeTruthy();
+
+    // The close button is now the only pointer route out, so it has to work.
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the surface it covers out of the keyboard path, and gives it back', () => {
+    // A stand-in for the workspace: in the application the page and the
+    // workspace are the two children of one grid cell in the shell body.
+    const container = document.createElement('div');
+    const workspace = document.createElement('div');
+    workspace.setAttribute('data-testid', 'workspace-behind');
+    container.appendChild(workspace);
+    document.body.appendChild(container);
+
+    const { unmount } = renderSettingsDialog({}, { container });
+
+    // Covered by an opaque page, so it must not still be reachable by Tab or
+    // readable by a screen reader. `inert` is the one attribute that removes
+    // focus, pointer events and the accessibility tree together.
+    expect(workspace.hasAttribute('inert')).toBe(true);
+
+    unmount();
+    // And it comes back. An `inert` left behind would make the workspace
+    // permanently unusable after one visit to Settings — a defect that
+    // outlives the surface that caused it.
+    expect(workspace.hasAttribute('inert')).toBe(false);
+    container.remove();
   });
 
   it('renders BYOK provider preset tabs and toggles API key visibility', () => {
@@ -1218,7 +1264,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     fireEvent.change(screen.getByLabelText('API key'), {
       target: { value: 'sk-unsaved-2' },
     });
-    fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -4147,7 +4193,7 @@ describe('SettingsDialog media providers interactions', () => {
     fireEvent.change(screen.getByLabelText('OpenAI API key'), {
       target: { value: 'sk-unsaved-media-2' },
     });
-    fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -4277,7 +4323,7 @@ describe('SettingsDialog connectors interactions', () => {
     fireEvent.change(screen.getByPlaceholderText('Paste a new key to replace the saved one'), {
       target: { value: 'cmp_unsaved_secret_2' },
     });
-    fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -4589,7 +4635,7 @@ describe('SettingsDialog notifications interactions', () => {
       { initialSection: 'notifications' },
     );
     fireEvent.click(screen.getAllByRole('button', { name: 'offline' })[0] as HTMLButtonElement);
-    fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -5215,7 +5261,13 @@ describe('IntegrationsView skills tab', () => {
       expect(screen.getByText('skill body for blog-post')).toBeTruthy();
     });
 
-    const toggles = screen.getAllByTitle('Toggle');
+    // The enable control is the M3 switch (roadmap Wave 4), so it is found by
+    // its role and accessible name rather than by the `title` attribute of the
+    // `<label>` that used to wrap a checkbox. Querying the tooltip was what
+    // coupled this assertion to the old control's markup; the role and the
+    // name are the contract, and they survive the next restyle.
+    const toggles = screen.getAllByRole('switch', { name: 'Toggle' });
+    expect(toggles[0]?.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(toggles[0] as HTMLElement);
 
     await waitFor(() => {
@@ -5403,7 +5455,7 @@ describe('SettingsDialog about interactions', () => {
       },
     );
 
-    fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    fireEvent.click(document.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 

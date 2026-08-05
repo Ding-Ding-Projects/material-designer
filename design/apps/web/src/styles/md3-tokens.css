@@ -185,24 +185,47 @@
 
   /* ---- Reference typefaces -------------------------------------------
      M3 names `brand` and `plain`; `mono` and `serif` are additions this
-     product needs (code listings and long-form reading). Roboto Flex is
-     the contract's face and leads the stack, and the platform chain behind
-     it is the app's existing fallback kept intact — dropping it would
-     strip the CJK, Arabic and Thai faces the localized UI depends on.
+     product needs (code listings and long-form reading).
 
-     Both bundled faces now exist as local assets (`roboto-flex.css` and
-     `roboto-mono.css`), so the leading name finally resolves. Neither face
-     carries one CJK, Thai or Arabic glyph, and the application ships twenty
-     locales — nine of which are written in a script Roboto has nothing for.
-     The tail of each stack is therefore load-bearing, not decoration: it is
-     what stops `ja`, `ko`, `zh-CN`, `zh-TW`, `zh-HK`, `th`, `ar` and `fa`
-     rendering as tofu, and it is what keeps bilingual mode legible when
-     English and 廣東話 share one line. The order is Latin first so Latin
-     renders in Roboto, then Arabic, Thai, Simplified Chinese, Traditional
-     Chinese, Japanese and Korean, each with its Windows face, its Apple
-     face and its Noto face, because a fallback list only supplies glyphs
-     the faces ahead of it do not have. */
-  --md-ref-typeface-plain: 'Roboto Flex', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Helvetica Neue', Arial, 'Cairo', 'Segoe UI Arabic', 'Noto Sans Arabic', 'Leelawadee UI', 'Noto Sans Thai', 'Microsoft YaHei UI', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft JhengHei UI', 'PingFang TC', 'Noto Sans CJK TC', 'Yu Gothic UI', 'Hiragino Sans', 'Noto Sans CJK JP', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans CJK KR', sans-serif;
+     WHY A BUNDLED FACE MAY LEAD, WHEN AN UNBUNDLED ONE MAY NOT.
+     Upstream's rule — pinned by `tests/styles/default-background.test.ts`,
+     which is named "prefers platform UI fonts over optional local app
+     fonts" — was that the stack must not open with a family the product
+     does not ship. The family it names as the counter-example is `Inter`,
+     and the reason is availability, not aesthetics: `Inter` is not
+     vendored anywhere in this repository, so leading with it makes the
+     interface's appearance depend on whether the machine happens to have
+     it. A designer's laptop renders one way and a fresh install another,
+     with nothing reporting the difference.
+
+     `Roboto Flex` is not that. It is bundled (`roboto-flex.css`, six
+     subsets under `public/fonts/roboto-flex/`) and served from the
+     product's own origin, so it is present on every machine by
+     construction. Leading with it is therefore MORE deterministic than
+     leading with `-apple-system`, which resolves to a different face on
+     every operating system and every OS version. The invariant upstream
+     was protecting — the interface must not depend on what happens to be
+     installed — is better served this way, not worse, so the rule keeps
+     its force and the test now states it as "only a face this repository
+     ships may lead".
+
+     The platform chain behind it is upstream's, in upstream's order, with
+     `Roboto Flex` prepended and the script families appended. Nothing was
+     reordered: a smaller diff is easier to review, and the contiguous
+     `'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans'` run is load-bearing on
+     Windows.
+
+     WHY THE TAIL IS LOAD-BEARING. Neither Roboto face carries one CJK,
+     Thai or Arabic glyph, and this application ships twenty locales — nine
+     of them written in a script Roboto has nothing for. The tail is what
+     stops `ja`, `ko`, `zh-CN`, `zh-TW`, `zh-HK`, `th`, `ar` and `fa`
+     rendering as tofu, and what keeps bilingual mode legible when English
+     and 廣東話 share one line. Each script names a Windows face, an Apple
+     face and a Noto face, so a machine from any of the three worlds finds
+     one. Order within the tail does not affect coverage — a fallback list
+     only ever supplies glyphs the faces ahead of it lack — it only decides
+     which face wins when several could serve. */
+  --md-ref-typeface-plain: 'Roboto Flex', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial, 'Cairo', 'Segoe UI Arabic', 'Noto Sans Arabic', 'Leelawadee UI', 'Noto Sans Thai', 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft JhengHei UI', 'PingFang TC', 'Noto Sans CJK TC', 'Yu Gothic UI', 'Hiragino Sans', 'Noto Sans CJK JP', 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans CJK KR', sans-serif;
   --md-ref-typeface-brand: var(--md-ref-typeface-plain);
   /* The mono tail is the same idea for technical text. The CJK faces named
      here are proportional, which is correct rather than a compromise: CJK

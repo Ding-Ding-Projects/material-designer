@@ -1570,10 +1570,10 @@
   width: max-content;
   min-width: 168px;
   padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-2);
 }
 .session-mode-toggle__options {
   display: grid;
@@ -1683,7 +1683,7 @@
 .session-mode-toggle__popover-card {
   width: 320px;
   flex: 0 0 320px;
-  background: var(--bg-panel);
+  background: var(--md-sys-color-surface-container);
   max-height: min(360px, calc(100vh - 84px));
   overflow-y: auto;
   overscroll-behavior: contain;

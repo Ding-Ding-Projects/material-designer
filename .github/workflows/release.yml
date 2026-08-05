@@ -261,7 +261,26 @@ jobs:
             exit 1
           fi
           echo "payload: $payload"
-          bash scripts/check-self-contained.sh "$payload"
+
+          # The packer reports its payload as a .7z, not a directory — the first
+          # run of this gate failed on exactly that, which is the script doing
+          # its job: it refuses to report a pass for something it never opened.
+          #
+          # Extracting is the right answer rather than pointing the gate at some
+          # earlier build directory, because the archive IS what ships. A CDN
+          # URL that a bundler inlined after the last directory anyone thought to
+          # check is precisely the thing this is meant to catch.
+          if [ -d "$payload" ]; then
+            target="$payload"
+          else
+            target="${RUNNER_TEMP}/payload-unpacked"
+            rm -rf "$target"
+            mkdir -p "$target"
+            echo "unpacking the payload to inspect what actually ships"
+            7z x -bso0 -bsp0 -y -o"$target" "$payload"
+          fi
+
+          bash scripts/check-self-contained.sh "$target"
 
       - name: Upload the installer as a workflow artifact
         # Always, so a failed smoke test still leaves something to inspect.

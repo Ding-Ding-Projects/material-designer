@@ -47,7 +47,12 @@ describe('workspace tabs chrome styles', () => {
     const focusedComposerShell = cssDeclarations(routinesCss, '.app .composer-shell:focus-within');
 
     expect(ruleValue(composerShell, 'padding')).toBe('7px');
-    expect(ruleValue(composerShell, 'border-color')).toBe('color-mix(in srgb, var(--border) 84%, var(--border-strong))');
+    // Wave 5 moved the composer onto M3 roles: the shell is
+    // `surface-container-high` at `corner-l` with an `outline-variant`
+    // hairline, replacing the hand-mixed border this used to pin. The focus
+    // and hover borders below still carry accent mixes, which is why only
+    // this one moved.
+    expect(ruleValue(composerShell, 'border-color')).toBe('var(--md-sys-color-outline-variant)');
     expect(ruleValue(composerShell, 'box-shadow')).toBe('var(--shadow-sm)');
     expect(ruleValue(focusedComposerShell, 'border-color')).toBe('color-mix(in srgb, var(--accent) 34%, var(--border-strong))');
     expect(ruleValue(focusedComposerShell, 'box-shadow')).toContain('0 0 0 1px');
@@ -298,13 +303,45 @@ describe('workspace tabs chrome styles', () => {
     const projectStrip = cssDeclarations(routinesCss, '.workspace-shell .workspace-tabs-strip');
     const sharedStrip = cssDeclarations(shellCss, '.workspace-tabs-strip');
 
-    expect(ruleValue(projectTab, 'height')).toBe('26px');
-    expect(ruleValue(projectTab, 'align-self')).toBe('center');
-    expect(ruleValue(projectTab, 'border-radius')).toBe('7px');
+    // The mockup's geometry: a 42px strip of 36px bottom-rounded tabs capped at
+    // 250px. Pinned in BOTH stylesheets on purpose — `styles/shell.css` declares
+    // the anatomy at 0-1-0 and this block overrides it at 0-2-0 from a later
+    // import, so a change made in only one of them silently does nothing here.
+    expect(ruleValue(projectTab, 'height')).toBe('36px');
+    expect(ruleValue(projectTab, 'min-height')).toBe('36px');
+    expect(ruleValue(projectTab, 'align-self')).toBe('flex-start');
+    expect(ruleValue(projectTab, 'border-radius')).toBe(
+      '0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s)',
+    );
     // Tabs auto-shrink: flex-grow 0 (never balloon), flex-shrink 1 (squeeze to
     // fit) down to --workspace-tab-min-width before the strip scrolls.
-    expect(ruleValue(projectTab, 'flex')).toBe('0 1 156px');
+    expect(ruleValue(projectTab, 'flex')).toBe('0 1 250px');
+    expect(ruleValue(projectTab, 'width')).toBe('250px');
+    expect(ruleValue(projectTab, 'max-width')).toBe('250px');
     expect(ruleValue(projectTab, 'min-width')).toBe('var(--workspace-tab-min-width, 56px)');
+    expect(ruleValue(projectChrome, 'height')).toBe('42px');
+    expect(ruleValue(projectChrome, 'min-height')).toBe('42px');
+    expect(ruleValue(projectChrome, '--workspace-tabs-chrome-height')).toBe('42px');
+
+    const sharedTab = cssDeclarations(shellCss, '.workspace-tab');
+    const sharedChrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
+    expect(ruleValue(sharedTab, 'height')).toBe('36px');
+    expect(ruleValue(sharedTab, 'align-self')).toBe('flex-start');
+    expect(ruleValue(sharedTab, 'border-radius')).toBe(
+      '0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s)',
+    );
+    expect(ruleValue(sharedTab, 'flex')).toBe('0 1 250px');
+    expect(ruleValue(sharedTab, 'max-width')).toBe('250px');
+    expect(ruleValue(sharedChrome, 'height')).toBe('42px');
+    // The leading and close icons grew with the tab; a 14px glyph in a 36px tab
+    // reads as a speck, and a close target under 22px is below the minimum.
+    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__icon'), 'width')).toBe('18px');
+    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab__close'), 'width')).toBe('22px');
+    // Pinned tabs keep their deliberately compact widths; only the height moved.
+    expect(ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-pinned'), 'width')).toBe('96px');
+    expect(
+      ruleValue(cssDeclarations(shellCss, '.workspace-tab.is-user-pinned'), 'width'),
+    ).toBe('34px');
     expect(ruleValue(activeProjectTab, 'background')).toBe('color-mix(in srgb, var(--bg-panel) 94%, var(--bg-subtle))');
     expect(ruleValue(activeProjectTab, 'border-color')).toBe('var(--workspace-active-tab-border)');
     expect(ruleValue(activeProjectTab, 'box-shadow')).toContain('0 1px 2px');

@@ -29,6 +29,295 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-04 — Settings stops being a modal and becomes a page
+
+**Reason:** roadmap § 2.4 Wave 6, and the non-blocking standard it points at.
+Settings was a 920×720 card floating on a blurred scrim with
+`aria-modal="true"`: the entire application went unreachable behind it — the
+workspace tabs, the status bar, the window's own chrome — until the user
+closed it. Modality is for a decision that has to be made before anything else
+can continue. Choosing a theme is not one.
+
+**What it does now.** The surface mounts inside `.workspace-shell__body`, as a
+second child of that element's single grid cell, and covers the workspace
+rather than the window. It paints an opaque `--md-sys-color-surface` and
+centres a 1180px column, which is the settings screen's own width in
+`mockups/open-design-m3`. The searchable section list Wave 6 asks for is the
+tab strip that already landed, unchanged and untouched.
+
+*The grid cell is the load-bearing part.* Covering a sibling normally means
+`position: absolute`, which needs a positioned ancestor — and making the shell
+body one silently re-homes the containing block of every absolutely-positioned
+descendant in the product, including the ones that mean to resolve against the
+viewport. A one-cell grid with `grid-area: 1 / 1` on both children costs
+nothing when there is one child and stacks them when there are two, and a grid
+item takes `z-index` without needing `position` at all. That `z-index` is 100
+rather than the 2 that would beat `.app` on its own: 100 is the layer
+`.modal-backdrop` gave this surface as a card, so the privacy banner, the
+window chrome, the palette, the notification host and the tooltip layer all
+keep exactly the relationship to Settings they already had.
+
+*Visually covered is not unreachable.* The page marks its siblings `inert`
+while it is open, so Tab cannot walk out of the last settings control into a
+chat composer nobody can see, and a screen reader is not reading a screen that
+is not on screen. `inert` rather than `aria-hidden` because only one of the
+two removes focus, pointer events and the accessibility tree together;
+`aria-hidden` alone hides a surface from assistive technology while leaving it
+tabbable, which is the worse half. The shell's own chrome is outside that
+parent and stays live, which is what makes the surface non-blocking rather
+than a modal without a scrim.
+
+*The fullscreen toggle is gone, not moved.* It grew the card to the viewport.
+On a surface that is already the whole content area it could only ever change
+nothing, and a control that looks operable and does nothing is the
+decorative-control failure shipped. Escape and the close button are the two
+ways out; there is no "outside" left to click.
+
+*Losing the `modal` class would have taken four style rules with it.* The
+shared `.modal h2`, `.modal label`, `.modal .hint` and `.modal .row` rules are
+the content rhythm every dialog body is written against, and the settings
+sections were written against them too — dropping the class would have left
+every hint and every field label in nineteen sections unstyled, quietly and
+everywhere at once. Those four selectors now name `.settings-page` beside
+`.modal`, at the same specificity, so nothing that used to outrank them starts
+losing to them.
+
+The card's shell rules left the global sheet with it — a 920×720 box, its
+fullscreen variant, and the head/body overrides — and now live in a colocated
+module beside the component. What stayed global is what other surfaces share:
+`.modal-head`'s rhythm, the chrome strip, the autosave pill, and
+`.settings-content`, which is still the scroller so the tab-change `scrollTop`
+reset and the palette's reveal keep working exactly as they did. The two
+`modal-` class names on the header and the body are deliberate: they carry the
+generic head/body rhythm every surface in the product uses, and renaming them
+would have meant duplicating that rhythm rather than reusing it.
+
+**Not done, and not claimed:** nothing here has been executed. This checkout
+has no Node toolchain available to it, so the types, the tests and the
+rendering are all unverified until CI runs them, and no capture exists — which
+is why Wave 6's box stays open, its definition of done being capture-based.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/settings/SettingsPage.module.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
+- `apps/web/tests/styles/settings-polish.test.ts`
+
+### 2026-08-04 — The palette's settings rows stop being links and start being the settings
+
+**Reason:** roadmap § 3.6. `SettingRowControl` rendered a live control for
+twelve of the index's rows and a reveal anchor for the rest, and the roadmap
+recorded the gap honestly: extending it is a `SettingsControlId` and a `switch`
+case per setting. This does the extending. Twenty-two of forty-three rows now
+carry the real control — a select for a choice, a switch for a toggle, a
+stepper for a number, a text box for a value.
+
+**Which rows, and why the rest are not.** Every row that names a single
+setting is live except one. Twenty of the twenty-one that are not are section
+anchors: a row called "Privacy" names a whole tab, and there is no control for
+a tab. The twenty-first is `appearance.typography`, which names the typography
+*card* — a face list plus nine properties. Four of those properties are now
+indexed and live in their own right, so a control on the card row would have
+had to pick one of them and present it as the whole card.
+
+*The appearance rows write to the store, not to a copy of it.* Seed, density,
+UI scale, auto-fit and typography do not live in `AppConfig` at all; they live
+in the appearance store, which persists and applies to the document in the same
+call. The palette reads and writes them through `useAppearancePreferences` —
+the very hook `AppearanceControls` uses — so a seed picked in the palette is
+applied before the handler returns, and the editor shows it if it is open. The
+three label maps moved into `components/appearance/labels.ts` for the same
+reason: two surfaces rendering the same choices from two copies of "which key
+names the lime seed" is a drift nobody would see, because both would keep
+rendering *a* label.
+
+*The desktop-notification switch asks the platform first.* Settings requests
+the browser permission and stores what it is told. A palette switch that only
+wrote `true` would report a setting the platform has refused and leave the user
+waiting for banners that can never arrive — so this one asks, stores the
+answer, and disables itself where `Notification` does not exist at all.
+
+*The stepper keeps a draft.* A bare controlled number input cannot be edited
+from 100 to 18: clearing it hands an empty string to the handler, and whatever
+gets written is rendered straight back over what the user is halfway through
+typing. So the box keeps the text while the setting keeps the number, an
+out-of-range entry is clamped on blur rather than dropped, and a value changed
+underneath — by auto-fit, or by the editor in another surface — still wins.
+
+*The text row commits on blur, and on the way out.* Every keystroke would
+otherwise be one config save and one daemon sync; the settings surface reaches
+the same place through a debounce. It is a one-row `textarea` rather than an
+`input` because a single-line text input sanitises newlines out of its own
+value, which would silently flatten a multi-line instruction the moment this
+row committed. Closing the palette never fires `blur`, so the pending draft is
+committed on unmount too.
+
+The hand-rolled 26×14 switch track in the palette is gone: it renders the
+`Switch` component, which is Material Design 3's 52×32 anatomy, and that
+component gained a `tabIndex` prop so the palette's roving-focus list can keep
+giving the highlighted row's control the tab stop. The registry row cap moved
+from 60 to 200 — the index alone is forty-three entries now, rows are pushed
+commands-then-destinations-then-settings, and the first thing a too-low cap
+would have trimmed is the last settings tabs, silently, from a palette that
+claims to list every setting.
+
+**Not done, and not claimed:** unexecuted, for the same reason as the entry
+above — the new `CommandPalette.test.tsx` cases have never been run here.
+
+**Changed files:**
+
+- `apps/web/src/components/Switch.tsx`
+- `apps/web/src/components/appearance/AppearanceControls.tsx`
+- `apps/web/src/components/appearance/labels.ts`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+
+### 2026-08-04 — 79 of the 93 inline icons become real Material Symbols, and the one symbol name that was never in the font
+
+**Reason:** `Icon.tsx` carried 93 hand-drawn stroke glyphs used at 859 sites
+across 127 files, and it is the last original design element the icon work left
+standing. The previous pass deliberately stopped here, and its reason was
+sound: picking 93 replacements by name is where a wrong choice renders a
+*plausible* wrong icon — one that looks deliberate, breaks nothing, and no test
+catches. Every mapping below was therefore chosen against a rendered image
+rather than a remembered name, and fourteen were not made at all.
+
+**The premise that this is a one-file change is wrong, and that is the finding
+worth recording.** The obvious migration hands each glyph to the existing
+`MaterialSymbol` component, exactly as the 94 Remixicon sites did. That
+component renders a `<span>`, and **143 CSS rules across 31 stylesheets select
+this component's output as an element** — `.chrome-action > svg:first-child`,
+`.mention-item > svg` (a 24px tonal chip), `.od-select-trigger[aria-expanded='true']
+svg` (the 180-degree chevron flip), `.subtab-pill button:has(> svg:only-child)`,
+`.ws-tab .tab-icon svg`. Those rules carry sizes, backgrounds, colours,
+`display: block` and behaviour. Swapping the element detaches all 143 at once —
+the icons still render, in the wrong size and the wrong colour, with the
+chevron no longer turning, and nothing in the repository asserts any of it. So
+the element stays `<svg>` and only the artwork changes.
+
+**The artwork is the font's, not a lookalike.** Each `d` was extracted from
+`public/fonts/material-symbols/material-symbols-rounded.woff2` — the same bytes
+`MaterialSymbol` renders — instantiated at `opsz` 24 and at the stated `FILL`,
+with the y axis negated for SVG's downward y, hence the 960-unit `viewBox`.
+Nothing was traced or redrawn. Every extracted outline was then rasterised
+independently, from the emitted path string rather than from the font, and
+compared against the font's own rendering of the same glyph; all 79 agree.
+
+**Fourteen names keep their inline artwork**, which is the honest half of this
+change. `discord`, `github` and `github-filled` are brand marks and Material
+Symbols carries no brand logo at all — the same trademark exception
+`SocialShareGrid.tsx` already relies on. `blocks`, `fork`, `hammer`,
+`integrations-filled`, `layout`, `panel-left`, `present`, `slides`, `sliders`,
+`sun-moon` and `swatchbook` each have a *plausible* candidate — `widgets`,
+`account_tree`, `hardware`, `hub`, `view_quilt`, `dock_to_right`, `monitor`,
+`slideshow`, `tune`, `routine`, `style` — and a plausible candidate is exactly
+what this migration is trying not to ship. They stay until someone can compare
+them on a screen.
+
+**One live defect fell out of the checking.** `MATERIAL_SYMBOL_FOR_REMIX_ICON`
+mapped `smartphone-line` to `smartphone`, and the bundled face does not carry
+that name: its ligature table has 3,967 targets and `smartphone` is not one of
+them. Because a Material Symbol is addressed by its ligature, the miss did not
+render a box or a blank — it printed the literal word "smartphone" in the
+viewport switchers of `FileViewer` and `DesignBrowserPanel`. The existing spec
+could not catch it: it checks that a mapped name is *shaped* like a symbol
+name, which `smartphone` is. It is now `mobile`, which the font does carry.
+
+**Changed files:**
+
+- `apps/web/src/components/Icon.tsx`
+- `apps/web/src/components/MaterialSymbol.tsx`
+
+### 2026-08-04 — Wave 8: the scrims, popovers and sheets the blanket floor never reached, and a tab strip that was never the size it was asked for
+
+**Reason:** Wave 8 is "everything the first seven waves did not reach,
+enumerated from a real audit rather than assumed to be empty". The audit's
+central finding is that `styles/primitives.css` installs an attribute-selector
+M3 floor over `[class*='-modal']`, `[class*='-dialog']`, `[class*='-popover']`,
+`[class*='-menu']` and `[class*='-card']` at 0-2-0 to 0-4-0. It reaches most
+overlays, which is why most of them already look M3 — and it means the ones it
+*misses* are the whole of Wave 8. Three kinds of surface escape it: a scrim
+class the floor's `[class*='modal-backdrop']` does not match, a BEM name
+carrying `__`, and every CSS Module class, whose hash reads `File_popover__hash`
+rather than `-popover`.
+
+**Nine scrims became one scrim.** They were eight different blacks for one job —
+`rgba(28, 27, 26, 0.48)`, `rgba(28, 27, 26, 0.42)` twice, `rgba(15, 15, 18, 0.45)`,
+`rgba(17, 24, 39, 0.55)` twice, a `color-mix(… #111827 18% …)`, and a
+`color-mix(… var(--scrim, rgba(0, 0, 0, 0.45)) …)` whose token is declared
+nowhere in the repository and so always resolved to its own literal fallback.
+All nine are now `var(--md-sys-color-scrim)`.
+
+**Ten popovers got the surface role.** Each of them wins its own cascade — this
+is not dead code being tidied — and each was still on `--bg-panel` / `--radius`
+/ `--shadow-md`, including one carrying a bare `10px` radius the token sheet
+names as drift.
+
+**The message centre stops being a tall card.** It was a 12px-inset card with
+four rounded corners calling itself a dialog; it is now a docked side sheet —
+full height, no margin, leading corners only, `surface-container-low` at
+elevation 1. Its badge also painted a literal `#fff`, because
+`--accent-contrast` is declared nowhere.
+
+**The tab strip was never the size the mockup asked for, and the file everyone
+would edit is not the file that renders it.** The roadmap specifies "a 42px
+strip of 36px bottom-rounded tabs with a 250px cap and leading/close icons".
+`styles/shell.css` said 38px / 24px / 124px with four rounded corners — but in
+the project shell none of those numbers apply, because
+`styles/viewer/routines.css` overrides the same anatomy at 0-2-0 from a later
+import with 34px / 26px / 156px and an off-scale `7px`. Editing shell.css alone
+would have changed nothing a user could see. Both files now carry the mockup's
+geometry, the tab hangs from the top edge so its shaped bottom corners read as
+meeting the content area, and the leading icon (14px → 18px) and close target
+(18px → 22px) grew with it — at 14px in a 36px tab the glyph reads as a speck,
+and an 18px close target is below the minimum. The spec pins both files
+deliberately, so the next change cannot land in only one of them.
+
+**What was deliberately not done.** The floor forces `overflow: auto` and a
+`min(90vh, 100%)` cap onto six bespoke modal cards that own an internal
+scroller, which gives each of them a second scrollbar around the one it already
+has. Those cards' own `background`/`border`/`border-radius`/`box-shadow` are
+dead at 0-1-0 and have been moved onto M3 roles so they land correctly if the
+floor is ever retired, but the overflow conflict is left alone: fixing it means
+either editing the floor every other overlay depends on, or restating intent at
+0-4-0, and neither should be chosen without seeing the result. Likewise the
+three `.toggle-switch` consumers, the three integration row idioms, the
+`connector-drawer`'s floating-card geometry, and the ~99 sites reading the five
+tokens (`--danger`, `--warning`, `--success`, `--accent-contrast`, `--scrim`)
+that are declared nowhere and always paint their literal fallbacks. The
+`var(--workspace-tabs-chrome-height, 38px)` fallbacks are also left at 38px
+although no rule now declares 38px: the fallback only applies where no ancestor
+declares the variable, and its literal text is pinned by a component spec.
+
+**Changed files:**
+
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/new-project-modal.css`
+- `apps/web/src/styles/home/plus-menu.css`
+- `apps/web/src/styles/home/tasks.css`
+- `apps/web/src/styles/home/use-everywhere.css`
+- `apps/web/src/styles/viewer/templates-plugins.css`
+- `apps/web/src/styles/viewer/theater.css`
+- `apps/web/src/styles/workspace/artifacts.css`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/src/components/LibraryUploadModal.module.css`
+- `apps/web/src/components/MessageCenter.module.css`
+- `apps/web/src/components/ManualEditTextToolbar.module.css`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
+- `apps/web/src/components/changelog/ChangelogDateRange.module.css`
+- `apps/web/tests/styles/wave8-overlay-m3.test.ts`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+
 ### 2026-08-04 — A module mock is all-or-nothing, and two suites found out
 
 **Reason:** the tab work added a `WORKSPACE_TAB_PANEL_ID` export so the shell
@@ -51,6 +340,22 @@ is no case left for it to ignore. The regex path now receives
 - `apps/web/tests/changelog-filter.test.ts`
 - `apps/web/tests/components/App.previewKeepAlive.test.tsx`
 - `apps/web/tests/components/App.project-create-race.test.tsx`
+- `apps/web/tests/components/FileViewer.test.tsx`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+
+**Two more of the same family, found by the same run.** A Material Symbol is a
+ligature: the glyph is produced by putting its *name* in the element's text, so
+`<span aria-hidden>description</span>` draws a document icon and contributes the
+literal word "description" to `textContent`. The span is correctly hidden from
+the accessibility tree, so accessible names are right — it is only a raw
+`textContent` read that sees the ligature, and `FileViewer`'s menu assertions
+were doing exactly that. They now strip `aria-hidden` nodes, so they test the
+label rather than the icon set.
+
+And `workspace-tabs-chrome.test.ts` pinned the composer's old hand-mixed border
+after Wave 5 moved that shell onto M3 roles — `surface-container-high` at
+`corner-l` with an `outline-variant` hairline. Only that one assertion moved; the
+hover and focus borders still carry accent mixes.
 
 ### 2026-08-04 — Give the version history a window, so the snapshots stop being a thing only `curl` can see
 
@@ -324,6 +629,25 @@ than deleted from twenty locale files for a control that may return. The MCP
 switch's accessible name is still hard-coded English, exactly as the checkbox
 it replaced was; that is a real defect and a different one.
 
+**One thing the migration dropped, found by a red build.** Three of the five
+hand-rolled toggles were a `<label>` carrying a `title` — a hover tooltip on
+a control with no adjacent text — and the switch had no way to keep one, so
+converting the Skills and MCP rows silently removed theirs. `Switch` takes an
+optional `title` now and both call sites pass what they passed before. It is
+opt-in rather than derived from `label`, because a switch sitting beside a
+name that already reads "Morning briefing" does not want a tooltip repeating
+it.
+
+The suite that caught it, `SettingsDialog.execution.test.tsx`, was written
+against the old control in a second way that restoring the tooltip would have
+papered over: it found the control with `getAllByTitle('Toggle')` and clicked
+the `<label>`, relying on label-to-input activation. Querying a tooltip
+attribute is what coupled the assertion to the markup, so it moves to the
+role and the accessible name — which are the contract — and now also asserts
+`aria-checked` before the click. Both halves were wrong: the component had
+genuinely lost something, and the test was reaching for it in a way that
+would break again at the next restyle.
+
 **Also not done:** the wave's definition of done asks for captures from an
 installed build in both themes, at four display scales, at narrow width and
 in bilingual mode. There is no build in this environment, so the wave's box
@@ -365,6 +689,7 @@ stays unticked.
 - `apps/web/src/styles/viewer/templates-plugins.css`
 - `apps/web/src/styles/workspace/connectors.css`
 - `apps/web/tests/components/RoutinesSection.test.tsx`
+- `apps/web/tests/components/SettingsDialog.execution.test.tsx`
 - `apps/web/tests/components/Switch.test.tsx`
 - `apps/web/tests/components/TasksView.analytics.test.tsx`
 - `apps/web/tests/components/TasksView.page.test.tsx`
@@ -451,6 +776,20 @@ An ordinary tab keeps its visible text as its only accessible name — the
 `aria-label` that used to duplicate it is gone — so the hover affordance does
 not become a second announcement.
 
+**The ARIA role and the measured box are now two different nodes**, and four
+existing tests were relying on them being one. The strip measures the
+`.workspace-tab` wrapper carrying `data-workspace-tab-id` — the whole visible
+tab, including the close control — to anchor the hover preview and to compute
+the midpoint that decides whether a drop lands before or after a tab. That has
+not changed. What moved is `role="tab"`, from that wrapper onto the button
+inside it, so the tests' `getAllByRole('tab')` handle stopped resolving to the
+element whose rect they were mocking; the wrapper then reported an all-zero rect
+and every measurement collapsed to zero. The tests now find a tab by its
+accessible name and map to its box with a `tabBox` helper that says why the two
+differ. They also read tab order from `title` rather than `textContent`, which
+is exact and cannot be perturbed by a ligature icon contributing its own name to
+an element's text.
+
 **Changed files:**
 
 - `apps/web/src/App.tsx`
@@ -486,6 +825,7 @@ not become a second announcement.
 - `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/WorkspaceTabsBar.groups.test.tsx`
 - `apps/web/tests/components/WorkspaceTabsBar.pinning.test.ts`
+- `apps/web/tests/components/WorkspaceTabsBar.test.tsx`
 - `apps/web/tests/components/workspace-tabs/groupAppearance.test.ts`
 - `apps/web/tests/components/workspace-tabs/tabGroups.test.ts`
 - `apps/web/tests/components/workspace-tabs/windowRegistry.test.ts`
@@ -525,10 +865,49 @@ imported by nothing, so it and its three lockfile entries are gone — the
 lockfile edit is not optional, because a manifest that disagrees with it fails
 `pnpm install --frozen-lockfile`.
 
+**Follow-up, after continuous integration ran it.** Two specs failed and both
+are recorded here because each changed a decision rather than a line.
+
+*The font stack.* `tests/styles/default-background.test.ts` is upstream's, and
+it pins a rule named "prefers platform UI fonts over optional local app fonts" —
+the stack must not open with a family the product does not ship. Its named
+counter-example is `Inter`, which is vendored nowhere here, so the rule's reason
+is **availability**: leading with an unshipped face makes the interface depend
+on what happens to be installed. That premise does not cover `Roboto Flex`,
+which is now bundled and served from the product's own origin and is therefore
+present by construction — more deterministic than `-apple-system`, which
+resolves differently on every OS version. The rule was restated rather than
+deleted: **only a face this repository actually ships may lead**, checked
+against the `@font-face` rules in the expanded cascade rather than a hardcoded
+name, so bundling or unbundling a face moves the spec automatically. Upstream's
+chain is otherwise untouched and in its original order — `Roboto Flex` is
+prepended and the script families appended, nothing in the middle reordered, so
+the contiguous `'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans'` run survives.
+
+*A test that contradicted its own stylesheet.* The spec asserting the symbol
+component leaves the optical-size axis alone searched the whole file for `opsz`
+and matched the comment that explains why the axis is left live. The comment was
+doing useful work, so the assertion was the thing at fault: it now scopes to the
+`font-variation-settings` declarations and additionally forbids
+`font-optical-sizing`.
+
+*And a correction carried in from another session.* A note in the mapping table
+claimed the bundled face does not carry `smartphone`, citing a ligature table of
+"3,967 targets". Decompressing the shipped woff2 and walking `cmap` + `GSUB`
+shows the table holds **4,268 ligature names** — the same 4,268 the published
+codepoints list has — resolving to **3,967 distinct target glyphs**, the gap
+being aliases. `smartphone` and `mobile` are one such pair, both targeting glyph
+2239, so either name renders the identical icon. 3,967 is a count of glyphs, not
+of addressable names. All 49 names the mapping renders were re-checked this way
+and all 49 pass. The functional choice was left as it shipped; only the
+reasoning is corrected, and the method is written up so it can be re-run rather
+than re-argued.
+
 **Changed files:**
 
 - `apps/web/package.json`
 - `pnpm-lock.yaml`
+- `apps/web/tests/styles/default-background.test.ts`
 - `apps/web/src/index.css`
 - `apps/web/src/styles/md3-tokens.css`
 - `apps/web/src/styles/roboto-flex.css`

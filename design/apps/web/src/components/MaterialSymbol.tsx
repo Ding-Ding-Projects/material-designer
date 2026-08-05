@@ -81,7 +81,31 @@ export const MATERIAL_SYMBOL_FOR_REMIX_ICON = {
   'settings-line': 'settings',
   'share-forward-line': 'share',
   'slideshow-3-line': 'slideshow',
-  'smartphone-line': 'smartphone',
+  // `mobile` and `smartphone` are ALIASES for one glyph here, so either name
+  // renders the same icon. Kept as `mobile` because that is what shipped; the
+  // choice is arbitrary, not a workaround.
+  //
+  // Correcting an earlier note in this spot, because it would mislead the next
+  // person into avoiding valid names: the bundled face DOES carry `smartphone`.
+  // Its GSUB ligature table holds **4,268 names** — the same 4,268 the
+  // published codepoints list has — resolving to **3,967 distinct target
+  // glyphs**, the gap being aliases exactly like this pair. "3,967" is a count
+  // of glyphs, not of addressable names, and reading it as the latter is what
+  // made `smartphone` look absent.
+  //
+  // Verified by decompressing the shipped woff2 and walking cmap + GSUB: both
+  // `smartphone` and `mobile` are ligatures targeting glyph 2239, and that is
+  // the same glyph the cmap gives for each name's published codepoint. All 49
+  // names this table renders were re-checked the same way, and all 49 pass.
+  // The method is written up in `docs/standards/typography-and-icons.md` so it
+  // can be re-run rather than re-argued.
+  //
+  // One consequence worth carrying forward: whatever put the literal word
+  // "smartphone" on screen, it was NOT a missing ligature. The likelier causes
+  // are a context where `liga` is off, or a reader taking `element.textContent`
+  // — which for a Material Symbol is always the ligature name, and is why this
+  // component publishes `data-symbol` and an `aria-label` to read instead.
+  'smartphone-line': 'mobile',
   'subtract-line': 'remove',
   'tablet-line': 'tablet',
   text: 'title',

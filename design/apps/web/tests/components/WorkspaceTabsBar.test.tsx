@@ -100,6 +100,43 @@ function mockTabRect(element: HTMLElement, left: number, width = 100) {
   });
 }
 
+/**
+ * The element that carries a tab's geometry, found from the element that
+ * carries its ARIA role. They are deliberately two different nodes.
+ *
+ * `role="tab"` is on the focusable `<button>`: a tab has to BE the element
+ * focus lands on, or the tablist owns a tab the keyboard can never reach and
+ * roving focus has nothing to move between. The box the strip *measures* is the
+ * whole visible tab — the `.workspace-tab` wrapper carrying
+ * `data-workspace-tab-id`, which includes the close control the button does
+ * not. The hover preview aligns to that box and the drag midpoint that decides
+ * "before" or "after" is computed from it, so it is the box a test has to mock;
+ * mocking the button's rect leaves the wrapper reporting an all-zero rect and
+ * every measurement collapses to 0.
+ *
+ * These two used to be the same node, back when `role="tab"` sat on the
+ * wrapper. That was an accessibility defect, not a contract, and the tests
+ * below were quietly relying on the coincidence.
+ */
+function tabBox(tab: HTMLElement): HTMLElement {
+  const box = tab.closest<HTMLElement>('[data-workspace-tab-id]');
+  if (!box) throw new Error('a tab is missing its [data-workspace-tab-id] wrapper');
+  return box;
+}
+
+/**
+ * Tab labels, in strip order, read from `title` rather than `textContent`.
+ *
+ * Every tab carries its full label in `title` so a truncated one stays
+ * recoverable with a pointer, which makes it an exact handle here. Reading
+ * `textContent` would be a substring game against whatever the icon renders —
+ * Material Symbols is a ligature font, so an icon contributes its own name to
+ * the text of the element containing it.
+ */
+function tabLabels(): string[] {
+  return screen.getAllByRole('tab').map((tab) => tab.getAttribute('title') ?? '');
+}
+
 function dispatchDragEvent(
   element: HTMLElement,
   type: 'dragover' | 'drop',
@@ -758,9 +795,9 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(2);
     });
 
-    const projectTab = screen.getAllByRole('tab').find((tab) =>
-      (tab.textContent ?? '').includes('Project Alpha'),
-    ) as HTMLElement;
+    // Found by its accessible name; measured and hovered on its wrapper. The
+    // wrapper is what owns `onMouseEnter` and what the preview measures.
+    const projectTab = tabBox(screen.getByRole('tab', { name: 'Project Alpha' }));
     mockTabRect(projectTab, 32, 148);
     fireEvent.mouseEnter(projectTab);
 
@@ -803,9 +840,7 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(2);
     });
 
-    const projectTab = screen.getAllByRole('tab').find((tab) =>
-      (tab.textContent ?? '').includes('Project Alpha'),
-    ) as HTMLElement;
+    const projectTab = tabBox(screen.getByRole('tab', { name: 'Project Alpha' }));
     mockTabRect(projectTab, 50, 300);
     fireEvent.mouseEnter(projectTab);
 
@@ -860,12 +895,7 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     render(<WorkspaceTabsBar route={{ ...projectRoute }} projects={[project, projectBeta]} />);
 
     await waitFor(() => {
-      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
-      expect(labels).toEqual([
-        expect.stringContaining('Home'),
-        expect.stringContaining('Project Alpha'),
-        expect.stringContaining('Project Beta'),
-      ]);
+      expect(tabLabels()).toEqual(['Home', 'Project Alpha', 'Project Beta']);
     });
 
     // Dragging a project tab onto Home's left edge must not place anything
@@ -881,36 +911,32 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     //
     // What matters — and what this test exists for — is unchanged: Home stays
     // leftmost, and nothing lands before it.
+    // On the wrapper, like the other drag tests — see `tabBox`. This one would
+    // still pass with the rect mocked on the wrong node, because what actually
+    // stops the drop is the region check rather than any measurement, but a
+    // mock pointed at an element the component never measures is a trap for
+    // whoever edits this next.
     const [homeTab, , betaTab] = screen.getAllByRole('tab');
-    mockTabRect(homeTab! as HTMLElement, 0);
+    const homeBox = tabBox(homeTab! as HTMLElement);
+    mockTabRect(homeBox, 0);
     const dataTransfer = createDataTransfer();
-    fireEvent.dragStart(betaTab!, { dataTransfer });
+    fireEvent.dragStart(tabBox(betaTab! as HTMLElement), { dataTransfer });
     // clientX 10 lands in the left half of Home's rect (left=0, width=100).
-    dispatchDragEvent(homeTab! as HTMLElement, 'dragover', dataTransfer, 10);
+    dispatchDragEvent(homeBox, 'dragover', dataTransfer, 10);
 
     await waitFor(() => {
-      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
-      expect(labels).toEqual([
-        expect.stringContaining('Home'),
-        expect.stringContaining('Project Alpha'),
-        expect.stringContaining('Project Beta'),
-      ]);
+      expect(tabLabels()).toEqual(['Home', 'Project Alpha', 'Project Beta']);
     });
 
-    dispatchDragEvent(homeTab! as HTMLElement, 'drop', dataTransfer, 10);
-    fireEvent.dragEnd(betaTab!, { dataTransfer });
+    dispatchDragEvent(homeBox, 'drop', dataTransfer, 10);
+    fireEvent.dragEnd(tabBox(betaTab! as HTMLElement), { dataTransfer });
 
     await waitFor(() => {
-      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
-      expect(labels).toEqual([
-        expect.stringContaining('Home'),
-        expect.stringContaining('Project Alpha'),
-        expect.stringContaining('Project Beta'),
-      ]);
+      expect(tabLabels()).toEqual(['Home', 'Project Alpha', 'Project Beta']);
     });
     // The assertion that carries this test's name: whatever else the drop did
     // or did not do, Home is still the first tab.
-    expect(screen.getAllByRole('tab')[0]!.textContent).toContain('Home');
+    expect(tabLabels()[0]).toBe('Home');
 
     expect(navigate).not.toHaveBeenCalled();
     expect(vibrate).toHaveBeenCalledWith(8);
@@ -968,27 +994,23 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     render(<WorkspaceTabsBar route={{ ...projectRoute }} projects={[project, projectBeta]} />);
 
     await waitFor(() => {
-      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
-      expect(labels).toEqual([
-        expect.stringContaining('Home'),
-        expect.stringContaining('Project Alpha'),
-        expect.stringContaining('Project Beta'),
-      ]);
+      expect(tabLabels()).toEqual(['Home', 'Project Alpha', 'Project Beta']);
     });
 
+    // Both the rect mock and the drag events go on the wrapper: `dragover`
+    // resolves its target with `closest('[data-workspace-tab-id]')` and takes
+    // the midpoint from that element's rect, so a rect mocked on the button
+    // leaves the midpoint at 0 and every drop reads as "after".
     const [, alphaTab, betaTab] = screen.getAllByRole('tab');
-    mockTabRect(alphaTab! as HTMLElement, 100);
+    const alphaBox = tabBox(alphaTab! as HTMLElement);
+    mockTabRect(alphaBox, 100);
     const dataTransfer = createDataTransfer();
-    fireEvent.dragStart(betaTab!, { dataTransfer });
-    dispatchDragEvent(alphaTab! as HTMLElement, 'dragover', dataTransfer, 110);
+    fireEvent.dragStart(tabBox(betaTab! as HTMLElement), { dataTransfer });
+    // 110 is left of the mocked tab's 150px midpoint, so the drop lands before it.
+    dispatchDragEvent(alphaBox, 'dragover', dataTransfer, 110);
 
     await waitFor(() => {
-      const labels = screen.getAllByRole('tab').map((tab) => tab.textContent ?? '');
-      expect(labels).toEqual([
-        expect.stringContaining('Home'),
-        expect.stringContaining('Project Beta'),
-        expect.stringContaining('Project Alpha'),
-      ]);
+      expect(tabLabels()).toEqual(['Home', 'Project Beta', 'Project Alpha']);
     });
   });
 });

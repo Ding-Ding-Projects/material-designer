@@ -24,6 +24,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { Select } from '@open-design/components';
+import { Switch } from '../Switch';
 import { modalOverlay, scaleIn } from '../../motion';
 import {
   FUNNY_LEVELS,
@@ -38,10 +39,31 @@ import type { Dict } from '../../i18n/types';
 import { navigate, type Route } from '../../router';
 import {
   ACCENT_SWATCHES,
+  APPEARANCE_DENSITIES,
+  APPEARANCE_SEEDS,
   DEFAULT_ACCENT_COLOR,
+  FONT_STACK_IDS,
+  MAX_FONT_SIZE_PX,
+  MAX_UI_SCALE,
+  MIN_FONT_SIZE_PX,
+  MIN_UI_SCALE,
+  UI_SCALE_STEP,
   applyAppearanceToDocument,
   normalizeAccentColor,
+  quantizeUiScale,
+  type AppearanceDensity,
+  type AppearancePreferences,
+  type AppearanceSeed,
+  type AppearanceTypography,
+  type FontStackId,
 } from '../../state/appearance';
+import {
+  DENSITY_LABEL_KEY,
+  FONT_LABEL_KEY,
+  SEED_LABEL_KEY,
+} from '../appearance/labels';
+import { useAppearancePreferences } from '../appearance/store';
+import { notificationPermission, requestNotificationPermission } from '../../utils/notifications';
 import type { AppConfig, AppTheme } from '../../types';
 import { Icon } from '../Icon';
 import { useNarrator } from '../narrator/narrator';
@@ -74,11 +96,28 @@ const DISPLAY_MODE_STORAGE_KEY = 'open-design:command-palette:display-mode';
 const FILE_ROWS_IN_ALL_SCOPE = 6;
 
 /**
- * Label maps for the three inline controls. Typed against `Dict` so renaming a
- * key fails typecheck here instead of rendering the key name at the user. They
- * mirror the private maps in `SettingsDialog.tsx`; the dialog cannot be
- * imported for its values without dragging nine thousand lines into every test
- * that touches the palette.
+ * The cap on registry rows in one list.
+ *
+ * It was 60, which was above the registry's size when it was written and is
+ * the kind of number that stops being true without anything failing: the
+ * settings index alone is forty-three entries now, and the rows are pushed
+ * commands-then-destinations-then-settings, so the first entries to fall off
+ * a too-low cap would have been the last settings tabs — silently, with the
+ * palette still claiming to list every setting. The cap exists to bound a
+ * pathological list, not to trim a real one, so it sits well clear of it.
+ */
+const REGISTRY_ROWS_IN_LIST = 200;
+
+/**
+ * Label maps for the inline controls whose owning surface is `SettingsDialog`.
+ * Typed against `Dict` so renaming a key fails typecheck here instead of
+ * rendering the key name at the user. They mirror the private maps in that
+ * file; it cannot be imported for its values without dragging nine thousand
+ * lines into every test that touches the palette.
+ *
+ * The appearance maps are NOT mirrored — `components/appearance/labels.ts` is
+ * a module both surfaces import, which is the arrangement to prefer whenever
+ * the owning file is small enough to split.
  */
 const THEME_LABEL_KEYS: Record<AppTheme, keyof Dict> = {
   system: 'settings.themeSystem',
@@ -306,6 +345,31 @@ export function CommandPalette({
     [config, writeConfig],
   );
 
+  // Seed, density, UI scale, auto-fit and typography do NOT live in AppConfig.
+  // They live in the appearance store, which persists to local storage and
+  // writes the document attributes in the same call — so the palette reads and
+  // writes them through the very hook `AppearanceControls` uses. One value, two
+  // surfaces: a seed picked here is applied and stored before this line
+  // returns, exactly as it is in Settings · Appearance.
+  const { preferences: appearance, update: updateAppearance } = useAppearancePreferences();
+  const setTypography = useCallback(
+    (patch: Partial<AppearanceTypography>) => {
+      updateAppearance({ typography: { ...appearance.typography, ...patch } });
+    },
+    [appearance.typography, updateAppearance],
+  );
+
+  const customInstructions = config.customInstructions ?? '';
+  const setCustomInstructions = useCallback(
+    (next: string) => {
+      // `|| undefined` is the settings surface's own rule: an emptied box
+      // removes the key rather than persisting an empty string that later
+      // reads as "the user set an instruction, and it is nothing".
+      writeConfig({ ...config, customInstructions: next || undefined });
+    },
+    [config, writeConfig],
+  );
+
   const notifications = config.notifications;
   const setNotification = useCallback(
     (patch: Partial<NonNullable<AppConfig['notifications']>>) => {
@@ -314,6 +378,29 @@ export function CommandPalette({
       writeConfig({ ...config, notifications: { ...current, ...patch } });
     },
     [config, writeConfig],
+  );
+
+  // Desktop notifications are the one toggle whose "on" is not the app's to
+  // grant. Settings asks the browser first and stores what it was told; a
+  // palette switch that only wrote `true` would report a setting the platform
+  // has refused, and the user would be left waiting for banners that can never
+  // arrive. Same order here: ask, then store the answer.
+  //
+  // Read once, on mount, exactly as the settings panel reads it: a platform
+  // with no `Notification` at all disables the control rather than offering a
+  // switch that can never stay on.
+  const [notificationSupport] = useState(() => notificationPermission());
+  const setDesktopNotifications = useCallback(
+    (enabled: boolean) => {
+      if (!enabled) {
+        setNotification({ desktopEnabled: false });
+        return;
+      }
+      void requestNotificationPermission().then((result) => {
+        setNotification({ desktopEnabled: result === 'granted' });
+      });
+    },
+    [setNotification],
   );
 
   // The narrator keeps its own store rather than riding in AppConfig, so the
@@ -437,7 +524,10 @@ export function CommandPalette({
     if (scope === 'files') return fileRows;
     // `fileRows` is empty for every scope but `all` (and only once a query has
     // been typed), so this concatenation is a no-op elsewhere.
-    return [...filterPaletteRows(registryRows, query, scope, 60, regexFilter), ...fileRows];
+    return [
+      ...filterPaletteRows(registryRows, query, scope, REGISTRY_ROWS_IN_LIST, regexFilter),
+      ...fileRows,
+    ];
   }, [fileRows, query, regexFilter, registryRows, scope]);
 
   useEffect(() => {
@@ -662,9 +752,16 @@ export function CommandPalette({
                           setTheme={setTheme}
                           accentColor={accentColor}
                           setAccentColor={setAccentColor}
+                          appearance={appearance}
+                          updateAppearance={updateAppearance}
+                          setTypography={setTypography}
+                          customInstructions={customInstructions}
+                          setCustomInstructions={setCustomInstructions}
                           soundEnabled={notifications?.soundEnabled ?? false}
                           desktopEnabled={notifications?.desktopEnabled ?? false}
                           setNotification={setNotification}
+                          setDesktopNotifications={setDesktopNotifications}
+                          desktopSupported={notificationSupport !== 'unsupported'}
                           narratorEnabled={narrator.preferences.enabled}
                           setNarratorEnabled={setNarratorEnabled}
                           narratorLanguage={narrator.preferences.language}
@@ -710,9 +807,16 @@ interface SettingRowControlProps {
   setTheme: (next: AppTheme) => void;
   accentColor: string;
   setAccentColor: (next: string) => void;
+  appearance: AppearancePreferences;
+  updateAppearance: (patch: Partial<AppearancePreferences>) => void;
+  setTypography: (patch: Partial<AppearanceTypography>) => void;
+  customInstructions: string;
+  setCustomInstructions: (next: string) => void;
   soundEnabled: boolean;
   desktopEnabled: boolean;
   setNotification: (patch: Partial<NonNullable<AppConfig['notifications']>>) => void;
+  setDesktopNotifications: (enabled: boolean) => void;
+  desktopSupported: boolean;
   narratorEnabled: boolean;
   setNarratorEnabled: (next: boolean) => void;
   narratorLanguage: NarratorLanguage;
@@ -762,6 +866,147 @@ function SettingRowControl(props: SettingRowControlProps) {
             </option>
           ))}
         </Select>
+      );
+    case 'appearance.seed':
+      return (
+        <Select
+          className={styles.select}
+          tabIndex={tabIndex}
+          aria-label={t('appearance.seedLabel')}
+          value={props.appearance.seed}
+          onChange={(event) =>
+            props.updateAppearance({ seed: event.target.value as AppearanceSeed })
+          }
+        >
+          {APPEARANCE_SEEDS.map((seed) => (
+            <option key={seed} value={seed}>{t(SEED_LABEL_KEY[seed])}</option>
+          ))}
+        </Select>
+      );
+    case 'appearance.density':
+      return (
+        <Select
+          className={styles.select}
+          tabIndex={tabIndex}
+          aria-label={t('appearance.densityLabel')}
+          value={props.appearance.density}
+          onChange={(event) =>
+            props.updateAppearance({ density: event.target.value as AppearanceDensity })
+          }
+        >
+          {APPEARANCE_DENSITIES.map((density) => (
+            <option key={density} value={density}>{t(DENSITY_LABEL_KEY[density])}</option>
+          ))}
+        </Select>
+      );
+    case 'appearance.uiScale':
+      return (
+        <SettingStepper
+          label={t('appearance.uiScaleLabel')}
+          // Percent, like the editor's slider and the status bar readout —
+          // the stored value is a factor, and a stepper offering 0.05 steps
+          // of a unitless number would be a control nobody can read.
+          value={Math.round(props.appearance.uiScale * 100)}
+          min={Math.round(MIN_UI_SCALE * 100)}
+          max={Math.round(MAX_UI_SCALE * 100)}
+          step={Math.round(UI_SCALE_STEP * 100)}
+          unit="%"
+          // Auto-fit owns the scale while it is on; the editor disables its
+          // slider for the same reason, and the number stays visible because
+          // it is still the truthful readout of what is on screen.
+          disabled={props.appearance.autoFit}
+          onChange={(next) => props.updateAppearance({ uiScale: quantizeUiScale(next / 100) })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'appearance.autoFit':
+      return (
+        <Switch
+          label={t('appearance.autoFit')}
+          checked={props.appearance.autoFit}
+          onChange={(next) => props.updateAppearance({ autoFit: next })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'appearance.fontFamily':
+      return (
+        <Select
+          className={styles.select}
+          tabIndex={tabIndex}
+          aria-label={t('appearance.fontFamily')}
+          value={props.appearance.typography.fontStackId}
+          onChange={(event) =>
+            props.setTypography({ fontStackId: event.target.value as FontStackId })
+          }
+        >
+          {FONT_STACK_IDS.map((id) => (
+            <option key={id} value={id}>{t(FONT_LABEL_KEY[id])}</option>
+          ))}
+        </Select>
+      );
+    case 'appearance.fontSize':
+      return (
+        <SettingStepper
+          label={t('appearance.fontSize')}
+          value={props.appearance.typography.fontSizePx}
+          min={MIN_FONT_SIZE_PX}
+          max={MAX_FONT_SIZE_PX}
+          step={0.5}
+          unit="px"
+          onChange={(next) => props.setTypography({ fontSizePx: next })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'appearance.fontWeight':
+      return (
+        <SettingStepper
+          label={t('appearance.fontWeight')}
+          value={props.appearance.typography.fontWeight}
+          min={100}
+          max={900}
+          step={100}
+          onChange={(next) => props.setTypography({ fontWeight: next })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'appearance.lineHeight':
+      return (
+        <SettingStepper
+          label={t('appearance.lineHeight')}
+          value={props.appearance.typography.lineHeight}
+          min={1}
+          max={2.4}
+          step={0.05}
+          onChange={(next) => props.setTypography({ lineHeight: next })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'appearance.letterSpacing':
+      return (
+        <SettingStepper
+          label={t('appearance.letterSpacing')}
+          value={props.appearance.typography.letterSpacingEm}
+          min={-0.05}
+          max={0.2}
+          step={0.005}
+          unit="em"
+          onChange={(next) => props.setTypography({ letterSpacingEm: next })}
+          tabIndex={tabIndex}
+        />
+      );
+    case 'instructions.customInstructions':
+      return (
+        <SettingTextField
+          label={t('settings.customInstructionsTitle')}
+          placeholder={t('settings.customInstructionsPlaceholder')}
+          value={props.customInstructions}
+          // The same 5000-character ceiling the textarea in Settings ·
+          // Instructions enforces. Two numbers would be two different
+          // settings wearing one name.
+          maxLength={5000}
+          onCommit={props.setCustomInstructions}
+          tabIndex={tabIndex}
+        />
       );
     case 'language.locale':
       return (
@@ -815,32 +1060,30 @@ function SettingRowControl(props: SettingRowControlProps) {
       );
     case 'notifications.sound':
       return (
-        <SettingSwitch
+        <Switch
           label={t('settings.notifyCompletionSound')}
           checked={props.soundEnabled}
           onChange={(next) => props.setNotification({ soundEnabled: next })}
           tabIndex={tabIndex}
-          t={t}
         />
       );
     case 'notifications.desktop':
       return (
-        <SettingSwitch
+        <Switch
           label={t('settings.notifyDesktop')}
           checked={props.desktopEnabled}
-          onChange={(next) => props.setNotification({ desktopEnabled: next })}
+          onChange={props.setDesktopNotifications}
+          disabled={!props.desktopSupported}
           tabIndex={tabIndex}
-          t={t}
         />
       );
     case 'narrator.enable':
       return (
-        <SettingSwitch
+        <Switch
           label={t('narrator.enable')}
           checked={props.narratorEnabled}
           onChange={props.setNarratorEnabled}
           tabIndex={tabIndex}
-          t={t}
         />
       );
     case 'narrator.language':
@@ -861,22 +1104,20 @@ function SettingRowControl(props: SettingRowControlProps) {
       );
     case 'pet.enabled':
       return (
-        <SettingSwitch
+        <Switch
           label={t('pet.wakeTitle')}
           checked={props.petEnabled}
           onChange={props.setPetEnabled}
           tabIndex={tabIndex}
-          t={t}
         />
       );
     case 'privacy.metrics':
       return (
-        <SettingSwitch
+        <Switch
           label={t('settings.privacyMetrics')}
           checked={props.metricsEnabled}
           onChange={props.setMetrics}
           tabIndex={tabIndex}
-          t={t}
         />
       );
     default: {
@@ -886,34 +1127,156 @@ function SettingRowControl(props: SettingRowControlProps) {
   }
 }
 
-function SettingSwitch({
+/**
+ * A number this row can be nudged with, bounded by the same range the
+ * settings editor's slider is bounded by.
+ *
+ * The draft state is what makes it typeable. A bare controlled number input
+ * cannot be edited from 100 to 18: clearing it hands `''` to the change
+ * handler, the parse fails or reads as zero, and whatever gets written is
+ * rendered straight back over what the user is halfway through typing. So the
+ * box keeps the text, the setting keeps the number, and the two are reconciled
+ * on every valid keystroke and again on blur — where anything out of range is
+ * clamped rather than dropped, exactly as dragging a slider to its end is.
+ *
+ * `value` still wins whenever it changes underneath: the store is shared, and
+ * a scale changed by auto-fit or by the editor in another surface has to show
+ * up here rather than being masked by a stale draft.
+ */
+function SettingStepper({
   label,
-  checked,
+  value,
+  min,
+  max,
+  step,
+  unit,
+  disabled = false,
   onChange,
   tabIndex,
-  t,
 }: {
   label: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit?: string;
+  disabled?: boolean;
+  onChange: (next: number) => void;
   tabIndex: number;
-  t: (key: keyof Dict) => string;
 }) {
+  const [draft, setDraft] = useState(() => String(value));
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setDraft(String(value));
+  }
+
+  const clamp = (candidate: number) => Math.min(max, Math.max(min, candidate));
+
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
+    <span className={styles.stepper}>
+      <input
+        type="number"
+        className={styles.stepperInput}
+        value={draft}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        tabIndex={tabIndex}
+        aria-label={label}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft(next);
+          const parsed = Number(next);
+          if (next.trim() === '' || !Number.isFinite(parsed)) return;
+          if (parsed < min || parsed > max) return;
+          onChange(parsed);
+        }}
+        onBlur={() => {
+          const parsed = Number(draft);
+          if (draft.trim() === '' || !Number.isFinite(parsed)) {
+            setDraft(String(value));
+            return;
+          }
+          const settled = clamp(parsed);
+          setDraft(String(settled));
+          if (settled !== value) onChange(settled);
+        }}
+      />
+      {unit ? <span className={styles.stepperUnit} aria-hidden>{unit}</span> : null}
+    </span>
+  );
+}
+
+/**
+ * A text setting, edited in the row and committed when the user leaves it.
+ *
+ * Committed on blur rather than on every keystroke, because this one goes
+ * through `onConfigChange` — which saves the config and syncs it to the daemon.
+ * A per-character write would be one save and one sync per character typed.
+ * The settings surface reaches the same place through a debounce; this reaches
+ * it when the field is done.
+ *
+ * A `textarea`, not an `input`, and the reason is not the height: an
+ * `<input type="text">` strips newlines out of its value, so a multi-line
+ * instruction opened here and committed back would silently come out as one
+ * line. A one-row textarea looks the same in the row and keeps the text.
+ */
+function SettingTextField({
+  label,
+  placeholder,
+  value,
+  maxLength,
+  onCommit,
+  tabIndex,
+}: {
+  label: string;
+  placeholder?: string;
+  value: string;
+  maxLength: number;
+  onCommit: (next: string) => void;
+  tabIndex: number;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [lastValue, setLastValue] = useState(value);
+  if (value !== lastValue) {
+    setLastValue(value);
+    setDraft(value);
+  }
+
+  // Closing the palette while the field still has focus never fires `blur`,
+  // and an edit that vanishes because the surface it was typed into went away
+  // is the worst kind of data loss: silent, and blamed on the user. So the
+  // pending draft is committed on the way out too.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const commitRef = useRef(onCommit);
+  commitRef.current = onCommit;
+  useEffect(
+    () => () => {
+      if (draftRef.current !== valueRef.current) commitRef.current(draftRef.current);
+    },
+    [],
+  );
+
+  return (
+    <textarea
+      className={styles.textField}
+      rows={1}
+      value={draft}
+      maxLength={maxLength}
+      placeholder={placeholder}
       aria-label={label}
       tabIndex={tabIndex}
-      className={`${styles.switch}${checked ? ` ${styles.switchOn}` : ''}`}
-      onClick={() => onChange(!checked)}
-    >
-      <span className={styles.switchTrack} aria-hidden />
-      <span className={styles.switchLabel}>
-        {checked ? t('common.active') : t('common.offline')}
-      </span>
-    </button>
+      spellCheck={false}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        if (draft !== value) onCommit(draft);
+      }}
+    />
   );
 }
 

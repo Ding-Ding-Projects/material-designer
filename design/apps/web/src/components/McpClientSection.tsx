@@ -793,6 +793,7 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
           checked={row.enabled}
           onChange={(next) => onChange({ enabled: next })}
           label="Enable this MCP server"
+          title={row.enabled ? 'Enabled' : 'Disabled'}
         />
         {expanded ? (
           <input

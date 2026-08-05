@@ -338,21 +338,31 @@
     animation: none;
   }
 }
-.modal h2 { margin: 0; font-size: 18px; letter-spacing: -0.01em; font-weight: 600; }
-.modal label {
+/* These four are the shared content rhythm every dialog's body is written
+   against — and the settings surface was written against them too, back when
+   it wore the `modal` class. It is a page now and does not, so it is named
+   here beside `.modal` rather than left to lose its label, hint and heading
+   styling in silence. Same specificity in both halves, so nothing that used
+   to win against these starts losing. */
+.modal h2,
+.settings-page h2 { margin: 0; font-size: 18px; letter-spacing: -0.01em; font-weight: 600; }
+.modal label,
+.settings-page label {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
   color: var(--text-muted);
 }
-.modal .hint {
+.modal .hint,
+.settings-page .hint {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.55;
   margin: 0;
 }
-.modal .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.modal .row,
+.settings-page .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
 .updater-popup {
   z-index: 80;
@@ -670,41 +680,13 @@
   50% { opacity: 0.6; transform: scale(0.85); }
 }
 
-.modal-settings {
-  --modal-padding: 24px;
-  width: min(920px, calc(100vw - 48px));
-  /* Fixed height regardless of which section is active — short sections
-     pad out with empty space inside `.settings-content`, long sections
-     scroll internally. Keeps the dialog from jumping in size as the user
-     switches sidebar items. */
-  height: min(720px, calc(100vh - 64px));
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-  /* Anchor for the absolutely-positioned `.settings-chrome` strip
-     (close button + autosave indicator). Without this the chrome
-     would escape to the viewport on long-scrolling sections. */
-  position: relative;
-}
-.modal-settings.settings-fullscreen {
-  width: calc(100vw - 24px);
-  height: calc(100vh - 24px);
-}
-@media (max-height: 600px) {
-  .modal-settings { height: 90vh; }
-  .modal-settings.settings-fullscreen { height: calc(100vh - 12px); }
-}
-.modal-settings .modal-body {
-  position: relative;
-  overflow: hidden;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-}
+/* The settings card's own shell rules used to live here — a 920×720 box, a
+   fullscreen variant, and the head/body overrides that went with them. The
+   surface is a page now (roadmap § 2.4 Wave 6) and owns those rules in
+   `components/settings/SettingsPage.module.css`, beside the component that
+   renders it. What stays global below is what other surfaces share: the
+   generic `.modal-head` rhythm, the chrome strip, the autosave pill, and
+   `.settings-content`. */
 .modal-head {
   display: flex;
   flex-direction: column;
@@ -788,10 +770,6 @@
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
-.settings-fullscreen-toggle {
-  border-color: color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--bg-panel) 76%, transparent);
-}
 .settings-chrome-btn:hover {
   color: var(--text);
   border-color: color-mix(in srgb, var(--text) 22%, var(--border));
@@ -805,11 +783,6 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   color: var(--text);
-}
-.settings-fullscreen-toggle[aria-pressed='true'] {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg-panel));
 }
 @media (prefers-reduced-motion: reduce) {
   .settings-chrome-btn { transition: color 80ms linear, border-color 80ms linear; transform: none !important; }
@@ -891,41 +864,6 @@
     display: none;
   }
   .settings-autosave.is-idle { padding: 0; }
-}
-
-/* Make sure header copy doesn't crash into the close button on
-   narrow viewports. The kicker/title/subtitle should keep their
-   normal width but reserve right-side gutter for the chrome. */
-.modal-settings .modal-head {
-  position: relative;
-  z-index: 2;
-  padding: var(--modal-padding) calc(var(--modal-padding) + 92px) var(--modal-padding) var(--modal-padding);
-  background: var(--bg-elevated);
-}
-
-/* Compact settings header: place subtitle on the same line as the h2
-   so opening the dialog doesn't burn 2-3 rows of header height. The
-   row uses baseline alignment so the smaller subtitle sits at the
-   h2 baseline and wraps to its own line on narrow viewports. The
-   welcome hero variant is unaffected — it keeps the stacked layout. */
-.modal-settings .modal-head-line {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  column-gap: 16px;
-  row-gap: 4px;
-}
-.modal-settings .modal-head-line > h2 {
-  flex: 0 0 auto;
-  margin: 0;
-}
-.modal-settings .modal-head-line > .subtitle {
-  margin: 0;
-  flex: 1 1 240px;
-  font-size: 12.5px;
-  /* Override the 72ch cap from the stacked variant so the subtitle
-     can take the full remaining inline width before wrapping. */
-  max-width: none;
 }
 
 /* Section-local Save key button for the Composio API key field. We do
@@ -1192,16 +1130,6 @@
      ring would otherwise read as a stray highlight on a whole pane. */
   outline: none;
 }
-@media (max-width: 760px) {
-  .modal-settings {
-    width: min(560px, calc(100vw - 24px));
-  }
-  .modal-settings.settings-fullscreen {
-    width: calc(100vw - 12px);
-    height: calc(100vh - 12px);
-  }
-}
-
 /* Segmented control */
 /* Compact single-line segmented control (Local CLI / BYOK and friends).
    Mirrors `.subtab-pill` and `.ds-picker-mode`: gray rounded container,

@@ -134,8 +134,19 @@ describe('the fallback stacks stay safe for the twenty locales', () => {
   const mono = stack('--md-ref-typeface-mono');
 
   it('leads with the bundled face in both stacks', () => {
-    expect(plain.startsWith("'Roboto Flex', 'Roboto',")).toBe(true);
+    // Why a bundled face is allowed to lead where an unbundled one is not is
+    // argued at the declaration itself and in `default-background.test.ts`,
+    // which is the spec that owns that rule.
+    expect(plain.startsWith("'Roboto Flex', -apple-system,")).toBe(true);
     expect(mono.startsWith("'Roboto Mono', ui-monospace,")).toBe(true);
+  });
+
+  it("keeps upstream's platform chain contiguous behind the prepended face", () => {
+    // The only edits to upstream's chain are a prepend and an append. Nothing
+    // in the middle was reordered, which is what keeps the diff reviewable.
+    expect(plain).toContain(
+      "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial,",
+    );
   });
 
   it('carries a face for every script Roboto has no glyph for', () => {
@@ -184,8 +195,27 @@ describe('the symbol component draws through the token, not a literal', () => {
   it('drives the FILL axis from both states, and leaves opsz alone', () => {
     expect(symbolModule).toContain("font-variation-settings: 'FILL' 0;");
     expect(symbolModule).toContain("font-variation-settings: 'FILL' 1;");
-    // Naming opsz here would take it out of the browser's optical sizing.
-    expect(symbolModule).not.toContain('opsz');
+
+    // Naming `opsz` in `font-variation-settings` would pin the optical-size
+    // axis and take it out of the browser's own optical sizing, which is the
+    // whole reason that axis was left live in the bundled file.
+    //
+    // The assertion is scoped to the DECLARATIONS, not the file. Searching the
+    // raw text for the word failed against this very stylesheet, whose comment
+    // explains the axis by name — the comment is doing useful work, so the
+    // imprecise assertion is what had to change.
+    const settings = [...symbolModule.matchAll(/font-variation-settings:\s*([^;]+);/g)].map(
+      (match) => match[1]!,
+    );
+    expect(settings.length).toBeGreaterThan(0);
+    for (const value of settings) {
+      expect(value, `a font-variation-settings declaration pins opsz: ${value}`).not.toContain(
+        'opsz',
+      );
+    }
+    // Nor may it be pinned through the shorthand property.
+    const withoutComments = symbolModule.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(withoutComments).not.toContain('font-optical-sizing');
   });
 
   it('uses the contract easing and stops for reduced motion', () => {

@@ -23,7 +23,11 @@
 }
 
 .workspace-shell {
-  --workspace-tabs-chrome-height: 38px;
+  /* 42px, the strip height the mockup specifies. It is a fixed chrome length
+     and deliberately does NOT read `--control-h-sm`: that token is 42px at
+     comfortable density, i.e. the whole strip, so a control that read it would
+     fill the bar it is supposed to sit inside. */
+  --workspace-tabs-chrome-height: 42px;
   /* Scale-aware window lengths, exactly as `.app` above. This is the
      outermost box the product paints, so it is the one whose overflow shows
      as a scrollbar on the window itself. */
@@ -55,10 +59,30 @@
 .workspace-shell:has(> [data-window-title-bar]) {
   grid-template-rows: 40px auto minmax(0, 1fr);
 }
+/* One cell, and every child in it.
+ *
+ * The body used to hold exactly one child, so a plain block box was enough.
+ * Settings is a page now (roadmap § 2.4 Wave 6) and mounts here as a second
+ * child that has to cover the first — and a single-cell grid is how it does
+ * that without `position: absolute`. Absolute positioning would have needed
+ * this element to become a positioned ancestor, which silently re-homes the
+ * containing block of every absolutely-positioned descendant in the product,
+ * including ones that mean to resolve against the viewport.
+ *
+ * With one child this behaves exactly as the block box did: a single row and
+ * column, stretched, with the child's own `height: 100%` still honoured. */
 .workspace-shell__body {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+.workspace-shell__body > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+  min-height: 0;
 }
 .workspace-shell__body > .app,
 .workspace-shell__body > .entry-shell {
@@ -77,8 +101,8 @@
 .workspace-tabs-chrome.app-chrome-header {
   min-width: 0;
   max-width: 100%;
-  min-height: 38px;
-  height: 38px;
+  min-height: 42px;
+  height: 42px;
   padding: 0 8px 0 6px;
   gap: 0;
   background: color-mix(in srgb, var(--bg-panel) 88%, var(--bg-subtle));
@@ -189,23 +213,32 @@
 }
 .workspace-tab {
   position: relative;
-  height: 24px;
-  /* Auto-shrink: tabs sit at their natural 124px when there's room and
+  /* 36dp tab in a 42px strip, per the mockup. The tab hangs from the top edge
+     rather than floating in the middle of the strip — that is what makes a
+     bottom-rounded tab read as attached to the title bar above it, and it is
+     why `align-self` is `flex-start` and not the strip's own `center`. */
+  height: 36px;
+  align-self: flex-start;
+  /* Auto-shrink: tabs sit at their natural 250px when there's room and
      shrink down toward --workspace-tab-min-width as more tabs open, so the
      whole row stays visible without scrolling for as long as possible. They
-     never grow past 124px (flex-grow 0) so a lone project tab doesn't balloon
+     never grow past 250px (flex-grow 0) so a lone project tab doesn't balloon
      to fill the bar. Only once every tab has hit its min width does the strip
      fall back to horizontal scroll. */
-  width: 124px;
-  flex: 0 1 124px;
+  width: 250px;
+  flex: 0 1 250px;
   min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 124px;
+  max-width: 250px;
   padding: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22px;
+  grid-template-columns: minmax(0, 1fr) 26px;
   align-items: center;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  /* Bottom-rounded: the two corners that meet the content area are shaped and
+     the two that meet the chrome above are square, so the tab reads as one
+     piece with the strip. `--md-sys-shape-corner-s` replaces the off-scale
+     literal this rule used to carry. */
+  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   background: transparent;
   color: var(--text-muted);
   overflow: visible;
@@ -333,8 +366,11 @@
   border-color: transparent;
 }
 .workspace-tab__icon {
-  width: 14px;
-  height: 14px;
+  /* 18dp leading icon against a 36dp tab — the M3 ratio for a dense row. It
+     was 14px when the tab was 24px tall; left there it would have read as a
+     speck in half again the height. */
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -359,12 +395,15 @@
   letter-spacing: 0;
 }
 .workspace-tab__close {
-  width: 18px;
-  height: 18px;
+  /* 22px target inside the 26px close column. Below 24px this is under the
+     minimum touch target, which is why the column grew with the tab rather
+     than staying at the 22px it was sized for at 24px tall. */
+  width: 22px;
+  height: 22px;
   margin-right: 4px;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--text-faint);
   display: inline-flex;

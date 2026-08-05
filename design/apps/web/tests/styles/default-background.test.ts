@@ -34,15 +34,64 @@ describe('default app background colors', () => {
     expect(dark).not.toContain('--bg-app:');
   });
 
-  it('prefers platform UI fonts over optional local app fonts', () => {
+  // This spec was upstream's, named "prefers platform UI fonts over optional
+  // local app fonts". Its premise moved, so it is restated rather than deleted.
+  //
+  // Upstream's rule was that the stack must not open with a family the product
+  // does not ship, and the family it named was `Inter`. The reason was
+  // AVAILABILITY, not native appearance: `Inter` is vendored nowhere in this
+  // repository, so leading with it makes the interface look one way on a
+  // machine that happens to have it and another on a machine that does not,
+  // with nothing reporting the difference.
+  //
+  // `Roboto Flex` now leads, and that does not violate the rule — it satisfies
+  // it more strictly. The face is bundled under `public/fonts/` and served from
+  // the product's own origin, so it is present by construction, which is more
+  // deterministic than `-apple-system` resolving to a different face on every
+  // OS version. Material Design 3 also names it as the plain face, and this
+  // product deliberately does not chase a native look; it draws its own window
+  // chrome.
+  //
+  // So the invariant is now stated directly, and checked against the font files
+  // actually on disk rather than a hardcoded family name: only a face this
+  // repository really ships may lead the stack.
+  it('leads the stack only with a face the repository actually bundles', () => {
     const root = cssBlock(':root');
     const sans = /--sans:\s*([^;]+);/.exec(root)?.[1];
     const plain = /--md-ref-typeface-plain:\s*([^;]+);/.exec(root)?.[1];
 
     expect(sans).toBe('var(--md-ref-typeface-plain)');
     expect(plain).toBeDefined();
-    expect(plain).toContain("'Segoe UI'");
+
+    // Every family named by a local `@font-face`, read from the expanded
+    // cascade. This is the set of faces the product guarantees.
+    const bundled = new Set(
+      [...indexCss.matchAll(/@font-face\s*\{([^}]*)\}/g)]
+        .filter((face) => /src:\s*url\(['"]?\/fonts\//.test(face[1] ?? ''))
+        .map((face) => /font-family:\s*'([^']+)'/.exec(face[1] ?? '')?.[1])
+        .filter((name): name is string => Boolean(name)),
+    );
+    expect(bundled.size).toBeGreaterThan(0);
+
+    const leader = /^\s*'([^']+)'/.exec(plain ?? '')?.[1];
+    expect(
+      leader && bundled.has(leader),
+      `--md-ref-typeface-plain leads with '${leader}', which no @font-face in the cascade serves ` +
+        `from /fonts/. Only a bundled face may lead; an optional local one makes the interface ` +
+        `depend on what happens to be installed. Bundled: ${[...bundled].join(', ')}`,
+    ).toBe(true);
+
+    // Unchanged from upstream, and still the point: `Inter` is not vendored
+    // here, so it must never appear in the product's own UI stack.
     expect(plain).not.toContain("'Inter'");
+
+    // The platform chain survives the prepend, in upstream's order. On Windows
+    // this contiguous run is what supplies CJK behind the UI face.
+    expect(plain).toContain("'Segoe UI'");
     expect(plain).toMatch(/'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans'/);
+
+    // And it still ends on a generic family, so an exotic script has somewhere
+    // to land even when none of the named faces is installed.
+    expect(plain?.trim().endsWith('sans-serif')).toBe(true);
   });
 });

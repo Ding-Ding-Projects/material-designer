@@ -152,18 +152,44 @@ Arabic position of the main plain stack.
 ## The fallback stack
 
 Declared in `design/apps/web/src/styles/md3-tokens.css` as
-`--md-ref-typeface-plain` and `--md-ref-typeface-mono`. The order is **Latin
-first, then one family per uncovered script, then the generic keyword** — a
-fallback list only ever supplies glyphs the families ahead of it do not have, so
-putting a CJK face early would not steal Latin text from Roboto, but putting it
-late is still the honest way to read the intent.
+`--md-ref-typeface-plain` and `--md-ref-typeface-mono`. The shape is **the
+bundled face, then upstream's platform chain unchanged, then one family per
+uncovered script, then the generic keyword** — a fallback list only ever
+supplies glyphs the families ahead of it do not have, so order within the tail
+decides which face wins, never whether a script is covered at all.
+
+### Why a bundled face may lead, when an unbundled one may not
+
+Upstream pinned a rule in `tests/styles/default-background.test.ts` named
+*"prefers platform UI fonts over optional local app fonts"*, and it named
+`Inter` as the family that must not lead. **The reason is availability, not
+native appearance.** `Inter` is vendored nowhere in this repository, so leading
+with it makes the interface render one way on a machine that happens to have it
+and another on a machine that does not, with nothing reporting the difference.
+
+`Roboto Flex` is a different case: it is bundled and served from the product's
+own origin, so it is present by construction. Leading with it is therefore
+**more** deterministic than leading with `-apple-system`, which resolves to a
+different face on every OS and every OS version. Material Design 3 also names it
+as the plain face, and this product deliberately does not chase a native look —
+it draws its own window chrome.
+
+So the rule kept its force and was restated rather than deleted: **only a face
+this repository actually ships may lead the stack.** The spec now checks that
+against the `@font-face` rules in the expanded cascade rather than a hardcoded
+family name, so bundling or unbundling a face moves the test automatically.
+
+Upstream's chain is otherwise **untouched and in its original order** —
+`Roboto Flex` is prepended and the script families appended, with nothing in the
+middle reordered. The contiguous `'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans'`
+run is load-bearing on Windows and is pinned by both specs.
 
 | Script | Locales | Families named, in order |
 | --- | --- | --- |
-| Latin / Cyrillic / Greek | 12 locales | Roboto Flex, then the platform chain |
+| Latin / Cyrillic / Greek | 12 locales | Roboto Flex, then upstream's platform chain |
 | Arabic | `ar`, `fa` | Cairo, Segoe UI Arabic, Noto Sans Arabic |
 | Thai | `th` | Leelawadee UI, Noto Sans Thai |
-| Simplified Chinese | `zh-CN` | Microsoft YaHei UI, PingFang SC, Noto Sans CJK SC |
+| Simplified Chinese | `zh-CN` | Microsoft YaHei UI (in the platform chain), PingFang SC, Noto Sans CJK SC |
 | Traditional Chinese | `zh-TW`, `zh-HK` | Microsoft JhengHei UI, PingFang TC, Noto Sans CJK TC |
 | Japanese | `ja` | Yu Gothic UI, Hiragino Sans, Noto Sans CJK JP |
 | Korean | `ko` | Malgun Gothic, Apple SD Gothic Neo, Noto Sans CJK KR |
@@ -242,12 +268,48 @@ the natural next task, and it is now a one-file task.
 ### How the names were checked
 
 Material Symbols renders an unknown name as that name, in English, in the
-interface. So the 52 non-brand mappings were **not typed from memory**: each was
+interface. So the mappings were **not typed from memory**: each was first
 validated against `variablefont/*.codepoints` published with the font in
-`google/material-design-icons` — the authoritative list of 4,268 names — and
-every name rendered at a migrated call site was then checked to be one the
-mapping vouches for. Both checks are pinned by
-`design/apps/web/tests/styles/bundled-fonts.test.ts`.
+`google/material-design-icons`, and every name rendered at a migrated call site
+was then checked to be one the mapping vouches for. The second check is pinned
+by `design/apps/web/tests/styles/bundled-fonts.test.ts`.
+
+**The codepoints list is necessary but not sufficient, and that distinction cost
+a round trip.** It says which icons exist in the family; it does not say which
+names the *shipped file* can be addressed by. The authority for that is the
+GSUB ligature table inside the woff2 actually on disk. For this build the two
+happen to agree exactly — but only once you know what you are counting:
+
+| Measure | Count |
+| --- | ---: |
+| Names in the published codepoints list | 4,268 |
+| Ligature names in the shipped woff2 | 4,268 |
+| Distinct target **glyphs** those ligatures resolve to | 3,967 |
+
+The 301-name gap is **aliases**: several names render one glyph. `smartphone`
+and `mobile` are such a pair, both targeting glyph 2239. Reading 3,967 as a
+count of *names* rather than *glyphs* is what once made a perfectly valid name
+look absent from the font.
+
+### Re-running the check
+
+No Node or font library is needed, and the result is the only evidence that
+actually proves an icon will render:
+
+1. Parse the woff2 header and table directory (48-byte header; per-table flags
+   with a 6-bit known-tag index, `UIntBase128` lengths).
+2. `brotli`-decompress the payload and slice out `cmap` and `GSUB` by their
+   directory order.
+3. Build char→glyph from the `cmap` format-4 subtable, then invert it
+   preferring lowercase — the font maps `A` and `a` to one glyph, so a naive
+   inversion yields `SMARTPHONE` and every name looks wrong.
+4. Walk `GSUB` lookups of type 4, unwrapping type 7 extensions, and rebuild
+   each ligature's name from its coverage glyph plus component glyphs.
+5. Assert each name's ligature target equals the glyph the `cmap` gives for its
+   published codepoint.
+
+Run that way, **all 49 names the shipped mapping renders pass**: each is a real
+ligature, and each targets the same glyph as its published codepoint.
 
 The mapping lives in `MATERIAL_SYMBOL_FOR_REMIX_ICON` in
 `design/apps/web/src/components/MaterialSymbol.tsx`, exported so the test can
@@ -285,7 +347,8 @@ belongs and then replace it. Blocking briefly is the correct trade for an icon.
 | Failure | Consequence |
 | --- | --- |
 | A face named in a stack but not bundled | Renders in the fallback, silently and forever. This is the state the product was in before this change. |
-| An icon name the font does not carry | Renders the name as English text in the interface. |
+| An icon name the font does not carry | Renders the name as English text in the interface. Only the shipped file's ligature table can rule this out — the codepoints list cannot. |
+| Reading a symbol element's `textContent` | It is always the ligature name, never the icon. Read `data-symbol` or the `aria-label` instead; assertions that took raw text broke on exactly this. |
 | `font-display: swap` on the icon face | Renders every icon's name as text for the swap period, then replaces it. A visible flash of words. |
 | A fallback family added to the icon stack | Same as above, permanently, for any glyph the icon font lacks. |
 | Dropping the CJK tail from a stack | Nine locales render as tofu; bilingual mode breaks on every line, not just some. |
@@ -323,7 +386,7 @@ belongs and then replace it. Blocking briefly is the correct trade for an icon.
 | The icon stack has no fallback family | same | Pinned |
 | No migrated component still imports `RemixIcon` | same | Pinned |
 | Every rendered symbol name is one the mapping vouches for | same | Pinned |
-| The 52 mappings exist in the published name list | checked at migration against `google/material-design-icons` `variablefont/*.codepoints` (4,268 names) | 52/52 |
+| Every mapped name is a real ligature in the shipped woff2, targeting the same glyph as its published codepoint | offline `cmap` + `GSUB` walk of the file on disk (method above) | **49/49** |
 | The built artifact fetches nothing | `bash scripts/check-self-contained.sh <dir>` — run on `site/` by the Pages workflow and on the packed payload by the release workflow | Wired |
 | The port stays byte-exact | `bash scripts/verify-port.sh` | 0 gaps |
 
@@ -333,10 +396,11 @@ belongs and then replace it. Blocking briefly is the correct trade for an icon.
   Flex, Roboto Mono or Material Symbols Rounded in this application. The faces
   are the right files and the stylesheets are the right stylesheets; whether the
   interface *looks* correct is unmeasured.
-- **That the 52 symbol choices are the right glyphs.** They are real symbol
-  names — that is checked — but `article` standing in for `pages-line` and
-  `filter_none` for `checkbox-multiple-blank-line` are judgements about meaning
-  that only an eye can confirm.
+- **That the symbol choices are the right glyphs.** Every name is now proved to
+  address a real glyph in the shipped file — that is checked against the binary
+  — but `article` standing in for `pages-line` and `filter_none` for
+  `checkbox-multiple-blank-line` are judgements about *meaning* that only an eye
+  can confirm. A name that resolves is not a name that communicates.
 - **That the CJK fallback works on any given machine.** The families are named;
   whether a particular host has one installed is a property of that host. Not
   one locale has been rendered and looked at.

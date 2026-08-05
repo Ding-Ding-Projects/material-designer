@@ -2777,6 +2777,61 @@ function AppInner() {
           role="tabpanel"
         >
           {appMain}
+          {/* Settings is a page in this cell, not a modal above the window.
+              Mounted here — inside the shell body, beside the workspace it
+              covers — so the title bar, the workspace tab strip and the
+              status bar stay live while it is open, and so the surface it
+              covers is exactly the one it takes out of the keyboard path.
+              `styles/shell.css` puts both children in the same grid cell. */}
+          <AnimatePresence>
+          {settingsOpen ? (
+          <SettingsDialog
+            initial={config}
+            agents={agents}
+            agentsLoading={agentsLoading}
+            daemonLive={daemonLive}
+            appVersionInfo={appVersionInfo}
+            welcome={settingsWelcome}
+            initialSection={settingsInitialSection}
+            initialHighlight={settingsHighlight}
+            composioConfigLoading={composioConfigLoading}
+            onPersist={handleConfigPersist}
+            onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}
+            onDraftChange={handleSettingsDraftChange}
+            onPersistComposioKey={handleConfigPersistComposioKey}
+            onPersistByokCredential={persistByokCredentialProfileToDaemon}
+            onClose={() => {
+              // Closing the dialog is the canonical "I'm done" gesture
+              // now that there is no global Save button. We mark
+              // onboardingCompleted on close so the welcome modal stops
+              // re-prompting on every refresh, regardless of whether
+              // the user changed anything during the session.
+              const next = resolveSettingsCloseConfig(config, latestPersistedConfigRef.current);
+              if (!next.onboardingCompleted || !config.onboardingCompleted) {
+                latestPersistedConfigRef.current = next;
+                saveConfig(next);
+                void syncConfigToDaemon(next);
+                setConfig(next);
+              }
+              setSettingsOpen(false);
+              settingsDraftConfigRef.current = null;
+              setSettingsHighlight(null);
+            }}
+            onRefreshAgents={refreshAgents}
+            onAmrLoginStatusChange={handleAmrLoginStatusChange}
+            daemonMediaProviders={daemonMediaProviders}
+            daemonMediaProvidersFetchState={daemonMediaProvidersFetchState}
+            mediaProvidersNotice={mediaProvidersNotice}
+            onReloadMediaProviders={reloadMediaProvidersFromDaemon}
+            onProjectsRefresh={refreshProjects}
+            onSkillsChanged={handleSkillsChanged}
+            onDesignSystemsChanged={handleDesignSystemsChanged}
+            onDesignSystemImportRebuildJob={handleDesignSystemImportRebuildJob}
+            providerModelsCache={providerModelsCache}
+            onProviderModelsCacheChange={setProviderModelsCache}
+          />
+          ) : null}
+          </AnimatePresence>
         </div>
         {/* Last row of the shell. It is deliberately not listed in
             `grid-template-rows`: the shell declares two rows (three with the
@@ -2843,55 +2898,6 @@ function AppInner() {
             seedRegex={commandPaletteSeed.regex ?? null}
           />
         ) : null}
-      </AnimatePresence>
-      <AnimatePresence>
-      {settingsOpen ? (
-        <SettingsDialog
-          initial={config}
-          agents={agents}
-          agentsLoading={agentsLoading}
-          daemonLive={daemonLive}
-          appVersionInfo={appVersionInfo}
-          welcome={settingsWelcome}
-          initialSection={settingsInitialSection}
-          initialHighlight={settingsHighlight}
-          composioConfigLoading={composioConfigLoading}
-          onPersist={handleConfigPersist}
-          onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}
-          onDraftChange={handleSettingsDraftChange}
-          onPersistComposioKey={handleConfigPersistComposioKey}
-          onPersistByokCredential={persistByokCredentialProfileToDaemon}
-          onClose={() => {
-            // Closing the dialog is the canonical "I'm done" gesture
-            // now that there is no global Save button. We mark
-            // onboardingCompleted on close so the welcome modal stops
-            // re-prompting on every refresh, regardless of whether
-            // the user changed anything during the session.
-            const next = resolveSettingsCloseConfig(config, latestPersistedConfigRef.current);
-            if (!next.onboardingCompleted || !config.onboardingCompleted) {
-              latestPersistedConfigRef.current = next;
-              saveConfig(next);
-              void syncConfigToDaemon(next);
-              setConfig(next);
-            }
-            setSettingsOpen(false);
-            settingsDraftConfigRef.current = null;
-            setSettingsHighlight(null);
-          }}
-          onRefreshAgents={refreshAgents}
-          onAmrLoginStatusChange={handleAmrLoginStatusChange}
-          daemonMediaProviders={daemonMediaProviders}
-          daemonMediaProvidersFetchState={daemonMediaProvidersFetchState}
-          mediaProvidersNotice={mediaProvidersNotice}
-          onReloadMediaProviders={reloadMediaProvidersFromDaemon}
-          onProjectsRefresh={refreshProjects}
-          onSkillsChanged={handleSkillsChanged}
-          onDesignSystemsChanged={handleDesignSystemsChanged}
-          onDesignSystemImportRebuildJob={handleDesignSystemImportRebuildJob}
-          providerModelsCache={providerModelsCache}
-          onProviderModelsCacheChange={setProviderModelsCache}
-        />
-      ) : null}
       </AnimatePresence>
       <MemoryToast onOpenMemory={() => openSettings('memory')} />
       {/* The app-level notification stack. Mounted once, above every route, so

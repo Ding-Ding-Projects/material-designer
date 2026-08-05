@@ -76,7 +76,7 @@
   border: 1px solid var(--md-sys-color-outline-variant, var(--border));
   border-radius: var(--md-sys-shape-corner-m, 12px);
   background: var(--md-sys-color-surface-container-high, var(--bg));
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--md-sys-elevation-2);
 }
 
 .calendarHeader {

@@ -83,6 +83,24 @@ import { emptyManualEditStyles } from '../../src/edit-mode/types';
 import { __resetPreviewIsolationCache } from '../../src/runtime/powered-preview';
 import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 
+// Menu labels as a user hears them, not as the DOM stores them.
+//
+// Material Symbols are a ligature font: the glyph is produced by putting its
+// NAME in the element's text, so `<span aria-hidden>description</span>` renders
+// a document icon and contributes the literal word "description" to
+// `textContent`. The span is correctly hidden from the accessibility tree, so
+// the accessible name is right — it is only a raw `textContent` read that sees
+// the ligature. This strips the hidden nodes so these assertions keep testing
+// the label rather than the icon set.
+function menuItemText(item: Element): string {
+  return Array.from(item.childNodes)
+    .filter((node) => !(node instanceof Element && node.getAttribute('aria-hidden') === 'true'))
+    .map((node) => node.textContent ?? '')
+    .join('')
+    .trim();
+}
+
+
 const TEST_SNAPSHOT_DATA_URL = 'data:image/png;base64,c25hcHNob3Q=';
 
 afterEach(() => {
@@ -3416,7 +3434,7 @@ describe('FileViewer SVG artifacts', () => {
 
     expect(screen.getByText('SHARE')).toBeTruthy();
     expect(screen.getByText('PUBLISH ONLINE')).toBeTruthy();
-    const menuItems = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+    const menuItems = screen.getAllByRole('menuitem').map(menuItemText);
     expect(menuItems.slice(0, 1)).toEqual([
       'Publish online above to enable share ↑',
     ]);
@@ -3437,7 +3455,7 @@ describe('FileViewer SVG artifacts', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /download/i }));
 
-    const downloadItems = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+    const downloadItems = screen.getAllByRole('menuitem').map(menuItemText);
     expect(downloadItems).toContain('Export as PDF');
     expect(downloadItems).toContain('Export as image');
     expect(downloadItems).toContain('Download as .zip');
@@ -3493,7 +3511,7 @@ describe('FileViewer SVG artifacts', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /download/i }));
 
-      const downloadItems = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+      const downloadItems = screen.getAllByRole('menuitem').map(menuItemText);
       expect(downloadItems).not.toContain('Export as PPTX');
 
       fireEvent.click(screen.getByRole('menuitem', { name: /Export as PDF/i }));
@@ -3551,7 +3569,7 @@ describe('FileViewer SVG artifacts', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /download/i }));
 
-      const downloadItems = screen.getAllByRole('menuitem').map((item) => item.textContent ?? '');
+      const downloadItems = screen.getAllByRole('menuitem').map(menuItemText);
       expect(downloadItems).not.toContain('Export as PPTX');
 
       fireEvent.click(screen.getByRole('menuitem', { name: /Export as PDF/i }));
@@ -3848,7 +3866,7 @@ describe('FileViewer SVG artifacts', () => {
       });
       fireEvent.click(within(versionDialog).getByRole('button', { name: 'Download Version 1' }));
 
-      const menuItems = within(versionDialog).getAllByRole('menuitem').map((item) => item.textContent ?? '');
+      const menuItems = within(versionDialog).getAllByRole('menuitem').map(menuItemText);
       expect(menuItems).toEqual([
         'Export as PDF',
         'Export as image',

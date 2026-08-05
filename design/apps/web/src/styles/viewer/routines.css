@@ -959,14 +959,14 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 /* Project page audit pass: one final rule set for the active project shell.
    Keep the outer panes flat; only controls and repeated items get radius. */
 .workspace-shell {
-  grid-template-rows: 34px minmax(0, 1fr);
+  grid-template-rows: 42px minmax(0, 1fr);
 }
 .workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 34px;
+  --workspace-tabs-chrome-height: 42px;
   --workspace-tab-bar-bg: color-mix(in srgb, var(--bg-panel) 82%, var(--bg-subtle));
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 34px;
-  min-height: 34px;
+  height: 42px;
+  min-height: 42px;
   padding: 0 8px 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
@@ -980,23 +980,28 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   align-items: center;
   padding-top: 0;
 }
+/* THIS is the rule the workspace tab strip actually renders. `styles/shell.css`
+   declares the same anatomy at 0-1-0; this block is 0-2-0 and this stylesheet is
+   imported later, so editing shell.css alone changes nothing a user of the
+   project shell would see. The two are kept in step deliberately — the numbers
+   below are the mockup's 36dp tab and 250px cap, the same as shell.css. */
 .workspace-shell .workspace-tab {
-  width: 156px;
-  height: 26px;
-  min-height: 26px;
-  /* Auto-shrink in the project shell: tabs sit at 156px when there's room and
+  width: 250px;
+  height: 36px;
+  min-height: 36px;
+  /* Auto-shrink in the project shell: tabs sit at 250px when there's room and
      shrink toward --workspace-tab-min-width as more open, keeping the whole row
      visible without scrolling for as long as possible. flex-grow 0 stops a lone
      tab from ballooning; only once every tab hits its min do we fall back to the
      shared strip's horizontal scroll. */
   min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 168px;
-  flex: 0 1 156px;
-  grid-template-columns: minmax(0, 1fr) 22px;
-  align-self: center;
-  /* Intentional compact-chrome value (26px tab); kept off the radius scale
-     and pinned by workspace-tabs-chrome.test.ts. */
-  border-radius: 7px;
+  max-width: 250px;
+  flex: 0 1 250px;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  /* Hangs from the top of the 42px strip so the shaped bottom corners read as
+     the tab meeting the content area. */
+  align-self: flex-start;
+  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   border: 1px solid transparent;
   background: transparent;
   box-shadow: none;
@@ -1044,7 +1049,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 }
 .workspace-shell .workspace-tab:not(.is-active):hover,
 .workspace-shell .workspace-tab:not(.is-active):focus-within {
-  border-radius: 7px;
+  /* Restated so hover does not square the shaped corners back off. */
+  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
   background:
     linear-gradient(
       color-mix(in srgb, var(--bg-panel) 78%, transparent),

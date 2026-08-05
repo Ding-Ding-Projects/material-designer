@@ -16,7 +16,7 @@
   padding: 0 4px;
   border-radius: 999px;
   background: var(--red);
-  color: var(--accent-contrast, #fff);
+  color: var(--md-sys-color-on-error);
   font-size: 9px;
   font-weight: 700;
   line-height: 15px;
@@ -30,21 +30,21 @@
   z-index: 2200;
   display: flex;
   justify-content: flex-end;
-  background: color-mix(in srgb, var(--text-strong, #111827) 12%, transparent);
+  background: var(--md-sys-color-scrim);
 }
 
 .panel {
   width: min(452px, calc(100vw - 24px));
-  height: calc(100dvh - 24px);
-  margin: 12px;
+  height: 100dvh;
+  margin: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-elevated, var(--bg-panel));
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl) 0 0 var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-low);
   color: var(--text);
-  box-shadow: var(--shadow-lg, 0 18px 52px rgba(15, 23, 42, 0.18));
+  box-shadow: var(--md-sys-elevation-1);
   outline: none;
   animation: panelIn 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }

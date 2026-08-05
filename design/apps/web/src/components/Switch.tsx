@@ -36,11 +36,27 @@ export interface SwitchProps {
    * element. Use it where the state is not otherwise labelled in the row.
    */
   withIcons?: boolean;
+  /**
+   * Hover tooltip. Separate from `label` rather than derived from it: a
+   * switch that sits in a row with no adjacent text needs one, and a switch
+   * beside a name that already reads "Morning briefing" does not — a
+   * tooltip that repeats what is written next to it is noise. Callers whose
+   * previous control carried a `title` must keep passing one, or the
+   * migration to this component silently removes their tooltip.
+   */
+  title?: string;
   /** Marks the element this switch controls, for assistive technology. */
   'aria-describedby'?: string;
   id?: string;
   className?: string;
   'data-testid'?: string;
+  /**
+   * Position in the tab order. Present for hosts that run a roving-focus list
+   * — the command palette gives the highlighted row's control `0` and every
+   * other row `-1`, so Tab reaches the control the cursor is on rather than
+   * walking through forty of them.
+   */
+  tabIndex?: number;
 }
 
 export function Switch({
@@ -49,10 +65,12 @@ export function Switch({
   label,
   disabled = false,
   withIcons = false,
+  title,
   id,
   className,
   'aria-describedby': ariaDescribedBy,
   'data-testid': testId,
+  tabIndex,
 }: SwitchProps) {
   return (
     <button
@@ -60,9 +78,11 @@ export function Switch({
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      {...(title ? { title } : {})}
       {...(ariaDescribedBy ? { 'aria-describedby': ariaDescribedBy } : {})}
       {...(id ? { id } : {})}
       {...(testId ? { 'data-testid': testId } : {})}
+      {...(tabIndex === undefined ? {} : { tabIndex })}
       disabled={disabled}
       data-with-icons={withIcons ? 'true' : 'false'}
       className={[styles.switch, className].filter(Boolean).join(' ')}

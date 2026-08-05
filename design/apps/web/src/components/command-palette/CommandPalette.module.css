@@ -280,56 +280,79 @@
   padding: 4px 8px;
 }
 
-.switch {
+/* The 26×14 track with a 10px dot that used to live here is gone. It was a
+   shape Material Design 3 does not define, and the application now has the
+   one it does: `components/Switch.tsx`, 52×32 with a handle that changes size
+   between states. The palette renders that component, so the anatomy is
+   declared once instead of a fifth time. */
+
+/* A number the row can be nudged with. Sized from the density tokens rather
+   than from literals, so a compact install gets a compact stepper and a
+   comfortable one gets a taller box — the same three properties every other
+   control in this product reads. */
+.stepper {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 8px;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.switchTrack {
-  width: 26px;
-  height: 14px;
+  gap: 4px;
   flex: none;
-  border-radius: 999px;
-  background: var(--border-strong);
-  position: relative;
-  transition: background var(--dur-quick) var(--ease-out);
 }
 
-.switchTrack::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--bg-panel);
-  transition: transform var(--dur-quick) var(--ease-out);
+.stepperInput {
+  width: 84px;
+  height: var(--control-h-sm);
+  padding: 0 calc(var(--control-pad-x) / 2);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  /* Tabular figures so a value that steps 1.05 → 1.10 does not shuffle the
+     digits sideways under the pointer. */
+  font-variant-numeric: tabular-nums;
 }
 
-.switchOn {
-  border-color: var(--accent);
-  color: var(--accent-strong);
+.stepperInput:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
 }
 
-.switchOn .switchTrack {
-  background: var(--accent);
+.stepperInput:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
 }
 
-.switchOn .switchTrack::after {
-  transform: translateX(12px);
+.stepperUnit {
+  font-size: 11.5px;
+  color: var(--md-sys-color-on-surface-variant);
 }
 
-.switchLabel {
-  white-space: nowrap;
+/* A text setting, edited in place. One row tall, because the palette row is
+   the wrong place to write an essay — the full field is one Enter away in
+   Settings — but it grows no taller and never clips: the text scrolls inside
+   the box instead. */
+.textField {
+  width: 220px;
+  max-width: 40vw;
+  height: var(--control-h-sm);
+  min-height: var(--control-h-sm);
+  padding: calc((var(--control-h-sm) - 17px) / 2) calc(var(--control-pad-x) / 2);
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 17px;
+  resize: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: pre;
+}
+
+.textField:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
 }
 
 .slider {
@@ -385,9 +408,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .switchTrack,
-  .switchTrack::after {
-    transition: none;
-  }
-}
+/* The reduced-motion override that used to sit here belonged to the local
+   switch track. `components/Switch.module.css` carries its own, so removing
+   the track removed the rule with it rather than leaving a selector that
+   matches nothing. */

@@ -6,7 +6,7 @@
   position: fixed;
   inset: 0;
   z-index: 920;
-  background: rgba(28, 27, 26, 0.48);
+  background: var(--md-sys-color-scrim);
   backdrop-filter: blur(8px) saturate(1.1);
   display: flex;
   align-items: flex-start;
@@ -18,13 +18,10 @@
   width: 100%;
   max-width: 840px;
   max-height: calc(100vh - 80px);
-  background: var(--bg-panel);
-  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-  border-radius: 20px;
-  box-shadow:
-    0 32px 80px -20px rgba(28, 27, 26, 0.32),
-    0 8px 24px -8px rgba(28, 27, 26, 0.12),
-    0 1px 2px rgba(28, 27, 26, 0.05);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-3);
   display: flex;
   flex-direction: column;
   min-height: 0;

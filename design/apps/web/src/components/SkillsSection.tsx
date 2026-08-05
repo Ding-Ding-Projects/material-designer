@@ -757,6 +757,7 @@ function SkillRow({
             checked={enabled}
             onChange={onToggleEnabled}
             label={t('settings.libraryToggleLabel')}
+            title={t('settings.libraryToggleLabel')}
           />
         </div>
       </div>

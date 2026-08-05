@@ -2214,10 +2214,10 @@
   left: 0;
   right: 0;
   z-index: 1401;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  box-shadow: var(--md-sys-elevation-2);
   overflow: hidden;
 }
 .model-select-searchable__search-row {

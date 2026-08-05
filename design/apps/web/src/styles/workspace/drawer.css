@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: color-mix(in srgb, #111827 18%, transparent);
+  background: var(--md-sys-color-scrim);
   backdrop-filter: blur(1px);
   -webkit-backdrop-filter: blur(1px);
   display: flex;
@@ -23,10 +23,10 @@
   width: min(456px, 92vw);
   height: clamp(480px, 68vh, 640px);
   max-height: calc(100vh - 36px);
-  background: var(--bg-panel);
-  border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 24px 64px -34px rgba(15, 23, 42, 0.5);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-xl);
+  box-shadow: var(--md-sys-elevation-2);
   overflow: hidden;
   animation: connector-drawer-slide 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }
