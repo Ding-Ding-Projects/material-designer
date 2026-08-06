@@ -30,6 +30,14 @@ import styles from './UpdateDialog.module.css';
 // This fork's own release page, never upstream's — see SettingsDialog.
 const RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 const MENU_SOURCE = 'mac-app-menu';
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 function withEllipsis(value: string): string {
   return `${value.replace(/[.\u2026]+$/u, '')}…`;
@@ -49,6 +57,9 @@ export function UpdateDialog() {
   const laterRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const primaryRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const openRef = useRef(false);
   const [status, setStatus] = useState<OpenDesignHostUpdaterStatusSnapshot | null>(null);
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState(MENU_SOURCE);
@@ -60,6 +71,25 @@ export function UpdateDialog() {
     ...(model.currentVersion ? { app_version_before: model.currentVersion } : {}),
     ...(model.availableVersion ? { app_version_after: model.availableVersion } : {}),
   }), [model.availableVersion, model.currentVersion]);
+
+  const dismiss = useCallback(() => {
+    openRef.current = false;
+    setOpen(false);
+    setRestartSafety(null);
+    setActionError(null);
+  }, []);
+
+  const close = useCallback(() => {
+    if (actionBusy) return;
+    trackUpdateIndicatorClick(analytics.track, {
+      action: 'dismiss',
+      area: 'update_dialog',
+      element: 'later',
+      page_name: 'app',
+      ...versionProps,
+    });
+    dismiss();
+  }, [actionBusy, analytics.track, dismiss, versionProps]);
 
   const applyStatus = useCallback((next: OpenDesignHostUpdaterStatusSnapshot) => {
     statusRevisionRef.current += 1;
@@ -86,6 +116,13 @@ export function UpdateDialog() {
     const unsubscribeOpen = subscribeToUpdaterOpenDialog((request) => {
       if (!mounted) return;
       const requestSource = request.source || MENU_SOURCE;
+      if (!openRef.current) {
+        const activeElement = document.activeElement;
+        openerRef.current = activeElement instanceof HTMLElement && activeElement !== document.body
+          ? activeElement
+          : null;
+      }
+      openRef.current = true;
       setSource(requestSource);
       setRestartSafety(null);
       setActionError(null);
@@ -167,24 +204,40 @@ export function UpdateDialog() {
     (primaryRef.current ?? closeRef.current)?.focus();
   }, [open, restartSafety, status?.state]);
 
-  const close = useCallback(() => {
-    if (actionBusy) return;
-    trackUpdateIndicatorClick(analytics.track, {
-      action: 'dismiss',
-      area: 'update_dialog',
-      element: 'later',
-      page_name: 'app',
-      ...versionProps,
-    });
-    setOpen(false);
-    setRestartSafety(null);
-    setActionError(null);
-  }, [actionBusy, analytics.track, versionProps]);
+  useEffect(() => {
+    if (open) return;
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (opener?.isConnected) opener.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close();
+      if (event.key !== 'Tab') return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
+      if (activeIndex === -1) {
+        event.preventDefault();
+        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+      } else if (event.shiftKey && activeIndex === 0) {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
+        event.preventDefault();
+        focusable[0].focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
@@ -297,11 +350,12 @@ export function UpdateDialog() {
           result: 'success',
           ...versionProps,
         });
+        dismiss();
       }
     } finally {
       setActionBusy(false);
     }
-  }, [analytics.track, applyStatus, source, versionProps]);
+  }, [analytics.track, applyStatus, dismiss, source, versionProps]);
 
   const openReleaseNotes = useCallback(() => {
     trackUpdateIndicatorClick(analytics.track, {
@@ -402,7 +456,9 @@ export function UpdateDialog() {
         aria-modal="true"
         className={styles.dialog}
         data-testid="update-dialog"
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <button
           aria-label={t('common.close')}
