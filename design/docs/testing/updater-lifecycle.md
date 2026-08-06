@@ -17,8 +17,9 @@ spec (`e2e/specs/mac.spec.ts` / `win.spec.ts` via `release-smoke.ts`),
 | Installer download + sha256 from the release feed | P, F | mac/win spec download flow; desktop `updater.test.ts` checksum trio |
 | mac DMG install (ditto path) | P | mac spec install/start/inspect/stop/uninstall |
 | mac DMG drag-install UI | M | human acceptance; harness uses ditto |
-| win NSIS silent install + transactional log contract | P | win spec `assertTransactionalInPlaceInstallLog` |
-| win NSIS interactive UI install | M | human acceptance per `tools/pack/AGENTS.md` |
+| win Squirrel `Setup.exe` install + lifecycle event contract | P | win spec install/start/uninstall path; packaged `squirrel-startup.test.ts` |
+| win NSIS legacy silent install + transactional log contract | P | win spec `assertTransactionalInPlaceInstallLog` |
+| win Squirrel interactive installer UI | M | human acceptance per `tools/pack/AGENTS.md` |
 | Channel identity (bundle name, registry key, install dir) | U, P | tools-pack `win-identity.test.ts`; specs |
 | First-boot bootstrap (current-package, runtime.json gen0, install.json) | U, P | packaged `launcher-runtime.test.ts`; specs |
 | Onboarding first run | P | mac/win onboarding smoke (`@electron-smoke`) |
@@ -62,7 +63,8 @@ spec (`e2e/specs/mac.spec.ts` / `win.spec.ts` via `release-smoke.ts`),
 
 | Node | Coverage | Owning tests |
 | --- | --- | --- |
-| win NSIS reinstall over the same registry key + transaction contract | P | win spec installer fallback acceptance |
+| win Squirrel reinstall through `Update.exe --install` | P | win spec installer fallback acceptance |
+| win NSIS legacy reinstall over the same registry key + transaction contract | P | win spec legacy installer fallback acceptance |
 | mac dry-run installer open | P | mac spec recovery segment |
 | mac real DMG open via the deferred helper script | U, M | desktop unit fake-spawn; human acceptance |
 
@@ -87,7 +89,11 @@ spec (`e2e/specs/mac.spec.ts` / `win.spec.ts` via `release-smoke.ts`),
 
 ## Known deliberate gaps
 
-- Interactive installer UIs (mac drag, NSIS wizard) stay human-verified.
+- Interactive installer UIs (mac drag, Squirrel setup and the legacy NSIS wizard)
+  stay human-verified.
+- The first post-migration public stable feed still needs a real Release run proving
+  `metadata.json`, `RELEASES`, full/delta `.nupkg` packages and the explicit
+  restart-to-install action together.
 - Full historical-outer migration needs a genuinely old installed build; the
   daemon bridge is unit-tested and the win spec covers the legacy-executable
   identity variant.

@@ -567,19 +567,28 @@ winDescribe('packaged windows runtime smoke', () => {
 
       const install = await measureSmokeStep(timings, 'install', async () => runToolsPackJson<WinInstallResult>('install'));
       installed = true;
+      const squirrelInstaller = basename(install.uninstallerPath).toLowerCase() === 'update.exe';
 
       expect(install.namespace).toBe(namespace);
       expectPathInside(install.installerPath, join(outputNamespaceRoot, 'builder'));
-      expectPathInside(install.installDir, join(runtimeNamespaceRoot, 'install'));
-      expectPathInside(install.uninstallerPath, install.installDir);
-      expect(basename(install.uninstallerPath)).toBe(`Uninstall ${installIdentity.displayName}.exe`);
+      if (squirrelInstaller) {
+        expect(install.installDir.toLowerCase()).toContain('appdata\\local');
+        expect(dirname(install.uninstallerPath).toLowerCase()).toBe(dirname(install.installDir).toLowerCase());
+        expect(basename(install.uninstallerPath)).toBe('Update.exe');
+      } else {
+        expectPathInside(install.installDir, join(runtimeNamespaceRoot, 'install'));
+        expectPathInside(install.uninstallerPath, install.installDir);
+        expect(basename(install.uninstallerPath)).toBe(`Uninstall ${installIdentity.displayName}.exe`);
+      }
       expect(install.desktopShortcutExists).toBe(true);
       expect(install.startMenuShortcutExists).toBe(true);
       expect(basename(install.desktopShortcutPath)).toBe(`${installIdentity.displayName}.lnk`);
       expect(basename(install.startMenuShortcutPath)).toBe(`${installIdentity.displayName}.lnk`);
-      expect(install.registryEntries.length).toBeGreaterThan(0);
-      expect(JSON.stringify(install.registryEntries)).toContain(installIdentity.displayName);
-      expect(JSON.stringify(install.registryEntries)).toContain(`Material Designer-${installIdentity.namespaceToken}`);
+      if (!squirrelInstaller) {
+        expect(install.registryEntries.length).toBeGreaterThan(0);
+        expect(JSON.stringify(install.registryEntries)).toContain(installIdentity.displayName);
+        expect(JSON.stringify(install.registryEntries)).toContain(`Material Designer-${installIdentity.namespaceToken}`);
+      }
       expect(install.installPayload.fileCount).toBeGreaterThan(0);
       expect(install.installPayload.totalBytes).toBeGreaterThan(0);
       expect(install.installPayload.topLevel.length).toBeGreaterThan(0);
@@ -1218,7 +1227,13 @@ winOnboardingDescribe('packaged windows onboarding AMR smoke', () => {
       install = await measureSmokeStep(timings, 'install', async () => runToolsPackJson<WinInstallResult>('install'));
       installed = true;
       expect(install.namespace).toBe(namespace);
-      expectPathInside(install.installDir, join(runtimeNamespaceRoot, 'install'));
+      const squirrelInstaller = basename(install.uninstallerPath).toLowerCase() === 'update.exe';
+      if (squirrelInstaller) {
+        expect(install.installDir.toLowerCase()).toContain('appdata\\local');
+        expect(dirname(install.uninstallerPath).toLowerCase()).toBe(dirname(install.installDir).toLowerCase());
+      } else {
+        expectPathInside(install.installDir, join(runtimeNamespaceRoot, 'install'));
+      }
       installedNamespaceRoot = runtimeNamespaceRoot;
       await resetPackagedRuntimeDataRoot();
 

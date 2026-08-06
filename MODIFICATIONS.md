@@ -29,6 +29,52 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Switch Windows packaging to Squirrel and add restartable updates
+
+**Reason:** Windows releases previously built the legacy NSIS target and the
+desktop updater had no project-owned stable feed. The packer now makes
+Squirrel.Windows the default Windows target, stages `Setup.exe`, `RELEASES` and
+full/delta `.nupkg` packages, and the release workflow publishes a checksummed
+`metadata.json` feed with a monotonic app version. Packaged startup handles the
+Squirrel lifecycle switches before normal Electron startup. The updater downloads
+Windows installers in the background and leaves installation behind an explicit
+**Restart to install update** action; code signing remains unavailable and is
+documented as such.
+
+**Changed files:**
+
+- `apps/desktop/src/main/updater.ts`
+- `apps/desktop/src/main/updater/config.ts`
+- `apps/desktop/src/main/updater/feed.ts`
+- `apps/desktop/tests/main/updater.test.ts`
+- `apps/desktop/tests/main/updater/config.test.ts`
+- `apps/desktop/tests/main/updater/feed.test.ts`
+- `apps/packaged/src/index.ts`
+- `apps/packaged/tests/squirrel-startup.test.ts`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/lib/updater.ts`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+- `apps/web/tests/components/UpdaterPopup.test.tsx`
+- `apps/web/tests/lib/updater.test.ts`
+- `docs/testing/updater-lifecycle.md`
+- `e2e/specs/win.spec.ts`
+- `tools/pack/AGENTS.md`
+- `tools/pack/src/config.ts`
+- `tools/pack/src/index.ts`
+- `tools/pack/src/win/build.ts`
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/src/win/constants.ts`
+- `tools/pack/src/win/lifecycle.ts`
+- `tools/pack/src/win/paths.ts`
+- `tools/pack/src/win/report.ts`
+- `tools/pack/src/win/types.ts`
+- `tools/pack/tests/config.test.ts`
+- `tools/pack/tests/win-builder.test.ts`
+- `tools/pack/tests/win-lifecycle.test.ts`
+- `tools/pack/tests/win-targets.test.ts`
+
 ### 2026-08-06 — Use one command-palette shortcut
 
 **Reason:** The desktop header announced `Ctrl K` while the application accepted

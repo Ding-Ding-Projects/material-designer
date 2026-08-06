@@ -2,13 +2,10 @@ name: Release
 
 # Builds the Windows application and publishes it.
 #
-# The build steps here deliberately mirror the recipe the upstream project uses
-# for its own Windows releases — same pnpm setup, same NSIS guard, same
-# tools-pack invocation — because that recipe is known to work and this is not
-# the place to find out whether a different one does. What is stripped out is
-# everything specific to upstream's infrastructure: its release storage, its
-# updater feed, its signing identity, and a build flag that requires a package
-# this fork cannot resolve.
+# The build steps here deliberately keep the upstream workspace setup, while
+# this repository's Windows delivery is Squirrel.Windows: the release carries
+# Setup.exe, RELEASES, the full/delta NuGet packages, and the metadata feed the
+# packaged updater verifies before offering a restart.
 #
 # Nothing is built on a contributor machine. This workflow is the supported
 # path, and its logs are the evidence.
@@ -100,13 +97,21 @@ jobs:
         run: |
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
           if ([string]::IsNullOrWhiteSpace($pkg.version)) { throw "design/package.json has no version" }
+          # The packaged version must advance for every new workflow run or an
+          # installed Squirrel build will correctly decide that the next release
+          # is the same build. Keep the package baseline as the major/minor
+          # contract and use the monotonic workflow run number for the patch.
+          $baseVersion = [version]$pkg.version
+          $runNumber = [int64]"${{ github.run_number }}"
+          $patch = [int64]$baseVersion.Build + $runNumber
+          $appVersion = "$($baseVersion.Major).$($baseVersion.Minor).$patch"
           # The attempt is part of the tag because run_number does not change
           # when a run is re-run — only run_attempt does. Without it, re-running
           # a run that already published rebuilds for an hour and then dies on
           # `gh release create` because the tag exists.
-          "app_version=$($pkg.version)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "tag=v$($pkg.version)-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "version $($pkg.version), tag v$($pkg.version)-r${{ github.run_number }}.${{ github.run_attempt }}"
+          "app_version=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "base $($pkg.version), build version $appVersion, tag v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}"
 
       - name: Install dependencies
         working-directory: design
@@ -171,14 +176,6 @@ jobs:
           pnpm --filter @open-design/tools-pack exec vitest run --testTimeout=30000 win- launcher- release-workflows config versions resources
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Set up NSIS
-        run: |
-          if ((Get-Command makensis.exe -ErrorAction SilentlyContinue) -or (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
-            Write-Host "makensis already available"
-            exit 0
-          }
-          choco install nsis -y --no-progress
-
       - name: Build the Windows installer
         id: pack
         working-directory: design
@@ -203,19 +200,49 @@ jobs:
           $buildOutput | Set-Content -Path $buildJsonPath
           $build = $buildOutput | ConvertFrom-Json
 
-          pnpm.cmd exec tools-pack win validate-payload `
-            --namespace "$env:PACK_NAMESPACE" `
-            --payload-path $build.payloadPath `
-            --expected-version "${{ steps.version.outputs.app_version }}" `
-            --json
-          if ($LASTEXITCODE -ne 0) { throw "tools-pack win validate-payload exited with code $LASTEXITCODE" }
-
-          if ([string]::IsNullOrWhiteSpace($build.installerPath) -or -not (Test-Path -LiteralPath $build.installerPath)) {
-            throw "the build reported no installer at '$($build.installerPath)'"
+          if (-not [string]::IsNullOrWhiteSpace($build.payloadPath)) {
+            pnpm.cmd exec tools-pack win validate-payload `
+              --namespace "$env:PACK_NAMESPACE" `
+              --payload-path $build.payloadPath `
+              --expected-version "${{ steps.version.outputs.app_version }}" `
+              --json
+            if ($LASTEXITCODE -ne 0) { throw "tools-pack win validate-payload exited with code $LASTEXITCODE" }
           }
 
-          $installer = Get-Item -LiteralPath $build.installerPath
+          $setupPath = $build.squirrelSetupPath
+          if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
+          if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
+            throw "the build reported no Squirrel Setup.exe at '$setupPath'"
+          }
+
+          $installer = Get-Item -LiteralPath $setupPath
           $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+
+          $squirrelRoot = $installer.DirectoryName
+          $releasesPath = $build.squirrelReleasesPath
+          if ([string]::IsNullOrWhiteSpace($releasesPath) -or -not (Test-Path -LiteralPath $releasesPath)) {
+            $releasesPath = (Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File | Where-Object { $_.Name -ceq "RELEASES" } | Select-Object -First 1).FullName
+          }
+          if ([string]::IsNullOrWhiteSpace($releasesPath) -or -not (Test-Path -LiteralPath $releasesPath)) {
+            throw "the Squirrel build reported no RELEASES index"
+          }
+
+          $fullPackagePaths = @()
+          $deltaPackagePaths = @()
+          if ($build.PSObject.Properties.Name -contains "squirrelFullPackagePaths") {
+            $fullPackagePaths = @($build.squirrelFullPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) })
+          }
+          if ($build.PSObject.Properties.Name -contains "squirrelDeltaPackagePaths") {
+            $deltaPackagePaths = @($build.squirrelDeltaPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) })
+          }
+          if ($fullPackagePaths.Count -eq 0) {
+            $fullPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-full.nupkg" | Select-Object -ExpandProperty FullName)
+          }
+          if ($deltaPackagePaths.Count -eq 0) {
+            $deltaPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-delta.nupkg" | Select-Object -ExpandProperty FullName)
+          }
+          if ($fullPackagePaths.Count -eq 0) { throw "the Squirrel build reported no full .nupkg package" }
+          $packagePaths = @($fullPackagePaths + $deltaPackagePaths)
 
           # Give the asset a name that says what it is outside this repository.
           $staged = Join-Path "${{ runner.temp }}" "release-assets"
@@ -223,6 +250,45 @@ jobs:
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
           "$hash  $assetName" | Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding utf8
+
+          Copy-Item -LiteralPath $releasesPath -Destination (Join-Path $staged "RELEASES") -Force
+          foreach ($packagePath in $packagePaths) {
+            $package = Get-Item -LiteralPath $packagePath
+            Copy-Item -LiteralPath $package.FullName -Destination (Join-Path $staged $package.Name) -Force
+          }
+
+          $iconSource = Join-Path $env:GITHUB_WORKSPACE "design/tools/pack/resources/win/icon.ico"
+          Copy-Item -LiteralPath $iconSource -Destination (Join-Path $staged "material-designer.ico") -Force
+
+          # The feed moves at `releases/latest/download/metadata.json`, but the
+          # artifacts inside it must remain pinned to the exact release this run
+          # built and tested. A moving installer URL would let a cached metadata
+          # response download bytes from a different release.
+          $downloadRoot = "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}"
+          $metadata = [ordered]@{
+            schemaVersion = 1
+            channel = "stable"
+            releaseVersion = "${{ steps.version.outputs.app_version }}"
+            releaseNotesUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
+            platforms = [ordered]@{
+              win = [ordered]@{
+                enabled = $true
+                arch = "x64"
+                artifacts = [ordered]@{
+                  installer = [ordered]@{
+                    type = "installer"
+                    name = "Setup.exe"
+                    url = "$downloadRoot/$assetName"
+                    size = [int64]$installer.Length
+                    sha256 = $hash
+                    sha256Url = "$downloadRoot/$assetName.sha256"
+                  }
+                }
+              }
+            }
+          }
+          $metadataPath = Join-Path $staged "metadata.json"
+          $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath -Encoding utf8
 
           if (-not [string]::IsNullOrWhiteSpace($build.portableZipPath) -and (Test-Path -LiteralPath $build.portableZipPath)) {
             Copy-Item -LiteralPath $build.portableZipPath -Destination (Join-Path $staged "material-designer-${{ steps.version.outputs.app_version }}-win-x64-portable.zip") -Force
@@ -233,7 +299,13 @@ jobs:
           "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "squirrel_release_name=RELEASES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "squirrel_package_count=$($packagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "squirrel_full_package_count=$($fullPackagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "squirrel_delta_package_count=$($deltaPackagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "metadata_name=metadata.json" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
+          Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
       - name: Check the packaged application is self-contained
         if: ${{ steps.pack.outputs.build_json != '' }}
@@ -306,10 +378,11 @@ jobs:
           OD_PACKAGED_E2E_RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
           OD_PACKAGED_E2E_REPORT_DIR: ${{ runner.temp }}/release-report/win
           OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ runner.temp }}/tools-pack
-          # `core` installs the app, launches it, proves the running process
-          # answers its own health endpoint, then uninstalls and checks nothing
-          # was left behind. `full` additionally exercises the auto-updater,
-          # which this fork deliberately does not ship a feed for.
+          # `core` installs the Squirrel app, launches it, proves the running
+          # process answers its own health endpoint, then uninstalls and checks
+          # that nothing was left behind. The updater's feed and restart path
+          # have their own focused tests; the `full` profile requires a
+          # separately-built update fixture and is not silently claimed here.
           OD_PACKAGED_E2E_WIN_SMOKE_PROFILE: core
         run: |
           $ErrorActionPreference = "Stop"
@@ -453,6 +526,9 @@ jobs:
           APP_VERSION: ${{ steps.version.outputs.app_version }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
           INSTALLER_SHA: ${{ steps.pack.outputs.installer_sha256 }}
+          SQUIRREL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_package_count }}
+          SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
+          SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_ID: ${{ steps.codename.outputs.id }}
@@ -475,7 +551,8 @@ jobs:
             echo ""
             echo "### Install"
             echo ""
-            echo "Download \`${ASSET_NAME}\` below and run it. The installer does not require administrator rights."
+            echo "Download \`${ASSET_NAME}\` below and run it. This is the Squirrel.Windows installer and does not require administrator rights."
+            echo "The release also carries the Squirrel \`RELEASES\` index, ${SQUIRREL_FULL_PACKAGE_COUNT:-0} full package(s), ${SQUIRREL_DELTA_PACKAGE_COUNT:-0} delta package(s), and \`metadata.json\` for the in-app update check."
             echo ""
             echo "\`\`\`"
             echo "SHA-256  ${INSTALLER_SHA}"

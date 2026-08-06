@@ -1,6 +1,7 @@
 import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
 
 import { SIDECAR_MESSAGES } from "@open-design/sidecar-proto";
 import { describe, expect, it, vi } from "vitest";
@@ -111,6 +112,15 @@ async function writeFakeUnpackedExe(config: ToolPackConfig): Promise<void> {
 }
 
 describe("installPackedWinApp", () => {
+  it("keeps the Squirrel install and uninstall seam ahead of the legacy NSIS path", async () => {
+    const source = await readFile(new URL("../src/win/lifecycle.ts", import.meta.url), "utf8");
+    expect(source).toContain('config.to === "squirrel" || config.to === "all"');
+    expect(source).toContain("resolveWinSquirrelSetupPath");
+    expect(source).toContain('invokeSquirrel(installerPath, config.silent ? ["--silent"] : [])');
+    expect(source).toContain('invokeSquirrel(resolveWinSquirrelUpdatePath(), ["--uninstall"])');
+    expect(source).toContain('uninstallerPath: squirrel ? resolveWinSquirrelUpdatePath() : registeredPaths.uninstallerPath');
+  });
+
   it("creates the exact fresh install directory before invoking transactional NSIS", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
     const config = createConfig(root);

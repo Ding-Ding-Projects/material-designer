@@ -1,5 +1,7 @@
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
+import { promisify } from "node:util";
 
 import {
   APP_KEYS,
@@ -33,7 +35,7 @@ import type { ToolPackConfig } from "../config.js";
 import { resolveToolPackLauncherLayout } from "../launcher-layout.js";
 import { readToolPackLauncherRuntimeSnapshot } from "../launcher-runtime-snapshot.js";
 import { readToolPackUpdateCacheLifecycleSnapshot } from "../update-cache-lifecycle-snapshot.js";
-import { DESKTOP_LOG_ECHO_ENV } from "./constants.js";
+import { DESKTOP_LOG_ECHO_ENV, PRODUCT_NAME } from "./constants.js";
 import { listDirectories, pathExists, removeTree } from "./fs.js";
 import { readBuiltAppManifest } from "./manifest.js";
 import { invokeNsis, runTimed } from "./nsis.js";
@@ -42,6 +44,9 @@ import {
   resolveWinPaths,
   resolveWinProductNamespaceRoot,
   resolveWinProductUserDataRoot,
+  resolveWinSquirrelInstallRoot,
+  resolveWinSquirrelSetupPath,
+  resolveWinSquirrelUpdatePath,
 } from "./paths.js";
 import { cleanupWinRegistryResidues, queryWinRegistryEntries, resolveWinRegisteredPaths } from "./registry.js";
 import type {
@@ -60,11 +65,60 @@ import type {
   WinStartResult,
   WinStopResult,
   WinUninstallResult,
+  WinSquirrelInstalledPaths,
   WinPaths,
 } from "./types.js";
 
 const PACKAGED_CONFIG_PATH_ENV = "OD_PACKAGED_CONFIG_PATH";
 const UPDATE_ACTION_TIMEOUT_MS = 10 * 60 * 1000;
+const execFileAsync = promisify(execFile);
+
+function usesSquirrelInstaller(config: ToolPackConfig): boolean {
+  return config.to === "squirrel" || config.to === "all";
+}
+
+function expectedSquirrelInstalledPaths(): WinSquirrelInstalledPaths {
+  const installRoot = resolveWinSquirrelInstallRoot();
+  const installDir = join(installRoot, "current");
+  return {
+    installDir,
+    installedExePath: join(installDir, `${PRODUCT_NAME}.exe`),
+    updateExePath: resolveWinSquirrelUpdatePath(),
+  };
+}
+
+async function resolveSquirrelInstalledPaths(): Promise<WinSquirrelInstalledPaths | null> {
+  const expected = expectedSquirrelInstalledPaths();
+  const installRoot = resolveWinSquirrelInstallRoot();
+  const candidateDirs = [expected.installDir];
+  const directories = await readdir(installRoot, { withFileTypes: true }).catch(() => []);
+  for (const directory of directories.filter((entry) => entry.isDirectory() && /^app-/iu.test(entry.name))) {
+    candidateDirs.push(join(installRoot, directory.name));
+  }
+  for (const installDir of candidateDirs) {
+    const installedExePath = join(installDir, `${PRODUCT_NAME}.exe`);
+    if (await pathExists(installedExePath)) return { ...expected, installDir, installedExePath };
+  }
+  return null;
+}
+
+async function waitForSquirrelInstalledPaths(timeoutMs = 120_000): Promise<WinSquirrelInstalledPaths> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const installed = await resolveSquirrelInstalledPaths();
+    if (installed != null) return installed;
+    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+  }
+  throw new Error(`Squirrel installed no ${PRODUCT_NAME}.exe under ${resolveWinSquirrelInstallRoot()}`);
+}
+
+async function invokeSquirrel(command: string, args: string[]): Promise<void> {
+  await execFileAsync(command, args, {
+    cwd: dirname(command),
+    windowsHide: true,
+    maxBuffer: 20 * 1024 * 1024,
+  });
+}
 
 function desktopStamp(config: ToolPackConfig): SidecarStamp {
   return {
@@ -126,11 +180,11 @@ async function collectFileTreeStats(root: string): Promise<{ fileCount: number; 
   );
 }
 
-async function collectInstallPayloadReport(paths: WinPaths): Promise<WinInstallPayloadReport> {
-  const topLevelEntries = await readdir(paths.installDir, { withFileTypes: true }).catch(() => []);
+async function collectInstallPayloadReport(paths: WinPaths, installDir = paths.installDir): Promise<WinInstallPayloadReport> {
+  const topLevelEntries = await readdir(installDir, { withFileTypes: true }).catch(() => []);
   const topLevel = await Promise.all(
     topLevelEntries.map(async (entry) => {
-      const entryPath = join(paths.installDir, entry.name);
+      const entryPath = join(installDir, entry.name);
       const stats = await collectFileTreeStats(entryPath);
       return { bytes: stats.totalBytes, fileCount: stats.fileCount, path: entry.name };
     }),
@@ -158,9 +212,13 @@ async function measureLifecycleStep<T>(timings: WinLifecycleTiming[], step: stri
 }
 
 async function observeWinResidues(config: ToolPackConfig, paths = resolveWinPaths(config)): Promise<WinResidueObservation> {
+  const squirrelExpected = usesSquirrelInstaller(config) ? expectedSquirrelInstalledPaths() : null;
+  const squirrelInstalled = squirrelExpected == null ? null : await resolveSquirrelInstalledPaths();
+  const squirrelInstallRoot = squirrelExpected == null ? null : dirname(squirrelExpected.updateExePath);
+  const squirrelInstalledExePath = squirrelInstalled?.installedExePath ?? squirrelExpected?.installedExePath;
   return {
-    installDirExists: await pathExists(paths.installDir),
-    installedExeExists: await pathExists(paths.installedExePath),
+    installDirExists: squirrelInstallRoot != null ? await pathExists(squirrelInstallRoot) : await pathExists(paths.installDir),
+    installedExeExists: squirrelInstalledExePath != null ? await pathExists(squirrelInstalledExePath) : await pathExists(paths.installedExePath),
     managedProcessPids: await findManagedDesktopProcessTree(config),
     productNamespaceRootExists: await pathExists(resolveWinProductNamespaceRoot(config)),
     productUserDataRootExists: await pathExists(resolveWinProductUserDataRoot()),
@@ -168,7 +226,9 @@ async function observeWinResidues(config: ToolPackConfig, paths = resolveWinPath
     registryResidues: (await queryWinRegistryEntries(paths, config)).map((entry) => entry.keyPath),
     runtimeNamespaceRootExists: await pathExists(config.roots.runtime.namespaceRoot),
     startMenuShortcutExists: await pathExists(paths.startMenuShortcutPath),
-    uninstallerExists: await pathExists(paths.uninstallerPath),
+    uninstallerExists: squirrelExpected != null
+      ? await pathExists(squirrelExpected.updateExePath)
+      : await pathExists(paths.uninstallerPath),
     userDesktopShortcutExists: await pathExists(paths.userDesktopShortcutPath),
   };
 }
@@ -176,23 +236,36 @@ async function observeWinResidues(config: ToolPackConfig, paths = resolveWinPath
 export async function installPackedWinApp(config: ToolPackConfig): Promise<WinInstallResult> {
   const lifecycleTimings: WinLifecycleTiming[] = [];
   const paths = resolveWinPaths(config);
+  const squirrel = usesSquirrelInstaller(config);
+  const installerPath = squirrel ? resolveWinSquirrelSetupPath(config, paths) : paths.setupPath;
   const registeredPaths = await measureLifecycleStep(lifecycleTimings, "resolve registered paths", async () => resolveWinRegisteredPaths(config, paths));
-  if (!(await pathExists(paths.setupPath))) throw new Error(`no windows installer found at ${paths.setupPath}; run tools-pack win build first`);
-  if (await pathExists(registeredPaths.uninstallerPath)) {
+  if (!(await pathExists(installerPath))) throw new Error(`no windows installer found at ${installerPath}; run tools-pack win build first`);
+  const existingSquirrel = squirrel ? await resolveSquirrelInstalledPaths() : null;
+  if (existingSquirrel != null || await pathExists(registeredPaths.uninstallerPath)) {
     await measureLifecycleStep(lifecycleTimings, "pre-install uninstall", async () => uninstallPackedWinApp(config));
-  } else {
+  } else if (!squirrel) {
     await measureLifecycleStep(lifecycleTimings, "pre-install remove install dir", async () => removeTree(registeredPaths.installDir));
   }
-  await measureLifecycleStep(lifecycleTimings, "ensure install directory", async () => mkdir(paths.installDir, { recursive: true }));
-  await measureLifecycleStep(lifecycleTimings, "nsis install", async () => runTimed(paths.installTimingPath, "install", async () => {
-    await invokeNsis(paths, paths.setupPath, installArgs(config, paths), "install");
-  }));
-  if (!(await pathExists(paths.installedExePath))) throw new Error(`installer completed but executable is missing at ${paths.installedExePath}`);
+  if (!squirrel) {
+    await measureLifecycleStep(lifecycleTimings, "ensure install directory", async () => mkdir(paths.installDir, { recursive: true }));
+    await measureLifecycleStep(lifecycleTimings, "nsis install", async () => runTimed(paths.installTimingPath, "install", async () => {
+      await invokeNsis(paths, installerPath, installArgs(config, paths), "install");
+    }));
+  } else {
+    await measureLifecycleStep(lifecycleTimings, "squirrel install", async () => runTimed(paths.installTimingPath, "install", async () => {
+      await invokeSquirrel(installerPath, config.silent ? ["--silent"] : []);
+    }));
+  }
+  const squirrelInstalled = squirrel ? await waitForSquirrelInstalledPaths() : null;
+  const installDir = squirrelInstalled?.installDir ?? paths.installDir;
+  const installedExePath = squirrelInstalled?.installedExePath ?? paths.installedExePath;
+  const uninstallerPath = squirrelInstalled?.updateExePath ?? paths.uninstallerPath;
+  if (!(await pathExists(installedExePath))) throw new Error(`installer completed but executable is missing at ${installedExePath}`);
   const registryEntries = await measureLifecycleStep(lifecycleTimings, "query registry", async () => queryWinRegistryEntries(paths, config));
-  const installPayload = await measureLifecycleStep(lifecycleTimings, "collect payload report", async () => collectInstallPayloadReport(paths));
+  const installPayload = await measureLifecycleStep(lifecycleTimings, "collect payload report", async () => collectInstallPayloadReport(paths, installDir));
   await measureLifecycleStep(lifecycleTimings, "write install marker", async () => writeJsonMarker(paths.installMarkerPath, {
     installedAt: new Date().toISOString(),
-    installDir: paths.installDir,
+    installDir,
     installPayload,
     namespace: config.namespace,
     registryEntries: registryEntries.map((entry) => entry.keyPath),
@@ -200,9 +273,9 @@ export async function installPackedWinApp(config: ToolPackConfig): Promise<WinIn
   return {
     desktopShortcutExists: await pathExists(paths.userDesktopShortcutPath),
     desktopShortcutPath: paths.userDesktopShortcutPath,
-    installDir: paths.installDir,
+    installDir,
     lifecycleTimings,
-    installerPath: paths.setupPath,
+    installerPath,
     installPayload,
     markerPath: paths.installMarkerPath,
     namespace: config.namespace,
@@ -211,7 +284,7 @@ export async function installPackedWinApp(config: ToolPackConfig): Promise<WinIn
     startMenuShortcutExists: await pathExists(paths.startMenuShortcutPath),
     startMenuShortcutPath: paths.startMenuShortcutPath,
     timingPath: paths.installTimingPath,
-    uninstallerPath: paths.uninstallerPath,
+    uninstallerPath,
   };
 }
 
@@ -230,17 +303,19 @@ async function writeInstalledLaunchPackagedConfig(config: ToolPackConfig, execut
 
 async function resolveStartTarget(config: ToolPackConfig): Promise<{ configPath: string | null; executablePath: string; source: "built" | "installed" }> {
   const paths = resolveWinPaths(config);
-  if (await pathExists(paths.installedExePath)) {
+  const squirrelInstalled = usesSquirrelInstaller(config) ? await resolveSquirrelInstalledPaths() : null;
+  const installedExePath = squirrelInstalled?.installedExePath ?? paths.installedExePath;
+  if (await pathExists(installedExePath)) {
     return {
-      configPath: await writeInstalledLaunchPackagedConfig(config, paths.installedExePath),
-      executablePath: paths.installedExePath,
+      configPath: await writeInstalledLaunchPackagedConfig(config, installedExePath),
+      executablePath: installedExePath,
       source: "installed",
     };
   }
   const builtManifest = await readBuiltAppManifest(paths, { requireExecutable: true });
   if (builtManifest != null) return { configPath: builtManifest.configPath, executablePath: builtManifest.executablePath, source: "built" };
   if (await pathExists(paths.unpackedExePath)) return { configPath: null, executablePath: paths.unpackedExePath, source: "built" };
-  throw new Error(`no windows app executable found for namespace=${config.namespace}; run tools-pack win build first or tools-pack win install after building an NSIS installer`);
+  throw new Error(`no windows app executable found for namespace=${config.namespace}; run tools-pack win build first or tools-pack win install after building the Windows installer`);
 }
 
 export async function startPackedWinApp(config: ToolPackConfig, options: { waitForStatus?: boolean } = {}): Promise<WinStartResult> {
@@ -300,6 +375,7 @@ function toolPackOwnedDesktopRoots(config: ToolPackConfig): string[] {
     paths.unpackedRoot,
     config.roots.cacheRoot,
     resolveToolPackLauncherLayout(config).paths.namespaceRoot,
+    ...(usesSquirrelInstaller(config) ? [resolveWinSquirrelInstallRoot()] : []),
   ];
 }
 
@@ -383,14 +459,29 @@ export async function readPackedWinLogs(config: ToolPackConfig) {
 export async function uninstallPackedWinApp(config: ToolPackConfig): Promise<WinUninstallResult> {
   const lifecycleTimings: WinLifecycleTiming[] = [];
   const paths = resolveWinPaths(config);
+  const squirrel = usesSquirrelInstaller(config);
   const registeredPaths = await measureLifecycleStep(lifecycleTimings, "resolve registered paths", async () => resolveWinRegisteredPaths(config, paths));
   const stop = await measureLifecycleStep(lifecycleTimings, "stop", async () => stopPackedWinApp(config));
-  if (await pathExists(registeredPaths.uninstallerPath)) {
+  if (squirrel) {
+    if (await pathExists(resolveWinSquirrelUpdatePath())) {
+      await measureLifecycleStep(lifecycleTimings, "squirrel uninstall", async () => runTimed(paths.uninstallTimingPath, "uninstall", async () => {
+        await invokeSquirrel(resolveWinSquirrelUpdatePath(), ["--uninstall"]);
+      }));
+    }
+    if (await pathExists(registeredPaths.uninstallerPath)) {
+      await measureLifecycleStep(lifecycleTimings, "legacy nsis uninstall", async () => runTimed(paths.uninstallTimingPath, "uninstall-legacy", async () => {
+        await invokeNsis(paths, registeredPaths.uninstallerPath, config.silent ? ["/S"] : [], "uninstall-legacy");
+      }));
+    }
+    await measureLifecycleStep(lifecycleTimings, "remove squirrel install root", async () => removeTree(resolveWinSquirrelInstallRoot()));
+  } else if (await pathExists(registeredPaths.uninstallerPath)) {
     await measureLifecycleStep(lifecycleTimings, "nsis uninstall", async () => runTimed(paths.uninstallTimingPath, "uninstall", async () => {
       await invokeNsis(paths, registeredPaths.uninstallerPath, config.silent ? ["/S"] : [], "uninstall");
     }));
   }
-  await measureLifecycleStep(lifecycleTimings, "remove install dir", async () => removeTree(registeredPaths.installDir));
+  if (!squirrel) {
+    await measureLifecycleStep(lifecycleTimings, "remove install dir", async () => removeTree(registeredPaths.installDir));
+  }
   const registryResiduesRemoved = await measureLifecycleStep(lifecycleTimings, "cleanup registry residues", async () => cleanupWinRegistryResidues(registeredPaths, config));
   const removalPlan = await measureLifecycleStep(lifecycleTimings, "create removal plan", async () => createWinRemovalPlan(config));
   await measureLifecycleStep(lifecycleTimings, "write uninstall marker", async () => writeJsonMarker(paths.uninstallMarkerPath, {
@@ -422,7 +513,7 @@ export async function uninstallPackedWinApp(config: ToolPackConfig): Promise<Win
     residueObservation: await measureLifecycleStep(lifecycleTimings, "observe residues", async () => observeWinResidues(config, registeredPaths)),
     stop,
     timingPath: paths.uninstallTimingPath,
-    uninstallerPath: registeredPaths.uninstallerPath,
+    uninstallerPath: squirrel ? resolveWinSquirrelUpdatePath() : registeredPaths.uninstallerPath,
   };
 }
 
@@ -431,7 +522,7 @@ export async function cleanupPackedWinNamespace(config: ToolPackConfig): Promise
   const launcher = resolveToolPackLauncherLayout(config);
   const registeredPaths = await resolveWinRegisteredPaths(config, paths);
   const removalPlan = await createWinRemovalPlan(config);
-  if (await pathExists(registeredPaths.uninstallerPath)) {
+  if ((usesSquirrelInstaller(config) && await pathExists(resolveWinSquirrelUpdatePath())) || await pathExists(registeredPaths.uninstallerPath)) {
     await uninstallPackedWinApp(config);
   }
   const stop = await stopPackedWinApp(config);
@@ -463,6 +554,7 @@ export async function cleanupPackedWinNamespace(config: ToolPackConfig): Promise
 export async function listPackedWinNamespaces(config: ToolPackConfig): Promise<WinListResult> {
   const paths = resolveWinPaths(config);
   const registeredPaths = await resolveWinRegisteredPaths(config, paths);
+  const squirrelInstalled = usesSquirrelInstaller(config) ? await resolveSquirrelInstalledPaths() : null;
   const registryEntries = await queryWinRegistryEntries(registeredPaths, config);
   const productNamespaceRoot = resolveWinProductNamespaceRoot(config);
   const productUserDataRoot = resolveWinProductUserDataRoot();
@@ -472,9 +564,9 @@ export async function listPackedWinNamespaces(config: ToolPackConfig): Promise<W
       builtExecutableExists: builtManifest != null || await pathExists(paths.unpackedExePath),
       builtExecutablePath: builtManifest?.executablePath ?? ((await pathExists(paths.unpackedExePath)) ? paths.unpackedExePath : null),
       builtManifestPath: paths.builtManifestPath,
-      installDir: registeredPaths.installDir,
-      installedExeExists: await pathExists(registeredPaths.installedExePath),
-      installedExePath: registeredPaths.installedExePath,
+      installDir: squirrelInstalled?.installDir ?? registeredPaths.installDir,
+      installedExeExists: squirrelInstalled != null ? await pathExists(squirrelInstalled.installedExePath) : await pathExists(registeredPaths.installedExePath),
+      installedExePath: squirrelInstalled?.installedExePath ?? registeredPaths.installedExePath,
       namespace: config.namespace,
       publicDesktopShortcutExists: await pathExists(paths.publicDesktopShortcutPath),
       publicDesktopShortcutPath: paths.publicDesktopShortcutPath,
@@ -487,12 +579,12 @@ export async function listPackedWinNamespaces(config: ToolPackConfig): Promise<W
       removalPlan: await createWinRemovalPlan(config),
       runtimeNamespaceRoot: config.roots.runtime.namespaceRoot,
       runtimeNamespaceRootExists: await pathExists(config.roots.runtime.namespaceRoot),
-      setupExists: await pathExists(paths.setupPath),
-      setupPath: paths.setupPath,
+      setupExists: await pathExists(usesSquirrelInstaller(config) ? resolveWinSquirrelSetupPath(config, paths) : paths.setupPath),
+      setupPath: usesSquirrelInstaller(config) ? resolveWinSquirrelSetupPath(config, paths) : paths.setupPath,
       startMenuShortcutExists: await pathExists(paths.startMenuShortcutPath),
       startMenuShortcutPath: paths.startMenuShortcutPath,
-      uninstallerExists: await pathExists(registeredPaths.uninstallerPath),
-      uninstallerPath: registeredPaths.uninstallerPath,
+      uninstallerExists: squirrelInstalled != null ? await pathExists(squirrelInstalled.updateExePath) : await pathExists(registeredPaths.uninstallerPath),
+      uninstallerPath: squirrelInstalled?.updateExePath ?? registeredPaths.uninstallerPath,
       userDesktopShortcutExists: await pathExists(paths.userDesktopShortcutPath),
       userDesktopShortcutPath: paths.userDesktopShortcutPath,
     },

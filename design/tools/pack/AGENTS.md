@@ -8,9 +8,9 @@ Read `tools/pack/CACHE.md` before changing any build-cache node key, adding a ca
 
 - Local packaging orchestration for packaged Open Design artifacts.
 - mac build/install/start/stop/logs/uninstall/cleanup smoke commands.
-- Windows NSIS build/install/start/stop/logs/uninstall/cleanup/list/reset smoke commands.
-- Windows registry observation/cleanup must go through `reg.exe` and stay scoped to entries matching the namespace install/uninstaller paths.
-- Windows lifecycle logs must expose NSIS automation logs/markers/timings in addition to app runtime logs.
+- Windows Squirrel.Windows build/install/start/stop/logs/uninstall/cleanup/list/reset smoke commands, with explicit NSIS retained as a legacy target.
+- Windows legacy NSIS registry observation/cleanup must go through `reg.exe` and stay scoped to entries matching the namespace install/uninstaller paths; Squirrel's per-user install root is observed on disk.
+- Windows lifecycle logs must expose Squirrel install/update/uninstall event markers and timings, plus NSIS automation logs when the legacy target is selected, in addition to app runtime logs.
 - Linux AppImage build/install/start/stop/logs/uninstall/cleanup smoke commands.
 - Linux headless (no-Electron) install/start/stop via `--headless` flag on `install`, `start`, and `stop`.
 - Linux containerized builds via `electronuserland/builder` Docker image for distro-agnostic glibc compat.
@@ -50,13 +50,15 @@ Read this section before changing packaged auto-update behavior. The updater cro
 - `apps/daemon/src/sidecar/payload-desktop-handoff.ts` is the isolated compatibility bridge for historical outers that cannot delegate. It rearms the selected payload with the real previous pointer, launches that payload's desktop after the old outer exits, and persists a small desktop-binding journal for later shortcut cold starts. The journal is not a second version selector.
 - `install.json` continues to identify the physically installed outer executable for recovery. Payload activation or handoff must not rewrite it to a versioned payload executable.
 - `tools/serve` owns deterministic local updater fixtures only. It must not contain product updater runtime logic.
-- `tools/pack` owns packaged build/install/start/inspect/logs/uninstall/cleanup and the platform installer harness, including Windows NSIS registry observation and cleanup.
+- `tools/pack` owns packaged build/install/start/inspect/logs/uninstall/cleanup and the platform installer harness, including Squirrel `Setup.exe`, `RELEASES`, full/delta `.nupkg` collection and legacy NSIS registry observation and cleanup.
+- `apps/packaged/src/index.ts` handles Squirrel's `--squirrel-install`, `--squirrel-updated`, `--squirrel-uninstall` and `--squirrel-obsolete` lifecycle switches before normal startup.
 
 ### Release metadata shape
 
-The runtime updater reads `https://releases.open-design.ai/<channel>/latest/metadata.json` unless `OD_UPDATE_METADATA_URL` overrides it. For package-launcher updates:
+The runtime updater reads the project-owned stable Windows feed at `https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json` unless `OD_UPDATE_METADATA_URL` overrides it. For package-launcher updates:
 
-- A valid packaged-launcher context prefers `platforms.<platform>.artifacts.payload`; the platform installer (`dmg` on macOS or `installer` on Windows) remains the recovery/fallback path.
+- A valid packaged-launcher context prefers `platforms.<platform>.artifacts.payload`; the platform installer (`dmg` on macOS or Squirrel `Setup.exe` on Windows) remains the recovery/fallback path.
+- The stable Windows feed's `platforms.win.artifacts.installer` has `type: installer`, `name: Setup.exe`, an immutable release asset URL and a SHA-256; the web updater uses that shape to expose the restart action.
 - The artifact must have a checksum, preferably `sha256Url`; the updater verifies bytes before exposing an install action.
 - `OD_UPDATE_CURRENT_VERSION` may override the packaged version for tests, but user-flow package validation should prefer building the package with the intended `--app-version`.
 - Release metadata may include `releaseNote.content`, with a `defaultLocale` and locale descriptors containing `url`, `mediaType`, `sha256`, and `size`. The updater does not currently consume this block; `tools-release` owns its publication and verification independently from updater UI behavior.
@@ -116,7 +118,7 @@ curl.exe --ssl-no-revoke -fsSL https://s3.nexu.space/od-releases/betas/latest/me
 2. Build a non-portable Windows beta package with the real beta namespace and a version lower than latest:
 
 ```bash
-pnpm tools-pack win build --dir C:\odtp-beta-release-fixed --namespace release-beta-win --to nsis --app-version 0.8.0-beta.5 --json
+pnpm tools-pack win build --dir C:\odtp-beta-release-fixed --namespace release-beta-win --to squirrel --app-version 0.8.0-beta.5 --json
 ```
 
 3. Give the tester the generated installer:
@@ -127,7 +129,7 @@ C:\odtp-beta-release-fixed\out\win\namespaces\release-beta-win\builder\Material 
 
 4. Expected user flow:
 
-- User installs `0.8.0-beta.5` through the NSIS UI.
+- User installs `0.8.0-beta.5` through Squirrel `Setup.exe`.
 - User launches `Material Designer Beta`.
 - App auto-checks the real beta feed and selects the latest Windows launcher payload when the package-launcher context is valid. The installer is the fallback path when the payload artifact or launcher context is unavailable.
 - For the payload path, the app downloads `platforms.win.artifacts.payload`, verifies sha256, prepares the payload under `%APPDATA%\Material Designer\launcher\channels\beta\namespaces\release-beta-win\versions\<version>\payload`, and shows the web updater popup.
@@ -136,7 +138,7 @@ C:\odtp-beta-release-fixed\out\win\namespaces\release-beta-win\builder\Material 
 - Applying the payload update should quit and relaunch the exact executable under the prepared version's `payload` directory, then mark launcher `active` and `lastSuccessful` to that version and clear `attempt.json`.
 - A historical outer may first create a mixed generation. Its daemon-sidecar compatibility handoff must replace the historical desktop with the exact payload desktop executable, preserve the true previous pointer for recovery, and leave the handoff journal either absent or `confirmed`—never stranded in `prepared` or `armed`.
 - After a full stop, launching the installed shortcut/outer again must still converge on the same active payload desktop and preserve daemon/API behavior, including a real PPTX export.
-- If the updater falls back to the installer path, clicking `Open installer` opens the real downloaded beta installer. Installing it should overwrite the same `Material Designer-release-beta-win` registry key, not create a second beta key.
+- If the updater falls back to the installer path, clicking `Restart to install update` stages the real downloaded beta `Setup.exe` and restarts through Squirrel. The install root and shortcuts must remain the same beta identity; it must not create a second channel installation.
 
 5. Registry and launcher sanity check after beta.6 update:
 
