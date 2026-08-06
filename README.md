@@ -251,17 +251,18 @@ certificate, so every installer published from here trips SmartScreen on first r
 
 ## Install
 
-**Windows, 64-bit — `v0.16.1-r8.1`**
+**Windows, 64-bit — `v0.16.1-r71.1`**
 
-[**Download the Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe)
-· [portable archive](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-portable.zip)
-· [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r8.1/material-designer-0.16.1-win-x64-setup.exe.sha256)
+[**Download the Windows installer**](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe)
+· [portable archive](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-portable.zip)
+· [checksum](https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe.sha256)
 · [all releases](https://github.com/Ding-Ding-Projects/material-designer/releases)
 
 That link points at one specific published build rather than at whatever is newest, so the
 checksum beside it describes exactly the file it hands you. The installer was built and
 attached by the same run that published the tag, and the packaged smoke test installed,
-launched, health-checked and uninstalled that build.
+launched, health-checked and uninstalled that build. The verified release is **Bamboo Shoot
+Har Gow · 筍尖蝦餃**, built from commit `5544035` by [run 30957484333](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30957484333).
 
 > [!WARNING]
 > **The installer is not code-signed**, so Windows SmartScreen warns on first run

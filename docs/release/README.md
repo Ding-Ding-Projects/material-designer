@@ -16,10 +16,12 @@ How a release is produced, what proves it works, and what each published file is
 ## Status
 
 > [!IMPORTANT]
-> **Releases exist.** `v0.16.1-r7.1` and `v0.16.1-r8.1` were published by the runs
-> that built their installers. The packaged smoke test has installed a built
-> application, launched it, had the running process answer its own health
-> endpoint, screenshotted it, uninstalled it and asserted zero residue.
+> **Releases exist.** The latest verified legacy release is `v0.16.1-r71.1`,
+> published as **Bamboo Shoot Har Gow · 筍尖蝦餃** by [run 30957484333](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30957484333).
+> It carried the installer, portable archive, checksum and dim sum photo; the
+> packaged smoke test installed the built application, launched it, had the
+> running process answer its own health endpoint, and uninstalled it without
+> residue.
 >
 > **What that does not mean.** A green smoke test proves the artifact is a working
 > application. It does not prove the application is finished: the Cantonese
