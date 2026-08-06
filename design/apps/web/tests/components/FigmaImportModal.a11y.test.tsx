@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { FigmaImportResult } from '@open-design/contracts';
 
@@ -29,6 +29,7 @@ describe('FigmaImportModal accessibility and layout', () => {
   it('gives the URL and notes controls durable accessible names', () => {
     renderModal();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
     expect(screen.getByRole('textbox', { name: 'Figma URL' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Notes for the build' })).toBeTruthy();
   });
