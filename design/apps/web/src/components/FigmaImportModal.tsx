@@ -10,7 +10,13 @@
 // Copy is intentionally inline (matching LibraryUploadModal); only the "+"
 // menu entry label is i18n-keyed.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import type { FigmaImportResult } from '@open-design/contracts';
@@ -151,6 +157,25 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
     onClose();
   }, [url, notes, onFigmaUrl, onClose]);
 
+  const activateMode = useCallback((next: Mode) => {
+    setMode(next);
+    document.getElementById(`figma-import-tab-${next}`)?.focus();
+  }, []);
+
+  const onTabKeyDown = useCallback((event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!onFigmaUrl) return;
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next: Mode = event.key === 'Home'
+      ? 'file'
+      : event.key === 'End'
+        ? 'url'
+        : mode === 'file'
+          ? 'url'
+          : 'file';
+    activateMode(next);
+  }, [activateMode, mode, onFigmaUrl]);
+
   const importing = status === 'importing';
 
   const modal = (
@@ -208,24 +233,32 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
           <>
             <div className={styles.body}>
             {onFigmaUrl ? (
-              <div className={styles.tabs} role="tablist">
+              <div className={styles.tabs} role="tablist" aria-label="Figma import source">
                 <button
+                  id="figma-import-tab-file"
                   type="button"
                   role="tab"
                   aria-selected={mode === 'file'}
+                  aria-controls="figma-import-panel-file"
+                  tabIndex={mode === 'file' ? 0 : -1}
                   className={styles.tab}
                   data-active={mode === 'file'}
-                  onClick={() => setMode('file')}
+                  onClick={() => activateMode('file')}
+                  onKeyDown={onTabKeyDown}
                 >
                   Upload .fig
                 </button>
                 <button
+                  id="figma-import-tab-url"
                   type="button"
                   role="tab"
                   aria-selected={mode === 'url'}
+                  aria-controls="figma-import-panel-url"
+                  tabIndex={mode === 'url' ? 0 : -1}
                   className={styles.tab}
                   data-active={mode === 'url'}
-                  onClick={() => setMode('url')}
+                  onClick={() => activateMode('url')}
+                  onKeyDown={onTabKeyDown}
                 >
                   Figma URL
                 </button>
@@ -234,55 +267,72 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
 
             {mode === 'file' ? (
               <div
-                className={styles.dropzone}
-                data-drag={dragOver ? 'true' : 'false'}
-                onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragOver={(e) => e.preventDefault()}
-                onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOver(false);
-                  pickFile(Array.from(e.dataTransfer.files ?? []));
-                }}
-                onClick={() => inputRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); }
-                }}
+                id="figma-import-panel-file"
+                role={onFigmaUrl ? 'tabpanel' : undefined}
+                aria-labelledby={onFigmaUrl ? 'figma-import-tab-file' : undefined}
+                aria-label={!onFigmaUrl ? 'Upload .fig' : undefined}
+                tabIndex={onFigmaUrl ? 0 : undefined}
+                className={styles.tabPanel}
               >
-                <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
-                <p className={styles.dropTitle}>
-                  {file ? file.name : (<>Drop a <code>.fig</code> here, or <span className={styles.dropLink}>browse</span></>)}
-                </p>
-                <p className={styles.dropHint}>
-                  Decoded on your machine — tokens, components &amp; assets. No Figma account.
-                </p>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".fig"
-                  className={styles.fileInput}
-                  onChange={(e) => {
-                    pickFile(Array.from(e.target.files ?? []));
-                    e.target.value = '';
+                <div
+                  className={styles.dropzone}
+                  data-drag={dragOver ? 'true' : 'false'}
+                  onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOver(false);
+                    pickFile(Array.from(e.dataTransfer.files ?? []));
                   }}
-                />
+                  onClick={() => inputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); }
+                  }}
+                >
+                  <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
+                  <p className={styles.dropTitle}>
+                    {file ? file.name : (<>Drop a <code>.fig</code> here, or <span className={styles.dropLink}>browse</span></>)}
+                  </p>
+                  <p className={styles.dropHint}>
+                    Decoded on your machine — tokens, components &amp; assets. No Figma account.
+                  </p>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".fig"
+                    className={styles.fileInput}
+                    onChange={(e) => {
+                      pickFile(Array.from(e.target.files ?? []));
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
               </div>
             ) : (
-              <div className={styles.urlPane}>
-                <input
-                  type="url"
-                  className={styles.urlInput}
-                  aria-label="Figma URL"
-                  placeholder="https://figma.com/design/…"
-                  value={url}
-                  onChange={(e) => { setUrl(e.target.value); setError(null); }}
-                />
-                <p className={styles.dropHint}>
-                  Runs through the Figma connector (OAuth) and the migration flow.
-                </p>
+              <div
+                id="figma-import-panel-url"
+                role="tabpanel"
+                aria-labelledby="figma-import-tab-url"
+                tabIndex={0}
+                className={styles.tabPanel}
+              >
+                <div className={styles.urlPane}>
+                  <input
+                    type="url"
+                    className={styles.urlInput}
+                    aria-label="Figma URL"
+                    placeholder="https://figma.com/design/…"
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); setError(null); }}
+                  />
+                  <p className={styles.dropHint}>
+                    Runs through the Figma connector (OAuth) and the migration flow.
+                  </p>
+                </div>
               </div>
             )}
 

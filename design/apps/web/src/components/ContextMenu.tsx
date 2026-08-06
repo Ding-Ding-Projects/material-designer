@@ -154,7 +154,14 @@ export function ContextMenu({
         && target.closest('[data-context-menu-opener]') != null;
       dismiss(!opensAnotherMenu);
     };
-    const onScroll = () => dismiss();
+    const onScroll = (event: Event) => {
+      // The menu itself is a bounded scroller. Scrolling its items must not
+      // dismiss the menu before the user can reach the rest of the actions;
+      // only movement of an ancestor/viewport invalidates the anchor.
+      const target = event.target;
+      if (target instanceof Node && menuRef.current?.contains(target)) return;
+      dismiss();
+    };
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('scroll', onScroll, true);

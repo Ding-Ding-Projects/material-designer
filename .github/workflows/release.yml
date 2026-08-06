@@ -67,6 +67,9 @@ jobs:
           # The build needs design/, not the provenance submodule.
           fetch-depth: 0
 
+      - name: Bootstrap Windows CI tools
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
+
       - name: Verify design/ against the pinned upstream tree
         shell: bash
         # Verify and Release are separate workflows on the same trigger, so a

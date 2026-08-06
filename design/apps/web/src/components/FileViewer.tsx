@@ -1403,6 +1403,7 @@ export const FileViewer = memo(function FileViewer({
         onRemovePreviewComment={onRemovePreviewComment}
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
+        onRegisterUpdateSavePreparation={onRegisterUpdateSavePreparation}
         onBrandExtractionStopRequest={onBrandExtractionStopRequest}
         commentPortalId={commentPortalId}
         onCommentModeChange={onCommentModeChange}
@@ -5980,6 +5981,7 @@ function HtmlViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  onRegisterUpdateSavePreparation,
   onBrandExtractionStopRequest,
   commentPortalId,
   onCommentModeChange,
@@ -6001,6 +6003,9 @@ function HtmlViewer({
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<boolean | void> | boolean | void;
   onFileSaved?: () => Promise<void> | void;
+  onRegisterUpdateSavePreparation?: (
+    handler: () => Promise<OpenDesignHostUpdaterSavePreparation>,
+  ) => () => void;
   onBrandExtractionStopRequest?: () => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
@@ -9624,6 +9629,31 @@ function HtmlViewer({
     if (!(await flushManualEditStyleSave())) return false;
     return !manualEditSavingRef.current;
   }
+
+  // The updater can ask the active HTML renderer to finish before the native
+  // process exits. Keep the registered function in a ref so its stable host
+  // registration always reaches the current file, draft, iframe session, and
+  // save queue rather than a closure from an earlier render.
+  const htmlSavePreparationRef = useRef<
+    () => Promise<OpenDesignHostUpdaterSavePreparation>
+  >(async () => ({ state: 'clean' }));
+  htmlSavePreparationRef.current = async () => {
+    const saved = await settleManualEditHistoryBoundary();
+    return saved
+      ? { state: 'saved' }
+      : { reason: 'save-failed', state: 'failed' };
+  };
+
+  useEffect(() => {
+    if (!onRegisterUpdateSavePreparation) return undefined;
+    const unregister = onRegisterUpdateSavePreparation(() => htmlSavePreparationRef.current());
+    return () => {
+      // Keep the old renderer registered until its pending edit has settled;
+      // this is the same handoff guarantee MarkdownViewer provides on a file
+      // switch or a restart request.
+      void htmlSavePreparationRef.current().then(unregister, unregister);
+    };
+  }, [onRegisterUpdateSavePreparation]);
 
   function describeManualEditSaveFailure(
     prefix: string,
@@ -15345,14 +15375,14 @@ function MarkdownViewer({
 
   useEffect(() => {
     if (!onRegisterUpdateSavePreparation) return undefined;
-    return onRegisterUpdateSavePreparation(flushPendingMarkdownSave);
-  }, [flushPendingMarkdownSave, onRegisterUpdateSavePreparation]);
-
-  useEffect(() => {
+    const unregister = onRegisterUpdateSavePreparation(flushPendingMarkdownSave);
+    // Keep the old file's handler registered until its final debounced or
+    // in-flight write settles. A file switch unmounts this viewer; removing
+    // the handler first would let an update restart race past the old draft.
     return () => {
-      void flushPendingMarkdownSave();
+      void flushPendingMarkdownSave().then(unregister, unregister);
     };
-  }, [flushPendingMarkdownSave]);
+  }, [flushPendingMarkdownSave, onRegisterUpdateSavePreparation]);
 
   useEffect(() => {
     if (text === null) return undefined;

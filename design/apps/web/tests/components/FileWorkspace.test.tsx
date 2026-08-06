@@ -2834,6 +2834,66 @@ describe('FileWorkspace sketch save', () => {
     );
   });
 
+  it('registers the HTML editor save barrier with the updater', async () => {
+    const file: ProjectFile = {
+      name: 'page.html',
+      path: 'page.html',
+      type: 'file',
+      size: 100,
+      mtime: 1700000000,
+      kind: 'text',
+      mime: 'text/html',
+      artifactManifest: {
+        version: 1,
+        kind: 'html-document',
+        title: 'Page',
+        entry: 'page.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    };
+    let prepareQuitListener: ((request: { requestId: string }) => void) | null = null;
+    const respondPrepareQuit = vi.fn(async () => ({ ok: true as const }));
+    restoreMockHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          subscribePrepareQuit: (listener) => {
+            prepareQuitListener = listener;
+            return () => {
+              prepareQuitListener = null;
+            };
+          },
+          respondPrepareQuit,
+        },
+      },
+    });
+    mockedFetchProjectFileText.mockResolvedValue('<!doctype html><html><body><p>Page</p></body></html>');
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[file]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: ['page.html'], active: 'page.html' }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(prepareQuitListener).not.toBeNull());
+    act(() => {
+      prepareQuitListener?.({ requestId: 'restart-html-1' });
+    });
+    await waitFor(() => {
+      expect(respondPrepareQuit).toHaveBeenCalledWith({
+        requestId: 'restart-html-1',
+        preparation: { state: 'saved' },
+      });
+    });
+  });
+
   it('preserves a newer sketch scene while its autosave is still debouncing', async () => {
     const file: ProjectFile = {
       name: 'test.sketch.json',

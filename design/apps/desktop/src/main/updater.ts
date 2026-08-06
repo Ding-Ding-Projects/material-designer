@@ -435,6 +435,11 @@ export function createDesktopUpdater(
   let lastCheckedAt: string | undefined;
   let installResult: DesktopUpdateStatusSnapshot["installResult"];
   let pendingInstallerAuthorizationPath: string | null = null;
+  // Keep every marker path alive until the helper has either consumed it or
+  // cache clearing explicitly revokes it. This closes the gap where a marker
+  // was authorized, the UI reset the updater, and the already-spawned helper
+  // could still open Setup.exe after a later process exit.
+  const installerAuthorizationPaths = new Set<string>();
   let installFrozen = false;
   let lifecycleSummary: DesktopUpdateCacheLifecycleSummary | undefined;
   let progress: DesktopUpdateProgressSnapshot | undefined;
@@ -1107,7 +1112,31 @@ export function createDesktopUpdater(
       return openError;
     }
     pendingInstallerAuthorizationPath = authorizationPath;
+    installerAuthorizationPaths.add(authorizationPath);
     return "";
+  }
+
+  async function revokeInstallerAuthorizations(updateRoot: string): Promise<void> {
+    const helpersRoot = join(updateRoot, HELPERS_DIR);
+    const paths = new Set(installerAuthorizationPaths);
+    if (pendingInstallerAuthorizationPath != null) paths.add(pendingInstallerAuthorizationPath);
+    const helperEntries = await readdir(helpersRoot).catch(() => [] as string[]);
+    for (const entry of helperEntries) {
+      if (entry.startsWith("authorize-installer-") && entry.endsWith(".token")) {
+        paths.add(join(helpersRoot, entry));
+      }
+    }
+    pendingInstallerAuthorizationPath = null;
+    installerAuthorizationPaths.clear();
+    for (const path of paths) {
+      if (!containsPath(helpersRoot, path)) continue;
+      await rm(path, { force: true }).catch((error: unknown) => {
+        logger.warn("[open-design updater] failed to revoke installer authorization", {
+          error: error instanceof Error ? error.message : String(error),
+          path,
+        });
+      });
+    }
   }
 
   async function rearmPersistedInstallerIfNeeded(): Promise<DesktopUpdateStatusSnapshot | null> {
@@ -1328,7 +1357,7 @@ export function createDesktopUpdater(
     }
   }
 
-  async function serialized(run: () => Promise<DesktopUpdateStatusSnapshot>): Promise<DesktopUpdateStatusSnapshot> {
+  async function serialized<T>(run: () => Promise<T>): Promise<T> {
     const next = operation.catch(() => undefined).then(run);
     operation = next.catch(() => undefined);
     return await next;
@@ -1339,9 +1368,10 @@ export function createDesktopUpdater(
    * the one-shot update state (downloaded release, install freeze) so the next
    * check starts from a clean slate. Retained launcher versions
    * (active/lastSuccessful) and a confirmed handoff journal are never touched.
-   * Boundary: an installer helper already spawned by a prior install is not
-   * cancelled — clearing after opening an installer resets the updater state
-   * only.
+   * Boundary: an installer helper already spawned by a prior install is
+   * revoked by deleting its authorization marker. A helper that has already
+   * observed the marker and launched cannot be recalled, but the one-shot
+   * marker is never left behind by this reset.
    */
   async function clearCacheAndResetState(): Promise<DesktopUpdateStatusSnapshot> {
     const unsupported = unsupportedStatus();
@@ -1368,6 +1398,7 @@ export function createDesktopUpdater(
       installResult: undefined,
       version: STORE_METADATA_VERSION,
     });
+    await revokeInstallerAuthorizations(opened.root.realRoot);
     activeRelease = null;
     candidate = null;
     incomingRelease = null;
@@ -1418,7 +1449,7 @@ export function createDesktopUpdater(
     checkForUpdates: (options) => serialized(() => checkForCandidate(options)),
     clearCache: () => serialized(clearCacheAndResetState),
     config,
-    authorizeInstallerLaunch,
+    authorizeInstallerLaunch: () => serialized(authorizeInstallerLaunch),
     downloadUpdate: () => serialized(downloadUpdate),
     handle(action) {
       switch (action) {

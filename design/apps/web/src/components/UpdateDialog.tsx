@@ -220,7 +220,15 @@ export function UpdateDialog() {
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
+      if (event.key === 'Escape') {
+        // Consume Escape even while a restart/save handoff is busy. Otherwise
+        // the event can reach a page-level handler and close or mutate the
+        // surface underneath this dialog.
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+        return;
+      }
       if (event.key !== 'Tab') return;
 
       const dialog = dialogRef.current;
@@ -383,7 +391,10 @@ export function UpdateDialog() {
   const available = state === 'available';
   const checking = state === 'checking';
   const downloading = state === 'downloading';
-  const installing = state === 'installing' || model.installerOpened;
+  // An opened Squirrel installer is ready for a retry if the renderer-save or
+  // quit handoff failed. Treating it as "installing" removed the only primary
+  // action and made a transient failure unrecoverable from the dialog.
+  const installing = state === 'installing';
   const unsupported = state === 'unsupported';
   const progress = model.downloadProgress?.percent;
   const statusMessage = (() => {

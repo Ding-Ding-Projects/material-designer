@@ -29,9 +29,28 @@ describe('FigmaImportModal accessibility and layout', () => {
   it('gives the URL and notes controls durable accessible names', () => {
     renderModal();
 
+    const fileTab = screen.getByRole('tab', { name: 'Upload .fig' });
+    const urlTab = screen.getByRole('tab', { name: 'Figma URL' });
+    expect(fileTab).toHaveAttribute('aria-controls', 'figma-import-panel-file');
+    expect(urlTab).toHaveAttribute('aria-controls', 'figma-import-panel-url');
+    expect(screen.getByRole('tabpanel', { name: 'Upload .fig' })).toBeTruthy();
+
     fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
+    expect(screen.getByRole('tabpanel', { name: 'Figma URL' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Figma URL' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Notes for the build' })).toBeTruthy();
+  });
+
+  it('supports arrow-key tab navigation with a roving tab stop', () => {
+    renderModal();
+    const fileTab = screen.getByRole('tab', { name: 'Upload .fig' });
+    const urlTab = screen.getByRole('tab', { name: 'Figma URL' });
+
+    fileTab.focus();
+    fireEvent.keyDown(fileTab, { key: 'ArrowRight' });
+    expect(urlTab).toHaveFocus();
+    expect(urlTab).toHaveAttribute('aria-selected', 'true');
+    expect(fileTab).toHaveAttribute('tabindex', '-1');
   });
 
   it('keeps the modal body scrollable while the header and footer remain fixed', () => {

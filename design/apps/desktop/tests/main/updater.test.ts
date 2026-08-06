@@ -3435,6 +3435,44 @@ describe("desktop updater", () => {
     }
   });
 
+  it("revokes deferred installer authorization markers during clear-cache", async () => {
+    const root = makeRoot();
+    const fixture = await createUpdaterFixture();
+    const launches: Array<{ authorizationPath: string }> = [];
+    try {
+      const updater = createDesktopUpdater(
+        {
+          arch: "arm64",
+          downloadRoot: root,
+          env: {
+            ...updaterEnv(fixture.metadataUrl),
+            [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
+          },
+          source: SIDECAR_SOURCES.TOOLS_PACK,
+        },
+        {
+          launchInstallerAfterQuit: async (input) => {
+            launches.push({ authorizationPath: input.authorizationPath });
+            return "";
+          },
+        },
+      );
+
+      await updater.checkForUpdates();
+      await updater.installUpdate();
+      expect((await updater.authorizeInstallerLaunch()).ok).toBe(true);
+      const marker = launches[0]?.authorizationPath;
+      expect(marker).toBeTruthy();
+      expect(existsSync(marker ?? "")).toBe(true);
+
+      await updater.clearCache();
+      expect(existsSync(marker ?? "")).toBe(false);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
   it("clears installer-open freeze once the restarted app matches the downloaded update", async () => {
     const root = makeRoot();
     const fixture = await createUpdaterFixture();

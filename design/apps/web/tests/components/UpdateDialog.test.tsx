@@ -514,6 +514,60 @@ describe('UpdateDialog', () => {
     expect(opener).toHaveFocus();
   });
 
+  it('keeps a failed installer handoff retryable after the installer was opened', async () => {
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    const ready = payloadReadyStatus({
+      artifact: {
+        name: 'Setup.exe',
+        platformKey: 'win',
+        type: 'installer',
+        url: 'https://example.test/Setup.exe',
+      },
+      capabilities: {
+        canApplyInPlace: false,
+        canDownload: true,
+        canOpenInstaller: true,
+        requiresManualInstall: true,
+      },
+      downloadPath: '/tmp/open-design-updater/Setup.exe',
+      platform: 'win32',
+    });
+    const installed = {
+      ...ready,
+      installResult: {
+        openedAt: '2026-08-06T12:00:00.000Z',
+        path: '/tmp/open-design-updater/Setup.exe',
+      },
+      state: 'downloaded' as const,
+    };
+    const install = vi.fn(async () => installed);
+    const quit = vi.fn(async () => ({ ok: false as const, reason: 'quit failed' }));
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          install,
+          quit,
+          status: vi.fn(async () => ready),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(<I18nProvider initial="en"><UpdateDialog /></I18nProvider>);
+    await act(async () => {
+      openDialogListener?.({ source: 'windows-update-menu' });
+      await Promise.resolve();
+    });
+    await screen.findByRole('dialog', { name: 'Check for updates' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restart to install update' }));
+    await waitFor(() => expect(quit).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Restart to install update' })).toBeEnabled();
+  });
+
   it('stops progress interpolation under reduced motion', () => {
     const reducedMotionBlock = UPDATE_DIALOG_CSS.match(
       /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*)\}\s*$/u,

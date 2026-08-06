@@ -211,6 +211,10 @@
 .spin {
   animation: figmaImportSpin 700ms linear infinite;
 }
+
+.tabPanel {
+  min-width: 0;
+}
 @keyframes figmaImportSpin {
   to {
     transform: rotate(360deg);

@@ -37,6 +37,10 @@ jobs:
         with:
           clean: true
 
+      - name: Bootstrap Linux CI tools
+        shell: bash
+        run: bash scripts/bootstrap-ci-tools.sh
+
       - name: Verify Pages publishing tools
         shell: bash
         run: |

@@ -95,6 +95,17 @@ design-system accessibility fixes already present in this checkout.
 - `apps/web/tests/components/FileWorkspace.test.tsx`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
+### 2026-08-06 — Keep scrollable context menus open
+
+**Reason:** The menu is intentionally height-bounded and scrollable, but its
+capture-phase scroll listener dismissed it even when the user scrolled inside
+the menu. The focused regression spec records that internal scrolling stays
+open while an ancestor scroll still dismisses the anchored surface.
+
+**Changed files:**
+
+- `apps/web/tests/components/ContextMenu.behavior.test.tsx`
+
 ### 2026-08-06 — Use one command-palette shortcut
 
 **Reason:** The desktop header announced `Ctrl K` while the application accepted

@@ -4061,6 +4061,7 @@ export function FileWorkspace({
           />
         ) : activeFile ? (
           <FileViewer
+            key={activeFile.name}
             projectId={projectId}
             projectKind={projectKind}
             file={activeFile}
