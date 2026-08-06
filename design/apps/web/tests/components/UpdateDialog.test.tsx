@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -12,6 +13,8 @@ import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { UpdateDialog } from '../../src/components/UpdateDialog';
 import { I18nProvider } from '../../src/i18n';
+
+const UPDATE_DIALOG_CSS = readFileSync(new URL('../../src/components/UpdateDialog.module.css', import.meta.url), 'utf8');
 
 function idleStatus(overrides: Partial<OpenDesignHostUpdaterStatusSnapshot> = {}): OpenDesignHostUpdaterStatusSnapshot {
   return {
@@ -388,5 +391,133 @@ describe('UpdateDialog', () => {
     await waitFor(() => expect(quit).toHaveBeenCalledWith({
       payload: { force: true, source: 'mac-app-menu' },
     }));
+  });
+
+  it('traps focus in the modal and restores focus to the opener on every dismissal path', async () => {
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    const ready = payloadReadyStatus({
+      artifact: {
+        name: 'Setup.exe',
+        platformKey: 'win',
+        type: 'installer',
+        url: 'https://example.test/Setup.exe',
+      },
+      capabilities: {
+        canApplyInPlace: false,
+        canDownload: true,
+        canOpenInstaller: true,
+        requiresManualInstall: true,
+      },
+      downloadPath: '/tmp/open-design-updater/Setup.exe',
+      platform: 'win32',
+    });
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          status: vi.fn(async () => ready),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(
+      <>
+        <button data-testid="update-opener" type="button">Open updates</button>
+        <I18nProvider initial="en"><UpdateDialog /></I18nProvider>
+      </>,
+    );
+    const opener = screen.getByTestId('update-opener');
+    const openDialog = async () => {
+      opener.focus();
+      await act(async () => {
+        openDialogListener?.({ source: 'windows-update-menu' });
+        await Promise.resolve();
+      });
+      return screen.findByRole('dialog', { name: 'Check for updates' });
+    };
+
+    await openDialog();
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+    const restartButton = screen.getByRole('button', { name: 'Restart to install update' });
+    restartButton.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(closeButton).toHaveFocus();
+    closeButton.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(restartButton).toHaveFocus();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Later' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(opener).toHaveFocus();
+
+    await openDialog();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(opener).toHaveFocus();
+
+    const outsideDismissDialog = await openDialog();
+    const backdrop = outsideDismissDialog.parentElement;
+    expect(backdrop).not.toBeNull();
+    fireEvent.mouseDown(backdrop!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(opener).toHaveFocus();
+  });
+
+  it('restores focus to the opener after a successful restart handoff', async () => {
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    const ready = payloadReadyStatus();
+    const installed = payloadReadyStatus({
+      installResult: {
+        openedAt: '2026-08-06T12:00:00.000Z',
+        path: '/tmp/open-design-1.2.4-payload.zip',
+      },
+      state: 'installing',
+    });
+    const install = vi.fn(async () => installed);
+    const quit = vi.fn(async () => ({ ok: true as const }));
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          install,
+          quit,
+          status: vi.fn(async () => ready),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(
+      <>
+        <button data-testid="update-opener" type="button">Open updates</button>
+        <I18nProvider initial="en"><UpdateDialog /></I18nProvider>
+      </>,
+    );
+    const opener = screen.getByTestId('update-opener');
+    opener.focus();
+    await act(async () => {
+      openDialogListener?.({ source: 'mac-app-menu' });
+      await Promise.resolve();
+    });
+    await screen.findByRole('dialog', { name: 'Check for updates' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restart to install update' }));
+    await waitFor(() => expect(quit).toHaveBeenCalledWith({
+      payload: { force: false, source: 'mac-app-menu' },
+    }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(opener).toHaveFocus();
+  });
+
+  it('stops progress interpolation under reduced motion', () => {
+    const reducedMotionBlock = UPDATE_DIALOG_CSS.match(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*)\}\s*$/u,
+    )?.[1] ?? '';
+    expect(reducedMotionBlock).toMatch(/\.progress span\s*\{[\s\S]*transition:\s*none;/u);
   });
 });
