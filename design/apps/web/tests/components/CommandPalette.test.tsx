@@ -129,6 +129,16 @@ describe('CommandPalette shell', () => {
     opener.remove();
   });
 
+  it('closes on Escape from a focused palette control', () => {
+    const { props } = renderPalette();
+    const sizeButton = screen.getByTestId('command-palette-size');
+    sizeButton.focus();
+
+    fireEvent.keyDown(sizeButton, { key: 'Escape' });
+
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps focus inside the palette while its portalled regex builder is open', () => {
     renderPalette();
     const first = screen.getByTestId(PALETTE_SEARCH);

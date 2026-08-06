@@ -139,6 +139,19 @@ version section when a release carries them.
 
 ### Fixed
 
+- **Escape now closes the command palette from every focused control.** The
+  search field and regex builder already had their own dismissal paths, but the
+  size button, scope chips and live setting controls left keyboard users with
+  nowhere to go. A dialog-level fallback now closes those controls while the
+  nested builder keeps first dismissal and IME composition remains untouched
+  ([`c833622`](https://github.com/Ding-Ding-Projects/material-designer/commit/c833622)).
+
+  Escape 而家由 command palette 每個 focused control 都收得返。Search field
+  同 regex builder 本身有出口，但 size button、scope chips 同 live setting
+  controls 之前令 keyboard user 對住個 Escape 發呆。加咗 dialog-level fallback，
+  nested builder 仍然先收自己，IME composition 亦唔會畀人截胡
+  ([`c833622`](https://github.com/Ding-Ding-Projects/material-designer/commit/c833622))。
+
 - **Restart safety now covers every editor in the workspace.** The renderer
   barrier flushes markdown writes as well as sketch autosaves, while the
   Squirrel/macOS deferred helper opens an installer only after a one-shot

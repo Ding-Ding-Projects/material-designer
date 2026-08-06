@@ -1277,6 +1277,11 @@ recollection that they were done.
       `createBoundedMatcher` so a pathological pattern cannot hang the palette,
       with `CommandPalette.test.tsx` covering the anchored builder, flags,
       invalid patterns and bounded matching. Hosted execution remains pending.
+- [x] **Escape from every focused palette control.** The dialog-level fallback
+      closes the palette from its size, scope and live setting controls while
+      the search field and portalled regex builder retain their own first-close
+      behavior. A focused size-control regression case is committed; hosted
+      execution remains pending.
 
 ### 3.7 Tab pinning and bulk close
 

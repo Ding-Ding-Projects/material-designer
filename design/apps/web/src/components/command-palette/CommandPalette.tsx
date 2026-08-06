@@ -614,6 +614,7 @@ export function CommandPalette({
     if (event.nativeEvent.isComposing) return;
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       close();
       return;
     }
@@ -676,6 +677,21 @@ export function CommandPalette({
       <motion.div
         className={`${styles.palette} ${displayMode === 'full' ? styles.full : styles.card}`}
         onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          // The search field handles Escape itself so the regex builder can
+          // close first, and the builder stops the event in its own portal.
+          // This dialog-level fallback covers every other focused control:
+          // size, scope, and live setting controls must all have the same
+          // reliable escape route.
+          if (
+            event.key !== 'Escape'
+            || event.defaultPrevented
+            || event.nativeEvent.isComposing
+          ) return;
+          event.preventDefault();
+          event.stopPropagation();
+          close();
+        }}
         role="dialog"
         aria-modal="true"
         aria-label={t('commandPalette.title')}
