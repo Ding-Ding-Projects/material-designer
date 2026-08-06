@@ -144,6 +144,36 @@ describe("materializeCachedUnpackedForInstaller", () => {
 });
 
 describe("Windows pack artifact boundaries", () => {
+  it("uses direct Squirrel output and exposes its machine-readable artifacts", async () => {
+    const builderSource = await readFile(new URL("../src/win/builder.ts", import.meta.url), "utf8");
+    const buildSource = await readFile(new URL("../src/win/build.ts", import.meta.url), "utf8");
+    const constantsSource = await readFile(new URL("../src/win/constants.ts", import.meta.url), "utf8");
+    const pathsSource = await readFile(new URL("../src/win/paths.ts", import.meta.url), "utf8");
+    const reportSource = await readFile(new URL("../src/win/report.ts", import.meta.url), "utf8");
+    const typeSource = await readFile(new URL("../src/win/types.ts", import.meta.url), "utf8");
+
+    expect(builderSource).toContain("squirrelWindows:");
+    expect(builderSource).toContain("author: PRODUCT_NAME");
+    expect(builderSource).toContain("iconUrl: SQUIRREL_ICON_URL");
+    expect(builderSource).toContain("artifactName: resolveWinSquirrelArtifactName(config.namespace)");
+    expect(constantsSource).toMatch(/SQUIRREL_ICON_URL = \"https:\/\//);
+    expect(builderSource).toContain('{ ...config, to: "squirrel" }');
+    expect(builderSource.split('{ ...config, to: "squirrel" }').length - 1).toBe(1);
+    expect(builderSource.indexOf('"squirrel-installer:build"')).toBeLessThan(
+      builderSource.indexOf('if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to))'),
+    );
+    expect(pathsSource).toContain('return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.${ext}`');
+    expect(reportSource).toContain('endsWith("-full.nupkg")');
+    expect(reportSource).toContain('endsWith("-delta.nupkg")');
+    expect(reportSource).toContain("resolveWinSquirrelReleasesPath(paths)");
+    expect(reportSource).toContain("resolveWinSquirrelSetupPath(config, paths)");
+    expect(buildSource).toContain("collectWinSquirrelArtifactPaths");
+    expect(buildSource).toContain("squirrelSetupPath: squirrelArtifacts.setupPath");
+    expect(typeSource).toContain("squirrelReleasesPath: string | null;");
+    expect(typeSource).toContain("squirrelFullPackagePaths: string[];");
+    expect(typeSource).toContain("squirrelDeltaPackagePaths: string[];");
+  });
+
   it("does not build launcher payload artifacts for a pure dir target", async () => {
     const source = await readFile(new URL("../src/win/build.ts", import.meta.url), "utf8");
     expect(source).toContain("const hasLauncherPayloadTarget = hasNsisTarget || hasZipTarget");

@@ -34,6 +34,8 @@ import {
   ELECTRON_BUILDER_NPM_REBUILD,
   NSIS_INSTALLER_LANGUAGE_BY_WEB_LOCALE,
   PRODUCT_NAME,
+  SQUIRREL_ICON_URL,
+  SQUIRREL_PACKAGE_NAME,
   WEB_STANDALONE_HOOK_CONFIG_ENV,
   WEB_STANDALONE_RESOURCE_NAME,
 } from "./constants.js";
@@ -44,11 +46,12 @@ import {
   writePackagedConfig,
 } from "./manifest.js";
 import { ensureNsisPersianLanguageAlias, writeNsisInclude } from "./nsis.js";
-import { sanitizeNamespace } from "./paths.js";
+import { resolveWinSquirrelArtifactName, sanitizeNamespace } from "./paths.js";
 import {
   resolveElectronBuilderWinTargets,
   shouldBuildWinNsisInstaller,
   shouldBuildWinPortableZip,
+  shouldBuildWinSquirrelInstaller,
 } from "./report.js";
 import type { ResourceTreeResult } from "./resources.js";
 import {
@@ -186,8 +189,9 @@ async function runElectronBuilderRaw(
     electronVersion: config.electronVersion,
     executableName: PRODUCT_NAME,
     extraMetadata: {
+      author: PRODUCT_NAME,
       main: "./main.cjs",
-      name: "open-design-packaged-app",
+      name: SQUIRREL_PACKAGE_NAME,
       productName: PRODUCT_NAME,
       version: packageVersion,
     },
@@ -219,6 +223,11 @@ async function runElectronBuilderRaw(
       perMachine: false,
       shortcutName: PRODUCT_NAME,
       warningsAsErrors: false,
+    },
+    squirrelWindows: {
+      artifactName: resolveWinSquirrelArtifactName(config.namespace),
+      iconUrl: SQUIRREL_ICON_URL,
+      msi: false,
     },
     productName: PRODUCT_NAME,
     publish: [{ provider: "generic", url: "https://updates.invalid/open-design" }],
@@ -629,7 +638,7 @@ export async function runElectronBuilder(
     await assertWinUnpackedNodePtyRuntime(cachedUnpackedRoot);
   });
   await runSegment("electron-builder-dir:prepare-namespace", async () => {
-    if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to)) {
+    if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to) || shouldBuildWinSquirrelInstaller(config.to)) {
       await mkdir(paths.appBuilderOutputRoot, { recursive: true });
     } else {
       await removeTree(paths.appBuilderOutputRoot);
@@ -650,6 +659,16 @@ export async function runElectronBuilder(
       webStandaloneHookAuditPath: (await pathExists(paths.webStandaloneHookAuditPath)) ? paths.webStandaloneHookAuditPath : null,
     });
   });
+  if (shouldBuildWinSquirrelInstaller(config.to)) {
+    await runSegment("squirrel-installer:build", async () => {
+      const rawSegments = await runElectronBuilderRaw(
+        { ...config, to: "squirrel" },
+        { ...paths, resourceRoot: resourceTree.resourceRoot },
+        await getPackagedAppRoot(),
+      );
+      segments.push(...rawSegments);
+    });
+  }
   if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to)) {
     const signingCacheKey = resolveWinSigningCacheKey(config);
     const nsisInstallerImplementation = shouldBuildWinNsisInstaller(config.to)
