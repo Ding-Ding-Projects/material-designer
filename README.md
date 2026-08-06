@@ -51,10 +51,12 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > clipping appears first. See [Status](#status).
 >
 > **2026-08-06 UI audit update.** Source-level fixes now cover the Figma import
-> modal's names and scrolling, context-menu wrapping and focus return, updater
-> dialog focus and reduced motion, the design-system Back name, the command
-> palette's anchored regex builder, and renderer save preparation before a
-> Squirrel restart. Focused tests are committed, but no new installed-build
+> modal's names, bounded scrolling, focus trap and reduced motion; context-menu
+> wrapping and focus return; updater-dialog focus; the design-system Back name;
+> the command palette's anchored regex builder; and renderer save preparation
+> for both sketch and markdown edits before a Squirrel restart. Deferred
+> installers require an explicit one-shot authorization marker and re-arm safely
+> after a cold start. Focused tests are committed, but no new installed-build
 > capture or new labelled-runner verification is claimed yet.
 
 <details>
@@ -199,8 +201,9 @@ the working tree needs LF-native checkout configuration before a local rerun can
 be compared meaningfully. The labelled self-hosted Verify workflow remains the authoritative
 verification for the committed change.
 
-**What continuous integration has actually proven.** These are observed run outcomes, not
-predictions:
+**What continuous integration proved before the runner migration.** These are observed
+outcomes from the earlier hosted-runner executions, not predictions about the new
+self-hosted labels. The labelled workflows have not yet produced a new verdict:
 
 | Check | Where | Outcome |
 | --- | --- | --- |

@@ -955,9 +955,10 @@ the reader has no way to know.
   reported `0` stale notices and `0` undeclared paths. CI is required for
   the actual typecheck, test, packaging and runtime verdict.
 - Open issue scans for `material-designer` and `agent-global-memory` returned
-  zero issues at this checkpoint. The pending runs from the Squirrel
-  migration remain [Verify 31127492562](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492562)
-  and [Release 31127492852](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852); neither is claimed green here.
+  zero issues at this checkpoint. Verify `31127492562` is now cancelled. Release
+  `31127492852` remains queued for the same `main` SHA, and GitHub's cancellation
+  endpoint returned HTTP 502 when cancellation was retried; it is not claimed
+  green here.
 
 ## CI runner contract lane (2026-08-06)
 
@@ -966,3 +967,11 @@ the reader has no way to know.
 - `Verify` no longer has a `pull_request` trigger because this public repository must not execute untrusted pull-request code on a self-hosted runner. The new labelled-runner execution is not yet verified by a CI run.
 - The two previously queued runs, Verify `31127492562` and Release `31127492852`, were requested for cancellation through `gh` but the GitHub API returned HTTP 502 for both attempts; both remained queued at the last check. No push was performed by this bounded lane.
 - Open issue scans for `material-designer` and `agent-global-memory` returned zero issues.
+
+## UI audit and restart safety continuation (2026-08-06)
+
+- Commit [`f2e71c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2e71c8b2362bf5e711ce8af7ae6083e04965264) extends the renderer restart barrier from sketch autosaves to the active markdown editor's debounced and in-flight writes. Failed writes return a structured failure instead of leaving a quit request waiting forever.
+- The Squirrel/macOS deferred installer now receives a random one-shot authorization-marker path. The helper opens `Setup.exe` only after the host creates the marker following a successful renderer preparation; a denied or failed restart leaves no marker. A persisted ready installer re-arms a fresh helper after the next cold start and explicit install action.
+- The UI audit also adds narrow-viewport bounds for context menus and regex builders, a portalled-builder focus scope for the command palette, and Figma modal focus restoration, keyboard trapping, hidden-file-input exclusion and reduced-motion styling. Focused regression tests are committed; no local Node/pnpm/Electron execution was performed.
+- `git diff --check` passed for the task branch. The Windows Git Bash port verifier still reports the known checkout line-ending baseline (`10033` byte differences and `1` OID mismatch, with `0` stale notices and `0` undeclared paths); the labelled Linux Verify workflow is the authoritative check.
+- This task branch has been pushed with `f2e71c8`; the default branch integration and the new self-hosted CI verdict remain separate evidence steps.

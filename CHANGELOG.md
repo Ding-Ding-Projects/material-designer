@@ -103,6 +103,21 @@ version section when a release carries them.
 
 ### Fixed
 
+- **Restart safety now covers every editor in the workspace.** The renderer
+  barrier flushes markdown writes as well as sketch autosaves, while the
+  Squirrel/macOS deferred helper opens an installer only after a one-shot
+  authorization marker is created. A denied restart leaves no marker to act on,
+  and a persisted ready installer gets a fresh helper after a cold start;
+  narrow context menus and regex builders now fit their viewport, and the
+  command palette's portalled builder stays inside its focus loop
+  ([`f2e71c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2e71c8b2362bf5e711ce8af7ae6083e04965264)).
+
+  儲存安全而家唔只係 sketch 有份：renderer barrier 連 markdown write 都會等埋，
+  Squirrel/macOS helper 要等一次性 authorization marker 先開 installer。Restart
+  畀人按 Later 就冇 marker 可以偷跑，cold start 後再明確安裝就會重新整一個 helper；
+  窄 context menu 同 regex builder 亦識縮身，palette 個 portalled builder 唔會走出
+  focus 圈。之前啲 UI 好似趕住落班，而家每道門都要簽到先行。
+
 - **The UI audit stopped several small surfaces from playing hide-and-seek.**
   The Figma import modal now names its URL and notes fields and scrolls its body;
   context-menu labels wrap instead of vanishing and dismissal returns focus to

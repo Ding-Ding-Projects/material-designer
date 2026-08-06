@@ -16,10 +16,20 @@ surface exposes **Restart to install update** and **Later**. The first action
 hands the verified `Setup.exe` to the existing quit-and-launch helper; the
 second leaves the current version running. Active-run safety is checked first;
 then the host sends a bounded renderer save-preparation request. The workspace
-drains queued and in-flight sketch autosaves and reports `clean` or `saved`
-before the host schedules quit. A failed, unavailable or timed-out preparation
-blocks the restart, including a forced restart, so the update button cannot
-turn an unfinished save into a disappearing act.
+drains queued and in-flight sketch autosaves plus the active markdown editor's
+debounced or in-flight write, and reports `clean`, `saved` or `failed` before the
+host schedules quit. A failed, unavailable or timed-out preparation blocks the
+restart, including a forced restart, so the update button cannot turn an
+unfinished save into a disappearing act.
+
+On macOS and Windows, the quit helper is armed with a random one-shot
+authorization-marker path. The host creates that marker only after the renderer
+preparation succeeds; the helper checks for it after the application process
+exits and otherwise removes itself without opening the installer. This keeps a
+denied **Restart to install update**, a failed save and an interrupted quit from
+turning into an installer launch later. If the app starts again with a persisted
+verified installer, the next explicit install action arms a fresh helper before
+the host asks the renderer to prepare another restart.
 
 The release also carries Squirrel's `RELEASES` index, a required full NuGet
 package and any delta packages produced by the build. `Setup.exe` is the
@@ -57,6 +67,10 @@ Squirrel build can distinguish a later release.
 - If renderer save preparation fails, is unavailable or times out, the host
   returns a structured failure and does not request process quit. The force
   option cannot bypass this renderer-owned safety barrier.
+- If the user chooses **Later** or the renderer barrier refuses the restart, the
+  deferred helper sees no authorization marker and exits without launching
+  `Setup.exe`. A persisted ready update re-arms a new helper only when the user
+  explicitly requests installation again.
 - An older published release may not contain `metadata.json`, `RELEASES` or
   NuGet packages because it predates the migration. The first post-migration
   release is the feed's compatibility boundary.
@@ -84,6 +98,11 @@ pnpm --filter @open-design/tools-pack exec vitest run win- config
 pnpm --filter @open-design/desktop exec vitest run tests/main/update-preflight.test.ts tests/main/updater-host-boundary.test.ts tests/main/preload-host-boundary.test.ts
 pnpm --filter @open-design/web exec vitest run tests/components/FileWorkspace.test.tsx
 ```
+
+The updater suite also covers the one-shot authorization marker, the harmless
+post-quit path when authorization is absent, and re-arming a persisted installer
+after a cold start. These commands are CI commands; this checkout did not run
+the Node/pnpm toolchain locally.
 
 The repository's supported build and runtime verification path is the labelled
 self-hosted Windows `Release` workflow

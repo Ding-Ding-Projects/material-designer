@@ -300,8 +300,11 @@ Not by a local build — local builds do not happen here.
       feed, lifecycle switches and explicit restart action are committed. The
       restart path now waits for renderer save preparation before requesting
       quit, and a failed or timed-out preparation blocks even a forced restart.
-      A new labelled self-hosted Release run still must prove the Squirrel install/start/
-      uninstall path and publish the first post-migration feed.
+      The barrier covers sketch and markdown writes; Squirrel's deferred helper
+      also requires a one-shot authorization marker and re-arms safely after a
+      cold start. A new labelled self-hosted Release run still must prove the
+      Squirrel install/start/uninstall path and publish the first post-migration
+      feed ([`f2e71c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2e71c8b2362bf5e711ce8af7ae6083e04965264)).
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
