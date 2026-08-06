@@ -53,7 +53,8 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > **2026-08-06 UI audit update.** Source-level fixes now cover the Figma import
 > modal's names, bounded scrolling, focus trap and reduced motion; context-menu
 > wrapping and focus return; updater-dialog focus; the design-system Back name;
-> the command palette's anchored regex builder; and renderer save preparation
+> the command palette's anchored regex builder and dialog-level Escape dismissal
+> from every focused palette control; and renderer save preparation
 > for sketch, markdown and HTML edits before a Squirrel restart. Deferred
 > installers require an explicit one-shot authorization marker, re-arm safely
 > after a cold start, and revoke those markers during clear-cache. Scrollable

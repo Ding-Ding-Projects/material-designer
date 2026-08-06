@@ -108,7 +108,7 @@ palette has cost effort and delivered nothing.
 | Selecting a row teleporting to and revealing the control | **Implemented** through the reveal path; screen-reader and installed-build verification remains open. | **Implemented.** |
 | Two persisted sizes, bounded card default | **Implemented** — bounded card is the default and the full-window choice persists. | **Not verified** against this checklist. |
 | Own search wired to the pattern builder | **Implemented** — the palette owns an anchored builder with bounded local matching; other application search fields remain separate work. | **Implemented** — the site's search surfaces share one builder implementation. |
-| Language modes and tone levels | **Not started.** | **Implemented** for the site's own copy. |
+| Language modes and tone levels | **Implemented** in the palette's source-level controls; exhaustive locale and tone coverage remains pending. | **Implemented** for the site's own copy. |
 
 The application's status is **implemented**, not merely "designed" — the palette,
 settings index, shortcut binding, live controls, persisted sizes and dialog-level
