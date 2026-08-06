@@ -1,8 +1,11 @@
 # Regex builder
 
-**Status: not started in code. Designed in the mockup, but the mockup's design
-does not meet the standard** — it uses one shared floating panel where the
-standard requires one anchored builder per search field.
+**Status: partial in code.** The command palette now owns a full local builder
+with plain-text default, explicit regex mode, flags, syntax feedback, bounded
+matching and capture-aware results. Its builder is anchored to the palette's
+own search field. The remaining search bars and the four tab-discovery surfaces
+still need their own builders, so the application does not yet meet the
+project-wide standard. No installed build has been rendered for this audit.
 
 ## The requirement
 
@@ -71,15 +74,15 @@ from catastrophic backtracking.
 
 | Requirement | Status |
 | --- | --- |
-| A builder exists anywhere in the product | **Not started.** |
-| Reachable from every search bar | **Not started.** |
-| Anchored per field | **Not started, and the mockup's design does not meet it** — see below. |
+| A builder exists anywhere in the product | **Partial.** The command palette has the full builder; other required fields do not. |
+| Reachable from every search bar | **Partial.** The command palette is wired; the remaining search inventory is not. |
+| Anchored per field | **Partial.** The command palette builder is anchored to its field; the remaining fields are not wired. |
 | Plain text default, regex opt-in | Designed. |
 | Bidirectional synchronisation | Designed for the shared panel; not for per-field state. |
 | Search on every settings surface | **Partial in design.** The mockup gives the settings sidebar its own search; individual settings tabs and panels do not have one. |
 | Cross-tab match reporting | **Not designed.** |
 | Engine and dialect identified in the interface | **Not designed.** |
-| Backtracking and size protection | **Not designed.** |
+| Backtracking and size protection | **Partial.** The command palette bounds pattern/sample inputs and match work; every remaining search surface still needs the same guard. |
 
 ### The gap between the mockup and the standard
 

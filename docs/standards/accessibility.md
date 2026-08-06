@@ -1,10 +1,14 @@
 # Accessibility and sizing
 
-**Status: not started.** The design mockup states the intent and applies parts of
-it. Nothing here has been implemented or measured. The application now builds,
-installs and launches, so it *could* be audited — but nobody has sat in front of a
-running interface and checked a single requirement below, so every statement here
-is read from source and the mockup rather than observed.
+**Status: partial, source-level audit only.** The design mockup states the intent,
+and the 2026-08-06 audit fixed several concrete source defects: the Figma import
+fields now have durable accessible names and a scrollable modal body; context-menu
+labels wrap instead of disappearing and dismissal restores the opener's focus;
+the updater dialog traps focus, restores it on every close path and disables
+progress transitions for reduced motion; and the design-system Back control has
+an explicit localized name. These changes have focused tests, but no installed
+build has yet been rendered through the full scale, narrow-width and language
+matrix, so runtime conformance remains unverified.
 
 ## The requirement
 
@@ -116,17 +120,17 @@ missing.
 
 | Requirement | Status |
 | --- | --- |
-| Keyboard reachability audit | **Not started.** |
-| Visible focus on every element | **Not started.** The mockup shows a focus outline on one disclosure control. |
-| Roles, names, states | **Not started in code.** The mockup applies labels to icon-only controls, a landmark role to the navigation, expansion state on the disclosure, shortcut attributes on context-menu items, and hides decorative graphics. |
+| Keyboard reachability audit | **Partial source-level audit.** The updater dialog, context-menu dismissal path and design-system Back control now have focused keyboard/name coverage; the full surface audit is open. |
+| Visible focus on every element | **Partial.** The updater dialog traps focus and returns it on close; the full focus matrix is not verified. |
+| Roles, names, states | **Partial.** Figma URL/notes fields and the design-system Back control have explicit names; the full inventory remains open. |
 | Contrast measured | **Not started.** The mockup **states** text is checked at 4.5:1 and boundaries at 3:1. That is a claim in a design file, not a measurement. |
-| Reduced motion | **Not started.** A reduce-motion switch appears in the mockup's settings; nothing implements it. |
-| No clipping across the matrix | **Not started.** Never measured — nothing has been rendered. |
+| Reduced motion | **Partial.** The updater dialog removes progress transitions under `prefers-reduced-motion`; the full application motion inventory remains open. |
+| No clipping across the matrix | **Partial source-level audit.** Figma modal content scrolls and context-menu labels wrap; no installed build has been measured. |
 | 48×48 minimum targets | **Stated in the mockup** and applied to its header icon buttons and navigation rows. Not verified anywhere. |
 | Large-hit-target option raising targets to 56px | Designed as a switch. |
 | Decorative-looking interface functional | **Unknown.** The mockup is a design file, so by definition its controls are illustrative. |
-| Overlays painting their own surface and scrolling when bounded | **Designed correctly.** Every overlay in the mockup has an explicit background, border or shadow, and bounded scrolling. |
-| Context menus showing shortcuts | **Designed.** Items carry shortcut attributes and right-aligned monospace labels. |
+| Overlays painting their own surface and scrolling when bounded | **Partial source-level audit.** The Figma modal body now scrolls inside its card; the full overlay inventory remains open. |
+| Context menus showing shortcuts | **Partial.** Long labels wrap and dismissal restores focus in the audited menu path; shortcut/search completeness remains open. |
 | Long operations reporting progress | **Designed.** The clone panel shows per-item progress, phase text, a disabled submit control with a distinct label, and an optional slow phase that names what declining costs. |
 | Filters collapsible and stating active state | **Designed.** A filters-and-statistics disclosure with expansion state and a summary naming the active filter. |
 
@@ -206,9 +210,10 @@ looks.
 
 ## Verification
 
-**Nothing has been verified.** No build has rendered, so no measurement of any
-kind exists. The claims in the mockup about contrast and target sizes are design
-intent, not results.
+**No runtime matrix has been verified.** The source-level fixes have focused
+tests, but no installed build has rendered the full scale, narrow-width,
+display-density and language matrix. The claims in the mockup about contrast and
+target sizes remain design intent, not results.
 
 Conformance requires all of:
 

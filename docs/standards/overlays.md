@@ -4,9 +4,12 @@ Every popover, menu, dropdown, tooltip and anchored panel draws its own
 background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.
 
-**Status: designed correctly, not audited in code.** Every overlay in the design
-mockup has an explicit background, border or shadow and bounded internal
-scrolling. Nothing has been measured in a running build.
+**Status: partial, source-level audit only.** The 2026-08-06 audit fixed two
+concrete overlay failures: the Figma import modal body now scrolls inside its
+bounded card, and context-menu labels wrap instead of being clipped. Focus
+returns to the originating context-menu control after dismissal. No installed
+build has yet been rendered and measured at the full scale, narrow-width and
+language matrix.
 
 ## The requirement
 
@@ -102,11 +105,11 @@ user will not notice until they cannot select one.
 | Requirement | Status |
 | --- | --- |
 | Overlays painting their own surface | **Designed correctly.** Every overlay in the mockup carries an explicit background, border or shadow. Unaudited in code. |
-| Bounded height with internal scrolling | **Designed correctly.** The mockup's calendar is explicitly height-bounded with internal scrolling. Unaudited in code. |
+| Bounded height with internal scrolling | **Partial.** The Figma import modal body now scrolls inside its bounded card; the rest of the overlay inventory is unaudited. |
 | Not painting outside the card | **Not audited.** |
 | Not rendering beneath the trigger | **Not audited.** No stacking-context audit has been run. |
 | Not covering the anchor | **Not audited.** |
-| Validated at narrow widths, every scale, longest strings | **Not started.** Nothing has been rendered and measured. |
+| Validated at narrow widths, every scale, longest strings | **Not started.** The source fixes have focused tests, but no installed build has been rendered and measured. |
 | On the documentation site | **Not audited.** The site's own overlays — the builder popover, the palette, menus — have not been checked against this list. |
 
 ## Configuration
@@ -155,8 +158,9 @@ setting for this rule:
 
 ## Verification
 
-**Nothing has been verified.** No overlay has been rendered and measured in a
-build from this repository.
+**No runtime overlay matrix has been verified.** The Figma modal and context
+menu changes have focused source tests, but no overlay has been rendered and
+measured in an installed build from this repository.
 
 Conformance requires all of:
 

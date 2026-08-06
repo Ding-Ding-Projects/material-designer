@@ -49,6 +49,13 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > still carrying the upstream brand. Nothing has been checked at a second display
 > scale, at a narrow width, or in a second language, and bilingual mode is where
 > clipping appears first. See [Status](#status).
+>
+> **2026-08-06 UI audit update.** Source-level fixes now cover the Figma import
+> modal's names and scrolling, context-menu wrapping and focus return, updater
+> dialog focus and reduced motion, the design-system Back name, the command
+> palette's anchored regex builder, and renderer save preparation before a
+> Squirrel restart. Focused tests are committed, but no new installed-build
+> capture or hosted verification is claimed yet.
 
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
@@ -183,6 +190,14 @@ scripts/verify-port.sh
 ```
 
 Prefer the script's answer over this paragraph's.
+
+**Current checkout note (2026-08-06).** The verifier was invoked through the
+available Windows Git Bash path and reported the checkout's known line-ending
+translation (`10033` byte differences and `1` OID mismatch across the imported
+tree; `0` stale notices and `0` undeclared paths). This is not a new port result:
+the working tree needs LF-native checkout configuration before a local rerun can
+be compared meaningfully. The hosted Verify workflow remains the authoritative
+verification for the committed change.
 
 **What continuous integration has actually proven.** These are observed run outcomes, not
 predictions:

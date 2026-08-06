@@ -293,10 +293,12 @@ Not by a local build — local builds do not happen here.
       *Verified by:* two installers built and attached to their own releases, each
       with an explicit existence check on the reported path and its payload
       validated before the run continued.
-- [ ] **Switch Windows packaging and updates to Squirrel.Windows.** Stage
-      `Setup.exe`, `RELEASES`, full/delta NuGet packages and project-owned updater
-      metadata; prove the install/start/uninstall path and the explicit restart
-      action in a new Release run.
+- [~] **Switch Windows packaging and updates to Squirrel.Windows.** The packer,
+      feed, lifecycle switches and explicit restart action are committed. The
+      restart path now waits for renderer save preparation before requesting
+      quit, and a failed or timed-out preparation blocks even a forced restart.
+      A new hosted Release run still must prove the Squirrel install/start/
+      uninstall path and publish the first post-migration feed.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
@@ -1244,7 +1246,8 @@ recollection that they were done.
       resize itself.
 - [x] **Its own search wired to the regex builder**, running under its own
       `createBoundedMatcher` so a pathological pattern cannot hang the palette,
-      with `CommandPalette.regex-filter.test.ts` covering it.
+      with `CommandPalette.test.tsx` covering the anchored builder, flags,
+      invalid patterns and bounded matching. Hosted execution remains pending.
 
 ### 3.7 Tab pinning and bulk close
 
@@ -1346,7 +1349,10 @@ installed build.
       level in every category; spoken error narration still names the actual
       failure and is never suppressed by rate limits. Yields to an active screen
       reader and respects quiet settings.
-- [ ] **4.9 Context-menu search and shortcut labels.** Every context menu — tab,
+- [~] **4.9 Context-menu search and shortcut labels.** The audit fixed the
+      concrete menu defects found in the file-menu path: long labels wrap and
+      Escape, outside click, scroll, Tab and item selection restore focus to the
+      originating control. The full requirement remains: every context menu — tab,
       group, appearance, application and overflow — carries its own
       keyboard-accessible search field filtering visible items locally without
       changing action semantics. Every item with a keyboard shortcut displays
@@ -1567,17 +1573,17 @@ rows say so rather than counting their file size as progress.
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
 | 2 | Full Material Design 3 conformance | 2.1–2.4 | **Colour landed; anatomy did not, and a capture proved it.** The token sheet, its mapping layer and the Windows frameless title bar are real, so every component inherits M3 roles. But the mockup's defining furniture is absent from the running screen: no persistent navigation rail (the component exists and collapses to a **zero-width** track, so a fresh install shows none), no header search bar, no 28px status bar. A reader comparing the shipped capture to `mockups/` would say it is still the upstream screen in new colours, and for the anatomy they would be right |
 | 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Built and reachable.** Theme, accent and density persist and are reachable from the settings dialog and the command palette. The editor behind them — the infinite colour picker, the colour translator, the contrast readout, presets and typography — had **zero importers** and is now mounted: the picker is the accent control, with the fixed swatches kept as a convenience layered on it rather than replacing it, and the runtime mounts in `App.tsx` so a chosen preset survives a reload. Unaudited: nobody has operated any of it |
-| 4 | Regex builder on every search bar | 3.3 | **Built and mounted.** The builder exists with guided token rows, a raw pattern editor, flags and a live sample panel. Unverified: whether *every* search bar reaches it and whether each is anchored to its own field rather than sharing one panel — the count of search inputs against the count of builders has not been taken |
+| 4 | Regex builder on every search bar | 3.3 | **Partial.** The command palette now has an anchored full builder with bounded local matching; the remaining search inventory, including the four tab-discovery fields, is still open. No installed-build capture or hosted run verifies the rendered result |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, and the bar just moved.** The workspace tab strip, pinning and the text-matched bulk closes are built; tab *groups* and the four discovery searches are absent. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the settings window, per-project settings, properties panels, appearance editors and the site's configuration pages, carrying the whole feature rather than the word. The capture at `90e52d3` shows a seventeen-item scrolling section list, so this is unmet here and newly tracked |
 | 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
 | 7 | Super-confirmation gate | 4.3 | **The boundary exists; the interface routing is unfinished.** The gate is built and mounted, its eight confirmed defects are closed, and the three irreversible deletes are now enforced in the daemon's own handler behind a single-use per-resource token — so a `curl`, a script or a third-party client cannot delete in one replayable request. That is the authorization boundary the standard asks for. What remains is affordance coverage: some delete buttons still reach the operation through a plain dialog rather than two keys and a slider. Nobody has operated any of it |
-| 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface and live inline controls whose union is exhaustive, so adding an indexed setting without its control is a typecheck error rather than a blank row. Unverified: whether the index covers every setting the dialog actually has |
+| 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface, live inline controls whose union is exhaustive, and its own anchored regex builder. Unverified: whether the index covers every setting the dialog actually has, and whether the new builder passes hosted verification |
 | 9 | In-app changelog viewer | 3.5 | **Built and mounted.** `ChangelogDialog` mounts in `App.tsx` with a date-range filter and generated entries. Unverified: commit-link validity at build time |
 | 10 | Local version history | 4.4 | **The panel now exists and is mounted.** The store was never the gap: `apps/daemon/src/history/` and five `/api/history` routes have been there since 2026-08-03, and a search of `apps/web/src` for `VersionHistory`/`versionHistory`/`version-history` returned nothing at all — the undo existed with no door. `VersionHistoryDialog` mounts in `App.tsx` and opens from Settings → About and the entry help menu, carrying the reused `ChangelogDateRange`, an action filter whose facets and counts are **derived from the loaded revisions rather than declared** (so no filter is offered that the store cannot produce — "imported" is the worked case, and it correctly never appears), a domain filter, and its own `RegexSearchField` controller. All four compose; 24 cases in `apps/web/tests/lib/history-actions.test.ts` pin that. Not done: it is absent from the command palette, discarding unsaved work is not yet recorded before a close completes, and **nobody has run or operated any of it** — this checkout has no Node toolchain, so types, tests and rendering are unverified until CI |
 | 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
 | 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
-| 14 | Accessibility and sizing as blockers | Every phase | **Not met, and now with named defects instead of a shrug.** Nine interface states are captured on every release and the first set found three: the navigation rail rendered into a zero-width track (fixed), **the UI scale setting broken at 125/150/200% — horizontal overflow, clipped headings, the status bar off screen** (open, and a genuine accessibility blocker since raising the scale is an accessibility action), and bilingual clipping at the narrowest supported window (open). A missing focus trap in the shared dialog was also confirmed and fixed |
+| 14 | Accessibility and sizing as blockers | Every phase | **Partial, source-level audit only.** The 2026-08-06 pass fixed Figma field names and modal scrolling, context-menu label clipping and focus return, updater-dialog focus/reduced-motion behavior, and the design-system Back name. The 100/125/150/200% narrow-width bilingual runtime matrix and installed-build captures remain open |
 | 15 | All assets bundled locally | 2.2, 1.3 | **Met for the application and the site.** The site is bundled and its deployment enforces that at publish time; the application's one CDN font import is gone, with the three Cairo subsets bundled under `apps/web/public/fonts/cairo/`. The mockup still carries three, and it ships to nobody. Roboto Flex, Roboto Mono and Material Symbols are not bundled because nothing consumes them yet — 2.2 tracks that as its own work, not as a violation of this row |
 | 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 

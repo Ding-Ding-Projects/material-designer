@@ -14,8 +14,12 @@ the verified file in the updater's owned cache.
 The background check never launches an installer. The non-blocking update
 surface exposes **Restart to install update** and **Later**. The first action
 hands the verified `Setup.exe` to the existing quit-and-launch helper; the
-second leaves the current version running. Active-run and unsaved-work safety
-continues to apply before the restart is attempted.
+second leaves the current version running. Active-run safety is checked first;
+then the host sends a bounded renderer save-preparation request. The workspace
+drains queued and in-flight sketch autosaves and reports `clean` or `saved`
+before the host schedules quit. A failed, unavailable or timed-out preparation
+blocks the restart, including a forced restart, so the update button cannot
+turn an unfinished save into a disappearing act.
 
 The release also carries Squirrel's `RELEASES` index, a required full NuGet
 package and any delta packages produced by the build. `Setup.exe` is the
@@ -50,6 +54,9 @@ Squirrel build can distinguish a later release.
 - If the installer helper cannot launch, the update remains recoverable from
   the updater surface and the failed attempt is recorded in the local
   installer-observation record.
+- If renderer save preparation fails, is unavailable or times out, the host
+  returns a structured failure and does not request process quit. The force
+  option cannot bypass this renderer-owned safety barrier.
 - An older published release may not contain `metadata.json`, `RELEASES` or
   NuGet packages because it predates the migration. The first post-migration
   release is the feed's compatibility boundary.
@@ -68,12 +75,14 @@ reputation warning. Do not describe checksum verification as a signature.
 
 The focused tests cover the stable feed default, Squirrel `Setup.exe` artifact
 selection, checksum handling, deferred Windows install semantics, UI labels,
-and lifecycle switches:
+lifecycle switches, and the renderer save-preparation handshake:
 
 ```text
 pnpm --filter @open-design/desktop exec vitest run tests/main/updater
 pnpm --filter @open-design/web exec vitest run tests/lib/updater.test.ts tests/components/UpdateDialog.test.tsx tests/components/UpdaterPopup.test.tsx
 pnpm --filter @open-design/tools-pack exec vitest run win- config
+pnpm --filter @open-design/desktop exec vitest run tests/main/update-preflight.test.ts tests/main/updater-host-boundary.test.ts tests/main/preload-host-boundary.test.ts
+pnpm --filter @open-design/web exec vitest run tests/components/FileWorkspace.test.tsx
 ```
 
 The repository's supported build and runtime verification path is the hosted

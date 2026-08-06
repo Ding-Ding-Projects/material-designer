@@ -7,7 +7,9 @@ user to where the thing actually lives.
 
 **Status: implemented in the application and on the documentation site; full
 conformance audit still pending.** The application mounts a command palette and
-indexes its settings through `command-palette/settingsIndex.ts`. Its single
+indexes its settings through `command-palette/settingsIndex.ts`. Its own search
+now opens a full anchored regex builder with plain-text default, explicit regex
+mode, flags, syntax feedback and bounded local matching. Its single
 discoverable desktop binding is `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on
 macOS, derived from `components/shortcuts/registry.ts` so the handler and every
 visible or assistive-technology hint share one source of truth.
@@ -103,7 +105,7 @@ palette has cost effort and delivered nothing.
 | Rows rendering live controls inline | **Not started.** Designed in the mockup. | **Implemented.** |
 | Selecting a row teleporting to and revealing the control | **Not started.** | **Implemented.** |
 | Two persisted sizes, bounded card default | **Not started.** Designed in the mockup. | **Not verified** against this checklist. |
-| Own search wired to the pattern builder | **Not started.** | **Implemented** — the site's search surfaces share one builder implementation. |
+| Own search wired to the pattern builder | **Implemented** — the palette owns an anchored builder with bounded local matching; other application search fields remain separate work. | **Implemented** — the site's search surfaces share one builder implementation. |
 | Language modes and tone levels | **Not started.** | **Implemented** for the site's own copy. |
 
 The application's status is **implemented**, not merely "designed" — the palette,

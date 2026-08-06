@@ -691,7 +691,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
       <p>
         <strong class="md-callout__title" data-i18n="rl.update.title">Squirrel.Windows updates are ready when you are</strong>
-        <span data-i18n="rl.update.body">Stable Windows builds use this project's own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, and waits for you to choose Restart to install update or Later.</span>
+        <span data-i18n="rl.update.body">Stable Windows builds use this project's own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, asks the renderer to finish pending sketch saves, and waits for you to choose Restart to install update or Later.</span>
       </p>
     </div>
   </section>

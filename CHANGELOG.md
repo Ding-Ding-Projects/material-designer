@@ -97,6 +97,34 @@ version section when a release carries them.
 
 ### Fixed
 
+- **The UI audit stopped several small surfaces from playing hide-and-seek.**
+  The Figma import modal now names its URL and notes fields and scrolls its body;
+  context-menu labels wrap instead of vanishing and dismissal returns focus to
+  the opener; the updater dialog traps and restores focus and respects reduced
+  motion; the design-system Back control has a localized accessible name; and
+  the command palette's own search now has the full bounded regex builder. The
+  Squirrel restart path also waits for the renderer to flush queued and
+  in-flight sketch saves, rejects malformed preparation responses and refuses
+  forced restart when saving fails. Focused tests were added or extended for
+  each seam; this checkout did not run the local toolchain, and hosted
+  verification is still pending
+  ([`92a4f94`](https://github.com/Ding-Ding-Projects/material-designer/commit/92a4f9447dee35243f929ef15a54976671fbbd64),
+  [`8aa1f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/8aa1f905c0515694a2b3e7f0506a7c90c124da81),
+  [`5c6301c`](https://github.com/Ding-Ding-Projects/material-designer/commit/5c6301c0e4efe88b0765f2e22b7d1e5aff59d52d),
+  [`3fdd836`](https://github.com/Ding-Ding-Projects/material-designer/commit/3fdd83690e1ac5dcfdd3366064fa041c55b79f7b),
+  [`df66c24`](https://github.com/Ding-Ding-Projects/material-designer/commit/df66c2400e12d29b0d092e89a74dfc87fa10266e),
+  [`353c0af`](https://github.com/Ding-Ding-Projects/material-designer/commit/353c0af3414bcec51d5f13a67494390c2e9dee80)).
+
+  廣東話：UI audit 終於唔畀幾個細 surface 玩捉迷藏：Figma modal 而家
+  叫得出 URL 同 notes，body 又識自己捲；context menu 長 label 唔再失蹤，
+  收 menu 會還 focus 畀開門嗰粒掣；updater dialog 捉住同還返 focus，亦
+  尊重 reduced motion；design-system Back 有本地化 accessible name；palette
+  自己個 search 亦有完整 bounded regex builder。Squirrel restart 會等
+  renderer 清晒 queued 同 in-flight sketch saves，response 唔合規就拒絕，
+  save 失敗時連 forced restart 都唔畀過。Focused tests 加咗，但本機冇行
+  toolchain，hosted verification 仲等緊；個 update button 今次終於扣好安全帶，
+  唔會帶住未儲存嘅 sketch 飛走。
+
 - **The command palette now has one honest shortcut.** The historical header
   capture showed `Ctrl K` while the application also accepted `Ctrl+Shift+P`,
   leaving the visible hint and the global contract out of step. The handler,

@@ -4,10 +4,12 @@ Every context-menu item that has a keyboard shortcut displays it, and the
 shortcut displayed is the one that actually works in that context. Every context
 menu carries its own search field.
 
-**Status: shortcut labels are designed and not built; the per-menu search is
-neither.** The mockup's menu items carry shortcut attributes and right-aligned
-labels; nothing derives them from the real bindings, and no menu has a search
-field. Both are tracked in `ROADMAP.md` §4.9.
+**Status: partial source-level audit.** The 2026-08-06 audit fixed the context
+menu's concrete clipping and dismissal defects: long bilingual labels wrap, and
+Escape, outside click, scroll, Tab and item selection restore focus to the
+originating control. The full per-menu search and registry-derived shortcut
+labels remain open in `ROADMAP.md` §4.9. No installed build has been rendered
+for this audit.
 
 ## The requirement
 
@@ -93,6 +95,7 @@ on screen.
 | A search field in every context menu | **Not started, and not recorded as designed anywhere.** |
 | Search preserving action semantics | **Not started.** |
 | Search wired to the pattern builder | **Not started.** |
+| Long labels visible and focus restored after dismissal | **Partial.** Context-menu labels wrap and the opener regains focus in the audited file-menu path; the full menu inventory remains unverified. |
 
 > [!WARNING]
 > **The porting hazard here is specific.** A design file's shortcut labels are
@@ -148,8 +151,9 @@ observed from the other end.
 
 ## Verification
 
-**Nothing has been verified.** No menu has been rendered from a build in this
-repository, and there is no binding registry to verify labels against.
+**No runtime menu matrix has been verified.** The audited context-menu paths
+have focused source tests, but no menu has been rendered from an installed
+build in this repository, and the full binding/search inventory is still open.
 
 Conformance requires all of:
 

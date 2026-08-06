@@ -933,3 +933,28 @@ the reader has no way to know.
   every route tried; the resulting 403 responses were captured as evidence.
   Repo-scoped REST through `gh` worked normally. The issue scan turned up
   nothing to triage — zero open issues.
+
+## UI audit and renderer-safe restart (2026-08-06)
+
+- The current branch carries the focused restart-barrier commit
+  [`92a4f94`](https://github.com/Ding-Ding-Projects/material-designer/commit/92a4f9447dee35243f929ef15a54976671fbbd64).
+  Before `od:update:quit` schedules process shutdown, the desktop host asks the
+  renderer to flush queued and in-flight sketch autosaves. Malformed responses,
+  failed saves, missing renderer responses and the 10-second timeout all fail
+  closed; the `force` flag cannot bypass renderer save preparation.
+- The same audit landed focused UI fixes in
+  [`3fdd836`](https://github.com/Ding-Ding-Projects/material-designer/commit/3fdd83690e1ac5dcfdd3366064fa041c55b79f7b),
+  [`5197177`](https://github.com/Ding-Ding-Projects/material-designer/commit/5197177ae6197c1043f3b42cb013cf26fda5a43d),
+  [`5c6301c`](https://github.com/Ding-Ding-Projects/material-designer/commit/5c6301c0e4efe88b0765f2e22b7d1e5aff59d52d),
+  [`8aa1f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/8aa1f905c0515694a2b3e7f0506a7c90c124da81),
+  [`df66c24`](https://github.com/Ding-Ding-Projects/material-designer/commit/df66c2400e12d29b0d092e89a74dfc87fa10266e) and
+  [`353c0af`](https://github.com/Ding-Ding-Projects/material-designer/commit/353c0af3414bcec51d5f13a67494390c2e9dee80): Figma field names and modal scrolling, context-menu wrapping and focus return, updater-dialog focus and reduced motion, the command palette's own anchored regex builder, and the design-system Back name.
+- Local Node, pnpm and Electron execution remains deliberately unrun. The
+  Windows Git Bash verifier was attempted, but the checkout's CRLF translation
+  produced `10033` baseline byte differences and `1` OID mismatch; it also
+  reported `0` stale notices and `0` undeclared paths. Hosted CI is required for
+  the actual typecheck, test, packaging and runtime verdict.
+- Open issue scans for `material-designer` and `agent-global-memory` returned
+  zero issues at this checkpoint. The pending hosted runs from the Squirrel
+  migration remain [Verify 31127492562](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492562)
+  and [Release 31127492852](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852); neither is claimed green here.
