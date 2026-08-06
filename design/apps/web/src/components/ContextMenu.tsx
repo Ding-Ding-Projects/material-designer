@@ -23,7 +23,7 @@
 //   as text as well, and "Delete, Del" is a menu that has stopped being useful
 //   at the moment it was trying hardest.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Icon, type IconName } from './Icon';
 import {
@@ -60,6 +60,8 @@ export interface ContextMenuProps {
   readonly y: number;
   readonly ariaLabel: string;
   readonly onClose: () => void;
+  /** The control that opened the menu, restored after every dismissal path. */
+  readonly restoreFocusTo?: HTMLElement | null;
   readonly width?: number;
   readonly testId?: string;
   /** Override platform detection for the keycap notation. Tests use it. */
@@ -107,6 +109,7 @@ export function ContextMenu({
   y,
   ariaLabel,
   onClose,
+  restoreFocusTo = null,
   width = DEFAULT_WIDTH,
   testId,
   mac,
@@ -115,6 +118,16 @@ export function ContextMenu({
   const [position] = useState(() => clampToViewport(x, y, items, width));
   const onMac = mac ?? isMacPlatform();
 
+  const restoreFocus = useCallback(() => {
+    if (!restoreFocusTo?.isConnected) return;
+    restoreFocusTo.focus({ preventScroll: true });
+  }, [restoreFocusTo]);
+
+  const dismiss = useCallback(() => {
+    onClose();
+    restoreFocus();
+  }, [onClose, restoreFocus]);
+
   // Escape, an outside press, or a scroll underneath all dismiss. Scroll counts
   // because the menu is anchored in viewport coordinates: once the page moves,
   // it is pointing at whatever happens to be under it now.
@@ -122,23 +135,23 @@ export function ContextMenu({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        dismiss();
       }
     };
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
-      onClose();
+      dismiss();
     };
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('scroll', onClose, true);
+    window.addEventListener('scroll', dismiss, true);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('scroll', onClose, true);
+      window.removeEventListener('scroll', dismiss, true);
     };
-  }, [onClose]);
+  }, [dismiss]);
 
   // Focus the first enabled item so the menu is operable from the keyboard the
   // moment it opens, which is the only way it is operable for anyone who opened
@@ -182,7 +195,7 @@ export function ContextMenu({
         } else if (event.key === 'Tab') {
           // A menu is a mode, not part of the page's tab order. Leaving it by
           // Tab should close it rather than drop focus into whatever is behind.
-          onClose();
+          dismiss();
         }
       }}
     >
@@ -203,6 +216,9 @@ export function ContextMenu({
               onClick={() => {
                 onClose();
                 item.onSelect();
+                if (menuRef.current?.contains(document.activeElement)) {
+                  restoreFocus();
+                }
               }}
             >
               {item.icon ? (

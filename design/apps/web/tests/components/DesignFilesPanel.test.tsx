@@ -325,6 +325,24 @@ describe("DesignFilesPanel selection", () => {
     expect(onOpenFile).not.toHaveBeenCalled();
   });
 
+  it("returns focus to the row menu after its context menu closes", () => {
+    const { container } = renderPanel([file({ name: "alpha.html" })]);
+    const opener = container.querySelector<HTMLElement>(".df-row-menu");
+    expect(opener).toBeTruthy();
+
+    opener!.focus();
+    fireEvent.click(opener!);
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Open in tab" }));
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.activeElement).toBe(opener);
+
+    fireEvent.click(opener!);
+    fireEvent.mouseDown(document.body);
+    expect(document.activeElement).toBe(opener);
+  });
+
   it("copies the local file path from the row menu", async () => {
     const originalClipboard = Object.getOwnPropertyDescriptor(
       navigator,

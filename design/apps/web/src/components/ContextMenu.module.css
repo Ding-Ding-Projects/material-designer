@@ -121,11 +121,11 @@
 .label {
   flex: 1 1 auto;
   min-width: 0;
-  /* A long localized label shortens rather than pushing the keycaps off the
-     card — bilingual mode is where this stops being hypothetical. */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Bilingual labels stay fully visible inside the card. Anywhere also
+     handles an unusually long unbroken token without pushing keycaps out of
+     the viewport-bounded menu. */
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* Right-aligned, as the platform draws it. `margin-left: auto` rather than a

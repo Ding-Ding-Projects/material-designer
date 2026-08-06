@@ -423,7 +423,12 @@ export function DesignFilesPanel({
   const [dropReadError, setDropReadError] = useState<string | null>(null);
   const dragDepthRef = useRef(0);
   const [hover, setHover] = useState<string | null>(null);
-  const [menuPos, setMenuPos] = useState<{ name: string; top: number; left: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{
+    name: string;
+    top: number;
+    left: number;
+    restoreFocusTo: HTMLElement;
+  } | null>(null);
   const MENU_ESTIMATED_HEIGHT = 180;
   const MENU_SAFE_PADDING = 8;
   const [preview, setPreview] = useState<string | null>(null);
@@ -592,7 +597,11 @@ export function DesignFilesPanel({
 
   useEffect(() => {
     if (!menuPos) return;
-    const close = () => setMenuPos(null);
+    const close = () => {
+      setMenuPos(null);
+      if (!menuPos.restoreFocusTo.isConnected) return;
+      menuPos.restoreFocusTo.focus({ preventScroll: true });
+    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -675,8 +684,9 @@ export function DesignFilesPanel({
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
-    const rect = el.closest('.df-row-menu')?.getBoundingClientRect();
-    if (!rect) return;
+    const restoreFocusTo = el.closest<HTMLElement>('.df-row-menu');
+    const rect = restoreFocusTo?.getBoundingClientRect();
+    if (!rect || !restoreFocusTo) return;
 
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
@@ -696,7 +706,7 @@ export function DesignFilesPanel({
 
     const left = Math.max(MENU_SAFE_PADDING, rect.right - 160);
 
-    setMenuPos({ name, top, left });
+    setMenuPos({ name, top, left, restoreFocusTo });
   }
 
   async function copyLocalPath(fileName: string) {
@@ -1087,7 +1097,14 @@ export function DesignFilesPanel({
         onContextMenu={(e) => {
           e.preventDefault();
           if (!isSelected(selection, f.name)) selectRow(f.name);
-          setMenuPos({ name: f.name, top: e.clientY, left: e.clientX });
+          const restoreFocusTo = e.currentTarget.querySelector<HTMLElement>('.df-row-menu');
+          if (!restoreFocusTo) return;
+          setMenuPos({
+            name: f.name,
+            top: e.clientY,
+            left: e.clientX,
+            restoreFocusTo,
+          });
         }}
         // Row-scoped shortcuts, dispatched from the same table the context menu
         // draws its keycaps from. The rename field is exempt: F2 and Delete
@@ -1789,6 +1806,7 @@ export function DesignFilesPanel({
           y={menuPos.top}
           ariaLabel={menuPos.name}
           onClose={() => setMenuPos(null)}
+          restoreFocusTo={menuPos.restoreFocusTo}
           testId="design-file-menu-popover"
         />
       ) : null}

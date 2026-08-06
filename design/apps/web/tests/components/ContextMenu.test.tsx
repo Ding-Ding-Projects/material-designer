@@ -18,7 +18,20 @@ import {
   shortcutKeyTokens,
 } from '../../src/components/shortcuts/registry';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.querySelectorAll('[data-context-menu-opener]').forEach((element) => element.remove());
+});
+
+function createOpener(): HTMLButtonElement {
+  const opener = document.createElement('button');
+  opener.type = 'button';
+  opener.textContent = 'Open menu';
+  opener.dataset.contextMenuOpener = 'true';
+  document.body.append(opener);
+  opener.focus();
+  return opener;
+}
 
 function items(overrides: Partial<ContextMenuItem>[] = []): ContextMenuItem[] {
   const base: ContextMenuItem[] = [
@@ -127,7 +140,8 @@ describe('ContextMenu', () => {
 
   it('is a mode: arrows walk it, Escape and Tab leave it', () => {
     const onClose = vi.fn();
-    renderMenu({ onClose });
+    const opener = createOpener();
+    renderMenu({ onClose, restoreFocusTo: opener });
 
     // The first enabled item takes focus on open, so the menu is operable for
     // whoever opened it with the context-menu key.
@@ -141,21 +155,50 @@ describe('ContextMenu', () => {
 
     fireEvent.keyDown(screen.getByTestId('menu-open'), { key: 'Tab' });
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(opener);
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it.each([
+    ['outside pointer dismissal', (_menu: HTMLElement) => fireEvent.pointerDown(document.body)],
+    ['scroll dismissal', (_menu: HTMLElement) => fireEvent.scroll(window)],
+  ])('restores focus after %s', (_name, dismiss) => {
+    const opener = createOpener();
+    renderMenu({ restoreFocusTo: opener });
+
+    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    dismiss(screen.getByTestId('menu'));
+    expect(document.activeElement).toBe(opener);
   });
 
   it('runs the item and closes before it, so the menu cannot outlive its target', () => {
     const order: string[] = [];
     const onClose = () => order.push('close');
+    const opener = createOpener();
     renderMenu({
       onClose,
+      restoreFocusTo: opener,
       items: [{ id: 'open', label: 'Open', onSelect: () => order.push('select') }],
     });
 
     fireEvent.click(screen.getByTestId('menu-open'));
     expect(order).toEqual(['close', 'select']);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('keeps the full bilingual label in the menu structure', () => {
+    const label = 'Edit appearance… · 編輯外觀設定，調整字型、色彩、間距及所有狀態';
+    renderMenu({
+      items: [{ id: 'appearance', label, onSelect: () => {} }],
+    });
+
+    const menuItem = screen.getByTestId('menu-appearance');
+    const labelElement = menuItem.querySelector('[class*="label"]');
+    expect(labelElement?.textContent).toBe(label);
+    expect(labelElement?.getAttribute('title')).toBe(label);
   });
 
   it('skips a disabled item rather than parking focus on it', () => {
