@@ -149,9 +149,12 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
         </header>
 
         {status === 'done' && result ? (
-          <FigmaImportSummary result={result} />
+          <div className={styles.body}>
+            <FigmaImportSummary result={result} />
+          </div>
         ) : (
           <>
+            <div className={styles.body}>
             {onFigmaUrl ? (
               <div className={styles.tabs} role="tablist">
                 <button
@@ -220,6 +223,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 <input
                   type="url"
                   className={styles.urlInput}
+                  aria-label="Figma URL"
                   placeholder="https://figma.com/design/…"
                   value={url}
                   onChange={(e) => { setUrl(e.target.value); setError(null); }}
@@ -232,6 +236,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
 
             <textarea
               className={styles.notes}
+              aria-label="Notes for the build"
               placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -239,6 +244,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
             />
 
             {error ? <p className={styles.error}>{error}</p> : null}
+            </div>
 
             <footer className={styles.foot}>
               <Button variant="ghost" onClick={onClose} disabled={importing}>Cancel</Button>
