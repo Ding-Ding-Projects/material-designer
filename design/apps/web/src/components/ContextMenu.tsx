@@ -230,11 +230,8 @@ export function ContextMenu({
                 // one column whether or not every item has an icon.
                 <span className={styles.icon} aria-hidden />
               )}
-              {/* The label truncates rather than wrapping, so the full text
-                  has to stay reachable somewhere. Screen readers already get
-                  it from the button's accessible name; `title` is the sighted
-                  equivalent, and bilingual mode is where a 260px card starts
-                  needing it. */}
+              {/* Keep the complete localized label in the visible menu. CSS
+                  lets long bilingual text wrap inside the bounded card. */}
               <span className={styles.label} title={item.label}>
                 {item.label}
               </span>

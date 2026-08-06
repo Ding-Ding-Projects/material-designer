@@ -190,6 +190,15 @@ describe('overlay surfaces', () => {
     expect(value(item, 'gap')).toBe('12px');
   });
 
+  it('wraps long bilingual menu labels instead of ellipsizing them', () => {
+    const label = block('contextMenu', '.label');
+
+    expect(value(label, 'white-space')).toBe('normal');
+    expect(value(label, 'overflow-wrap')).toBe('anywhere');
+    expect(values(label, 'overflow')).toHaveLength(0);
+    expect(values(label, 'text-overflow')).toHaveLength(0);
+  });
+
   it('scrolls the plus-menu preview column instead of cutting it off', () => {
     // The flyout hosting this column has a hard height and clips, so a skill
     // with several trigger chips used to push its example block somewhere it
