@@ -2469,6 +2469,68 @@ describe('DesignSystemCreationFlow', () => {
 });
 
 describe('DesignSystemDetailView', () => {
+  it('localizes the icon-only Back button without changing its action', async () => {
+    const system: DesignSystemDetail = {
+      id: 'user:acme-design-system',
+      title: 'Acme Design System',
+      category: 'Custom',
+      summary: 'Acme product workspace.',
+      swatches: [],
+      surface: 'web',
+      body: '# Acme Design System\n',
+      source: 'user',
+      status: 'draft',
+      isEditable: true,
+      projectId: 'ds-acme-design-system',
+    };
+    const project: Project = {
+      id: 'ds-acme-design-system',
+      name: 'Acme Design System',
+      skillId: null,
+      designSystemId: system.id,
+      createdAt: 1,
+      updatedAt: 1,
+      metadata: {
+        kind: 'other',
+        importedFrom: 'design-system',
+        entryFile: 'DESIGN.md',
+        sourceFileName: system.id,
+      },
+    };
+    const config: AppConfig = {
+      mode: 'daemon',
+      apiKey: '',
+      baseUrl: '',
+      model: '',
+      agentId: 'agent-1',
+      agentModels: {},
+      skillId: null,
+      designSystemId: null,
+    };
+    const onBack = vi.fn();
+
+    mocks.fetchDesignSystem.mockResolvedValue(system);
+    mocks.ensureDesignSystemWorkspace.mockResolvedValue({ project, files: [] });
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <DesignSystemDetailView
+          id={system.id}
+          selectedId={system.id}
+          config={config}
+          agents={[{ id: 'agent-1', name: 'OpenCode', bin: 'opencode', available: true, models: [] }]}
+          onBack={onBack}
+          onSetDefault={() => {}}
+        />
+      </I18nProvider>,
+    );
+
+    const backButton = await screen.findByRole('button', { name: '返回' });
+    expect(backButton).toHaveAttribute('aria-label', '返回');
+    fireEvent.click(backButton);
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
   it('opens chat file links through the Files tab workspace (#5611 round 9)', async () => {
     // The design-system chat must thread the workspace's known-file set and
     // an opener into ChatPane; without them a current-project file link is
