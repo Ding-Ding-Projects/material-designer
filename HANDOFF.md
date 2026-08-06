@@ -1007,22 +1007,23 @@ the reader has no way to know.
 
 - The audited task tip was fast-forwarded into an integration checkout, and the
   committed branch tips for the accessible-name, self-hosted CI, Figma modal,
-  updater dialog, Squirrel updater and Squirrel packaging lanes were merged into
-  that history. The resulting tree is content-equivalent to `1e60df9`; the
-  additional commits are ancestry records for the completed lanes.
-- The default branch now points to
-  [`b103004`](https://github.com/Ding-Ding-Projects/material-designer/commit/b103004e39cafc4f4d6997459b748c7f4c70c810),
-  and `git ls-remote origin refs/heads/main` returned the same full SHA
-  `b103004e39cafc4f4d6997459b748c7f4c70c810`. No force update was used.
+  updater dialog, Squirrel updater, Squirrel packaging and command-palette
+  Escape lanes were merged into that history. The command-palette merge is
+  [`da4cb71`](https://github.com/Ding-Ding-Projects/material-designer/commit/da4cb714fcff1f518ebe65123949d7f9a1dc2079),
+  with source commit [`c833622`](https://github.com/Ding-Ding-Projects/material-designer/commit/c833622)
+  and documentation commit [`53e2205`](https://github.com/Ding-Ding-Projects/material-designer/commit/53e2205).
+  The merge is an ancestor of the final default-branch tip; no force update is used.
 - The available static gates passed on the integration tree: PowerShell AST
   parsing, `actionlint -shellcheck= -ignore 'label "material-designer"'`,
   `git diff --check`, and Bash syntax through an LF view because the fresh
   Windows checkout exposes CRLF to Bash. Node, pnpm and Electron were not run.
   The corrected labelled-runner and installed-build verdicts remain pending;
   Release `31127492852` is the latest observed run and is failed.
-- No queued or in-progress workflow is listed at the final check. Verify
-  `31127492562` is cancelled, and Release `31127492852` is completed failure
-  with the `lifecycle.ts(473,95)` action-type error documented above.
+- The last queue audit is empty: no queued or in-progress workflow is listed.
+  The integration push is kept subject to the same cancellation rule, so a new
+  run is not treated as verification merely because its workflow was created.
+  Verify `31127492562` is cancelled, and Release `31127492852` is completed
+  failure with the `lifecycle.ts(473,95)` action-type error documented above.
 - The irreversible cleanup half was not performed because the request did not
   include `mat day`. Clean merged task branches and their clean linked
   worktrees remain available for a later explicitly authorized cleanup pass.
