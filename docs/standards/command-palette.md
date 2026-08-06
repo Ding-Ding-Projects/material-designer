@@ -9,7 +9,9 @@ user to where the thing actually lives.
 conformance audit still pending.** The application mounts a command palette and
 indexes its settings through `command-palette/settingsIndex.ts`. Its own search
 now opens a full anchored regex builder with plain-text default, explicit regex
-mode, flags, syntax feedback and bounded local matching. Its single
+mode, flags, syntax feedback and bounded local matching. Escape closes the
+palette from the dialog's size, scope, and inline-setting controls while the
+nested regex builder retains first dismissal. Its single
 discoverable desktop binding is `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on
 macOS, derived from `components/shortcuts/registry.ts` so the handler and every
 visible or assistive-technology hint share one source of truth.
@@ -100,16 +102,17 @@ palette has cost effort and delivered nothing.
 | Requirement | In the application | On the documentation site |
 | --- | --- | --- |
 | A single shortcut opening the palette | **Implemented** — `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on macOS; the handler, header chip and setup copy use the shared registry. | **Implemented** — a labelled header button showing its shortcut, so the shortcut is discoverable rather than folklore. |
-| Every command listed | **Not started.** | **Implemented** for the site's own command set. |
-| Every setting in every settings surface listed | **Not started.** | **Partial** — the site's settings groups are indexed; the enumeration has not been audited against the settings surface. |
-| Rows rendering live controls inline | **Not started.** Designed in the mockup. | **Implemented.** |
-| Selecting a row teleporting to and revealing the control | **Not started.** | **Implemented.** |
-| Two persisted sizes, bounded card default | **Not started.** Designed in the mockup. | **Not verified** against this checklist. |
+| Every command listed | **Implemented** — the application registry feeds the palette rows; full inventory proof remains open. | **Implemented** for the site's own command set. |
+| Every setting in every settings surface listed | **Implemented** through the application settings index; the inventory still needs an exhaustive audit. | **Partial** — the site's settings groups are indexed; the enumeration has not been audited against the settings surface. |
+| Rows rendering live controls inline | **Implemented** for the indexed setting controls; hosted and installed-build verification remains open. | **Implemented.** |
+| Selecting a row teleporting to and revealing the control | **Implemented** through the reveal path; screen-reader and installed-build verification remains open. | **Implemented.** |
+| Two persisted sizes, bounded card default | **Implemented** — bounded card is the default and the full-window choice persists. | **Not verified** against this checklist. |
 | Own search wired to the pattern builder | **Implemented** — the palette owns an anchored builder with bounded local matching; other application search fields remain separate work. | **Implemented** — the site's search surfaces share one builder implementation. |
 | Language modes and tone levels | **Not started.** | **Implemented** for the site's own copy. |
 
 The application's status is **implemented**, not merely "designed" — the palette,
-settings index and shortcut binding exist in source. The site's status is read from its committed source at
+settings index, shortcut binding, live controls, persisted sizes and dialog-level
+Escape handling exist in source. The site's status is read from its committed source at
 `site/assets/js/ui.js`, which is what the published site serves; **no interactive
 audit against the checklist below has been run on either surface.**
 
