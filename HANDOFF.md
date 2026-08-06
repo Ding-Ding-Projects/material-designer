@@ -104,7 +104,7 @@ line survives, a reader cannot trust the ones beside it either.
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
 | Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
 | Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Published on every green push** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel release remains pending hosted verification |
+| Windows installer | **Published on every green push** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel release remains pending labelled self-hosted verification |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
@@ -307,7 +307,7 @@ been installed, built, tested, packaged or run; all five had happened by then, a
 that is the specific failure this section now exists to avoid repeating.
 
 **What is verified, so the list below is read against something.** The workspace
-installs on a hosted Windows runner with the native database binding compiled from
+installed on the previous hosted Windows runner with the native database binding compiled from
 source; the full workspace typechecks with the rebrand in place; unit suites run on
 Linux and the Windows identity suites run on Windows; two installers were built,
 payload-validated, published, and one of them was installed, launched,
@@ -356,7 +356,7 @@ Now the gaps.
   The *Verify* workflow runs on Linux — that is the runner, not the target, and
   it is deliberate: several imported suites assert a Unix executable bit that a
   Windows filesystem cannot store, so they run there and the Windows-specific
-  ones run on `windows-latest`. And the imported tree still contains macOS and
+  ones run on `[self-hosted, windows, material-designer]`. And the imported tree still contains macOS and
   Linux packaging builders, which the rebrand had to touch for identity;
   leaving them consistent costs nothing and deleting them would be a fork of
   upstream's packaging tool for no gain.
@@ -408,7 +408,7 @@ Practical notes:
 Installing and building this monorepo is heavy: a native database module compiled
 from source, an Electron toolchain, a large web application, and a packaging step.
 This project's working assumption is that **all install, build, typecheck, test,
-package and run steps execute on a hosted Windows runner in continuous
+package and run steps execute on the labelled self-hosted runners in continuous
 integration** — not on whatever machine a contributor happens to be sitting at.
 
 What that means in practice:
@@ -665,9 +665,9 @@ the pinned Node major version on Windows. Installation will compile it from sour
 which needs a C++ build toolchain — Visual Studio Build Tools 2022 or newer with
 the desktop C++ workload, plus Python 3 on the path.
 
-*Mitigation:* the hosted Windows runner image already carries the build tools;
-verify that assumption in the first build job's log rather than assuming it, and
-if the toolchain is missing, install it as an explicit step. Budget a couple of
+*Mitigation:* the labelled Windows runner must carry the required C++ build tools
+and Python; verify that contract in the first build job's log rather than
+assuming it, and if the toolchain is missing, install it as an explicit step. Budget a couple of
 minutes of build time for this module on every cold run, and cache aggressively
 once the build is green. Note also that upstream classifies native Windows as
 **best-effort** — the primary supported paths are macOS, Linux and the Windows
@@ -952,9 +952,17 @@ the reader has no way to know.
 - Local Node, pnpm and Electron execution remains deliberately unrun. The
   Windows Git Bash verifier was attempted, but the checkout's CRLF translation
   produced `10033` baseline byte differences and `1` OID mismatch; it also
-  reported `0` stale notices and `0` undeclared paths. Hosted CI is required for
+  reported `0` stale notices and `0` undeclared paths. CI is required for
   the actual typecheck, test, packaging and runtime verdict.
 - Open issue scans for `material-designer` and `agent-global-memory` returned
-  zero issues at this checkpoint. The pending hosted runs from the Squirrel
+  zero issues at this checkpoint. The pending runs from the Squirrel
   migration remain [Verify 31127492562](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492562)
   and [Release 31127492852](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852); neither is claimed green here.
+
+## CI runner contract lane (2026-08-06)
+
+- Commit [`5556f84f1a4580f0d795f92b912e09833e6eb47f`](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f) updates the root `Verify`, `Release`, and `Pages` workflows to the explicit `[self-hosted, linux, material-designer]` and `[self-hosted, windows, material-designer]` contracts.
+- Each checkout sets `clean: true`. Dependency jobs install and verify Node 24 and pnpm 10.33.2 through the setup actions, then run `pnpm install --frozen-lockfile` from the committed manifest and lockfile. The pnpm-store cache is an optimisation only; no cached `node_modules` tree is trusted. `Pages` has no package manifest and checks its static publishing tools instead.
+- `Verify` no longer has a `pull_request` trigger because this public repository must not execute untrusted pull-request code on a self-hosted runner. The new labelled-runner execution is not yet verified by a CI run.
+- The two previously queued runs, Verify `31127492562` and Release `31127492852`, were requested for cancellation through `gh` but the GitHub API returned HTTP 502 for both attempts; both remained queued at the last check. No push was performed by this bounded lane.
+- Open issue scans for `material-designer` and `agent-global-memory` returned zero issues.

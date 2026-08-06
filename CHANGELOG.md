@@ -62,6 +62,12 @@ version section when a release carries them.
   never been gated at all — including memory and library — were routed through
   the same check ([`9cb4e6c`](https://github.com/Ding-Ding-Projects/material-designer/commit/9cb4e6c)), ([`9d5c5d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/9d5c5d3)).
 
+### Changed
+
+- **CI now names its self-hosted runners and rebuilds dependencies from source-of-truth files.** `Verify`, `Release`, and `Pages` select explicit Linux or Windows runner labels; every checkout is clean; dependency jobs install and verify Node 24 plus pnpm 10.33.2 before `pnpm install --frozen-lockfile`. The pnpm-store cache is an optimisation only, and public pull requests no longer execute on the self-hosted runner ([`5556f84f1a4580f0d795f92b912e09833e6eb47f`](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f)).
+
+  CI 而家講清楚自己坐邊張櫈，亦由 manifest 同 lockfile 重新砌 dependencies；唔再靠 runner 入面上一手留下嘅 node_modules 扮魔法。Verify、Release、Pages 各自用啱 Linux/Windows label，Node 24 同 pnpm 10.33.2 先驗身，公開 pull request 就唔會喺 self-hosted runner 上亂跑。個 cache 只係幫手加速，唔係偷偷養住第二棵 dependency 樹。
+
 ### Added
 
 - **Squirrel.Windows packaging and restartable Windows updates.** The Windows
