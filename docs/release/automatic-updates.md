@@ -36,6 +36,12 @@ package and any delta packages produced by the build. `Setup.exe` is the
 bootstrapper used by the user-facing install and restart path; the native
 Squirrel package files remain available for its distribution/update contract.
 
+The HTML editor uses the same renderer preparation callback as sketch and
+Markdown. Its debounced style write and inline-text acknowledgement are
+settled before the host reports success. Switching files keys the viewer and
+keeps the old renderer's callback registered until that final write settles, so
+a restart cannot leave the previous document's draft behind.
+
 ## Configuration
 
 | Setting | Default | Effect |
@@ -71,6 +77,13 @@ Squirrel build can distinguish a later release.
   deferred helper sees no authorization marker and exits without launching
   `Setup.exe`. A persisted ready update re-arms a new helper only when the user
   explicitly requests installation again.
+- If the installer was opened but the quit/save handoff fails, the dialog keeps
+  **Restart to install update** available for a retry. The updater re-arms a
+  fresh helper rather than treating the failed handoff as a completed install.
+- **Clear cache** revokes pending and already-authorized installer markers in
+  the owned helper directory. Helpers that have not yet passed their marker
+  check therefore exit without opening `Setup.exe`; the reset cannot leave a
+  one-shot authorization behind.
 - An older published release may not contain `metadata.json`, `RELEASES` or
   NuGet packages because it predates the migration. The first post-migration
   release is the feed's compatibility boundary.
@@ -100,9 +113,11 @@ pnpm --filter @open-design/web exec vitest run tests/components/FileWorkspace.te
 ```
 
 The updater suite also covers the one-shot authorization marker, the harmless
-post-quit path when authorization is absent, and re-arming a persisted installer
-after a cold start. These commands are CI commands; this checkout did not run
-the Node/pnpm toolchain locally.
+post-quit path when authorization is absent, re-arming a persisted installer
+after a cold start, and revocation during clear-cache. Web coverage includes
+HTML renderer registration, file-switch-safe Markdown flushing, Figma tab
+semantics, context-menu scrolling and a retryable failed handoff. These commands
+are CI commands; this checkout did not run the Node/pnpm toolchain locally.
 
 The repository's supported build and runtime verification path is the labelled
 self-hosted Windows `Release` workflow

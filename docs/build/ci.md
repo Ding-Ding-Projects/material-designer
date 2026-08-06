@@ -50,6 +50,26 @@ installer a user downloads must be the artifact the passing run built, at the
 commit it claims. That is only enforceable when the build, the tests and the
 publish are steps of one run.
 
+### Self-hosted tool bootstrap
+
+The labelled runners are deliberately not treated as snowflakes. Each job
+checks out cleanly and runs the committed bootstrap for the small set of
+non-language tools the workflows call:
+
+- Linux runs `scripts/bootstrap-ci-tools.sh`. When `gh` or `jq` is absent, it
+  downloads pinned upstream releases into the runner's user-scoped tool cache
+  and adds that directory through `GITHUB_PATH`; it then verifies Bash, Git,
+  `gh`, `jq` and the standard text utilities.
+- Windows runs `scripts/bootstrap-ci-tools.ps1`. When `gh`, `jq` or `7z` is
+  absent, it installs the pinned upstream binaries into the same user-scoped
+  cache, adds the directory to `PATH`, and fails before packaging if any tool
+  is still missing.
+
+The workspace dependency step remains separate and authoritative: `pnpm`
+10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
+The bootstrap does not commit binaries, alter machine-wide settings, or treat a
+cached `node_modules` directory as an installation.
+
 ## `Verify` — the fast gate
 
 ```yaml
@@ -71,6 +91,7 @@ pull-request code must not execute on a self-hosted runner.
 | Step | Purpose |
 | --- | --- |
 | Checkout | `fetch-depth: 0`, **no submodule**, and `clean: true` — see below. |
+| Bootstrap | Install the pinned user-scoped Linux utility set when the runner lacks it. |
 | Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
 | Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
 | Set up Node | The setup action installs Node 24; the workflow checks the resolved major version. |
@@ -122,7 +143,9 @@ leave a tag without its assets.
 <details>
 <summary><b>Step by step</b> — checkout through publish</summary>
 
-**1 — Checkout.** `fetch-depth: 0`, no submodule and `clean: true`. The build
+**1 — Checkout and bootstrap.** `fetch-depth: 0`, no submodule and `clean: true`.
+The Windows bootstrap installs missing `gh`, `jq` and `7z` into the user-scoped
+runner cache before any packaging or release command uses them. The build
 needs `design/`, not the provenance pin, and a clean checkout prevents stale
 `node_modules` or generated files on the persistent runner from becoming inputs.
 
@@ -229,7 +252,7 @@ run" instead of implying a pass.
 
 `Pages` uses `[self-hosted, linux, material-designer]` and keeps its existing
 trusted push/manual triggers. It has no `package.json`, lockfile or build step:
-the workflow checks out with `clean: true`, verifies the required static-site
+the workflow checks out with `clean: true`, bootstraps the required static-site
 publishing tools (`gh`, `jq`, Bash and the standard text utilities), stages the
 local catalogue, fills release facts, and uploads `site/`. It therefore does not
 invent a Node/pnpm install for a project that declares no such dependency.

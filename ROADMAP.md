@@ -212,9 +212,20 @@ Not by a local build — local builds do not happen here.
       the checkout, and resolves the workspace with `pnpm install
       --frozen-lockfile`. The install compiles a native SQLite binding from
       source because no prebuilt binary exists for this platform/runtime pair.
+      Before that dependency install, the job runs the committed Windows
+      bootstrap for `gh`, `jq` and `7z`, placing missing tools in a
+      user-scoped runner cache rather than assuming machine state. The Linux
+      Verify and Pages jobs use the matching `gh`/`jq` bootstrap.
       *Verified before this migration:* the same install completed on the old
       hosted Windows runner. The labelled self-hosted execution remains pending
       after [5556f84f1a4580f0d795f92b912e09833e6eb47f](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f).
+- [~] **Bootstrap the non-language CI tools automatically.** The committed
+      `scripts/bootstrap-ci-tools.sh` and `scripts/bootstrap-ci-tools.ps1`
+      download pinned official releases only when `gh`, `jq` or `7z` is absent,
+      add the user-scoped cache through `GITHUB_PATH`, and fail closed if the
+      required command is still unavailable. The scripts passed local syntax
+      checks; their labelled-runner execution remains pending because no new CI
+      run has been observed for this branch.
 - [x] **Set the working directory to `design/`.** Every install, typecheck, test
       and build step in `release.yml` carries `working-directory: design`,
       because the repository root has no `package.json`. This is the single most
@@ -300,11 +311,13 @@ Not by a local build — local builds do not happen here.
       feed, lifecycle switches and explicit restart action are committed. The
       restart path now waits for renderer save preparation before requesting
       quit, and a failed or timed-out preparation blocks even a forced restart.
-      The barrier covers sketch and markdown writes; Squirrel's deferred helper
-      also requires a one-shot authorization marker and re-arms safely after a
-      cold start. A new labelled self-hosted Release run still must prove the
-      Squirrel install/start/uninstall path and publish the first post-migration
-      feed ([`f2e71c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/f2e71c8b2362bf5e711ce8af7ae6083e04965264)).
+      The barrier covers sketch, Markdown and HTML writes; switching files keeps
+      the previous renderer's final save registered until it settles. Squirrel's
+      deferred helper requires a one-shot authorization marker, revokes pending
+      markers during clear-cache, re-arms safely after a cold start, and leaves
+      a failed installer handoff retryable. A new labelled self-hosted Release
+      run still must prove the Squirrel install/start/uninstall path and publish
+      the first post-migration feed ([`b5f0db6`](https://github.com/Ding-Ding-Projects/material-designer/commit/b5f0db63b8d2ed1d1d8a52b0ca1b463e65e30830)).
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail

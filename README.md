@@ -54,10 +54,14 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > modal's names, bounded scrolling, focus trap and reduced motion; context-menu
 > wrapping and focus return; updater-dialog focus; the design-system Back name;
 > the command palette's anchored regex builder; and renderer save preparation
-> for both sketch and markdown edits before a Squirrel restart. Deferred
-> installers require an explicit one-shot authorization marker and re-arm safely
-> after a cold start. Focused tests are committed, but no new installed-build
-> capture or new labelled-runner verification is claimed yet.
+> for sketch, markdown and HTML edits before a Squirrel restart. Deferred
+> installers require an explicit one-shot authorization marker, re-arm safely
+> after a cold start, and revoke those markers during clear-cache. Scrollable
+> menus stay open while their own items move, Figma tabs expose real tabpanel
+> semantics, long command-palette labels wrap, and a failed installer handoff
+> stays retryable. Self-hosted CI now bootstraps its pinned `gh`, `jq` and 7-Zip
+> tools into a user-scoped cache. Focused tests are committed, but no new
+> installed-build capture or new labelled-runner verification is claimed yet.
 
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>

@@ -64,6 +64,24 @@ version section when a release carries them.
 
 ### Changed
 
+- **Close the remaining audited UI handoff gaps and bootstrap self-hosted CI tools.**
+  Scrollable context menus now stay open while their own items move; the Figma
+  import tabs expose tabpanel semantics and keyboard navigation; long command
+  palette labels wrap; and a failed Squirrel installer handoff remains retryable.
+  HTML and Markdown renderer saves remain registered through file switches and
+  restart preparation, while clear-cache revokes pending installer authorizations.
+  The root workflows now bootstrap pinned `gh`, `jq` and `7z` into a user-scoped
+  runner cache when needed. The source checks passed, but no labelled-runner or
+  installed-build verdict is claimed for this commit
+  ([`b5f0db6`](https://github.com/Ding-Ding-Projects/material-designer/commit/b5f0db63b8d2ed1d1d8a52b0ca1b463e65e30830)).
+
+  個 UI handoff 嘅尾巴終於收返：context menu 自己郁緊都唔會無端端消失，Figma
+  import tabs 有返正規 tabpanel 同鍵盤行法，command palette 長字唔再畀雙語模式
+  剪到一截，Squirrel handoff 失敗仲可以再試。HTML 同 Markdown 儲存會陪住換檔案
+  同 restart 準備一路收尾，clear-cache 亦會撤銷未用嘅 installer authorization。
+  Self-hosted CI 缺工具時會自動放入 pinned `gh`、`jq` 同 `7z`；靜態檢查過咗，
+  但今次 commit 未有 labelled-runner 或 installed-build 綠燈扮證人。
+
 - **CI now names its self-hosted runners and rebuilds dependencies from source-of-truth files.** `Verify`, `Release`, and `Pages` select explicit Linux or Windows runner labels; every checkout is clean; dependency jobs install and verify Node 24 plus pnpm 10.33.2 before `pnpm install --frozen-lockfile`. The pnpm-store cache is an optimisation only, and public pull requests no longer execute on the self-hosted runner ([`5556f84f1a4580f0d795f92b912e09833e6eb47f`](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f)).
 
   CI 而家講清楚自己坐邊張櫈，亦由 manifest 同 lockfile 重新砌 dependencies；唔再靠 runner 入面上一手留下嘅 node_modules 扮魔法。Verify、Release、Pages 各自用啱 Linux/Windows label，Node 24 同 pnpm 10.33.2 先驗身，公開 pull request 就唔會喺 self-hosted runner 上亂跑。個 cache 只係幫手加速，唔係偷偷養住第二棵 dependency 樹。
