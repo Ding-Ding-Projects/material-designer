@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { OpenDesignHostUpdaterSavePreparation } from "@open-design/host";
 
 import {
   checkUpdateRestartSafety,
+  finishUpdateQuitAfterRendererSave,
   parseUpdateActionRequest,
+  parseUpdateRendererSavePreparationResponse,
+  UPDATE_RENDERER_SAVE_FAILED_ERROR_CODE,
+  UPDATE_RENDERER_SAVE_UNAVAILABLE_ERROR_CODE,
 } from "../../src/main/update-preflight.js";
 
 describe("desktop update restart preflight", () => {
@@ -55,5 +60,68 @@ describe("desktop update restart preflight", () => {
       source: null,
     });
     expect(parseUpdateActionRequest(null)).toEqual({ force: false, source: null });
+  });
+
+  it("waits for renderer save preparation before allowing the restart", async () => {
+    const requestQuit = vi.fn();
+    let resolvePreparation: ((preparation: OpenDesignHostUpdaterSavePreparation) => void) | undefined;
+    const resultPromise = finishUpdateQuitAfterRendererSave({
+      force: false,
+      prepare: () => new Promise((resolve) => {
+        resolvePreparation = resolve;
+      }),
+      requestQuit,
+    });
+
+    expect(requestQuit).not.toHaveBeenCalled();
+    resolvePreparation?.({ state: "saved" });
+    await expect(resultPromise).resolves.toEqual({ ok: true });
+    expect(requestQuit).toHaveBeenCalledTimes(1);
+  });
+
+  it("never lets force bypass a failed renderer save", async () => {
+    const requestQuit = vi.fn();
+    await expect(finishUpdateQuitAfterRendererSave({
+      force: true,
+      prepare: async () => ({ reason: "save-failed", state: "failed" as const }),
+      requestQuit,
+    })).resolves.toEqual({
+      details: { preparation: "failed", reason: "save-failed" },
+      ok: false,
+      reason: UPDATE_RENDERER_SAVE_FAILED_ERROR_CODE,
+    });
+    expect(requestQuit).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes an unavailable renderer barrier from a save failure", async () => {
+    const requestQuit = vi.fn();
+    await expect(finishUpdateQuitAfterRendererSave({
+      force: false,
+      prepare: async () => ({ reason: "renderer-save-preparation-timeout", state: "failed" as const }),
+      requestQuit,
+    })).resolves.toMatchObject({
+      ok: false,
+      reason: UPDATE_RENDERER_SAVE_UNAVAILABLE_ERROR_CODE,
+    });
+    expect(requestQuit).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed renderer preparation responses at the IPC boundary", () => {
+    expect(parseUpdateRendererSavePreparationResponse({
+      requestId: "restart-1",
+      preparation: { state: "saved" },
+    })).toEqual({ requestId: "restart-1", preparation: { state: "saved" } });
+    expect(parseUpdateRendererSavePreparationResponse({
+      requestId: "restart-1",
+      preparation: { state: "failed", reason: "save failed" },
+    })).toBeNull();
+    expect(parseUpdateRendererSavePreparationResponse({
+      requestId: "restart-1",
+      preparation: { state: "failed", reason: "x".repeat(121) },
+    })).toBeNull();
+    expect(parseUpdateRendererSavePreparationResponse({
+      requestId: "restart/1",
+      preparation: { state: "clean" },
+    })).toBeNull();
   });
 });

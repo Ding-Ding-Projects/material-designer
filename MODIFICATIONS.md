@@ -75,6 +75,25 @@ documented as such.
 - `tools/pack/tests/win-lifecycle.test.ts`
 - `tools/pack/tests/win-targets.test.ts`
 
+### 2026-08-06 — Make update restart wait for renderer saves and close audited UI gaps
+
+**Reason:** the UI audit found that an update restart could schedule process
+shutdown while a sketch autosave was still queued or in flight. The host bridge
+now asks the renderer to flush those saves, rejects malformed responses, times
+out safely, and refuses both ordinary and forced restarts when preparation
+fails. The same audit added focused coverage for the save handshake and filled
+the missing allowlist entries for the Figma, command-palette, context-menu and
+design-system accessibility fixes already present in this checkout.
+
+**Changed files:**
+
+- `apps/desktop/tests/main/update-preflight.test.ts`
+- `apps/desktop/tests/main/updater-host-boundary.test.ts`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/tests/components/DesignSystemFlow.test.tsx`
+- `apps/web/tests/components/FileWorkspace.test.tsx`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Use one command-palette shortcut
 
 **Reason:** The desktop header announced `Ctrl K` while the application accepted

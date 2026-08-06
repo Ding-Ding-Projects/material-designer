@@ -25,6 +25,7 @@ import type {
   OpenDesignHostUpdaterActionOptions,
   OpenDesignHostUpdaterMenuLabels,
   OpenDesignHostUpdaterOpenDialogRequest,
+  OpenDesignHostUpdaterSavePreparation,
 } from "@open-design/host";
 
 import { renderDeckSlides } from "./deck-capture.js";
@@ -38,6 +39,8 @@ import type { DesktopUpdater } from "./updater.js";
 import { parseDesktopUpdateMenuLabels } from "./update-menu.js";
 import {
   checkUpdateRestartSafety,
+  finishUpdateQuitAfterRendererSave,
+  parseUpdateRendererSavePreparationResponse,
   parseUpdateActionRequest,
   updateRestartSafetyError,
 } from "./update-preflight.js";
@@ -284,6 +287,9 @@ const DESKTOP_PET_WINDOW_HEIGHT = 300;
 const DESKTOP_PET_WINDOW_MARGIN = 24;
 const UPDATER_STATUS_EVENT = "od:update:status-changed";
 const UPDATER_OPEN_DIALOG_EVENT = "od:update:open-dialog";
+const UPDATER_PREPARE_QUIT_EVENT = "od:update:prepare-quit";
+const UPDATER_PREPARE_QUIT_RESPONSE_CHANNEL = "od:update:prepare-quit:response";
+const RENDERER_SAVE_PREPARATION_TIMEOUT_MS = 10_000;
 const DESIGN_BROWSER_PARTITION = "persist:open-design-design-browser";
 const UPDATER_IPC_CHANNELS = [
   "od:update:status",
@@ -292,6 +298,7 @@ const UPDATER_IPC_CHANNELS = [
   "od:update:download",
   "od:update:install",
   "od:update:quit",
+  UPDATER_PREPARE_QUIT_RESPONSE_CHANNEL,
   "od:update:set-menu-labels",
 ] as const;
 
@@ -2331,6 +2338,42 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     const status = await (options.updater?.status() ?? unavailableUpdaterStatus());
     return { ...status, error: updateRestartSafetyError(safety) };
   };
+  const pendingRendererSavePreparations = new Map<
+    string,
+    {
+      resolve: (preparation: OpenDesignHostUpdaterSavePreparation) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+  let rendererSavePreparationInFlight: Promise<OpenDesignHostUpdaterSavePreparation> | null = null;
+  const requestRendererSavePreparation = (): Promise<OpenDesignHostUpdaterSavePreparation> => {
+    if (rendererSavePreparationInFlight != null) return rendererSavePreparationInFlight;
+
+    const request = new Promise<OpenDesignHostUpdaterSavePreparation>((resolve) => {
+      if (window.isDestroyed() || window.webContents.isDestroyed()) {
+        resolve({ reason: "renderer-save-preparation-unavailable", state: "failed" });
+        return;
+      }
+      const requestId = randomBytes(16).toString("hex");
+      const timer = setTimeout(() => {
+        pendingRendererSavePreparations.delete(requestId);
+        resolve({ reason: "renderer-save-preparation-timeout", state: "failed" });
+      }, RENDERER_SAVE_PREPARATION_TIMEOUT_MS);
+      pendingRendererSavePreparations.set(requestId, { resolve, timer });
+      try {
+        window.webContents.send(UPDATER_PREPARE_QUIT_EVENT, { requestId });
+      } catch {
+        clearTimeout(timer);
+        pendingRendererSavePreparations.delete(requestId);
+        resolve({ reason: "renderer-save-preparation-unavailable", state: "failed" });
+      }
+    });
+    rendererSavePreparationInFlight = request;
+    void request.then(() => {
+      if (rendererSavePreparationInFlight === request) rendererSavePreparationInFlight = null;
+    });
+    return request;
+  };
   window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
     const src = typeof params.src === "string" ? params.src : "";
     const partition = typeof params.partition === "string" ? params.partition : "";
@@ -2429,6 +2472,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     sendUpdaterStatus(status);
     return status;
   });
+  ipcMain.handle("od:update:prepare-quit:response", async (event, rawResponse: unknown): Promise<OpenDesignHostActionResult> => {
+    requireMainWindowSender(event);
+    const response = parseUpdateRendererSavePreparationResponse(rawResponse);
+    if (response == null) return { ok: false, reason: "invalid renderer save preparation response" };
+    const pending = pendingRendererSavePreparations.get(response.requestId);
+    if (pending == null) return { ok: false, reason: "renderer save preparation request is not pending" };
+    clearTimeout(pending.timer);
+    pendingRendererSavePreparations.delete(response.requestId);
+    pending.resolve(response.preparation);
+    return { ok: true };
+  });
   ipcMain.handle("od:update:quit", async (event, updaterOptions: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
     const blocked = await guardedUpdaterStatus(updaterOptions);
@@ -2442,8 +2496,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (options.requestQuit == null) {
       return { ok: false, reason: "desktop quit is not available" };
     }
-    setTimeout(() => options.requestQuit?.(), 0);
-    return { ok: true };
+    const request = parseUpdateActionRequest(updaterOptions);
+    return await finishUpdateQuitAfterRendererSave({
+      force: request.force,
+      prepare: requestRendererSavePreparation,
+      requestQuit: () => setTimeout(() => options.requestQuit?.(), 0),
+    });
   });
   ipcMain.handle("od:update:set-menu-labels", async (event, rawLabels: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);

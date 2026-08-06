@@ -13,6 +13,7 @@ import {
 import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { createPortal } from 'react-dom';
 import type { DesignSystemEditClickProps, TrackingProjectKind } from '@open-design/contracts/analytics';
+import { getOpenDesignHost, type OpenDesignHostUpdaterSavePreparation } from '@open-design/host';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackFileManagerClick,
@@ -1306,8 +1307,11 @@ export function FileWorkspace({
   const sketchAutosaveDraftsRef = useRef<Map<string, QueuedSketchAutosave>>(new Map());
   const sketchSceneRevisionRef = useRef<Map<string, number>>(new Map());
   const sketchSaveInFlightRef = useRef<Set<string>>(new Set());
+  const sketchSavePromisesRef = useRef<Map<string, Promise<boolean | undefined>>>(new Map());
   const pendingSketchSavesRef = useRef<Map<string, PendingSketchSave>>(new Map());
-  const flushPendingSketchAutosavesRef = useRef<() => void>(() => {});
+  const flushPendingSketchAutosavesRef = useRef<() => Promise<OpenDesignHostUpdaterSavePreparation>>(
+    async () => ({ state: 'clean' }),
+  );
   const sketchPreloadInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
   // The file the super-confirmation gate is pointed at, or null when closed.
@@ -1596,13 +1600,30 @@ export function FileWorkspace({
   }, []);
 
   useEffect(() => {
-    const flush = () => flushPendingSketchAutosavesRef.current();
+    const flush = () => { void flushPendingSketchAutosavesRef.current(); };
     window.addEventListener('pagehide', flush);
     window.addEventListener('beforeunload', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('beforeunload', flush);
     };
+  }, []);
+
+  useEffect(() => {
+    const host = getOpenDesignHost();
+    const subscribe = host?.updater.subscribePrepareQuit;
+    const respond = host?.updater.respondPrepareQuit;
+    if (!subscribe || !respond) return;
+
+    return subscribe(({ requestId }) => {
+      void flushPendingSketchAutosavesRef.current()
+        .then((preparation) => respond({ requestId, preparation }))
+        .catch(() => respond({
+          requestId,
+          preparation: { reason: 'renderer-save-preparation-failed', state: 'failed' },
+        }))
+        .catch(() => undefined);
+    });
   }, []);
 
   useEffect(() => {
@@ -2701,12 +2722,25 @@ export function FileWorkspace({
     queueSketchAutosave(name, scene);
   }
 
-  async function saveSketch(
+  function trackSketchSavePromise(name: string, promise: Promise<boolean | undefined>): Promise<boolean | undefined> {
+    sketchSavePromisesRef.current.set(name, promise);
+    void promise.then(
+      () => {
+        if (sketchSavePromisesRef.current.get(name) === promise) sketchSavePromisesRef.current.delete(name);
+      },
+      () => {
+        if (sketchSavePromisesRef.current.get(name) === promise) sketchSavePromisesRef.current.delete(name);
+      },
+    );
+    return promise;
+  }
+
+  function saveSketch(
     name: string,
     sceneOverride?: ExcalidrawSketchScene,
     options: SaveSketchOptions = {},
     revisionOverride?: number,
-  ): Promise<boolean | undefined> {
+  ): Promise<boolean | undefined> | undefined {
     const entry = sketches[name] ?? (sceneOverride ? defaultSketchState(name, sceneOverride) : null);
     if (!entry) return;
     const scene = sceneOverride ?? entry.scene;
@@ -2723,7 +2757,7 @@ export function FileWorkspace({
           },
         }));
       }
-      return new Promise((resolve) => {
+      return trackSketchSavePromise(name, new Promise((resolve) => {
         const pending = pendingSketchSavesRef.current.get(name);
         pendingSketchSavesRef.current.set(name, {
           scene,
@@ -2731,9 +2765,9 @@ export function FileWorkspace({
           options: pending ? mergeSketchSaveOptions(pending.options, options) : options,
           resolvers: [...(pending?.resolvers ?? []), resolve],
         });
-      });
+      }));
     }
-    return runSketchSave(name, entry, scene, options, revision);
+    return trackSketchSavePromise(name, runSketchSave(name, entry, scene, options, revision));
   }
 
   async function runSketchSave(
@@ -2869,15 +2903,27 @@ export function FileWorkspace({
     sketchAutosaveDraftsRef.current.delete(name);
   }
 
-  function flushPendingSketchAutosaves() {
+  async function flushPendingSketchAutosaves(): Promise<OpenDesignHostUpdaterSavePreparation> {
     const queued = Array.from(sketchAutosaveDraftsRef.current.entries());
-    if (queued.length === 0) return;
+    const waits = new Set<Promise<boolean | undefined>>();
     for (const [name, draft] of queued) {
       const timer = sketchAutosaveTimersRef.current.get(name);
       if (timer) clearTimeout(timer);
       sketchAutosaveTimersRef.current.delete(name);
       sketchAutosaveDraftsRef.current.delete(name);
-      void saveSketch(name, draft.scene, draft.options, draft.revision);
+      const pending = saveSketch(name, draft.scene, draft.options, draft.revision);
+      if (pending) waits.add(pending);
+    }
+    for (const pending of sketchSavePromisesRef.current.values()) waits.add(pending);
+    if (waits.size === 0) return { state: 'clean' };
+
+    try {
+      const results = await Promise.all(waits);
+      return results.some((result) => result === false)
+        ? { reason: 'save-failed', state: 'failed' }
+        : { state: 'saved' };
+    } catch {
+      return { reason: 'save-failed', state: 'failed' };
     }
   }
   flushPendingSketchAutosavesRef.current = flushPendingSketchAutosaves;

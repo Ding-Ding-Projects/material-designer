@@ -14,6 +14,8 @@ import type {
   OpenDesignHostUpdaterMenuLabels,
   OpenDesignHostUpdaterOpenDialogListener,
   OpenDesignHostUpdaterOpenDialogRequest,
+  OpenDesignHostUpdaterPrepareQuitListener,
+  OpenDesignHostUpdaterPrepareQuitResponse,
   OpenDesignHostUpdaterStatusListener,
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
@@ -23,6 +25,8 @@ const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HO
 const OPEN_DESIGN_HOST_VERSION: typeof import('@open-design/host').OPEN_DESIGN_HOST_VERSION = 2;
 const UPDATER_STATUS_EVENT = 'od:update:status-changed';
 const UPDATER_OPEN_DIALOG_EVENT = 'od:update:open-dialog';
+const UPDATER_PREPARE_QUIT_EVENT = 'od:update:prepare-quit';
+const UPDATER_PREPARE_QUIT_RESPONSE_CHANNEL = 'od:update:prepare-quit:response';
 const APP_CONFIG_CHANGED_IPC_CHANNEL = 'od:app-config-changed';
 const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
 // Duplicated from main/window-controls.ts on purpose, for the same reason the
@@ -278,6 +282,15 @@ const updater = {
       return actionFailure(reasonFromError(error));
     }
   },
+  respondPrepareQuit: async (
+    response: OpenDesignHostUpdaterPrepareQuitResponse,
+  ): Promise<OpenDesignHostActionResult> => {
+    try {
+      return await ipcRenderer.invoke(UPDATER_PREPARE_QUIT_RESPONSE_CHANNEL, response);
+    } catch (error) {
+      return actionFailure(reasonFromError(error));
+    }
+  },
   setMenuLabels: async (labels: OpenDesignHostUpdaterMenuLabels): Promise<OpenDesignHostActionResult> => {
     try {
       return await ipcRenderer.invoke('od:update:set-menu-labels', labels);
@@ -304,6 +317,16 @@ const updater = {
     ipcRenderer.on(UPDATER_OPEN_DIALOG_EVENT, handler);
     return () => {
       ipcRenderer.removeListener(UPDATER_OPEN_DIALOG_EVENT, handler);
+    };
+  },
+  subscribePrepareQuit: (listener: OpenDesignHostUpdaterPrepareQuitListener): (() => void) => {
+    const handler = (_event: unknown, request: unknown): void => {
+      if (!isRecord(request) || typeof request.requestId !== 'string' || request.requestId.length === 0) return;
+      listener({ requestId: request.requestId });
+    };
+    ipcRenderer.on(UPDATER_PREPARE_QUIT_EVENT, handler);
+    return () => {
+      ipcRenderer.removeListener(UPDATER_PREPARE_QUIT_EVENT, handler);
     };
   },
 };

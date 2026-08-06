@@ -128,4 +128,16 @@ describe("desktop updater host boundary", () => {
     expect(quitHandler).not.toContain("app.relaunch()");
     expect(quitHandler).not.toContain("installUpdate()");
   });
+
+  it("waits for renderer save preparation before scheduling process quit", () => {
+    const runtime = source("src/main/runtime.ts");
+    const quitStart = runtime.indexOf('ipcMain.handle("od:update:quit"');
+    const quitEnd = runtime.indexOf('ipcMain.handle("od:update:set-menu-labels"', quitStart);
+    const quitHandler = runtime.slice(quitStart, quitEnd);
+    expect(runtime).toContain('ipcMain.handle("od:update:prepare-quit:response"');
+    expect(runtime).toContain("RENDERER_SAVE_PREPARATION_TIMEOUT_MS");
+    expect(quitHandler).toContain("finishUpdateQuitAfterRendererSave");
+    expect(quitHandler).toContain("requestRendererSavePreparation");
+    expect(quitHandler).toContain("setTimeout(() => options.requestQuit?.(), 0)");
+  });
 });

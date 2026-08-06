@@ -7,6 +7,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import {
   DESIGN_FILES_TAB,
@@ -198,6 +199,7 @@ const routinesCss = readFileSync(join(process.cwd(), 'src/styles/viewer/routines
 let root: Root | null = null;
 let host: HTMLDivElement | null = null;
 let composerCssStyle: HTMLStyleElement | null = null;
+let restoreMockHost: (() => void) | null = null;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -215,6 +217,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  restoreMockHost?.();
+  restoreMockHost = null;
   cleanup();
   excalidrawWorkspaceMock.lastProps = null;
   if (root) {
@@ -2683,6 +2687,82 @@ describe('FileWorkspace sketch save', () => {
     const saved = JSON.parse(savedText) as { elements?: Array<{ id?: string }>; libraryItems?: unknown[] };
     expect(saved.elements?.map((item) => item.id)).toEqual(['scene-before-unmount']);
     expect(saved.libraryItems).toBeUndefined();
+  });
+
+  it('answers the updater save-preparation request only after flushing the pending sketch', async () => {
+    const file: ProjectFile = {
+      name: 'test.sketch.json',
+      path: 'test.sketch.json',
+      type: 'file',
+      size: 100,
+      mtime: 1700000000,
+      kind: 'sketch',
+      mime: 'application/json',
+    };
+    let prepareQuitListener: ((request: { requestId: string }) => void) | null = null;
+    const respondPrepareQuit = vi.fn(async () => ({ ok: true as const }));
+    restoreMockHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          subscribePrepareQuit: (listener) => {
+            prepareQuitListener = listener;
+            return () => {
+              prepareQuitListener = null;
+            };
+          },
+          respondPrepareQuit,
+        },
+      },
+    });
+    mockedFetchProjectFileText.mockResolvedValue(
+      JSON.stringify({
+        type: 'excalidraw',
+        version: 2,
+        elements: [],
+        appState: { viewBackgroundColor: '#ffffff' },
+        files: {},
+      }),
+    );
+    mockedWriteProjectTextFile.mockResolvedValue(file);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[file]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: ['test.sketch.json'], active: 'test.sketch.json' }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('excalidraw')).toBeTruthy();
+      expect(prepareQuitListener).not.toBeNull();
+    });
+
+    const props = excalidrawWorkspaceMock.lastProps;
+    if (!props?.onChange) throw new Error('expected Excalidraw onChange');
+    act(() => {
+      props.onChange(
+        [{ id: 'restart-safe-scene', type: 'rectangle', isDeleted: false }],
+        { viewBackgroundColor: '#ffffff' },
+        {},
+      );
+    });
+
+    act(() => {
+      prepareQuitListener?.({ requestId: 'restart-1' });
+    });
+    await waitFor(() => {
+      expect(respondPrepareQuit).toHaveBeenCalledWith({
+        requestId: 'restart-1',
+        preparation: { state: 'saved' },
+      });
+    });
+    expect(mockedWriteProjectTextFile).toHaveBeenCalledTimes(1);
   });
 
   it('preserves a newer sketch scene while its autosave is still debouncing', async () => {

@@ -312,6 +312,30 @@ export type OpenDesignHostUpdaterOpenDialogRequest = {
 
 export type OpenDesignHostUpdaterOpenDialogListener = (request: OpenDesignHostUpdaterOpenDialogRequest) => void;
 
+/**
+ * Renderer-owned save preparation reported before the host quits for an
+ * updater install. `clean` means there was no pending work; `saved` means the
+ * renderer drained one or more saves; `failed` is a hard stop and must never
+ * be bypassed by a forced restart.
+ */
+export type OpenDesignHostUpdaterSavePreparation =
+  | { state: "clean" }
+  | { state: "saved" }
+  | { reason: string; state: "failed" };
+
+export type OpenDesignHostUpdaterPrepareQuitRequest = {
+  requestId: string;
+};
+
+export type OpenDesignHostUpdaterPrepareQuitResponse = {
+  preparation: OpenDesignHostUpdaterSavePreparation;
+  requestId: string;
+};
+
+export type OpenDesignHostUpdaterPrepareQuitListener = (
+  request: OpenDesignHostUpdaterPrepareQuitRequest,
+) => void;
+
 export type OpenDesignHostWindowMaximizedListener = (maximized: boolean) => void;
 
 /**
@@ -394,6 +418,10 @@ export type OpenDesignHostBridge = {
     status(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     subscribe(listener: OpenDesignHostUpdaterStatusListener): () => void;
     subscribeOpenDialog(listener: OpenDesignHostUpdaterOpenDialogListener): () => void;
+    /** Optional on hosts predating the renderer save-preparation handshake. */
+    subscribePrepareQuit?(listener: OpenDesignHostUpdaterPrepareQuitListener): () => void;
+    /** Optional on hosts predating the renderer save-preparation handshake. */
+    respondPrepareQuit?(response: OpenDesignHostUpdaterPrepareQuitResponse): Promise<OpenDesignHostActionResult>;
   };
   version: typeof OPEN_DESIGN_HOST_VERSION;
   // Optional, and absent on every host that keeps its native title bar — only
