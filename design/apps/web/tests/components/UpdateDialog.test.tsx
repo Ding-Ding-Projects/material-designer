@@ -109,6 +109,47 @@ describe('UpdateDialog', () => {
     expect(screen.getByRole('button', { name: 'Explore new features' })).toBeTruthy();
   });
 
+  it('uses restart-to-install copy for a ready Windows Squirrel Setup.exe', async () => {
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    const ready = payloadReadyStatus({
+      artifact: {
+        name: 'Setup.exe',
+        platformKey: 'win',
+        type: 'installer',
+        url: 'https://example.test/Setup.exe',
+      },
+      capabilities: {
+        canApplyInPlace: false,
+        canDownload: true,
+        canOpenInstaller: true,
+        requiresManualInstall: true,
+      },
+      downloadPath: '/tmp/open-design-updater/Setup.exe',
+      platform: 'win32',
+    });
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          status: vi.fn(async () => ready),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(<I18nProvider initial="en"><UpdateDialog /></I18nProvider>);
+    await act(async () => {
+      openDialogListener?.({ source: 'windows-update-menu' });
+      await Promise.resolve();
+    });
+
+    await screen.findByRole('dialog', { name: 'Check for updates' });
+    expect(screen.getByRole('button', { name: 'Restart to install update' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Later' })).toBeTruthy();
+  });
+
   it('shows reinstall copy and the operator link when the feed forces the installer route', async () => {
     let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
     const ready = payloadReadyStatus({
@@ -230,7 +271,7 @@ describe('UpdateDialog', () => {
     });
     expect(screen.getByText('Installing update...')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Explore new features' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Install and restart' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Restart to install update' })).toBeNull();
   });
 
   it('replaces technical check errors with concise recovery copy', async () => {
@@ -334,7 +375,7 @@ describe('UpdateDialog', () => {
       openDialogListener?.({ source: 'mac-app-menu' });
       await Promise.resolve();
     });
-    fireEvent.click(await screen.findByRole('button', { name: 'Install and restart' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Restart to install update' }));
 
     expect(await screen.findByText('Material Designer is still working')).toBeTruthy();
     expect(screen.getByText('2 active tasks are still running. Restarting now will interrupt them.')).toBeTruthy();

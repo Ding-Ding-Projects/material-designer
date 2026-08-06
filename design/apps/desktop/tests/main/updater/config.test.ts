@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { DESKTOP_UPDATE_CHANNELS, SIDECAR_SOURCES } from "@open-design/sidecar-proto";
 import { describe, expect, it } from "vitest";
 
-import { DESKTOP_UPDATE_ENV, resolveDesktopUpdaterConfig } from "../../../src/main/updater/config.js";
+import {
+  DEFAULT_STABLE_METADATA_URL,
+  DESKTOP_UPDATE_ENV,
+  resolveDesktopUpdaterConfig,
+} from "../../../src/main/updater/config.js";
 
 function makeRoot(): string {
   return mkdtempSync(join(tmpdir(), "od-updater-config-test-"));
@@ -88,38 +92,52 @@ describe("desktop updater config", () => {
     }
   });
 
-  // The identity guard for this fork: a packaged build that was not given a
-  // feed of its own must never check, and must never resolve another product's
-  // origin. Both are one-line reversions in a file that keeps merging from
-  // upstream, so they are pinned here rather than left to review.
-  it("leaves a packaged build with no configured feed disabled", () => {
+  it("defaults packaged stable Windows builds to this project's own feed", () => {
     const root = makeRoot();
     try {
       const config = resolveDesktopUpdaterConfig({
         currentVersion: "1.2.3",
         downloadRoot: root,
-        env: {},
+        env: {
+          [DESKTOP_UPDATE_ENV.PLATFORM]: "win32",
+        },
         source: SIDECAR_SOURCES.PACKAGED,
       });
 
-      expect(config.enabled).toBe(false);
-      expect(config.autoCheck).toBe(false);
+      expect(config.enabled).toBe(true);
+      expect(config.autoCheck).toBe(true);
+      expect(config.autoDownload).toBe(true);
+      expect(config.autoOpen).toBe(false);
+      expect(DEFAULT_STABLE_METADATA_URL).toBe(
+        "https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json",
+      );
+      expect(config.metadataUrl).toBe(DEFAULT_STABLE_METADATA_URL);
+      expect(config.metadataUrl).not.toContain("open-design.ai");
     } finally {
       rmSync(root, { force: true, recursive: true });
     }
   });
 
-  it("never defaults any channel at another product's release feed", () => {
+  it("keeps non-stable packaged defaults inert and product-owned", () => {
     const root = makeRoot();
     try {
-      for (const currentVersion of ["1.2.3", "1.2.3-beta.4", "1.2.3-prerelease.4", "1.2.3-preview.4"]) {
+      for (const [currentVersion, platform] of [
+        ["1.2.3-beta.4", "win32"],
+        ["1.2.3-prerelease.4", "win32"],
+        ["1.2.3-preview.4", "win32"],
+        ["1.2.3", "darwin"],
+      ]) {
         const config = resolveDesktopUpdaterConfig({
           currentVersion,
           downloadRoot: root,
-          env: {},
+          env: {
+            [DESKTOP_UPDATE_ENV.PLATFORM]: platform,
+          },
           source: SIDECAR_SOURCES.PACKAGED,
         });
 
+        expect(config.enabled).toBe(false);
+        expect(config.autoCheck).toBe(false);
         expect(new URL(config.metadataUrl).hostname.endsWith(".invalid")).toBe(true);
         expect(config.metadataUrl).not.toContain("open-design.ai");
       }

@@ -17,7 +17,8 @@ import {
 } from "@open-design/sidecar";
 import { applyOsLocaleSwitch, createSplashWindow, setSplashStage } from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
-import { join } from "node:path";
+import { spawn } from "node:child_process";
+import { basename, dirname, join } from "node:path";
 import { app, dialog } from "electron";
 
 import { readPackagedConfig } from "./config.js";
@@ -108,6 +109,63 @@ function applyPackagedUpdaterEnv(updateMetadataUrl: string | null): void {
   if (updateMetadataUrl == null) return;
   if (process.env.OD_UPDATE_METADATA_URL != null && process.env.OD_UPDATE_METADATA_URL.length > 0) return;
   process.env.OD_UPDATE_METADATA_URL = updateMetadataUrl;
+}
+
+type SquirrelStartupEvent =
+  | "--squirrel-install"
+  | "--squirrel-updated"
+  | "--squirrel-uninstall"
+  | "--squirrel-obsolete";
+
+const SQUIRREL_STARTUP_EVENTS = new Set<SquirrelStartupEvent>([
+  "--squirrel-install",
+  "--squirrel-updated",
+  "--squirrel-uninstall",
+  "--squirrel-obsolete",
+]);
+
+/**
+ * Squirrel.Windows starts the packaged executable with a lifecycle switch
+ * before it starts the normal application. Handle those switches before
+ * config, sidecars, single-instance state, or the renderer can start.
+ */
+export function handleSquirrelStartupEvent(): boolean {
+  if (process.platform !== "win32") return false;
+  const event = process.argv.slice(1).find((argument): argument is SquirrelStartupEvent =>
+    SQUIRREL_STARTUP_EVENTS.has(argument as SquirrelStartupEvent),
+  );
+  if (event == null) return false;
+
+  if (event === "--squirrel-obsolete") {
+    app.quit();
+    return true;
+  }
+
+  const updateExe = join(dirname(process.execPath), "..", "Update.exe");
+  const executableName = basename(process.execPath);
+  const updateArguments = event === "--squirrel-uninstall"
+    ? ["--removeShortcut", executableName]
+    : ["--createShortcut", executableName];
+  let quitRequested = false;
+  const quit = () => {
+    if (quitRequested) return;
+    quitRequested = true;
+    app.quit();
+  };
+
+  try {
+    const updater = spawn(updateExe, updateArguments, {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    updater.once("error", quit);
+    updater.once("close", quit);
+  } catch {
+    // A missing or unusable Update.exe must not fall through into normal app
+    // startup with a Squirrel lifecycle switch still on the command line.
+    quit();
+  }
+  return true;
 }
 
 async function main(): Promise<void> {
@@ -348,7 +406,7 @@ async function main(): Promise<void> {
   });
 }
 
-void main().catch(async (error: unknown) => {
+async function handleMainError(error: unknown): Promise<void> {
   const isPathAccess = error instanceof PackagedPathAccessError;
   if (isPathAccess) {
     try {
@@ -381,4 +439,8 @@ void main().catch(async (error: unknown) => {
     });
   }
   process.exit(1);
-});
+}
+
+if (!handleSquirrelStartupEvent()) {
+  void main().catch(handleMainError);
+}

@@ -1030,7 +1030,12 @@ export function createDesktopUpdater(
         });
       }
       const downloaded = setState(DESKTOP_UPDATE_STATES.DOWNLOADED);
-      if (config.autoOpen) return await installUpdate();
+      // A packaged Windows installer is a Squirrel Setup.exe bootstrapper.
+      // It must not be launched as a side effect of a background download:
+      // only the user's explicit "Restart to install update" action may arm
+      // the deferred post-quit installer handoff. Keep the existing opt-in
+      // automatic payload path for launcher updates.
+      if (config.autoOpen && nextCandidate.artifact.type === "payload") return await installUpdate();
       return downloaded;
     } catch (downloadError) {
       if (stagingDir != null) await rm(stagingDir, { force: true, recursive: true }).catch(() => undefined);

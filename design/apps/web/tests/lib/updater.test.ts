@@ -88,6 +88,39 @@ describe('web updater model', () => {
     expect(model.promptKey).toContain('1.2.3-beta.4');
   });
 
+  it('marks a ready Windows Squirrel installer as restart-to-install', () => {
+    const model = deriveUpdaterModel(
+      downloadedStatus({
+        artifact: {
+          name: 'Setup.exe',
+          platformKey: 'win',
+          type: 'installer',
+          url: 'https://fixture.test/Setup.exe',
+        },
+        capabilities: {
+          canApplyInPlace: false,
+          canDownload: true,
+          canOpenInstaller: true,
+          requiresManualInstall: true,
+        },
+        downloadPath: '/tmp/open-design-updater/Setup.exe',
+        platform: 'win32',
+      }),
+      { hostAvailable: true },
+    );
+
+    expect(model.platform).toBe('win32');
+    expect(model.updateKind).toBe('installer');
+    expect(model.requiresRestartToInstall).toBe(true);
+    expect(model.shouldPrompt).toBe(true);
+  });
+
+  it('keeps macOS installer updates on manual-installer semantics', () => {
+    const model = deriveUpdaterModel(downloadedStatus(), { hostAvailable: true });
+    expect(model.platform).toBe('darwin');
+    expect(model.requiresRestartToInstall).toBe(false);
+  });
+
   it('exposes the reinstall requirement from the host snapshot', () => {
     const model = deriveUpdaterModel(
       downloadedStatus({

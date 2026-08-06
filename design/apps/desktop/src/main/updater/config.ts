@@ -38,12 +38,14 @@ export const DESKTOP_UPDATE_ENV = Object.freeze({
   PLATFORM: "OD_UPDATE_PLATFORM",
 } as const);
 
-// This fork publishes no release feed of its own and must never point at
-// another product's. The default origin is deliberately inert (`.invalid` is
-// reserved and can never resolve), so a build without an explicit
-// OD_UPDATE_METADATA_URL fails to fetch instead of downloading and installing a
-// different application over itself.
-const DEFAULT_RELEASE_ORIGIN = "https://updates.invalid/material-designer";
+// Stable packaged Windows builds use this project's own metadata feed by
+// default. Keep the URL here rather than inheriting the upstream feed: a
+// default updater must never be able to replace Material Designer with another
+// product. Non-stable channels remain inert unless their pack step supplies an
+// explicit feed.
+export const DEFAULT_STABLE_METADATA_URL =
+  "https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json";
+const DEFAULT_INERT_RELEASE_ORIGIN = "https://updates.invalid/material-designer";
 const BETA_POLL_INTERVAL_MS = 15 * 60 * 1000;
 const STABLE_POLL_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_POLL_INITIAL_DELAY_MS = 5000;
@@ -121,7 +123,8 @@ export function isDesktopUpdateChannel(value: unknown): value is DesktopUpdateCh
 }
 
 function defaultMetadataUrl(channel: DesktopUpdateChannel): string {
-  return `${DEFAULT_RELEASE_ORIGIN}/${channel}/latest/metadata.json`;
+  if (channel === DESKTOP_UPDATE_CHANNELS.STABLE) return DEFAULT_STABLE_METADATA_URL;
+  return `${DEFAULT_INERT_RELEASE_ORIGIN}/${channel}/latest/metadata.json`;
 }
 
 export function normalizeDownloadRoot(value: string): string {
@@ -168,18 +171,7 @@ export function defaultChannelForVersion(version: string): DesktopUpdateChannel 
 export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): DesktopUpdaterConfig {
   const env = input.env ?? process.env;
   const mode = normalizeMode(env[DESKTOP_UPDATE_ENV.MODE], input.mode ?? DESKTOP_UPDATE_MODES.PACKAGE_LAUNCHER);
-  // Auto-update is opt-in here. Upstream defaulted this on for every packaged
-  // build; this fork ships no feed, so an updater that ran by default would
-  // download and install a different product over this one. A build updates
-  // only when it was actually given a feed: `tools/pack` bakes
-  // OD_UPDATE_METADATA_URL into `open-design-config.json`, and
-  // `apps/packaged` re-exports it into this process before the desktop main
-  // resolves this config, so a build packed against this fork's own feed is
-  // enabled while a build packed without one stays off and pointed at the
-  // inert `.invalid` origin. OD_UPDATE_ENABLED still overrides either way.
   const explicitMetadataUrl = normalizeOptionalNonEmpty(env[DESKTOP_UPDATE_ENV.METADATA_URL]);
-  const defaultEnabled = input.source === SIDECAR_SOURCES.PACKAGED && explicitMetadataUrl != null;
-  const enabled = isTruthyEnv(env[DESKTOP_UPDATE_ENV.ENABLED]) ?? defaultEnabled;
   const runtimeBase = resolve(input.runtimeBase == null ? process.cwd() : input.runtimeBase);
   const downloadRoot = normalizeDownloadRoot(
     env[DESKTOP_UPDATE_ENV.DOWNLOAD_ROOT] ??
@@ -192,6 +184,11 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
     input.appVersion ??
     "0.0.0";
   const channel = normalizeChannel(env[DESKTOP_UPDATE_ENV.CHANNEL], defaultChannelForVersion(currentVersion));
+  const platform = env[DESKTOP_UPDATE_ENV.PLATFORM] ?? input.platform ?? process.platform;
+  const defaultEnabled =
+    input.source === SIDECAR_SOURCES.PACKAGED &&
+    (explicitMetadataUrl != null || (platform === "win32" && channel === DESKTOP_UPDATE_CHANNELS.STABLE));
+  const enabled = isTruthyEnv(env[DESKTOP_UPDATE_ENV.ENABLED]) ?? defaultEnabled;
   const installedVersionOverride = normalizeOptionalNonEmpty(env[DESKTOP_UPDATE_ENV.INSTALLED_VERSION]);
   const installerObservationRoot = normalizeOptionalRoot(input.installerObservationRoot, "installer observation root");
   const launcherLaunchPath = normalizeOptionalNonEmpty(input.launcherLaunchPath);
@@ -239,7 +236,7 @@ export function resolveDesktopUpdaterConfig(input: DesktopUpdaterConfigInput): D
     mode,
     ...(namespace == null ? {} : { namespace }),
     openDryRun: isTruthyEnv(env[DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]) ?? false,
-    platform: env[DESKTOP_UPDATE_ENV.PLATFORM] ?? input.platform ?? process.platform,
+    platform,
     runtimeBase,
     source: input.source,
   };

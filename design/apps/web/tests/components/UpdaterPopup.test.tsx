@@ -134,6 +134,39 @@ describe('UpdaterPopup', () => {
     expect(screen.queryByRole('button', { name: 'Collapse' })).toBeNull();
   });
 
+  it('uses restart semantics for a ready Windows Squirrel installer and keeps Later available', async () => {
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          status: vi.fn(async () => downloadedStatus({
+            artifact: {
+              name: 'Setup.exe',
+              platformKey: 'win',
+              type: 'installer',
+              url: 'https://example.test/Setup.exe',
+            },
+            downloadPath: '/tmp/open-design-updater/Setup.exe',
+            platform: 'win32',
+          })),
+        },
+      },
+    });
+
+    render(
+      <I18nProvider initial="en">
+        <UpdaterPopup />
+      </I18nProvider>,
+    );
+
+    const button = await screen.findByTestId('entry-nav-updater');
+    expect(button.getAttribute('data-tooltip')).toBe('Restart to install update');
+    fireEvent.click(button);
+
+    expect(await screen.findByRole('dialog', { name: 'Update ready' })).toBeTruthy();
+    expect(screen.getByTestId('updater-install-button').textContent).toBe('Restart to install update');
+    expect(screen.getByRole('button', { name: 'Later' })).toBeTruthy();
+  });
+
   it('uses reinstall copy and the learn-more link for forced installer reinstalls', async () => {
     restoreHost = installMockOpenDesignHost({
       host: {

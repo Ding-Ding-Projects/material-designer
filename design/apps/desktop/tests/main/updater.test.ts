@@ -106,7 +106,7 @@ async function createUpdaterFixture(options: {
   const artifactExt = platform === "win" ? "exe" : "dmg";
   const arch = platform === "win" ? "x64" : "arm64";
   const artifactName = platform === "win"
-    ? `open-design-${version}-win-x64-setup.exe`
+    ? "Setup.exe"
     : `open-design-${version}-mac-arm64.dmg`;
   const artifactPath = `/artifact.${artifactExt}`;
   const artifactBody = Buffer.from(options.artifactBody ?? "open design updater fixture");
@@ -441,7 +441,8 @@ describe("desktop updater", () => {
       expect(checked.capabilities.canOpenInstaller).toBe(true);
       expect(checked.artifact?.platformKey).toBe("win");
       expect(checked.artifact?.type).toBe("installer");
-      expect(checked.downloadPath).toEqual(expect.stringMatching(/\.exe$/));
+      expect(basename(checked.downloadPath ?? "")).toBe("Setup.exe");
+      expect(checked.installResult).toBeUndefined();
       expect(await readFile(checked.downloadPath ?? "", "utf8")).toBe("open design updater fixture");
 
       const installed = await updater.installUpdate();
