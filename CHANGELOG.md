@@ -89,6 +89,14 @@ version section when a release carries them.
 
 ### Fixed
 
+- **The command palette now has one honest shortcut.** The historical header
+  capture showed `Ctrl K` while the application also accepted `Ctrl+Shift+P`,
+  leaving the visible hint and the global contract out of step. The handler,
+  header chip, accessibility metadata, setup copy and tests now derive one
+  binding from the shared registry: `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F`
+  on macOS. The older `Ctrl+K` and `Ctrl+Shift+P` palette routes are retired
+  ([`18850c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/18850c1ee6596e847a0588a20509780460dbbd20)).
+
 - **The Design Files bulk delete no longer reports a success it never had.** It said
   "3 done." after a cancelled confirmation, and after a run where every delete was
   refused — `handleDeleteMany` returned nothing, so the panel fell through to a branch

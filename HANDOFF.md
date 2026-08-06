@@ -54,6 +54,19 @@ no residue.
 >    not evidence that anything renders.** Follow the property to a reader, and
 >    follow the selector to the rule that actually wins.
 
+> [!NOTE]
+> **Updated 2026-08-06.** The desktop command-palette shortcut correction landed in
+> [`18850c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/18850c1ee6596e847a0588a20509780460dbbd20).
+> The application now has one shared `commandPalette.open` binding: `Ctrl+Shift+F`
+> on Windows/Linux and `⇧⌘F` on macOS. The header chip, `aria-keyshortcuts`, global
+> handler, setup copy and focused tests derive it from one registry; `Ctrl+K` and
+> `Ctrl+Shift+P` no longer open the palette.
+>
+> The import verifier also pins its comparison locale on `join` and `comm`. On
+> Windows, the proven route is `core.autocrlf=false` plus an LF-native shell;
+> verification for this change reported `0 gaps`. The application build and unit
+> suites were not run locally; CI remains the evidence for those heavy checks.
+
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
 
