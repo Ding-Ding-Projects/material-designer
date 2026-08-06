@@ -1116,11 +1116,24 @@ export function createDesktopUpdater(
     return "";
   }
 
-  async function revokeInstallerAuthorizations(updateRoot: string): Promise<void> {
+  async function revokeInstallerAuthorizations(updateRoot: string): Promise<string[]> {
     const helpersRoot = join(updateRoot, HELPERS_DIR);
     const paths = new Set(installerAuthorizationPaths);
+    const failures: string[] = [];
     if (pendingInstallerAuthorizationPath != null) paths.add(pendingInstallerAuthorizationPath);
-    const helperEntries = await readdir(helpersRoot).catch(() => [] as string[]);
+    let helperEntries: string[] = [];
+    try {
+      helperEntries = await readdir(helpersRoot);
+    } catch (error: unknown) {
+      const code = isRecord(error) && typeof error.code === "string" ? error.code : undefined;
+      if (code !== "ENOENT") {
+        failures.push("helpers-directory");
+        logger.warn("[open-design updater] failed to inspect installer authorization directory", {
+          error: error instanceof Error ? error.message : String(error),
+          path: helpersRoot,
+        });
+      }
+    }
     for (const entry of helperEntries) {
       if (entry.startsWith("authorize-installer-") && entry.endsWith(".token")) {
         paths.add(join(helpersRoot, entry));
@@ -1130,13 +1143,19 @@ export function createDesktopUpdater(
     installerAuthorizationPaths.clear();
     for (const path of paths) {
       if (!containsPath(helpersRoot, path)) continue;
-      await rm(path, { force: true }).catch((error: unknown) => {
+      try {
+        await rm(path, { force: true });
+      } catch (error: unknown) {
+        failures.push(path);
         logger.warn("[open-design updater] failed to revoke installer authorization", {
           error: error instanceof Error ? error.message : String(error),
           path,
         });
-      });
+        continue;
+      }
+      if (await access(path).then(() => true).catch(() => false)) failures.push(path);
     }
+    return failures;
   }
 
   async function rearmPersistedInstallerIfNeeded(): Promise<DesktopUpdateStatusSnapshot | null> {
@@ -1387,9 +1406,24 @@ export function createDesktopUpdater(
       opened = await openStore();
       if (!opened.ok) return opened.status;
     }
-    // Reset one-shot state before any deletion: even if later cleanup steps
-    // fail, the UI must not stay stuck on stale downloaded/frozen state — that
-    // is the very blocking scenario this action exists to recover from.
+    // Revoke deferred installer authorization before resetting one-shot state.
+    // A failed revocation must remain visible as an error: returning idle while
+    // a helper can still see its marker would turn clear-cache into a false
+    // security boundary.
+    const authorizationFailures = await revokeInstallerAuthorizations(opened.root.realRoot);
+    if (authorizationFailures.length > 0) {
+      return setState(
+        DESKTOP_UPDATE_STATES.ERROR,
+        createError(
+          "installer-authorization-revoke-failed",
+          "one or more deferred installer authorizations could not be revoked",
+          { count: authorizationFailures.length },
+        ),
+      );
+    }
+    // Reset one-shot state before any remaining deletion: even if later cleanup
+    // steps fail, the UI must not stay stuck on stale downloaded/frozen state —
+    // that is the very blocking scenario this action exists to recover from.
     await writeStoreMetadata(opened.root, {
       ...opened.metadata,
       active: undefined,
@@ -1398,7 +1432,6 @@ export function createDesktopUpdater(
       installResult: undefined,
       version: STORE_METADATA_VERSION,
     });
-    await revokeInstallerAuthorizations(opened.root.realRoot);
     activeRelease = null;
     candidate = null;
     incomingRelease = null;

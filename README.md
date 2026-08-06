@@ -59,8 +59,8 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > after a cold start, and revoke those markers during clear-cache. Scrollable
 > menus stay open while their own items move, Figma tabs expose real tabpanel
 > semantics, long command-palette labels wrap, and a failed installer handoff
-> stays retryable. Self-hosted CI now bootstraps its pinned `gh`, `jq` and 7-Zip
-> tools into a user-scoped cache. Focused tests are committed, but no new
+> stays retryable. Self-hosted CI now validates its pinned `gh`, `jq` and 7-Zip
+> tools in a locked user-scoped cache. Focused tests are committed, but no new
 > installed-build capture or new labelled-runner verification is claimed yet.
 
 <details>

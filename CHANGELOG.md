@@ -70,8 +70,10 @@ version section when a release carries them.
   palette labels wrap; and a failed Squirrel installer handoff remains retryable.
   HTML and Markdown renderer saves remain registered through file switches and
   restart preparation, while clear-cache revokes pending installer authorizations.
-  The root workflows now bootstrap pinned `gh`, `jq` and `7z` into a user-scoped
-  runner cache when needed. The source checks passed, but no labelled-runner or
+  The root workflows now validate and bootstrap pinned `gh`, `jq` and `7z` into a
+  locked user-scoped runner cache when needed, with pinned SHA-256 checks for
+  downloaded packages; the handoff documents that persistent cache state is not
+  a cryptographic trust boundary. The source checks passed, but no labelled-runner or
   installed-build verdict is claimed for this commit
   ([`b5f0db6`](https://github.com/Ding-Ding-Projects/material-designer/commit/b5f0db63b8d2ed1d1d8a52b0ca1b463e65e30830)).
 

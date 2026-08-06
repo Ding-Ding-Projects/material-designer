@@ -128,6 +128,10 @@ try {
   }
   Write-HelperLog "waiting for launch handoff"
   Start-Sleep -Milliseconds 1500
+  if (-not (Test-Path -LiteralPath $AuthorizationPath -PathType Leaf)) {
+    Write-HelperLog "installer authorization was revoked during launch handoff"
+    exit 0
+  }
   Start-Process -FilePath $InstallerPath -WorkingDirectory (Split-Path -Parent $InstallerPath)
   Remove-Item -LiteralPath $AuthorizationPath -Force -ErrorAction SilentlyContinue
   Write-HelperLog "installer launch requested"

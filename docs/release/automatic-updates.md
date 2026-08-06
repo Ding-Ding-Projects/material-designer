@@ -81,9 +81,11 @@ Squirrel build can distinguish a later release.
   **Restart to install update** available for a retry. The updater re-arms a
   fresh helper rather than treating the failed handoff as a completed install.
 - **Clear cache** revokes pending and already-authorized installer markers in
-  the owned helper directory. Helpers that have not yet passed their marker
-  check therefore exit without opening `Setup.exe`; the reset cannot leave a
-  one-shot authorization behind.
+  the owned helper directory. Helpers that have not yet passed their final
+  marker check therefore exit without opening `Setup.exe`; a helper that has
+  already passed that check cannot be recalled by a later reset. If a marker
+  cannot be removed, clear-cache reports an error instead of claiming the
+  authorization was revoked.
 - An older published release may not contain `metadata.json`, `RELEASES` or
   NuGet packages because it predates the migration. The first post-migration
   release is the feed's compatibility boundary.

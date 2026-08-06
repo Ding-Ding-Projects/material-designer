@@ -221,11 +221,13 @@ Not by a local build — local builds do not happen here.
       after [5556f84f1a4580f0d795f92b912e09833e6eb47f](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f).
 - [~] **Bootstrap the non-language CI tools automatically.** The committed
       `scripts/bootstrap-ci-tools.sh` and `scripts/bootstrap-ci-tools.ps1`
-      download pinned official releases only when `gh`, `jq` or `7z` is absent,
-      add the user-scoped cache through `GITHUB_PATH`, and fail closed if the
-      required command is still unavailable. The scripts passed local syntax
-      checks; their labelled-runner execution remains pending because no new CI
-      run has been observed for this branch.
+      validate cached `gh`, `jq` and `7z` versions, download pinned official
+      releases when a cache entry is absent or wrong, serialize cache updates,
+      verify the pinned SHA-256 package hashes, add the user-scoped cache
+      through `GITHUB_PATH`, and fail closed if a required command or version
+      is still unavailable. The scripts passed local syntax checks; their
+      labelled-runner execution remains pending because no new CI run has been
+      observed for this branch.
 - [x] **Set the working directory to `design/`.** Every install, typecheck, test
       and build step in `release.yml` carries `working-directory: design`,
       because the repository root has no `package.json`. This is the single most

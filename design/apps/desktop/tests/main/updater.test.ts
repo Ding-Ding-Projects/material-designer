@@ -2754,6 +2754,7 @@ describe("desktop updater", () => {
       expect(script).toContain("Start-Sleep -Milliseconds 1500");
       expect(script).toContain("Start-Process -FilePath $InstallerPath");
       expect(script).toContain("Test-Path -LiteralPath $AuthorizationPath");
+      expect(script).toMatch(/Start-Sleep -Milliseconds 1500[\s\S]*Test-Path -LiteralPath \$AuthorizationPath -PathType Leaf/);
       expect(script).toContain("Remove-Item -LiteralPath $PSCommandPath");
 
       const restarted = createDesktopUpdater({

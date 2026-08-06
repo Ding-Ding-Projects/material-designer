@@ -56,19 +56,28 @@ The labelled runners are deliberately not treated as snowflakes. Each job
 checks out cleanly and runs the committed bootstrap for the small set of
 non-language tools the workflows call:
 
-- Linux runs `scripts/bootstrap-ci-tools.sh`. When `gh` or `jq` is absent, it
-  downloads pinned upstream releases into the runner's user-scoped tool cache
-  and adds that directory through `GITHUB_PATH`; it then verifies Bash, Git,
-  `gh`, `jq` and the standard text utilities.
-- Windows runs `scripts/bootstrap-ci-tools.ps1`. When `gh`, `jq` or `7z` is
-  absent, it installs the pinned upstream binaries into the same user-scoped
-  cache, adds the directory to `PATH`, and fails before packaging if any tool
-  is still missing.
+- Linux runs `scripts/bootstrap-ci-tools.sh`. It reuses only a cache entry whose
+  `gh` and `jq` versions match the pinned releases; otherwise it downloads the
+  official binaries into the runner's user-scoped tool cache, verifies their
+  pinned SHA-256 package hashes, serializes cache updates, and adds that
+  directory through `GITHUB_PATH`. It then verifies Bash, Git, `gh`, `jq` and
+  every standard utility used by the workflows.
+- Windows runs `scripts/bootstrap-ci-tools.ps1`. It validates cached `gh`, `jq`
+  and `7z` versions under a Windows file lock, verifies pinned SHA-256 package
+  hashes, installs the official binaries when a cache entry is absent or wrong,
+  adds the directory to `PATH`, and fails before packaging if any tool or
+  version is still wrong.
 
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a
 cached `node_modules` directory as an installation.
+
+The SHA-256 checks authenticate packages at download time. The persistent
+runner cache is user-scoped runner state, not a cryptographic trust boundary:
+cached executables are selected by their pinned version output and are safe only
+when the runner account and cache are trusted. A runner whose cache is not
+trusted must be reprovisioned or have this tool cache removed before use.
 
 ## `Verify` — the fast gate
 
@@ -91,7 +100,7 @@ pull-request code must not execute on a self-hosted runner.
 | Step | Purpose |
 | --- | --- |
 | Checkout | `fetch-depth: 0`, **no submodule**, and `clean: true` — see below. |
-| Bootstrap | Install the pinned user-scoped Linux utility set when the runner lacks it. |
+| Bootstrap | Validate or install the pinned user-scoped Linux utility set under a cache lock. |
 | Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
 | Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
 | Set up Node | The setup action installs Node 24; the workflow checks the resolved major version. |
@@ -144,8 +153,8 @@ leave a tag without its assets.
 <summary><b>Step by step</b> — checkout through publish</summary>
 
 **1 — Checkout and bootstrap.** `fetch-depth: 0`, no submodule and `clean: true`.
-The Windows bootstrap installs missing `gh`, `jq` and `7z` into the user-scoped
-runner cache before any packaging or release command uses them. The build
+The Windows bootstrap validates or installs pinned `gh`, `jq` and `7z` into the
+locked user-scoped runner cache before any packaging or release command uses them. The build
 needs `design/`, not the provenance pin, and a clean checkout prevents stale
 `node_modules` or generated files on the persistent runner from becoming inputs.
 
