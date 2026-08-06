@@ -55,7 +55,7 @@ function versionText(t: Translator, model: UpdaterModel): string {
 }
 
 function installActionText(t: Translator, model: UpdaterModel, installBusy: boolean): string {
-  if (model.updateKind === 'payload') {
+  if (model.updateKind === 'payload' || model.requiresRestartToInstall) {
     return installBusy ? t('updater.installingRestart') : t('updater.installRestart');
   }
   return installBusy ? t('updater.opening') : t('updater.openInstaller');
@@ -242,7 +242,7 @@ export function UpdaterPopup({
   const installFailureText = model.canOpenInstaller ? t('updater.openFailedFallback') : t('updater.failed');
   const controlLabel = quitRecoverable
     ? t('updater.quitButton')
-    : model.updateKind === 'payload'
+    : model.updateKind === 'payload' || model.requiresRestartToInstall
       ? t('updater.installRestart')
       : t('updater.openInstaller');
   const channelLabel = channelLabelFor(model.status?.channel);

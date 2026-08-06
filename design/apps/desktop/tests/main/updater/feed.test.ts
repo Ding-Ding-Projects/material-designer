@@ -3,17 +3,54 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { SIDECAR_SOURCES } from "@open-design/sidecar-proto";
+import { DESKTOP_UPDATE_CHANNELS, SIDECAR_SOURCES } from "@open-design/sidecar-proto";
 import { describe, expect, it } from "vitest";
 
 import { resolveDesktopUpdaterConfig } from "../../../src/main/updater/config.js";
-import { compareVersions, resolveInstalledOuterVersion } from "../../../src/main/updater/feed.js";
+import {
+  artifactFileName,
+  compareVersions,
+  isSquirrelWindowsInstallerArtifact,
+  resolveInstalledOuterVersion,
+} from "../../../src/main/updater/feed.js";
 
 function makeRoot(): string {
   return mkdtempSync(join(tmpdir(), "od-updater-feed-test-"));
 }
 
 describe("desktop updater feed", () => {
+  it("stages a Squirrel Windows installer as Setup.exe", () => {
+    const artifact = {
+      name: "squirrel/Setup.exe",
+      platformKey: "win",
+      type: "installer",
+      url: "https://updates.example.com/stable/Setup.exe",
+    };
+    const candidate = {
+      arch: "x64",
+      artifact,
+      checksum: {
+        algorithm: "sha256" as const,
+        value: "a".repeat(64),
+      },
+      channel: DESKTOP_UPDATE_CHANNELS.STABLE,
+      metadata: {},
+      platformKey: "win",
+      version: "1.2.3",
+    };
+
+    expect(isSquirrelWindowsInstallerArtifact(artifact)).toBe(true);
+    expect(artifactFileName(candidate)).toBe("Setup.exe");
+    const nonSquirrelArtifact = {
+      ...artifact,
+      name: "material-designer-1.2.3-win-x64-setup.exe",
+    };
+    expect(isSquirrelWindowsInstallerArtifact(nonSquirrelArtifact)).toBe(false);
+    expect(artifactFileName({ ...candidate, artifact: nonSquirrelArtifact })).toBe(
+      "open-design-1.2.3-win-x64-installer.exe",
+    );
+  });
+
   it("resolves the installed outer version from the platform bundle layout", async () => {
     const root = makeRoot();
     try {

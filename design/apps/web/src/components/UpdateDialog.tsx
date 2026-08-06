@@ -377,7 +377,11 @@ export function UpdateDialog() {
   const reinstallUrl = model.reinstall?.url ?? null;
   const title = showSafety ? t('updater.activeRunsTitle') : t('settings.updateCheck');
   const primaryLabel = (() => {
-    if (ready) return model.updateKind === 'payload' ? t('updater.installRestart') : t('updater.openInstaller');
+    if (ready) {
+      return model.updateKind === 'payload' || model.requiresRestartToInstall
+        ? t('updater.installRestart')
+        : t('updater.openInstaller');
+    }
     if (available) return t('updater.download');
     if (unsupported) return t('updater.manualDownload');
     if (state === 'error') return t('settings.updateRecheck');

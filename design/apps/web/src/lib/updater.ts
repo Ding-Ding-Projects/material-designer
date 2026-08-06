@@ -52,6 +52,8 @@ export type UpdaterModel = {
   errorMessage: string | null;
   hasDownloadedInstaller: boolean;
   installerOpened: boolean;
+  platform: string | null;
+  requiresRestartToInstall: boolean;
   updateKind: 'installer' | 'payload' | 'unknown';
   promptKey: string | null;
   /**
@@ -133,6 +135,8 @@ export function deriveUpdaterModel(
   const installerOpened = status?.installResult != null;
   const artifactType = status?.artifact?.type ?? status?.incoming?.artifact?.type;
   const updateKind = artifactType === 'payload' ? 'payload' : artifactType === 'dmg' || artifactType === 'installer' ? 'installer' : 'unknown';
+  const platform = status?.platform ?? null;
+  const requiresRestartToInstall = platform === 'win32' && updateKind === 'installer';
   const availableVersion = status?.availableVersion ?? null;
   const currentVersion = status?.currentVersion ?? null;
   const downloadProgress = downloadProgressFromStatus(status);
@@ -163,6 +167,8 @@ export function deriveUpdaterModel(
     errorMessage: status?.error?.message ?? null,
     hasDownloadedInstaller,
     installerOpened,
+    platform,
+    requiresRestartToInstall,
     updateKind,
     promptKey,
     reinstall: status?.reinstall ?? null,

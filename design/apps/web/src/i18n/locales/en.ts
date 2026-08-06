@@ -3783,7 +3783,7 @@ export const en: Dict = {
   'updater.later': 'Later',
   "updater.allowSilentUpdates": "Allow automatic install of future in-app updates",
   'updater.openFailedFallback': 'The installer could not be opened.',
-  'updater.installRestart': 'Install and restart',
+  'updater.installRestart': 'Restart to install update',
   'updater.installingRestart': 'Installing and restarting...',
   'updater.openInstaller': 'Install update',
   'updater.opening': 'Opening installer...',

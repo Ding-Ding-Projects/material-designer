@@ -64,7 +64,28 @@ export function extensionForArtifact(name: string | undefined, type: string): st
   return ".bin";
 }
 
+function artifactBaseName(name: string | undefined): string | undefined {
+  if (name == null || name.length === 0) return undefined;
+  return name.replace(/^.*[\\/]/u, "");
+}
+
+/**
+ * Squirrel.Windows publishes the bootstrapper as Setup.exe. Keep that
+ * filename when the checksum-verified bytes are promoted into the owned
+ * release directory: Setup.exe is the file the deferred installer launch
+ * hands to Windows after the user chooses the restart action.
+ */
+export function isSquirrelWindowsInstallerArtifact(
+  artifact: Pick<DesktopUpdateArtifactSnapshot, "name" | "platformKey" | "type">,
+): boolean {
+  const baseName = artifactBaseName(artifact.name);
+  return artifact.type === "installer"
+    && artifact.platformKey?.toLowerCase().startsWith("win") === true
+    && baseName?.toLowerCase() === "setup.exe";
+}
+
 export function artifactFileName(candidate: UpdateCandidate): string {
+  if (isSquirrelWindowsInstallerArtifact(candidate.artifact)) return "Setup.exe";
   const ext = extensionForArtifact(candidate.artifact.name, candidate.artifact.type ?? "artifact");
   return [
     "open-design",
