@@ -55,7 +55,7 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > dialog focus and reduced motion, the design-system Back name, the command
 > palette's anchored regex builder, and renderer save preparation before a
 > Squirrel restart. Focused tests are committed, but no new installed-build
-> capture or hosted verification is claimed yet.
+> capture or new labelled-runner verification is claimed yet.
 
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
@@ -196,7 +196,7 @@ available Windows Git Bash path and reported the checkout's known line-ending
 translation (`10033` byte differences and `1` OID mismatch across the imported
 tree; `0` stale notices and `0` undeclared paths). This is not a new port result:
 the working tree needs LF-native checkout configuration before a local rerun can
-be compared meaningfully. The hosted Verify workflow remains the authoritative
+be compared meaningfully. The labelled self-hosted Verify workflow remains the authoritative
 verification for the committed change.
 
 **What continuous integration has actually proven.** These are observed run outcomes, not

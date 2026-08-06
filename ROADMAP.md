@@ -61,7 +61,9 @@ Two constraints shape every phase and are repeated here because they change what
 "do the work" means:
 
 1. **All installation, building, testing, and running happens in continuous
-   integration on a hosted Windows runner.** The development machine does not
+   integration on the labelled self-hosted runners.** Windows packaging uses
+   `[self-hosted, windows, material-designer]`; Linux verification uses
+   `[self-hosted, linux, material-designer]`. The development machine does not
    run the toolchain. This means nearly every item below is finished by a CI run
    producing evidence, not by a local check.
 2. **`design/` is a byte-verbatim copy of the upstream project and must stay
@@ -204,16 +206,15 @@ Not by a local build — local builds do not happen here.
       environments, and release targets.
       *Verified by:* all three having run — *Verify* on a clean checkout,
       *Release* through to publication, *Pages* through to deployment.
-- [x] **Install job on a hosted Windows runner.** `release.yml` runs on
-      `windows-latest` and installs the package manager through its own setup
-      action rather than through the shim-based enabler, which fails with a
-      permissions error on Windows. The install compiles a native SQLite binding
-      from source because no prebuilt binary exists for this platform/runtime
-      pair, so expect it to take minutes rather than seconds — and expect the
-      first real run to be where that assumption is actually tested.
-      *Verified by:* the install completing on a hosted Windows runner with the
-      native binding compiled from source. The assumption held — it is minutes,
-      not seconds, and it is the long pole of that job.
+- [~] **Install job on the labelled self-hosted Windows runner.** `release.yml`
+      now selects `[self-hosted, windows, material-designer]`, installs pnpm
+      10.33.2 and Node 24 through setup actions, verifies both versions, cleans
+      the checkout, and resolves the workspace with `pnpm install
+      --frozen-lockfile`. The install compiles a native SQLite binding from
+      source because no prebuilt binary exists for this platform/runtime pair.
+      *Verified before this migration:* the same install completed on the old
+      hosted Windows runner. The labelled self-hosted execution remains pending
+      after [5556f84f1a4580f0d795f92b912e09833e6eb47f](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f).
 - [x] **Set the working directory to `design/`.** Every install, typecheck, test
       and build step in `release.yml` carries `working-directory: design`,
       because the repository root has no `package.json`. This is the single most
@@ -222,16 +223,18 @@ Not by a local build — local builds do not happen here.
       *Verified by:* every one of those steps running from that directory without
       a path failure. The prediction was never tested the hard way, because it was
       written down before the first attempt rather than after it.
-- [x] **Run the port verifier in CI, with line endings forced to LF.**
-      `verify.yml` runs `scripts/verify-port.sh` on `ubuntu-latest`, on every
-      push, pull request and manual dispatch. The Linux runner is the
+- [~] **Run the port verifier in CI, with line endings forced to LF.**
+      `verify.yml` runs `scripts/verify-port.sh` on
+      `[self-hosted, linux, material-designer]`, on every push and manual
+      dispatch. It deliberately has no pull-request trigger because this public
+      repository does not execute untrusted code on a self-hosted runner. The Linux runner is the
       line-ending answer: the verifier hashes on-disk bytes, and a Windows
       checkout that converts line endings would report thousands of spurious
       differences on a tree that is perfectly fine. The committed
       `scripts/upstream-manifest.tsv` is the fallback when the pinned submodule
       is not checked out, so a missing submodule no longer exits early.
-      *Verified by:* the gate passing on a clean Linux checkout at 11,799 files
-      and zero gaps — **and now by watching it fail**, which was the outstanding
+      *Verified before this migration:* the gate passed on a clean Linux checkout
+      at 11,799 files and zero gaps — **and was watched failing**, which was the outstanding
       half of this item. It did not need a contrived test in the end: several
       agents editing `design/` in parallel produced exactly the situation the
       gate exists for, and it named all nine before any of them were documented:
@@ -297,7 +300,7 @@ Not by a local build — local builds do not happen here.
       feed, lifecycle switches and explicit restart action are committed. The
       restart path now waits for renderer save preparation before requesting
       quit, and a failed or timed-out preparation blocks even a forced restart.
-      A new hosted Release run still must prove the Squirrel install/start/
+      A new labelled self-hosted Release run still must prove the Squirrel install/start/
       uninstall path and publish the first post-migration feed.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
