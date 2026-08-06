@@ -2,7 +2,7 @@
 
 import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FigmaImportResult } from '@open-design/contracts';
 
 import { FigmaImportModal } from '../../src/components/FigmaImportModal';
@@ -41,5 +41,33 @@ describe('FigmaImportModal accessibility and layout', () => {
     );
     expect(CSS).toMatch(/\.head\s*\{[\s\S]*?flex:\s*0 0 auto;/);
     expect(CSS).toMatch(/\.foot\s*\{[\s\S]*?flex:\s*0 0 auto;/);
+  });
+
+  it('traps keyboard focus and restores the opener', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    const onClose = vi.fn();
+    const view = render(
+      <FigmaImportModal
+        onClose={onClose}
+        resolveProjectId={async () => null}
+        onImported={(_result: FigmaImportResult, _projectId: string) => {}}
+        onFigmaUrl={() => {}}
+      />,
+    );
+
+    const dialog = screen.getByRole('dialog', { name: 'Import from Figma' });
+    const focusable = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+    expect(focusable.length).toBeGreaterThan(1);
+    focusable[0]?.focus();
+    fireEvent.keyDown(focusable[0]!, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(focusable[focusable.length - 1]);
+    fireEvent.keyDown(focusable[focusable.length - 1]!, { key: 'Tab' });
+    expect(document.activeElement).toBe(focusable[0]);
+
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
   });
 });

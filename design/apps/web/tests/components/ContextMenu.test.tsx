@@ -138,6 +138,19 @@ describe('ContextMenu', () => {
     expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(0);
   });
 
+  it('shrinks its card to fit a narrow viewport', () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 200 });
+    try {
+      renderMenu();
+      const menu = screen.getByTestId('menu');
+      expect(Number.parseInt(menu.style.width, 10)).toBe(184);
+      expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(8);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+    }
+  });
+
   it('is a mode: arrows walk it, Escape and Tab leave it', () => {
     const onClose = vi.fn();
     const opener = createOpener();
@@ -172,6 +185,16 @@ describe('ContextMenu', () => {
     expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
     dismiss(screen.getByTestId('menu'));
     expect(document.activeElement).toBe(opener);
+  });
+
+  it('does not refocus the old opener when another menu opener is pressed', () => {
+    const firstOpener = createOpener();
+    const secondOpener = createOpener();
+    renderMenu({ restoreFocusTo: firstOpener });
+
+    secondOpener.focus();
+    fireEvent.pointerDown(secondOpener);
+    expect(document.activeElement).toBe(secondOpener);
   });
 
   it('runs the item and closes before it, so the menu cannot outlive its target', () => {

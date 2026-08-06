@@ -106,6 +106,19 @@ describe("desktop update restart preflight", () => {
     expect(requestQuit).not.toHaveBeenCalled();
   });
 
+  it("does not request quit until the deferred installer is authorized", async () => {
+    const requestQuit = vi.fn();
+    const authorize = vi.fn(async () => ({ ok: false as const, reason: "authorization marker could not be written" }));
+    await expect(finishUpdateQuitAfterRendererSave({
+      authorize,
+      force: false,
+      prepare: async () => ({ state: "saved" as const }),
+      requestQuit,
+    })).resolves.toEqual({ ok: false, reason: "authorization marker could not be written" });
+    expect(authorize).toHaveBeenCalledTimes(1);
+    expect(requestQuit).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed renderer preparation responses at the IPC boundary", () => {
     expect(parseUpdateRendererSavePreparationResponse({
       requestId: "restart-1",

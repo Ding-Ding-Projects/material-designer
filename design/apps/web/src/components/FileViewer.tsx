@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Button, Input, Select } from '@open-design/components';
+import type { OpenDesignHostUpdaterSavePreparation } from '@open-design/host';
 import { APP_CHROME_FILE_ACTIONS_ID, APP_CHROME_FILE_ACTIONS_SELECTOR } from './AppChromeHeader';
 import {
   buildSocialSharePayload,
@@ -1315,6 +1316,9 @@ interface Props {
   onRemovePreviewComment?: (commentId: string) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<boolean | void> | boolean | void;
   onFileSaved?: () => Promise<void> | void;
+  onRegisterUpdateSavePreparation?: (
+    handler: () => Promise<OpenDesignHostUpdaterSavePreparation>,
+  ) => () => void;
   onBrandExtractionStopRequest?: () => void;
   // Open `openName` as a tab (focusing it) and close `closeName` in one
   // atomic tab-state update. The React module pointer uses this to jump to the
@@ -1353,6 +1357,7 @@ export const FileViewer = memo(function FileViewer({
   onRemovePreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
+  onRegisterUpdateSavePreparation,
   onBrandExtractionStopRequest,
   onOpenFileReplacing,
   commentPortalId,
@@ -1422,6 +1427,7 @@ export const FileViewer = memo(function FileViewer({
         projectId={projectId}
         file={file}
         onFileSaved={onFileSaved}
+        onRegisterUpdateSavePreparation={onRegisterUpdateSavePreparation}
       />
     );
   }
@@ -15134,10 +15140,14 @@ function MarkdownViewer({
   projectId,
   file,
   onFileSaved,
+  onRegisterUpdateSavePreparation,
 }: {
   projectId: string;
   file: ProjectFile;
   onFileSaved?: () => Promise<void> | void;
+  onRegisterUpdateSavePreparation?: (
+    handler: () => Promise<OpenDesignHostUpdaterSavePreparation>,
+  ) => () => void;
 }) {
   const { t, locale } = useI18n();
   const [text, setText] = useState<string | null>(null);
@@ -15163,6 +15173,7 @@ function MarkdownViewer({
   const editorBlockOffsetsRef = useRef<{ width: number; offsets: number[] } | null>(null);
   const previousModeRef = useRef<MarkdownViewerMode>('split');
   const saveInFlightRef = useRef(false);
+  const markdownSavePromiseRef = useRef<Promise<void> | null>(null);
   const pendingSaveAfterFlightRef = useRef<MarkdownSaveOptions | null>(null);
   const textRef = useRef('');
   const lastSavedTextRef = useRef<string | null>(null);
@@ -15246,7 +15257,7 @@ function MarkdownViewer({
   }, []);
 
   const saveMarkdownText = useCallback(
-    (value: string, options: MarkdownSaveOptions = {}) => {
+    (value: string, options: MarkdownSaveOptions = {}): Promise<void> => {
       const run = async (nextValue: string, saveOptions: MarkdownSaveOptions): Promise<void> => {
         if (lastSavedTextRef.current === nextValue) {
           const showSaving = saveOptions.showSaving !== false;
@@ -15284,7 +15295,7 @@ function MarkdownViewer({
             pendingSaveAfterFlightRef.current = null;
             const latest = textRef.current;
             if (latest !== lastSavedTextRef.current) {
-              void run(latest, pending);
+              await run(latest, pending);
             } else {
               const showPendingSaving = pending.showSaving !== false;
               if (textRef.current === latest) setSaveState(showPendingSaving ? 'saved' : 'idle');
@@ -15295,25 +15306,51 @@ function MarkdownViewer({
           }
         }
       };
-      void run(value, options);
+      if (saveInFlightRef.current) {
+        pendingSaveAfterFlightRef.current = pendingSaveAfterFlightRef.current
+          ? mergeMarkdownSaveOptions(pendingSaveAfterFlightRef.current, options)
+          : options;
+        return markdownSavePromiseRef.current ?? Promise.resolve();
+      }
+      const promise = run(value, options);
+      markdownSavePromiseRef.current = promise;
+      void promise.then(
+        () => {
+          if (markdownSavePromiseRef.current === promise) markdownSavePromiseRef.current = null;
+        },
+        () => {
+          if (markdownSavePromiseRef.current === promise) markdownSavePromiseRef.current = null;
+        },
+      );
+      return promise;
     },
     [file.name, onFileSaved, projectId],
   );
 
-  const flushPendingMarkdownSave = useCallback(() => {
+  const flushPendingMarkdownSave = useCallback(async (): Promise<OpenDesignHostUpdaterSavePreparation> => {
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     const latest = textRef.current;
     if (lastSavedTextRef.current !== null && latest !== lastSavedTextRef.current) {
-      saveMarkdownText(latest, { refreshFiles: false, showSaving: false });
+      await saveMarkdownText(latest, { refreshFiles: false, showSaving: false });
+      return textRef.current === lastSavedTextRef.current
+        ? { state: 'saved' }
+        : { reason: 'save-failed', state: 'failed' };
     }
+    if (markdownSavePromiseRef.current) await markdownSavePromiseRef.current;
+    return { state: 'clean' };
   }, [saveMarkdownText]);
 
   useEffect(() => {
+    if (!onRegisterUpdateSavePreparation) return undefined;
+    return onRegisterUpdateSavePreparation(flushPendingMarkdownSave);
+  }, [flushPendingMarkdownSave, onRegisterUpdateSavePreparation]);
+
+  useEffect(() => {
     return () => {
-      flushPendingMarkdownSave();
+      void flushPendingMarkdownSave();
     };
   }, [flushPendingMarkdownSave]);
 

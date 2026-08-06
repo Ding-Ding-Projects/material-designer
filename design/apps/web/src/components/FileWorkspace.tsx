@@ -1188,6 +1188,8 @@ interface WorkspaceActionToast {
   ttlMs?: number;
 }
 
+type RendererSavePreparationHandler = () => Promise<OpenDesignHostUpdaterSavePreparation>;
+
 export function FileWorkspace({
   projectId,
   projectKind,
@@ -1309,9 +1311,31 @@ export function FileWorkspace({
   const sketchSaveInFlightRef = useRef<Set<string>>(new Set());
   const sketchSavePromisesRef = useRef<Map<string, Promise<boolean | undefined>>>(new Map());
   const pendingSketchSavesRef = useRef<Map<string, PendingSketchSave>>(new Map());
+  const rendererSavePreparationHandlersRef = useRef<Set<RendererSavePreparationHandler>>(new Set());
   const flushPendingSketchAutosavesRef = useRef<() => Promise<OpenDesignHostUpdaterSavePreparation>>(
     async () => ({ state: 'clean' }),
   );
+  const registerRendererSavePreparation = useCallback((handler: RendererSavePreparationHandler) => {
+    rendererSavePreparationHandlersRef.current.add(handler);
+    return () => rendererSavePreparationHandlersRef.current.delete(handler);
+  }, []);
+  const flushRendererSavePreparations = useCallback(async (): Promise<OpenDesignHostUpdaterSavePreparation> => {
+    const preparations = await Promise.all([
+      flushPendingSketchAutosavesRef.current(),
+      ...Array.from(rendererSavePreparationHandlersRef.current, async (handler) => {
+        try {
+          return await handler();
+        } catch {
+          return { reason: 'save-failed', state: 'failed' as const };
+        }
+      }),
+    ]);
+    const failed = preparations.find((preparation) => preparation.state === 'failed');
+    if (failed) return failed;
+    return preparations.some((preparation) => preparation.state === 'saved')
+      ? { state: 'saved' }
+      : { state: 'clean' };
+  }, []);
   const sketchPreloadInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
   // The file the super-confirmation gate is pointed at, or null when closed.
@@ -1594,20 +1618,20 @@ export function FileWorkspace({
 
   useEffect(() => {
     return () => {
-      flushPendingSketchAutosavesRef.current();
+      void flushRendererSavePreparations();
       sketchSceneRevisionRef.current.clear();
     };
-  }, []);
+  }, [flushRendererSavePreparations]);
 
   useEffect(() => {
-    const flush = () => { void flushPendingSketchAutosavesRef.current(); };
+    const flush = () => { void flushRendererSavePreparations(); };
     window.addEventListener('pagehide', flush);
     window.addEventListener('beforeunload', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('beforeunload', flush);
     };
-  }, []);
+  }, [flushRendererSavePreparations]);
 
   useEffect(() => {
     const host = getOpenDesignHost();
@@ -1616,7 +1640,7 @@ export function FileWorkspace({
     if (!subscribe || !respond) return;
 
     return subscribe(({ requestId }) => {
-      void flushPendingSketchAutosavesRef.current()
+      void flushRendererSavePreparations()
         .then((preparation) => respond({ requestId, preparation }))
         .catch(() => respond({
           requestId,
@@ -1624,7 +1648,7 @@ export function FileWorkspace({
         }))
         .catch(() => undefined);
     });
-  }, []);
+  }, [flushRendererSavePreparations]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2854,6 +2878,16 @@ export function FileWorkspace({
         }));
         result = false;
       }
+    } catch (error) {
+      console.warn('[FileWorkspace] sketch save failed', name, error);
+      setSketches((curr) => ({
+        ...curr,
+        [name]: {
+          ...(curr[name] ?? entry),
+          saving: false,
+        },
+      }));
+      result = false;
     } finally {
       sketchSaveInFlightRef.current.delete(name);
     }
@@ -2861,6 +2895,15 @@ export function FileWorkspace({
     const pending = pendingSketchSavesRef.current.get(name);
     if (pending) {
       pendingSketchSavesRef.current.delete(name);
+      if (result !== true) {
+        // Keep the newest scene available for the next explicit flush instead
+        // of dropping it when an older write rejects. Resolving queued callers
+        // prevents a failed first write from leaving their promises pending
+        // forever, while the draft remains retryable by the updater barrier.
+        sketchAutosaveDraftsRef.current.set(name, pending);
+        for (const resolve of pending.resolvers) resolve(false);
+        return result;
+      }
       const pendingResult = await saveSketch(name, pending.scene, pending.options, pending.revision);
       for (const resolve of pending.resolvers) resolve(pendingResult);
       return pendingResult;
@@ -4034,6 +4077,7 @@ export function FileWorkspace({
               activeFile.name === 'brand.html' ? onBrandExtractionStopRequest : undefined
             }
             onFileSaved={onRefreshFiles}
+            onRegisterUpdateSavePreparation={registerRendererSavePreparation}
             onOpenFileReplacing={stableOpenFileReplacing}
             commentPortalId={commentPortalId}
             onCommentModeChange={onCommentModeChange}

@@ -2498,6 +2498,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
     const request = parseUpdateActionRequest(updaterOptions);
     return await finishUpdateQuitAfterRendererSave({
+      authorize: () => options.updater?.authorizeInstallerLaunch() ?? Promise.resolve({
+        ok: false as const,
+        reason: "installer authorization is not available",
+      }),
       force: request.force,
       prepare: requestRendererSavePreparation,
       requestQuit: () => setTimeout(() => options.requestQuit?.(), 0),

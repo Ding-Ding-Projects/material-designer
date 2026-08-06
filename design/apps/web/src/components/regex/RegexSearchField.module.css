@@ -81,6 +81,8 @@
      Below the tooltip layer (4000) and select menus (9000), which are the
      surfaces that legitimately sit on top of a popover. */
   z-index: 3000;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
   overflow: auto;
   overscroll-behavior: contain;
   border: 1px solid var(--md-sys-color-outline-variant);

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createReadStream } from "node:fs";
 import {
@@ -9,6 +9,7 @@ import {
   rename,
   rm,
   stat,
+  writeFile,
 } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -116,6 +117,7 @@ import {
 } from "./updater/release-lifecycle.js";
 import {
   DOWNLOADS_DIR,
+  HELPERS_DIR,
   RELEASES_DIR,
   STAGING_DIR,
   STORE_METADATA_FILE,
@@ -161,6 +163,7 @@ type ActionOptions = {
 };
 
 export type DesktopUpdater = {
+  authorizeInstallerLaunch(): Promise<{ ok: true } | { ok: false; reason: string }>;
   checkForUpdates(options?: ActionOptions): Promise<DesktopUpdateStatusSnapshot>;
   clearCache(): Promise<DesktopUpdateStatusSnapshot>;
   config: DesktopUpdaterConfig;
@@ -431,6 +434,7 @@ export function createDesktopUpdater(
   let metadata: Record<string, unknown> | null = null;
   let lastCheckedAt: string | undefined;
   let installResult: DesktopUpdateStatusSnapshot["installResult"];
+  let pendingInstallerAuthorizationPath: string | null = null;
   let installFrozen = false;
   let lifecycleSummary: DesktopUpdateCacheLifecycleSummary | undefined;
   let progress: DesktopUpdateProgressSnapshot | undefined;
@@ -1084,13 +1088,87 @@ export function createDesktopUpdater(
 
   async function requestInstallerOpen(resolvedDownload: string, updateRoot: string): Promise<string> {
     if (config.platform !== "darwin" && config.platform !== "win32") return await openPath(resolvedDownload);
-    return await launchInstallerAfterQuit({
+    const helpersRoot = join(updateRoot, HELPERS_DIR);
+    await mkdir(helpersRoot, { recursive: true });
+    const authorizationPath = join(
+      helpersRoot,
+      `authorize-installer-${now().getTime().toString(36)}-${randomBytes(8).toString("hex")}.token`,
+    );
+    const openError = await launchInstallerAfterQuit({
       appPid: processPid,
+      authorizationPath,
       cwd: config.runtimeBase,
       installerPath: resolvedDownload,
       root: updateRoot,
       timeoutMs: DEFERRED_INSTALLER_TIMEOUT_MS,
     });
+    if (openError.length > 0) {
+      pendingInstallerAuthorizationPath = null;
+      return openError;
+    }
+    pendingInstallerAuthorizationPath = authorizationPath;
+    return "";
+  }
+
+  async function rearmPersistedInstallerIfNeeded(): Promise<DesktopUpdateStatusSnapshot | null> {
+    if (
+      installResult == null
+      || pendingInstallerAuthorizationPath != null
+      || config.openDryRun
+      || (config.platform !== "darwin" && config.platform !== "win32")
+      || activeRelease?.ref.artifact.type === "payload"
+    ) return null;
+    if (activeRelease == null) {
+      const restored = await restoreStoreStateOnce();
+      if (restored?.state === DESKTOP_UPDATE_STATES.ERROR) return restored;
+    }
+    const resolvedDownload = installResult.path ?? activeRelease?.path;
+    if (activeRelease == null || resolvedDownload == null) {
+      return setState(DESKTOP_UPDATE_STATES.ERROR, createError("update-not-downloaded", "no downloaded installer is available to restart"));
+    }
+    try {
+      const opened = await openStore();
+      if (!opened.ok) return opened.status;
+      if (!containsPath(opened.root.realRoot, resolvedDownload)) {
+        return setState(DESKTOP_UPDATE_STATES.ERROR, createError("download-path-escaped", "download path is outside the update root"));
+      }
+      const openError = await requestInstallerOpen(resolvedDownload, opened.root.realRoot);
+      if (openError.length > 0) {
+        return setState(DESKTOP_UPDATE_STATES.ERROR, createError("open-installer-failed", openError));
+      }
+      return null;
+    } catch (error) {
+      return setState(
+        DESKTOP_UPDATE_STATES.ERROR,
+        createError("open-installer-failed", error instanceof Error ? error.message : String(error)),
+      );
+    }
+  }
+
+  async function authorizeInstallerLaunch(): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const authorizationPath = pendingInstallerAuthorizationPath;
+    // Payload relaunches use the application launcher helper rather than the
+    // Squirrel installer helper, so they have no authorization marker to
+    // create. Likewise, dry runs and non-desktop platforms never arm the
+    // deferred installer path. Only a real macOS/Windows installer launch
+    // requires this extra approval.
+    if (
+      authorizationPath == null
+      && (config.openDryRun || (config.platform !== "darwin" && config.platform !== "win32")
+        || activeRelease?.ref.artifact.type === "payload")
+    ) return { ok: true };
+    if (authorizationPath == null) return { ok: false, reason: "installer launch is not pending" };
+    try {
+      await writeFile(authorizationPath, "", { encoding: "utf8", flag: "wx" });
+      pendingInstallerAuthorizationPath = null;
+      return { ok: true };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === "EEXIST") {
+        pendingInstallerAuthorizationPath = null;
+        return { ok: true };
+      }
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   async function requestPayloadRelaunch(
@@ -1125,6 +1203,8 @@ export function createDesktopUpdater(
     if (unsupported != null) return unsupported;
     if (installResult != null) {
       installFrozen = true;
+      const rearmError = await rearmPersistedInstallerIfNeeded();
+      if (rearmError != null) return rearmError;
       return snapshot();
     }
     if (activeRelease == null) {
@@ -1338,6 +1418,7 @@ export function createDesktopUpdater(
     checkForUpdates: (options) => serialized(() => checkForCandidate(options)),
     clearCache: () => serialized(clearCacheAndResetState),
     config,
+    authorizeInstallerLaunch,
     downloadUpdate: () => serialized(downloadUpdate),
     handle(action) {
       switch (action) {

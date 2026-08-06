@@ -87,6 +87,7 @@ design-system accessibility fixes already present in this checkout.
 
 **Changed files:**
 
+- `apps/desktop/src/main/updater/deferred-launch.ts`
 - `apps/desktop/tests/main/update-preflight.test.ts`
 - `apps/desktop/tests/main/updater-host-boundary.test.ts`
 - `apps/web/src/components/FigmaImportModal.tsx`

@@ -103,6 +103,11 @@ function clampToViewport(
   };
 }
 
+function widthWithinViewport(width: number): number {
+  const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
+  return Math.max(1, Math.min(width, viewportWidth - EDGE_PADDING * 2));
+}
+
 export function ContextMenu({
   items,
   x,
@@ -115,7 +120,8 @@ export function ContextMenu({
   mac,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [position] = useState(() => clampToViewport(x, y, items, width));
+  const menuWidth = widthWithinViewport(width);
+  const [position] = useState(() => clampToViewport(x, y, items, menuWidth));
   const onMac = mac ?? isMacPlatform();
 
   const restoreFocus = useCallback(() => {
@@ -123,9 +129,9 @@ export function ContextMenu({
     restoreFocusTo.focus({ preventScroll: true });
   }, [restoreFocusTo]);
 
-  const dismiss = useCallback(() => {
+  const dismiss = useCallback((shouldRestoreFocus = true) => {
     onClose();
-    restoreFocus();
+    if (shouldRestoreFocus) restoreFocus();
   }, [onClose, restoreFocus]);
 
   // Escape, an outside press, or a scroll underneath all dismiss. Scroll counts
@@ -141,15 +147,21 @@ export function ContextMenu({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
-      dismiss();
+      // Do not focus the old opener while a second context menu is opening;
+      // that would race the new menu's focus effect and park focus on the
+      // wrong row. A genuine outside dismissal still restores the opener.
+      const opensAnotherMenu = target instanceof Element
+        && target.closest('[data-context-menu-opener]') != null;
+      dismiss(!opensAnotherMenu);
     };
+    const onScroll = () => dismiss();
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [dismiss]);
 
@@ -179,7 +191,7 @@ export function ContextMenu({
     <div
       ref={menuRef}
       className={styles.menu}
-      style={{ left: position.left, top: position.top, width }}
+      style={{ left: position.left, top: position.top, width: menuWidth }}
       role="menu"
       aria-label={ariaLabel}
       data-testid={testId}
@@ -195,6 +207,7 @@ export function ContextMenu({
         } else if (event.key === 'Tab') {
           // A menu is a mode, not part of the page's tab order. Leaving it by
           // Tab should close it rather than drop focus into whatever is behind.
+          event.preventDefault();
           dismiss();
         }
       }}

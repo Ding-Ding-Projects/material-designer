@@ -92,6 +92,14 @@ import type { SettingsControlId, SettingsIndexEntry } from './settingsIndex';
 export type PaletteDisplayMode = 'card' | 'full';
 
 const DISPLAY_MODE_STORAGE_KEY = 'open-design:command-palette:display-mode';
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 /** How many file/tab hits ride along in the unscoped list before it gets noisy. */
 const FILE_ROWS_IN_ALL_SCOPE = 6;
@@ -209,6 +217,7 @@ export function CommandPalette({
   const [displayMode, setDisplayMode] = useState<PaletteDisplayMode>(() => readPaletteDisplayMode());
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const paletteRef = useRef<HTMLDivElement | null>(null);
   const fileScope = useQuickSwitcherScope();
 
   // The header may hand the palette a plain serialisable seed. Apply it to
@@ -246,6 +255,39 @@ export function CommandPalette({
     if (!restoreFocusRef.current) return;
     const target = returnFocusRef.current;
     if (target && target.isConnected) target.focus?.();
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const palette = paletteRef.current;
+      if (!palette) return;
+      const focusScopes = [
+        palette,
+        ...Array.from(document.querySelectorAll<HTMLElement>('[data-focus-scope="command-palette"]')),
+      ];
+      const focusable = focusScopes.flatMap((scope) =>
+        Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        palette.focus();
+        return;
+      }
+      const activeElement = document.activeElement;
+      const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
+      if (activeIndex === -1) {
+        event.preventDefault();
+        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+      } else if (event.shiftKey && activeIndex === 0) {
+        event.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
+        event.preventDefault();
+        focusable[0].focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
   // Adapt the field controller to the command registry's existing filter
@@ -639,6 +681,7 @@ export function CommandPalette({
         aria-label={t('commandPalette.title')}
         data-testid="command-palette"
         data-display-mode={displayMode}
+        ref={paletteRef}
         variants={scaleIn}
         initial="hidden"
         animate="visible"
@@ -654,6 +697,7 @@ export function CommandPalette({
             ariaLabel={t('commandPalette.placeholder')}
             inputRef={inputRef}
             testId="command-palette-search"
+            focusScopeId="command-palette"
             autoFocus
             spellCheck={false}
             autoComplete="off"

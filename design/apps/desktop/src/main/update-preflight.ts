@@ -91,6 +91,7 @@ export function updateQuitDecisionAfterRendererSave(
 
 /** Await the renderer barrier before scheduling the actual process quit. */
 export async function finishUpdateQuitAfterRendererSave(input: {
+  authorize?: () => Promise<{ ok: true } | { ok: false; reason: string }>;
   force: boolean;
   prepare: () => Promise<OpenDesignHostUpdaterSavePreparation>;
   requestQuit: () => void;
@@ -103,6 +104,17 @@ export async function finishUpdateQuitAfterRendererSave(input: {
   }
   const decision = updateQuitDecisionAfterRendererSave(preparation, input.force);
   if (!decision.ok) return decision;
+  if (input.authorize) {
+    try {
+      const authorization = await input.authorize();
+      if (!authorization.ok) return authorization;
+    } catch (error) {
+      return {
+        ok: false,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
   input.requestQuit();
   return decision;
 }

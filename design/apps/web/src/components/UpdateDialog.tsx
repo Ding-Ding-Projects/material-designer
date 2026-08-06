@@ -54,6 +54,7 @@ export function UpdateDialog() {
   analyticsTrackRef.current = analytics.track;
   const statusRef = useRef<OpenDesignHostUpdaterStatusSnapshot | null>(null);
   const statusRevisionRef = useRef(0);
+  const checkGenerationRef = useRef(0);
   const laterRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const primaryRef = useRef<HTMLButtonElement | null>(null);
@@ -73,6 +74,7 @@ export function UpdateDialog() {
   }), [model.availableVersion, model.currentVersion]);
 
   const dismiss = useCallback(() => {
+    checkGenerationRef.current += 1;
     openRef.current = false;
     setOpen(false);
     setRestartSafety(null);
@@ -123,6 +125,7 @@ export function UpdateDialog() {
           : null;
       }
       openRef.current = true;
+      const checkGeneration = ++checkGenerationRef.current;
       setSource(requestSource);
       setRestartSafety(null);
       setActionError(null);
@@ -137,7 +140,7 @@ export function UpdateDialog() {
         let current = statusRef.current;
         if (current == null) {
           const result = await readUpdaterStatus({ payload: { source: requestSource } });
-          if (!mounted || !result.ok) return;
+          if (!mounted || checkGenerationRef.current !== checkGeneration || !openRef.current || !result.ok) return;
           current = result.status;
           applyStatus(current);
         }
@@ -145,7 +148,7 @@ export function UpdateDialog() {
         const result = await checkForUpdaterUpdate({
           payload: { autoDownload: true, source: requestSource },
         });
-        if (!mounted) return;
+        if (!mounted || checkGenerationRef.current !== checkGeneration || !openRef.current) return;
         if (result.ok) {
           applyStatus(result.status);
           trackUpdateCheckResult(analyticsTrackRef.current, {
@@ -201,6 +204,9 @@ export function UpdateDialog() {
 
   useEffect(() => {
     if (!open || restartSafety != null) return;
+    const dialog = dialogRef.current;
+    const activeElement = document.activeElement;
+    if (dialog && activeElement instanceof Node && dialog.contains(activeElement)) return;
     (primaryRef.current ?? closeRef.current)?.focus();
   }, [open, restartSafety, status?.state]);
 
@@ -244,11 +250,13 @@ export function UpdateDialog() {
   }, [close, open]);
 
   const checkAgain = useCallback(async () => {
+    const checkGeneration = ++checkGenerationRef.current;
     setActionBusy(true);
     setActionError(null);
     setRestartSafety(null);
     try {
       const result = await checkForUpdaterUpdate({ payload: { autoDownload: true, source } });
+      if (checkGenerationRef.current !== checkGeneration || !openRef.current) return;
       if (result.ok) {
         applyStatus(result.status);
         trackUpdateCheckResult(analytics.track, {
@@ -269,7 +277,7 @@ export function UpdateDialog() {
         });
       }
     } finally {
-      setActionBusy(false);
+      if (checkGenerationRef.current === checkGeneration) setActionBusy(false);
     }
   }, [analytics.track, applyStatus, source]);
 

@@ -36,6 +36,13 @@ type Mode = 'file' | 'url';
 type Status = 'idle' | 'importing' | 'done' | 'error';
 
 const FIGMA_URL_RE = /^https:\/\/(?:www\.)?figma\.com\/(?:file|design)\/[A-Za-z0-9]+/;
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled]):not([type="file"])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
 
 export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigmaUrl }: Props) {
   const [mode, setMode] = useState<Mode>('file');
@@ -47,10 +54,54 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FigmaImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(
+    typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
+
+  useEffect(() => {
+    const modal = modalRef.current;
+    if (modal) {
+      const first = modal.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+      first?.focus();
+    }
+    return () => {
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && status !== 'importing') onClose();
+      if (e.key === 'Escape' && status !== 'importing') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const dialog = modalRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusable.length === 0) {
+        e.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const activeElement = document.activeElement;
+      const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
+      if (activeIndex === -1) {
+        e.preventDefault();
+        (e.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+      } else if (e.shiftKey && activeIndex === 0) {
+        e.preventDefault();
+        focusable[focusable.length - 1].focus();
+      } else if (!e.shiftKey && activeIndex === focusable.length - 1) {
+        e.preventDefault();
+        focusable[0].focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -118,6 +169,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
     >
       <motion.div
         className={styles.modal}
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
         // The whole dialog is a drop target (not just the inner dashed zone),
         // so dropping a .fig anywhere in the modal captures it.
@@ -137,10 +189,10 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
         exit="exit"
         role="dialog"
         aria-modal="true"
-        aria-label="Import from Figma"
+        aria-labelledby="figma-import-title"
       >
         <header className={styles.head}>
-          <span className={styles.headTitle}>
+          <span className={styles.headTitle} id="figma-import-title">
             <Icon name="import" size={16} /> Import from Figma
           </span>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close" disabled={importing}>

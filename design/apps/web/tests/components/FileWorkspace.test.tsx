@@ -2765,6 +2765,75 @@ describe('FileWorkspace sketch save', () => {
     expect(mockedWriteProjectTextFile).toHaveBeenCalledTimes(1);
   });
 
+  it('answers the updater save-preparation request only after flushing the pending markdown editor', async () => {
+    const file: ProjectFile = {
+      name: 'notes.md',
+      path: 'notes.md',
+      type: 'file',
+      size: 100,
+      mtime: 1700000000,
+      kind: 'text',
+      mime: 'text/markdown',
+      artifactManifest: {
+        version: 1,
+        kind: 'markdown-document',
+        title: 'Notes',
+        entry: 'notes.md',
+        renderer: 'markdown',
+        exports: ['md'],
+      },
+    };
+    let prepareQuitListener: ((request: { requestId: string }) => void) | null = null;
+    const respondPrepareQuit = vi.fn(async () => ({ ok: true as const }));
+    restoreMockHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          subscribePrepareQuit: (listener) => {
+            prepareQuitListener = listener;
+            return () => {
+              prepareQuitListener = null;
+            };
+          },
+          respondPrepareQuit,
+        },
+      },
+    });
+    mockedFetchProjectFileText.mockResolvedValue('# Notes');
+    mockedWriteProjectTextFile.mockResolvedValue(file);
+
+    render(
+      <FileWorkspace
+        projectId="project-1"
+        projectKind="prototype"
+        files={[file]}
+        liveArtifacts={[]}
+        onRefreshFiles={vi.fn()}
+        isDeck={false}
+        tabsState={{ tabs: ['notes.md'], active: 'notes.md' }}
+        onTabsStateChange={vi.fn()}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: /markdown editor/i });
+    fireEvent.change(editor, { target: { value: '# Draft before restart' } });
+    expect(prepareQuitListener).not.toBeNull();
+
+    act(() => {
+      prepareQuitListener?.({ requestId: 'restart-markdown-1' });
+    });
+    await waitFor(() => {
+      expect(respondPrepareQuit).toHaveBeenCalledWith({
+        requestId: 'restart-markdown-1',
+        preparation: { state: 'saved' },
+      });
+    });
+    expect(mockedWriteProjectTextFile).toHaveBeenCalledWith(
+      'project-1',
+      'notes.md',
+      '# Draft before restart',
+    );
+  });
+
   it('preserves a newer sketch scene while its autosave is still debouncing', async () => {
     const file: ProjectFile = {
       name: 'test.sketch.json',

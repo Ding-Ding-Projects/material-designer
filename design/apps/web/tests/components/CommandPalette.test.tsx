@@ -129,6 +129,23 @@ describe('CommandPalette shell', () => {
     opener.remove();
   });
 
+  it('keeps focus inside the palette while its portalled regex builder is open', () => {
+    renderPalette();
+    const first = screen.getByTestId(PALETTE_SEARCH);
+    const popover = openPaletteRegexBuilder();
+    const portalControls = Array.from(
+      popover.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ),
+    );
+    expect(portalControls.length).toBeGreaterThan(1);
+
+    const last = portalControls[portalControls.length - 1]!;
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+  });
+
   it('does not steer the list while an IME composition is open', () => {
     const { props } = renderPalette();
     const input = screen.getByTestId(PALETTE_SEARCH);

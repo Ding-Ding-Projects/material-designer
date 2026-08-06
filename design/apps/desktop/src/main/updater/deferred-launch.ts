@@ -30,6 +30,8 @@ export type DeferredInstallerLaunchInput = {
   appPid: number;
   /** Stable namespace root inherited by the installer helper process. */
   cwd: string;
+  /** Marker the host creates only after renderer save preparation succeeds. */
+  authorizationPath: string;
   installerPath: string;
   root: string;
   timeoutMs: number;
@@ -61,8 +63,9 @@ set -eu
 target_pid="$1"
 installer_path="$2"
 timeout_seconds="$3"
+authorization_path="$4"
 cleanup() {
-  rm -f "$0"
+  rm -f "$0" "$authorization_path"
 }
 trap cleanup EXIT
 deadline=$(($(date +%s) + timeout_seconds))
@@ -72,6 +75,9 @@ while kill -0 "$target_pid" 2>/dev/null; do
   fi
   sleep 1
 done
+if [ ! -f "$authorization_path" ]; then
+  exit 0
+fi
 open "$installer_path" >/dev/null 2>&1 &
 exit 0
 `;
@@ -87,6 +93,9 @@ export function windowsDeferredInstallerScript(): string {
 
   [Parameter(Mandatory = $true)]
   [int]$TimeoutMs,
+
+  [Parameter(Mandatory = $true)]
+  [string]$AuthorizationPath,
 
   [Parameter(Mandatory = $true)]
   [string]$LogPath
@@ -113,9 +122,14 @@ try {
   }
 
   Write-HelperLog ("observed pid={0} exit; opening installer" -f $TargetPid)
+  if (-not (Test-Path -LiteralPath $AuthorizationPath -PathType Leaf)) {
+    Write-HelperLog "renderer save preparation did not authorize installer launch"
+    exit 0
+  }
   Write-HelperLog "waiting for launch handoff"
   Start-Sleep -Milliseconds 1500
   Start-Process -FilePath $InstallerPath -WorkingDirectory (Split-Path -Parent $InstallerPath)
+  Remove-Item -LiteralPath $AuthorizationPath -Force -ErrorAction SilentlyContinue
   Write-HelperLog "installer launch requested"
 } catch {
   Write-HelperLog ("failed: {0}" -f $_.Exception.Message)
@@ -142,6 +156,9 @@ export function windowsDeferredInstallerLauncherScript(): string {
 
   [Parameter(Mandatory = $true)]
   [int]$TimeoutMs,
+
+  [Parameter(Mandatory = $true)]
+  [string]$AuthorizationPath,
 
   [Parameter(Mandatory = $true)]
   [string]$LogPath
@@ -178,6 +195,8 @@ try {
     (Quote-WindowsPowerShellArgument $InstallerPath),
     "-TimeoutMs",
     $TimeoutMs.ToString(),
+    "-AuthorizationPath",
+    (Quote-WindowsPowerShellArgument $AuthorizationPath),
     "-LogPath",
     (Quote-WindowsPowerShellArgument $LogPath)
   ) -join " "
@@ -210,7 +229,7 @@ export async function launchMacInstallerAfterQuit(
     const timeoutSeconds = Math.max(1, Math.ceil(input.timeoutMs / 1000)).toString();
     const child = deps.spawnDetached(
       "/bin/sh",
-      [scriptPath, input.appPid.toString(), input.installerPath, timeoutSeconds],
+      [scriptPath, input.appPid.toString(), input.installerPath, timeoutSeconds, input.authorizationPath],
       { cwd: input.cwd, detached: true, stdio: "ignore", windowsHide: true },
     );
     child.unref();
@@ -253,6 +272,8 @@ export async function launchWindowsInstallerAfterQuit(
         input.installerPath,
         "-TimeoutMs",
         input.timeoutMs.toString(),
+        "-AuthorizationPath",
+        input.authorizationPath,
         "-LogPath",
         logPath,
       ],

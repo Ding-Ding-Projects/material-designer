@@ -2537,7 +2537,7 @@ describe("desktop updater", () => {
     const root = makeRoot();
     const observationRoot = join(root, "observations", "installer");
     const fixture = await createUpdaterFixture();
-    const launches: Array<{ appPid: number; cwd: string; installerPath: string; root: string; timeoutMs: number }> = [];
+    const launches: Array<{ appPid: number; authorizationPath: string; cwd: string; installerPath: string; root: string; timeoutMs: number }> = [];
     const runtimeBase = join(root, "runtime");
     try {
       const updater = createDesktopUpdater(
@@ -2568,6 +2568,7 @@ describe("desktop updater", () => {
       expect(installed.installResult?.path).toBe(checked.downloadPath);
       expect(launches).toEqual([{
         appPid: process.pid,
+        authorizationPath: expect.stringContaining(join("updates", "helpers", "authorize-installer-")),
         cwd: runtimeBase,
         installerPath: checked.downloadPath,
         root: updateRoot,
@@ -2596,7 +2597,7 @@ describe("desktop updater", () => {
   it("reuses the same install result for repeated installer open requests", async () => {
     const root = makeRoot();
     const fixture = await createUpdaterFixture();
-    const launches: Array<{ appPid: number; installerPath: string; root: string; timeoutMs: number }> = [];
+    const launches: Array<{ appPid: number; authorizationPath: string; installerPath: string; root: string; timeoutMs: number }> = [];
     try {
       const updater = createDesktopUpdater(
         {
@@ -2660,13 +2661,15 @@ describe("desktop updater", () => {
       expect(spawned).toHaveLength(1);
       expect(spawned[0]?.command).toBe("/bin/sh");
       expect(spawned[0]?.options).toEqual({ cwd: runtimeBase, detached: true, stdio: "ignore", windowsHide: true });
-      const [scriptPath, pidArg, installerArg, timeoutArg] = spawned[0]?.args ?? [];
+      const [scriptPath, pidArg, installerArg, timeoutArg, authorizationArg] = spawned[0]?.args ?? [];
       expect(scriptPath).toEqual(expect.stringContaining(join(root, "helpers", "open-installer-after-quit-")));
       expect(pidArg).toBe("4242");
       expect(installerArg).toBe(checked.downloadPath);
       expect(timeoutArg).toBe("600");
+      expect(authorizationArg).toEqual(expect.stringContaining(join(root, "helpers", "authorize-installer-")));
       const script = await readFile(scriptPath ?? "", "utf8");
       expect(script).toContain('while kill -0 "$target_pid"');
+      expect(script).toContain('if [ ! -f "$authorization_path" ]');
       expect(script).toContain('open "$installer_path"');
       expect(script).toContain('rm -f "$0"');
     } finally {
@@ -2717,6 +2720,7 @@ describe("desktop updater", () => {
       const launcherPath = args.at(args.indexOf("-File") + 1);
       const scriptPath = args.at(args.indexOf("-HelperPath") + 1);
       const logPath = args.at(args.indexOf("-LogPath") + 1);
+      const authorizationPath = args.at(args.indexOf("-AuthorizationPath") + 1);
       expect(args).toEqual(expect.arrayContaining([
         "-NoLogo",
         "-NoProfile",
@@ -2732,12 +2736,15 @@ describe("desktop updater", () => {
         checked.downloadPath,
         "-TimeoutMs",
         "600000",
+        "-AuthorizationPath",
+        authorizationPath,
       ]));
       expect(launcherPath).toEqual(expect.stringMatching(/open-installer-after-quit-.+\.launcher\.ps1$/));
       expect(launcherPath).toEqual(expect.stringContaining(join(root, "helpers", "open-installer-after-quit-")));
       expect(scriptPath).toEqual(expect.stringMatching(/open-installer-after-quit-.+\.ps1$/));
       expect(scriptPath).toEqual(expect.stringContaining(join(root, "helpers", "open-installer-after-quit-")));
       expect(logPath).toEqual(expect.stringMatching(/open-installer-after-quit-.+\.log$/));
+      expect(authorizationPath).toEqual(expect.stringMatching(/authorize-installer-.+\.token$/));
       const launcher = await readFile(launcherPath ?? "", "utf8");
       expect(launcher).toContain("Start-Process -FilePath $PowerShellPath -WindowStyle Hidden");
       expect(launcher).toContain("Quote-WindowsPowerShellArgument $InstallerPath");
@@ -2746,6 +2753,7 @@ describe("desktop updater", () => {
       expect(script).toContain("Get-Process -Id $TargetPid");
       expect(script).toContain("Start-Sleep -Milliseconds 1500");
       expect(script).toContain("Start-Process -FilePath $InstallerPath");
+      expect(script).toContain("Test-Path -LiteralPath $AuthorizationPath");
       expect(script).toContain("Remove-Item -LiteralPath $PSCommandPath");
 
       const restarted = createDesktopUpdater({
@@ -3380,6 +3388,47 @@ describe("desktop updater", () => {
       expect(checked.state).toBe(DESKTOP_UPDATE_STATES.DOWNLOADED);
       expect(checked.installResult?.path).toBe(downloaded.downloadPath);
       expect(fixture.metadataRequests()).toBe(metadataRequestsBeforeRestart);
+    } finally {
+      await fixture.close();
+      rmSync(root, { force: true, recursive: true });
+    }
+  });
+
+  it("re-arms a persisted installer helper after a cold start", async () => {
+    const root = makeRoot();
+    const fixture = await createUpdaterFixture();
+    const launches: Array<{ authorizationPath: string; installerPath: string }> = [];
+    const updaterInput = {
+      arch: "arm64" as const,
+      downloadRoot: root,
+      env: {
+        ...updaterEnv(fixture.metadataUrl),
+        [DESKTOP_UPDATE_ENV.OPEN_DRY_RUN]: "0",
+      },
+      source: SIDECAR_SOURCES.TOOLS_PACK,
+    };
+    const updaterDeps = {
+      launchInstallerAfterQuit: async (input: { authorizationPath: string; installerPath: string }) => {
+        launches.push(input);
+        return "";
+      },
+    };
+    try {
+      const updater = createDesktopUpdater(updaterInput, updaterDeps);
+      const checked = await updater.checkForUpdates();
+      const installed = await updater.installUpdate();
+
+      expect(installed.installResult?.path).toBe(checked.downloadPath);
+      expect(launches).toHaveLength(1);
+
+      const restarted = createDesktopUpdater(updaterInput, updaterDeps);
+      await restarted.status();
+      const retried = await restarted.installUpdate();
+
+      expect(retried.installResult?.path).toBe(checked.downloadPath);
+      expect(launches).toHaveLength(2);
+      expect(launches[1]?.authorizationPath).not.toBe(launches[0]?.authorizationPath);
+      expect((await restarted.authorizeInstallerLaunch()).ok).toBe(true);
     } finally {
       await fixture.close();
       rmSync(root, { force: true, recursive: true });

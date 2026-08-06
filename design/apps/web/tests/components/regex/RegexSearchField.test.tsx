@@ -75,6 +75,19 @@ describe('RegexSearchField — the builder popover', () => {
     expect(popover.style.position).toBe('fixed');
   });
 
+  it('clamps the builder width to a narrow viewport', () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 200 });
+    try {
+      render(<Field testId="a" />);
+      const popover = openBuilder('a');
+      expect(Number.parseInt(popover.style.width, 10)).toBe(176);
+      expect(Number.parseInt(popover.style.left, 10)).toBe(12);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+    }
+  });
+
   it('closes on Escape and gives focus back to the field', () => {
     render(<Field testId="a" />);
     const popover = openBuilder('a');

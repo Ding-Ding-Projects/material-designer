@@ -58,6 +58,8 @@ export interface RegexSearchFieldProps {
   autoFocus?: boolean;
   spellCheck?: boolean;
   autoComplete?: string;
+  /** Include the portalled builder in a surrounding modal's focus scope. */
+  focusScopeId?: string;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onFocus?: () => void;
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
@@ -76,6 +78,7 @@ export function RegexSearchField({
   autoFocus,
   spellCheck = false,
   autoComplete = 'off',
+  focusScopeId,
   inputRef,
   onFocus,
   onKeyDown,
@@ -102,7 +105,7 @@ export function RegexSearchField({
     const host = hostRef.current;
     if (!host || typeof window === 'undefined') return;
     const rect = host.getBoundingClientRect();
-    const width = Math.max(240, Math.min(POPOVER_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2));
+    const width = Math.max(1, Math.min(POPOVER_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2));
     const left = Math.max(
       VIEWPORT_MARGIN,
       Math.min(rect.left, window.innerWidth - width - VIEWPORT_MARGIN),
@@ -118,7 +121,7 @@ export function RegexSearchField({
       top: placeAbove ? rect.top - 6 : rect.bottom + 6,
       // Bounded to the room actually available, and the card scrolls inside
       // that bound rather than hiding whatever did not fit.
-      maxHeight: Math.max(200, (placeAbove ? above : below) - 6),
+      maxHeight: Math.max(1, (placeAbove ? above : below) - 6),
       above: placeAbove,
     });
   }, []);
@@ -253,6 +256,7 @@ export function RegexSearchField({
               aria-label={t('regexBuilder.title')}
               className={styles.popover}
               style={popoverStyle}
+              data-focus-scope={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;
