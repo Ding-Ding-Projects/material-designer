@@ -85,15 +85,16 @@ pnpm --filter @open-design/desktop exec vitest run tests/main/update-preflight.t
 pnpm --filter @open-design/web exec vitest run tests/components/FileWorkspace.test.tsx
 ```
 
-The repository's supported build and runtime verification path is the hosted
-Windows `Release` workflow. It must prove the Squirrel build outputs, install,
-launch, health check and uninstall before publishing a new feed. Until that
-run lands, the implementation is committed but the public feed is not claimed
-as verified.
+The repository's supported build and runtime verification path is the labelled
+self-hosted Windows `Release` workflow
+(`[self-hosted, windows, material-designer]`). It must prove the Squirrel build
+outputs, install, launch, health check and uninstall before publishing a new
+feed. Until that run lands, the implementation is committed but the public feed
+is not claimed as verified.
 
 ## Suggested reading
 
-- [release-pipeline.md](release-pipeline.md) — the hosted build and publication sequence
+- [release-pipeline.md](release-pipeline.md) — the labelled build and publication sequence
 - [release-assets.md](release-assets.md) — the exact files attached to a release
 - [packaged-smoke-test.md](packaged-smoke-test.md) — what the Windows lifecycle smoke test proves
 - [../architecture/packaged-runtime.md](../architecture/packaged-runtime.md) — the runtime boundaries behind the update cache

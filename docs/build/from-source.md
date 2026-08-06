@@ -10,7 +10,7 @@ local machine.
 >
 > That is narrower than it sounds. The install, the typecheck, the three
 > identity-carrying test suites and the packaging invocation are what the
-> release run does on a hosted Windows runner, so those are known to work there
+> release run does on the labelled self-hosted Windows runner, so those are known to work there
 > — see [ci.md](ci.md). What is transcribed from the vendored project's own
 > documentation and manifests, and has been observed nowhere, is the development
 > tooling: the run and inspect commands, the command-line entry point, and the
@@ -354,7 +354,7 @@ button behind a **More info** link. Expect it, and tell users to expect it.
 
 ## Verification
 
-**Observed on a hosted Windows runner, not locally.** The release run performs
+**Observed on the labelled self-hosted Windows runner, not locally.** The release run performs
 these, so they are known to work — on that image, at that Node and pnpm version,
 from a clean checkout:
 
@@ -398,6 +398,6 @@ did not work.
 
 ## Suggested reading
 
-- [ci.md](ci.md) — the same pipeline, on a disposable runner, with a release at the end
+- [ci.md](ci.md) — the same pipeline, on the labelled runners, with a release at the end
 - [../architecture/overview.md](../architecture/overview.md) — what you are building
 - [../porting/verification.md](../porting/verification.md) — the gate that runs first, and why

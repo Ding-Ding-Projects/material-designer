@@ -6,7 +6,7 @@ How Material Designer is built, where that happens, and why.
 
 | File | What it covers |
 | --- | --- |
-| [ci.md](ci.md) | Why building is confined to ephemeral continuous-integration runners, what the release workflow must do, the checks it must run, the line-ending trap that will break port verification on a Windows runner, and how a build is triggered. |
+| [ci.md](ci.md) | The labelled self-hosted runner contract, explicit tool installation from the pinned manifests, what the release workflow must do, the checks it must run, the line-ending trap that will break port verification on a Windows runner, and how a build is triggered. |
 | [from-source.md](from-source.md) | Every prerequisite and every exact command for building, running and testing locally, for someone who does want to do it on their own machine. |
 
 ## Status
@@ -27,7 +27,7 @@ How Material Designer is built, where that happens, and why.
 
 | Question | Answer |
 | --- | --- |
-| Where do builds run? | Ephemeral hosted runners — Linux for the `Verify` gate, Windows for `Release`. |
+| Where do builds run? | Dedicated self-hosted runners labelled `linux, material-designer` for `Verify`/`Pages` and `windows, material-designer` for `Release`. |
 | Can I build locally? | Yes — see [from-source.md](from-source.md). It is not the supported path for producing releases, but every command is documented. |
 | What gets produced? | A Windows installer plus a portable archive and a checksum file, built via electron-builder. |
 | Is the installer signed? | No code-signing certificate is configured. An unsigned installer triggers the operating system's reputation warning, and the release notes say so; see [ci.md](ci.md). |
@@ -38,11 +38,12 @@ How Material Designer is built, where that happens, and why.
 
 Installing this project's dependencies is expensive in a specific way: it
 resolves a large workspace, runs a chain of 18 workspace builds, and compiles a
-native database binding from source on Windows. That work belongs on a disposable
-machine that is created for the build and destroyed after it — which is what a
-continuous-integration runner is. The runner also gives every build the same
-environment, so a failure is a fact about the code rather than about somebody's
-machine.
+native database binding from source on Windows. That work belongs on a dedicated
+runner with the repository's explicit labels. Each job cleans its checkout, the
+setup actions install Node 24 and pnpm 10.33.2, and the frozen lockfile install
+recreates the workspace rather than trusting a pre-existing `node_modules` tree.
+The runner contract also keeps the Linux verification and Windows packaging
+responsibilities separate.
 
 [from-source.md](from-source.md) exists anyway, because a developer changing the
 interface needs a loop faster than a remote build, and because a build nobody can
