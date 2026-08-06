@@ -470,7 +470,7 @@ export async function uninstallPackedWinApp(config: ToolPackConfig): Promise<Win
     }
     if (await pathExists(registeredPaths.uninstallerPath)) {
       await measureLifecycleStep(lifecycleTimings, "legacy nsis uninstall", async () => runTimed(paths.uninstallTimingPath, "uninstall-legacy", async () => {
-        await invokeNsis(paths, registeredPaths.uninstallerPath, config.silent ? ["/S"] : [], "uninstall-legacy");
+        await invokeNsis(paths, registeredPaths.uninstallerPath, config.silent ? ["/S"] : [], "uninstall");
       }));
     }
     await measureLifecycleStep(lifecycleTimings, "remove squirrel install root", async () => removeTree(resolveWinSquirrelInstallRoot()));
