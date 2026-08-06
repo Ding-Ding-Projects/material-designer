@@ -217,8 +217,12 @@ Not by a local build — local builds do not happen here.
       user-scoped runner cache rather than assuming machine state. The Linux
       Verify and Pages jobs use the matching `gh`/`jq` bootstrap.
       *Verified before this migration:* the same install completed on the old
-      hosted Windows runner. The labelled self-hosted execution remains pending
-      after [5556f84f1a4580f0d795f92b912e09833e6eb47f](https://github.com/Ding-Ding-Projects/material-designer/commit/5556f84f1a4580f0d795f92b912e09833e6eb47f).
+      hosted Windows runner. The first labelled run reached dependency resolution
+      but then failed in the packer's post-install typecheck at
+      `src/win/lifecycle.ts:473` because a legacy timing label was passed as an
+      unsupported NSIS action ([Release 31127492852](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)).
+      Commit [5d66600](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
+      corrects that call site; another labelled run is still required.
 - [~] **Bootstrap the non-language CI tools automatically.** The committed
       `scripts/bootstrap-ci-tools.sh` and `scripts/bootstrap-ci-tools.ps1`
       validate cached `gh`, `jq` and `7z` versions, download pinned official
@@ -319,7 +323,11 @@ Not by a local build — local builds do not happen here.
       markers during clear-cache, re-arms safely after a cold start, and leaves
       a failed installer handoff retryable. A new labelled self-hosted Release
       run still must prove the Squirrel install/start/uninstall path and publish
-      the first post-migration feed ([`b5f0db6`](https://github.com/Ding-Ding-Projects/material-designer/commit/b5f0db63b8d2ed1d1d8a52b0ca1b463e65e30830)).
+      the first post-migration feed ([`b5f0db6`](https://github.com/Ding-Ding-Projects/material-designer/commit/b5f0db63b8d2ed1d1d8a52b0ca1b463e65e30830)). The first labelled
+      Release run was red before packaging at the legacy NSIS action typecheck;
+      [5d66600](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
+      fixes that compile blocker, but the Squirrel install/start/uninstall path
+      and post-migration feed remain unverified.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail

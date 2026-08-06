@@ -64,6 +64,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **The first self-hosted Release run exposed and received a narrow Windows packer fix.**
+  Release `31127492852` completed with failure after `pnpm install --frozen-lockfile`
+  resolved the workspace: the post-install packer typecheck passed
+  `"uninstall-legacy"` to `invokeNsis`, whose executable-action contract is
+  `"install" | "uninstall"`. The call site now passes the supported `"uninstall"`
+  action while retaining `runTimed(..., "uninstall-legacy")` for the legacy timing
+  record. This source fix is committed, but no later labelled-runner verdict is
+  claimed yet ([`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)).
+
+  第一個 self-hosted Release run 揭開咗 Windows packer 個窄身位：
+  `pnpm install --frozen-lockfile` 解析完 workspace 之後，post-install typecheck
+  發現 `invokeNsis` 只接受 `"install" | "uninstall"`，call site 卻塞咗
+  `"uninstall-legacy"` 入去。依家傳返合法嘅 `"uninstall"`，但
+  `runTimed(..., "uninstall-legacy")` 仲保留，legacy timing 唔會失蹤。修正已
+  commit，但下一個 labelled-runner 結果仲未有，唔扮綠燈。
+
 - **Close the remaining audited UI handoff gaps and bootstrap self-hosted CI tools.**
   Scrollable context menus now stay open while their own items move; the Figma
   import tabs expose tabpanel semantics and keyboard navigation; long command

@@ -28,6 +28,19 @@ where `Pages` fits.
 > upstream project's. Workflow definitions are only read from the repository
 > root, so all 48 remain inert.
 
+### Latest observed execution
+
+Release run [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
+for `main` at `2cae835a1a9b6b86352b0c3b083ff1a35c061ebc` completed with **failure** in
+`Build Windows application → Install dependencies`. The frozen install resolved the
+workspace and then the post-install packer typecheck reported
+`src/win/lifecycle.ts(473,95): error TS2345`: `"uninstall-legacy"` was not assignable
+to `invokeNsis`'s `"install" | "uninstall"` action type. Commit
+[`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
+passes the supported `"uninstall"` action while retaining the separate
+`runTimed` legacy timing label. A new labelled-runner execution is still required;
+this page does not call the fix green before that run exists.
+
 ## Behaviour
 
 ### Why builds happen here and not on a developer's machine

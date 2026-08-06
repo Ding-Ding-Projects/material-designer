@@ -63,6 +63,14 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > tools in a locked user-scoped cache. Focused tests are committed, but no new
 > installed-build capture or new labelled-runner verification is claimed yet.
 
+> **Latest CI evidence.** Release run
+> [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
+> reached the frozen dependency install and then failed in the Windows packer
+> typecheck because `lifecycle.ts:473` passed `"uninstall-legacy"` to an API that
+> accepts `"install" | "uninstall"`. Commit
+> [`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
+> fixes that call site; no later labelled-runner verdict is claimed yet.
+
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
 

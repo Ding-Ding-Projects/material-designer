@@ -984,3 +984,21 @@ the reader has no way to know.
 - The hash boundary is explicit: package downloads are authenticated at fetch time; the persistent user-scoped runner cache is trusted runner state, not a cryptographic trust boundary for extracted executables. An untrusted runner cache requires reprovisioning before use.
 - The branch commit is present on `codex/ui-audit-20260806`; no new branch CI run exists yet. Verify `31127492562` is cancelled. Release `31127492852` remains queued after the cancellation endpoint returned HTTP 502, so the queue is not claimed empty and no green verdict is claimed.
 - Open issue scans for `material-designer` and `agent-global-memory` returned zero issues at this checkpoint. The default branch integration and remote proof remain pending for the safe half of the requested integration pass.
+
+## CI red run and packer call-site correction (2026-08-06)
+
+- Release run [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
+  for `main` at `2cae835a1a9b6b86352b0c3b083ff1a35c061ebc` completed with failure
+  in `Build Windows application → Install dependencies`. `pnpm install
+  --frozen-lockfile` resolved the workspace; the post-install packer typecheck
+  then reported `src/win/lifecycle.ts(473,95): error TS2345` because
+  `"uninstall-legacy"` is not assignable to `invokeNsis`'s
+  `"install" | "uninstall"` action contract.
+- Commit [`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
+  makes the minimal call-site correction: `invokeNsis` receives `"uninstall"`,
+  while the surrounding `runTimed` record remains `"uninstall-legacy"`. No
+  local Node, pnpm or Electron command was run, and no new labelled-runner
+  verdict is claimed until the corrected tree executes.
+- The exact failure is now part of the CI documentation rather than being
+  hidden behind the earlier queued status. Open issue scans for
+  `material-designer` and `agent-global-memory` still return zero issues.
