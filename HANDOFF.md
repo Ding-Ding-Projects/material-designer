@@ -1002,3 +1002,33 @@ the reader has no way to know.
 - The exact failure is now part of the CI documentation rather than being
   hidden behind the earlier queued status. Open issue scans for
   `material-designer` and `agent-global-memory` still return zero issues.
+
+## Safe integration and cleanup boundary (2026-08-06)
+
+- The audited task tip was fast-forwarded into an integration checkout, and the
+  committed branch tips for the accessible-name, self-hosted CI, Figma modal,
+  updater dialog, Squirrel updater and Squirrel packaging lanes were merged into
+  that history. The resulting tree is content-equivalent to `1e60df9`; the
+  additional commits are ancestry records for the completed lanes.
+- The default branch now points to
+  [`b103004`](https://github.com/Ding-Ding-Projects/material-designer/commit/b103004e39cafc4f4d6997459b748c7f4c70c810),
+  and `git ls-remote origin refs/heads/main` returned the same full SHA
+  `b103004e39cafc4f4d6997459b748c7f4c70c810`. No force update was used.
+- The available static gates passed on the integration tree: PowerShell AST
+  parsing, `actionlint -shellcheck= -ignore 'label "material-designer"'`,
+  `git diff --check`, and Bash syntax through an LF view because the fresh
+  Windows checkout exposes CRLF to Bash. Node, pnpm and Electron were not run.
+  The corrected labelled-runner and installed-build verdicts remain pending;
+  Release `31127492852` is the latest observed run and is failed.
+- No queued or in-progress workflow is listed at the final check. Verify
+  `31127492562` is cancelled, and Release `31127492852` is completed failure
+  with the `lifecycle.ts(473,95)` action-type error documented above.
+- The irreversible cleanup half was not performed because the request did not
+  include `mat day`. Clean merged task branches and their clean linked
+  worktrees remain available for a later explicitly authorized cleanup pass.
+  The `pack-squirrel` linked worktree is not a cleanup candidate: its branch
+  still has six uncommitted import lines in `design/tools/pack/src/win/lifecycle.ts`
+  and the untracked `design/tools/pack/src/win/squirrel.ts` (2,703 bytes). That
+  work is preserved outside `main` rather than committed or deleted blindly.
+- `git stash list` is empty. Open issue scans for `material-designer` and
+  `agent-global-memory` returned zero issues at this final checkpoint.
