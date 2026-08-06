@@ -287,13 +287,16 @@ Not by a local build — local builds do not happen here.
       and the word, so an anchored pattern matches `Test Files` and silently
       misses `Tests`, producing a summary that looks complete and is missing a
       column.
-- [x] **Build the Windows installer.** `release.yml` sets up NSIS, builds the
-      packaging tool and invokes the installer target, then uploads the result as
-      a workflow artifact even when a later step fails, so a bad run still leaves
-      something to inspect.
+- [x] **Build the legacy Windows installer.** `release.yml` built the previous
+      packaging target and uploaded the result as a workflow artifact even when a
+      later step failed, so a bad run still left something to inspect.
       *Verified by:* two installers built and attached to their own releases, each
       with an explicit existence check on the reported path and its payload
       validated before the run continued.
+- [ ] **Switch Windows packaging and updates to Squirrel.Windows.** Stage
+      `Setup.exe`, `RELEASES`, full/delta NuGet packages and project-owned updater
+      metadata; prove the install/start/uninstall path and the explicit restart
+      action in a new Release run.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail

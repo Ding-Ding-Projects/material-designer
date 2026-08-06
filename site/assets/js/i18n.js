@@ -1421,23 +1421,23 @@ const CATALOGUE = {
   },
 
   'rl.update.title': {
-    en: ['There is no automatic update feed', 'There is no automatic update feed', 'There is no automatic update feed', 'There is no automatic update feed, on purpose', 'There is no automatic update feed, and that is deliberate'],
-    yue: ['冇自動更新來源', '冇自動更新來源', '冇自動更新來源', '冇自動更新來源，係特登嘅', '冇自動更新來源，而且係特登唔要'],
+    en: ['Squirrel.Windows updates are ready when you are', 'Squirrel.Windows updates are ready when you are', 'Squirrel.Windows updates are ready when you are', 'Squirrel.Windows updates wait politely for your restart', 'Squirrel.Windows updates wait patiently while the app keeps its paws off your work'],
+    yue: ['Squirrel.Windows 更新等你揀時間', 'Squirrel.Windows 更新等你揀時間', 'Squirrel.Windows 更新等你揀時間', 'Squirrel.Windows 更新乖乖等你重新開機', 'Squirrel.Windows 更新好有耐性，唔會攞你啲工作嚟玩'],
   },
   'rl.update.body': {
     en: [
-      'Builds from this repository deliberately ship without one. The upstream project’s feed was removed rather than inherited, because an application that polls somebody else’s feed will eventually replace itself with somebody else’s application. New versions are installed by downloading them from the releases page.',
-      'Builds from this repository deliberately ship without one. The upstream project’s feed was removed rather than inherited, because an application that polls somebody else’s feed will eventually replace itself with somebody else’s application. New versions are installed by downloading them from the releases page.',
-      'Builds from this repository ship without one on purpose. The upstream project’s feed was removed rather than inherited, because an application that keeps asking somebody else’s feed what it should be will eventually be told to become something else. New versions are installed by downloading them from the releases page.',
-      'Builds from this repository ship without one on purpose. The upstream project’s feed was taken out rather than inherited, because an application that keeps asking somebody else’s feed what it ought to be will eventually be told to become something else — and it will comply. New versions are installed by downloading them from the releases page.',
-      'Builds from this repository ship without one on purpose. The upstream project’s feed was taken out rather than inherited, because an application that keeps asking somebody else’s server what it ought to be will eventually be told to become a different product, and it will say yes without asking you. New versions are installed the old-fashioned way, from the releases page.',
+      'Stable Windows builds use this project’s own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, and waits for you to choose Restart to install update or Later.',
+      'Stable Windows builds use this project’s own metadata feed. The app quietly downloads the Squirrel Setup.exe, checks its SHA-256, and leaves the final restart decision in your hands: Restart to install update or Later.',
+      'Stable Windows builds use this project’s own metadata feed. Squirrel does the fetching and checksum homework in the background; the app only changes versions when you choose Restart to install update.',
+      'Stable Windows builds use this project’s own metadata feed. Squirrel brings the new Setup.exe to the door, checks the SHA-256 like a tiny bouncer, and waits for Restart to install update instead of barging into your work.',
+      'Stable Windows builds use this project’s own metadata feed. Squirrel downloads Setup.exe, proves the bytes match, and then sits on the doormat until you choose Restart to install update — Later is a perfectly valid answer.',
     ],
     yue: [
-      '由呢個 repository build 出嚟嘅版本，特登冇帶更新來源。上游嗰條 feed 係攞走咗，唔係照單全收，因為一個成日去問人哋條 feed 嘅 app，遲早會將自己換成人哋嗰隻 app。想要新版本，就去 releases 頁載。',
-      '由呢個 repository build 出嚟嘅版本，特登冇帶更新來源。上游嗰條 feed 係攞走咗，唔係照單全收，因為一個成日去問人哋條 feed 嘅 app，遲早會將自己換成人哋嗰隻 app。想要新版本，就去 releases 頁載。',
-      '由呢個 repository build 出嚟嘅版本，特登唔帶更新來源。上游嗰條 feed 係攞走咗，唔係照單全收，因為一個成日問人哋條 feed「我應該係乜」嘅 app，遲早會畀人叫佢變成第二樣嘢。想要新版本，就去 releases 頁載。',
-      '由呢個 repository build 出嚟嘅版本，特登唔帶更新來源。上游嗰條 feed 係拆咗出嚟，唔係照單全收，因為一個成日問人哋條 feed「我應該係乜」嘅 app，遲早會畀人叫佢變成第二樣嘢 — 而佢真係會照做。想要新版本，就去 releases 頁載。',
-      '由呢個 repository build 出嚟嘅版本，特登唔帶更新來源。上游嗰條 feed 係拆咗出嚟，唔係照單全收，因為一個成日問人哋部 server「我應該係乜」嘅 app，遲早會畀人叫佢變成另一件產品，而佢會應承，都唔會問你一聲。想要新版本，就用老實方法去 releases 頁載。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。App 會喺背景下載 Squirrel Setup.exe、核對 SHA-256，等你揀「Restart to install update」或者「Later」。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。App 靜靜雞下載 Squirrel Setup.exe、對好 SHA-256，最後由你話事：而家重開更新，定係 Later。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 喺背景做下載同 checksum 功課；你揀「Restart to install update」之前，App 唔會自己換版本。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 捧住新 Setup.exe 到門口，先用 SHA-256 做保安，然後乖乖等你揀「Restart to install update」，唔會衝入你啲工作。',
+      '穩定 Windows 版本用返呢個 project 自己嘅 metadata feed。Squirrel 載好 Setup.exe、證明啲 bytes 冇走樣，之後坐喺門口等你揀「Restart to install update」——揀 Later 完全冇問題。',
     ],
   },
 
@@ -1865,8 +1865,8 @@ const CATALOGUE = {
     yue: '個點心代號點樣喺隨 app 一齊帶嘅目錄度揀、點解用過邊幾款係去舊 release 度讀返而唔係擺個計數器、點解一款點心只可以用一次，同埋點解揾唔到點心都唔會拖住個 release。',
   },
   'dc.a.assets': {
-    en: 'What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature, no updater feed, no non-Windows artifacts.',
-    yue: '每個出街嘅檔案係乜、邊啲上載係去咗 run 度而唔係去 release 度，同埋特登冇嘅嘢 —— 冇簽名、冇更新來源、Windows 以外咩都冇。',
+    en: 'What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts; new Windows releases also carry Squirrel RELEASES, NuGet packages and the project-owned metadata feed.',
+    yue: '每個出街嘅檔案係乜、邊啲上載係去咗 run 度而唔係去 release 度，同埋特登冇嘅嘢 —— 冇簽名、Windows 以外咩都冇；新 Windows release 仲會帶埋 Squirrel RELEASES、NuGet packages 同 project 自己嘅 metadata feed。',
   },
 
   'dc.a.lineendings': {
@@ -2132,8 +2132,8 @@ const CATALOGUE = {
   },
   'bd.pack.heading': { en: 'Build the Windows installer', yue: 'Build 個 Windows 安裝檔' },
   'bd.pack.note': {
-    en: 'The target accepts all, dir, nsis or zip; zip produces a portable archive from the unpacked build. Packaging runs on electron-builder with Electron 41.',
-    yue: '個目標接受 all、dir、nsis 或者 zip；zip 會用未打包嘅 build 整個免安裝壓縮包。打包係行 electron-builder，配 Electron 41。',
+    en: 'The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. Packaging runs on electron-builder with Electron 41.',
+    yue: '個目標接受 all、dir、nsis、squirrel 或者 zip；Squirrel.Windows 會出 Setup.exe、RELEASES 同 NuGet packages，zip 就用未打包嘅 build 整個免安裝壓縮包。打包係行 electron-builder，配 Electron 41。',
   },
   'bd.test.heading': { en: 'Typecheck and tests', yue: '型別檢查同測試' },
   'bd.test.note': {

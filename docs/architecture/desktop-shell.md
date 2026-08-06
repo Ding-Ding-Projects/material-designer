@@ -162,7 +162,7 @@ tool hands it, not by variables a user sets. The relevant ones:
 | `OD_SIDECAR_NAMESPACE` | launcher / development tool | The namespace this runtime belongs to. |
 | `OD_SIDECAR_IPC_PATH` / `OD_SIDECAR_IPC_BASE` | launcher / development tool | Where the control socket lives. |
 | `OD_SIDECAR_SOURCE` | launcher / development tool | Which orchestrator started it — packaged, development, or the packaging tool. |
-| `OD_UPDATE_*` | launcher | The updater's feed, channel, intervals and dry-run controls. This fork ships no feed; updates are opt-in and the default origin does not resolve. |
+| `OD_UPDATE_*` | launcher | The updater's feed, channel, intervals and dry-run controls. Packaged stable Windows builds use the project-owned `metadata.json` feed by default; explicit overrides remain available for test channels. |
 
 Sidecar process stamps carry exactly five fields — app, mode, namespace, socket
 path and source — and orchestration layers must build them through the protocol

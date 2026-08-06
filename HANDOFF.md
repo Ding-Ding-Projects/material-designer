@@ -344,9 +344,11 @@ Now the gaps.
   at least one route pair was missed by that reading. See
   [`docs/api/README.md`](docs/api/README.md).
 - **Windows is the only target, by decision rather than by omission.** There is
-  no macOS or Linux artifact, no updater feed, and no code-signing certificate —
-  so every installer trips the operating system's reputation warning on first
-  run. Read the absence of the other two platforms as scope, not as a backlog:
+  no macOS or Linux artifact and no code-signing certificate. New Windows releases
+  use Squirrel.Windows and publish `Setup.exe`, `RELEASES`, full/delta NuGet packages
+  and the project-owned updater metadata feed; the feed is not yet proven by a new
+  release run in this handoff. Every installer therefore trips the operating
+  system's reputation warning on first run. Read the absence of the other two platforms as scope, not as a backlog:
   nothing here is waiting on a macOS build, and work that would only pay off on
   another platform is out of scope until that changes.
 
@@ -816,7 +818,8 @@ pins as imported; none has been exercised here.
 - Node major and package manager version are pinned identically across every
   workspace package, the version file and the tool-version file.
 - Desktop shell: Electron 41.3.0; packaging via electron-builder 26.8.1, default
-  Windows target is the NSIS installer.
+  Windows target is the Squirrel.Windows installer, with explicit NSIS retained as a
+  legacy target.
 - Daemon: Express 5.2.1, native SQLite binding 12.10.0 — note Express 5 wildcard
   route syntax, which differs from Express 4 and matters when reading route files.
 - Web: Next 16.2.6, React 18.3.1, Tailwind 4.3.0.

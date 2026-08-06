@@ -137,7 +137,7 @@ empty namespace fails the packer outright.
 | Data root | `<project root>/.od` unless overridden | Namespace-scoped, resolved before the daemon starts |
 | Child environment | Inherited | Allowlisted |
 | Resources | Read from the workspace | Read from the bundled resource root |
-| Updater | Not involved | Present, opt-in, with no feed configured in this fork |
+| Updater | Not involved | Present for packaged stable Windows builds; reads the project-owned `metadata.json` feed, downloads Squirrel `Setup.exe` in the background and waits for an explicit restart |
 
 > [!WARNING]
 > A development namespace does **not**, by itself, isolate daemon data. The
@@ -156,7 +156,7 @@ empty namespace fails the packer outright.
 | `OD_SIDECAR_NAMESPACE` | The namespace this runtime belongs to. |
 | `OD_SIDECAR_IPC_BASE` / `OD_SIDECAR_IPC_PATH` | Where the control sockets live. |
 | `OD_SIDECAR_SOURCE` | Which orchestrator started the process. |
-| `OD_UPDATE_*` | Updater feed, channel, intervals, and dry-run controls. No feed is configured in this fork; the default origin does not resolve. |
+| `OD_UPDATE_*` | Updater feed, channel, intervals, and dry-run controls. Packaged stable Windows builds default to the project-owned `metadata.json` feed; explicit overrides remain available for test channels. |
 
 ## Failure modes
 
@@ -170,6 +170,7 @@ empty namespace fails the packer outright.
 | The installation identifier resets | Something stored it inside the namespace subtree | It belongs at the channel root, above the namespace. |
 | The packer exits immediately | An empty namespace or application version | Both are set explicitly in the workflow for exactly this reason. |
 | An agent subprocess cannot find a tool it needs | The variable naming it is not on the child allowlist | Add it deliberately, or pass the value another way. Widening the allowlist casually widens what reaches a program that executes code. |
+| A Windows update is ready but does not install immediately | Squirrel downloads `Setup.exe` without launching it from the background check | Choose **Restart to install update** in the non-blocking updater surface; **Later** keeps the current app running. |
 | A packaged build serves stale interface assets | Framework output placed under the bundled resource root | Packaged web is server-rendered by the sidecar; the resource root is for the daemon's non-framework resources only. |
 
 ## Security considerations
@@ -184,10 +185,12 @@ empty namespace fails the packer outright.
   namespace share credentials, tokens and project data. The distinct-identity rule
   is what keeps a beta build from reading and then deleting a stable install's
   data.
-- **The updater replaces the application.** In this fork it is opt-in with no
-  resolvable default feed, because the inherited configuration pointed at the
-  upstream project's release feed — a build of this project would have downloaded
-  a different product's installer and become it.
+- **The updater replaces the application.** Packaged stable Windows builds use the
+  project-owned `metadata.json` feed and verify the installer checksum before
+  exposing it. The background download never launches a replacement process;
+  the user explicitly chooses **Restart to install update**, so an update cannot
+  interrupt active work by surprise. The Squirrel lifecycle handles install,
+  update, uninstall and obsolete events before normal startup.
 - **Uninstall must actually remove things.** The smoke test asserts zero residue —
   no managed processes, no namespace root, no registry entries, no installed
   executable, no uninstaller, no shortcuts — because an uninstall that leaves
@@ -209,14 +212,14 @@ against a real built installer:
 - The running process answered its own health endpoint with the release version.
 - Uninstall left **zero** residue on every one of seven checks.
 
-**Not observed:** every non-Windows platform, the updater path, reinstall over a
-running instance, and upgrade data persistence — all of which live in the smoke
-test's `full` profile, which this fork does not run because it ships no updater
-feed.
+**Not observed yet:** every non-Windows platform, a new published Squirrel feed
+run, reinstall over a running instance, and upgrade data persistence. The
+updater's focused tests cover the feed classification and restart action; the
+smoke test's `full` profile still requires a separately-built update fixture.
 
 ```bash
 # build, install, drive and remove a packaged Windows build locally
-pnpm tools-pack win build --to nsis
+pnpm tools-pack win build --to squirrel
 pnpm tools-pack win install
 pnpm tools-pack win cleanup
 

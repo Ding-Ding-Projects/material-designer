@@ -690,8 +690,8 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
     <div class="md-callout md-callout--info" style="margin-top:1rem">
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
       <p>
-        <strong class="md-callout__title" data-i18n="rl.update.title">There is no automatic update feed</strong>
-        <span data-i18n="rl.update.body">Builds from this repository deliberately ship without one. The upstream project's feed was removed rather than inherited, because an application that polls somebody else's feed will eventually replace itself with somebody else's application. New versions are installed by downloading them from the releases page.</span>
+        <strong class="md-callout__title" data-i18n="rl.update.title">Squirrel.Windows updates are ready when you are</strong>
+        <span data-i18n="rl.update.body">Stable Windows builds use this project's own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, and waits for you to choose Restart to install update or Later.</span>
       </p>
     </div>
   </section>
@@ -900,10 +900,10 @@ pnpm tools-dev check</code></pre>
 
     <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.pack.heading">Build the Windows installer</h3>
     <pre class="code-block"><code>pnpm --filter @open-design/tools-pack build
-pnpm tools-pack win build --to nsis
+pnpm tools-pack win build --to squirrel
 pnpm tools-pack win install
 pnpm tools-pack win cleanup</code></pre>
-    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis or zip; zip produces a portable archive from the unpacked build. Packaging runs on electron-builder with Electron 41.</p>
+    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. Packaging runs on electron-builder with Electron 41.</p>
 
     <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.test.heading">Typecheck and tests</h3>
     <p class="md-body-medium on-surface-variant" data-i18n="bd.test.note">Tests are package-scoped by design — there is no root aggregate test script. Build the three prerequisites first, exactly as upstream's own continuous integration does, then run a package's suite.</p>
@@ -1376,7 +1376,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           </tr>
           <tr>
             <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/release/release-assets.md" rel="noopener noreferrer" target="_blank"><code class="mono">release/release-assets.md</code></a></th>
-            <td data-i18n="dc.a.assets">What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature, no updater feed, no non-Windows artifacts.</td>
+            <td data-i18n="dc.a.assets">What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts; new Windows releases also carry Squirrel RELEASES, NuGet packages and the project-owned metadata feed.</td>
           </tr>
           <tr>
             <th scope="row"><a href="https://github.com/Ding-Ding-Projects/material-designer/blob/main/docs/troubleshooting/line-endings.md" rel="noopener noreferrer" target="_blank"><code class="mono">troubleshooting/line-endings.md</code></a></th>

@@ -64,6 +64,14 @@ version section when a release carries them.
 
 ### Added
 
+- **Squirrel.Windows packaging and restartable Windows updates.** The Windows
+  packer now defaults to Squirrel.Windows and the release workflow stages
+  `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages and project-owned
+  `metadata.json`. Stable packaged Windows builds download and checksum-verify
+  `Setup.exe` in the background, then wait for the explicit **Restart to install
+  update** action; the feed is implemented but not yet proven by a new release
+  run ([`7ce7452`](https://github.com/Ding-Ding-Projects/material-designer/commit/7ce745283236e80e542161cf6190720137d1d714)).
+
 - **CIELAB, LCH, OKLab and OKLCH.** The colour translator advertised twelve
   representations and implemented eight; the whole Lab family was absent, and
   typing `oklch(…)` was rejected as invalid. `lab()` and `lch()` are computed

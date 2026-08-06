@@ -7,13 +7,15 @@ at the commit it claims — and that is only enforceable when the build, the tes
 and the publish are steps of the same run.
 
 > [!IMPORTANT]
-> **Status: run, and publishing.** Two releases exist —
+> **Status: run, and publishing.** Two legacy releases exist —
 > `v0.16.1-r7.1` and `v0.16.1-r8.1` — each carrying a Windows installer built by
 > the run that published it. The packaged smoke test has installed a built
 > application, launched it, had the running process answer its own health
 > endpoint, screenshotted it, uninstalled it and asserted zero residue. What has
 > **not** been demonstrated is code signing (there is no certificate), any
-> platform other than Windows, or the updater path (this fork ships no feed).
+> platform other than Windows, or a post-migration Squirrel feed run. The new
+> workflow is configured to publish the project-owned feed, but the first CI
+> evidence for it is still pending.
 
 ## Behaviour
 
@@ -70,7 +72,9 @@ store for its cache. The workflow explicitly does not use the runtime's package-
 shim, which fails with a permission error on Windows.
 
 **5 — Read the application version and compute the tag.** Parsed from the imported
-tree's manifest, failing loudly if absent. The tag is
+tree's manifest, failing loudly if absent. The build keeps the manifest's major and
+minor version and adds the monotonic GitHub Actions run number to its patch
+component, so Squirrel has a real version ordering. The tag is
 `v<version>-r<run number>.<run attempt>`.
 
 > [!NOTE]
@@ -104,8 +108,9 @@ Windows filesystem cannot represent, and they fail here for reasons unrelated to
 the code under test. See
 [../troubleshooting/platform-specific-tests.md](../troubleshooting/platform-specific-tests.md).
 
-**9 — Installer toolchain.** Checks for the installer compiler and installs it
-only if absent.
+**9 — Squirrel packaging.** The packer invokes electron-builder's
+Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
+`RELEASES`, full/delta `.nupkg` packages and the local icon asset.
 
 **10 — Build the installer.** Cleanup, then a packaging build with an explicit
 output directory, cache directory, namespace, portable flag, application version
@@ -115,7 +120,9 @@ and machine-readable output. Then, in order:
 - an **explicit existence check** on the reported installer path, failing if the
   build reported one that is not there;
 - a SHA-256 computed over the installer;
-- assets staged under names that mean something outside this repository.
+- assets staged under names that mean something outside this repository:
+  `Setup.exe`, its `.sha256`, `RELEASES`, full/delta `.nupkg` packages,
+  `metadata.json`, the icon and the portable archive when one is produced.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
@@ -156,7 +163,7 @@ into the run summary.
 | --- | --- |
 | Title | `Material Designer <version> — <code name>` |
 | Code name | The dish in English and Traditional Chinese |
-| Install | The asset name, the SHA-256, and an explicit reputation-screen warning |
+| Install | The asset name, the SHA-256, Squirrel package assets, the stable metadata-feed URL and an explicit reputation-screen warning |
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |

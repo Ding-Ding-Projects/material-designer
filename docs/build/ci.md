@@ -104,11 +104,11 @@ concurrency: release-<ref>, cancel-in-progress: false
 ```
 
 The build steps deliberately mirror the recipe upstream uses for its own Windows
-releases — same package-manager setup, same installer-toolchain guard, same
-packaging invocation — because that recipe is known to work. What is stripped out
-is everything specific to upstream's infrastructure: its release storage, its
-updater feed, its signing identity, and a build flag requiring a package this
-fork cannot resolve.
+releases — same package-manager setup and same electron-builder invocation — while
+the target is Squirrel.Windows. What is stripped out is everything specific to
+upstream's infrastructure: its release storage, its signing identity and a build
+flag requiring a package this fork cannot resolve. This repository supplies its
+own stable `metadata.json` feed beside the Squirrel assets.
 
 `cancel-in-progress: false` matters: a release run that is cancelled halfway can
 leave a tag without its assets.
@@ -126,8 +126,10 @@ that the Node package-manager shim is not used, because it fails with a
 permission error on Windows.
 
 **3 — Read the application version.** Parsed from `design/package.json`, failing
-loudly if absent. The release tag is `v<version>-r<run number>`, which is what
-makes every tag unique and monotonic without a counter to maintain.
+loudly if absent. The release build keeps the manifest's major and minor version,
+adds the monotonic GitHub Actions run number to its patch component, and tags the
+result as `v<version>-r<run number>.<run attempt>`. The app version therefore
+advances for each new run, which gives the updater a real ordering to compare.
 
 **4 — Install.** `pnpm install --frozen-lockfile`. The post-install step builds
 the workspace packages and tools and compiles the native modules from source.
@@ -143,20 +145,23 @@ reason precisely: the rebrand changed what these suites assert, and if the
 identity logic and its four independent copies ever disagree again, this is where
 it surfaces — before an installer is built, not after a user runs one.
 
-**7 — Installer toolchain.** Checks for the NSIS compiler and installs it only if
-absent.
+**7 — Squirrel packaging.** The packaging tool invokes electron-builder's
+Squirrel.Windows target. The build is expected to produce `Setup.exe`,
+`RELEASES`, full/delta `.nupkg` packages and the local icon asset; the release
+step fails closed if any required Squirrel output is missing.
 
 **8 — Build the installer.** Cleanup, then `tools-pack win build` with an
 explicit output directory, cache directory, namespace, `--portable`, the app
 version, `--to all` and `--json`. Then:
 
 - `tools-pack win validate-payload` against the expected version;
-- an explicit existence check on the reported installer path, failing if the
-  build reported one that is not there;
+- an explicit existence check on the reported Squirrel `Setup.exe`, failing if
+  the build reported one that is not there;
 - a SHA-256 computed over the installer;
 - assets staged under names that mean something outside this repository —
-  `material-designer-<version>-win-x64-setup.exe`, a matching `.sha256` file, and
-  the portable archive when one was produced.
+  `material-designer-<version>-win-x64-setup.exe`, a matching `.sha256` file,
+  `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, the icon and the
+  portable archive when one was produced.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
@@ -165,11 +170,12 @@ not have, and an empty namespace or version fails the packer outright.
 **9 — Upload the installer as a workflow artifact.** With `always()`, so a failed
 smoke test still leaves something to inspect, and `if-no-files-found: error`.
 
-**10 — Smoke test the packaged application.** Installs the built application,
-launches it, proves the running process answers its own health endpoint, then
-uninstalls and checks nothing was left behind. That is the `core` profile; the
-`full` profile additionally exercises the auto-updater, which this fork
-deliberately ships no feed for.
+**10 — Smoke test the packaged application.** Installs the built Squirrel
+application, launches it, proves the running process answers its own health
+endpoint, then uninstalls and checks nothing was left behind. That is the `core`
+profile. The `full` profile additionally exercises the auto-updater, but requires
+a separately-built update fixture and is not silently claimed by the release
+workflow.
 
 The condition is worth noting as a correctness detail: on a push there are no
 workflow inputs, and an empty input compares equal to false, so the step tests

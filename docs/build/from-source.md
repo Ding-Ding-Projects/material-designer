@@ -288,14 +288,14 @@ and fail together.
 
 ```bash
 pnpm --filter @open-design/tools-pack build
-pnpm tools-pack win build --to nsis
+pnpm tools-pack win build --to squirrel
 pnpm tools-pack win install
 pnpm tools-pack win cleanup
 ```
 
 | Flag | Meaning |
 | --- | --- |
-| `--to all\|dir\|nsis\|zip` | Build target. Default on Windows is `nsis`. `zip` produces a portable archive from the unpacked build; `all` produces all three. |
+| `--to all\|dir\|nsis\|squirrel\|zip` | Build target. Default on Windows is `squirrel`. `nsis` remains an explicit legacy target; `zip` produces a portable archive from the unpacked build; `all` produces the Squirrel installer plus the portable archive. |
 | `--app-version <version>` | Override the version stamped into the build. |
 | `--portable` | Portable layout. |
 | `--namespace <name>` | Installation namespace. |
@@ -390,7 +390,7 @@ cd design && pnpm install              # completes; native binding compiles
 pnpm typecheck                         # after the three prebuilds
 pnpm tools-dev status --json           # the stack reports itself
 curl -sf http://127.0.0.1:7456/api/health
-pnpm tools-pack win build --to nsis    # produces an installer
+pnpm tools-pack win build --to squirrel # produces a Squirrel Setup.exe installer
 ```
 
 Please correct this page with what actually happened, including the parts that

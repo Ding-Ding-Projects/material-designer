@@ -17,9 +17,11 @@ only step that checks the product works.
 > residue on every check. The **named UI-state set** described below is new and
 > **has never run**; read
 > [Verification](#verification) for what the first run should be inspected for.
-> The `full` profile — which additionally exercises the auto-updater, reinstall
-> over a running instance, and upgrade data persistence — **is not run**, because
-> this fork deliberately ships no updater feed.
+> The Squirrel-aware `core` lifecycle and the published feed still need a new
+> Release run as evidence. The `full` profile additionally exercises the
+> auto-updater, reinstall over a running instance, and upgrade data persistence;
+> it requires a separately-built update fixture and is not silently claimed by
+> the release workflow.
 
 ## Behaviour
 
@@ -47,13 +49,17 @@ run is testing the prior run.
 
 - the reported namespace is the expected one;
 - the installer path is inside the build output directory for that namespace;
-- the install directory is inside the runtime namespace root;
-- the uninstaller is inside the install directory, and is named
-  `Uninstall <product display name>.exe`;
+- the legacy NSIS install directory is inside the runtime namespace root, or the
+  Squirrel app directory is inside its per-user `%LOCALAPPDATA%` package root;
+- the Windows removal handle is beside the Squirrel app directory at the package
+  root: Squirrel exposes `Update.exe`, while the explicit legacy NSIS target
+  exposes `Uninstall <product display name>.exe` inside its install directory;
 - a desktop shortcut and a Start-menu shortcut both exist, both named after the
   product display name;
-- at least one registry entry was written, and the entries contain **both** the
-  display name and the namespaced key;
+- for the legacy NSIS target, at least one registry entry was written, and the
+  entries contain **both** the display name and the namespaced key; Squirrel
+  lifecycle uses its per-user install root and does not require those NSIS
+  registry assertions;
 - the installed payload is non-empty by file count, byte count and number of
   top-level entries;
 - the install's own timing record says `success` and came in under the budget —
@@ -110,10 +116,10 @@ conditions, all of which must be clean:
 | Residue check | Must be |
 | --- | --- |
 | Managed process ids still alive | none |
-| The product namespace root on disk | absent |
+| The product namespace root and Squirrel install root on disk | absent |
 | Registry residues | none |
 | The installed executable | absent |
-| The uninstaller | absent |
+| The removal helper (`Update.exe` for Squirrel) | absent |
 | The Start-menu shortcut | absent |
 | The user desktop shortcut | absent |
 
@@ -193,10 +199,10 @@ desktop shell declares `minWidth: 900` and refuses to go below it — that floor
 | `full` | Updater acceptance (payload or installer fallback), updater recovery, silent-update-on-cold-start, reinstall while running, upgrade data persistence, log assertions, an explicit stop with no remaining process ids | No |
 
 The `full` profile is not skipped out of convenience. It exercises the
-auto-updater, and this fork deliberately ships **no updater feed** — the inherited
-configuration pointed at the upstream project's release feed, which would have
-turned a build of this project into a different product. Running an updater
-acceptance test against a feed that does not exist would test the test.
+auto-updater, but it requires a separately-built update fixture. The release
+workflow uses `core` for the real Squirrel install/start/uninstall proof and
+keeps the updater feed and restart action in focused tests until a full fixture
+is wired into the Windows lane.
 
 ## What it proves, and what it does not
 
@@ -207,7 +213,8 @@ quoted line in a release.
 
 - the installer runs to completion within a time budget on a clean machine;
 - the installed identity is this product's, distinct and complete, in the
-  filesystem, the shortcuts and the registry;
+  filesystem and shortcuts; the legacy NSIS path additionally proves the
+  registry identity, while Squirrel proves its per-user package root;
 - the installed application launches from the installed executable;
 - the daemon, the web runtime and the desktop shell start together and reach each
   other;
@@ -258,7 +265,7 @@ the application is finished.
 | The health assertion fails on the version | The installed artifact is not the one this run built | Do not relax the assertion. Find out which artifact installed. |
 | The URL-shape assertion fails | Desktop inter-process control was unavailable and the fallback URL was expected instead | Both shapes are handled; a failure here means neither matched. |
 | The terminal probe fails | A native binding did not survive packaging | A real defect in the artifact. |
-| A residue check fails | Something wrote outside the namespace root, or uninstall did not remove a registry entry or shortcut | Treat as a defect. An uninstall that leaves credentials is a privacy failure. |
+| A residue check fails | Something wrote outside the namespace or Squirrel package root, or uninstall did not remove a registry entry or shortcut | Treat as a defect. An uninstall that leaves credentials is a privacy failure. |
 | The suite times out at 12 minutes | Something hung rather than failed | The `finally` block still stops and uninstalls; read the packaged logs it printed. |
 | The next run behaves strangely | A prior run left an install behind | The pre-clean step exists for this; check it ran. |
 
@@ -279,10 +286,12 @@ the application is finished.
 
 ## Verification
 
-**Observed:** the `core` profile passed inside the `Release` workflow on a Windows
-runner, against a real built installer, with every assertion above satisfied and
-all seven residue checks clean. The report — manifest, packaging output, test log,
-result record, summary and screenshots — was uploaded as a workflow artifact.
+**Observed before the migration:** the `core` profile passed inside the
+`Release` workflow on a Windows runner, against a real built legacy installer,
+with every legacy assertion satisfied and all seven residue checks clean. The
+post-migration Squirrel `core` run and published feed remain pending CI evidence.
+The report — manifest, packaging output, test log, result record, summary and
+screenshots — is uploaded as a workflow artifact when the run reaches that step.
 
 **Not observed:** the **named UI-state set**, which has never run — it was
 written against the harness's existing renderer-eval and screenshot channels and
@@ -301,7 +310,7 @@ one; that path has not been exercised.
 
 ```bash
 # run the same suite locally against a build you have just produced
-pnpm tools-pack win build --to nsis
+pnpm tools-pack win build --to squirrel
 # then, from the end-to-end workspace, with the build output path exported:
 pnpm exec tsx scripts/release-smoke.ts win specs/win.spec.ts
 ```

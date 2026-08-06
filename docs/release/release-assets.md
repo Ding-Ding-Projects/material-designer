@@ -4,10 +4,12 @@ What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
 
 > [!IMPORTANT]
-> **Status: published.** Two releases exist, each carrying a Windows installer,
-> its checksum file and a code-name image. There is **no code signature**, **no
-> updater feed**, and **no macOS or Linux artifact** — all three absences are
-> deliberate and are explained below rather than left for a reader to notice.
+> **Status: published.** Two legacy releases exist, each carrying a Windows
+> installer, its checksum file and a code-name image. The release workflow now
+> stages a project-owned Squirrel.Windows feed for new releases; the first
+> post-migration release is still awaiting its CI evidence. There is **no code
+> signature** and **no macOS or Linux artifact** — both absences are deliberate
+> and are explained below rather than left for a reader to notice.
 
 ## The attached assets
 
@@ -15,6 +17,10 @@ to the run but *not* to the release, and what is deliberately absent.
 | --- | --- |
 | `material-designer-<version>-win-x64-setup.exe` | The Windows installer. The thing a user downloads and runs. Does not require administrator rights. |
 | `material-designer-<version>-win-x64-setup.exe.sha256` | The installer's SHA-256, computed by the run that built it, in the usual `<hash>  <filename>` form. |
+| `RELEASES` | Squirrel.Windows' package index for the published full and delta packages. |
+| `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
+| `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
+| `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
 | `material-designer-<version>-win-x64-portable.zip` | The portable archive, attached when the packaging build produced one. |
 | `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
 
@@ -80,12 +86,20 @@ outright by the current packaging toolchain, which classes it as a signing input
 See
 [../troubleshooting/packaging-schema-drift.md](../troubleshooting/packaging-schema-drift.md).
 
-**No updater feed, and no update metadata files.** The inherited configuration
-pointed at the upstream project's release feed, so an unmodified build would have
-downloaded that project's installer and replaced itself with it. Updates are
-opt-in here and the default origin does not resolve, so there is nothing to
-publish an update manifest *for*. A release carrying an update manifest that
-points nowhere would be worse than one carrying none.
+**The updater feed is project-owned and Windows-stable only.** Packaged stable
+Windows builds default to
+`https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json`.
+The release workflow writes that `metadata.json` beside `Setup.exe`, points it
+at the same release's immutable installer asset, and includes its SHA-256. The
+desktop updater downloads the installer in the background, verifies the checksum,
+and leaves the final action to the user through **Restart to install update**;
+it never launches a downloaded installer as a hidden side effect. `RELEASES`
+and the full/delta `.nupkg` files remain attached so Squirrel.Windows has its
+native package feed as well.
+
+The two already-published releases predate this migration. Their absence of
+`metadata.json`, `RELEASES` and NuGet packages is historical, not a claim that
+the new workflow was verified before it ran.
 
 **No macOS or Linux artifacts.** The pipeline builds Windows. The packaging tool
 supports the other platforms, and the current scope is Windows desktop.
@@ -119,6 +133,8 @@ Two mechanisms enforce it in practice:
 | The portable archive is missing | The packaging build did not produce one | Expected: the archive is attached only when it exists. The installer is the primary artifact. |
 | A download link stops working after a few weeks | It pointed at a workflow artifact, not a release asset | Link release assets. Workflow artifacts expire. |
 | The reputation screen blocks the installer | It is unsigned | Documented in the notes. **More info**, then run. |
+| The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
+| The update banner offers no restart action | The downloaded artifact was not identified as a Windows Squirrel installer | Confirm the feed artifact is named `Setup.exe` and the metadata `type` is `installer`. |
 | The code-name image is missing | No dish was available, or its file was absent | Never blocks a release. See [code-names.md](code-names.md). |
 
 ## Security considerations
@@ -141,9 +157,14 @@ Two mechanisms enforce it in practice:
 
 ## Verification
 
-**Observed:** the published releases carry the installer, its checksum file and a
-code-name image, with the notes stating the hash, the smoke-test outcome, the
-commit, the run link and the provenance.
+**Observed:** the two legacy published releases carry the installer, its checksum
+file and a code-name image, with the notes stating the hash, the smoke-test
+outcome, the commit, the run link and the provenance.
+
+**Pending CI evidence:** a new release run must prove that the Squirrel build
+produces `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages and
+`metadata.json`, and that the published stable feed is readable by the
+updater.
 
 ```bash
 # list what a release actually carries

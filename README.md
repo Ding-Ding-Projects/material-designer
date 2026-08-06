@@ -242,11 +242,12 @@ Do not read them as this project's CI.
 
 **There are releases, and no code-signing certificate.** Two tags have been published, each
 carrying the installer its own run built, a portable archive, a checksum and a dim sum code
-name. The pieces a release is required to carry are committed files that have now run in a
-release — `scripts/line-count.mjs` for the per-release line count, `scripts/release-codename.sh`
-for the code name, and the bundled catalogue under `assets/dim-sum/` the code name is drawn
-from. What is still absent is a signing certificate, so every installer published from here
-trips SmartScreen on first run.
+name. New Windows releases are configured as Squirrel.Windows releases: the installer is
+published with `RELEASES`, full/delta `.nupkg` packages and the app's `metadata.json` feed, so
+an installed app can download an update in the background and wait for the user to choose
+**Restart to install update**. The current published links below remain the verified legacy
+build until the next Squirrel release has passed CI. What is still absent is a signing
+certificate, so every installer published from here trips SmartScreen on first run.
 
 ## Install
 
@@ -286,7 +287,7 @@ pnpm tools-dev run web
 
 # 4. Or build the Windows installer.
 pnpm --filter @open-design/tools-pack build
-pnpm tools-pack win build --to nsis
+pnpm tools-pack win build --to squirrel
 ```
 
 > [!IMPORTANT]
@@ -294,7 +295,7 @@ pnpm tools-pack win build --to nsis
 > have run on Windows in the *Release* workflow: `pnpm install --frozen-lockfile` compiled
 > the native modules from source, the workspace typechecked, and `tools-pack win build`
 > produced the installers now attached to the releases (the workflow passes `--to all` plus
-> the packaging flags rather than the bare `--to nsis` above). **Step 3, development mode,
+> the packaging flags rather than the bare `--to squirrel` above). **Step 3, development mode,
 > has not been run from this repository** — it is transcribed from the ported project's own
 > documentation and its `package.json` scripts. Expect the first local install to spend real
 > time on native compilation (see prerequisites below).
@@ -428,15 +429,16 @@ running it bare starts the daemon and opens the interface, and root options are
 
 ```bash
 pnpm --filter @open-design/tools-pack build
-pnpm tools-pack win build --to nsis     # nsis is also the default when --to is omitted
+pnpm tools-pack win build --to squirrel # Squirrel.Windows is the default on Windows
 pnpm tools-pack win install
 pnpm tools-pack win cleanup
 ```
 
-`--to` accepts `all | dir | nsis | zip`; `zip` produces a portable archive from the unpacked
-build and `all` produces all three. Other flags include `--app-version`, `--portable`,
-`--namespace`, `--dir`, `--cache-dir` and `--json`. Packaging runs on electron-builder with
-Electron 41.
+`--to` accepts `all | dir | nsis | squirrel | zip`; `nsis` remains an explicit legacy target,
+`zip` produces a portable archive from the unpacked build, and `all` produces the Squirrel
+installer plus the portable archive. A Squirrel build emits `Setup.exe`, `RELEASES`, and full
+and delta `.nupkg` packages. Other flags include `--app-version`, `--portable`, `--namespace`,
+`--dir`, `--cache-dir` and `--json`. Packaging runs on electron-builder with Electron 41.
 
 > [!WARNING]
 > An installer built without a code-signing certificate triggers Windows SmartScreen
