@@ -1626,7 +1626,7 @@ export function DesignSystemDetailView({
   initialRevisionJob,
   onInitialRevisionJobConsumed,
 }: DetailProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [system, setSystem] = useState<DesignSystemDetail | null>(null);
   const [body, setBody] = useState('');
   const [tab, setTab] = useState<ReviewTab>('system');
@@ -2569,7 +2569,7 @@ export function DesignSystemDetailView({
     <div className="ds-workspace">
       <aside className="ds-project-chat">
         <div className="ds-project-chat__bar">
-          <button type="button" className="icon-only" onClick={onBack} aria-label="Back">
+          <button type="button" className="icon-only" onClick={onBack} aria-label={t('dsCreate.back')}>
             <Icon name="arrow-left" />
           </button>
           <strong>{system.title}</strong>
