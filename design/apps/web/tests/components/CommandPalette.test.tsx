@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CommandPalette, readPaletteDisplayMode } from '../../src/components/command-palette/CommandPalette';
@@ -53,6 +53,20 @@ function renderPalette(overrides: Partial<Parameters<typeof CommandPalette>[0]> 
   return { ...view, props };
 }
 
+const PALETTE_SEARCH = 'command-palette-search';
+const PALETTE_TARGET = en['commandPalette.commandFullWindow'];
+
+function openPaletteRegexBuilder() {
+  fireEvent.click(screen.getByTestId(`${PALETTE_SEARCH}-regex-toggle`));
+  return screen.getByTestId(`${PALETTE_SEARCH}-regex-popover`);
+}
+
+function enablePaletteRegex() {
+  const popover = openPaletteRegexBuilder();
+  fireEvent.click(within(popover).getByTestId(`${PALETTE_SEARCH}-regex-mode-regex`));
+  return popover;
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   // The appearance store caches its value at module scope on purpose (one
@@ -100,10 +114,9 @@ describe('CommandPalette shell', () => {
     opener.focus();
 
     const { props, unmount } = renderPalette();
-    // Named explicitly: the default result list also renders an inline
-    // `SettingTextField` (the "Global rules" row), a second textbox that
-    // `getByRole('textbox')` alone can no longer resolve unambiguously.
-    const input = screen.getByRole('textbox', { name: /search commands/i });
+    // Use the stable field test id: the default result list also renders an
+    // inline `SettingTextField` (the "Global rules" row).
+    const input = screen.getByTestId(PALETTE_SEARCH);
     expect(document.activeElement).toBe(input);
 
     fireEvent.keyDown(input, { key: 'Escape' });
@@ -118,9 +131,77 @@ describe('CommandPalette shell', () => {
 
   it('does not steer the list while an IME composition is open', () => {
     const { props } = renderPalette();
-    const input = screen.getByRole('textbox', { name: /search commands/i });
+    const input = screen.getByTestId(PALETTE_SEARCH);
     fireEvent.keyDown(input, { key: 'Escape', isComposing: true });
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('CommandPalette regex search', () => {
+  it('opens its own full builder while staying in plain text by default', () => {
+    renderPalette();
+    const input = screen.getByTestId(PALETTE_SEARCH);
+
+    expect(input.getAttribute('data-regex-mode')).toBe('text');
+    expect(screen.queryByTestId(`${PALETTE_SEARCH}-regex-popover`)).toBeNull();
+
+    const popover = openPaletteRegexBuilder();
+    expect(popover.getAttribute('role')).toBe('dialog');
+    expect(screen.getByTestId(`${PALETTE_SEARCH}-regex-toggle`).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
+    expect(within(popover).getByTestId(`${PALETTE_SEARCH}-regex-mode-text`)).toBeTruthy();
+  });
+
+  it('keeps the pattern and flags bound to the palette field', () => {
+    renderPalette();
+    const popover = enablePaletteRegex();
+    const input = screen.getByTestId(PALETTE_SEARCH) as HTMLInputElement;
+    const pattern = within(popover).getByTestId(`${PALETTE_SEARCH}-regex-pattern`);
+
+    fireEvent.change(pattern, { target: { value: `^${PALETTE_TARGET}$` } });
+    expect(input.value).toBe(`^${PALETTE_TARGET}$`);
+    expect((within(popover).getByTestId(`${PALETTE_SEARCH}-regex-flag-i`) as HTMLInputElement).checked).toBe(
+      true,
+    );
+
+    fireEvent.click(within(popover).getByTestId(`${PALETTE_SEARCH}-regex-flag-m`));
+    expect(screen.getByTestId('command-palette-regex-note').textContent).toContain(
+      `/^${PALETTE_TARGET}$/im`,
+    );
+  });
+
+  it('shows invalid feedback without losing the last valid filter', () => {
+    renderPalette();
+    const popover = enablePaletteRegex();
+    const pattern = within(popover).getByTestId(`${PALETTE_SEARCH}-regex-pattern`);
+
+    fireEvent.change(pattern, { target: { value: `^${PALETTE_TARGET}$` } });
+    fireEvent.change(pattern, { target: { value: `^${PALETTE_TARGET}[` } });
+
+    expect(within(popover).getByTestId(`${PALETTE_SEARCH}-regex-error`)).toBeTruthy();
+    expect(screen.getByTestId('command-palette-regex-note').textContent).toContain(
+      `/^${PALETTE_TARGET}[/i`,
+    );
+    expect(
+      Array.from(document.querySelectorAll<HTMLElement>('#command-palette-list [role="option"]')).some(
+        (row) => row.textContent?.includes(PALETTE_TARGET),
+      ),
+    ).toBe(true);
+  });
+
+  it('filters command rows with the palette pattern rather than plain-text scoring', () => {
+    renderPalette();
+    const popover = enablePaletteRegex();
+    fireEvent.change(within(popover).getByTestId(`${PALETTE_SEARCH}-regex-pattern`), {
+      target: { value: `^${PALETTE_TARGET}$` },
+    });
+
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>('#command-palette-list [role="option"]'),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.textContent).toContain(PALETTE_TARGET);
   });
 });
 
@@ -319,7 +400,7 @@ describe('CommandPalette destinations', () => {
   it('filters the list as the user types', () => {
     renderPalette();
     const before = document.querySelectorAll('#command-palette-list [role="option"]').length;
-    fireEvent.change(screen.getByRole('textbox', { name: /search commands/i }), { target: { value: 'zzzz-no-such-row' } });
+    fireEvent.change(screen.getByTestId(PALETTE_SEARCH), { target: { value: 'zzzz-no-such-row' } });
     const after = document.querySelectorAll('#command-palette-list [role="option"]').length;
     expect(before).toBeGreaterThan(0);
     expect(after).toBe(0);
@@ -327,7 +408,7 @@ describe('CommandPalette destinations', () => {
 
   it('reports honestly when no project has published a file scope', () => {
     renderPalette();
-    fireEvent.change(screen.getByRole('textbox', { name: /search commands/i }), { target: { value: '#index' } });
+    fireEvent.change(screen.getByTestId(PALETTE_SEARCH), { target: { value: '#index' } });
     expect(document.querySelectorAll('#command-palette-list [role="option"]')).toHaveLength(0);
   });
 });

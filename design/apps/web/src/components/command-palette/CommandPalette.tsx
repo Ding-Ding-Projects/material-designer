@@ -72,8 +72,9 @@ import { NARRATOR_LANGUAGES, NARRATOR_LANGUAGE_LABEL_KEYS } from '../narrator/se
 import type { SettingsSection } from '../SettingsDialog';
 import { openWorkspaceTab } from '../WorkspaceTabsBar';
 import styles from './CommandPalette.module.css';
-import { createBoundedMatcher } from '../regex/evaluate';
-import { compilePattern } from '../regex/pattern';
+import { REGEX_FLAGS } from '../regex/pattern';
+import { RegexSearchField } from '../regex/RegexSearchField';
+import { useRegexSearch } from '../regex/useRegexSearch';
 import {
   PALETTE_SCOPES,
   buildPaletteRows,
@@ -197,17 +198,32 @@ export function CommandPalette({
     setFunnyLevel,
   } = useI18n();
   const [rawQuery, setRawQuery] = useState(seedQuery ?? '');
-  // Seeded once, on mount. The palette is mounted fresh on every open, so a
-  // later prop change cannot smuggle a pattern in behind the user's edits.
-  const [regexSeed, setRegexSeed] = useState<{ source: string; flags: string } | null>(
-    () => seedRegex ?? null,
-  );
+  // This controller belongs to this palette field alone. It is deliberately
+  // not shared with the header field that may have opened the palette: the
+  // palette needs its own mode, flags, guided parts and validation state once
+  // it is on screen.
+  const search = useRegexSearch(rawQuery, setRawQuery);
+  const seedAppliedRef = useRef(false);
   const [scopeOverride, setScopeOverride] = useState<PaletteScopeId | null>(null);
   const [cursor, setCursor] = useState(0);
   const [displayMode, setDisplayMode] = useState<PaletteDisplayMode>(() => readPaletteDisplayMode());
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const fileScope = useQuickSwitcherScope();
+
+  // The header may hand the palette a plain serialisable seed. Apply it to
+  // this field's controller exactly once; subsequent edits belong entirely to
+  // the palette and cannot mutate the header's controller.
+  useEffect(() => {
+    if (!seedRegex || seedAppliedRef.current) return;
+    seedAppliedRef.current = true;
+    if (search.query !== seedRegex.source) search.setQuery(seedRegex.source);
+    search.setMode('regex');
+    for (const flag of REGEX_FLAGS) {
+      const shouldBeEnabled = seedRegex.flags.includes(flag);
+      if (search.flags.includes(flag) !== shouldBeEnabled) search.toggleFlag(flag);
+    }
+  }, [search, seedRegex]);
 
   // Where focus came from, so Escape can put it back.
   //
@@ -232,28 +248,18 @@ export function CommandPalette({
     if (target && target.isConnected) target.focus?.();
   }, []);
 
-  const setInputRef = useCallback((node: HTMLInputElement | null) => {
-    inputRef.current = node;
-    node?.focus();
-  }, []);
-
-  // The pattern the palette is actually matching with, or null for plain text.
-  //
-  // Compiled here rather than carried in from the field: a `RegExp` with the
-  // `g` flag keeps `lastIndex` between calls, so a shared instance would match
-  // every other row and look like a ranking bug. A pattern that no longer
-  // compiles drops the seed entirely instead of quietly matching nothing.
+  // Adapt the field controller to the command registry's existing filter
+  // contract. `search.matches` is already bounded and safe for invalid or
+  // slow patterns, and the wrapper is recreated from this field's state so no
+  // RegExp instance or hidden builder state can leak in from another search.
   const regexFilter = useMemo<PaletteRegexFilter | null>(() => {
-    if (!regexSeed) return null;
-    const { regex } = compilePattern(regexSeed.source, regexSeed.flags);
-    if (!regex) return null;
-    const bounded = createBoundedMatcher(regex);
+    if (search.mode !== 'regex') return null;
     return {
-      source: regexSeed.source,
-      flags: regexSeed.flags,
-      matches: (text: string) => bounded.test(text),
+      source: search.query,
+      flags: search.flags,
+      matches: search.matches,
     };
-  }, [regexSeed]);
+  }, [search.flags, search.matches, search.mode, search.query]);
 
   // A scope prefix and a regular expression cannot both own the first
   // character. `#\d+` is a perfectly good pattern and `parsePaletteQuery` would
@@ -457,11 +463,11 @@ export function CommandPalette({
       // pattern is live the prefixes are off, and `#\d+` would come back from
       // the parser as `\d+`: a silently different pattern, from a click that
       // was only ever about scope.
-      if (!regexSeed) setRawQuery((current) => parsePaletteQuery(current).query);
+      if (search.mode !== 'regex') setRawQuery((current) => parsePaletteQuery(current).query);
       setCursor(0);
       inputRef.current?.focus();
     },
-    [regexSeed],
+    [search.mode],
   );
 
   const registryRows = useMemo(
@@ -541,6 +547,19 @@ export function CommandPalette({
 
   const activeRow = rows[cursor];
 
+  // `RegexSearchField` owns the input element, so keep the palette's live list
+  // relationship on that element without changing the shared field contract.
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+    input.setAttribute('aria-controls', 'command-palette-list');
+    if (activeRow) {
+      input.setAttribute('aria-activedescendant', `command-palette-row-${cursor}`);
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }, [activeRow, cursor]);
+
   function moveCursor(delta: number) {
     if (rows.length === 0) return;
     setCursor((current) => (current + delta + rows.length) % rows.length);
@@ -599,7 +618,13 @@ export function CommandPalette({
   const body = (
     <motion.div
       className={styles.overlay}
-      onMouseDown={() => close()}
+      onMouseDown={(event) => {
+        // The regex builder is portalled to `document.body`; React still
+        // bubbles its events through this tree. Only the actual backdrop is a
+        // close target, so interacting with the builder cannot dismiss the
+        // palette underneath it.
+        if (event.target === event.currentTarget) close();
+      }}
       role="presentation"
       variants={modalOverlay}
       initial="hidden"
@@ -621,25 +646,18 @@ export function CommandPalette({
       >
         <div className={styles.searchRow}>
           <Icon name="search" size={15} aria-hidden />
-          <input
-            ref={setInputRef}
+          <RegexSearchField
+            search={search}
+            fieldLabel={t('commandPalette.placeholder')}
             className={styles.input}
-            value={rawQuery}
-            onChange={(event) => {
-              setRawQuery(event.target.value);
-              // Editing the text here is the user taking the query back. The
-              // pattern came from a builder that is no longer on screen, so
-              // keeping it live would leave the palette matching one thing
-              // while the box shows another.
-              setRegexSeed(null);
-            }}
-            onKeyDown={onKeyDown}
             placeholder={t('commandPalette.placeholder')}
-            aria-label={t('commandPalette.placeholder')}
-            aria-controls="command-palette-list"
-            aria-activedescendant={activeRow ? `command-palette-row-${cursor}` : undefined}
+            ariaLabel={t('commandPalette.placeholder')}
+            inputRef={inputRef}
+            testId="command-palette-search"
+            autoFocus
             spellCheck={false}
             autoComplete="off"
+            onKeyDown={onKeyDown}
           />
           <button
             type="button"
@@ -662,12 +680,12 @@ export function CommandPalette({
           </button>
         </div>
 
-        {/* A pattern arrived from the header field's builder, and the list is
-            being matched with it rather than with the text in the box. Saying
-            so is not decoration: without it the same query would produce two
-            different result sets on two different openings and nothing on
-            screen would explain why. `role="status"` so a screen-reader user
-            hears the mode change too, and the button is the way back out. */}
+        {/* A pattern is active in this field, and the list is being matched
+            with it rather than with plain-text scoring. Saying so is not
+            decoration: without it the same query would produce two different
+            result sets and nothing on screen would explain why. `role="status"`
+            lets a screen-reader user hear the mode change too, and the button
+            is the way back out. */}
         {regexFilter ? (
           <p className={styles.regexNote} role="status" data-testid="command-palette-regex-note">
             <span>
@@ -679,7 +697,7 @@ export function CommandPalette({
               type="button"
               className={styles.regexClear}
               data-testid="command-palette-regex-clear"
-              onClick={() => setRegexSeed(null)}
+              onClick={() => search.setMode('text')}
             >
               {t('commandPalette.regexClear')}
             </button>
