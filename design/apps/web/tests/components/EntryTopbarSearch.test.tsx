@@ -73,9 +73,11 @@ describe('EntryTopbarSearch — the field itself', () => {
     expect(chip.getAttribute('aria-keyshortcuts')).toBe(paletteShortcutAria(false));
   });
 
-  it('says ⌘ K on a Mac, in both the visible and the announced form', () => {
-    expect(paletteShortcutLabel(true)).toBe('⌘ K');
-    expect(paletteShortcutAria(true)).toBe('Meta+K');
+  it('uses the shared command-palette binding on both platforms', () => {
+    expect(paletteShortcutLabel(false)).toBe('Ctrl+Shift+F');
+    expect(paletteShortcutAria(false)).toBe('Control+Shift+F');
+    expect(paletteShortcutLabel(true)).toBe('⇧⌘F');
+    expect(paletteShortcutAria(true)).toBe('Meta+Shift+F');
   });
 });
 

@@ -66,6 +66,7 @@ import {
 import { isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { ExportDiagnosticsRow } from './ExportDiagnosticsButton';
 import { Icon } from './Icon';
+import { formatShortcut } from './shortcuts/registry';
 import { defaultAgentModelId, effectiveAgentModelChoice } from './agentModelSelection';
 import {
   CUSTOM_MODEL_SENTINEL,
@@ -8123,7 +8124,7 @@ interface McpClient {
   buildMethod: (info: McpInstallInfo) => string;
   // Function so per-OS path hints (~/.cursor on POSIX vs
   // %USERPROFILE%\.cursor on Windows) and shortcut differences
-  // (⌘⇧P vs Ctrl+Shift+P) can be rendered correctly.
+  // (⇧⌘F vs Ctrl+Shift+F) can be rendered correctly.
   buildInstruction: (info: McpInstallInfo) => string;
   buildSnippet: (info: McpInstallInfo) => string;
   buildSnippetLang: (info: McpInstallInfo) => 'bash' | 'json' | 'toml';
@@ -8145,7 +8146,7 @@ function homeConfigPath(
 }
 
 function commandPaletteShortcut(platform: McpInstallInfo['platform']): string {
-  return platform === 'darwin' ? '⌘⇧P' : 'Ctrl+Shift+P';
+  return formatShortcut('commandPalette.open', { mac: platform === 'darwin' });
 }
 
 function settingsShortcut(platform: McpInstallInfo['platform']): string {

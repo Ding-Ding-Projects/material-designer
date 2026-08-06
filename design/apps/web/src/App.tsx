@@ -74,6 +74,7 @@ import {
   type CommandPaletteRequest,
 } from './components/command-palette/open';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
+import { matchesShortcut } from './components/shortcuts/registry';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
@@ -118,7 +119,6 @@ import {
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import { applyAppearanceToDocument } from './state/appearance';
-import { isMacPlatform } from './utils/platform';
 import {
   amrArtifactUpgradeHomeMockOffer,
   type AmrArtifactUpgradeHomeOffer,
@@ -2378,40 +2378,15 @@ function AppInner() {
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [openSettings]);
 
-  // Cmd/Ctrl+Shift+P opens the command palette. Deliberately one modifier away
-  // from the quick switcher's Cmd/Ctrl+P: the two are different surfaces
-  // answering different questions, and the file palette keeps the shorter
-  // shortcut because it is the one people hit dozens of times an hour. Capture
-  // phase for the same reason the quick switcher uses it — the browser's own
-  // print dialog is bound next door.
+  // Cmd/Ctrl+Shift+F opens the command palette. The binding comes from the
+  // shared shortcut registry so the handler, header chip and accessibility
+  // metadata cannot quietly advertise different keys. Capture phase keeps the
+  // global command reachable from controls that otherwise consume key events.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const primary = isMacPlatform() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
-      if (!primary || !e.shiftKey || e.altKey) return;
-      if (e.key.toLowerCase() !== 'p') return;
+      if (!matchesShortcut('commandPalette.open', e)) return;
       if (e.isComposing) return;
       e.preventDefault();
-      setCommandPaletteSeed({});
-      setCommandPaletteOpen((open) => !open);
-    };
-    window.addEventListener('keydown', onKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
-  }, []);
-
-  // Cmd/Ctrl+K opens the same palette. It is the shortcut the header search
-  // field advertises on its own chip, so it has to be the one that works —
-  // a hint that names a key which does nothing is worse than no hint.
-  // `!e.shiftKey` keeps it clear of Cmd/Ctrl+Shift+K in the project view.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      const primary = isMacPlatform() ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
-      if (!primary || e.shiftKey || e.altKey) return;
-      if (e.key.toLowerCase() !== 'k') return;
-      if (e.isComposing) return;
-      e.preventDefault();
-      // The shortcut opens an empty palette. Inheriting whatever is sitting in
-      // the header field would surprise a user who reached for the keyboard
-      // precisely because they were not looking at that field.
       setCommandPaletteSeed({});
       setCommandPaletteOpen((open) => !open);
     };

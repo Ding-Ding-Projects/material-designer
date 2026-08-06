@@ -147,7 +147,7 @@ settings and its own keyboard shortcuts:
 | Frame | The state | How it is driven |
 | --- | --- | --- |
 | `settings-dialog.png` | The settings dialog, open | <kbd>Ctrl</kbd>+<kbd>,</kbd> dispatched at the window — the shortcut the app itself binds |
-| `command-palette.png` | The command palette, open | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, likewise |
+| `command-palette.png` | The command palette, open | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>, likewise |
 | `home-scale-100.png` … `home-scale-200.png` | Home at 100%, 125%, 150% and 200% UI scale | The app's own persisted appearance preference, then a reload, so the frame proves the product applies a saved scale on a cold render |
 | `home-bilingual.png` | Home in bilingual mode (English · 廣東話) | The app's own persisted locale and language mode, then a reload |
 | `home-bilingual-narrow-900.png` | Bilingual home at the narrowest supported window | A renderer-driven resize to the desktop shell's own `minWidth` floor |

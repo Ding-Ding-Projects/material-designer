@@ -3,7 +3,7 @@
 // Separate from `QuickSwitcher.tsx` on purpose. That surface answers one
 // question fast — "which file?" — on Cmd/Ctrl+P, and it stays exactly as it
 // was. This one answers "what can this app do, and where does it live?", on
-// Cmd/Ctrl+Shift+P, and it swallows the quick switcher as one scope among
+// Cmd/Ctrl+Shift+F, and it swallows the quick switcher as one scope among
 // several rather than replacing it.
 //
 // Three things here are load-bearing rather than decorative:

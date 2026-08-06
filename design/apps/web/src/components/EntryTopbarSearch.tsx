@@ -2,7 +2,7 @@
 //
 // The last piece of structural chrome in `mockups/open-design-m3`: a pill in
 // the entry topbar, a leading search glyph, the placeholder "Search projects,
-// plugins, design systems…", the regex affordance, and a `Ctrl K` hint.
+// plugins, design systems…", the regex affordance, and a `Ctrl+Shift+F` hint.
 //
 // == What it searches, and why it is not a fourth search ==
 //
@@ -23,7 +23,7 @@
 // not decorative: the palette filters its rows with it and says on screen that
 // it is doing so.
 //
-// The mockup draws the field and a separate `Ctrl K` button side by side. They
+// The mockup draws the field and a separate `Ctrl+Shift+F` button side by side. They
 // are one control here because they lead to the same place, and because two
 // global searches a finger's width apart is a worse answer than one; the chip
 // keeps the shortcut visible where the mockup put it.
@@ -36,20 +36,21 @@ import { Icon } from './Icon';
 import { requestCommandPalette } from './command-palette/open';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
+import { ariaKeyShortcuts, formatShortcut } from './shortcuts/registry';
 import styles from './EntryTopbarSearch.module.css';
 
 /**
  * What the shortcut chip says. The modifier is the platform's, because a chip
- * that reads `Ctrl K` on a Mac trains the user to press a key that does
- * nothing — the palette's own handler already reads `Meta` there.
+ * that renders the Windows/Linux modifier on a Mac trains the user to press a
+ * key that does nothing — the palette's own handler reads `Meta` there.
  */
 export function paletteShortcutLabel(mac: boolean): string {
-  return mac ? '⌘ K' : 'Ctrl K';
+  return formatShortcut('commandPalette.open', { mac });
 }
 
 /** The same shortcut in the notation `aria-keyshortcuts` is defined in. */
 export function paletteShortcutAria(mac: boolean): string {
-  return mac ? 'Meta+K' : 'Control+K';
+  return ariaKeyShortcuts('commandPalette.open', { mac });
 }
 
 export function EntryTopbarSearch() {

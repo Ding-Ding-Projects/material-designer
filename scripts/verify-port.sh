@@ -116,7 +116,7 @@ paste "$tmp/actual-oids.txt" "$tmp/present.txt" |
   sed "s|\t$prefix|\t|" |
   LC_ALL=C sort -t"$(printf '\t')" -k2,2 > "$tmp/disk.tsv"
 
-join -t"$(printf '\t')" -1 3 -2 2 -o '1.3,1.2,2.1' \
+LC_ALL=C join -t"$(printf '\t')" -1 3 -2 2 -o '1.3,1.2,2.1' \
   <(LC_ALL=C sort -t"$(printf '\t')" -k3,3 "$tmp/upstream.tsv") "$tmp/disk.tsv" |
   awk -F'\t' '$2 != $3 { printf "bytes-differ\t%s\n", $1 }' >> "$tmp/gaps.txt" 2>/dev/null || true
 
@@ -133,7 +133,7 @@ if [ "$tracked" -eq 0 ]; then
   exit 2
 fi
 
-join -t"$(printf '\t')" -1 3 -2 3 -o '1.3,1.1,1.2,2.1,2.2' \
+LC_ALL=C join -t"$(printf '\t')" -1 3 -2 3 -o '1.3,1.1,1.2,2.1,2.2' \
   "$tmp/upstream.tsv" "$tmp/tracked.tsv" |
   awk -F'\t' '
     $2 != $4 { printf "mode\t%s\t(%s vs %s)\n", $1, $2, $4 }
@@ -141,7 +141,7 @@ join -t"$(printf '\t')" -1 3 -2 3 -o '1.3,1.1,1.2,2.1,2.2' \
   ' >> "$tmp/gaps.txt" 2>/dev/null || true
 
 # Paths tracked under design/ that upstream does not have.
-comm -13 <(cut -f3 "$tmp/upstream.tsv") <(cut -f3 "$tmp/tracked.tsv") |
+LC_ALL=C comm -13 <(cut -f3 "$tmp/upstream.tsv") <(cut -f3 "$tmp/tracked.tsv") |
   sed 's/^/extra\t/' >> "$tmp/gaps.txt" 2>/dev/null || true
 
 # Untracked, non-ignored files loose in design/ (an interrupted copy leaves these)
@@ -158,7 +158,7 @@ if [ "$allowed" -gt 0 ]; then
   cut -f2 "$tmp/gaps.txt" | LC_ALL=C sort -u > "$tmp/differing.txt"
   awk -F'\t' 'NR==FNR { ok[$0]=1; next } !($2 in ok)' \
     "$tmp/allowed.txt" "$tmp/gaps.txt" > "$tmp/gaps.filtered"
-  comm -23 "$tmp/allowed.txt" "$tmp/differing.txt" |
+  LC_ALL=C comm -23 "$tmp/allowed.txt" "$tmp/differing.txt" |
     sed 's/^/stale-notice\t/' >> "$tmp/gaps.filtered"
   mv "$tmp/gaps.filtered" "$tmp/gaps.txt"
 fi

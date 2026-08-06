@@ -1207,9 +1207,10 @@ recollection that they were done.
 ### 3.6 Command palette
 
 - [x] **One discoverable shortcut**, listing every command, setting and
-      destination the application has. `Ctrl+Shift+P` and `Cmd/Ctrl+K` both
-      open it; the header chip advertises the one it names, which is the
-      property that matters — the mockup labels the control "Ctrl+K" too.
+      destination the application has. `Ctrl+Shift+F` opens it on Windows/Linux
+      and `⇧⌘F` opens it on macOS, all derived from
+      `components/shortcuts/registry.ts`. `Ctrl+P` remains the quick switcher;
+      `Ctrl+K` and `Ctrl+Shift+P` are not competing palette bindings.
 - [x] **Cover every setting in every settings surface.** 44 indexed entries in
       `command-palette/settingsIndex.ts`, each carrying the section it lives in
       so a user who knows a setting's name never has to know its tab.

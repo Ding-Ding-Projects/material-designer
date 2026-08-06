@@ -29,6 +29,25 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Use one command-palette shortcut
+
+**Reason:** The desktop header announced `Ctrl K` while the application accepted
+both `Ctrl+K` and `Ctrl+Shift+P`. That left two stale routes and contradicted the
+single discoverable `Ctrl+Shift+F` requirement. Added `commandPalette.open` to the
+shared shortcut registry and routed the global handler, header hint,
+accessibility metadata, setup instructions and focused tests through it.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryTopbarSearch.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/shortcuts/registry.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/EntryTopbarSearch.test.tsx`
+- `apps/web/tests/components/shortcuts-registry.test.ts`
+
 ### 2026-08-05 — Six `Test the web application` failures that were the test, not the code
 
 **Reason:** `Verify` run 31022544564 (and the branch run behind it) failed

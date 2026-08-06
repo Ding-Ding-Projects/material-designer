@@ -5,11 +5,12 @@ command, every setting and every destination the product has — with settings
 rendered as live controls in the list itself, and selecting a row teleporting the
 user to where the thing actually lives.
 
-**Status: not started in the application; designed in full by the mockup;
-implemented on the documentation site.** The interface source contains no command
-palette. The only occurrence of the phrase anywhere under the vendored interface
-is a line of installation copy telling the user to press a *different
-application's* palette shortcut — which is a fair summary of the situation.
+**Status: implemented in the application and on the documentation site; full
+conformance audit still pending.** The application mounts a command palette and
+indexes its settings through `command-palette/settingsIndex.ts`. Its single
+discoverable desktop binding is `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on
+macOS, derived from `components/shortcuts/registry.ts` so the handler and every
+visible or assistive-technology hint share one source of truth.
 
 ## The requirement
 
@@ -96,7 +97,7 @@ palette has cost effort and delivered nothing.
 
 | Requirement | In the application | On the documentation site |
 | --- | --- | --- |
-| A single shortcut opening the palette | **Not started.** | **Implemented** — a labelled header button showing its shortcut, so the shortcut is discoverable rather than folklore. |
+| A single shortcut opening the palette | **Implemented** — `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on macOS; the handler, header chip and setup copy use the shared registry. | **Implemented** — a labelled header button showing its shortcut, so the shortcut is discoverable rather than folklore. |
 | Every command listed | **Not started.** | **Implemented** for the site's own command set. |
 | Every setting in every settings surface listed | **Not started.** | **Partial** — the site's settings groups are indexed; the enumeration has not been audited against the settings surface. |
 | Rows rendering live controls inline | **Not started.** Designed in the mockup. | **Implemented.** |
@@ -105,8 +106,8 @@ palette has cost effort and delivered nothing.
 | Own search wired to the pattern builder | **Not started.** | **Implemented** — the site's search surfaces share one builder implementation. |
 | Language modes and tone levels | **Not started.** | **Implemented** for the site's own copy. |
 
-The application's status is **not started**, not "designed" — the design exists,
-and no code does. The site's status is read from its committed source at
+The application's status is **implemented**, not merely "designed" — the palette,
+settings index and shortcut binding exist in source. The site's status is read from its committed source at
 `site/assets/js/ui.js`, which is what the published site serves; **no interactive
 audit against the checklist below has been run on either surface.**
 
@@ -183,10 +184,12 @@ enumeration is hand-maintained rather than derived.
 
 ## Verification
 
-**Nothing has been verified.** The application builds, installs, launches and
-passes an automated health check, and its unit suites pass — but the palette does
-not exist in the application, and the site's implementation has not been audited
-against the list below.
+**The shortcut binding is covered by focused source-level tests** in
+`tests/components/shortcuts-registry.test.ts` and
+`tests/components/EntryTopbarSearch.test.tsx`. The full application build,
+packaged smoke path and the remaining conformance checklist below are still
+pending verification for this change; the documentation site's implementation
+has not been audited against the list below.
 
 Conformance requires all of:
 

@@ -4735,7 +4735,7 @@ export interface Dict {
   'history.exported': string;
 
   // Command palette: scopes, groups, commands and destinations.
-  // The command palette (Cmd/Ctrl+Shift+P): its scopes, row groups, and
+  // The command palette (Cmd/Ctrl+Shift+F): its scopes, row groups, and
   // the commands it can run directly. Setting rows borrow their labels
   // from the settings surface they teleport to, so only palette-owned
   // strings live here.

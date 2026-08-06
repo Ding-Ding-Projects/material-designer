@@ -116,12 +116,12 @@ desktop host now scales its own web contents, which divides the real layout view
 this is the first capture of that chrome. The field carries its regex affordance as a
 `.*` chip and routes into the palette rather than owning a fourth result list.
 
-The keyboard chip beside it reads **`Ctrl K`**, and that is the key that actually opens
-the palette — the bindings are `Ctrl+K` and `Ctrl+Shift+P`, verified both in the shipped
-build and in `apps/web/src/App.tsx`. That matches the mockup, which labels the control
-"Command palette — Ctrl+K", and it satisfies the standard, which requires a command
-palette on *a* single discoverable shortcut without naming which one. The chip and the
-binding agree, which is the property that actually matters.
+The historical capture below still shows **`Ctrl K`** because it came from
+`v0.16.1-r64.1`, before the shortcut correction. The current desktop application has one
+discoverable palette binding: **`Ctrl+Shift+F`** on Windows and Linux, with **`⇧⌘F`** on
+macOS. The header chip, `aria-keyshortcuts`, global handler and setup copy derive that
+binding from `apps/web/src/components/shortcuts/registry.ts`; `Ctrl+P` remains the quick
+switcher, while the old `Ctrl+K` and `Ctrl+Shift+P` routes no longer open the palette.
 
 ![The home screen from release v0.16.1-r64.1 — an icon-only navigation rail on the left, a header search bar reading "Search projects, plugins, design systems…" with a .* regex chip and a Ctrl K chip beside it, the Material Designer wordmark over the heading "What will you design with your agent today?", a prompt composer, and a grid of template cards](assets/screenshots/home-header-search.png)
 

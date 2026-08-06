@@ -20,6 +20,8 @@
 import { isMacPlatform } from '../../utils/platform';
 
 export type ShortcutId =
+  // Global command palette, available from every desktop surface.
+  | 'commandPalette.open'
   // Selection, shared by every list that can select more than one row.
   | 'selection.selectPage'
   | 'selection.selectEveryMatch'
@@ -57,6 +59,7 @@ export interface ShortcutBinding {
  * the other half, and asserts that what a menu displays is what this table says.
  */
 export const SHORTCUTS: Record<ShortcutId, ShortcutBinding> = {
+  'commandPalette.open': { key: 'f', primary: true, shift: true },
   'selection.selectPage': { key: 'a', primary: true },
   'selection.selectEveryMatch': { key: 'a', primary: true, shift: true },
   'selection.invert': { key: 'i', primary: true },
