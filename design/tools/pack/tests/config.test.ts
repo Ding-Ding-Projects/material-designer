@@ -62,10 +62,12 @@ describe("resolveToolPackConfig Vela CLI requirement", () => {
 });
 
 describe("resolveToolPackConfig win build target", () => {
-  it("accepts the portable zip target and rejects unsupported values", () => {
+  it("defaults to Squirrel and accepts the supported Windows targets", () => {
+    expect(resolveToolPackConfig("win").to).toBe("squirrel");
     expect(resolveToolPackConfig("win", { to: "zip" }).to).toBe("zip");
     expect(resolveToolPackConfig("win", { to: "all" }).to).toBe("all");
     expect(resolveToolPackConfig("win", { to: "nsis" }).to).toBe("nsis");
+    expect(resolveToolPackConfig("win", { to: "squirrel" }).to).toBe("squirrel");
     expect(() => resolveToolPackConfig("win", { to: "dmg" })).toThrow(/unsupported win --to target: dmg/);
   });
 });

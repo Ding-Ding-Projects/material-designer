@@ -115,6 +115,10 @@ export type WinPackResult = {
   cacheReport: CacheReport;
   segments: WinPackTiming[];
   sizeReport: WinSizeReport;
+  squirrelDeltaPackagePaths: string[];
+  squirrelFullPackagePaths: string[];
+  squirrelReleasesPath: string | null;
+  squirrelSetupPath: string | null;
   timings: WinPackTiming[];
   to: ToolPackConfig["to"];
   unpackedPath: string | null;
@@ -139,7 +143,7 @@ export type WinSizeReport = {
     };
     nodeGypRebuild: boolean;
     npmRebuild: boolean;
-    targets: Array<"dir" | "nsis" | "zip">;
+    targets: Array<"dir" | "nsis" | "squirrel" | "zip">;
     webOutputMode: ToolPackConfig["webOutputMode"];
   };
   generatedAt: string;
@@ -213,6 +217,12 @@ export type WinInstallPayloadReport = {
     fileCount: number;
     path: string;
   }>;
+};
+
+export type WinSquirrelInstalledPaths = {
+  installDir: string;
+  installedExePath: string;
+  updateExePath: string;
 };
 
 export type WinLifecycleTiming = {

@@ -11,13 +11,43 @@ import {
   WIN_PREBUNDLED_PACKAGED_MAIN_RELATIVE_PATH,
   WIN_PREBUNDLED_WEB_SIDECAR_RELATIVE_PATH,
 } from "../win-prebundle.js";
-import { PRODUCT_NAME } from "./constants.js";
+import { PRODUCT_NAME, SQUIRREL_PACKAGE_NAME } from "./constants.js";
 import { pathExists } from "./fs.js";
 import { resolveWinInstallIdentity } from "./identity.js";
 import type { WinPaths, WinRemovalTarget } from "./types.js";
 
+export const WIN_SQUIRREL_OUTPUT_DIRECTORY = "squirrel-windows";
+
 export function sanitizeNamespace(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-");
+}
+
+export function resolveWinSquirrelOutputRoot(appBuilderOutputRoot: string): string {
+  return join(appBuilderOutputRoot, WIN_SQUIRREL_OUTPUT_DIRECTORY);
+}
+
+export function resolveWinSquirrelSetupName(namespace: string): string {
+  return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.exe`;
+}
+
+export function resolveWinSquirrelArtifactName(namespace: string): string {
+  return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.\${ext}`;
+}
+
+export function resolveWinSquirrelSetupPath(config: ToolPackConfig, paths: Pick<WinPaths, "appBuilderOutputRoot">): string {
+  return join(resolveWinSquirrelOutputRoot(paths.appBuilderOutputRoot), resolveWinSquirrelSetupName(config.namespace));
+}
+
+export function resolveWinSquirrelReleasesPath(paths: Pick<WinPaths, "appBuilderOutputRoot">): string {
+  return join(resolveWinSquirrelOutputRoot(paths.appBuilderOutputRoot), "RELEASES");
+}
+
+export function resolveWinSquirrelInstallRoot(): string {
+  return join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), SQUIRREL_PACKAGE_NAME);
+}
+
+export function resolveWinSquirrelUpdatePath(): string {
+  return join(resolveWinSquirrelInstallRoot(), "Update.exe");
 }
 
 export function resolveWinPaths(config: ToolPackConfig): WinPaths {

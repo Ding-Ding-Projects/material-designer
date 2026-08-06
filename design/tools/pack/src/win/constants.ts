@@ -1,4 +1,6 @@
 export const PRODUCT_NAME = "Material Designer";
+export const SQUIRREL_PACKAGE_NAME = "open-design-packaged-app";
+export const SQUIRREL_ICON_URL = "https://raw.githubusercontent.com/Ding-Ding-Projects/material-designer/main/design/tools/pack/resources/win/icon.ico";
 export const DESKTOP_LOG_ECHO_ENV = "OD_DESKTOP_LOG_ECHO";
 export const WEB_STANDALONE_HOOK_CONFIG_ENV = "OD_TOOLS_PACK_WEB_STANDALONE_HOOK_CONFIG";
 export const WEB_STANDALONE_RESOURCE_NAME = "open-design-web-standalone";
