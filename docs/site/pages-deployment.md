@@ -111,7 +111,7 @@ change without the page changing. See
 | Setting | Value | Why |
 | --- | --- | --- |
 | Triggers | Pushes to the default branch touching `site/**` or the workflow file; plus manual dispatch | A docs deployment should not run on every unrelated commit |
-| Runner | `ubuntu-latest` | Standard hosted runner; there is no reason for a self-hosted one here |
+| Runner | `[self-hosted, linux, material-designer]` | Dedicated project runner; the workflow cleans the checkout and verifies `gh`, `jq`, Bash and its static-site text utilities before publishing |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |
 | Environment | `github-pages`, with the deployment URL recorded as its output | The published URL is read off the run rather than assumed |

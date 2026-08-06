@@ -27,13 +27,27 @@ concurrency:
 jobs:
   deploy:
     name: Deploy site
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, material-designer]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: Verify Pages publishing tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tool in bash git gh jq awk sed grep cat cp ls wc head tr; do
+            command -v "$tool" >/dev/null || {
+              echo "::error::the material-designer Linux runner is missing $tool"
+              exit 1
+            }
+          done
+          echo "required static-site publishing tools are available"
 
       - name: Check the site is self-contained
         shell: bash

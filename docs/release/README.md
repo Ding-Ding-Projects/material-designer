@@ -35,9 +35,9 @@ How a release is produced, what proves it works, and what each published file is
 | Question | Answer |
 | --- | --- |
 | What triggers a release? | Every push to the default branch, plus manual dispatch with two inputs. |
-| Where does it build? | One ephemeral hosted Windows runner, from checkout to publication. |
+| Where does it build? | One dedicated self-hosted Windows runner labelled `self-hosted, windows, material-designer`, from clean checkout to publication. |
 | What is the tag? | `v<version>-r<run number>.<run attempt>` — unique and monotonic without a counter to maintain. |
-| What must pass first? | Port verification, install, typecheck, the Windows identity suites, payload validation, an explicit installer-path existence check, and the packaged smoke test. |
+| What must pass first? | Port verification, the pinned Node 24/pnpm 10.33.2 setup check, the frozen-lockfile install, typecheck, the Windows identity suites, payload validation, an explicit installer-path existence check, and the packaged smoke test. |
 | What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, a portable archive when one was built, and the code name's photograph. |
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |

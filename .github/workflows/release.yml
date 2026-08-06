@@ -34,7 +34,7 @@ concurrency:
 jobs:
   build:
     name: Build Windows application
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, material-designer]
     timeout-minutes: 120
     defaults:
       run:
@@ -63,6 +63,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          clean: true
           # The build needs design/, not the provenance submodule.
           fetch-depth: 0
 
@@ -83,6 +84,7 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 10.33.2
+          run_install: false
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -90,6 +92,19 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
+
+      - name: Verify the CI Node and pnpm toolchain
+        run: |
+          $ErrorActionPreference = "Stop"
+          $nodeVersion = (node --version).Trim()
+          $pnpmVersion = (pnpm --version).Trim()
+          if ($nodeVersion -notmatch '^v24\.') {
+            throw "expected Node 24, found $nodeVersion"
+          }
+          if ($pnpmVersion -ne "10.33.2") {
+            throw "expected pnpm 10.33.2, found $pnpmVersion"
+          }
+          Write-Host "using $nodeVersion and pnpm $pnpmVersion"
 
       - name: Read application version
         id: version
@@ -127,6 +142,10 @@ jobs:
         timeout-minutes: 45
         env:
           OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
+        # The setup actions install the requested tools; this frozen-lockfile
+        # install resolves the workspace from the committed manifest and lockfile.
+        # setup-node's pnpm-store cache is an optimisation only, never a
+        # substitute for installation and never a cached node_modules tree.
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck
@@ -170,7 +189,7 @@ jobs:
           # --testTimeout: two of these specs are `runIf(win32)`, so this job is
           # the only place they execute, and they do real filesystem work
           # (syncing launcher runtimes, writing cleanup metadata). vitest's 5s
-          # default is a developer-machine assumption; a hosted runner's disk is
+          # default is a developer-machine assumption; the self-hosted runner's disk is
           # slower and they time out. Raising the budget gives slow I/O room
           # without weakening a single assertion — the tests still have to pass.
           pnpm --filter @open-design/tools-pack exec vitest run --testTimeout=30000 win- launcher- release-workflows config versions resources

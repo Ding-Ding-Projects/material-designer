@@ -1,9 +1,10 @@
 # Building in continuous integration
 
 Three workflows live at the repository root: **`Verify`**, a cheap gate that runs
-on everything; **`Release`**, which builds the Windows application and publishes
-it; and **`Pages`**, which deploys `site/` and enforces the bundled-assets rule at
-publish time. `Pages` is documented in full under
+on trusted pushes and manual dispatch; **`Release`**, which builds the Windows
+application and publishes it; and **`Pages`**, which deploys `site/` and enforces
+the bundled-assets rule at publish time. All three select a labelled self-hosted
+runner, with Linux and Windows kept as separate contracts. `Pages` is documented in full under
 [../site/](../site/) — this page covers the two build workflows and summarises
 where `Pages` fits.
 
@@ -35,13 +36,14 @@ where `Pages` fits.
 a large workspace, runs a chain of workspace builds, and on Windows compiles a
 native SQLite binding from source because no prebuilt binary exists for that
 platform and runtime pair. The release workflow's own comment calls that step
-"the long pole of this job". A runner created for one build and destroyed
-afterwards absorbs that cost without leaving anything behind.
+"the long pole of this job". The dedicated runner contract absorbs that cost;
+each job cleans its checkout and installs the pinned toolchain before resolving
+the workspace from its committed lockfile.
 
-**A build should be a fact about the code.** When every build starts from an
-identical, disposable image, a failure means the code is broken. When builds
-happen on whichever machine is nearest, a failure means *something* is broken and
-the first hour goes on finding out which machine.
+**A build should be a fact about the code.** The runner labels select dedicated
+machines with the required platform and project contract. Checkout cleanup plus
+the setup actions for Node 24 and pnpm 10.33.2 prevent a prior job's workspace or
+preinstalled package manager from becoming an invisible input.
 
 **Release artifacts should be produced by the thing that tested them.** The
 installer a user downloads must be the artifact the passing run built, at the
@@ -51,23 +53,27 @@ publish are steps of one run.
 ## `Verify` — the fast gate
 
 ```yaml
-on: [push, pull_request, workflow_dispatch]
-runs-on: ubuntu-latest
+on: [push, workflow_dispatch]
+runs-on: [self-hosted, linux, material-designer]
 permissions: contents: read
 ```
 
-It runs on everything, so it stays cheap: **no dependency install, no build.** It
+It runs on trusted pushes and manual dispatch, so it stays cheap: **no dependency
+install, no build.** It
 answers one question — is `design/` still an exact copy of the upstream tree,
 with every intentional difference declared?
+
+The public repository deliberately has no `pull_request` trigger here: untrusted
+pull-request code must not execute on a self-hosted runner.
 
 ### What it does
 
 | Step | Purpose |
 | --- | --- |
-| Checkout | `fetch-depth: 0`, **no submodule** — see below. |
+| Checkout | `fetch-depth: 0`, **no submodule**, and `clean: true` — see below. |
 | Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
 | Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
-| Set up Node | Node 24, for the counter. |
+| Set up Node | The setup action installs Node 24; the workflow checks the resolved major version. |
 | Count lines | `node scripts/line-count.mjs` appended to the run summary. Skips gracefully if the script is absent. |
 
 ### Why it checks out without the submodule
@@ -97,7 +103,7 @@ on:
   push: branches: [main]
   workflow_dispatch:
     inputs: { smoke: boolean = true, publish: boolean = true }
-runs-on: windows-latest
+runs-on: [self-hosted, windows, material-designer]
 timeout-minutes: 120
 permissions: contents: write
 concurrency: release-<ref>, cancel-in-progress: false
@@ -116,12 +122,15 @@ leave a tag without its assets.
 <details>
 <summary><b>Step by step</b> — checkout through publish</summary>
 
-**1 — Checkout.** `fetch-depth: 0`, no submodule. The build needs `design/`, not
-the provenance pin.
+**1 — Checkout.** `fetch-depth: 0`, no submodule and `clean: true`. The build
+needs `design/`, not the provenance pin, and a clean checkout prevents stale
+`node_modules` or generated files on the persistent runner from becoming inputs.
 
-**2 — Package manager, then Node.** pnpm 10.33.2 is set up *before* Node,
-because the Node setup action needs pnpm on the path to resolve the store for its
-cache. The cache key is `design/pnpm-lock.yaml`. The workflow notes explicitly
+**2 — Package manager, then Node.** `pnpm/action-setup` installs pnpm 10.33.2
+with `run_install: false`, then `actions/setup-node` installs Node 24. The cache
+key is `design/pnpm-lock.yaml` and contains only the pnpm store; it is a
+performance optimisation, not a `node_modules` dependency. A version-check step
+fails if either tool is not the requested version. The workflow notes explicitly
 that the Node package-manager shim is not used, because it fails with a
 permission error on Windows.
 
@@ -133,6 +142,8 @@ advances for each new run, which gives the updater a real ordering to compare.
 
 **4 — Install.** `pnpm install --frozen-lockfile`. The post-install step builds
 the workspace packages and tools and compiles the native modules from source.
+The manifest and lockfile are the dependency authority; no preinstalled pnpm or
+cached `node_modules` directory is trusted.
 
 **5 — Typecheck.** The daemon and desktop are built first, because their
 declaration files must exist before the packaged application can typecheck
@@ -214,13 +225,22 @@ The smoke-test line is the honest-evidence mechanism: it reports what the step
 actually did rather than assuming success, and a skipped smoke test says "not
 run" instead of implying a pass.
 
+## `Pages` — static deploy
+
+`Pages` uses `[self-hosted, linux, material-designer]` and keeps its existing
+trusted push/manual triggers. It has no `package.json`, lockfile or build step:
+the workflow checks out with `clean: true`, verifies the required static-site
+publishing tools (`gh`, `jq`, Bash and the standard text utilities), stages the
+local catalogue, fills release facts, and uploads `site/`. It therefore does not
+invent a Node/pnpm install for a project that declares no such dependency.
+
 ## Configuration
 
 ### Triggers
 
 | Workflow | Triggers |
 | --- | --- |
-| `Verify` | every push, every pull request, manual dispatch |
+| `Verify` | every push and manual dispatch; no pull-request trigger on the self-hosted runner |
 | `Release` | pushes to the default branch, manual dispatch |
 | `Pages` | pushes to the default branch that touch `site/**` or the workflow itself, manual dispatch — see [../site/](../site/) |
 
@@ -251,12 +271,26 @@ the download is malicious.
 
 ### Runner selection
 
-Both workflows use standard hosted runners — Linux for verification, Windows for
-the build. Do not introduce a self-hosted runner without a stated, measured
-reason. On a public repository a self-hosted runner is an accepted attack path:
-anyone who can cause a workflow to run can execute code on that machine. If one
-is ever added it must never carry a `pull_request` trigger — note that `Verify`
-currently has one, which is safe only because it runs on a hosted runner.
+The root workflows use an explicit self-hosted contract:
+
+| Workflow/job | Runner labels | Trusted events |
+| --- | --- | --- |
+| `Verify` / `verify` | `[self-hosted, linux, material-designer]` | Push and manual dispatch; no `pull_request` trigger because the repository is public. |
+| `Verify` / `test` | `[self-hosted, linux, material-designer]` | The same trusted workflow events. |
+| `Release` / `build` | `[self-hosted, windows, material-designer]` | Default-branch push and manual dispatch. |
+| `Pages` / `deploy` | `[self-hosted, linux, material-designer]` | Site/default-branch push and manual dispatch. |
+
+The runner administrator must provide the Actions runner service, Git, Bash and
+the platform tools used by the matching workflow. The workflow itself installs
+Node 24 and pnpm 10.33.2 for dependency jobs, checks their versions, cleans the
+checkout, and runs `pnpm install --frozen-lockfile` from
+`design/pnpm-lock.yaml`. `Pages` has no package manifest or build step, so it
+performs an explicit check for its static publishing tools instead of inventing
+a dependency install.
+
+Self-hosted machines must be dedicated to this project, contain no user data,
+and be treated as trusted infrastructure. Do not add a `pull_request` trigger or
+run untrusted checkout content on them.
 
 ## Failure modes
 
@@ -265,7 +299,8 @@ currently has one, which is safe only because it runs on a hosted runner.
 | Verification fails with thousands of `bytes-differ` | Line-ending conversion on checkout | Only possible on a Windows runner. Set `core.autocrlf=false` **before** checkout, or keep verification on Linux as it is now. |
 | Verification exits `2` — "no upstream reference available" | Neither submodule nor manifest present | Restore `scripts/upstream-manifest.tsv`, or check out the submodule. Exit `2` is "did not run", not "passed". |
 | Verification exits `2` — manifest disagrees with the submodule | The pin moved without regenerating the manifest | `scripts/verify-port.sh --write-manifest` |
-| Install fails compiling the database binding | C++ build tools or Python missing | Present on the standard Windows image; check the image did not change. |
+| Install fails compiling the database binding | C++ build tools or Python missing | Restore those prerequisites on the labelled Windows runner; the workflow's pinned Node/pnpm setup does not replace native build tools. |
+| Toolchain check fails | The runner resolved a Node or pnpm version outside the contract | Inspect the setup-action output; the job must use Node 24 and pnpm 10.33.2 before the frozen-lockfile install. |
 | Typecheck fails in packages that were not touched | The daemon and desktop builds were skipped | They run first for exactly this reason. |
 | The packer exits immediately | An empty `--namespace` or `--app-version` | Both are set explicitly for this reason; check the version parse step. |
 | The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |

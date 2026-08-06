@@ -272,11 +272,14 @@ the application is finished.
 ## Security considerations
 
 - **This step installs and runs a real application on the machine it is on.** It
-  belongs on an ephemeral hosted runner and nowhere else. Never point it at a
-  machine holding real user data: it uninstalls with product-user-data removal,
-  which is exactly as destructive as it sounds.
+  belongs on the dedicated self-hosted Windows runner selected by
+  `[self-hosted, windows, material-designer]` and nowhere else. The runner must
+  contain no real user data: it uninstalls with product-user-data removal, which
+  is exactly as destructive as it sounds.
 - **It seeds onboarding state and creates projects.** Those are writes to the data
-  root, cleaned up by the uninstall. On a persistent machine they would not be.
+  root, cleaned up by the uninstall. The clean checkout and dedicated-runner
+  contract keep those writes confined to the CI machine; they must not be shared
+  with interactive user data.
 - **The report is uploaded as a workflow artifact**, and it contains a screenshot
   of the running application plus the packaging build's output. Nothing secret
   should ever be visible in that window; if the application ever renders a token

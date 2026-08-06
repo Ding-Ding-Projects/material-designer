@@ -6,8 +6,12 @@ name: Verify
 
 on:
   push:
-  pull_request:
   workflow_dispatch:
+
+# This workflow uses a self-hosted runner. Do not attach an untrusted
+# pull_request trigger to it: a pull request could execute repository-controlled
+# code on the persistent runner. Pushes and manual dispatches are the trusted
+# paths for this contract.
 
 permissions:
   contents: read
@@ -29,7 +33,7 @@ concurrency:
 jobs:
   verify:
     name: Verify port integrity
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, material-designer]
     steps:
       - name: Keep the checkout byte-exact
         # verify-port.sh compares the bytes on disk against upstream blob ids with
@@ -45,6 +49,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          clean: true
           # No submodule. verify-port.sh falls back to the committed manifest of
           # upstream blob ids, which answers exactly the same question without
           # cloning a 1.7 GB object store on every push. When the submodule IS
@@ -140,6 +145,18 @@ jobs:
         with:
           node-version: 24
 
+      - name: Verify the CI Node toolchain
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node_version=$(node --version)
+          case "$node_version" in
+            v24.*) ;;
+            *) echo "::error::expected Node 24, found $node_version"; exit 1 ;;
+          esac
+          echo "using $node_version"
+
       - name: Count lines
         if: ${{ always() }}
         shell: bash
@@ -158,7 +175,7 @@ jobs:
 
   test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, material-designer]
     timeout-minutes: 60
     # Separate from the port-integrity job above so that gate stays cheap: this
     # one installs the whole workspace and compiles native modules.
@@ -171,11 +188,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          clean: true
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.33.2
+          run_install: false
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -184,11 +204,31 @@ jobs:
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
+      - name: Verify the CI Node and pnpm toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node_version=$(node --version)
+          pnpm_version=$(pnpm --version)
+          case "$node_version" in
+            v24.*) ;;
+            *) echo "::error::expected Node 24, found $node_version"; exit 1 ;;
+          esac
+          if [ "$pnpm_version" != "10.33.2" ]; then
+            echo "::error::expected pnpm 10.33.2, found $pnpm_version"
+            exit 1
+          fi
+          echo "using $node_version and pnpm $pnpm_version"
+
       - name: Install dependencies
         working-directory: design
         timeout-minutes: 40
         env:
           OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
+        # The setup actions install the requested tools; this frozen-lockfile
+        # install resolves the workspace from the committed manifest and lockfile.
+        # setup-node's pnpm-store cache is an optimisation only, never a
+        # substitute for installation and never a cached node_modules tree.
         run: pnpm install --frozen-lockfile
 
       - name: Build the packages the tests import

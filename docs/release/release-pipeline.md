@@ -1,10 +1,11 @@
 # The release pipeline
 
 How a release is produced, end to end, from a push to a published installer.
-Everything happens inside one workflow run on one ephemeral Windows runner,
-because the artifact a user downloads must be the artifact the passing run built,
-at the commit it claims — and that is only enforceable when the build, the tests
-and the publish are steps of the same run.
+Everything happens inside one workflow run on one dedicated self-hosted Windows
+runner selected by `[self-hosted, windows, material-designer]`, because the
+artifact a user downloads must be the artifact the passing run built, at the
+commit it claims — and that is only enforceable when the build, the tests and the
+publish are steps of the same run.
 
 > [!IMPORTANT]
 > **Status: run, and publishing.** Two legacy releases exist —
@@ -27,7 +28,7 @@ on:
   workflow_dispatch:
     inputs: { smoke: boolean = true, publish: boolean = true }
 
-runs-on: windows-latest
+runs-on: [self-hosted, windows, material-designer]
 timeout-minutes: 120
 permissions: { contents: write }
 concurrency: { group: release-<ref>, cancel-in-progress: false }
@@ -40,9 +41,10 @@ Three of those lines are decisions rather than boilerplate:
   cheaper than that.
 - **`timeout-minutes: 120`.** Generous rather than optimistic, because the install
   step compiles a native database binding from source on Windows.
-- **`contents: write`.** The `Verify` workflow, which runs on pull requests, has
-  `contents: read`. The gate that untrusted contributions can trigger cannot write
-  anything.
+- **`contents: write`.** The `Verify` workflow has `contents: read` and runs only
+  on trusted pushes and manual dispatch because its runner is self-hosted. The
+  gate cannot write anything, and untrusted pull requests never execute on the
+  project runner.
 
 ### The build steps, in order
 
@@ -54,7 +56,9 @@ Three of those lines are decisions rather than boilerplate:
 system configuration on a Windows runner enables line-ending translation by
 default, and the repository's own attributes mark everything as text — so an
 unguarded checkout writes a different tree from the one the provenance claim is
-about. See [../troubleshooting/line-endings.md](../troubleshooting/line-endings.md).
+about. The checkout also sets `clean: true`, removing stale generated files and
+`node_modules` from the persistent runner workspace. See
+[../troubleshooting/line-endings.md](../troubleshooting/line-endings.md).
 
 **2 — Checkout**, full history, **no submodule**. The build needs the imported
 tree, not the provenance pin.
@@ -66,10 +70,13 @@ checks that claim itself — before the long install, so drift fails fast. The
 checkout has no submodule, so the verifier falls back to the committed manifest of
 upstream object ids, which answers the same question.
 
-**4 — Package manager, then the runtime.** The package manager is set up *before*
-the runtime, because the runtime setup action needs it on the path to resolve the
-store for its cache. The workflow explicitly does not use the runtime's package-manager
-shim, which fails with a permission error on Windows.
+**4 — Package manager, then the runtime.** `pnpm/action-setup` installs exactly
+pnpm 10.33.2 with `run_install: false`, then `actions/setup-node` installs Node
+24. The workflow checks both versions before continuing. The cache key is the
+committed `design/pnpm-lock.yaml` and covers only the pnpm store; it is a speed
+optimisation, not a `node_modules` input. The workflow explicitly does not use
+the runtime's package-manager shim, which fails with a permission error on
+Windows.
 
 **5 — Read the application version and compute the tag.** Parsed from the imported
 tree's manifest, failing loudly if absent. The build keeps the manifest's major and
@@ -83,11 +90,12 @@ component, so Squirrel has a real version ordering. The tag is
 > already published rebuilds for an hour and then dies at the publish step because
 > the tag exists.
 
-**6 — Install.** `pnpm install --frozen-lockfile`. The post-install step builds the
-workspace packages and tools and compiles the native modules from source. It is
-the long pole of the job. Concurrency is raised, which only overlaps targets that
-do not depend on each other — the post-install already knows its own dependency
-order.
+**6 — Install.** `pnpm install --frozen-lockfile`. The committed manifest and
+lockfile are the dependency authority; no preinstalled package manager or cached
+`node_modules` directory is trusted. The post-install step builds the workspace
+packages and tools and compiles the native modules from source. It is the long
+pole of the job. Concurrency is raised, which only overlaps targets that do not
+depend on each other — the post-install already knows its own dependency order.
 
 **7 — Typecheck.** The daemon and the desktop shell are built **first**, because
 their declaration files must exist before the packaged application can typecheck
@@ -240,13 +248,14 @@ malicious.
 - **No telemetry key is configured**, and the vendored analytics code is a no-op
   without one. Baking one in at packaging time changes what shipped builds do and
   must be disclosed, not done quietly.
-- **Standard hosted runners only.** A self-hosted runner on a public repository is
-  an accepted attack path: anyone who can cause a workflow to run can execute code
-  on that machine. If one is ever added it must never carry a pull-request trigger.
+- **Dedicated self-hosted runner contract.** The Windows runner must carry the
+  `self-hosted`, `windows` and `material-designer` labels, be dedicated to this
+  project, and contain no user data. `Release` accepts only default-branch pushes
+  and manual dispatch; no untrusted pull-request trigger may execute on it.
 
 ## Verification
 
-**Observed:** two releases exist, `v0.16.1-r7.1` and `v0.16.1-r8.1`, each
+**Observed before the runner migration:** two releases exist, `v0.16.1-r7.1` and `v0.16.1-r8.1`, each
 published by the run that built its installer. The workspace installed with native
 modules compiled from source, the full typecheck passed, the Windows identity
 specs passed, an installer was produced and its payload validated, and the smoke
@@ -254,7 +263,8 @@ test installed, launched, health-checked, screenshotted and uninstalled the buil
 application.
 
 **Not observed:** a signed installer, any non-Windows artifact, the updater path,
-and — importantly — a *failing* release run. A gate that has only ever been seen
+the new labelled self-hosted runner contract executing a release, and —
+importantly — a *failing* release run. A gate that has only ever been seen
 passing is not known to be a gate.
 
 The pipeline is fully proven when one run demonstrates all of:
