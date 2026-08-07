@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 120
     defaults:
       run:
-        shell: pwsh
+        shell: powershell
     env:
       # Namespace and channel are literals here. Upstream derives them from a
       # release-metadata job wired to infrastructure this fork does not have,
@@ -68,7 +68,7 @@ jobs:
           fetch-depth: 0
 
       - name: Bootstrap Windows CI tools
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
       - name: Verify design/ against the pinned upstream tree
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
@@ -108,7 +108,7 @@ jobs:
           arch: x64
 
       - name: Clear prohibited signing inputs
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $signingInputs = @(

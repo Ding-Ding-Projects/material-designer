@@ -4,7 +4,10 @@ $ErrorActionPreference = 'Stop'
 # the pinned tools in a user-scoped cache, lock the cache while updating it,
 # validate the cached versions, and expose only this cache through GITHUB_PATH.
 
-$toolRoot = Join-Path ($env:RUNNER_TOOL_CACHE ?? $env:RUNNER_TEMP) 'material-designer-ci-tools'
+$cacheRoot = $env:RUNNER_TOOL_CACHE
+if ([string]::IsNullOrWhiteSpace($cacheRoot)) { $cacheRoot = $env:RUNNER_TEMP }
+if ([string]::IsNullOrWhiteSpace($cacheRoot)) { throw 'RUNNER_TOOL_CACHE and RUNNER_TEMP are both unavailable' }
+$toolRoot = Join-Path $cacheRoot 'material-designer-ci-tools'
 $binDir = Join-Path $toolRoot 'bin'
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 

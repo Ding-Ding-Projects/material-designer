@@ -42,6 +42,8 @@ const inventory = await text("docs/build/self-hosted-dependencies.md");
 requireText(release, "actions/setup-python@v5", "release.yml does not install Python 3.12 automatically");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
+requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
+forbid(release, /\bpwsh\b/, "release.yml invokes pwsh, which is not guaranteed on the self-hosted Windows runner");
 requireText(release, "CSC_IDENTITY_AUTO_DISCOVERY=false", "release.yml does not disable certificate discovery");
 requireText(release, "$signature.Status -ne 'NotSigned'", "release.yml does not verify an unsigned Setup.exe");
 requireText(release, "signed = $false", "release metadata does not declare unsigned artifacts");
