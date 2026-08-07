@@ -51,8 +51,10 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > clipping appears first. See [Status](#status).
 >
 > **2026-08-06 UI audit update.** Source-level fixes now cover the Figma import
-> modal's names, bounded scrolling, focus trap and reduced motion; context-menu
-> wrapping and focus return; updater-dialog focus; the design-system Back name;
+> modal's native URL/notes labels, bounded scrolling, focus trap and reduced motion;
+> the label follow-up is recorded in [`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33);
+> context-menu wrapping and focus return; updater-dialog focus; the design-system
+> Back name;
 > the command palette's anchored regex builder and dialog-level Escape dismissal
 > from every focused palette control. Its adjacent regex affordance now keeps a
 > full 48px keyboard/touch target while the input yields first at narrow widths,
