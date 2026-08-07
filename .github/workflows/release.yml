@@ -261,6 +261,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
           $env:TEMP = $shortRoot
           $env:TMP = $shortRoot
+          # Squirrel.Windows does not use TEMP for its Releasify extraction
+          # directory. Its Utility.WithTempDirectory reads SQUIRREL_TEMP, so
+          # leave that process-local root short as well; otherwise the nupkg
+          # expands under the runner user's long LocalAppData path and can
+          # still trip MAX_PATH even when electron-builder's output is mapped.
+          $squirrelTemp = Join-Path $shortRoot "squirrel-temp"
+          New-Item -ItemType Directory -Force -Path $squirrelTemp | Out-Null
+          $env:SQUIRREL_TEMP = $squirrelTemp
           $toolsPackDir = Join-Path $shortRoot "pack"
           $cacheDir = Join-Path $shortRoot "cache"
           $buildJsonPath = Join-Path $shortRoot "build.json"

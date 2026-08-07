@@ -49,6 +49,7 @@ requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
+requireText(release, "$env:SQUIRREL_TEMP", "release.yml does not keep Squirrel's extraction temp root short");
 forbid(release, /\bpwsh\b/, "release.yml invokes pwsh, which is not guaranteed on the self-hosted Windows runner");
 requireText(release, "CSC_IDENTITY_AUTO_DISCOVERY=false", "release.yml does not disable certificate discovery");
 requireText(release, "$signature.Status -ne 'NotSigned'", "release.yml does not verify an unsigned Setup.exe");
