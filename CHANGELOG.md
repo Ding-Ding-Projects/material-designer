@@ -64,6 +64,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Windows release shell now bypasses policy at the loader boundary.**
+  Windows PowerShell existed, but its default command wrapper tried to load the
+  generated step before the step body could invoke a child process with Bypass.
+  The shell template now carries the per-process execution-policy switch, leaving
+  the user's persistent policy untouched
+  ([129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)).
+
+  Windows release shell 而家喺 loader boundary 就 bypass policy：Windows
+  PowerShell 明明存在，但 default wrapper 先 load generated step，step body
+  仲未有機會叫 child process 設 Bypass 就已經畀 unsigned script 擋低。
+  Shell template 而家帶住 per-process execution-policy switch，唔郁用戶
+  persistent policy，個 script 終於有機會入場。
+
 - **Windows release bootstrap now uses the shell the runner actually has.** The
   labelled image has powershell.exe but no pwsh command, so the first default
   branch run reached checkout and then stopped before dependency installation.

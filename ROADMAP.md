@@ -63,6 +63,12 @@ imported upstream tree for a shipping product.
 > [993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)
 > switches the job to powershell.exe and keeps the bootstrap script compatible
 > with that engine; another labelled-runner verdict is still required.
+> Release run 31153286001 reached checkout and then failed while Windows
+> PowerShell loaded the generated step: its execution policy rejected the
+> unsigned temporary script before the bootstrap body ran. Commit
+> [129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)
+> moves the per-process Bypass switch onto the shell template; another
+> labelled-runner verdict is still required.
 
 ---
 

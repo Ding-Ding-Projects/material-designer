@@ -968,6 +968,17 @@ no bundle is already legal.
   7-only null-coalescing expression for Windows PowerShell compatibility, and
   adds a release-contract check that rejects pwsh. The next run is still the
   authoritative packaging and publication verdict.
+- Release run
+  [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
+  reached setup, Git-for-Windows shell steps and checkout, but Windows
+  PowerShell blocked the generated unsigned temporary script with a
+  PSSecurityException before the bootstrap body ran. No dependency install,
+  test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)
+  moves ExecutionPolicy Bypass onto the shell template itself. The user's
+  persistent execution policy is not changed; the next run remains the
+  authoritative packaging and publication verdict.
 - At this checkpoint the target issue is
   [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7), and
   the open issue scan found only that active release task in this repository;

@@ -99,6 +99,11 @@ therefore invokes Windows PowerShell directly, and the utility bootstrap avoids
 PowerShell 7-only syntax so a clean runner can execute the cache-miss path with
 the shell it actually provides.
 
+The shell template also carries the per-process execution-policy bypass. Setting
+Bypass only inside a step is too late when Windows PowerShell blocks the
+generated step while loading it; the bypass must wrap the loader itself and must
+not change the user's persistent execution policy.
+
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a
