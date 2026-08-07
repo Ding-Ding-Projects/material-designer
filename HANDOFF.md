@@ -70,9 +70,12 @@ no residue.
 > [!NOTE]
 > **Updated 2026-08-06.** The bounded Figma-label lane is committed at
 > [`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33).
-> `FigmaImportModal` now gives the URL and build-notes controls visible native
-> `label`/`for` associations and stable ids; its focused accessibility spec checks
-> those associations instead of relying on placeholder text. `MODIFICATIONS.md`
+> `FigmaImportModal` now gives the URL and notes controls visible native
+> `label`/`for` associations and stable ids. Their names come from `useT` through
+> the existing `dsCreate.figmaUrl` and `dsCreate.notes` catalog entries, with the
+> provider-less English fallback covered as well; its focused accessibility spec
+> checks localized names and associations instead of relying on placeholder text.
+> `MODIFICATIONS.md`
 > records the changed `design/` paths. No Node, pnpm or Electron command was run
 > locally. UpdateDialog focus containment remains owned by the separate updater
 > lane at `6de08bb` and is intentionally not included in `d918d33`.

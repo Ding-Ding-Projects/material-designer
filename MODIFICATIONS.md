@@ -126,6 +126,7 @@ close or cancellation, and records both behaviours in focused tests.
 - `apps/web/src/components/FigmaImportModal.module.css`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 - `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdateDialog.module.css`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 
 ### 2026-08-06 — Keep scrollable context menus open

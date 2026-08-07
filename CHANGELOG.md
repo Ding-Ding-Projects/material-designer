@@ -64,16 +64,19 @@ version section when a release carries them.
 
 ### Changed
 
-- **Figma import fields now carry their own names.** The URL and build-notes
-  controls use visible native `label`/`for` associations and stable ids, so the
-  placeholder remains optional guidance instead of the only accessible name. The
-  focused accessibility spec checks both associations; the local Node/pnpm/
-  Electron toolchain was not run ([`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33)).
+- **Figma import fields now carry their own localized names.** The URL and notes
+  controls use visible native `label`/`for` associations and stable ids, while
+  `useT` reads the existing `dsCreate.figmaUrl` and `dsCreate.notes` catalog
+  entries and keeps the provider-less English fallback. Placeholder text is
+  optional guidance, not the only accessible name. The focused accessibility
+  spec checks the `zh-HK` names, associations and English fallback; the local
+  Node/pnpm/Electron toolchain was not run ([`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33)).
 
-  Figma import 嘅 URL 同 build notes 而家自己有真 label/for 同 stable id，
-  placeholder 只係提示，唔再一個人扮晒 accessible name。Focused accessibility
-  spec 會對返兩條 association；今次冇喺本機開 Node/pnpm/Electron 個重型引擎，
-  留返 CI 做正式驗證。
+  Figma import 嘅 URL 同 notes 而家自己有真 label/for 同 stable id，仲經
+  `useT` 食返現成 `dsCreate.figmaUrl` 同 `dsCreate.notes` catalog key；冇
+  provider 時就穩陣 fallback 去英文。Placeholder 只係提示，唔再一個人扮晒
+  accessible name。Focused accessibility spec 會試 `zh-HK`、association 同
+  英文 fallback；今次冇喺本機開 Node/pnpm/Electron 個重型引擎，留返 CI 做正式驗證。
 
 - **The first self-hosted Release run exposed and received a narrow Windows packer fix.**
   Release `31127492852` completed with failure after `pnpm install --frozen-lockfile`
