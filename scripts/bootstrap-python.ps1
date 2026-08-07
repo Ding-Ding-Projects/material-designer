@@ -8,6 +8,7 @@ $ErrorActionPreference = 'Stop'
 $pythonVersion = '3.12.10'
 $pythonRelease = '3.12.10-14343898437'
 $archiveName = "python-$pythonVersion-win32-x64.zip"
+$pythonInstallerName = "python-$pythonVersion-amd64.exe"
 $downloadUrl = "https://github.com/actions/python-versions/releases/download/$pythonRelease/$archiveName"
 $expectedSha256 = '17E4EE587E0ECEE4674040DA8B248E151475FF65BECAE18FE0EC81F8312B5035'.ToLowerInvariant()
 
@@ -41,6 +42,11 @@ try {
     return Get-ChildItem -LiteralPath $Root -Filter 'python.exe' -File -Recurse | Select-Object -First 1
   }
 
+  function Find-PythonInstaller([string] $Root) {
+    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $null }
+    return Get-ChildItem -LiteralPath $Root -Filter $pythonInstallerName -File -Recurse | Select-Object -First 1
+  }
+
   $python = Find-Python $pythonRoot
   if ($null -eq $python) {
     $needsDownload = -not (Test-Path -LiteralPath $archivePath -PathType Leaf)
@@ -56,11 +62,36 @@ try {
       Move-Item -LiteralPath $downloadPath -Destination $archivePath -Force
     }
 
+    $extractRoot = Join-Path $toolRoot 'archive'
+    Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+    New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+    Expand-Archive -LiteralPath $archivePath -DestinationPath $extractRoot -Force
+    $installer = Find-PythonInstaller $extractRoot
+    if ($null -eq $installer) { throw "the pinned Python archive did not contain $pythonInstallerName" }
+
     Remove-Item -LiteralPath $pythonRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $pythonRoot | Out-Null
-    Expand-Archive -LiteralPath $archivePath -DestinationPath $pythonRoot -Force
+    $installerPath = $installer.FullName
+    $installerArgs = @(
+      '/quiet'
+      'InstallAllUsers=0'
+      "TargetDir=$pythonRoot"
+      'PrependPath=0'
+      'Include_pip=1'
+      'Include_test=0'
+      'Include_launcher=0'
+      'Include_doc=0'
+      'Include_tcltk=0'
+      'Include_tools=0'
+      'Shortcuts=0'
+      'AssociateFiles=0'
+    )
+    Write-Host "Installing Python $pythonVersion into the user-scoped runner cache without loading setup.ps1"
+    & $installerPath @installerArgs
+    if ($LASTEXITCODE -ne 0) { throw "Python installer exited with code $LASTEXITCODE" }
+
     $python = Find-Python $pythonRoot
-    if ($null -eq $python) { throw 'the pinned Python archive did not contain python.exe' }
+    if ($null -eq $python) { throw 'the Python installer did not produce python.exe' }
   }
 
   $versionOutput = (& $python.FullName --version 2>&1 | Out-String).Trim()
