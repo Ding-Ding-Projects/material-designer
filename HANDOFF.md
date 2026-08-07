@@ -969,6 +969,17 @@ no bundle is already legal.
   adds a release-contract check that rejects pwsh. The next run is still the
   authoritative packaging and publication verdict.
 - Release run
+  [31153486526](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153486526)
+  passed tool bootstrap, the byte-exact verifier, pnpm setup and Node setup,
+  then failed in actions/setup-python because its unsigned setup.ps1 was
+  rejected by the runner's AllSigned policy. No MSVC activation, dependency
+  install, test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)
+  replaces that action with a pinned, SHA-256-checked, user-scoped Python
+  bootstrap and adds the contract check that keeps the blocked action out of
+  the Windows Release job. The next run remains the authoritative verdict.
+- Release run
   [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
   reached setup, Git-for-Windows shell steps and checkout, but Windows
   PowerShell blocked the generated unsigned temporary script with a

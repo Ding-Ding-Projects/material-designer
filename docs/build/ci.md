@@ -104,6 +104,11 @@ Bypass only inside a step is too late when Windows PowerShell blocks the
 generated step while loading it; the bypass must wrap the loader itself and must
 not change the user's persistent execution policy.
 
+The Python runtime follows the same boundary. The release does not call the
+policy-blocked setup-python action; scripts/bootstrap-python.ps1 downloads the
+pinned actions/python-versions archive, verifies SHA-256, extracts it into the
+user-scoped runner cache, and adds the verified interpreter to GITHUB_PATH.
+
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a

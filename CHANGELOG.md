@@ -64,6 +64,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Python now enters the release job through a policy-safe bootstrap.**
+  actions/setup-python downloaded the right 3.12 archive but then tried to run
+  an unsigned setup.ps1, which the self-hosted runner rejected under AllSigned.
+  The release now uses a user-scoped, lock-protected bootstrap with a pinned
+  actions/python-versions archive, SHA-256 verification and an explicit PATH
+  handoff
+  ([511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)).
+
+  Python 而家經 policy-safe bootstrap 入 release job：actions/setup-python
+  download 到啱嘅 3.12 archive，但跟住要跑 unsigned setup.ps1，畀 self-hosted
+  runner 個 AllSigned 擋住。今次改用 user-scoped、lock-protected bootstrap，
+  pinned actions/python-versions archive，SHA-256 驗證，同埋明確 PATH handoff，
+  唔再畀個 action 喺門口跌倒。
+
 - **The Windows release shell now bypasses policy at the loader boundary.**
   Windows PowerShell existed, but its default command wrapper tried to load the
   generated step before the step body could invoke a child process with Bypass.

@@ -31,9 +31,10 @@ report `NotSigned` for `Setup.exe`.
   The job invokes it through Windows PowerShell; the script is kept compatible
   with the shell available on the labelled runner.
 - Language and compiler bootstrap: the workflows use the official
-  `pnpm/action-setup`, `actions/setup-node`, `actions/setup-python`, and
-  `ilammy/msvc-dev-cmd` actions. Project dependencies come only from the
-  committed manifests and lockfile.
+  `pnpm/action-setup`, `actions/setup-node`, and `ilammy/msvc-dev-cmd` actions;
+  the Windows Release job uses `scripts/bootstrap-python.ps1` because the
+  runner's AllSigned policy blocks the action's unsigned setup script.
+  Project dependencies come only from the committed manifests and lockfile.
 
 ## Fresh-environment bootstrap proof
 

@@ -69,6 +69,12 @@ imported upstream tree for a shipping product.
 > [129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)
 > moves the per-process Bypass switch onto the shell template; another
 > labelled-runner verdict is still required.
+> Release run 31153486526 passed tool bootstrap, the byte-exact verifier, pnpm
+> and Node setup, then failed in actions/setup-python because its unsigned
+> temporary setup.ps1 was rejected by the runner's AllSigned policy. Commit
+> [511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)
+> replaces that action with a pinned, hash-checked Python bootstrap; another
+> labelled-runner verdict is still required.
 
 ---
 
