@@ -159,6 +159,9 @@ describe("Windows pack artifact boundaries", () => {
     expect(builderSource).toContain("signAndEditExecutable: false");
     expect(builderSource).toContain('signExts: ["!exe"],');
     expect(builderSource).toContain("verifyUpdateCodeSignature: false");
+    expect(builderSource).toContain("withShortWindowsOutputRoot");
+    expect(builderSource).toContain('execFileAsync("subst"');
+    expect(builderSource).toContain("no unused Windows drive letter is available for the Squirrel output path");
     expect(builderSource).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
     expect(builderSource).not.toContain("signAndVerifyWinFile");
     expect(builderSource).toContain("iconUrl: SQUIRREL_ICON_URL");

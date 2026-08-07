@@ -29,6 +29,21 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Shorten the Squirrel output path during Windows packaging
+
+**Reason:** Release run `31164999787` proved that the unsigned Squirrel controls
+were working, but `electron-winstaller` still rejected `open-design-packaged-app.nuspec`
+because NuGet received an unpacked output tree whose fully qualified paths exceeded
+Windows `MAX_PATH`. The Windows packer now maps the output namespace parent to an
+unused drive letter only for the electron-builder process, passes the short output
+path to Squirrel, and removes the mapping in a `finally` block even after a failed
+build. The focused source contract covers the mapping and its failure message.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
 ### 2026-08-07 — Stop the Squirrel target from invoking executable signing
 
 **Reason:** Release run `31160806459` proved that electron-builder's general

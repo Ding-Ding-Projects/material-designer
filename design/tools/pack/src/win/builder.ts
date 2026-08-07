@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -71,6 +71,7 @@ const execFileAsync = promisify(execFile);
 const WIN_ARCHIVE_CACHE_VERSION = 3;
 const WIN_ELECTRON_BUILDER_DIR_CACHE_VERSION = 8;
 const WIN_NSIS_BASE_PAYLOAD_INPUT_HASH_CACHE_VERSION = 2;
+const WINDOWS_SHORT_OUTPUT_DRIVES = ["P:", "Q:", "R:", "S:", "T:", "U:", "V:", "W:", "X:", "Y:", "Z:"] as const;
 
 async function hashWinNsisInstallerImplementation(config: ToolPackConfig): Promise<string> {
   const sourceModulePath = join(config.workspaceRoot, "tools", "pack", "src", "win", "custom-installer.ts");
@@ -84,6 +85,47 @@ function logWinBuildProgress(message: string, fields: Record<string, unknown> = 
     .map(([key, value]) => `${key}=${String(value)}`)
     .join(" ");
   process.stderr.write(`[tools-pack win] ${message}${suffix.length === 0 ? "" : ` ${suffix}`}\n`);
+}
+
+async function findUnusedWindowsSubstDrive(): Promise<(typeof WINDOWS_SHORT_OUTPUT_DRIVES)[number]> {
+  for (const drive of WINDOWS_SHORT_OUTPUT_DRIVES) {
+    try {
+      await execFileAsync("subst", [drive], { windowsHide: true });
+    } catch {
+      return drive;
+    }
+  }
+  throw new Error("no unused Windows drive letter is available for the Squirrel output path");
+}
+
+async function withShortWindowsOutputRoot<T>(
+  paths: WinPaths,
+  task: (shortPaths: WinPaths) => Promise<T>,
+): Promise<T> {
+  if (process.platform !== "win32") return task(paths);
+
+  // electron-winstaller passes the unpacked output tree to NuGet as its
+  // BasePath. A drive mapping keeps that tree short without copying or
+  // relocating the cache, and is removed even when packaging fails.
+  const outputParent = dirname(paths.appBuilderOutputRoot);
+  await mkdir(outputParent, { recursive: true });
+  const drive = await findUnusedWindowsSubstDrive();
+  await execFileAsync("subst", [drive, outputParent], { windowsHide: true });
+  try {
+    return await task({
+      ...paths,
+      appBuilderOutputRoot: join(`${drive}\\`, basename(paths.appBuilderOutputRoot)),
+    });
+  } finally {
+    try {
+      await execFileAsync("subst", [drive, "/D"], { windowsHide: true });
+    } catch (error) {
+      logWinBuildProgress("warning:failed-to-remove-output-drive", {
+        drive,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 }
 
 async function assertWebStandaloneOutput(config: ToolPackConfig): Promise<void> {
@@ -130,7 +172,7 @@ async function writeWebStandaloneHookConfig(config: ToolPackConfig, paths: WinPa
   return paths.webStandaloneHookConfigPath;
 }
 
-async function runElectronBuilderRaw(
+async function runElectronBuilderRawWithPaths(
   config: ToolPackConfig,
   paths: WinPaths,
   projectDir: string,
@@ -305,6 +347,16 @@ async function runElectronBuilderRaw(
     throw error;
   }
   return segments;
+}
+
+async function runElectronBuilderRaw(
+  config: ToolPackConfig,
+  paths: WinPaths,
+  projectDir: string,
+): Promise<WinPackTiming[]> {
+  return withShortWindowsOutputRoot(paths, (shortPaths) =>
+    runElectronBuilderRawWithPaths(config, shortPaths, projectDir),
+  );
 }
 
 function createCacheLocalWinPaths(paths: WinPaths, entryRoot: string): WinPaths {
