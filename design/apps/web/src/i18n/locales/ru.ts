@@ -4100,7 +4100,7 @@ export const ru: Dict = {
   'dsCreate.addedFigmaUrls': 'Добавленные URL Figma',
   'dsCreate.savedFigmaHelp': 'Сохранено как источник дизайна Figma. Агент использует его как канонический референс; для полного офлайн-разбора экспортируйте .fig выше.',
   'dsCreate.notes': 'Заметки',
- 'dsCreate.notesPlaceholder': 'Например: мы используем теплую природную палитру и скругленные углы. Голос бренда игривый, но профессиональный...',
+  'dsCreate.notesPlaceholder': 'Например: мы используем теплую природную палитру и скругленные углы. Голос бренда игривый, но профессиональный...',
   'dsCreate.figmaImportTitle': 'Import from Figma',
   'dsCreate.figmaImportSource': 'Figma import source',
   'dsCreate.figmaConnectorHelper': 'Runs through the Figma connector (OAuth) and the migration flow.',

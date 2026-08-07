@@ -4100,7 +4100,7 @@ export const fr: Dict = {
   'dsCreate.addedFigmaUrls': 'URLs Figma ajoutées',
   'dsCreate.savedFigmaHelp': 'Source de design Figma enregistrée. L’agent l’utilise comme référence canonique ; exportez un .fig ci-dessus pour un décodage hors ligne complet.',
   'dsCreate.notes': 'Notes',
- 'dsCreate.notesPlaceholder': 'ex. Nous utilisons une palette chaude et terreuse avec des coins arrondis. Notre voix de marque est ludique mais professionnelle…',
+  'dsCreate.notesPlaceholder': 'ex. Nous utilisons une palette chaude et terreuse avec des coins arrondis. Notre voix de marque est ludique mais professionnelle…',
   'dsCreate.figmaImportTitle': 'Import from Figma',
   'dsCreate.figmaImportSource': 'Figma import source',
   'dsCreate.figmaConnectorHelper': 'Runs through the Figma connector (OAuth) and the migration flow.',
