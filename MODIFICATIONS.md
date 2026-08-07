@@ -112,6 +112,22 @@ design-system accessibility fixes already present in this checkout.
 - `apps/web/tests/components/FileWorkspace.test.tsx`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
+### 2026-08-06 — Give import fields durable names and contain updater focus
+
+**Reason:** the bounded accessibility follow-up replaces placeholder-era field
+naming with visible `label`/`for` associations for the Figma URL and notes
+controls. The updater dialog now holds focus inside the open surface even when
+another element tries to take it, restores focus to the originating control on
+close or cancellation, and records both behaviours in focused tests.
+
+**Changed files:**
+
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+
 ### 2026-08-06 — Keep scrollable context menus open
 
 **Reason:** The menu is intentionally height-bounded and scrollable, but its
