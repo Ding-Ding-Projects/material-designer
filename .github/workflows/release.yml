@@ -201,8 +201,19 @@ jobs:
       - name: Build the Windows installer
         id: pack
         working-directory: design
+        env:
+          # The certificate stays in the GitHub secret store; the thumbprint is
+          # only passed to electron-builder and is never printed.
+          OD_WIN_SIGN_CERT_SHA1: ${{ secrets.WIN_SIGN_CERT_SHA1 || secrets.OD_WIN_SIGN_CERT_SHA1 }}
+          OD_WIN_SIGN_TIMESTAMP_URL: ${{ secrets.WIN_SIGN_TIMESTAMP_URL || 'http://timestamp.digicert.com' }}
         run: |
           $ErrorActionPreference = "Stop"
+          if ([string]::IsNullOrWhiteSpace($env:OD_WIN_SIGN_CERT_SHA1)) {
+            throw "Squirrel release signing requires WIN_SIGN_CERT_SHA1 or OD_WIN_SIGN_CERT_SHA1"
+          }
+          if ($env:OD_WIN_SIGN_CERT_SHA1 -notmatch '^[0-9A-Fa-f]{40}$') {
+            throw "the Windows signing certificate thumbprint must be 40 hexadecimal characters"
+          }
           $toolsPackDir = "${{ runner.temp }}/tools-pack"
           $cacheDir = "${{ runner.temp }}/tools-pack-cache"
           $buildJsonPath = Join-Path "${{ runner.temp }}" "windows-tools-pack-build.json"
@@ -214,6 +225,7 @@ jobs:
             --cache-dir $cacheDir `
             --namespace "$env:PACK_NAMESPACE" `
             --portable `
+            --signed `
             --app-version "${{ steps.version.outputs.app_version }}" `
             --to all `
             --json
@@ -329,6 +341,30 @@ jobs:
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
           Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
+      - name: Verify the Squirrel installer signature
+        if: ${{ steps.pack.outputs.build_json != '' }}
+        working-directory: design
+        env:
+          OD_WIN_SIGN_CERT_SHA1: ${{ secrets.WIN_SIGN_CERT_SHA1 || secrets.OD_WIN_SIGN_CERT_SHA1 }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $build = Get-Content -Raw -LiteralPath "${{ steps.pack.outputs.build_json }}" | ConvertFrom-Json
+          $setupPath = $build.squirrelSetupPath
+          if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
+          if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
+            throw "cannot verify a Squirrel installer that was not produced"
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
+          if ($signature.Status -ne 'Valid') {
+            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), not Valid"
+          }
+          $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '\s', '').ToUpperInvariant()
+          $expectedThumbprint = ($env:OD_WIN_SIGN_CERT_SHA1 -replace '\s', '').ToUpperInvariant()
+          if ($actualThumbprint -ne $expectedThumbprint) {
+            throw "Squirrel Setup.exe was signed by an unexpected certificate"
+          }
+          Write-Host "Squirrel Setup.exe signature verified"
+
       - name: Check the packaged application is self-contained
         if: ${{ steps.pack.outputs.build_json != '' }}
         shell: bash
@@ -440,7 +476,8 @@ jobs:
               echo ""
               echo "\`ui-states.json\` is absent — the smoke run never reached the capture step."
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::ui-states.json is absent after a successful packaged smoke run" >&2
+            exit 1
           fi
           # The path travels in the environment rather than as an argument:
           # `node -` reads the script from stdin, and what argv[1] then holds
@@ -479,6 +516,10 @@ jobs:
             console.error(
               `::warning title=UI state frame is a duplicate::${entry.name} is byte-identical to ${entry.duplicateOf}; the window compositor may be returning a stale frame`,
             );
+          }
+          if (duplicates.length > 0) {
+            console.error('::error::one or more packaged UI state frames are byte-identical to an earlier state');
+            process.exitCode = 1;
           }
           console.log(out.join('\n'));
           NODE
@@ -540,7 +581,7 @@ jobs:
           bash scripts/release-codename.sh --used "${used:-}" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
-        if: ${{ success() && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
+        if: ${{ success() && steps.smoke.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
@@ -581,8 +622,7 @@ jobs:
             echo "\`\`\`"
             echo ""
             echo "> [!NOTE]"
-            echo "> The installer is not code-signed, so Windows SmartScreen will warn on first run."
-            echo "> Choose **More info** then **Run anyway**."
+            echo "> The Squirrel installer is Authenticode-signed and its signature was verified before publication."
             echo ""
             echo "### Verification"
             echo ""

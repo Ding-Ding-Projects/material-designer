@@ -203,7 +203,11 @@ async function runElectronBuilderRaw(
       domToPptxBundleResource(config),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
-    forceCodeSigning: false,
+    // Squirrel is the installed Windows path. A release without a signature
+    // would make the updater hand Windows an untrusted executable, so signed
+    // packaging is explicit and forceCodeSigning fails closed when the runner
+    // has no usable certificate.
+    forceCodeSigning: config.signed,
     icon: paths.winIconPath,
     nodeGypRebuild: ELECTRON_BUILDER_NODE_GYP_REBUILD,
     npmRebuild: ELECTRON_BUILDER_NPM_REBUILD,
@@ -233,12 +237,17 @@ async function runElectronBuilderRaw(
     publish: [{ provider: "generic", url: "https://updates.invalid/open-design" }],
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
+      ...(config.signed && process.env.OD_WIN_SIGN_CERT_SHA1 != null
+        ? { certificateSha1: process.env.OD_WIN_SIGN_CERT_SHA1 }
+        : {}),
       icon: paths.winIconPath,
+      ...(config.signed
+        ? { rfc3161TimeStampServer: process.env.OD_WIN_SIGN_TIMESTAMP_URL ?? "http://timestamp.digicert.com" }
+        : {}),
       // No `publisherName` here. It reads like general metadata but
       // electron-builder 26 treats it as a signing input and moved it under
       // `win.signtoolOptions`, so setting it at this level fails schema
-      // validation before the packer starts. This build does not sign, so the
-      // executable's CompanyName stays empty, exactly as it did upstream.
+      // validation before the packer starts.
       target: resolveElectronBuilderWinTargets(config.to).map((target) => ({ arch: ["x64"], target })),
     },
   };
@@ -265,7 +274,7 @@ async function runElectronBuilderRaw(
         cwd: config.workspaceRoot,
         env: {
           ...process.env,
-          CSC_IDENTITY_AUTO_DISCOVERY: "false",
+          CSC_IDENTITY_AUTO_DISCOVERY: config.signed ? "true" : "false",
           ...(webStandaloneHookConfigPath == null ? {} : { [WEB_STANDALONE_HOOK_CONFIG_ENV]: webStandaloneHookConfigPath }),
         },
       });
