@@ -69,7 +69,7 @@ no residue.
 
 > [!NOTE]
 > **Updated 2026-08-06.** The final six-finding Figma import repair is committed at
-> [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+> [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
 > `FigmaImportModal` closes before the host focus callback, rejected Home URL
 > handoffs keep the modal open with a real retry path, and `aria-invalid` /
 > `aria-describedby` are scoped to the invalid URL input or native file input;

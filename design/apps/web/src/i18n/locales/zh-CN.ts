@@ -4547,8 +4547,8 @@ export const zhCN: Dict = {
   "dsCreate.savedFigmaHelp":
     "已保存为 Figma 设计来源。Agent 会把它作为标准参考；如需完整离线解码，请在上方导出 .fig。",
   "dsCreate.notes": "备注",
- "dsCreate.notesPlaceholder":
-   "例如：我们使用温暖自然的配色和圆角。品牌语气有趣但专业...",
+  "dsCreate.notesPlaceholder":
+    "例如：我们使用温暖自然的配色和圆角。品牌语气有趣但专业...",
   "dsCreate.figmaImportTitle": "Import from Figma",
   "dsCreate.figmaImportSource": "Figma import source",
   "dsCreate.figmaConnectorHelper": "Runs through the Figma connector (OAuth) and the migration flow.",

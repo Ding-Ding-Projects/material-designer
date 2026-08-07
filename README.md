@@ -72,7 +72,7 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > installed-build capture or new labelled-runner verification is claimed yet.
 
 > **2026-08-06 final Figma import repair.** The six-finding source repair is
-> [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+> [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
 > It closes the modal before the host focus callback, keeps rejected Home URL
 > imports open for a real retry, targets `aria-invalid` and `aria-describedby`
 > only at the visible invalid source control, clears a stale file after an
