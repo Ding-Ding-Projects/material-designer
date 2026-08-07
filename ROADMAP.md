@@ -103,6 +103,11 @@ imported upstream tree for a shipping product.
 > [a769c35](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
 > repairs those files and declares the design-copy paths; another
 > labelled-runner verdict is still required.
+> Release run 31155747324 then passed the repaired web Typecheck and failed one
+> Windows pack source-contract assertion after 125 tests passed and 1 was skipped.
+> Commit [0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+> updates the assertion to the escaped Squirrel artifact template; another
+> labelled-runner verdict is required before packaging or publication is claimed.
 
 ---
 
@@ -150,10 +155,11 @@ scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
 Historical runs have built two Windows installers and published them under
 their own tags, and the documentation site is deployed. The current main
-Release run 31155063471 passed the portable toolchain and frozen dependency
-installation but failed at web Typecheck; the next run must prove the repair
-before a new release is claimed. The port verifier still reports zero gaps on a
-clean checkout, and the earlier packaged smoke evidence remains historical.
+Release run 31155747324 passed the portable toolchain, frozen dependency
+installation and web Typecheck but failed one Windows pack contract assertion;
+the next run must prove the repair before a new release is claimed. The port
+verifier still reports zero gaps on a clean checkout, and the earlier packaged
+smoke evidence remains historical.
 
 That is the machinery working, and it is worth separating from the product. What
 those runs prove is that this project can build and ship the imported application

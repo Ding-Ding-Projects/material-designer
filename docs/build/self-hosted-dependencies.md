@@ -50,10 +50,13 @@ contract. CI is the fresh-runner proof for native compiler availability and the
 full lockfile install; a cache hit only shortens the same path.
 
 Release run
-[31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+[31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
 proved the Windows tool and dependency bootstrap through `pnpm install
---frozen-lockfile`; its later application Typecheck failed before packaging, so
-installer and release evidence remain pending.
+--frozen-lockfile` and completed the repaired application Typecheck; its later
+Windows pack contract test failed before packaging, so installer and release
+evidence remain pending. Commit
+[0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+updates the stale source assertion.
 
 ## Security boundary
 

@@ -15,11 +15,12 @@ How Material Designer is built, where that happens, and why.
 > [!IMPORTANT]
 > **The latest Release run is not green.** `Verify` has historical zero-gap
 > evidence, while Release run
-> [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
-> passed the self-hosted bootstrap and frozen dependency installation before
-> failing at web Typecheck. Two earlier releases and a Pages deployment remain
-> historical evidence; no new installer or release is claimed from the failed
-> run. [ci.md](ci.md) records the exact failure and current verification state.
+> [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+> passed the self-hosted bootstrap, frozen dependency installation and web
+> Typecheck before failing one Windows pack source-contract assertion. Commit
+> [0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+> repairs it; no new installer or release is claimed until the replacement run
+> passes. [ci.md](ci.md) records the exact failure and current verification state.
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
 > upstream project and are **inert**, because workflows are only read from the
@@ -49,7 +50,7 @@ responsibilities separate.
 
 The self-hosted dependency inventory is committed in
 [self-hosted-dependencies.md](self-hosted-dependencies.md). It names the exact
-Node, pnpm, Python, MSVC/Windows SDK, GitHui CLI, jq, 7-Zip and project-lockfile
+Node, pnpm, Python, MSVC/Windows SDK, GitHub CLI, jq, 7-Zip and project-lockfile
 inputs each job needs, plus the cache-miss bootstrap and fresh-environment proof.
 
 [from-source.md](from-source.md) exists anyway, because a developer changing the

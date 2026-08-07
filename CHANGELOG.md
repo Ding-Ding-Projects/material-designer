@@ -64,6 +64,23 @@ version section when a release carries them.
 
 ### Changed
 
+- **The web repair passed Typecheck, and the next Windows contract caught a stale expectation.**
+  Release run [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+  at [`2b7e06a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2b7e06a2009148878f2eded00acbebd5be0b0956)
+  passed the design verifier, self-hosted bootstrap, dependency installation and
+  web Typecheck, then failed the Windows identity/installer test with 125 tests
+  passing, 1 skipped and 1 stale source-contract assertion. Commit
+  [`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+  updates that assertion to the escaped Squirrel artifact template exposed by
+  `resolveWinSquirrelArtifactName` and declares the changed test in
+  `MODIFICATIONS.md`. No installer or release is claimed from the failed run.
+
+  Web repair pass 咗 Typecheck，但下一關 Windows contract test 發現自己仲望住舊
+  template。31155747324 過咗 verifier、self-hosted bootstrap、dependency install
+  同 web Typecheck，125 個 tests pass、1 個 skip，偏偏 1 個 assertion 仲守住舊
+  Squirrel string。`0357266` 對返 `resolveWinSquirrelArtifactName` 真正輸出，等個
+  test 唔使再同化石鬥氣；installer 同 release 仲未可以當已經出街。
+
 - **Release CI now reaches the web typecheck with a precise failure report.**
   Run [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
   passed the portable Python bootstrap and frozen dependency installation, then
@@ -83,7 +100,8 @@ version section when a release carries them.
   [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
   showed the direct installer returning `-2147024891` (`0x80070005`, access
   denied) for the self-hosted runner service account. Commit
-  [`<NEW_COMMIT>`](<NEW_URL>) switches to the official Python 3.12.10
+  [`37534e5`](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+  switches to the official Python 3.12.10
   `python-3.12.10-embed-amd64.zip`, verifies its SHA-256 and extracts it into
   the user-scoped cache without registry or installer operations
   ([`37534e5`](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)).
@@ -318,7 +336,7 @@ version section when a release carries them.
   Electron, build, CI or capture result is claimed; hosted verification remains
   the evidence boundary.
 
-  Figma import 嘅 final refutation 六個 poke guy 而家一次過收掂：modal 先收場，
+  Figma import 嘅 final refutation 六個 bugs 而家一次過收掂：modal 先收場，
   host 之後先可以搶返 focus；Home 個 URL handoff 失敗會留低畀人再試；
   `aria-invalid` 同 `aria-describedby` 只黐住真係出事嗰粒可見 control；
   壞 file drop 會清走舊選擇；`FIGMA_URL_RE` 收實條尾但照食合法 query/hash；

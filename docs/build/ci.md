@@ -10,15 +10,16 @@ where `Pages` fits.
 
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
-> [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
-> passed the self-hosted toolchain, portable Python bootstrap and frozen
-> dependency installation, then failed at the web Typecheck with 10 TypeScript
-> errors. No new installer or release was published by that run. Earlier
+> [`31155747324`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+> passed the self-hosted toolchain, portable Python bootstrap, frozen dependency
+> installation and repaired web Typecheck, then failed one Windows pack
+> source-contract assertion after 125 tests passed and 1 was skipped. No new
+> installer or release was published by that run. Earlier
 > published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
 > not proof that this current commit is green.
 >
-> **The current run has failed at Typecheck.** That is useful evidence about the
-> release gate, but it is not a green release. The unticked boxes under
+> **The current run has failed after Typecheck.** That is useful evidence about
+> the release gate, but it is not a green release. The unticked boxes under
 > [Verification](#verification) remain unverified until a later run passes them.
 >
 > Where this page describes what a workflow does, it is describing the committed
@@ -30,17 +31,16 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
-for `main` at `12e8d3412d5fb159ba1a47c25870a0cf3bdc4e26` completed with **failure**
-in `Build Windows application → Typecheck`. The exact errors were
-`apps/web/src/App.tsx(2370,23): Cannot find name 'isMacPlatform'`, strict
-possibly-undefined indexed focus elements in `CommandPalette.tsx`,
-`FigmaImportModal.tsx` and `UpdateDialog.tsx`, and an unsupported
-`html-document` `ArtifactKind` in `FileWorkspace.test.tsx`. Commit
-[`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
-repairs those five design files and updates the modification allowlist. A new
-labelled-runner execution is still required; this page does not call the fix
-green before that run exists.
+Release run [`31155747324`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+for `main` at `2b7e06a2009148878f2eded00acbebd5be0b0956` completed with **failure**
+in `Build Windows application → Test the Windows identity and installer logic`.
+The repaired web Typecheck passed; the test suite reported 125 passing tests,
+1 skipped test and 1 failure because `tests/win-builder.test.ts` still expected
+the pre-helper `Setup.${ext}` source template. Commit
+[`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+updates the assertion and modification allowlist. A new labelled-runner
+execution is still required; this page does not call the fix green before that
+run exists.
 
 ## Behaviour
 

@@ -30,13 +30,21 @@ both languages on every label, so it produces the longest strings in the product
 where clipping appears first; that is why the capture set covers it.</sub>
 
 > [!NOTE]
-> **The application ships, and what it ships is now most of the way through the
-> standards.** Continuous integration verifies the port, installs the workspace,
-> runs the guard, the craft lint and the translation check, typechecks on Linux and
-> Windows, runs **563 test files** across five packages, builds a Windows installer and publishes a
-> release — and the packaged smoke test installs that build, launches it, has the
-> running process answer its own health endpoint and uninstalls it with no residue.
-> All observed, every push.
+> **The application ships, and historical CI evidence has carried it most of the
+> way through the standards.** Earlier successful runs verified the port, installed
+> the workspace, ran the guard, craft lint and translation check, typechecked on
+> Linux and Windows, ran **563 test files** across five packages, built a Windows
+> installer, published a release, and smoke-tested installation, launch, health
+> check and uninstall with no residue.
+>
+> **Current release status (2026-08-07).** Release run
+> [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+> passed the design verifier, self-hosted bootstrap, dependency installation and
+> web Typecheck, then failed one Windows pack source-contract assertion after 125
+> tests passed and 1 was skipped. Commit
+> [`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+> repairs that assertion; no installer or new release is claimed until a
+> replacement run passes.
 >
 > The Cantonese locale, both tone sliders, the regex builder, the command palette,
 > the changelog viewer, the startup surprise, tab pinning, the notification centre,
