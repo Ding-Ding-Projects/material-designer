@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Stop the Squirrel target from invoking executable signing
+
+**Reason:** Release run `31160806459` proved that electron-builder's general
+`signAndEditExecutable: false` control does not cover the Squirrel target's
+direct `packager.signIf` calls for its stub, application executable and setup
+executable. The generated Windows configuration now excludes `.exe` files with
+`signExts: ["!exe"]`, while retaining the hard-disabled signing controls and
+the `NotSigned` release gate.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
 ### 2026-08-07 — Keep Squirrel author metadata inside the application package
 
 **Reason:** Release run `31159842997` reached the Windows packer and electron-builder

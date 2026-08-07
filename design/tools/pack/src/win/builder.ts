@@ -238,8 +238,13 @@ async function runElectronBuilderRaw(
       icon: paths.winIconPath,
       // Keep packaging and update verification explicitly unsigned. The
       // release workflow validates the generated setup executable before it
-      // can publish any Squirrel artifacts.
+      // can publish any Squirrel artifacts. Squirrel's target calls
+      // packager.signIf directly for its stub, app executable and setup
+      // executable, so the negative extension rule is required in addition
+      // to signAndEditExecutable=false to prevent those calls from reaching
+      // signtool.exe.
       signAndEditExecutable: false,
+      signExts: ["!exe"],
       verifyUpdateCodeSignature: false,
       // No `publisherName` here. It reads like general metadata but
       // electron-builder 26 treats it as a signing input and moved it under

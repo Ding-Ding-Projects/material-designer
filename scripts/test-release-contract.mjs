@@ -66,6 +66,7 @@ forbid(builder, /forceCodeSigning:\s*config\.signed/, "Windows builder still der
 forbid(builder, /signAndVerifyWinFile|certificateSha1|rfc3161TimeStampServer/, "Windows builder still contains an active signer input or call");
 requireText(builder, "forceCodeSigning: false", "Windows builder does not hard-disable code signing");
 requireText(builder, "signAndEditExecutable: false", "Windows builder does not disable electron-builder signing and resource editing");
+requireText(builder, 'signExts: ["!exe"]', "Windows Squirrel builder does not exclude executable signing calls");
 requireText(builder, 'CSC_IDENTITY_AUTO_DISCOVERY: "false"', "Windows builder does not disable certificate discovery");
 
 if (failures.length > 0) {

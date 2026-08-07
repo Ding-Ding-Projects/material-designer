@@ -238,9 +238,19 @@ jobs:
         working-directory: design
         run: |
           $ErrorActionPreference = "Stop"
-          $toolsPackDir = "${{ runner.temp }}/tools-pack"
-          $cacheDir = "${{ runner.temp }}/tools-pack-cache"
-          $buildJsonPath = Join-Path "${{ runner.temp }}" "windows-tools-pack-build.json"
+          # Squirrel.Windows creates nested nuspec/package paths. The hosted
+          # runner workspace plus runner.temp can exceed MAX_PATH before the
+          # packer gets to emit Setup.exe, so use a run-scoped short temp root.
+          # This is process/job-local state; it does not change the runner's
+          # persistent TEMP setting or touch another job's files.
+          $shortRoot = Join-Path $env:WINDIR ("Temp\md-pack-" + $env:GITHUB_RUN_ID)
+          New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
+          $env:TEMP = $shortRoot
+          $env:TMP = $shortRoot
+          $toolsPackDir = Join-Path $shortRoot "pack"
+          $cacheDir = Join-Path $shortRoot "cache"
+          $buildJsonPath = Join-Path $shortRoot "build.json"
+          "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
 
@@ -458,7 +468,7 @@ jobs:
           OD_PACKAGED_E2E_RELEASE_CHANNEL: stable
           OD_PACKAGED_E2E_RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
           OD_PACKAGED_E2E_REPORT_DIR: ${{ runner.temp }}/release-report/win
-          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ runner.temp }}/tools-pack
+          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ steps.pack.outputs.tools_pack_dir }}
           # `core` installs the Squirrel app, launches it, proves the running
           # process answers its own health endpoint, then uninstalls and checks
           # that nothing was left behind. The updater's feed and restart path
@@ -555,7 +565,7 @@ jobs:
           path: |
             design/.tmp/**/*.log
             design/.tmp/**/logs/**
-            ${{ runner.temp }}/tools-pack/**/*.log
+            ${{ steps.pack.outputs.tools_pack_dir }}/**/*.log
           if-no-files-found: warn
 
       - name: Count lines
@@ -753,3 +763,12 @@ jobs:
             echo "| Smoke test | ${{ steps.smoke.outcome || 'not run' }} |"
             echo "| Code name | ${{ steps.codename.outputs.codename || 'none' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean the run-scoped Windows packaging paths
+        if: ${{ always() }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $shortRoot = Join-Path $env:WINDIR ("Temp\md-pack-" + $env:GITHUB_RUN_ID)
+          if (Test-Path -LiteralPath $shortRoot) {
+            Remove-Item -LiteralPath $shortRoot -Recurse -Force
+          }

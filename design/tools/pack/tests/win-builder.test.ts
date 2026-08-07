@@ -157,6 +157,7 @@ describe("Windows pack artifact boundaries", () => {
     expect(builderSource).not.toContain("\n    author: PRODUCT_NAME,");
     expect(builderSource).toContain("forceCodeSigning: false");
     expect(builderSource).toContain("signAndEditExecutable: false");
+    expect(builderSource).toContain('signExts: ["!exe"],');
     expect(builderSource).toContain("verifyUpdateCodeSignature: false");
     expect(builderSource).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
     expect(builderSource).not.toContain("signAndVerifyWinFile");
