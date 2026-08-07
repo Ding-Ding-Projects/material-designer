@@ -65,8 +65,6 @@ cached binaries. The source update is committed at
 
 - `tools/pack/src/win/builder.ts`
 - `tools/pack/tests/win-builder.test.ts`
-- `.github/workflows/release.yml`
-- `scripts/bootstrap-ci-tools.ps1`
 
 ### 2026-08-06 — Keep UI overlays reachable and onboarding controls truthful
 
