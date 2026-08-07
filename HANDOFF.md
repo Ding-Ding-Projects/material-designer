@@ -67,6 +67,16 @@ no residue.
 > verification for this change reported `0 gaps`. The application build and unit
 > suites were not run locally; CI remains the evidence for those heavy checks.
 
+> [!NOTE]
+> **Updated 2026-08-06.** The bounded Figma-label lane is committed at
+> [`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33).
+> `FigmaImportModal` now gives the URL and build-notes controls visible native
+> `label`/`for` associations and stable ids; its focused accessibility spec checks
+> those associations instead of relying on placeholder text. `MODIFICATIONS.md`
+> records the changed `design/` paths. No Node, pnpm or Electron command was run
+> locally. UpdateDialog focus containment remains owned by the separate updater
+> lane at `6de08bb` and is intentionally not included in `d918d33`.
+
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
 
