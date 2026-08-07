@@ -170,7 +170,6 @@ async function runElectronBuilderRaw(
     )
     : null;
   const builderConfig = {
-    author: PRODUCT_NAME,
     appId: "io.ding-ding.material-designer",
     afterPack: webStandaloneHookConfigPath == null ? undefined : winResources.webStandaloneAfterPackHook,
     asar: ELECTRON_BUILDER_ASAR,
@@ -186,7 +185,10 @@ async function runElectronBuilderRaw(
     electronVersion: config.electronVersion,
     executableName: PRODUCT_NAME,
     extraMetadata: {
-      author: PRODUCT_NAME,
+      // Squirrel.Windows reads electron-builder's companyName from the
+      // application metadata author object. Keep it in package metadata;
+      // `author` is not a valid top-level electron-builder option.
+      author: { name: PRODUCT_NAME },
       main: "./main.cjs",
       name: SQUIRREL_PACKAGE_NAME,
       productName: PRODUCT_NAME,

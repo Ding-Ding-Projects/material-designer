@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Keep Squirrel author metadata inside the application package
+
+**Reason:** Release run `31159842997` reached the Windows packer and electron-builder
+26.8.1 rejected the generated top-level `author` field because it is not a valid
+builder option. Squirrel.Windows obtains its required `Authors` value from
+`appInfo.companyName`, which is derived from the application package's author object.
+The builder now keeps `{ name: PRODUCT_NAME }` inside `extraMetadata`, and the
+focused source contract rejects the invalid root form.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
 ### 2026-08-07 — Keep the Squirrel artifact contract test aligned with its helper
 
 **Reason:** the release runner reached the focused Windows pack tests and found that
