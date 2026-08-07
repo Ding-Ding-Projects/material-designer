@@ -249,7 +249,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                   onClick={() => activateMode('file')}
                   onKeyDown={onTabKeyDown}
                 >
-                  Upload .fig
+                  {t('dsCreate.uploadFigLabel')}
                 </button>
                 <button
                   id="figma-import-tab-url"
@@ -273,7 +273,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 id="figma-import-panel-file"
                 role={onFigmaUrl ? 'tabpanel' : undefined}
                 aria-labelledby={onFigmaUrl ? 'figma-import-tab-file' : undefined}
-                aria-label={!onFigmaUrl ? 'Upload .fig' : undefined}
+                aria-label={!onFigmaUrl ? t('dsCreate.uploadFigLabel') : undefined}
                 tabIndex={onFigmaUrl ? 0 : undefined}
                 className={styles.tabPanel}
               >
@@ -298,16 +298,18 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 >
                   <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
                   <p className={styles.dropTitle}>
-                    {file ? file.name : (<>Drop a <code>.fig</code> here, or <span className={styles.dropLink}>browse</span></>)}
+                    {file ? file.name : t('dsCreate.uploadFigPrompt')}
                   </p>
                   <p className={styles.dropHint}>
-                    Decoded on your machine — tokens, components &amp; assets. No Figma account.
+                    {t('dsCreate.uploadFigHelper')}
                   </p>
                   <input
                     ref={inputRef}
                     type="file"
                     accept=".fig"
                     className={styles.fileInput}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'figma-import-error' : undefined}
                     onChange={(e) => {
                       pickFile(Array.from(e.target.files ?? []));
                       e.target.value = '';
@@ -329,7 +331,9 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                     id="figma-import-url"
                     type="url"
                     className={styles.urlInput}
-                    placeholder="https://figma.com/design/…"
+                    placeholder={t('dsCreate.figmaPlaceholder')}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'figma-import-error' : undefined}
                     value={url}
                     onChange={(e) => { setUrl(e.target.value); setError(null); }}
                   />
@@ -345,14 +349,16 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
               <textarea
                 id="figma-import-notes"
                 className={styles.notes}
-                placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
+                placeholder={t('dsCreate.notesPlaceholder')}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'figma-import-error' : undefined}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
               />
             </div>
 
-            {error ? <p className={styles.error}>{error}</p> : null}
+            {error ? <p id="figma-import-error" className={styles.error} role="alert" aria-live="assertive">{error}</p> : null}
             </div>
 
             <footer className={styles.foot}>

@@ -31,11 +31,11 @@ describe('FigmaImportModal accessibility and layout', () => {
   it('uses catalogued localized names for the URL and notes controls', () => {
     renderModal('zh-HK');
 
-    const fileTab = screen.getByRole('tab', { name: 'Upload .fig' });
+    const fileTab = screen.getByRole('tab', { name: '上傳 .fig' });
     const urlTab = screen.getByRole('tab', { name: 'Figma URL' });
     expect(fileTab).toHaveAttribute('aria-controls', 'figma-import-panel-file');
     expect(urlTab).toHaveAttribute('aria-controls', 'figma-import-panel-url');
-    expect(screen.getByRole('tabpanel', { name: 'Upload .fig' })).toBeTruthy();
+    expect(screen.getByRole('tabpanel', { name: '上傳 .fig' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
     expect(screen.getByRole('tabpanel', { name: 'Figma URL' })).toBeTruthy();
@@ -45,6 +45,25 @@ describe('FigmaImportModal accessibility and layout', () => {
     expect(notesField).toHaveAttribute('id', 'figma-import-notes');
     expect(document.querySelector('label[for="figma-import-url"]')).toHaveTextContent('Figma URL');
     expect(document.querySelector('label[for="figma-import-notes"]')).toHaveTextContent('備註');
+    expect(screen.getByPlaceholderText('https://figma.com/design/… 或 /file/…')).toBeTruthy();
+    expect(screen.getByPlaceholderText('例如：我們使用溫暖自然的配色和圓角。品牌語氣有趣但專業...')).toBeTruthy();
+  });
+
+  it('announces invalid URL errors and associates them with the form controls', () => {
+    renderModal();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
+    const urlField = screen.getByRole('textbox', { name: 'Figma URL' });
+    const notesField = screen.getByRole('textbox', { name: 'Notes' });
+    fireEvent.change(urlField, { target: { value: 'not-a-figma-url' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import & build' }));
+
+    const error = screen.getByRole('alert');
+    expect(error).toHaveAttribute('id', 'figma-import-error');
+    expect(urlField).toHaveAttribute('aria-invalid', 'true');
+    expect(urlField).toHaveAttribute('aria-describedby', 'figma-import-error');
+    expect(notesField).toHaveAttribute('aria-invalid', 'true');
+    expect(notesField).toHaveAttribute('aria-describedby', 'figma-import-error');
   });
 
   it('keeps the standalone translator fallback in English without a provider', () => {

@@ -116,9 +116,12 @@ design-system accessibility fixes already present in this checkout.
 
 **Reason:** the bounded accessibility follow-up replaces placeholder-era field
 naming with visible `label`/`for` associations for the Figma URL and notes
-controls. The updater dialog now holds focus inside the open surface even when
-another element tries to take it, restores focus to the originating control on
-close or cancellation, and records both behaviours in focused tests.
+controls. The same modal now reads its upload labels, helper copy, and
+placeholders through the existing locale catalog, announces form errors as
+assertive alerts, and associates those errors with invalid controls. The
+updater dialog now holds focus inside the open surface even when another
+element tries to take it, restores focus to the originating control on close or
+cancellation, and records both behaviours in focused tests.
 
 **Changed files:**
 
