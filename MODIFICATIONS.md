@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Exercise the native Figma input in the focus contract
+
+**Reason:** the residual Figma repair added the native file input to the modal's
+production focus selector, but its regression test built a button-only list and
+could therefore pass without ever traversing that input. The focused test now
+builds the modal's complete keyboard order, asserts that the native input is in
+it, and drives forward and reverse Tab traversal through every control while
+checking both wrap edges. The jsdom helper models the browser's ordinary middle
+control move while leaving wrap behavior to the real modal handler.
+
+**Changed files:**
+
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Keep Figma drops on a visible, named native file control
 
 **Reason:** a file dropped on the URL tab could leave its localized error tied to

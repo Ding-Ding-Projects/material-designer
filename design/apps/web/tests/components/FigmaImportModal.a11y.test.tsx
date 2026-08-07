@@ -190,7 +190,7 @@ describe('FigmaImportModal accessibility and layout', () => {
     expect(CSS).toMatch(/\.foot\s*\{[\s\S]*?flex:\s*0 0 auto;/);
   });
 
-  it('traps keyboard focus and restores the opener', () => {
+  it('traps keyboard focus through the native file input and restores the opener', () => {
     const opener = document.createElement('button');
     document.body.append(opener);
     opener.focus();
@@ -205,13 +205,39 @@ describe('FigmaImportModal accessibility and layout', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Import from Figma' });
-    const focusable = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>([
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',')));
+    const fileInput = document.getElementById('figma-import-file');
     expect(focusable.length).toBeGreaterThan(1);
-    focusable[0]?.focus();
-    fireEvent.keyDown(focusable[0]!, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(focusable[focusable.length - 1]);
-    fireEvent.keyDown(focusable[focusable.length - 1]!, { key: 'Tab' });
-    expect(document.activeElement).toBe(focusable[0]);
+    expect(fileInput).toBeInstanceOf(HTMLInputElement);
+    expect(focusable).toContain(fileInput);
+
+    const pressTab = (index: number, shiftKey = false) => {
+      const current = focusable[index]!;
+      const nextIndex = (index + (shiftKey ? -1 : 1) + focusable.length) % focusable.length;
+      const next = focusable[nextIndex]!;
+      current.focus();
+      const event = new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        key: 'Tab',
+        shiftKey,
+      });
+      current.dispatchEvent(event);
+      // jsdom does not perform the browser's ordinary Tab default action. Let
+      // the real modal handler own the wrap edges, and model the native move
+      // between middle controls so the full path still exercises the input.
+      if (!event.defaultPrevented) next.focus();
+      expect(document.activeElement).toBe(next);
+    };
+
+    for (let index = 0; index < focusable.length; index += 1) pressTab(index);
+    for (let index = focusable.length - 1; index >= 0; index -= 1) pressTab(index, true);
 
     view.unmount();
     expect(document.activeElement).toBe(opener);
