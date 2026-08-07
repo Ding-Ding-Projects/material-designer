@@ -50,13 +50,15 @@ contract. CI is the fresh-runner proof for native compiler availability and the
 full lockfile install; a cache hit only shortens the same path.
 
 Release run
-[31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+[31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
 proved the Windows tool and dependency bootstrap through `pnpm install
---frozen-lockfile` and completed the repaired application Typecheck; its later
-Windows pack contract test failed before packaging, so installer and release
-evidence remain pending. Commit
-[0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
-updates the stale source assertion.
+--frozen-lockfile`, completed the repaired application Typecheck and passed the
+Windows identity/installer tests. Packaging then logged attempted
+`signtool.exe` calls and failed in Squirrel.Windows with `Authors is required.`
+Commit
+[6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+adds the explicit unsigned builder controls and the required package author;
+installer and release evidence remain pending until the replacement run.
 
 ## Security boundary
 

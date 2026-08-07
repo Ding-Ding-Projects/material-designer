@@ -38,13 +38,16 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > check and uninstall with no residue.
 >
 > **Current release status (2026-08-07).** Release run
-> [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
-> passed the design verifier, self-hosted bootstrap, dependency installation and
-> web Typecheck, then failed one Windows pack source-contract assertion after 125
-> tests passed and 1 was skipped. Commit
-> [`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
-> repairs that assertion; no installer or new release is claimed until a
-> replacement run passes.
+> [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> at `64d58b1e32d3055ffc90bf03cf8266865190ced5` passed the design verifier,
+> self-hosted bootstrap, dependency installation, web Typecheck and the Windows
+> identity tests, then failed during Squirrel packaging. The log recorded repeated
+> `signing with signtool.exe` lines and then Squirrel stopped with `Authors is
+> required.` No installer, smoke result or release was published. Commit
+> [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+> supplies the top-level package author and explicit unsigned Windows builder
+> controls; a replacement run must still prove packaging, `NotSigned`, smoke
+> behavior and publication.
 >
 > The Cantonese locale, both tone sliders, the regex builder, the command palette,
 > the changelog viewer, the startup surprise, tab pinning, the notification centre,
@@ -111,14 +114,14 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > edges, so the jsdom focus fallback cannot hide a missing edge guard.
 
 > **Latest CI evidence.** Release run
-> [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
-> passed self-hosted tool bootstrap, the byte-exact verifier, portable Python,
-> frozen dependency installation and then failed in the web Typecheck with 10
-> errors. Commit
-> [`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
-> repairs the missing platform import, strict focus-trap indexing and the
-> unsupported HTML artifact fixture; its next labelled-runner verdict remains
-> unverified.
+> [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> passed the self-hosted tool bootstrap, byte-exact verifier, portable Python,
+> frozen dependency installation, web Typecheck and Windows identity tests, then
+> failed in Squirrel packaging before unsigned verification or smoke testing.
+> Commit
+> [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+> makes `win.sign`, `verifyUpdateCodeSignature` and the Squirrel author explicit;
+> the replacement labelled-runner verdict remains unverified.
 
 > **2026-08-06 settings-menu accessibility repair.** The settings tab overflow
 > menu now carries its own plain-text-first regex search, honest no-match state,

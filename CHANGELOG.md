@@ -64,6 +64,27 @@ version section when a release carries them.
 
 ### Changed
 
+- **The replacement Release reached Squirrel packaging and found the last two builder gaps.**
+  Run [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+  at [`64d58b1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/64d58b1e32d3055ffc90bf03cf8266865190ced5)
+  passed the design verifier, self-hosted bootstrap, dependency installation, web
+  Typecheck and the Windows identity/installer tests. Packaging then logged repeated
+  `signing with signtool.exe` lines and Squirrel.Windows stopped with `Authors is
+  required.` No installer, smoke result or release was published. Commit
+  [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+  adds a top-level package author, `win.sign: false` and
+  `verifyUpdateCodeSignature: false`, with source-contract assertions for the
+  unsigned builder. A replacement run is required before publication is claimed.
+
+  Replacement Release 終於行到 Squirrel packaging，先發現 builder 仲有兩個窿。
+  31156822158 過咗 verifier、self-hosted bootstrap、dependency install、web
+  Typecheck 同 Windows identity/installer tests，去到 packaging 卻再三叫
+  `signing with signtool.exe`，跟住 Squirrel.Windows 報 `Authors is required.`，所以
+  installer、smoke result 同 release 都未出街。`6911c62` 補返 top-level package
+  author，明確設 `win.sign: false` 同 `verifyUpdateCodeSignature: false`，再用
+  source contract tests 望實 unsigned builder；要等 replacement run 真正驗證先可以
+  報 publication 完成。
+
 - **The web repair passed Typecheck, and the next Windows contract caught a stale expectation.**
   Release run [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
   at [`2b7e06a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2b7e06a2009148878f2eded00acbebd5be0b0956)

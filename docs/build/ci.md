@@ -10,11 +10,12 @@ where `Pages` fits.
 
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
-> [`31155747324`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+> [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
 > passed the self-hosted toolchain, portable Python bootstrap, frozen dependency
-> installation and repaired web Typecheck, then failed one Windows pack
-> source-contract assertion after 125 tests passed and 1 was skipped. No new
-> installer or release was published by that run. Earlier
+> installation, repaired web Typecheck and Windows identity tests, then failed
+> during Squirrel packaging. The log recorded repeated `signing with signtool.exe`
+> lines and Squirrel reported `Authors is required.` No new installer or release
+> was published by that run. Earlier
 > published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
 > not proof that this current commit is green.
 >
@@ -31,16 +32,16 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31155747324`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
-for `main` at `2b7e06a2009148878f2eded00acbebd5be0b0956` completed with **failure**
-in `Build Windows application → Test the Windows identity and installer logic`.
-The repaired web Typecheck passed; the test suite reported 125 passing tests,
-1 skipped test and 1 failure because `tests/win-builder.test.ts` still expected
-the pre-helper `Setup.${ext}` source template. Commit
-[`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
-updates the assertion and modification allowlist. A new labelled-runner
-execution is still required; this page does not call the fix green before that
-run exists.
+Release run [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+for `main` at `64d58b1e32d3055ffc90bf03cf8266865190ced5` completed with **failure**
+in `Build Windows application → Build the Windows installer`. The repaired web
+Typecheck and Windows identity/installer tests passed. Packaging then logged
+repeated `signing with signtool.exe` lines and Squirrel.Windows stopped with
+`Authors is required.` Commit
+[`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+adds the top-level author and explicit unsigned builder controls. Unsigned
+verification, packaged smoke and publication remain unverified until a new
+labelled-runner execution completes.
 
 ## Behaviour
 

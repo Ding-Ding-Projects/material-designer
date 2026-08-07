@@ -108,6 +108,14 @@ imported upstream tree for a shipping product.
 > Commit [0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
 > updates the assertion to the escaped Squirrel artifact template; another
 > labelled-runner verdict is required before packaging or publication is claimed.
+> Release run 31156822158 then passed the repaired Typecheck and Windows identity
+> tests but failed during Squirrel packaging: the log recorded repeated
+> `signing with signtool.exe` lines and Squirrel reported `Authors is required.`
+> Commit [6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+> supplies the top-level package author and explicit `win.sign: false` and
+> `verifyUpdateCodeSignature: false` controls; a replacement run must prove that
+> no signer runs and that the unsigned Squirrel artifacts, smoke test and release
+> publication complete.
 
 ---
 
@@ -155,9 +163,10 @@ scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
 Historical runs have built two Windows installers and published them under
 their own tags, and the documentation site is deployed. The current main
-Release run 31155747324 passed the portable toolchain, frozen dependency
-installation and web Typecheck but failed one Windows pack contract assertion;
-the next run must prove the repair before a new release is claimed. The port
+Release run 31156822158 passed the portable toolchain, frozen dependency
+installation, web Typecheck and Windows identity tests but failed during Squirrel
+packaging; the next run must prove the explicit unsigned builder repair before a
+new release is claimed. The port
 verifier still reports zero gaps on a clean checkout, and the earlier packaged
 smoke evidence remains historical.
 

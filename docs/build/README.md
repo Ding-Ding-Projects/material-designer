@@ -15,12 +15,13 @@ How Material Designer is built, where that happens, and why.
 > [!IMPORTANT]
 > **The latest Release run is not green.** `Verify` has historical zero-gap
 > evidence, while Release run
-> [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
-> passed the self-hosted bootstrap, frozen dependency installation and web
-> Typecheck before failing one Windows pack source-contract assertion. Commit
-> [0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
-> repairs it; no new installer or release is claimed until the replacement run
-> passes. [ci.md](ci.md) records the exact failure and current verification state.
+> [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> passed the self-hosted bootstrap, frozen dependency installation, web Typecheck
+> and Windows identity tests before Squirrel packaging failed with `Authors is
+> required.` The log also recorded attempted `signtool.exe` invocation. Commit
+> [6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+> makes the package author and unsigned builder controls explicit; no new
+> installer or release is claimed until the replacement run passes.
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
 > upstream project and are **inert**, because workflows are only read from the
