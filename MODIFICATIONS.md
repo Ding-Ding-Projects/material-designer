@@ -29,6 +29,18 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Keep the Squirrel artifact contract test aligned with its helper
+
+**Reason:** the release runner reached the focused Windows pack tests and found that
+the source-contract assertion still expected the pre-helper artifact template. The
+packaging implementation correctly centralizes that template in
+`resolveWinSquirrelArtifactName`; the test now asserts the escaped electron-builder
+extension template that the helper actually contains.
+
+**Changed files:**
+
+- `tools/pack/tests/win-builder.test.ts`
+
 ### 2026-08-07 — Repair the web typecheck boundary exposed by the release runner
 
 **Reason:** the first full self-hosted Windows release reached the application

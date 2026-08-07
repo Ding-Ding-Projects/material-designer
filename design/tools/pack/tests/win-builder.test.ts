@@ -165,7 +165,7 @@ describe("Windows pack artifact boundaries", () => {
     expect(builderSource.indexOf('"squirrel-installer:build"')).toBeLessThan(
       builderSource.indexOf('if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to))'),
     );
-    expect(pathsSource).toContain('return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.${ext}`');
+    expect(pathsSource).toContain('return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.\\${ext}`');
     expect(reportSource).toContain('endsWith("-full.nupkg")');
     expect(reportSource).toContain('endsWith("-delta.nupkg")');
     expect(reportSource).toContain("resolveWinSquirrelReleasesPath(paths)");
