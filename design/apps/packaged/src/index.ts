@@ -155,11 +155,17 @@ export function handleSquirrelStartupEvent(): boolean {
 
   try {
     const updater = spawn(updateExe, updateArguments, {
+      detached: true,
       stdio: "ignore",
       windowsHide: true,
     });
-    updater.once("error", quit);
-    updater.once("close", quit);
+    // Squirrel waits for this lifecycle process to exit before Setup.exe can
+    // finish. The helper owns the shortcut operation, so keep it detached and
+    // let the packaged process quit immediately instead of waiting for the
+    // helper's close event.
+    updater.once("error", () => undefined);
+    updater.unref();
+    quit();
   } catch {
     // A missing or unusable Update.exe must not fall through into normal app
     // startup with a Squirrel lifecycle switch still on the command line.

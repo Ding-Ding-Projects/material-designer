@@ -29,6 +29,22 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Let Squirrel lifecycle startup exit without waiting on its helper
+
+**Reason:** Release run 31178661227 built and verified the unsigned Squirrel
+installer but the packaged Windows smoke test timed out after 720000ms during
+the install path. Squirrel launches the packaged executable for lifecycle
+switches before Setup.exe can finish. The lifecycle handler now detaches the
+shortcut helper, keeps an asynchronous spawn failure from becoming an
+unhandled process error, and quits immediately instead of waiting for the
+helper's close event. The focused source contract covers the detached handoff
+and rejects the old wait.
+
+**Changed files:**
+
+- apps/packaged/src/index.ts
+- apps/packaged/tests/squirrel-startup.test.ts
+
 ### 2026-08-07 — Exclude the redundant Windows standalone pnpm store before Squirrel packaging
 
 **Reason:** Release run `31168712919` reached Squirrel extraction and failed with
