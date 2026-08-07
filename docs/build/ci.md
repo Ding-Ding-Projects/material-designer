@@ -94,6 +94,11 @@ PATH shim before starting Bash and failed before checkout. Keeping the
 Git-for-Windows executable explicit while removing the spaces avoids that
 command-line ambiguity without introducing WSL as a dependency.
 
+The labelled Windows image exposes powershell.exe but not pwsh. The workflow
+therefore invokes Windows PowerShell directly, and the utility bootstrap avoids
+PowerShell 7-only syntax so a clean runner can execute the cache-miss path with
+the shell it actually provides.
+
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a

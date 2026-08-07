@@ -64,6 +64,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Windows release bootstrap now uses the shell the runner actually has.** The
+  labelled image has powershell.exe but no pwsh command, so the first default
+  branch run reached checkout and then stopped before dependency installation.
+  The workflow now invokes Windows PowerShell, the bootstrap script remains
+  compatible with that engine, and the contract test rejects a future pwsh
+  regression
+  ([993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)).
+
+  Windows release bootstrap 而家用 runner 真係有嗰個 shell：labelled image
+  有 powershell.exe，但冇 pwsh command，第一次 default branch run 去到
+  checkout 先發現 dependency 門口冇人開門。Workflow 而家行 Windows
+  PowerShell，bootstrap script 同 engine 相容，contract test 仲會擋住
+  pwsh 偷偷返生。
+
 - **The Windows release shell now avoids a second path-shaped trap.** The first
   repair named Git Bash but quoted an executable path with spaces; the runner
   combined that command with a PATH shim and failed before checkout. The

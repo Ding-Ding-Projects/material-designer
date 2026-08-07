@@ -951,12 +951,23 @@ no bundle is already legal.
   also failed before checkout because the quoted spaced Git-for-Windows path
   was malformed by the Windows command resolver. Neither run produced an
   installer, artifact or GitHub Release.
-- The current commit replaces both ambiguous shell forms with the runner's
++- Commit 84f70d6 replaces both ambiguous shell forms with the runner's
   space-free Git-for-Windows path. Local structural validation passed with
   actionlint -shellcheck=; Node, pnpm and Electron remain deliberately unrun
   outside CI. The next release run is the authoritative check for checkout,
   dependency installation, tests, Squirrel packaging, unsigned status, smoke,
   artifact upload and publication.
+- Release run
+  [31152929139](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152929139)
+  passed setup, the Git-for-Windows shell steps and checkout, then failed at
+  Bootstrap Windows CI tools with `pwsh: command not found`. No dependency
+  install, test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)
+  switches the workflow to powershell.exe, rewrites the bootstrap's PowerShell
+  7-only null-coalescing expression for Windows PowerShell compatibility, and
+  adds a release-contract check that rejects pwsh. The next run is still the
+  authoritative packaging and publication verdict.
 - At this checkpoint the target issue is
   [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7), and
   the open issue scan found only that active release task in this repository;

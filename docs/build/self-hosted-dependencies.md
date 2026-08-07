@@ -11,7 +11,7 @@ owns and checks versions before doing project work.
 | --- | --- | --- | --- |
 | `Verify` / `verify` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; Node 24 | `scripts/verify-port.sh` and the committed release-contract test |
 | `Verify` / `test` | `self-hosted`, `linux`, `material-designer` | Everything in `verify`; pnpm 10.33.2; Node 24; Python 3.12; the native compiler and headers required by the lockfile's native modules; workspace dependencies from `design/pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
-| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | User-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
+| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | Windows PowerShell (powershell.exe); user-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
 | `Pages` / `deploy` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; static-site inputs tracked in `site/` | Static-site validation and publication |
 
 The release job deliberately clears certificate, signer, timestamp, and
@@ -28,6 +28,8 @@ report `NotSigned` for `Setup.exe`.
 - Windows utility bootstrap: `scripts/bootstrap-ci-tools.ps1`. It downloads
   only pinned official `gh`, `jq`, and 7-Zip packages, verifies SHA-256 hashes,
   re-materializes cached tools, and uses a user-scoped cache lock.
+  The job invokes it through Windows PowerShell; the script is kept compatible
+  with the shell available on the labelled runner.
 - Language and compiler bootstrap: the workflows use the official
   `pnpm/action-setup`, `actions/setup-node`, `actions/setup-python`, and
   `ilammy/msvc-dev-cmd` actions. Project dependencies come only from the

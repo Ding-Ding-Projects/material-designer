@@ -58,6 +58,11 @@ imported upstream tree for a shipping product.
 > [64ef401](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158)
 > uses the runner's space-free Git-for-Windows path; a new labelled-runner
 > verdict is still required.
+> Release run 31152929139 reached checkout and then failed at the automatic
+> utility bootstrap because the runner has no pwsh command. Commit
+> [993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)
+> switches the job to powershell.exe and keeps the bootstrap script compatible
+> with that engine; another labelled-runner verdict is still required.
 
 ---
 
