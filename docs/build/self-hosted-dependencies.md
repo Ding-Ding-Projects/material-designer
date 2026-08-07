@@ -50,15 +50,14 @@ contract. CI is the fresh-runner proof for native compiler availability and the
 full lockfile install; a cache hit only shortens the same path.
 
 Release run
-[31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+[31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 proved the Windows tool and dependency bootstrap through `pnpm install
 --frozen-lockfile`, completed the repaired application Typecheck and passed the
-Windows identity/installer tests. Packaging then logged attempted
-`signtool.exe` calls and failed in Squirrel.Windows with `Authors is required.`
-Commit
-[6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-adds the explicit unsigned builder controls and the required package author;
-installer and release evidence remain pending until the replacement run.
+Windows identity/installer tests. Locked electron-builder 26.8.1 then rejected
+the unknown `win.sign` property before packaging. Commit
+[e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+switches to the supported `signAndEditExecutable: false` control; installer and
+release evidence remain pending until the replacement run.
 
 ## Security boundary
 

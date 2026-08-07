@@ -116,6 +116,13 @@ imported upstream tree for a shipping product.
 > `verifyUpdateCodeSignature: false` controls; a replacement run must prove that
 > no signer runs and that the unsigned Squirrel artifacts, smoke test and release
 > publication complete.
+> Release run 31158740651 then passed the repaired Typecheck and Windows identity
+> tests but stopped at electron-builder schema validation because version 26.8.1
+> rejects the unknown `win.sign` property. Commit
+> [e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> switches to the supported `signAndEditExecutable: false` control and adds a
+> release-contract assertion; a replacement run must prove the packer accepts the
+> configuration before publication is claimed.
 
 ---
 
@@ -163,10 +170,10 @@ scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
 Historical runs have built two Windows installers and published them under
 their own tags, and the documentation site is deployed. The current main
-Release run 31156822158 passed the portable toolchain, frozen dependency
-installation, web Typecheck and Windows identity tests but failed during Squirrel
-packaging; the next run must prove the explicit unsigned builder repair before a
-new release is claimed. The port
+Release run 31158740651 passed the portable toolchain, frozen dependency
+installation, web Typecheck and Windows identity tests but failed during
+electron-builder schema validation; the next run must prove the supported
+unsigned builder repair before a new release is claimed. The port
 verifier still reports zero gaps on a clean checkout, and the earlier packaged
 smoke evidence remains historical.
 

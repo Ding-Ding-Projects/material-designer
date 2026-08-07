@@ -64,6 +64,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **The second packaging attempt caught a schema mismatch before the signer could run.**
+  Run [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+  at [`f484639a`](https://github.com/Ding-Ding-Projects/material-designer/commit/f484639a3d6a70ce30fc6a2c798e6e59518ecf8e)
+  passed the design verifier, self-hosted bootstrap, dependency installation, web
+  Typecheck and the Windows identity/installer tests. Locked `electron-builder`
+  26.8.1 then rejected `win.sign` as an unknown Windows configuration property
+  before packaging. No installer, smoke result or release was published. Commit
+  [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+  replaces the invalid property with the supported
+  `signAndEditExecutable: false` control and adds a release-contract assertion.
+  A replacement run is required before publication is claimed.
+
+  第二次 packaging 想行快啲，點知先畀 schema mismatch 截停，signer 仲未有機會
+  出場。31158740651 過咗 verifier、self-hosted bootstrap、dependency install、web
+  Typecheck 同 Windows identity/installer tests，但 locked electron-builder 26.8.1
+  唔識 `win.sign`，所以未開始 packaging 就報 unknown Windows configuration property。
+  `e768b5b` 改用佢真正支援嘅 `signAndEditExecutable: false`，再加 release contract
+  assertion；installer、smoke 同 release 仍然要等 replacement run 實證。
+
 - **The replacement Release reached Squirrel packaging and found the last two builder gaps.**
   Run [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
   at [`64d58b1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/64d58b1e32d3055ffc90bf03cf8266865190ced5)

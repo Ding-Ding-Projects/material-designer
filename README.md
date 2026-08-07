@@ -38,16 +38,16 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > check and uninstall with no residue.
 >
 > **Current release status (2026-08-07).** Release run
-> [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
-> at `64d58b1e32d3055ffc90bf03cf8266865190ced5` passed the design verifier,
+> [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+> at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` passed the design verifier,
 > self-hosted bootstrap, dependency installation, web Typecheck and the Windows
-> identity tests, then failed during Squirrel packaging. The log recorded repeated
-> `signing with signtool.exe` lines and then Squirrel stopped with `Authors is
-> required.` No installer, smoke result or release was published. Commit
-> [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-> supplies the top-level package author and explicit unsigned Windows builder
-> controls; a replacement run must still prove packaging, `NotSigned`, smoke
-> behavior and publication.
+> identity tests, then failed before packaging because locked `electron-builder`
+> 26.8.1 rejected the unknown `win.sign` property. No installer, smoke result or
+> release was published. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> replaces it with the schema-supported `signAndEditExecutable: false` control;
+> a replacement run must still prove packaging, `NotSigned`, smoke behavior and
+> publication.
 >
 > The Cantonese locale, both tone sliders, the regex builder, the command palette,
 > the changelog viewer, the startup surprise, tab pinning, the notification centre,
@@ -114,13 +114,13 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > edges, so the jsdom focus fallback cannot hide a missing edge guard.
 
 > **Latest CI evidence.** Release run
-> [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 > passed the self-hosted tool bootstrap, byte-exact verifier, portable Python,
 > frozen dependency installation, web Typecheck and Windows identity tests, then
-> failed in Squirrel packaging before unsigned verification or smoke testing.
-> Commit
-> [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-> makes `win.sign`, `verifyUpdateCodeSignature` and the Squirrel author explicit;
+> failed in electron-builder schema validation because `win.sign` is unknown in
+> version 26.8.1. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> switches to `signAndEditExecutable: false` and adds a release-contract check;
 > the replacement labelled-runner verdict remains unverified.
 
 > **2026-08-06 settings-menu accessibility repair.** The settings tab overflow

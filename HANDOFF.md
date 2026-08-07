@@ -6,17 +6,16 @@ Read this before touching anything.
 
 > [!IMPORTANT]
 > **Updated 2026-08-07.** Release run
-> [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 > passed the design verifier, self-hosted bootstrap, dependency installation, web
-> Typecheck and the Windows identity/installer tests, then failed at Squirrel
-> packaging. The log recorded repeated `signing with signtool.exe` lines and
-> Squirrel stopped with `Authors is required.` No installer, smoke result or
-> release was published. Commit
-> [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-> makes the top-level package author and explicit unsigned builder controls
-> (`win.sign: false`, `verifyUpdateCodeSignature: false`) part of the generated
-> config and its source contract. The replacement run must still prove packaging,
-> `NotSigned`, smoke behavior and publication.
+> Typecheck and the Windows identity/installer tests, then failed before packaging
+> because locked `electron-builder` 26.8.1 rejected the unknown `win.sign`
+> property. No installer, smoke result or release was published. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> replaces that invalid property with the supported
+> `signAndEditExecutable: false` control and adds a release-contract assertion.
+> The replacement run must still prove packaging, `NotSigned`, smoke behavior and
+> publication.
 
 **Where it is.** The upstream tree was imported and *proved* byte-for-byte
 identical to its source, rebranded into a genuinely standalone application, and
@@ -24,9 +23,10 @@ brought onto Material Design 3. Historical runs built and published two Windows
 installers under their own tags, and the packaged smoke test installed one of
 them, launched it, made the running process answer its own health endpoint from
 inside its renderer, and uninstalled it with no residue. The current main
-Release run 31156822158 passed dependency installation, web Typecheck and the
-Windows identity tests but failed at Squirrel packaging; the next run must prove
-the explicit unsigned builder repair before a new release is claimed.
+Release run 31158740651 passed dependency installation, web Typecheck and the
+Windows identity tests but failed at electron-builder schema validation; the
+next run must prove the supported unsigned builder repair before a new release is
+claimed.
 
 > [!IMPORTANT]
 > **Updated 2026-08-04.** The two warnings that used to head this file — that
@@ -191,8 +191,8 @@ line survives, a reader cannot trust the ones beside it either.
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
-| Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. The latest Release evidence is `31156822158`; its exact failure is recorded in `docs/build/ci.md` |
-| Install / build / typecheck / test | **Typecheck and Windows contract tests passing; packaging failed** | Release `31156822158` completed the workspace install, web Typecheck and Windows identity tests, then logged signer invocation and `Authors is required.` before producing an installer |
+| Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. The latest Release evidence is `31158740651`; its exact failure is recorded in `docs/build/ci.md` |
+| Install / build / typecheck / test | **Typecheck and Windows contract tests passing; schema validation failed** | Release `31158740651` completed the workspace install, web Typecheck and Windows identity tests, then rejected the unsupported `win.sign` property before producing an installer |
 | Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; code signing is permanently prohibited, and the new Squirrel path clears signing inputs, requires `NotSigned` plus smoke evidence, and remains pending labelled self-hosted verification |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |

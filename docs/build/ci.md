@@ -10,12 +10,12 @@ where `Pages` fits.
 
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
-> [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 > passed the self-hosted toolchain, portable Python bootstrap, frozen dependency
 > installation, repaired web Typecheck and Windows identity tests, then failed
-> during Squirrel packaging. The log recorded repeated `signing with signtool.exe`
-> lines and Squirrel reported `Authors is required.` No new installer or release
-> was published by that run. Earlier
+> during electron-builder schema validation because version 26.8.1 rejected the
+> unknown `win.sign` property. No new installer or release was published by that
+> run. Earlier
 > published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
 > not proof that this current commit is green.
 >
@@ -32,14 +32,14 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31156822158`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
-for `main` at `64d58b1e32d3055ffc90bf03cf8266865190ced5` completed with **failure**
+Release run [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+for `main` at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` completed with **failure**
 in `Build Windows application → Build the Windows installer`. The repaired web
-Typecheck and Windows identity/installer tests passed. Packaging then logged
-repeated `signing with signtool.exe` lines and Squirrel.Windows stopped with
-`Authors is required.` Commit
-[`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-adds the top-level author and explicit unsigned builder controls. Unsigned
+Typecheck and Windows identity/installer tests passed, then locked
+electron-builder 26.8.1 rejected the unknown `win.sign` property before
+packaging. Commit
+[`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+switches to the supported `signAndEditExecutable: false` control. Unsigned
 verification, packaged smoke and publication remain unverified until a new
 labelled-runner execution completes.
 

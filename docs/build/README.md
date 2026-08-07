@@ -15,12 +15,12 @@ How Material Designer is built, where that happens, and why.
 > [!IMPORTANT]
 > **The latest Release run is not green.** `Verify` has historical zero-gap
 > evidence, while Release run
-> [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+> [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 > passed the self-hosted bootstrap, frozen dependency installation, web Typecheck
-> and Windows identity tests before Squirrel packaging failed with `Authors is
-> required.` The log also recorded attempted `signtool.exe` invocation. Commit
-> [6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
-> makes the package author and unsigned builder controls explicit; no new
+> and Windows identity tests before locked `electron-builder` 26.8.1 rejected the
+> unknown `win.sign` property. Commit
+> [e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> switches to the supported `signAndEditExecutable: false` control; no new
 > installer or release is claimed until the replacement run passes.
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
