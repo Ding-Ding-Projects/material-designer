@@ -7,8 +7,9 @@
 // delegated to the host (`onFigmaUrl`), which routes it through the existing
 // od-figma-migration scenario (OAuth lives in the run pipeline).
 //
-// Copy is intentionally inline (matching LibraryUploadModal); only the "+"
-// menu entry label is i18n-keyed.
+// Copy is intentionally inline (matching LibraryUploadModal). The durable
+// URL and notes field labels use the existing dsCreate catalog keys so the
+// normal locale lookup and English fallback remain in charge.
 
 import {
   useCallback,
@@ -22,6 +23,7 @@ import { motion } from 'motion/react';
 import type { FigmaImportResult } from '@open-design/contracts';
 import { Button } from '@open-design/components';
 import { Icon } from './Icon';
+import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';
 import { importProjectFigma } from '../providers/registry';
 import styles from './FigmaImportModal.module.css';
@@ -51,6 +53,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(',');
 
 export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigmaUrl }: Props) {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('file');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -321,7 +324,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 className={styles.tabPanel}
               >
                 <div className={styles.urlPane}>
-                  <label className={styles.fieldLabel} htmlFor="figma-import-url">Figma URL</label>
+                  <label className={styles.fieldLabel} htmlFor="figma-import-url">{t('dsCreate.figmaUrl')}</label>
                   <input
                     id="figma-import-url"
                     type="url"
@@ -338,7 +341,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
             )}
 
             <div className={styles.notesField}>
-              <label className={styles.fieldLabel} htmlFor="figma-import-notes">Notes for the build</label>
+              <label className={styles.fieldLabel} htmlFor="figma-import-notes">{t('dsCreate.notes')}</label>
               <textarea
                 id="figma-import-notes"
                 className={styles.notes}

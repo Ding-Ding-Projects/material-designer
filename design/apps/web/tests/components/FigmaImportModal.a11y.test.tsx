@@ -6,28 +6,30 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FigmaImportResult } from '@open-design/contracts';
 
 import { FigmaImportModal } from '../../src/components/FigmaImportModal';
+import { I18nProvider, type Locale } from '../../src/i18n';
 
 const CSS = readFileSync(
   new URL('../../src/components/FigmaImportModal.module.css', import.meta.url),
   'utf8',
 );
 
-function renderModal() {
-  return render(
+function renderModal(locale?: Locale) {
+  const modal = (
     <FigmaImportModal
       onClose={() => {}}
       resolveProjectId={async () => null}
       onImported={(_result: FigmaImportResult, _projectId: string) => {}}
       onFigmaUrl={() => {}}
-    />,
+    />
   );
+  return render(locale ? <I18nProvider initial={locale}>{modal}</I18nProvider> : modal);
 }
 
 describe('FigmaImportModal accessibility and layout', () => {
   afterEach(() => cleanup());
 
-  it('gives the URL and notes controls durable accessible names', () => {
-    renderModal();
+  it('uses catalogued localized names for the URL and notes controls', () => {
+    renderModal('zh-HK');
 
     const fileTab = screen.getByRole('tab', { name: 'Upload .fig' });
     const urlTab = screen.getByRole('tab', { name: 'Figma URL' });
@@ -38,11 +40,19 @@ describe('FigmaImportModal accessibility and layout', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
     expect(screen.getByRole('tabpanel', { name: 'Figma URL' })).toBeTruthy();
     const urlField = screen.getByRole('textbox', { name: 'Figma URL' });
-    const notesField = screen.getByRole('textbox', { name: 'Notes for the build' });
+    const notesField = screen.getByRole('textbox', { name: '備註' });
     expect(urlField).toHaveAttribute('id', 'figma-import-url');
     expect(notesField).toHaveAttribute('id', 'figma-import-notes');
     expect(document.querySelector('label[for="figma-import-url"]')).toHaveTextContent('Figma URL');
-    expect(document.querySelector('label[for="figma-import-notes"]')).toHaveTextContent('Notes for the build');
+    expect(document.querySelector('label[for="figma-import-notes"]')).toHaveTextContent('備註');
+  });
+
+  it('keeps the standalone translator fallback in English without a provider', () => {
+    renderModal();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
+    expect(screen.getByRole('textbox', { name: 'Figma URL' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Notes' })).toBeTruthy();
   });
 
   it('supports arrow-key tab navigation with a roving tab stop', () => {

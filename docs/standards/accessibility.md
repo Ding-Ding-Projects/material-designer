@@ -3,8 +3,10 @@
 **Status: partial, source-level audit only.** The design mockup states the intent,
 and the 2026-08-06 audit fixed several concrete source defects: the Figma import
 URL and notes controls now have visible native `label`/`for` associations with
-stable ids, so placeholder text is guidance rather than the only name, and the
-modal body scrolls; context-menu labels wrap instead of disappearing and
+stable ids, so placeholder text is guidance rather than the only name. Their
+names come from `useT` through the existing `dsCreate.figmaUrl` and
+`dsCreate.notes` catalog entries, with the provider-less English fallback, and
+the modal body scrolls; context-menu labels wrap instead of disappearing and
 dismissal restores the opener's focus;
 the updater dialog traps focus, restores it on every close path and disables
 progress transitions for reduced motion; and the design-system Back control has
@@ -214,8 +216,9 @@ looks.
 
 **No runtime matrix has been verified.** The source-level fixes have focused
 tests, but no installed build has rendered the full scale, narrow-width,
-display-density and language matrix. The Figma label associations are covered by
-`design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`; the CI command
+display-density and language matrix. The Figma label associations and localization
+fallback are covered by `design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`;
+the CI command
 is `pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
 That command was not run locally, and the claims in the mockup about contrast and
 target sizes remain design intent, not results.
