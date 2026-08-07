@@ -1,7 +1,7 @@
 # Accessibility and sizing
 
 **Status: partial, source-level audit only.** The design mockup states the intent,
-and the final Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+and the final Figma import repair is committed at [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
 The modal now closes before host focus work, keeps rejected Home URL handoffs
 open for retry, scopes `aria-invalid` and `aria-describedby` to the visible
 invalid URL or dropzone, clears a stale file after an invalid drop, rejects

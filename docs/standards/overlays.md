@@ -5,7 +5,7 @@ background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.
 
 **Status: partial, source-level audit only.** The final Figma import repair is
-committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+committed at [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
 The modal body now scrolls inside its bounded card, closes before the host focus
 callback runs, keeps rejected URL handoffs open for retry, and announces errors
 while associating them with the visible invalid URL or dropzone. Context-menu

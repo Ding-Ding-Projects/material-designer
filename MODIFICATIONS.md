@@ -42,7 +42,10 @@ dropzone and URL errors only with the URL field, clears invalid file selections,
 anchors the URL expression while retaining query/hash support, and routes the full
 surface through the catalog. `types.ts` and every locale retain the established
 English fallback shape; `zh-TW.ts` carries the Traditional Chinese seed and
-`zh-HK.ts` adds deliberate Hong Kong Cantonese overrides.
+`zh-HK.ts` adds deliberate Hong Kong Cantonese overrides. The final source tip
+is [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f);
+its follow-up restores only pre-existing locale indentation and changes no
+user-facing value.
 
 **Changed files:**
 
