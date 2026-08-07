@@ -1,16 +1,14 @@
 $ErrorActionPreference = 'Stop'
 
 # The labelled Windows runner enforces an AllSigned policy for downloaded
-# PowerShell scripts. This bootstrap is loaded by the workflow's per-process
-# ExecutionPolicy Bypass shell and installs Python without invoking an action
-# that must load its own unsigned setup.ps1.
+# PowerShell scripts and denies the standard Python installer to its service
+# account. Use the official embeddable archive so the bootstrap changes no
+# registry keys, loads no setup script and needs no installer elevation.
 
 $pythonVersion = '3.12.10'
-$pythonRelease = '3.12.10-14343898437'
-$archiveName = "python-$pythonVersion-win32-x64.zip"
-$pythonInstallerName = "python-$pythonVersion-amd64.exe"
-$downloadUrl = "https://github.com/actions/python-versions/releases/download/$pythonRelease/$archiveName"
-$expectedSha256 = '17E4EE587E0ECEE4674040DA8B248E151475FF65BECAE18FE0EC81F8312B5035'.ToLowerInvariant()
+$archiveName = "python-$pythonVersion-embed-amd64.zip"
+$downloadUrl = "https://www.python.org/ftp/python/$pythonVersion/$archiveName"
+$expectedSha256 = '4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3'.ToLowerInvariant()
 
 $cacheRoot = $env:RUNNER_TOOL_CACHE
 if ([string]::IsNullOrWhiteSpace($cacheRoot)) { $cacheRoot = $env:RUNNER_TEMP }
@@ -42,11 +40,6 @@ try {
     return Get-ChildItem -LiteralPath $Root -Filter 'python.exe' -File -Recurse | Select-Object -First 1
   }
 
-  function Find-PythonInstaller([string] $Root) {
-    if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return $null }
-    return Get-ChildItem -LiteralPath $Root -Filter $pythonInstallerName -File -Recurse | Select-Object -First 1
-  }
-
   $python = Find-Python $pythonRoot
   if ($null -eq $python) {
     $needsDownload = -not (Test-Path -LiteralPath $archivePath -PathType Leaf)
@@ -56,47 +49,18 @@ try {
     if ($needsDownload) {
       $downloadPath = "$archivePath.download"
       Remove-Item -LiteralPath $downloadPath -Force -ErrorAction SilentlyContinue
-      Write-Host "Downloading $archiveName from the pinned actions/python-versions release"
+      Write-Host "Downloading $archiveName from the official Python $pythonVersion release"
       Invoke-WebRequest -UseBasicParsing -Uri $downloadUrl -OutFile $downloadPath
       Assert-FileHash $downloadPath
       Move-Item -LiteralPath $downloadPath -Destination $archivePath -Force
     }
 
-    $extractRoot = Join-Path $toolRoot 'archive'
-    Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
-    New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
-    Expand-Archive -LiteralPath $archivePath -DestinationPath $extractRoot -Force
-    $installer = Find-PythonInstaller $extractRoot
-    if ($null -eq $installer) { throw "the pinned Python archive did not contain $pythonInstallerName" }
-
     Remove-Item -LiteralPath $pythonRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $pythonRoot | Out-Null
-    $installerPath = $installer.FullName
-    $targetDirArgument = 'TargetDir="' + $pythonRoot + '"'
-    $installerArgs = @(
-      '/quiet'
-      'InstallAllUsers=0'
-      $targetDirArgument
-      'PrependPath=0'
-      'Include_pip=1'
-      'Include_test=0'
-      'Include_launcher=0'
-      'Include_doc=0'
-      'Include_tcltk=0'
-      'Include_tools=0'
-      'Shortcuts=0'
-      'AssociateFiles=0'
-    )
-    Write-Host "Installing Python $pythonVersion into the user-scoped runner cache without loading setup.ps1"
-    $installProcess = Start-Process -FilePath $installerPath -ArgumentList ($installerArgs -join ' ') -Wait -PassThru
-    if ($null -eq $installProcess) { throw 'Python installer did not return a process result' }
-    Write-Host "Python installer exit code: $($installProcess.ExitCode)"
-    if (($installProcess.ExitCode -ne 0) -and ($installProcess.ExitCode -ne 3010)) {
-      throw "Python installer exited with code $($installProcess.ExitCode)"
-    }
-
+    Write-Host "Extracting the official Python $pythonVersion embeddable archive into the user-scoped runner cache"
+    Expand-Archive -LiteralPath $archivePath -DestinationPath $pythonRoot -Force
     $python = Find-Python $pythonRoot
-    if ($null -eq $python) { throw 'the Python installer did not produce python.exe' }
+    if ($null -eq $python) { throw 'the pinned Python embeddable archive did not contain python.exe' }
   }
 
   $versionOutput = (& $python.FullName --version 2>&1 | Out-String).Trim()

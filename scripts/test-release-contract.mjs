@@ -42,11 +42,10 @@ const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
-requireText(pythonBootstrap, "python-3.12.10-amd64.exe", "Python bootstrap does not locate the pinned installer executable");
-requireText(pythonBootstrap, "InstallAllUsers=0", "Python bootstrap is not explicitly user-scoped");
-requireText(pythonBootstrap, "Start-Process -FilePath", "Python bootstrap does not wait for the installer process explicitly");
-requireText(pythonBootstrap, ".ExitCode", "Python bootstrap does not validate the installer exit code");
-requireText(pythonBootstrap, "without loading setup.ps1", "Python bootstrap does not document its policy-safe installer path");
+requireText(pythonBootstrap, "python-3.12.10-embed-amd64.zip", "Python bootstrap does not use the pinned official embeddable archive");
+requireText(pythonBootstrap, "www.python.org/ftp/python/3.12.10", "Python bootstrap does not use the canonical Python source");
+requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extract the portable Python archive");
+requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
