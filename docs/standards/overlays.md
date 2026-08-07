@@ -4,13 +4,15 @@ Every popover, menu, dropdown, tooltip and anchored panel draws its own
 background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.
 
-**Status: partial, source-level audit only.** The 2026-08-06 audit fixed two
-concrete overlay failures: the Figma import modal body now scrolls inside its
-bounded card, its invalid form state is announced as an assertive alert, and
-context-menu labels wrap instead of being clipped. Focus
-returns to the originating context-menu control after dismissal. No installed
-build has yet been rendered and measured at the full scale, narrow-width and
-language matrix.
+**Status: partial, source-level audit only.** The final Figma import repair is
+committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+The modal body now scrolls inside its bounded card, closes before the host focus
+callback runs, keeps rejected URL handoffs open for retry, and announces errors
+while associating them with the visible invalid URL or dropzone. Context-menu
+labels wrap instead of being clipped and focus returns to the originating
+control after dismissal. No installed build has yet been rendered and measured
+at the full scale, narrow-width and language matrix; no build, CI or capture
+success is claimed by this source-level update.
 
 ## The requirement
 
@@ -161,7 +163,8 @@ setting for this rule:
 
 **No runtime overlay matrix has been verified.** The Figma modal and context
 menu changes have focused source tests, but no overlay has been rendered and
-measured in an installed build from this repository.
+measured in an installed build from this repository. The focused tests are
+committed but were not run locally; CI remains the verification boundary.
 
 Conformance requires all of:
 

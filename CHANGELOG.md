@@ -64,6 +64,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **The final Figma import refutation repairs all six remaining source gaps.**
+  [`FigmaImportModal`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe)
+  now closes before the host focus callback can reach the underlying UI; Home
+  keeps a rejected URL handoff visible and retryable; `aria-invalid` and
+  `aria-describedby` target only the visible invalid source control; invalid
+  file drops clear the previous selection; `FIGMA_URL_RE` is anchored while
+  accepting valid query/hash forms; and the title, source labels, helper,
+  actions, failure copy and summary labels use the i18n catalog. English
+  fallback entries, the `zh-TW` Traditional Chinese seed and deliberate
+  `zh-HK` overrides cover the complete visible surface. The focused spec and
+  `MODIFICATIONS.md` allowlist are committed, but no local Node, pnpm,
+  Electron, build, CI or capture result is claimed; hosted verification remains
+  the evidence boundary.
+
+  Figma import 嘅 final refutation 六個 poke guy 而家一次過收掂：modal 先收場，
+  host 之後先可以搶返 focus；Home 個 URL handoff 失敗會留低畀人再試；
+  `aria-invalid` 同 `aria-describedby` 只黐住真係出事嗰粒可見 control；
+  壞 file drop 會清走舊選擇；`FIGMA_URL_RE` 收實條尾但照食合法 query/hash；
+  title、source label、helper、button、failure copy 同 summary 全部返入 i18n
+  catalog。英文 fallback、`zh-TW` Traditional Chinese seed 同刻意寫落去嘅
+  `zh-HK` overrides 都齊。Focused spec 同 `MODIFICATIONS.md` 已入 commit，
+  但本機冇扮 Node/pnpm/Electron、build、CI 或 capture 證人，真正驗證留返
+  hosted CI。
+
 - **Figma import copy and errors now use the real localization and accessibility seams.** The URL and notes
   controls use visible native `label`/`for` associations and stable ids, while
   `useT` reads the existing `dsCreate.*` catalog entries for labels, upload

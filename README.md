@@ -71,6 +71,19 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > tools in a locked user-scoped cache. Focused tests are committed, but no new
 > installed-build capture or new labelled-runner verification is claimed yet.
 
+> **2026-08-06 final Figma import repair.** The six-finding source repair is
+> [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+> It closes the modal before the host focus callback, keeps rejected Home URL
+> imports open for a real retry, targets `aria-invalid` and `aria-describedby`
+> only at the visible invalid source control, clears a stale file after an
+> invalid drop, rejects arbitrary URL suffixes while accepting query/hash
+> forms, and localizes the remaining Figma title, source labels, helper,
+> actions, failure copy and summary labels. The catalog additions keep the
+> English fallback, use `zh-TW` as the Traditional Chinese seed, and add
+> deliberate `zh-HK` overrides. The focused spec and allowlist are committed;
+> no Node, pnpm, Electron, build, CI, or capture result is claimed from local
+> work.
+
 > **Latest CI evidence.** Release run
 > [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
 > reached the frozen dependency install and then failed in the Windows packer

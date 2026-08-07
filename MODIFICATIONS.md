@@ -29,6 +29,49 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Complete the six Figma import repairs
+
+**Reason:** the final read-only refutation found six remaining source-level gaps in
+the Figma import flow: focus could be handed back while the modal was still mounted,
+rejected Home URL handoffs closed the retry surface, invalid state was broader than
+the visible control, several visible strings bypassed the catalog, invalid file drops
+left a stale valid selection behind, and the URL expression accepted arbitrary
+trailing content. The repair closes the modal before the host focus handoff, keeps a
+rejected URL import open with a retry path, associates file errors with the visible
+dropzone and URL errors only with the URL field, clears invalid file selections,
+anchors the URL expression while retaining query/hash support, and routes the full
+surface through the catalog. `types.ts` and every locale retain the established
+English fallback shape; `zh-TW.ts` carries the Traditional Chinese seed and
+`zh-HK.ts` adds deliberate Hong Kong Cantonese overrides.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Switch Windows packaging to Squirrel and add restartable updates
 
 **Reason:** Windows releases previously built the legacy NSIS target and the

@@ -1,20 +1,20 @@
 # Accessibility and sizing
 
 **Status: partial, source-level audit only.** The design mockup states the intent,
-and the 2026-08-06 audit fixed several concrete source defects: the Figma import
-URL and notes controls now have visible native `label`/`for` associations with
-stable ids, so placeholder text is guidance rather than the only name. The
-upload labels, helper copy and placeholders come from `useT` through the
-existing `dsCreate.*` catalog entries, with the provider-less English fallback;
-invalid URL and import errors are assertive alerts associated with the invalid
-controls through `aria-invalid` and `aria-describedby`. The modal body scrolls;
-context-menu labels wrap instead of disappearing and
-dismissal restores the opener's focus;
-the updater dialog traps focus, restores it on every close path and disables
-progress transitions for reduced motion; and the design-system Back control has
-an explicit localized name. These changes have focused tests, but no installed
-build has yet been rendered through the full scale, narrow-width and language
-matrix, so runtime conformance remains unverified.
+and the final Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+The modal now closes before host focus work, keeps rejected Home URL handoffs
+open for retry, scopes `aria-invalid` and `aria-describedby` to the visible
+invalid URL or dropzone, clears a stale file after an invalid drop, rejects
+arbitrary URL suffixes while accepting query/hash forms, and localizes every
+visible Figma label and summary. The catalog keeps the English fallback, uses
+`zh-TW` as the Traditional Chinese seed and adds deliberate `zh-HK` overrides.
+The modal body scrolls; context-menu labels wrap instead of disappearing and
+dismissal restores the opener's focus; the updater dialog traps focus, restores
+it on every close path and disables progress transitions for reduced motion; and
+the design-system Back control has an explicit localized name. Focused source
+tests are committed, but no installed build has yet been rendered through the
+full scale, narrow-width and language matrix, so runtime conformance remains
+unverified.
 
 ## The requirement
 
@@ -218,13 +218,15 @@ looks.
 
 **No runtime matrix has been verified.** The source-level fixes have focused
 tests, but no installed build has rendered the full scale, narrow-width,
-display-density and language matrix. The Figma label associations, localized
-upload copy, English fallback, and invalid-URL alert association are covered by
+display-density and language matrix. The Figma focus handoff, URL retry,
+visible-control error targeting, invalid-file reset, anchored URL forms,
+localized catalog coverage and callback ordering are covered by
 `design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`;
-the CI command
-is `pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
-That command was not run locally, and the claims in the mockup about contrast and
-target sizes remain design intent, not results.
+the CI command is
+`pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
+That command was not run locally. Builds, CI runs, captures and the claims in
+the mockup about contrast and target sizes remain unverified design intent, not
+results.
 
 Conformance requires all of:
 

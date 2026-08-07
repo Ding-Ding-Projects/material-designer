@@ -68,18 +68,18 @@ no residue.
 > suites were not run locally; CI remains the evidence for those heavy checks.
 
 > [!NOTE]
-> **Updated 2026-08-06.** The bounded Figma-label and error-state lane is committed at
-> [`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc).
-> `FigmaImportModal` now gives the URL and notes controls visible native
-> `label`/`for` associations and stable ids. Its upload labels, helper copy and
-> placeholders come from the existing `dsCreate.*` catalog entries, with the
-> provider-less English fallback covered as well. Invalid URL and import errors
-> are assertive alerts associated with invalid URL, notes and file controls;
-> the focused accessibility spec drives that path rather than checking markup only.
-> `MODIFICATIONS.md`
-> records the changed `design/` paths. No Node, pnpm or Electron command was run
-> locally. UpdateDialog focus containment remains owned by the separate updater
-> lane at `6de08bb` and is intentionally not included in `9c8d492`.
+> **Updated 2026-08-06.** The final six-finding Figma import repair is committed at
+> [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+> `FigmaImportModal` closes before the host focus callback, rejected Home URL
+> handoffs keep the modal open with a real retry path, and `aria-invalid` /
+> `aria-describedby` are scoped to the visible invalid URL or dropzone rather
+> than notes or a hidden file input. Invalid drops clear stale files, the URL
+> expression is anchored while retaining query/hash support, and the complete
+> visible surface uses the i18n catalog. English fallback, the `zh-TW`
+> Traditional Chinese seed and deliberate `zh-HK` overrides are included;
+> `MODIFICATIONS.md` lists every changed `design/` path. The focused source spec
+> is committed, but no Node, pnpm, Electron, build, CI or capture result was run
+> or claimed locally; hosted verification remains pending.
 
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
