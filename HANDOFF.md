@@ -68,17 +68,18 @@ no residue.
 > suites were not run locally; CI remains the evidence for those heavy checks.
 
 > [!NOTE]
-> **Updated 2026-08-06.** The bounded Figma-label lane is committed at
-> [`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33).
+> **Updated 2026-08-06.** The bounded Figma-label and error-state lane is committed at
+> [`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc).
 > `FigmaImportModal` now gives the URL and notes controls visible native
-> `label`/`for` associations and stable ids. Their names come from `useT` through
-> the existing `dsCreate.figmaUrl` and `dsCreate.notes` catalog entries, with the
-> provider-less English fallback covered as well; its focused accessibility spec
-> checks localized names and associations instead of relying on placeholder text.
+> `label`/`for` associations and stable ids. Its upload labels, helper copy and
+> placeholders come from the existing `dsCreate.*` catalog entries, with the
+> provider-less English fallback covered as well. Invalid URL and import errors
+> are assertive alerts associated with invalid URL, notes and file controls;
+> the focused accessibility spec drives that path rather than checking markup only.
 > `MODIFICATIONS.md`
 > records the changed `design/` paths. No Node, pnpm or Electron command was run
 > locally. UpdateDialog focus containment remains owned by the separate updater
-> lane at `6de08bb` and is intentionally not included in `d918d33`.
+> lane at `6de08bb` and is intentionally not included in `9c8d492`.
 
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:

@@ -6,7 +6,8 @@ inside that bound rather than hiding what does not fit.
 
 **Status: partial, source-level audit only.** The 2026-08-06 audit fixed two
 concrete overlay failures: the Figma import modal body now scrolls inside its
-bounded card, and context-menu labels wrap instead of being clipped. Focus
+bounded card, its invalid form state is announced as an assertive alert, and
+context-menu labels wrap instead of being clipped. Focus
 returns to the originating context-menu control after dismissal. No installed
 build has yet been rendered and measured at the full scale, narrow-width and
 language matrix.

@@ -64,19 +64,21 @@ version section when a release carries them.
 
 ### Changed
 
-- **Figma import fields now carry their own localized names.** The URL and notes
+- **Figma import copy and errors now use the real localization and accessibility seams.** The URL and notes
   controls use visible native `label`/`for` associations and stable ids, while
-  `useT` reads the existing `dsCreate.figmaUrl` and `dsCreate.notes` catalog
-  entries and keeps the provider-less English fallback. Placeholder text is
-  optional guidance, not the only accessible name. The focused accessibility
-  spec checks the `zh-HK` names, associations and English fallback; the local
-  Node/pnpm/Electron toolchain was not run ([`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33)).
+  `useT` reads the existing `dsCreate.*` catalog entries for labels, upload
+  prompts, helper copy, and placeholders. Invalid URL and import errors now
+  render as assertive alerts and associate with the URL, notes, and file controls
+  through `aria-invalid` and `aria-describedby`. The focused accessibility spec
+  checks the `zh-HK` copy, associations, English fallback, and invalid-URL path;
+  the local Node/pnpm/Electron toolchain was not run ([`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc)).
 
-  Figma import 嘅 URL 同 notes 而家自己有真 label/for 同 stable id，仲經
-  `useT` 食返現成 `dsCreate.figmaUrl` 同 `dsCreate.notes` catalog key；冇
-  provider 時就穩陣 fallback 去英文。Placeholder 只係提示，唔再一個人扮晒
-  accessible name。Focused accessibility spec 會試 `zh-HK`、association 同
-  英文 fallback；今次冇喺本機開 Node/pnpm/Electron 個重型引擎，留返 CI 做正式驗證。
+  Figma import 嘅 URL 同 notes 而家自己有真 label/for 同 stable id，upload
+  prompt、helper 同 placeholder 亦經 `useT` 食返現成 `dsCreate.*` catalog
+  key；invalid URL 同 import error 會用 assertive alert 報到，仲同相關
+  controls 綁實 `aria-invalid` 同 `aria-describedby`。Focused accessibility
+  spec 會試 `zh-HK`、英文 fallback、association 同壞 URL 路徑；今次冇喺本機
+  開 Node/pnpm/Electron 個重型引擎，留返 CI 做正式驗證。
 
 - **The first self-hosted Release run exposed and received a narrow Windows packer fix.**
   Release `31127492852` completed with failure after `pnpm install --frozen-lockfile`

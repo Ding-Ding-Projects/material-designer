@@ -54,7 +54,7 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > modal's localized URL/notes labels, bounded scrolling, focus trap and reduced motion;
 > the labels now read through `useT` and the existing `dsCreate.*` catalog entries,
 > including the standalone English fallback;
-> the label follow-up is recorded in [`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33);
+> the label follow-up is recorded in [`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc);
 > context-menu wrapping and focus return; updater-dialog focus; the design-system
 > Back name;
 > the command palette's anchored regex builder and dialog-level Escape dismissal
