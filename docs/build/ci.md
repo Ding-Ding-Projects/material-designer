@@ -81,6 +81,13 @@ non-language tools the workflows call:
   cannot survive merely by reporting the expected version. It adds the directory
   to `PATH` and fails before packaging if any tool or version is still wrong.
 
+The Windows release workflow selects the runner's Git-for-Windows Bash executable
+explicitly for the few steps that invoke the repository's Bash scripts. Bare
+`shell: bash` is not equivalent on every self-hosted machine: on this runner it
+resolved to the WSL launcher, which failed before checkout because no Linux
+distribution was installed. Installing or relying on WSL is not part of the
+release contract; the workflow uses the already-installed Git-for-Windows route.
+
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a

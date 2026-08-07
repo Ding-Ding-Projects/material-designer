@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Keep the checkout byte-exact
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         # Git for Windows ships core.autocrlf=true in its system configuration,
         # and the root .gitattributes says `* text=auto` — so an unguarded
         # checkout here would write every text file under design/ with CRLF.
@@ -71,7 +71,7 @@ jobs:
         run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
       - name: Verify design/ against the pinned upstream tree
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         # Verify and Release are separate workflows on the same trigger, so a
         # red Verify does not stop a release. The release notes published by
         # this job assert what design/ contains, so this job is where that
@@ -393,7 +393,7 @@ jobs:
 
       - name: Check the packaged application is self-contained
         if: ${{ steps.pack.outputs.build_json != '' }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         # The same rule the published site is held to, asked of the artifact a
         # user actually installs — and asked of the BUILD OUTPUT, not the
         # source, because a bundler can inline a remote URL that no source file
@@ -489,7 +489,7 @@ jobs:
         # months. So the state set is printed on the run page itself, and every
         # state that produced no file is raised as a warning annotation.
         if: ${{ always() && steps.smoke.outcome != 'skipped' }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           set -uo pipefail
           # RUNNER_TEMP is a Windows path with backslashes, and this step runs
@@ -564,7 +564,7 @@ jobs:
       - name: Count lines
         id: lines
         if: ${{ always() }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         # --blame is what produces the agent-versus-human surviving-line
         # attribution the release notes carry; without it the table publishes
         # "not computed". --blame-paths keeps that pass to this repository's own
@@ -592,7 +592,7 @@ jobs:
       - name: Choose the release code name
         id: codename
         if: ${{ success() }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -608,7 +608,7 @@ jobs:
 
       - name: Publish the release
         if: ${{ success() && steps.smoke.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -742,7 +742,7 @@ jobs:
 
       - name: Summarise
         if: ${{ always() }}
-        shell: bash
+        shell: '"C:\\Program Files\\Git\\bin\\bash.exe" --noprofile --norc -e -o pipefail {0}'
         run: |
           {
             echo "### Windows build"
