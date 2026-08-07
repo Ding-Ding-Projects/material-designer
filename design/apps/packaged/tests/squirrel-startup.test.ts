@@ -13,6 +13,8 @@ describe("Squirrel startup handoff", () => {
     expect(source).toContain("export function handleSquirrelStartupEvent");
     expect(source.indexOf("if (!handleSquirrelStartupEvent())")).toBeGreaterThan(source.indexOf("async function main"));
     expect(source.indexOf("if (!handleSquirrelStartupEvent())")).toBeGreaterThan(source.indexOf("function handleMainError"));
+    expect(source).toContain("app.exit(0)");
+    expect(source).not.toContain("app.quit()");
     expect(source).toContain("detached: true");
     expect(source).toContain("updater.unref()");
     expect(source).toContain("updater.once(\"error\", () => undefined)");

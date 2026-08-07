@@ -5,6 +5,33 @@ State of play for whoever picks this up next.
 Read this before touching anything.
 
 > [!IMPORTANT]
+> **Current handoff — 2026-08-07.** `main` and the hui are at commit
+> [`fb0091bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/fb0091bd0637da7f8816e4de73c303e8949c40cd).
+> Release run
+> [`31182596964`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182596964)
+> passed checkout, self-hosted Windows bootstrap, dependency installation,
+> Typecheck, Windows identity/installer tests, Squirrel.Windows packaging,
+> unsigned verification, the self-contained scan and artifact upload. Its
+> packaged smoke test then timed out after `720000ms` at
+> `design/e2e/specs/win.spec.ts:542:3`; `ui-states.json` was absent and no
+> release was published. The first lifecycle repair detached `Update.exe` and
+> quit after spawning it, but this run proved that asynchronous Electron
+> `app.quit()` still leaves the Squirrel lifecycle process waiting.
+>
+> The next checkpoint changes Squirrel lifecycle switches to immediate
+> `app.exit(0)` and strengthens the source contract. It is currently uncommitted
+> on branch `codex/material-designer-ci-20260807` in the linked checkout
+> created for this task. Commit it with the bilingual message, run
+> `sh scripts/verify-port.sh`, push the branch, fast-forward the integration
+> checkout into `main`, and push `main`. The next Release must prove the smoke
+> test and publication; do not describe the release as shipped until its tag,
+> assets, smoke result and release notes are verified. Main Verify
+> [`31182597141`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182597141)
+> was queued for `fb0091bd`; preserve it as evidence unless a newer push makes
+> it stale. The next agent owns the final `dew jerjer hui` + `mat day` cleanup
+> pass only after the repaired release is verified.
+
+> [!IMPORTANT]
 > **Updated 2026-08-07.** Release run
 > [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
 > passed the design verifier, self-hosted bootstrap, dependency installation, web

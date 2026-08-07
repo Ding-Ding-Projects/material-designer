@@ -137,7 +137,7 @@ export function handleSquirrelStartupEvent(): boolean {
   if (event == null) return false;
 
   if (event === "--squirrel-obsolete") {
-    app.quit();
+    app.exit(0);
     return true;
   }
 
@@ -150,7 +150,10 @@ export function handleSquirrelStartupEvent(): boolean {
   const quit = () => {
     if (quitRequested) return;
     quitRequested = true;
-    app.quit();
+    // Electron's quit path is asynchronous and can wait on unrelated imported
+    // handlers. Squirrel needs this lifecycle process to exit immediately so
+    // Setup.exe can finish its transaction.
+    app.exit(0);
   };
 
   try {

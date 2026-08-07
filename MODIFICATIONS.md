@@ -29,6 +29,22 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Exit Squirrel lifecycle events immediately
+
+**Reason:** Release run `31182596964` proved that packaging, unsigned verification,
+self-contained scanning and artifact upload passed, but the packaged Windows smoke
+test still timed out after `720000ms` while Squirrel was completing installation.
+Detaching the shortcut helper was not enough because Electron's asynchronous
+`app.quit()` can wait on imported quit handlers. Lifecycle switches now use
+`app.exit(0)` so the event process terminates immediately after handing the
+shortcut operation to `Update.exe`; the source contract rejects the asynchronous
+quit path.
+
+**Changed files:**
+
+- apps/packaged/src/index.ts
+- apps/packaged/tests/squirrel-startup.test.ts
+
 ### 2026-08-07 — Let Squirrel lifecycle startup exit without waiting on its helper
 
 **Reason:** Release run 31178661227 built and verified the unsigned Squirrel
