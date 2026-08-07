@@ -234,10 +234,10 @@ async function runElectronBuilderRaw(
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
       icon: paths.winIconPath,
-      // Keep both packaging and update verification explicitly unsigned. The
+      // Keep packaging and update verification explicitly unsigned. The
       // release workflow validates the generated setup executable before it
       // can publish any Squirrel artifacts.
-      sign: false,
+      signAndEditExecutable: false,
       verifyUpdateCodeSignature: false,
       // No `publisherName` here. It reads like general metadata but
       // electron-builder 26 treats it as a signing input and moved it under

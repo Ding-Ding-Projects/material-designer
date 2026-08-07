@@ -65,6 +65,7 @@ forbid(release, /Authenticode-signed/, "release.yml still claims the installer i
 forbid(builder, /forceCodeSigning:\s*config\.signed/, "Windows builder still derives signing from config.signed");
 forbid(builder, /signAndVerifyWinFile|certificateSha1|rfc3161TimeStampServer/, "Windows builder still contains an active signer input or call");
 requireText(builder, "forceCodeSigning: false", "Windows builder does not hard-disable code signing");
+requireText(builder, "signAndEditExecutable: false", "Windows builder does not disable electron-builder signing and resource editing");
 requireText(builder, 'CSC_IDENTITY_AUTO_DISCOVERY: "false"', "Windows builder does not disable certificate discovery");
 
 if (failures.length > 0) {
