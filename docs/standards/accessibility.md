@@ -15,7 +15,7 @@ forms, and localizes every visible Figma label and summary. The catalog keeps th
 English fallback, uses `zh-TW` as the Traditional Chinese seed and adds
 deliberate `zh-HK` overrides; `zh-HK` intentionally inherits `figmaUrl` and
 `figmaPlaceholder` from `zh-TW`.
-The focus-trap regression contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal keyboard order in both directions and explicitly includes `figma-import-file`, while the real handler owns both wrap edges.
+The focus-trap regression contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal keyboard order in both directions and explicitly includes `figma-import-file`. Commit [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) tightens the edge proof by requiring `event.defaultPrevented` at both wrap edges, so the jsdom fallback cannot mask a missing real handler.
 The modal body scrolls; context-menu labels wrap instead of disappearing and
 dismissal restores the opener's focus; the updater dialog traps focus, restores
 it on every close path and disables progress transitions for reduced motion; and

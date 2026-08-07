@@ -64,18 +64,19 @@ version section when a release carries them.
 
 ### Changed
 
-- **The Figma focus-trap regression now walks the native file input.**
+- **The Figma focus-trap regression now proves its wrap edges.**
+  [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) extends the
   [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e)
-  replaces the button-only test list with the modal's complete keyboard order,
-  asserts that `figma-import-file` is present, and traverses every control
-  forward and backward while leaving the wrap edges to the real focus handler.
-  This is source-level coverage only; no local Node, pnpm, Electron, build, CI or
-  capture result is claimed.
+  coverage from the complete modal keyboard order to the handler's actual edge
+  contract: forward and reverse traversal must call `preventDefault()` at the
+  corresponding wrap edge, so the jsdom fallback cannot mask a broken real
+  handler. This is source-level coverage only; no local Node, pnpm, Electron,
+  build, CI or capture result is claimed.
 
-  Figma focus-trap regression 而家真係行到 native file input：唔再只請 buttons
-  入場，而係列晒 modal 完整 keyboard order，驗 `figma-import-file` 有入隊，前後
-  方向逐粒行晒，wrap 邊位交返畀真 focus handler。呢個係 source-level coverage，
-  今次冇扮有本機 Node、pnpm、Electron、build、CI 或 capture 結果。
+  Figma focus-trap regression 而家唔止行到 native file input，連 wrap 邊位都要
+  真係交由 handler 取消 default：forward 同 reverse 到邊界都必須有
+  `preventDefault()`，唔畀 jsdom 後備 focus 偷偷扮成功。呢個係 source-level
+  coverage，今次冇扮有本機 Node、pnpm、Electron、build、CI 或 capture 結果。
 
 - **Figma file drops now stay attached to a visible, named native control.**
   [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)

@@ -102,6 +102,14 @@ no residue.
 > move while the real modal handler remains responsible for both wrap edges. This
 > corrects the documentation claim without claiming a runtime or CI verdict.
 
+> **Wrap-edge assertion hardening:** commit
+> [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56)
+> makes that boundary explicit in the test: both the first reverse move and the
+> last forward move must have `event.defaultPrevented === true`. The helper only
+> advances focus for ordinary middle-control moves, so a missing real wrap
+> handler can no longer pass through a jsdom fallback. This remains source-level
+> evidence; no runtime, build or CI verdict is claimed.
+
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
 

@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Prove the Figma focus-trap wrap edges
+
+**Reason:** the previous regression helper moved focus itself whenever jsdom did
+not mark the Tab event as prevented. That could make the test pass at the first
+or last control even if the real modal handler failed to own the wrap edge. The
+test now identifies the two edge cases and requires the handler to call
+`preventDefault()` there, while retaining the helper only for ordinary middle
+control movement. The correction is committed at
+[`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56).
+
+**Changed files:**
+
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Exercise the native Figma input in the focus contract
 
 **Reason:** the residual Figma repair added the native file input to the modal's

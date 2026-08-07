@@ -17,7 +17,7 @@ yet been rendered and measured
 at the full scale, narrow-width and language matrix; no build, CI or capture
 success is claimed by this source-level update.
 
-The native-input focus contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e); its source test now traverses the complete modal keyboard order in both directions, including `figma-import-file`, without claiming runtime rendering.
+The native-input focus contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e); its source test now traverses the complete modal keyboard order in both directions, including `figma-import-file`. [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) also requires the real handler to prevent the default event at both wrap edges, without claiming runtime rendering.
 
 ## The requirement
 
