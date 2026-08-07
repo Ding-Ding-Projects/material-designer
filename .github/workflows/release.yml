@@ -96,11 +96,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
-      - name: Set up Python for native dependency bootstrap
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          architecture: x64
+      - name: Bootstrap Python 3.12
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-python.ps1
 
       - name: Activate the Windows C++ build toolchain
         uses: ilammy/msvc-dev-cmd@v1

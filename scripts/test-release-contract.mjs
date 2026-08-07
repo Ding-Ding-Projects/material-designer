@@ -39,7 +39,8 @@ const verify = await text(".github/workflows/verify.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const inventory = await text("docs/build/self-hosted-dependencies.md");
 
-requireText(release, "actions/setup-python@v5", "release.yml does not install Python 3.12 automatically");
+requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
+forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
