@@ -344,11 +344,11 @@ async function rewriteCopiedStandaloneSymlinks(options) {
   return rewrittenSymlinks;
 }
 
-async function removePathAndRecord(targetPath, reason, removedPaths) {
+async function removePathAndRecord(targetPath, reason, removedPaths, options = {}) {
   const existed = await pathExists(targetPath);
-  const bytes = await sizePathBytes(targetPath);
+  const bytes = options.measureBytes === false ? null : await sizePathBytes(targetPath);
   await rm(targetPath, { force: true, recursive: true });
-  if (existed || bytes > 0) {
+  if (existed || (bytes ?? 0) > 0) {
     removedPaths.push({ bytes, path: targetPath, reason });
   }
 }
@@ -438,6 +438,7 @@ async function pruneCopiedPnpmStore(destinationRoot, platformName) {
     path.join(destinationRoot, "node_modules", ".pnpm"),
     "copied pnpm store is redundant after Windows link dereference and hoisting",
     removedPaths,
+    { measureBytes: false },
   );
   return removedPaths;
 }

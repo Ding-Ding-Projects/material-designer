@@ -35,9 +35,10 @@ upstream blob ids exactly, file modes included.
 `System.IO.PathTooLongException` after the output and Squirrel temporary roots had
 already been shortened. The Windows standalone hook dereferences its copied links and
 hoists the public package targets, so the remaining `.pnpm` store was redundant. The
-hook now removes that store only on Windows, after the existing Next dedupe, preventing
-peer-qualified store paths from entering the Squirrel package while preserving Unix
-symlink layouts.
+hook now removes that store only on Windows, after the existing Next dedupe, without
+walking every file to calculate a byte total; that large recursive audit made the first
+repair spend too long in the packaging hook. The removal prevents peer-qualified store
+paths from entering the Squirrel package while preserving Unix symlink layouts.
 
 **Changed files:**
 

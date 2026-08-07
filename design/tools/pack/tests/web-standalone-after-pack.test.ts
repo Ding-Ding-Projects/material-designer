@@ -202,7 +202,7 @@ describe("web standalone afterPack hook", () => {
         copiedAudit: { resolvedModules: Record<string, string>; brokenSymlinks: string[] };
         copiedNextDedupe: { removedPaths: Array<{ reason: string }>; retainedPath: string };
         copiedNextDedupeAudit: { resolvedNextPackagePath: string; remainingPaths: string[] };
-        copiedPnpmStorePrune: { reason: string }[];
+        copiedPnpmStorePrune: { bytes: null; reason: string }[];
       };
       const resolvedNextPath = report.copiedNextDedupeAudit.resolvedNextPackagePath.split(path.sep).join("/");
 
@@ -217,6 +217,7 @@ describe("web standalone afterPack hook", () => {
       expect(report.copiedPnpmStorePrune.map((entry) => entry.reason)).toEqual([
         "copied pnpm store is redundant after Windows link dereference and hoisting",
       ]);
+      expect(report.copiedPnpmStorePrune[0].bytes).toBeNull();
       expect(resolvedNextPath).toMatch(
         /open-design-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
       );
