@@ -12,12 +12,13 @@ publish are steps of the same run.
 > `v0.16.1-r7.1` and `v0.16.1-r8.1` — each carrying a Windows installer built by
 > the run that published it. The packaged smoke test has installed a built
 > application, launched it, had the running process answer its own health
-> endpoint, screenshotted it, uninstalled it and asserted zero residue. What has
-> **not** been demonstrated is code signing (no certificate is evidenced here), any
-> platform other than Windows, or a post-migration Squirrel feed run. Commit
+> endpoint, screenshotted it, uninstalled it and asserted zero residue. Code
+> signing is permanently prohibited: the new workflow clears signer inputs and
+> requires `NotSigned` before publication. What has **not** been demonstrated is
+> any platform other than Windows or a post-migration Squirrel feed run. Commit
 > [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
-> makes the new workflow fail closed instead of publishing an unsigned artifact:
-> the first CI evidence for the signed Squirrel path is still pending.
+> makes the new workflow fail closed unless the artifact remains intentionally
+> unsigned; the first CI evidence for that path is still pending.
 
 ## Behaviour
 
@@ -119,8 +120,9 @@ the code under test. See
 
 **9 — Squirrel packaging.** The packer invokes electron-builder's
 Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
-`RELEASES`, full/delta `.nupkg` packages and the local icon asset. Signed builds
-also require the configured certificate thumbprint and timestamp service.
+`RELEASES`, full/delta `.nupkg` packages and the local icon asset. Code signing
+is prohibited; the workflow clears signer inputs and keeps electron-builder's
+signing controls false.
 
 **10 — Build and verify the installer.** Cleanup, then a packaging build with an explicit
 output directory, cache directory, namespace, portable flag, application version
@@ -130,6 +132,7 @@ and machine-readable output. Then, in order:
 - an **explicit existence check** on the reported installer path, failing if the
   build reported one that is not there;
 - a SHA-256 computed over the installer;
+- `Get-AuthenticodeSignature` verification requiring the exact status `NotSigned`;
 - assets staged under names that mean something outside this repository:
   `Setup.exe`, its `.sha256`, `RELEASES`, full/delta `.nupkg` packages,
   `metadata.json`, the icon and the portable archive when one is produced.
@@ -173,7 +176,7 @@ into the run summary.
 | --- | --- |
 | Title | `Material Designer <version> — <code name>` |
 | Code name | The dish in English and Traditional Chinese |
-| Install | The asset name, the SHA-256, Squirrel package assets, the stable metadata-feed URL and the signature-verification statement; a historical unsigned artifact is called out rather than silently treated as current |
+| Install | The asset name, the SHA-256, Squirrel package assets, the stable metadata-feed URL, the explicit `NotSigned` result and the unknown-publisher warning |
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |
@@ -209,13 +212,12 @@ own token as a last fallback. Used for reading prior releases (to find the spent
 code names) and for publishing. Passed only through the environment convention the
 tooling expects, and never printed.
 
-**No new code-signing certificate is evidenced here.** An unsigned Windows installer
+**Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
 publisher and hides the proceed button behind a **More info** link. The current
-workflow now requires `WIN_SIGN_CERT_SHA1` or `OD_WIN_SIGN_CERT_SHA1`, verifies the
-resulting `Setup.exe` with Authenticode, and refuses publication when the certificate
-is missing or does not match. Historical releases may still be unsigned, but the
-new path does not publish one silently.
+workflow clears certificate, timestamp and signer-discovery inputs, verifies the
+resulting `Setup.exe` with Authenticode, and refuses publication unless the
+exact status is `NotSigned`.
 
 ## Failure modes
 
@@ -265,8 +267,8 @@ specs passed, an installer was produced and its payload validated, and the smoke
 test installed, launched, health-checked, screenshotted and uninstalled the built
 application.
 
-**Not observed:** a signed installer, any non-Windows artifact, the updater path,
-the new labelled self-hosted runner contract executing a release, and —
+**Not observed:** a new labelled self-hosted runner contract executing a release,
+the updater path, any non-Windows artifact, and —
 importantly — a *failing* release run. The fail-closed signing, smoke and UI-state
 guards are source-checked but have not yet produced a new labelled-runner verdict.
 A gate that has only ever been seen passing is not known to be a gate.

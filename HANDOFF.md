@@ -91,8 +91,9 @@ no residue.
 > **Updated 2026-08-06.** [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
 > now carries the exact HTTPS release-notes URL from update metadata into the
 > ready dialog and persistent updater banner. [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
-> makes the Squirrel release path fail closed unless signing, packaged smoke and
-> unique packaged UI-state evidence pass, rebuilds cached CI tools from verified
+> makes the Squirrel release path fail closed unless the artifact is intentionally
+> unsigned (`NotSigned`), packaged smoke and unique packaged UI-state evidence pass,
+> rebuilds cached CI tools from verified
 > sources, and records the custom runner label for `actionlint`. The new labelled
 > self-hosted run has not yet produced a verdict.
 
@@ -176,7 +177,7 @@ line survives, a reader cannot trust the ones beside it either.
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
 | Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
 | Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel path now refuses publication without signing and smoke evidence, and remains pending labelled self-hosted verification |
+| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; code signing is permanently prohibited, and the new Squirrel path clears signing inputs, requires `NotSigned` plus smoke evidence, and remains pending labelled self-hosted verification |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
@@ -416,11 +417,11 @@ Now the gaps.
   at least one route pair was missed by that reading. See
   [`docs/api/README.md`](docs/api/README.md).
 - **Windows is the only target, by decision rather than by omission.** There is
-  no macOS or Linux artifact, and no new signing certificate is evidenced here. New Windows releases
+  no macOS or Linux artifact, and code signing is permanently prohibited. New Windows releases
   use Squirrel.Windows and publish `Setup.exe`, `RELEASES`, full/delta NuGet packages
   and the project-owned updater metadata feed; the feed is not yet proven by a new
-  release run in this handoff. The current workflow fails closed instead of publishing an
-  unsigned installer when the required certificate is absent. Read the absence of the other two platforms as scope, not as a backlog:
+  release run in this handoff. The current workflow clears signing inputs and fails
+  closed unless Authenticode reports `NotSigned`. Read the absence of the other two platforms as scope, not as a backlog:
   nothing here is waiting on a macOS build, and work that would only pay off on
   another platform is out of scope until that changes.
 

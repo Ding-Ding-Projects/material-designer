@@ -72,6 +72,17 @@ describe("resolveToolPackConfig win build target", () => {
   });
 });
 
+describe("resolveToolPackConfig signing policy", () => {
+  it("rejects signing and notarization options", () => {
+    expect(() => resolveToolPackConfig("win", { signed: true })).toThrow(
+      /Code signing and notarization are prohibited/,
+    );
+    expect(() => resolveToolPackConfig("mac", { notarize: true })).toThrow(
+      /Code signing and notarization are prohibited/,
+    );
+  });
+});
+
 describe("resolveToolPackConfig cache root", () => {
   it("keeps the default cache outside custom tools-pack roots", () => {
     const config = resolveToolPackConfig("win", {

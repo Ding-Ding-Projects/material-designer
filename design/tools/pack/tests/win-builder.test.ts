@@ -153,8 +153,9 @@ describe("Windows pack artifact boundaries", () => {
     const typeSource = await readFile(new URL("../src/win/types.ts", import.meta.url), "utf8");
 
     expect(builderSource).toContain("squirrelWindows:");
-    expect(builderSource).toContain("forceCodeSigning: config.signed");
-    expect(builderSource).toContain('CSC_IDENTITY_AUTO_DISCOVERY: config.signed ? "true" : "false"');
+    expect(builderSource).toContain("forceCodeSigning: false");
+    expect(builderSource).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
+    expect(builderSource).not.toContain("signAndVerifyWinFile");
     expect(builderSource).toContain("author: PRODUCT_NAME");
     expect(builderSource).toContain("iconUrl: SQUIRREL_ICON_URL");
     expect(builderSource).toContain("artifactName: resolveWinSquirrelArtifactName(config.namespace)");

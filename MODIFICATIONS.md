@@ -29,6 +29,31 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Make every release artifact intentionally unsigned
+
+**Reason:** code signing is permanently prohibited for this project. The active
+Windows packer no longer exposes signing or notarization options, never invokes a
+signer, hard-disables electron-builder signing and certificate discovery, and
+removes signing inputs from cache keys. The release workflow clears signing
+environment values, bootstraps Python and the MSVC/Windows SDK toolchain, and
+verifies that every generated `Setup.exe` reports `NotSigned` before publication.
+Focused packer tests assert the unsigned boundary.
+
+**Changed files:**
+
+- `tools/pack/CACHE.md`
+- `tools/pack/README.md`
+- `tools/pack/src/config.ts`
+- `tools/pack/src/index.ts`
+- `tools/pack/src/mac/builder.ts`
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/src/win/custom-installer.ts`
+- `tools/pack/src/win/sign.ts`
+- `tools/pack/tests/config.test.ts`
+- `tools/pack/tests/mac.test.ts`
+- `tools/pack/tests/win-builder.test.ts`
+- `tools/pack/tests/win-sign.test.ts`
+
 ### 2026-08-06 — Show the exact release notes in update prompts
 
 **Reason:** the release workflow already writes a validated `releaseNotesUrl` into

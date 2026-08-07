@@ -132,8 +132,9 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > preserves the exact HTTPS release-notes URL from update metadata in both ready
 > surfaces. Commit
 > [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
-> makes Squirrel publication fail closed without a valid signature, a successful
-> packaged smoke test or unique packaged UI-state evidence, rebuilds persistent
+> makes Squirrel publication fail closed unless the artifact is intentionally
+> unsigned (`NotSigned`), the packaged smoke test succeeds and unique packaged
+> UI-state evidence exists, and rebuilds persistent
 > cached CI tools from verified sources, and declares the custom runner label for
 > `actionlint`. No new self-hosted CI or release verdict is claimed yet.
 
@@ -336,15 +337,16 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are legacy releases, and new Squirrel publication is signing-gated.** Two tags have
+**There are legacy releases, and new Squirrel publication is explicitly unsigned.** Two tags have
 been published, each carrying the installer its own run built, a portable archive, a checksum
 and a dim sum code name. New Windows releases are configured as Squirrel.Windows releases:
 the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
 `metadata.json` feed, so an installed app can download an update in the background and wait
 for the user to choose **Restart to install update**. The current published links below remain
-the verified legacy build until the next Squirrel release has passed CI. The new workflow now
-requires a valid signing certificate and refuses publication when it is missing or invalid;
-no new signed Squirrel release is claimed here.
+the verified legacy build until the next Squirrel release has passed CI. Code signing is
+permanently prohibited: the new workflow clears signing inputs and discovery, packages
+unsigned Squirrel artifacts and refuses publication unless `Setup.exe` reports `NotSigned`;
+no new Squirrel release is claimed here until CI proves that path.
 
 ## Install
 
@@ -364,8 +366,8 @@ Har Gow · 筍尖蝦餃**, built from commit `5544035` by [run 30957484333](http
 > [!WARNING]
 > **The installer is not code-signed**, so Windows SmartScreen warns on first run
 > ("Windows protected your PC", publisher unknown) and the **Run anyway** button is hidden
-> behind **More info**. This repository has no certificate; that is why, and it will keep
-> happening until one is obtained.
+> behind **More info**. Code signing is permanently prohibited, so the warning is
+> expected; the release workflow verifies `NotSigned` before publication.
 
 ### Or build from source
 
@@ -539,11 +541,10 @@ and delta `.nupkg` packages. Other flags include `--app-version`, `--portable`, 
 `--dir`, `--cache-dir` and `--json`. Packaging runs on electron-builder with Electron 41.
 
 > [!WARNING]
-> An installer built without a code-signing certificate triggers Windows SmartScreen
-> ("Windows protected your PC", publisher unknown), and the **Run anyway** button is hidden
-> behind **More info**. The release workflow now fails before publication when signing is
-> unavailable; the warning describes a manually built or historical unsigned artifact, not a
-> release the current workflow is allowed to publish.
+> An intentionally unsigned installer triggers Windows SmartScreen ("Windows protected your
+> PC", publisher unknown), and the **Run anyway** button is hidden behind **More info**.
+> Code signing is permanently prohibited; the release workflow clears signer inputs and
+> publishes only after verifying `Setup.exe` reports `NotSigned`.
 
 ### Typecheck and tests
 

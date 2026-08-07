@@ -55,10 +55,6 @@ import {
 } from "./report.js";
 import type { ResourceTreeResult } from "./resources.js";
 import {
-  resolveWinSigningCacheKey,
-  signAndVerifyWinFile,
-} from "./sign.js";
-import {
   readWinExecutableVersionSnapshot,
   resolveWinExecutableVersionTargets,
   rewriteWinExecutableVersion,
@@ -203,11 +199,10 @@ async function runElectronBuilderRaw(
       domToPptxBundleResource(config),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
-    // Squirrel is the installed Windows path. A release without a signature
-    // would make the updater hand Windows an untrusted executable, so signed
-    // packaging is explicit and forceCodeSigning fails closed when the runner
-    // has no usable certificate.
-    forceCodeSigning: config.signed,
+    // Code signing is prohibited by the project's release policy. Squirrel
+    // artifacts are deliberately unsigned and the release workflow verifies
+    // Authenticode reports NotSigned before publication.
+    forceCodeSigning: false,
     icon: paths.winIconPath,
     nodeGypRebuild: ELECTRON_BUILDER_NODE_GYP_REBUILD,
     npmRebuild: ELECTRON_BUILDER_NPM_REBUILD,
@@ -237,13 +232,7 @@ async function runElectronBuilderRaw(
     publish: [{ provider: "generic", url: "https://updates.invalid/open-design" }],
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
-      ...(config.signed && process.env.OD_WIN_SIGN_CERT_SHA1 != null
-        ? { certificateSha1: process.env.OD_WIN_SIGN_CERT_SHA1 }
-        : {}),
       icon: paths.winIconPath,
-      ...(config.signed
-        ? { rfc3161TimeStampServer: process.env.OD_WIN_SIGN_TIMESTAMP_URL ?? "http://timestamp.digicert.com" }
-        : {}),
       // No `publisherName` here. It reads like general metadata but
       // electron-builder 26 treats it as a signing input and moved it under
       // `win.signtoolOptions`, so setting it at this level fails schema
@@ -274,7 +263,7 @@ async function runElectronBuilderRaw(
         cwd: config.workspaceRoot,
         env: {
           ...process.env,
-          CSC_IDENTITY_AUTO_DISCOVERY: config.signed ? "true" : "false",
+          CSC_IDENTITY_AUTO_DISCOVERY: "false",
           ...(webStandaloneHookConfigPath == null ? {} : { [WEB_STANDALONE_HOOK_CONFIG_ENV]: webStandaloneHookConfigPath }),
         },
       });
@@ -679,7 +668,6 @@ export async function runElectronBuilder(
     });
   }
   if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to)) {
-    const signingCacheKey = resolveWinSigningCacheKey(config);
     const nsisInstallerImplementation = shouldBuildWinNsisInstaller(config.to)
       ? await runSegment("nsis-installer:implementation-hash", () => hashWinNsisInstallerImplementation(config))
       : null;
@@ -722,11 +710,9 @@ export async function runElectronBuilder(
     const createNsisOverlayPayloadNode = (
       materialized: WinBuiltAppManifest | null,
       archiveSegments: WinPackTiming[],
-      ensureSignedUnpacked: () => Promise<void>,
     ): CacheNode<{ createdAt: string; payloadPath: string }> => ({
       build: async ({ entryRoot }) => {
         if (materialized == null) throw new Error("cannot build NSIS overlay payload without materialized unpacked app");
-        await ensureSignedUnpacked();
         archiveSegments.push(...await buildWinNsisOverlayPayload(paths, materialized));
         await cp(paths.installerOverlayPayloadPath, join(entryRoot, "payload-overlay.7z"));
         return {
@@ -741,13 +727,12 @@ export async function runElectronBuilder(
         key,
         namespace: config.namespace,
         packagedVersion,
-        signing: signingCacheKey,
         target: "nsis-payload-overlay",
       }),
       outputs: ["payload-overlay.7z"],
     });
     const nsisBasePayloadNode = createNsisBasePayloadNode(null, []);
-    const nsisOverlayPayloadNode = createNsisOverlayPayloadNode(null, [], async () => undefined);
+    const nsisOverlayPayloadNode = createNsisOverlayPayloadNode(null, []);
     const createNsisInstallerNode = (
       archiveSegments: WinPackTiming[],
       basePayloadKey: string,
@@ -770,7 +755,6 @@ export async function runElectronBuilder(
         nsisInstallerImplementation,
         overlayPayloadKey,
         packagedVersion,
-        signing: signingCacheKey,
         target: "nsis-installer",
         winIcon,
       }),
@@ -834,7 +818,7 @@ export async function runElectronBuilder(
       const overlayPayloadProbe = await runSegment("nsis-payload-overlay:read-hit", async () =>
         cache.readHit({
           materialize: nsisOverlayPayloadMaterialize,
-          node: createNsisOverlayPayloadNode(null, overlayPayloadProbeSegments, async () => undefined),
+          node: createNsisOverlayPayloadNode(null, overlayPayloadProbeSegments),
         })
       );
       overlayPayloadHit = overlayPayloadProbe != null;
@@ -874,23 +858,11 @@ export async function runElectronBuilder(
       }
       return materializeCachedUnpackedForInstaller(paths, packagedVersion);
     });
-    let signedUnpacked = false;
-    const ensureSignedUnpacked = async (): Promise<void> => {
-      if (!config.signed || signedUnpacked) return;
-      const signingDetails: Record<string, unknown> = {};
-      await runSegment("windows-sign:unpacked-exe", async () => {
-        // The final installer still gets a full sign+verify pass; skip the
-        // redundant local verify on the intermediate unpacked exe.
-        Object.assign(signingDetails, await signAndVerifyWinFile(materialized.executablePath, { verify: false }));
-      }, signingDetails);
-      signedUnpacked = true;
-    };
     if (shouldBuildWinPortableZip(config.to)) {
       const archiveSegments: WinPackTiming[] = [];
       await runSegment("portable-zip:cache", async () => {
         const portableZipNode: CacheNode<{ createdAt: string; portableZipPath: string }> = {
           build: async ({ entryRoot }) => {
-            await ensureSignedUnpacked();
             archiveSegments.push(...await buildWinPortableZip(config, paths, materialized));
             await cp(paths.setupZipPath, join(entryRoot, "portable.zip"));
             return { createdAt: new Date().toISOString(), portableZipPath: paths.setupZipPath };
@@ -902,7 +874,6 @@ export async function runElectronBuilder(
             namespace: config.namespace,
             packagedAppKey,
             packagedVersion,
-            signing: signingCacheKey,
             target: "portable-zip",
           }),
           outputs: ["portable.zip"],
@@ -933,7 +904,7 @@ export async function runElectronBuilder(
         await runSegment("nsis-payload-overlay:cache", async () => {
           await cache.acquire({
             materialize: nsisOverlayPayloadMaterialize,
-            node: createNsisOverlayPayloadNode(materialized, overlayPayloadSegments, ensureSignedUnpacked),
+            node: createNsisOverlayPayloadNode(materialized, overlayPayloadSegments),
           });
         });
         segments.push(...overlayPayloadSegments);

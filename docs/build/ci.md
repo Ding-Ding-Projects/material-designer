@@ -86,6 +86,12 @@ The workspace dependency step remains separate and authoritative: `pnpm`
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a
 cached `node_modules` directory as an installation.
 
+The complete per-job inventory and cache-miss recipe is maintained in
+[self-hosted-dependencies.md](self-hosted-dependencies.md). The Windows release
+job also bootstraps Python 3.12 and the x64 MSVC/Windows SDK toolchain because
+the locked native dependency compiles from source; neither is assumed to exist
+on the labelled runner.
+
 The SHA-256 checks authenticate packages at download time. The persistent
 runner cache is user-scoped runner state, not a cryptographic trust boundary;
 the bootstrap therefore rebuilds the executable from the verified package rather
@@ -116,7 +122,7 @@ pull-request code must not execute on a self-hosted runner.
 | Bootstrap | Validate or install the pinned user-scoped Linux utility set under a cache lock. |
 | Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
 | Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
-| Set up Node | The setup action installs Node 24; the workflow checks the resolved major version. |
+| Set up runtimes | The setup actions install Node 24 and Python 3.12; the workflow checks both versions. |
 | Count lines | `node scripts/line-count.mjs` appended to the run summary. Skips gracefully if the script is absent. |
 
 ### Why it checks out without the submodule
@@ -171,11 +177,14 @@ locked user-scoped runner cache before any packaging or release command uses the
 needs `design/`, not the provenance pin, and a clean checkout prevents stale
 `node_modules` or generated files on the persistent runner from becoming inputs.
 
-**2 — Package manager, then Node.** `pnpm/action-setup` installs pnpm 10.33.2
-with `run_install: false`, then `actions/setup-node` installs Node 24. The cache
+**2 — Package manager, runtimes and native compiler.** `pnpm/action-setup`
+installs pnpm 10.33.2 with `run_install: false`, then `actions/setup-node`
+installs Node 24 and `actions/setup-python` installs Python 3.12. The
+`ilammy/msvc-dev-cmd` action exposes the x64 MSVC/Windows SDK toolchain for the
+native database build. The cache
 key is `design/pnpm-lock.yaml` and contains only the pnpm store; it is a
 performance optimisation, not a `node_modules` dependency. A version-check step
-fails if either tool is not the requested version. The workflow notes explicitly
+fails if the requested Node, pnpm or Python version is not present. The workflow notes explicitly
 that the Node package-manager shim is not used, because it fails with a
 permission error on Windows.
 
@@ -204,9 +213,9 @@ it surfaces — before an installer is built, not after a user runs one.
 **7 — Squirrel packaging.** The packaging tool invokes electron-builder's
 Squirrel.Windows target. The build is expected to produce `Setup.exe`,
 `RELEASES`, full/delta `.nupkg` packages and the local icon asset; the release
-step fails closed if any required Squirrel output is missing. Signed builds use
-the configured certificate thumbprint and timestamp service, and the next step
-must verify the resulting Authenticode signature.
+step fails closed if any required Squirrel output is missing. Code signing is
+permanently prohibited; the workflow clears signing inputs and discovery before
+packaging, and the next step must verify that Authenticode reports `NotSigned`.
 
 **8 — Build the installer.** Cleanup, then `tools-pack win build` with an
 explicit output directory, cache directory, namespace, `--portable`, the app
@@ -222,7 +231,8 @@ version, `--to all` and `--json`. Then:
   portable archive when one was produced.
 
 The workflow then verifies `Setup.exe` with `Get-AuthenticodeSignature` and
-requires the signer thumbprint to match the configured secret-backed value.
+requires the exact status `NotSigned`. Any unexpected signature fails the
+release rather than silently changing the policy.
 Publication also requires the packaged smoke step to succeed and the packaged
 UI-state report to exist without duplicate frames.
 
@@ -267,7 +277,7 @@ and every staged asset plus the code name's image.
 | --- | --- |
 | Title | `Material Designer <version> — <code name>` |
 | Code name | The dish in English and Traditional Chinese |
-| Install | The asset name and the SHA-256, plus the verified-signature statement; an unsigned historical artifact is not silently presented as current |
+| Install | The asset name and the SHA-256, plus the explicit `NotSigned` status and unknown-publisher warning |
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run** — read from the step's actual outcome, never predicted — and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to `MODIFICATIONS.md`, and a statement of non-affiliation |
@@ -305,7 +315,7 @@ exercise the build without creating a release.
 | Name | Purpose | Status |
 | --- | --- | --- |
 | Release token | Publishing releases and reading prior ones for the code name | Resolved as a repository-scoped token, then an organisation token, then the run's own token as the last fallback |
-| Code-signing certificate | Signing the installer | **Not configured.** See below. |
+| Code-signing certificate | Signing the installer | **Prohibited and unused.** No certificate, private key, timestamp credential or signer service may enter the build. |
 | Telemetry key | Analytics destination | **Not configured, and must not be added silently.** |
 
 Tokens are passed only through the environment convention the tooling expects,
@@ -313,13 +323,16 @@ and never printed.
 
 ### Unsigned installers
 
-No new code-signing certificate is evidenced here. An unsigned Windows installer
-triggers the operating system's reputation screen, which reports an unknown
-publisher and hides the proceed button behind a **More info** link. The release
-workflow now requires `WIN_SIGN_CERT_SHA1` or `OD_WIN_SIGN_CERT_SHA1`, verifies
-`Setup.exe` with Authenticode, and refuses publication when signing is missing or
-does not match. Historical releases may still be unsigned; the new path does not
-publish one silently.
+Code signing is permanently prohibited. Every Windows release is intentionally
+unsigned, so the operating system may show an unknown-publisher reputation
+screen and place the proceed button behind **More info**. The workflow clears
+certificate, timestamp and signer-discovery inputs, sets the packaging controls
+to false, and verifies `Setup.exe` with `Get-AuthenticodeSignature`; publication
+continues only when the exact status is `NotSigned`.
+
+Automatic updates still use HTTPS feed metadata, package hashes and rollback
+checks. Those controls protect transport and corruption boundaries; they do not
+claim publisher authenticity or replace a code signature.
 
 ### Runner selection
 

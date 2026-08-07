@@ -8,8 +8,9 @@ to the run but *not* to the release, and what is deliberately absent.
 > installer, its checksum file and a code-name image. The release workflow now
 > stages a project-owned Squirrel.Windows feed for new releases; the first
 > post-migration release is still awaiting its CI evidence. The new workflow
-> requires a code signature before publication, while the two historical releases
-> are unsigned. There is **no macOS or Linux artifact** — that absence is deliberate
+> publishes intentionally unsigned artifacts and verifies `NotSigned` before
+> publication; the two historical releases are also unsigned. There is **no
+> macOS or Linux artifact** — that absence is deliberate
 > and is explained below rather than left for a reader to notice.
 
 ## The attached assets
@@ -55,9 +56,9 @@ sha256sum -c material-designer-<version>-win-x64-setup.exe.sha256
 > [!WARNING]
 > A checksum published alongside a download proves the file was not **corrupted**.
 > It does not prove it was not **replaced**, because whoever could replace the file
-> could replace the hash. A code signature is the separate authenticity check; the
-> new workflow verifies it before publication, while historical releases remain
-> unsigned — see below.
+> could replace the hash. This project permanently prohibits code signing, so the
+> workflow verifies the artifact is intentionally unsigned (`NotSigned`) and
+> makes no publisher-authenticity claim — see below.
 
 ## Workflow artifacts, which are not release assets
 
@@ -75,13 +76,12 @@ fails, the installer that failed is the single most useful thing to have.
 
 ## What is deliberately absent
 
-**No new code signature is evidenced here.** An unsigned Windows installer
+**Code signing is permanently prohibited.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
 publisher and hides the proceed button behind a **More info** link. The current
-workflow requires `WIN_SIGN_CERT_SHA1` or `OD_WIN_SIGN_CERT_SHA1`, verifies the
-resulting `Setup.exe` with Authenticode and refuses publication when signing is
-missing or mismatched. Historical releases may still be unsigned; the new path
-does not publish one silently.
+workflow clears certificate, timestamp and signer-discovery inputs, keeps the
+packaging controls false, verifies the resulting `Setup.exe` with Authenticode,
+and refuses publication unless the exact status is `NotSigned`.
 
 There is a related trap worth recording, because it looks like plain metadata and
 is not: setting a publisher name in the packaging configuration is rejected
@@ -135,18 +135,17 @@ Two mechanisms enforce it in practice:
 | The published hash does not match the download | Corruption in transit, a mirror, or a replaced file | Do not install it. Re-download from the release page and compare again. |
 | The portable archive is missing | The packaging build did not produce one | Expected: the archive is attached only when it exists. The installer is the primary artifact. |
 | A download link stops working after a few weeks | It pointed at a workflow artifact, not a release asset | Link release assets. Workflow artifacts expire. |
-| The reputation screen blocks a historical installer | It is unsigned | Documented in the notes. **More info**, then run; a new workflow release should fail before publication instead. |
+| The reputation screen blocks an installer | It is intentionally unsigned | Documented in the notes. **More info**, then run; the workflow verified `NotSigned` before publication. |
 | The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
 | The update banner offers no restart action | The downloaded artifact was not identified as a Windows Squirrel installer | Confirm the feed artifact is named `Setup.exe` and the metadata `type` is `installer`. |
 | The code-name image is missing | No dish was available, or its file was absent | Never blocks a release. See [code-names.md](code-names.md). |
 
 ## Security considerations
 
-- **The signature gate is a real authenticity boundary.** The workflow compares
-  `Setup.exe`'s Authenticode status and signer thumbprint before publication. A
-  missing or mismatched certificate fails the run rather than training users to
-  click through an unsigned release; historical unsigned releases remain clearly
-  labelled.
+- **The unsigned-artifact gate is a real packaging boundary.** The workflow
+  clears signing inputs and refuses publication if `Setup.exe` is not exactly
+  `NotSigned`. It does not claim publisher authenticity; Windows may show its
+  unknown-publisher warning and the release notes say so plainly.
 - **The checksum's guarantee is narrower than it looks** — integrity against
   corruption, not authenticity against substitution. Publishing it alongside the
   file it describes is standard and still worth doing; describing it as protection
@@ -166,7 +165,7 @@ file and a code-name image, with the notes stating the hash, the smoke-test
 outcome, the commit, the run link and the provenance.
 
 **Pending CI evidence:** a new release run must prove that the Squirrel build
-produces signed `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages and
+produces intentionally unsigned `Setup.exe` (`NotSigned`), `RELEASES`, full/delta `.nupkg` packages and
 `metadata.json`, that the packaged smoke/UI-state gates pass, and that the
 published stable feed is readable by the updater.
 
@@ -179,8 +178,9 @@ gh release download <tag> --pattern '*setup.exe*'
 sha256sum -c material-designer-<version>-win-x64-setup.exe.sha256
 ```
 
-**Not verified:** that a mirror or a proxy has not altered a download — nothing in
-this release process can establish that without a signature.
+**Not verified:** publisher authenticity or that a mirror or proxy has not
+altered a download. This release process deliberately has no code signature;
+the checksum detects corruption but cannot establish who published the file.
 
 ## Suggested reading
 

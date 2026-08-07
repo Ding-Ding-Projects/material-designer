@@ -96,6 +96,40 @@ jobs:
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
+      - name: Set up Python for native dependency bootstrap
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+
+      - name: Activate the Windows C++ build toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Clear prohibited signing inputs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $signingInputs = @(
+            "CSC_LINK",
+            "CSC_KEY_PASSWORD",
+            "WIN_CSC_LINK",
+            "WIN_CSC_KEY_PASSWORD",
+            "OD_WIN_SIGN_CERT_SHA1",
+            "WIN_SIGN_CERT_SHA1",
+            "OD_WIN_SIGNTOOL_PATH",
+            "WIN_SIGNTOOL_PATH",
+            "OD_WIN_SIGN_TIMESTAMP_URL",
+            "WIN_SIGN_TIMESTAMP_URL"
+          )
+          foreach ($name in $signingInputs) {
+            Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
+            "$name=" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
+          "CSC_IDENTITY_AUTO_DISCOVERY=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Cleared prohibited signing inputs and disabled certificate auto-discovery."
+
       - name: Verify the CI Node and pnpm toolchain
         run: |
           $ErrorActionPreference = "Stop"
@@ -107,7 +141,11 @@ jobs:
           if ($pnpmVersion -ne "10.33.2") {
             throw "expected pnpm 10.33.2, found $pnpmVersion"
           }
-          Write-Host "using $nodeVersion and pnpm $pnpmVersion"
+          $pythonVersion = (python --version 2>&1).ToString().Trim()
+          if ($pythonVersion -notmatch '^Python 3\.12\.') {
+            throw "expected Python 3.12, found $pythonVersion"
+          }
+          Write-Host "using $nodeVersion, pnpm $pnpmVersion, and $pythonVersion"
 
       - name: Read application version
         id: version
@@ -201,19 +239,8 @@ jobs:
       - name: Build the Windows installer
         id: pack
         working-directory: design
-        env:
-          # The certificate stays in the GitHub secret store; the thumbprint is
-          # only passed to electron-builder and is never printed.
-          OD_WIN_SIGN_CERT_SHA1: ${{ secrets.WIN_SIGN_CERT_SHA1 || secrets.OD_WIN_SIGN_CERT_SHA1 }}
-          OD_WIN_SIGN_TIMESTAMP_URL: ${{ secrets.WIN_SIGN_TIMESTAMP_URL || 'http://timestamp.digicert.com' }}
         run: |
           $ErrorActionPreference = "Stop"
-          if ([string]::IsNullOrWhiteSpace($env:OD_WIN_SIGN_CERT_SHA1)) {
-            throw "Squirrel release signing requires WIN_SIGN_CERT_SHA1 or OD_WIN_SIGN_CERT_SHA1"
-          }
-          if ($env:OD_WIN_SIGN_CERT_SHA1 -notmatch '^[0-9A-Fa-f]{40}$') {
-            throw "the Windows signing certificate thumbprint must be 40 hexadecimal characters"
-          }
           $toolsPackDir = "${{ runner.temp }}/tools-pack"
           $cacheDir = "${{ runner.temp }}/tools-pack-cache"
           $buildJsonPath = Join-Path "${{ runner.temp }}" "windows-tools-pack-build.json"
@@ -225,7 +252,6 @@ jobs:
             --cache-dir $cacheDir `
             --namespace "$env:PACK_NAMESPACE" `
             --portable `
-            --signed `
             --app-version "${{ steps.version.outputs.app_version }}" `
             --to all `
             --json
@@ -247,6 +273,11 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
           if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
             throw "the build reported no Squirrel Setup.exe at '$setupPath'"
+          }
+
+          $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
+          if ($signature.Status -ne 'NotSigned') {
+            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
           }
 
           $installer = Get-Item -LiteralPath $setupPath
@@ -303,6 +334,7 @@ jobs:
             schemaVersion = 1
             channel = "stable"
             releaseVersion = "${{ steps.version.outputs.app_version }}"
+            signed = $false
             releaseNotesUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
             platforms = [ordered]@{
               win = [ordered]@{
@@ -332,6 +364,7 @@ jobs:
           "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "signature_status=$($signature.Status)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_release_name=RELEASES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_package_count=$($packagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -341,11 +374,9 @@ jobs:
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
           Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
-      - name: Verify the Squirrel installer signature
+      - name: Verify the Squirrel installer is unsigned
         if: ${{ steps.pack.outputs.build_json != '' }}
         working-directory: design
-        env:
-          OD_WIN_SIGN_CERT_SHA1: ${{ secrets.WIN_SIGN_CERT_SHA1 || secrets.OD_WIN_SIGN_CERT_SHA1 }}
         run: |
           $ErrorActionPreference = "Stop"
           $build = Get-Content -Raw -LiteralPath "${{ steps.pack.outputs.build_json }}" | ConvertFrom-Json
@@ -355,15 +386,10 @@ jobs:
             throw "cannot verify a Squirrel installer that was not produced"
           }
           $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
-          if ($signature.Status -ne 'Valid') {
-            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), not Valid"
+          if ($signature.Status -ne 'NotSigned') {
+            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
           }
-          $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace '\s', '').ToUpperInvariant()
-          $expectedThumbprint = ($env:OD_WIN_SIGN_CERT_SHA1 -replace '\s', '').ToUpperInvariant()
-          if ($actualThumbprint -ne $expectedThumbprint) {
-            throw "Squirrel Setup.exe was signed by an unexpected certificate"
-          }
-          Write-Host "Squirrel Setup.exe signature verified"
+          Write-Host "Squirrel Setup.exe verified unsigned (NotSigned)"
 
       - name: Check the packaged application is self-contained
         if: ${{ steps.pack.outputs.build_json != '' }}
@@ -603,6 +629,11 @@ jobs:
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP}/release-notes.md"
+          WORKFLOW_STARTED_AT=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          if [ -z "$WORKFLOW_STARTED_AT" ]; then
+            echo "::error::GitHub Actions did not return the workflow startedAt timestamp"
+            exit 1
+          fi
           {
             echo "## Material Designer ${APP_VERSION}"
             if [ -n "${CODENAME:-}" ]; then
@@ -621,8 +652,8 @@ jobs:
             echo "SHA-256  ${INSTALLER_SHA}"
             echo "\`\`\`"
             echo ""
-            echo "> [!NOTE]"
-            echo "> The Squirrel installer is Authenticode-signed and its signature was verified before publication."
+            echo "> [!WARNING]"
+            echo "> The Squirrel installer is intentionally unsigned (Windows Authenticode status: \`NotSigned\`). Windows may show an unknown-publisher or SmartScreen warning; that is expected under the permanent no-signing policy."
             echo ""
             echo "### Verification"
             echo ""
@@ -681,6 +712,32 @@ jobs:
             --latest \
             "${assets[@]}"
 
+          workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          workflow_duration=$(WORKFLOW_STARTED_AT="$WORKFLOW_STARTED_AT" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
+          const start = Date.parse(process.env.WORKFLOW_STARTED_AT ?? "");
+          const end = Date.parse(process.env.WORKFLOW_COMPLETED_AT ?? "");
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+            throw new Error("workflow timing timestamps were invalid");
+          }
+          const seconds = Math.floor((end - start) / 1000);
+          const hours = Math.floor(seconds / 3600);
+          const minutes = Math.floor((seconds % 3600) / 60);
+          const remainder = seconds % 60;
+          process.stdout.write(
+            [hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":")
+          );
+          NODE
+          )
+          {
+            echo ""
+            echo "### Workflow timing"
+            echo ""
+            echo "- Workflow started: ${WORKFLOW_STARTED_AT}"
+            echo "- Workflow completed: ${workflow_completed_at}"
+            echo "- Workflow duration: ${workflow_duration}"
+          } >> "$notes"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes"
+
           echo "Published $TAG"
 
       - name: Summarise
@@ -695,6 +752,7 @@ jobs:
             echo "| Version | ${{ steps.version.outputs.app_version }} |"
             echo "| Tag | ${{ steps.version.outputs.tag }} |"
             echo "| Installer | ${{ steps.pack.outputs.asset_name || 'not produced' }} |"
+            echo "| Signature | ${{ steps.pack.outputs.signature_status || 'not verified' }} |"
             echo "| Smoke test | ${{ steps.smoke.outcome || 'not run' }} |"
             echo "| Code name | ${{ steps.codename.outputs.codename || 'none' }} |"
           } >> "$GITHUB_STEP_SUMMARY"

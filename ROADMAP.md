@@ -50,8 +50,8 @@ imported upstream tree for a shipping product.
 > [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
 > keeps release-note links exact in update surfaces. Commit
 > [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
-> requires signed Squirrel output, successful packaged smoke and unique UI-state
-> evidence before publication, and declares the custom self-hosted runner label
+> requires intentionally unsigned Squirrel output (`NotSigned`), successful
+> packaged smoke and unique UI-state evidence before publication, and declares the custom self-hosted runner label
 > for `actionlint`. No new labelled-runner verdict is available yet.
 
 ---
@@ -225,7 +225,8 @@ Not by a local build — local builds do not happen here.
       *Release* through to publication, *Pages* through to deployment.
 - [~] **Install job on the labelled self-hosted Windows runner.** `release.yml`
       now selects `[self-hosted, windows, material-designer]`, installs pnpm
-      10.33.2 and Node 24 through setup actions, verifies both versions, cleans
+      10.33.2, Node 24 and Python 3.12 through setup actions, exposes the x64
+      MSVC/Windows SDK toolchain for native compilation, verifies the versions, cleans
       the checkout, and resolves the workspace with `pnpm install
       --frozen-lockfile`. The install compiles a native SQLite binding from
       source because no prebuilt binary exists for this platform/runtime pair.
@@ -354,14 +355,17 @@ Not by a local build — local builds do not happen here.
       a tag no earlier release used, each carrying the installer its own run
       built. **The gating half is unproved**: no run has failed, so nothing has
       demonstrated that a failing run publishes nothing.
-- [x] **Do not sign the installer yet, and say so in the release notes.** The
-      generated notes say it outright: the installer is not code-signed, so the
+- [x] **Keep every installer unsigned, and say so in the release notes.** Code
+      signing is permanently prohibited. The generated notes say it outright:
+      the installer is not code-signed, so the
       operating system's reputation prompt appears on first run, and its "run
       anyway" affordance is hidden behind a "more info" link. Users will hit
       this. Documenting it is not optional politeness; it is the difference
       between a confused user and an abandoned install.
       *Verified by:* both published releases carrying that warning in their notes,
-      directly beneath the download instruction rather than buried at the bottom.
+      directly beneath the download instruction rather than buried at the bottom;
+      the new workflow additionally requires `Get-AuthenticodeSignature` to report
+      `NotSigned` before publication.
 - [x] **Commit a line-count script and have CI run it at the released commit.**
       `scripts/line-count.mjs` is written, tracked, and invoked by both workflows
       (`release.yml` into the release notes, `verify.yml` into the job summary).

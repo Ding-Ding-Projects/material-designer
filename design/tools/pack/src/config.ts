@@ -306,6 +306,9 @@ export function resolveToolPackConfig(
   platform: ToolPackPlatform,
   options: ToolPackCliOptions = {},
 ): ToolPackConfig {
+  if (options.signed === true || options.notarize === true) {
+    throw new Error("Code signing and notarization are prohibited; build unsigned artifacts instead");
+  }
   const appVersion = resolveToolPackAppVersion(options.appVersion);
   const namespace = resolveNamespace({
     contract: OPEN_DESIGN_SIDECAR_CONTRACT,
@@ -327,7 +330,7 @@ export function resolveToolPackConfig(
     electronDistPath: resolveElectronDistPath(WORKSPACE_ROOT),
     electronVersion: resolveElectronVersion(WORKSPACE_ROOT),
     macCompression: resolveToolPackMacCompression(options.macCompression),
-    macNotarize: options.notarize === true,
+    macNotarize: false,
     namespace,
     platform,
     portable: options.portable === true,
@@ -352,7 +355,7 @@ export function resolveToolPackConfig(
     removeSidecars: options.removeSidecars === true,
     requireVelaCli: options.requireVelaCli === true,
     silent: options.silent !== false,
-    signed: options.signed === true,
+    signed: false,
     amrProfile: resolveToolPackAmrProfile(process.env.OPEN_DESIGN_AMR_PROFILE),
     telemetryRelayUrl: resolveToolPackTelemetryRelayUrl(process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL),
     updateMetadataUrl: resolveToolPackUpdateMetadataUrl(process.env.OD_UPDATE_METADATA_URL),
