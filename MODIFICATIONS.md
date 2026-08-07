@@ -49,9 +49,10 @@ control movement. The correction is committed at
 production focus selector, but its regression test built a button-only list and
 could therefore pass without ever traversing that input. The focused test now
 builds the modal's complete keyboard order, asserts that the native input is in
-it, and drives forward and reverse Tab traversal through every control while
-checking both wrap edges. The jsdom helper models the browser's ordinary middle
-control move while leaving wrap behavior to the real modal handler.
+it, and drives forward and reverse Tab traversal through every control. The
+jsdom helper models the browser's ordinary middle control move while leaving
+wrap-edge ownership to the real modal handler; the later edge assertion is
+recorded separately in [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56).
 The correction is committed at [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e).
 
 **Changed files:**
