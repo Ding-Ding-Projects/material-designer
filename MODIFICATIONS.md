@@ -29,16 +29,17 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
-### 2026-08-07 — Remove redundant Windows standalone pnpm store before Squirrel packaging
+### 2026-08-07 — Exclude the redundant Windows standalone pnpm store before Squirrel packaging
 
 **Reason:** Release run `31168712919` reached Squirrel extraction and failed with
 `System.IO.PathTooLongException` after the output and Squirrel temporary roots had
 already been shortened. The Windows standalone hook dereferences its copied links and
 hoists the public package targets, so the remaining `.pnpm` store was redundant. The
-hook now removes that store only on Windows, after the existing Next dedupe, without
-walking every file to calculate a byte total; that large recursive audit made the first
-repair spend too long in the packaging hook. The removal prevents peer-qualified store
-paths from entering the Squirrel package while preserving Unix symlink layouts.
+the Windows copy now excludes that store before materializing the packaged resource and
+reads public hoist entries from the standalone source while copying them into their
+final locations. The earlier post-copy cleanup and recursive audit made the first repair
+spend too long in the packaging hook. The exclusion prevents peer-qualified store paths
+from entering the Squirrel package while preserving Unix symlink layouts.
 
 **Changed files:**
 

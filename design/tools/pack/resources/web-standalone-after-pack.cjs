@@ -172,6 +172,7 @@ async function copyRequired(sourcePath, destinationPath, options = {}) {
   await mkdir(path.dirname(destinationPath), { recursive: true });
   await cp(sourcePath, destinationPath, {
     dereference: options.dereference === true,
+    filter: options.filter,
     recursive: true,
     verbatimSymlinks: options.dereference === true ? false : true,
   });
@@ -198,7 +199,9 @@ async function linkRelative(sourcePath, destinationPath, options = {}) {
 
 async function linkPnpmPublicHoist(destinationRoot, options = {}) {
   const nodeModulesRoot = path.join(destinationRoot, "node_modules");
-  const hoistRoot = path.join(nodeModulesRoot, ".pnpm", "node_modules");
+  const hoistRoot = options.sourceStandaloneRoot
+    ? path.join(options.sourceStandaloneRoot, "node_modules", ".pnpm", "node_modules")
+    : path.join(nodeModulesRoot, ".pnpm", "node_modules");
   const entries = await readdir(hoistRoot, { withFileTypes: true }).catch(() => []);
   const linked = [];
 
@@ -234,11 +237,18 @@ async function resolveStandaloneSourceWebRoot(standaloneSourceRoot) {
   throw new Error(`[tools-pack web-standalone] standalone server.js not found under ${standaloneSourceRoot}`);
 }
 
+function isPnpmStoreRoot(sourcePath) {
+  return path.basename(sourcePath) === ".pnpm" && path.basename(path.dirname(sourcePath)) === "node_modules";
+}
+
 async function installStandaloneResource(config, resourcesRoot, platformName) {
   const sourceWebRoot = await resolveStandaloneSourceWebRoot(config.standaloneSourceRoot);
   const destinationRoot = path.join(resourcesRoot, config.resourceName);
   const destinationWebRoot = path.join(destinationRoot, "apps", "web");
-  const copyOptions = { dereference: platformName === "win32" };
+  const copyOptions = {
+    dereference: platformName === "win32",
+    filter: platformName === "win32" ? (sourcePath) => !isPnpmStoreRoot(sourcePath) : undefined,
+  };
 
   await rm(destinationRoot, { force: true, recursive: true });
   await mkdir(destinationWebRoot, { recursive: true });
@@ -247,7 +257,10 @@ async function installStandaloneResource(config, resourcesRoot, platformName) {
   await copyRequired(path.join(sourceWebRoot, "server.js"), path.join(destinationWebRoot, "server.js"));
   await copyOptional(path.join(sourceWebRoot, "package.json"), path.join(destinationWebRoot, "package.json"));
   const copiedNestedNodeModules = await copyOptional(path.join(sourceWebRoot, "node_modules"), path.join(destinationWebRoot, "node_modules"), copyOptions);
-  const linkedHoistEntries = await linkPnpmPublicHoist(destinationRoot, { copyInsteadOfSymlink: platformName === "win32" });
+  const linkedHoistEntries = await linkPnpmPublicHoist(destinationRoot, {
+    copyInsteadOfSymlink: platformName === "win32",
+    sourceStandaloneRoot: platformName === "win32" ? config.standaloneSourceRoot : undefined,
+  });
   await copyRequired(path.join(sourceWebRoot, ".next"), path.join(destinationWebRoot, ".next"));
   const copiedStatic = await copyOptional(config.webStaticSourceRoot, path.join(destinationWebRoot, ".next", "static"));
   const copiedPublic = await copyOptional(config.webPublicSourceRoot, path.join(destinationWebRoot, "public"));

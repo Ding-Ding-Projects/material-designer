@@ -196,6 +196,7 @@ describe("web standalone afterPack hook", () => {
       expect(await pathExists(join(fixture.destinationRoot, "node_modules", "next"))).toBe(false);
       expect(await pathExists(join(fixture.destinationRoot, "node_modules", ".pnpm", "node_modules", "next"))).toBe(false);
       expect(await pathExists(join(fixture.destinationRoot, "node_modules", ".pnpm"))).toBe(false);
+      expect(await pathExists(join(fixture.destinationRoot, "node_modules", "react", "package.json"))).toBe(true);
       expect(await pathExists(join(fixture.destinationRoot, "apps", "web", "node_modules", "next", "package.json"))).toBe(true);
 
       const report = JSON.parse(await readFile(fixture.auditReportPath, "utf8")) as {
@@ -214,10 +215,7 @@ describe("web standalone afterPack hook", () => {
         /apps\/web\/node_modules\/next$/,
       );
       expect(report.copiedNextDedupeAudit.remainingPaths).toEqual([]);
-      expect(report.copiedPnpmStorePrune.map((entry) => entry.reason)).toEqual([
-        "copied pnpm store is redundant after Windows link dereference and hoisting",
-      ]);
-      expect(report.copiedPnpmStorePrune[0].bytes).toBeNull();
+      expect(report.copiedPnpmStorePrune).toEqual([]);
       expect(resolvedNextPath).toMatch(
         /open-design-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
       );
