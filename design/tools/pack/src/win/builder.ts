@@ -170,6 +170,7 @@ async function runElectronBuilderRaw(
     )
     : null;
   const builderConfig = {
+    author: PRODUCT_NAME,
     appId: "io.ding-ding.material-designer",
     afterPack: webStandaloneHookConfigPath == null ? undefined : winResources.webStandaloneAfterPackHook,
     asar: ELECTRON_BUILDER_ASAR,
@@ -233,6 +234,11 @@ async function runElectronBuilderRaw(
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
       icon: paths.winIconPath,
+      // Keep both packaging and update verification explicitly unsigned. The
+      // release workflow validates the generated setup executable before it
+      // can publish any Squirrel artifacts.
+      sign: false,
+      verifyUpdateCodeSignature: false,
       // No `publisherName` here. It reads like general metadata but
       // electron-builder 26 treats it as a signing input and moved it under
       // `win.signtoolOptions`, so setting it at this level fails schema
