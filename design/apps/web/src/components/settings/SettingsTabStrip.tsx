@@ -148,21 +148,32 @@ export function SettingsTabStrip({
     const button = overflowRef.current;
     if (!button || typeof window === 'undefined') return;
     const rect = button.getBoundingClientRect();
-    const width = Math.max(0, Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2));
-    const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - VIEWPORT_MARGIN - 4);
-    const spaceAbove = Math.max(0, rect.top - VIEWPORT_MARGIN - 4);
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const width = Math.max(1, Math.min(MENU_WIDTH, viewportWidth - VIEWPORT_MARGIN * 2));
+    const horizontalMargin = viewportWidth >= width + VIEWPORT_MARGIN * 2 ? VIEWPORT_MARGIN : 0;
+    const maxLeft = Math.max(horizontalMargin, viewportWidth - width - horizontalMargin);
+    const anchorRight = Math.min(viewportWidth, Math.max(0, rect.right));
+    const left = Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
+    // A trigger can be in a scrolled-away strip while the menu is opening.
+    // Measure the visible edge, not the stale document coordinate, or the
+    // fixed card can be born with a negative top/bottom value.
+    const anchorTop = Math.min(viewportHeight, Math.max(0, rect.top));
+    const anchorBottom = Math.min(viewportHeight, Math.max(0, rect.bottom));
+    const spaceBelow = Math.max(0, viewportHeight - anchorBottom - VIEWPORT_MARGIN - 4);
+    const spaceAbove = Math.max(0, anchorTop - VIEWPORT_MARGIN - 4);
     const placement = spaceBelow >= 240 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
-    const maxHeight = placement === 'top' ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(1, placement === 'top' ? spaceAbove : spaceBelow);
+    const maxTop = Math.max(0, viewportHeight - maxHeight);
     setMenuAnchor({
-      top: placement === 'bottom' ? rect.bottom + 4 : 0,
-      left: Math.max(
-        VIEWPORT_MARGIN,
-        Math.min(rect.right - width, window.innerWidth - width - VIEWPORT_MARGIN),
-      ),
+      top: placement === 'bottom' ? Math.min(maxTop, Math.max(0, anchorBottom + 4)) : 0,
+      left,
       width,
       maxHeight,
       placement,
-      bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
+      bottom: placement === 'top'
+        ? Math.min(maxTop, Math.max(0, viewportHeight - anchorTop + 4))
+        : undefined,
     });
   }, []);
 
@@ -370,6 +381,11 @@ export function SettingsTabStrip({
                   return;
                 }
                 const target = event.target as HTMLElement;
+                const focusScope = target.closest<HTMLElement>('[data-focus-scope]');
+                if (
+                  event.key === 'Tab'
+                  && focusScope?.getAttribute('data-focus-scope') === menuId
+                ) return;
                 const typing = target instanceof HTMLInputElement
                   || target instanceof HTMLTextAreaElement
                   || target instanceof HTMLSelectElement;
@@ -401,6 +417,7 @@ export function SettingsTabStrip({
                 className={styles.menuSearchInput}
                 hostClassName={styles.menuSearch}
                 testId="settings-tabs-overflow-search"
+                focusScopeId={menuId}
                 autoFocus
               />
               {filteredTabs.length === 0 ? (

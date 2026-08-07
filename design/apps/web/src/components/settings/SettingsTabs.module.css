@@ -157,7 +157,9 @@
 /* Portalled, because `.modal-body` clips its overflow — an anchored menu
    rendered inside the strip would be cut off at the first tab row. */
 .menu {
-  z-index: 60;
+  /* The portalled card sits over the opaque settings page (z-index 100),
+     while staying below notifications, the command palette and tooltips. */
+  z-index: 130;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

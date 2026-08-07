@@ -5,8 +5,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { OnboardingDropdown } from '../../src/components/EntryShell';
 
+const originalInnerHeight = window.innerHeight;
+
 afterEach(() => {
   cleanup();
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
   vi.restoreAllMocks();
 });
 
@@ -110,7 +113,8 @@ describe('OnboardingDropdown', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Claude Sonnet 4.5/ }));
+    const trigger = screen.getByRole('button', { name: /Claude Sonnet 4.5/ });
+    fireEvent.click(trigger);
     const search = screen.getByRole('searchbox', { name: 'Search models' });
     expect(screen.getByRole('listbox', { name: 'Model' })).toBeTruthy();
 
