@@ -72,14 +72,27 @@ no residue.
 > [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
 > `FigmaImportModal` closes before the host focus callback, rejected Home URL
 > handoffs keep the modal open with a real retry path, and `aria-invalid` /
-> `aria-describedby` are scoped to the visible invalid URL or dropzone rather
-> than notes or a hidden file input. Invalid drops clear stale files, the URL
+> `aria-describedby` are scoped to the invalid URL input or native file input;
+> the visible dropzone is the file input's labelled keyboard surface rather
+> than a second fake control. Invalid drops clear stale files, the URL
 > expression is anchored while retaining query/hash support, and the complete
 > visible surface uses the i18n catalog. English fallback, the `zh-TW`
 > Traditional Chinese seed and deliberate `zh-HK` overrides are included;
 > `MODIFICATIONS.md` lists every changed `design/` path. The focused source spec
 > is committed, but no Node, pnpm, Electron, build, CI or capture result was run
 > or claimed locally; hosted verification remains pending.
+
+> **Residual Figma input repair:** commit
+> [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+> makes a file dropped on the URL tab switch to the file tab, focuses the native
+> file input, and keeps the localized alert associated with that visible file
+> path. The native input is visually hidden without `display: none`, named through
+> a real localized label, associated with its helper and error text, and included
+> in the modal focus trap; the visible dropzone keeps the keyboard focus ring via
+> `:focus-within`. `zh-HK` intentionally inherits `figmaUrl` and
+> `figmaPlaceholder` from `zh-TW`. The URL-tab drop and native-input contracts are
+> covered by focused source tests; no Node, pnpm, Electron, build, CI or capture
+> command was run locally.
 
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:

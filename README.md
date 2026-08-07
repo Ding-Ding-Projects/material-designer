@@ -84,6 +84,18 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > no Node, pnpm, Electron, build, CI, or capture result is claimed from local
 > work.
 
+> **2026-08-06 Figma residual accessibility repair.** Commit
+> [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+> closes the two follow-up source gaps: a file dropped while the URL tab is open
+> now switches to the file tab, focuses the native file control, and keeps the
+> localized error associated with that visible path; the native input is now
+> visually hidden rather than removed with `display: none`, has a catalogued
+> accessible name and helper/error associations, and stays inside the modal focus
+> trap while the visible dropzone remains keyboard-operable. `zh-HK` intentionally
+> inherits `figmaUrl` and `figmaPlaceholder` from `zh-TW`, so no duplicate keys were
+> added. Focused source coverage is committed; no Node, pnpm, Electron, build, CI,
+> or capture result was run or claimed locally.
+
 > **Latest CI evidence.** Release run
 > [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
 > reached the frozen dependency install and then failed in the Windows packer

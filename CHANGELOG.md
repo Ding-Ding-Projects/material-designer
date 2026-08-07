@@ -64,6 +64,27 @@ version section when a release carries them.
 
 ### Changed
 
+- **Figma file drops now stay attached to a visible, named native control.**
+  [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+  moves a file dropped on the URL tab to the file tab before reporting the
+  localized error, focuses the real file input, and keeps the alert plus retry
+  path associated with that control. The input is visually hidden with a real
+  accessible name and helper/error relationships instead of being removed with
+  `display: none`; the visible dropzone remains keyboard-operable and the modal
+  focus trap includes the native control. `zh-HK` deliberately inherits
+  `figmaUrl` and `figmaPlaceholder` from `zh-TW`, so no duplicate locale keys were
+  introduced. Focused static coverage is committed; no local Node, pnpm, Electron,
+  build, CI or capture result is claimed.
+
+  Figma file drop 而家唔會同 visible native control 走失：URL tab 開住時掉
+  file，會先跳返 file tab，再將 focus 放返真 input，localized error、alert 同
+  retry 路徑全部黐實正確 control。Input 用真正可讀嘅 visually-hidden strategy，
+  有 accessible name 同 helper/error 關聯，唔再用 `display: none` 變隱形人；
+  visible dropzone 照樣畀 keyboard 用，modal focus trap 亦冇漏低 native control。
+  `zh-HK` 有意繼承 `zh-TW` 嘅 `figmaUrl` 同 `figmaPlaceholder`，所以冇重複 locale
+  key。Focused static coverage 已 commit；今次冇扮有本機 Node、pnpm、Electron、
+  build、CI 或 capture 結果。
+
 - **The final Figma import refutation repairs all six remaining source gaps.**
   [`FigmaImportModal`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe)
   now closes before the host focus callback can reach the underlying UI; Home

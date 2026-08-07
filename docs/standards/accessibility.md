@@ -1,13 +1,20 @@
 # Accessibility and sizing
 
 **Status: partial, source-level audit only.** The design mockup states the intent,
-and the final Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+the final six-finding Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe),
+and the residual drop/input repair is committed at [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd).
 The modal now closes before host focus work, keeps rejected Home URL handoffs
-open for retry, scopes `aria-invalid` and `aria-describedby` to the visible
-invalid URL or dropzone, clears a stale file after an invalid drop, rejects
-arbitrary URL suffixes while accepting query/hash forms, and localizes every
-visible Figma label and summary. The catalog keeps the English fallback, uses
-`zh-TW` as the Traditional Chinese seed and adds deliberate `zh-HK` overrides.
+open for retry, scopes `aria-invalid` and `aria-describedby` to the invalid URL
+or native file input, clears a stale file after an invalid drop, and switches
+URL-tab file drops to the visible file panel before reporting the error. The
+native file input is visually hidden without `display: none`, has a localized
+accessible name plus helper/error associations, remains in the modal focus trap,
+and gives the visible dropzone a keyboard focus ring through `:focus-within`.
+The URL validator rejects arbitrary URL suffixes while accepting query/hash
+forms, and localizes every visible Figma label and summary. The catalog keeps the
+English fallback, uses `zh-TW` as the Traditional Chinese seed and adds
+deliberate `zh-HK` overrides; `zh-HK` intentionally inherits `figmaUrl` and
+`figmaPlaceholder` from `zh-TW`.
 The modal body scrolls; context-menu labels wrap instead of disappearing and
 dismissal restores the opener's focus; the updater dialog traps focus, restores
 it on every close path and disables progress transitions for reduced motion; and
@@ -128,7 +135,7 @@ missing.
 | --- | --- |
 | Keyboard reachability audit | **Partial source-level audit.** The updater dialog, context-menu dismissal path and design-system Back control now have focused keyboard/name coverage; the full surface audit is open. |
 | Visible focus on every element | **Partial.** The updater dialog traps focus and returns it on close; the full focus matrix is not verified. |
-| Roles, names, states | **Partial.** Figma URL/notes fields now use explicit native `label`/`for` associations, localized upload copy, and assertive invalid-state associations; the design-system Back control has an explicit name; the full inventory remains open. |
+| Roles, names, states | **Partial.** Figma URL/notes fields now use explicit native `label`/`for` associations, and the file input has a localized labelled association plus helper/error references; localized upload copy and assertive invalid-state associations are covered by focused source tests; the design-system Back control has an explicit name; the full inventory remains open. |
 | Contrast measured | **Not started.** The mockup **states** text is checked at 4.5:1 and boundaries at 3:1. That is a claim in a design file, not a measurement. |
 | Reduced motion | **Partial.** The updater dialog removes progress transitions under `prefers-reduced-motion`; the full application motion inventory remains open. |
 | No clipping across the matrix | **Partial source-level audit.** Figma modal content scrolls and context-menu labels wrap; no installed build has been measured. |
@@ -219,7 +226,8 @@ looks.
 **No runtime matrix has been verified.** The source-level fixes have focused
 tests, but no installed build has rendered the full scale, narrow-width,
 display-density and language matrix. The Figma focus handoff, URL retry,
-visible-control error targeting, invalid-file reset, anchored URL forms,
+URL-tab file-drop routing, visible-control error targeting, invalid-file reset,
+native file-input naming and focus-trap inclusion, anchored URL forms,
 localized catalog coverage and callback ordering are covered by
 `design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`;
 the CI command is

@@ -5,12 +5,15 @@ background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.
 
 **Status: partial, source-level audit only.** The final Figma import repair is
-committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe).
+committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe),
+with the residual drop/input repair at [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd).
 The modal body now scrolls inside its bounded card, closes before the host focus
 callback runs, keeps rejected URL handoffs open for retry, and announces errors
-while associating them with the visible invalid URL or dropzone. Context-menu
-labels wrap instead of being clipped and focus returns to the originating
-control after dismissal. No installed build has yet been rendered and measured
+while associating them with the invalid URL input or the native file input behind
+the visible labelled dropzone; a file dropped on the URL tab first switches to
+that visible file panel. Context-menu labels wrap instead of being clipped and
+focus returns to the originating control after dismissal. No installed build has
+yet been rendered and measured
 at the full scale, narrow-width and language matrix; no build, CI or capture
 success is claimed by this source-level update.
 
@@ -162,9 +165,10 @@ setting for this rule:
 ## Verification
 
 **No runtime overlay matrix has been verified.** The Figma modal and context
-menu changes have focused source tests, but no overlay has been rendered and
-measured in an installed build from this repository. The focused tests are
-committed but were not run locally; CI remains the verification boundary.
+menu changes have focused source tests, including the URL-tab drop routing and
+native-input label/focus contract, but no overlay has been rendered and measured
+in an installed build from this repository. The focused tests are committed but
+were not run locally; CI remains the verification boundary.
 
 Conformance requires all of:
 
