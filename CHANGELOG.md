@@ -64,6 +64,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **Windows release jobs now ask for Git Bash by name.** The self-hosted runner's
+  bare `shell: bash` resolved to a WSL launcher with no installed distribution,
+  so the job failed before checkout and never reached the interesting machinery.
+  The release workflow now selects the installed Git-for-Windows Bash executable
+  explicitly, leaving WSL out of the dependency list
+  ([`99974ae`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974ae2fb9b4bdc2ee6bd80cdc3a1dcb1cf542a)).
+
+  Windows release job 而家明確叫 Git Bash：self-hosted runner 將 bare
+  `shell: bash` 誤認成冇 distro 嘅 WSL launcher，未 checkout 就已經收工，
+  連真正 machinery 都未見過。Workflow 而家直接揀 Git-for-Windows Bash，
+  WSL 唔再偷偷混入 dependency list。
+
 - **The release pipeline now refuses to sign anything.** The active Squirrel
   packer removes signer and notarization entry points, clears certificate and
   timestamp inputs, and verifies `Setup.exe` is `NotSigned` before publication.
