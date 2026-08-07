@@ -28,6 +28,7 @@ describe('OnboardingDropdown', () => {
     expect(document.querySelector('select')).toBeNull();
 
     const trigger = screen.getByRole('button', { name: /Claude Sonnet 4.5/ });
+    expect(trigger).toHaveAccessibleName(/Model.*Claude Sonnet 4.5/);
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     fireEvent.click(trigger);
@@ -116,6 +117,32 @@ describe('OnboardingDropdown', () => {
     fireEvent.keyDown(search, { key: 'Escape' });
 
     expect(screen.queryByRole('listbox', { name: 'Model' })).toBeNull();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('returns focus to the trigger after selecting a searchable option', () => {
+    const onChange = vi.fn();
+    render(
+      <OnboardingDropdown
+        label="Provider"
+        placeholder="Custom provider"
+        value=""
+        options={[
+          { value: 'anthropic', label: 'Anthropic' },
+          { value: 'openai', label: 'OpenAI' },
+        ]}
+        onChange={onChange}
+        searchable
+        searchPlaceholder="Provider"
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: /Provider.*Custom provider/ });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('option', { name: 'OpenAI' }));
+
+    expect(onChange).toHaveBeenCalledWith('openai');
+    expect(trigger).toHaveFocus();
   });
 
   it('uses generic no-match copy for searchable dropdown filters', () => {

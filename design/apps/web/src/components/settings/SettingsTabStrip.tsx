@@ -47,7 +47,10 @@ const VIEWPORT_MARGIN = 12;
 interface MenuAnchor {
   top: number;
   left: number;
+  width: number;
   maxHeight: number;
+  placement: 'top' | 'bottom';
+  bottom?: number;
 }
 
 export interface SettingsTabStripProps {
@@ -145,14 +148,21 @@ export function SettingsTabStrip({
     const button = overflowRef.current;
     if (!button || typeof window === 'undefined') return;
     const rect = button.getBoundingClientRect();
-    const width = Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
+    const width = Math.max(0, Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2));
+    const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - VIEWPORT_MARGIN - 4);
+    const spaceAbove = Math.max(0, rect.top - VIEWPORT_MARGIN - 4);
+    const placement = spaceBelow >= 240 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
+    const maxHeight = placement === 'top' ? spaceAbove : spaceBelow;
     setMenuAnchor({
-      top: rect.bottom + 4,
+      top: placement === 'bottom' ? rect.bottom + 4 : 0,
       left: Math.max(
         VIEWPORT_MARGIN,
         Math.min(rect.right - width, window.innerWidth - width - VIEWPORT_MARGIN),
       ),
-      maxHeight: Math.max(160, window.innerHeight - rect.bottom - VIEWPORT_MARGIN - 4),
+      width,
+      maxHeight,
+      placement,
+      bottom: placement === 'top' ? window.innerHeight - rect.top + 4 : undefined,
     });
   }, []);
 
@@ -252,10 +262,12 @@ export function SettingsTabStrip({
   const menuStyle: CSSProperties = menuAnchor
     ? {
         position: 'fixed',
-        top: menuAnchor.top,
         left: menuAnchor.left,
-        width: MENU_WIDTH,
+        width: menuAnchor.width,
         maxHeight: menuAnchor.maxHeight,
+        ...(menuAnchor.placement === 'top'
+          ? { top: 'auto', bottom: menuAnchor.bottom }
+          : { top: menuAnchor.top, bottom: 'auto' }),
       }
     : { position: 'fixed', top: 0, left: 0, width: MENU_WIDTH };
 

@@ -158,6 +158,7 @@
    rendered inside the strip would be cut off at the first tab row. */
 .menu {
   z-index: 60;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2px;

@@ -173,6 +173,48 @@ describe('Settings: the tab strip', () => {
     expect(tab('language').getAttribute('aria-selected')).toBe('true');
   });
 
+  it('keeps the overflow surface inside a narrow, short viewport', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 240 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 150 });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === 'settings-tabs-overflow') {
+        return {
+          x: 180,
+          y: 92,
+          width: 32,
+          height: 32,
+          top: 92,
+          right: 212,
+          bottom: 124,
+          left: 180,
+          toJSON: () => ({}),
+        };
+      }
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        toJSON: () => ({}),
+      };
+    });
+
+    renderSettings();
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
+
+    const menu = screen.getByTestId('settings-tabs-overflow-menu') as HTMLElement;
+    expect(menu.style.width).toBe('216px');
+    expect(menu.style.top).toBe('auto');
+    expect(menu.style.bottom).toBe('62px');
+    expect(menu.style.maxHeight).toBe('76px');
+  });
+
   it('gives the overflow menu its own searchable regex field and keyboard route', () => {
     renderSettings();
 

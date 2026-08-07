@@ -29,6 +29,28 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Keep UI overlays reachable and onboarding controls truthful
+
+**Reason:** the settings overflow surface could exceed a narrow or short viewport,
+onboarding dropdowns could strand focus after Escape or selection and announced only
+the selected value without the field name, and the command-palette size control was
+smaller than the app's keyboard and touch target. The repair clamps the settings
+surface on both axes with genuine above/below placement, restores focus to dropdown
+triggers, labels each trigger with its field and value, and gives the palette control
+a 48px target. Focused tests cover the geometry, focus return, accessible naming and
+target-size contracts. The source update is being integrated from this allowlisted
+change.
+
+**Changed files:**
+
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+- `apps/web/tests/components/EntryShell.onboarding-dropdown.test.tsx`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+
 ### 2026-08-06 — Search and drive the settings overflow menu
 
 **Reason:** the new settings tab strip made every section reachable through an
@@ -37,8 +59,8 @@ unsearchable list and offered no arrow-key route. The menu now has its own
 plain-text-first regex search field, bounded local filtering, an honest empty
 state, arrow/Home/End navigation, and focus restoration on Escape or Tab. The
 focused settings spec covers the filter, the menu's independent builder, the
-keyboard route and focus return. The exact source commit is added to this
-notice in the documentation follow-up after the source change is recorded.
+keyboard route and focus return. The source change is committed at
+[`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58).
 
 **Changed files:**
 
