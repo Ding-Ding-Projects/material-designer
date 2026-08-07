@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FigmaImportResult } from '@open-design/contracts';
 
-import { FigmaImportModal } from '../../src/components/FigmaImportModal';
+const importProjectFigmaMock = vi.hoisted(() => vi.fn());
+vi.mock('../../src/providers/registry', () => ({ importProjectFigma: importProjectFigmaMock }));
+
+import { FIGMA_URL_RE, FigmaImportModal } from '../../src/components/FigmaImportModal';
 import { I18nProvider, type Locale } from '../../src/i18n';
 
 const CSS = readFileSync(
@@ -26,7 +29,10 @@ function renderModal(locale?: Locale) {
 }
 
 describe('FigmaImportModal accessibility and layout', () => {
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    importProjectFigmaMock.mockReset();
+  });
 
   it('uses catalogued localized names for the URL and notes controls', () => {
     renderModal('zh-HK');
@@ -62,8 +68,58 @@ describe('FigmaImportModal accessibility and layout', () => {
     expect(error).toHaveAttribute('id', 'figma-import-error');
     expect(urlField).toHaveAttribute('aria-invalid', 'true');
     expect(urlField).toHaveAttribute('aria-describedby', 'figma-import-error');
-    expect(notesField).toHaveAttribute('aria-invalid', 'true');
-    expect(notesField).toHaveAttribute('aria-describedby', 'figma-import-error');
+    expect(notesField).not.toHaveAttribute('aria-invalid');
+    expect(notesField).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('anchors URL validation while accepting Figma query strings and hashes', () => {
+    expect(FIGMA_URL_RE.test('https://figma.com/file/abc123')).toBe(true);
+    expect(FIGMA_URL_RE.test('https://www.figma.com/design/abc123/landing?node-id=1%3A2#canvas')).toBe(true);
+    expect(FIGMA_URL_RE.test('https://figma.com/file/abc123 trailing text')).toBe(false);
+    expect(FIGMA_URL_RE.test('https://figma.com/file/abc123?node-id=1%3A2 extra')).toBe(false);
+  });
+
+  it('clears a valid file before reporting an invalid drop on the visible dropzone', () => {
+    renderModal();
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const dropzone = document.querySelector('[role="button"][tabindex="0"]') as HTMLElement;
+
+    fireEvent.change(fileInput, { target: { files: [new File(['valid'], 'design.fig')] } });
+    expect(screen.getByRole('button', { name: 'Import & build' })).not.toBeDisabled();
+
+    fireEvent.change(fileInput, { target: { files: [new File(['invalid'], 'notes.txt')] } });
+    expect(screen.getByRole('button', { name: 'Import & build' })).toBeDisabled();
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(dropzone).toHaveAttribute('aria-invalid', 'true');
+    expect(dropzone).toHaveAttribute('aria-describedby', 'figma-import-error');
+  });
+
+  it('keeps URL import failures visible and retryable', async () => {
+    const onClose = vi.fn();
+    const onFigmaUrl = vi.fn()
+      .mockRejectedValueOnce(new Error('Project unavailable'))
+      .mockResolvedValueOnce(undefined);
+    render(
+      <FigmaImportModal
+        onClose={onClose}
+        resolveProjectId={async () => null}
+        onImported={() => {}}
+        onFigmaUrl={onFigmaUrl}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Figma URL' }), {
+      target: { value: 'https://figma.com/file/abc123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Import & build' }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Project unavailable'));
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Import & build' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onFigmaUrl).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the standalone translator fallback in English without a provider', () => {
@@ -121,5 +177,43 @@ describe('FigmaImportModal accessibility and layout', () => {
     view.unmount();
     expect(document.activeElement).toBe(opener);
     opener.remove();
+  });
+
+  it('closes before invoking the host callback after a successful file import', async () => {
+    const calls: string[] = [];
+    const result: FigmaImportResult = {
+      snapshotDir: 'figma',
+      files: ['figma/tree.json'],
+      contextPath: 'figma/DESIGN-context.md',
+      suggestedPrompt: 'Build the imported page',
+      label: 'design.fig',
+      inventory: {
+        decoded: true,
+        source: 'fig-file',
+        nodeCount: 1,
+        pageCount: 1,
+        frameCount: 1,
+        componentCount: 0,
+        colors: [],
+        fonts: [],
+        assetCount: 0,
+        hasThumbnail: false,
+        warnings: [],
+      },
+    };
+    importProjectFigmaMock.mockResolvedValue({ ok: true, result });
+    render(
+      <FigmaImportModal
+        onClose={() => calls.push('close')}
+        resolveProjectId={async () => 'project-1'}
+        onImported={() => calls.push('imported')}
+      />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(['valid'], 'design.fig')] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import & build' }));
+
+    await waitFor(() => expect(calls).toEqual(['close', 'imported']));
   });
 });

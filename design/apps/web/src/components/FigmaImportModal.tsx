@@ -37,13 +37,19 @@ interface Props {
   onImported: (result: FigmaImportResult, projectId: string) => void;
   /** Fired when the user submits a Figma URL instead of a file; omit to hide
    *  the URL tab. */
-  onFigmaUrl?: (url: string, notes: string) => void;
+  onFigmaUrl?: (url: string, notes: string) => void | Promise<void>;
 }
 
 type Mode = 'file' | 'url';
 type Status = 'idle' | 'importing' | 'done' | 'error';
+type ErrorTarget = 'file' | 'url';
+interface ImportError {
+  message: string;
+  target: ErrorTarget;
+  invalid: boolean;
+}
 
-const FIGMA_URL_RE = /^https:\/\/(?:www\.)?figma\.com\/(?:file|design)\/[A-Za-z0-9]+/;
+export const FIGMA_URL_RE = /^https:\/\/(?:www\.)?figma\.com\/(?:file|design)\/[A-Za-z0-9]+(?:\/[A-Za-z0-9._~-]+)?(?:\?[^#\s]*)?(?:#[^\s]*)?$/;
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
@@ -60,7 +66,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
   const [notes, setNotes] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [status, setStatus] = useState<Status>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ImportError | null>(null);
   const [result, setResult] = useState<FigmaImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -120,13 +126,18 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
     if (files.length === 0) return;
     const fig = files.find((f) => f.name.toLowerCase().endsWith('.fig'));
     if (!fig) {
-      setError('That isn’t a .fig file. Export your Figma file as .fig (File → Save local copy) and drop it here.');
+      setFile(null);
+      setError({
+        message: t('dsCreate.figmaInvalidFile'),
+        target: 'file',
+        invalid: true,
+      });
       return;
     }
     setMode('file');
     setFile(fig);
     setError(null);
-  }, []);
+  }, [t]);
 
   const runImport = useCallback(async () => {
     if (!file) return;
@@ -135,33 +146,63 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
     const projectId = await resolveProjectId();
     if (!projectId) {
       setStatus('error');
-      setError('Could not open a project to import into.');
+      setError({
+        message: t('dsCreate.figmaProjectUnavailable'),
+        target: 'file',
+        invalid: false,
+      });
       return;
     }
     const outcome = await importProjectFigma(projectId, file, notes ? { notes } : undefined);
     if (!outcome.ok) {
       setStatus('error');
-      setError(outcome.error);
+      setError({
+        message: outcome.error || t('dsCreate.figmaImportFailed'),
+        target: 'file',
+        invalid: false,
+      });
       return;
     }
     setResult(outcome.result);
     setStatus('done');
+    // Close first so a host callback that focuses the underlying composer
+    // never runs while this aria-modal surface is still mounted.
+    onClose();
     // Hand the snapshot + prompt to the host (prefill composer / navigate).
     onImported(outcome.result, projectId);
-  }, [file, notes, resolveProjectId, onImported]);
+  }, [file, notes, resolveProjectId, onClose, onImported, t]);
 
-  const submitUrl = useCallback(() => {
+  const submitUrl = useCallback(async () => {
     const trimmed = url.trim();
     if (!FIGMA_URL_RE.test(trimmed)) {
-      setError('Enter a Figma file URL (https://figma.com/file/… or /design/…).');
+      setError({
+        message: t('dsCreate.figmaInvalidUrl'),
+        target: 'url',
+        invalid: true,
+      });
       return;
     }
-    onFigmaUrl?.(trimmed, notes.trim());
-    onClose();
-  }, [url, notes, onFigmaUrl, onClose]);
+    setStatus('importing');
+    setError(null);
+    try {
+      await onFigmaUrl?.(trimmed, notes.trim());
+      setStatus('done');
+      onClose();
+    } catch (caught) {
+      setStatus('error');
+      setError({
+        message: caught instanceof Error && caught.message.trim()
+          ? caught.message
+          : t('dsCreate.figmaImportFailed'),
+        target: 'url',
+        invalid: false,
+      });
+    }
+  }, [url, notes, onFigmaUrl, onClose, t]);
 
   const activateMode = useCallback((next: Mode) => {
     setMode(next);
+    setError(null);
     document.getElementById(`figma-import-tab-${next}`)?.focus();
   }, []);
 
@@ -221,9 +262,9 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
       >
         <header className={styles.head}>
           <span className={styles.headTitle} id="figma-import-title">
-            <Icon name="import" size={16} /> Import from Figma
+            <Icon name="import" size={16} /> {t('dsCreate.figmaImportTitle')}
           </span>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close" disabled={importing}>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('common.close')} disabled={importing}>
             <Icon name="close" size={18} />
           </button>
         </header>
@@ -236,7 +277,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
           <>
             <div className={styles.body}>
             {onFigmaUrl ? (
-              <div className={styles.tabs} role="tablist" aria-label="Figma import source">
+              <div className={styles.tabs} role="tablist" aria-label={t('dsCreate.figmaImportSource')}>
                 <button
                   id="figma-import-tab-file"
                   type="button"
@@ -263,7 +304,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                   onClick={() => activateMode('url')}
                   onKeyDown={onTabKeyDown}
                 >
-                  Figma URL
+                  {t('dsCreate.figmaUrl')}
                 </button>
               </div>
             ) : null}
@@ -292,6 +333,8 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                   onClick={() => inputRef.current?.click()}
                   role="button"
                   tabIndex={0}
+                  aria-invalid={error?.target === 'file' && error.invalid ? true : undefined}
+                  aria-describedby={error?.target === 'file' ? 'figma-import-error' : undefined}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); }
                   }}
@@ -308,8 +351,6 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                     type="file"
                     accept=".fig"
                     className={styles.fileInput}
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={error ? 'figma-import-error' : undefined}
                     onChange={(e) => {
                       pickFile(Array.from(e.target.files ?? []));
                       e.target.value = '';
@@ -332,13 +373,13 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                     type="url"
                     className={styles.urlInput}
                     placeholder={t('dsCreate.figmaPlaceholder')}
-                    aria-invalid={Boolean(error)}
-                    aria-describedby={error ? 'figma-import-error' : undefined}
+                    aria-invalid={error?.target === 'url' && error.invalid ? true : undefined}
+                    aria-describedby={error?.target === 'url' ? 'figma-import-error' : undefined}
                     value={url}
                     onChange={(e) => { setUrl(e.target.value); setError(null); }}
                   />
                   <p className={styles.dropHint}>
-                    Runs through the Figma connector (OAuth) and the migration flow.
+                    {t('dsCreate.figmaConnectorHelper')}
                   </p>
                 </div>
               </div>
@@ -350,25 +391,25 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 id="figma-import-notes"
                 className={styles.notes}
                 placeholder={t('dsCreate.notesPlaceholder')}
-                aria-invalid={Boolean(error)}
-                aria-describedby={error ? 'figma-import-error' : undefined}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
               />
             </div>
 
-            {error ? <p id="figma-import-error" className={styles.error} role="alert" aria-live="assertive">{error}</p> : null}
+            {error ? <p id="figma-import-error" className={styles.error} role="alert" aria-live="assertive">{error.message}</p> : null}
             </div>
 
             <footer className={styles.foot}>
-              <Button variant="ghost" onClick={onClose} disabled={importing}>Cancel</Button>
+              <Button variant="ghost" onClick={onClose} disabled={importing}>{t('common.cancel')}</Button>
               {mode === 'file' ? (
                 <Button onClick={() => void runImport()} disabled={!file || importing}>
-                  {importing ? (<><Icon name="spinner" size={14} className={styles.spin} /> Decoding…</>) : 'Import & build'}
+                  {importing ? (<><Icon name="spinner" size={14} className={styles.spin} /> {t('dsCreate.figmaDecoding')}</>) : t('dsCreate.figmaImportAction')}
                 </Button>
               ) : (
-                <Button onClick={submitUrl} disabled={!url.trim()}>Import & build</Button>
+                <Button onClick={() => void submitUrl()} disabled={!url.trim() || importing}>
+                  {importing ? (<><Icon name="spinner" size={14} className={styles.spin} /> {t('dsCreate.figmaImporting')}</>) : t('dsCreate.figmaImportAction')}
+                </Button>
               )}
             </footer>
           </>
@@ -382,30 +423,31 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
 }
 
 function FigmaImportSummary({ result }: { result: FigmaImportResult }) {
+  const t = useT();
   const inv = result.inventory;
   return (
     <div className={styles.summaryPane}>
       <p className={styles.summaryLead}>
-        <Icon name="check" size={15} /> Imported <strong>{result.label}</strong>
-        {inv.decoded ? '' : ' (assets only — the node tree could not be decoded)'}
+        <Icon name="check" size={15} /> {t('dsCreate.figmaImported')} <strong>{result.label}</strong>
+        {inv.decoded ? '' : ` (${t('dsCreate.figmaAssetsOnly')})`}
       </p>
       <ul className={styles.summaryStats}>
-        <li><strong>{inv.nodeCount}</strong> nodes</li>
-        <li><strong>{inv.pageCount}</strong> pages</li>
-        <li><strong>{inv.frameCount}</strong> frames</li>
-        <li><strong>{inv.componentCount}</strong> components</li>
-        <li><strong>{inv.colors.length}</strong> colors</li>
-        <li><strong>{inv.fonts.length}</strong> fonts</li>
-        <li><strong>{inv.assetCount}</strong> assets</li>
+        <li><strong>{inv.nodeCount}</strong> {t('dsCreate.figmaNodes')}</li>
+        <li><strong>{inv.pageCount}</strong> {t('dsCreate.figmaPages')}</li>
+        <li><strong>{inv.frameCount}</strong> {t('dsCreate.figmaFrames')}</li>
+        <li><strong>{inv.componentCount}</strong> {t('dsCreate.figmaComponents')}</li>
+        <li><strong>{inv.colors.length}</strong> {t('dsCreate.figmaColors')}</li>
+        <li><strong>{inv.fonts.length}</strong> {t('dsCreate.figmaFonts')}</li>
+        <li><strong>{inv.assetCount}</strong> {t('dsCreate.figmaAssets')}</li>
       </ul>
       {inv.colors.length ? (
-        <div className={styles.swatches} aria-label="Color tokens">
+        <div className={styles.swatches} aria-label={t('dsCreate.figmaColorTokens')}>
           {inv.colors.slice(0, 16).map((c) => (
             <span key={c} className={styles.swatch} style={{ background: c }} title={c} />
           ))}
         </div>
       ) : null}
-      <p className={styles.summaryFoot}>The prompt is ready in the composer — review and send to build the page.</p>
+      <p className={styles.summaryFoot}>{t('dsCreate.figmaSummaryFoot')}</p>
     </div>
   );
 }
