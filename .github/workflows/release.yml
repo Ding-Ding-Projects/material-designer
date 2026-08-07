@@ -241,9 +241,19 @@ jobs:
           # Squirrel.Windows creates nested nuspec/package paths. The hosted
           # runner workspace plus runner.temp can exceed MAX_PATH before the
           # packer gets to emit Setup.exe, so use a run-scoped short temp root.
+          # The Windows system temp parent is not readable by this service
+          # account. Keep the replacement under the runner-owned installation
+          # parent instead: it is accessible, on the same drive as the source,
+          # and shorter than the nested runner temp directory while preserving
+          # the relative imports used by the prebundle step.
           # This is process/job-local state; it does not change the runner's
           # persistent TEMP setting or touch another job's files.
-          $shortRoot = Join-Path $env:WINDIR ("Temp\md-pack-" + $env:GITHUB_RUN_ID)
+          $runnerTemp = $env:RUNNER_TEMP
+          $runnerInstallParent = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $runnerTemp))
+          if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
+            throw "The runner installation parent could not be resolved safely"
+          }
+          $shortRoot = Join-Path $runnerInstallParent ("md-pack-" + $env:GITHUB_RUN_ID)
           New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
           $env:TEMP = $shortRoot
           $env:TMP = $shortRoot
@@ -251,6 +261,7 @@ jobs:
           $cacheDir = Join-Path $shortRoot "cache"
           $buildJsonPath = Join-Path $shortRoot "build.json"
           "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
 
@@ -767,8 +778,8 @@ jobs:
       - name: Clean the run-scoped Windows packaging paths
         if: ${{ always() }}
         run: |
-          $ErrorActionPreference = "Stop"
-          $shortRoot = Join-Path $env:WINDIR ("Temp\md-pack-" + $env:GITHUB_RUN_ID)
-          if (Test-Path -LiteralPath $shortRoot) {
-            Remove-Item -LiteralPath $shortRoot -Recurse -Force
+          $ErrorActionPreference = "Continue"
+          $shortRoot = "${{ steps.pack.outputs.short_root }}"
+          if (-not [string]::IsNullOrWhiteSpace($shortRoot) -and (Test-Path -LiteralPath $shortRoot)) {
+            Remove-Item -LiteralPath $shortRoot -Recurse -Force -ErrorAction SilentlyContinue
           }
