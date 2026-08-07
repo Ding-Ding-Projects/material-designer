@@ -29,6 +29,23 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Search and drive the settings overflow menu
+
+**Reason:** the new settings tab strip made every section reachable through an
+overflow menu, but that menu still exposed all seventeen dynamic items as an
+unsearchable list and offered no arrow-key route. The menu now has its own
+plain-text-first regex search field, bounded local filtering, an honest empty
+state, arrow/Home/End navigation, and focus restoration on Escape or Tab. The
+focused settings spec covers the filter, the menu's independent builder, the
+keyboard route and focus return. The exact source commit is added to this
+notice in the documentation follow-up after the source change is recorded.
+
+**Changed files:**
+
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+
 ### 2026-08-06 — Prove the Figma focus-trap wrap edges
 
 **Reason:** the previous regression helper moved focus itself whenever jsdom did

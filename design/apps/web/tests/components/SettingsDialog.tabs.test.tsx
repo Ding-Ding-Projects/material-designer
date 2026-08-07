@@ -173,6 +173,37 @@ describe('Settings: the tab strip', () => {
     expect(tab('language').getAttribute('aria-selected')).toBe('true');
   });
 
+  it('gives the overflow menu its own searchable regex field and keyboard route', () => {
+    renderSettings();
+
+    const overflow = screen.getByTestId('settings-tabs-overflow');
+    fireEvent.click(overflow);
+
+    const menu = screen.getByTestId('settings-tabs-overflow-menu');
+    const search = screen.getByTestId('settings-tabs-overflow-search') as HTMLInputElement;
+    expect(search.getAttribute('data-regex-mode')).toBe('text');
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(SETTINGS_TAB_ORDER.length);
+
+    fireEvent.change(search, { target: { value: 'appearance' } });
+    const filtered = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.getAttribute('data-section')).toBe('appearance');
+
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow-search-regex-toggle'));
+    expect(screen.getByTestId('settings-tabs-overflow-search-regex-popover')).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '' } });
+    const allItems = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    allItems[0]?.focus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(allItems[1]);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(document.activeElement).toBe(allItems[allItems.length - 1]);
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(document.activeElement).toBe(overflow);
+    expect(screen.queryByTestId('settings-tabs-overflow-menu')).toBeNull();
+  });
+
   it('persists the tab so the next generic open lands where the user left off', () => {
     renderSettings();
 
