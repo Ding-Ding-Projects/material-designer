@@ -229,6 +229,8 @@ describe('FigmaImportModal accessibility and layout', () => {
         shiftKey,
       });
       current.dispatchEvent(event);
+      const wraps = shiftKey ? index === 0 : index === focusable.length - 1;
+      expect(event.defaultPrevented).toBe(wraps);
       // jsdom does not perform the browser's ordinary Tab default action. Let
       // the real modal handler own the wrap edges, and model the native move
       // between middle controls so the full path still exercises the input.
