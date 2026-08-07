@@ -709,6 +709,11 @@ export function CommandPalette({
             search={search}
             fieldLabel={t('commandPalette.placeholder')}
             className={styles.input}
+            // The shared field keeps its compact glyph button for dense
+            // toolbars. The palette is a modal search surface, so its own
+            // affordance gets the full 48px keyboard/touch target while the
+            // input still gives up width first at narrow viewports.
+            toggleClassName={styles.regexToggle}
             placeholder={t('commandPalette.placeholder')}
             ariaLabel={t('commandPalette.placeholder')}
             inputRef={inputRef}

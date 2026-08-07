@@ -105,6 +105,13 @@ jobs:
         # here does not go red, it quietly disarms every startup gate.
         run: bash scripts/check-loading-shell.sh
 
+      - name: Check the command-palette regex contract
+        shell: bash
+        # Keep this before dependency installation. The palette's own builder
+        # wiring, independent controller and narrow-layout target are source
+        # contracts; none of them needs Node to be checked.
+        run: bash scripts/check-command-palette-regex.sh
+
       - name: Report port integrity
         if: ${{ always() }}
         shell: bash

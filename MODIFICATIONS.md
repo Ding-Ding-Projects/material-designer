@@ -75,6 +75,23 @@ documented as such.
 - `tools/pack/tests/win-lifecycle.test.ts`
 - `tools/pack/tests/win-targets.test.ts`
 
+### 2026-08-06 — Keep the command-palette regex affordance reachable and guarded
+
+**Reason:** The palette already used the shared per-field regex builder, but its
+compact inherited affordance was only 26px. The palette now opts into the full
+48px keyboard/touch target while leaving the input as the flexible member of the
+search row. A focused source-level guard also protects the independent
+`useRegexSearch` controller, shared field semantics, accessible dialog affordance
+and narrow-viewport bounds. The existing allowlist entries for the palette files
+remain the declaration that makes these intentional differences from upstream
+legal under Apache-2.0 §4(b).
+
+**Changed files:**
+
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+
 ### 2026-08-06 — Make update restart wait for renderer saves and close audited UI gaps
 
 **Reason:** the UI audit found that an update restart could schedule process

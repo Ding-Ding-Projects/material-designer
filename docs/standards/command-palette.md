@@ -16,6 +16,16 @@ discoverable desktop binding is `Ctrl+Shift+F` on Windows/Linux and `⇧⌘F` on
 macOS, derived from `components/shortcuts/registry.ts` so the handler and every
 visible or assistive-technology hint share one source of truth.
 
+The palette passes its own `useRegexSearch` controller to the shared
+`RegexSearchField`; it does not borrow the header field's query, pattern, flags
+or mode. Its adjacent `.*` affordance keeps the palette's full 48px
+keyboard/touch target while the shared host lets the input yield first at
+narrow widths. `CommandPalette.test.tsx` carries both rendered cases and a
+source-level contract guard for this wiring, while
+`scripts/check-command-palette-regex.sh` repeats the dependency-free guard in
+the fast Verify job. A future raw-input shortcut cannot quietly remove the
+builder.
+
 ## The requirement
 
 ### One shortcut, everything behind it
@@ -107,7 +117,7 @@ palette has cost effort and delivered nothing.
 | Rows rendering live controls inline | **Implemented** for the indexed setting controls; hosted and installed-build verification remains open. | **Implemented.** |
 | Selecting a row teleporting to and revealing the control | **Implemented** through the reveal path; screen-reader and installed-build verification remains open. | **Implemented.** |
 | Two persisted sizes, bounded card default | **Implemented** — bounded card is the default and the full-window choice persists. | **Not verified** against this checklist. |
-| Own search wired to the pattern builder | **Implemented** — the palette owns an anchored builder with bounded local matching; other application search fields remain separate work. | **Implemented** — the site's search surfaces share one builder implementation. |
+| Own search wired to the pattern builder | **Implemented** — the palette owns an anchored builder with bounded local matching, an independent controller, a 48px affordance target and a source-level wiring guard; other application search fields remain separate work. | **Implemented** — the site's search surfaces share one builder implementation. |
 | Language modes and tone levels | **Implemented** in the palette's source-level controls; exhaustive locale and tone coverage remains pending. | **Implemented** for the site's own copy. |
 
 The application's status is **implemented**, not merely "designed" — the palette,
@@ -195,6 +205,18 @@ enumeration is hand-maintained rather than derived.
 packaged smoke path and the remaining conformance checklist below are still
 pending verification for this change; the documentation site's implementation
 has not been audited against the list below.
+
+The palette-specific regex contract is also covered in
+`tests/components/CommandPalette.test.tsx`: it checks that the search row keeps
+the shared `RegexSearchField`, that the palette creates exactly one local
+`useRegexSearch` controller, that plain text remains the hook default, and that
+the accessible builder affordance remains 48px and viewport-safe. These are
+static/source checks; they do not replace the hosted typecheck, unit suite or an
+installed-build capture.
+
+The same contract is checked before dependency installation by
+`scripts/check-command-palette-regex.sh`; it is intentionally plain Bash so a
+missing local Node toolchain does not make the source contract unverifiable.
 
 Conformance requires all of:
 

@@ -54,7 +54,10 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > modal's names, bounded scrolling, focus trap and reduced motion; context-menu
 > wrapping and focus return; updater-dialog focus; the design-system Back name;
 > the command palette's anchored regex builder and dialog-level Escape dismissal
-> from every focused palette control; and renderer save preparation
+> from every focused palette control. Its adjacent regex affordance now keeps a
+> full 48px keyboard/touch target while the input yields first at narrow widths,
+> and a source-level contract guard pins the palette-owned controller. Renderer
+> save preparation
 > for sketch, markdown and HTML edits before a Squirrel restart. Deferred
 > installers require an explicit one-shot authorization marker, re-arm safely
 > after a cold start, and revoke those markers during clear-cache. Scrollable

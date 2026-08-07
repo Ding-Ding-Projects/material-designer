@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -55,6 +56,66 @@ function renderPalette(overrides: Partial<Parameters<typeof CommandPalette>[0]> 
 
 const PALETTE_SEARCH = 'command-palette-search';
 const PALETTE_TARGET = en['commandPalette.commandFullWindow'];
+
+// This is deliberately source-level coverage as well as rendered coverage.
+// The most damaging regression here is a tidy-looking raw <input> replacing
+// the shared field, which can leave the unit list tests green while silently
+// dropping the builder, its per-field controller, or the narrow-viewport
+// anchor. Keep the contract beside the component tests so the guard travels
+// with the surface it protects.
+const PALETTE_SOURCE = readFileSync(
+  new URL('../../src/components/command-palette/CommandPalette.tsx', import.meta.url),
+  'utf8',
+);
+const PALETTE_STYLES = readFileSync(
+  new URL('../../src/components/command-palette/CommandPalette.module.css', import.meta.url),
+  'utf8',
+);
+const REGEX_FIELD_SOURCE = readFileSync(
+  new URL('../../src/components/regex/RegexSearchField.tsx', import.meta.url),
+  'utf8',
+);
+const REGEX_FIELD_STYLES = readFileSync(
+  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
+  'utf8',
+);
+const REGEX_SEARCH_SOURCE = readFileSync(
+  new URL('../../src/components/regex/useRegexSearch.ts', import.meta.url),
+  'utf8',
+);
+
+describe('CommandPalette regex wiring contract', () => {
+  it('keeps one palette-owned RegexSearchField in the search row', () => {
+    const searchRow = PALETTE_SOURCE.match(
+      /<div className=\{styles\.searchRow\}>[\s\S]*?\/\* A pattern is active/,
+    )?.[0];
+
+    expect(searchRow).toBeDefined();
+    expect(searchRow).toContain('<RegexSearchField');
+    expect(searchRow).toContain('search={search}');
+    expect(searchRow).toContain('toggleClassName={styles.regexToggle}');
+    expect(searchRow).not.toContain('<input');
+    expect(PALETTE_SOURCE.match(/useRegexSearch\(/g)).toHaveLength(1);
+    expect(PALETTE_SOURCE).toContain('const search = useRegexSearch(rawQuery, setRawQuery);');
+  });
+
+  it('keeps the shared field stateful, accessible, and narrow-layout safe', () => {
+    expect(REGEX_SEARCH_SOURCE).toContain("useState<RegexSearchMode>('text')");
+    expect(REGEX_SEARCH_SOURCE).toContain('const [flags, setFlags]');
+    expect(REGEX_SEARCH_SOURCE).toContain('const [parts, setParts]');
+    expect(REGEX_FIELD_SOURCE).toContain('value={search.query}');
+    expect(REGEX_FIELD_SOURCE).toContain('data-regex-mode={search.mode}');
+    expect(REGEX_FIELD_SOURCE).toContain('search.setQuery');
+    expect(REGEX_FIELD_SOURCE).toContain('aria-expanded={open}');
+    expect(REGEX_FIELD_SOURCE).toContain('aria-haspopup="dialog"');
+    expect(REGEX_FIELD_SOURCE).toContain('<RegexBuilder');
+    expect(PALETTE_STYLES).toMatch(
+      /\.regexToggle\s*\{[\s\S]*min-width:\s*48px;[\s\S]*min-height:\s*48px;/,
+    );
+    expect(REGEX_FIELD_STYLES).toContain('min-width: 0;');
+    expect(REGEX_FIELD_STYLES).toContain('max-width: calc(100vw - 24px);');
+  });
+});
 
 function openPaletteRegexBuilder() {
   fireEvent.click(screen.getByTestId(`${PALETTE_SEARCH}-regex-toggle`));

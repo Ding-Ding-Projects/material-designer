@@ -80,6 +80,14 @@
   color: var(--text-faint);
 }
 
+/* The shared regex affordance is compact in ordinary toolbars. This palette is
+   a modal, keyboard-first surface, so its adjacent builder control gets the
+   full 48px target without making the input overflow at narrow widths. */
+.regexToggle {
+  min-width: 48px;
+  min-height: 48px;
+}
+
 .sizeButton {
   display: inline-flex;
   align-items: center;

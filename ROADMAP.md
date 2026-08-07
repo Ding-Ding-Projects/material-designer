@@ -1274,9 +1274,11 @@ recollection that they were done.
       opens and simply forgets the size, and a failed write never blocks the
       resize itself.
 - [x] **Its own search wired to the regex builder**, running under its own
-      `createBoundedMatcher` so a pathological pattern cannot hang the palette,
-      with `CommandPalette.test.tsx` covering the anchored builder, flags,
-      invalid patterns and bounded matching. Hosted execution remains pending.
+      `useRegexSearch` controller so query, pattern, flags and mode cannot leak
+      in from the header field. The adjacent affordance keeps a 48px target and
+      the input yields first at narrow widths; `CommandPalette.test.tsx` covers
+      the rendered builder plus a source-level contract guard for the wiring.
+      Hosted execution remains pending.
 - [x] **Escape from every focused palette control.** The dialog-level fallback
       closes the palette from its size, scope and live setting controls while
       the search field and portalled regex builder retain their own first-close

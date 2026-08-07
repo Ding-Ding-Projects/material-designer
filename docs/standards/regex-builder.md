@@ -77,8 +77,8 @@ from catastrophic backtracking.
 | A builder exists anywhere in the product | **Partial.** The command palette has the full builder; other required fields do not. |
 | Reachable from every search bar | **Partial.** The command palette is wired; the remaining search inventory is not. |
 | Anchored per field | **Partial.** The command palette builder is anchored to its field; the remaining fields are not wired. |
-| Plain text default, regex opt-in | Designed. |
-| Bidirectional synchronisation | Designed for the shared panel; not for per-field state. |
+| Plain text default, regex opt-in | **Implemented for the command palette** through its own `useRegexSearch` controller; the remaining search inventory is still open. |
+| Bidirectional synchronisation | **Implemented for the command palette** — the field, raw pattern editor, guided parts, flags and matcher share one controller; the remaining fields are still open. |
 | Search on every settings surface | **Partial in design.** The mockup gives the settings sidebar its own search; individual settings tabs and panels do not have one. |
 | Cross-tab match reporting | **Not designed.** |
 | Engine and dialect identified in the interface | **Not designed.** |
