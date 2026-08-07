@@ -94,7 +94,10 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > trap while the visible dropzone remains keyboard-operable. `zh-HK` intentionally
 > inherits `figmaUrl` and `figmaPlaceholder` from `zh-TW`, so no duplicate keys were
 > added. Focused source coverage is committed; no Node, pnpm, Electron, build, CI,
-> or capture result was run or claimed locally.
+> or capture result was run or claimed locally. The follow-up focus contract is
+> [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal
+> keyboard order in both directions, explicitly including `figma-import-file`,
+> while leaving wrap behavior to the real handler.
 
 > **Latest CI evidence.** Release run
 > [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)

@@ -17,6 +17,8 @@ yet been rendered and measured
 at the full scale, narrow-width and language matrix; no build, CI or capture
 success is claimed by this source-level update.
 
+The native-input focus contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e); its source test now traverses the complete modal keyboard order in both directions, including `figma-import-file`, without claiming runtime rendering.
+
 ## The requirement
 
 ### Paint the surface
@@ -166,7 +168,7 @@ setting for this rule:
 
 **No runtime overlay matrix has been verified.** The Figma modal and context
 menu changes have focused source tests, including the URL-tab drop routing and
-native-input label/focus contract, but no overlay has been rendered and measured
+native-input label/focus contract plus full focus-trap traversal, but no overlay has been rendered and measured
 in an installed build from this repository. The focused tests are committed but
 were not run locally; CI remains the verification boundary.
 

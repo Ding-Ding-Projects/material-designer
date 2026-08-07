@@ -94,6 +94,14 @@ no residue.
 > covered by focused source tests; no Node, pnpm, Electron, build, CI or capture
 > command was run locally.
 
+> **Focus-trap contract correction:** commit
+> [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e)
+> replaces the button-only regression list with the complete modal keyboard order,
+> asserts that `figma-import-file` is present, and drives forward and reverse Tab
+> traversal through every control. The test models jsdom's ordinary middle-control
+> move while the real modal handler remains responsible for both wrap edges. This
+> corrects the documentation claim without claiming a runtime or CI verdict.
+
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
 

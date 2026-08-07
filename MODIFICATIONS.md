@@ -38,6 +38,7 @@ builds the modal's complete keyboard order, asserts that the native input is in
 it, and drives forward and reverse Tab traversal through every control while
 checking both wrap edges. The jsdom helper models the browser's ordinary middle
 control move while leaving wrap behavior to the real modal handler.
+The correction is committed at [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e).
 
 **Changed files:**
 

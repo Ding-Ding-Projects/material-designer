@@ -15,6 +15,7 @@ forms, and localizes every visible Figma label and summary. The catalog keeps th
 English fallback, uses `zh-TW` as the Traditional Chinese seed and adds
 deliberate `zh-HK` overrides; `zh-HK` intentionally inherits `figmaUrl` and
 `figmaPlaceholder` from `zh-TW`.
+The focus-trap regression contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal keyboard order in both directions and explicitly includes `figma-import-file`, while the real handler owns both wrap edges.
 The modal body scrolls; context-menu labels wrap instead of disappearing and
 dismissal restores the opener's focus; the updater dialog traps focus, restores
 it on every close path and disables progress transitions for reduced motion; and
@@ -227,7 +228,7 @@ looks.
 tests, but no installed build has rendered the full scale, narrow-width,
 display-density and language matrix. The Figma focus handoff, URL retry,
 URL-tab file-drop routing, visible-control error targeting, invalid-file reset,
-native file-input naming and focus-trap inclusion, anchored URL forms,
+native file-input naming and full focus-trap traversal, anchored URL forms,
 localized catalog coverage and callback ordering are covered by
 `design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`;
 the CI command is
