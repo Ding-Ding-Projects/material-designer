@@ -427,10 +427,10 @@ jobs:
         # The same rule the published site is held to, asked of the artifact a
         # user actually installs — and asked of the BUILD OUTPUT, not the
         # source, because a bundler can inline a remote URL that no source file
-        # spells out. The four bundled faces (Roboto Flex, Roboto Mono,
-        # Material Symbols Rounded, Cairo) exist so that this step has nothing
-        # to find; if a font CDN import ever comes back, it fails here rather
-        # than on a stranger's machine with no network.
+        # spells out. The application bundle and the shipped web UI are the
+        # executable surfaces covered here; the packaged catalogue also carries
+        # author-authored example HTML whose demos may intentionally name a CDN.
+        # The Pages workflow continues to scan its complete published site.
         #
         # It reads the payload path the packer already reported, so it inspects
         # what was really built rather than a directory guessed at from a
@@ -466,7 +466,13 @@ jobs:
             7z x -bso0 -bsp0 -y -o"$target" "$payload"
           fi
 
-          bash scripts/check-self-contained.sh "$target"
+          resource_root="$target/payload/resources"
+          if [ ! -d "$resource_root" ] && [ -d "$target/resources" ]; then
+            resource_root="$target/resources"
+          fi
+          bash scripts/check-self-contained.sh \
+            "$resource_root/app" \
+            "$resource_root/open-design-web-standalone"
 
       - name: Upload the installer as a workflow artifact
         # Always, so a failed smoke test still leaves something to inspect.
