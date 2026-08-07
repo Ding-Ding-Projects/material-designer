@@ -64,6 +64,21 @@ version section when a release carries them.
 
 ### Changed
 
+- **Release CI now reaches the web typecheck with a precise failure report.**
+  Run [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+  passed the portable Python bootstrap and frozen dependency installation, then
+  found 10 existing `apps/web` type errors before packaging. Commit
+  [`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+  restores the missing platform import, narrows three focus-trap element
+  accesses, aligns the HTML fixture with `ArtifactKind`, and declares all five
+  changed `design/` paths in `MODIFICATIONS.md`.
+
+  Release CI 而家終於行到 web typecheck，唔再畀 bootstrap 遮住真相。31155063471
+  過咗 portable Python 同 frozen dependency install，先揪出 `apps/web` 十個
+  type errors。`a769c35` 補返 platform import、收窄三個 focus trap、將 HTML
+  fixture 對返 `ArtifactKind`，仲喺 `MODIFICATIONS.md` 報齊五條 design path，
+  等 compiler 唔使再對住空氣發脾氣。
+
 - **Python bootstrap now uses the official embeddable archive.** Release run
   [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
   showed the direct installer returning `-2147024891` (`0x80070005`, access

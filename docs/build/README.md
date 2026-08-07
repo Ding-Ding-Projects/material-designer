@@ -13,12 +13,13 @@ How Material Designer is built, where that happens, and why.
 ## Status
 
 > [!IMPORTANT]
-> **All three workflows at the repository root have run.** `Verify` passes at
-> zero gaps, `Release` has built Windows installers and published two releases,
-> and `Pages` has deployed the documentation site. [ci.md](ci.md) records what
-> each run demonstrated and — just as plainly — the failure cases none of them
-> has: no workflow has been observed rejecting a bad tree. `Pages` is documented
-> under [../site/](../site/).
+> **The latest Release run is not green.** `Verify` has historical zero-gap
+> evidence, while Release run
+> [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+> passed the self-hosted bootstrap and frozen dependency installation before
+> failing at web Typecheck. Two earlier releases and a Pages deployment remain
+> historical evidence; no new installer or release is claimed from the failed
+> run. [ci.md](ci.md) records the exact failure and current verification state.
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
 > upstream project and are **inert**, because workflows are only read from the

@@ -96,6 +96,13 @@ imported upstream tree for a shipping product.
 > operations. Commit
 > [37534e5](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
 > carries that path; another labelled-runner verdict is still required.
+> Release run 31155063471 passed the portable Python bootstrap and frozen
+> dependency installation, then failed at Typecheck with 10 existing `apps/web`
+> errors: a missing `isMacPlatform` import, strict indexed focus access in three
+> dialogs, and an unsupported HTML artifact fixture. Commit
+> [a769c35](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+> repairs those files and declares the design-copy paths; another
+> labelled-runner verdict is still required.
 
 ---
 
@@ -141,11 +148,12 @@ mockup describing the intended redesign of its interface, a verifier that proves
 the import has not drifted, a rebrand being written on top of it, and the
 scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
-All three workflows have now run: the port verifies at zero gaps on a clean
-checkout, the release pipeline has built two Windows installers and published
-them under their own tags, and the documentation site is deployed. The packaged
-smoke test has installed one of those builds, launched it, made the running
-process answer its own health endpoint and uninstalled it.
+Historical runs have built two Windows installers and published them under
+their own tags, and the documentation site is deployed. The current main
+Release run 31155063471 passed the portable toolchain and frozen dependency
+installation but failed at web Typecheck; the next run must prove the repair
+before a new release is claimed. The port verifier still reports zero gaps on a
+clean checkout, and the earlier packaged smoke evidence remains historical.
 
 That is the machinery working, and it is worth separating from the product. What
 those runs prove is that this project can build and ship the imported application

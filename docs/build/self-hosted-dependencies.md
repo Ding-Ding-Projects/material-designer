@@ -49,6 +49,12 @@ self-hosted labels, its bootstrap call, Python coverage, or the unsigned release
 contract. CI is the fresh-runner proof for native compiler availability and the
 full lockfile install; a cache hit only shortens the same path.
 
+Release run
+[31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+proved the Windows tool and dependency bootstrap through `pnpm install
+--frozen-lockfile`; its later application Typecheck failed before packaging, so
+installer and release evidence remain pending.
+
 ## Security boundary
 
 Self-hosted jobs run only on trusted push and manual-dispatch events. There is no

@@ -6,11 +6,12 @@ Read this before touching anything.
 
 **Where it is.** The upstream tree was imported and *proved* byte-for-byte
 identical to its source, rebranded into a genuinely standalone application, and
-brought onto Material Design 3. All three workflows have run and passed. Two
-Windows installers have been built and published under their own tags, and the
-packaged smoke test installed one of them, launched it, made the running process
-answer its own health endpoint from inside its renderer, and uninstalled it with
-no residue.
+brought onto Material Design 3. Historical runs built and published two Windows
+installers under their own tags, and the packaged smoke test installed one of
+them, launched it, made the running process answer its own health endpoint from
+inside its renderer, and uninstalled it with no residue. The current main
+Release run 31155063471 passed dependency installation but failed at web
+Typecheck; the next run must prove the repair before a new release is claimed.
 
 > [!IMPORTANT]
 > **Updated 2026-08-04.** The two warnings that used to head this file — that
@@ -1018,6 +1019,18 @@ no bundle is already legal.
   implements that extraction and interpreter check. The next run must prove
   that path on the labelled runner.
 - Release run
+  [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+  passed the portable Python bootstrap and frozen dependency installation,
+  then failed at Typecheck with 10 `apps/web` errors: one missing
+  `isMacPlatform` import, nine strict indexed-focus/test-fixture type errors.
+  Tests, packaging, installer verification and publication were skipped.
+- Commit
+  [a769c35](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+  repairs those five design files and declares them in `MODIFICATIONS.md`;
+  `scripts/verify-port.sh --json` reports 0 gaps, 0 byte differences and 0
+  stale notices. The next labelled-runner run remains the authoritative
+  Typecheck, test, packaging and publication verdict.
+- Release run
   [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
   reached setup, Git-for-Windows shell steps and checkout, but Windows
   PowerShell blocked the generated unsigned temporary script with a
@@ -1031,7 +1044,8 @@ no bundle is already legal.
 - At this checkpoint the target issue is
   [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7), and
   the open issue scan found only that active release task in this repository;
-  the canonical memory repository still has open issues #10, #12 and #14.
+  the canonical memory repository still has open issues #10 and #12; #14 is
+  no longer open.
 
 ---
 

@@ -103,12 +103,14 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > edges, so the jsdom focus fallback cannot hide a missing edge guard.
 
 > **Latest CI evidence.** Release run
-> [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
-> reached the frozen dependency install and then failed in the Windows packer
-> typecheck because `lifecycle.ts:473` passed `"uninstall-legacy"` to an API that
-> accepts `"install" | "uninstall"`. Commit
-> [`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
-> fixes that call site; no later labelled-runner verdict is claimed yet.
+> [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+> passed self-hosted tool bootstrap, the byte-exact verifier, portable Python,
+> frozen dependency installation and then failed in the web Typecheck with 10
+> errors. Commit
+> [`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+> repairs the missing platform import, strict focus-trap indexing and the
+> unsupported HTML artifact fixture; its next labelled-runner verdict remains
+> unverified.
 
 > **2026-08-06 settings-menu accessibility repair.** The settings tab overflow
 > menu now carries its own plain-text-first regex search, honest no-match state,

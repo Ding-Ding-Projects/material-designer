@@ -9,17 +9,17 @@ runner, with Linux and Windows kept as separate contracts. `Pages` is documented
 where `Pages` fits.
 
 > [!IMPORTANT]
-> **All three workflows have run.** `Verify` has passed on a clean checkout with
-> zero gaps; `Release` has installed the workspace with native modules compiled
-> from source, typechecked it, run the Windows identity suites, built an
-> installer, validated its payload, put it through the packaged smoke test and
-> published it; `Pages` has deployed the site. Two releases exist,
-> `v0.16.1-r7.1` and `v0.16.1-r8.1`.
+> **The current Release run is not green.** Run
+> [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+> passed the self-hosted toolchain, portable Python bootstrap and frozen
+> dependency installation, then failed at the web Typecheck with 10 TypeScript
+> errors. No new installer or release was published by that run. Earlier
+> published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
+> not proof that this current commit is green.
 >
-> **What has not been observed is any of them failing.** No run has been seen
-> rejecting a bad tree, and a gate that has only ever been watched passing is not
-> known to be a gate. The unticked boxes under [Verification](#verification) are
-> exactly those cases.
+> **The current run has failed at Typecheck.** That is useful evidence about the
+> release gate, but it is not a green release. The unticked boxes under
+> [Verification](#verification) remain unverified until a later run passes them.
 >
 > Where this page describes what a workflow does, it is describing the committed
 > definition; where it states a result, it says so.
@@ -30,16 +30,17 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
-for `main` at `2cae835a1a9b6b86352b0c3b083ff1a35c061ebc` completed with **failure** in
-`Build Windows application → Install dependencies`. The frozen install resolved the
-workspace and then the post-install packer typecheck reported
-`src/win/lifecycle.ts(473,95): error TS2345`: `"uninstall-legacy"` was not assignable
-to `invokeNsis`'s `"install" | "uninstall"` action type. Commit
-[`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
-passes the supported `"uninstall"` action while retaining the separate
-`runTimed` legacy timing label. A new labelled-runner execution is still required;
-this page does not call the fix green before that run exists.
+Release run [`31155063471`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+for `main` at `12e8d3412d5fb159ba1a47c25870a0cf3bdc4e26` completed with **failure**
+in `Build Windows application → Typecheck`. The exact errors were
+`apps/web/src/App.tsx(2370,23): Cannot find name 'isMacPlatform'`, strict
+possibly-undefined indexed focus elements in `CommandPalette.tsx`,
+`FigmaImportModal.tsx` and `UpdateDialog.tsx`, and an unsupported
+`html-document` `ArtifactKind` in `FileWorkspace.test.tsx`. Commit
+[`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+repairs those five design files and updates the modification allowlist. A new
+labelled-runner execution is still required; this page does not call the fix
+green before that run exists.
 
 ## Behaviour
 
