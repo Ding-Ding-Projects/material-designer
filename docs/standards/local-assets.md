@@ -66,7 +66,7 @@ rows were last **not** met at commit `dea6b0a`.
 | **The mockup** | **Not met, by design-file convention.** It loads two text faces and an icon face from a third-party font service. A mockup is not a shipped surface, but this is the source the port copies from, so the violation transfers unless it is deliberately removed. |
 | **The documentation site** | **Met.** The site's markup contains no third-party asset reference; its external URLs are anchors to the project's own repository and release assets, which are navigations the user chooses, not requests the page makes. |
 | **The site's publish-time gate** | **Implemented.** The deployment workflow enforces self-contained assets before publishing — see [../site/pages-deployment.md](../site/pages-deployment.md). |
-| **The application's build-time gate** | **Implemented.** The same check now runs against the packed payload in the release workflow. It lives in `scripts/check-self-contained.sh` so both surfaces are held to one implementation, and it fails rather than passes when handed a directory it cannot read — a check that reports a pass for something it never opened is worse than no check. |
+| **The application's build-time gate** | **Implemented for executable surfaces.** The same check runs against the unpacked `resources/app` and `resources/open-design-web-standalone` payloads in the release workflow. Markup and CSS remain recursive; first-party JavaScript external requests remain checked, while dependency JavaScript is excluded because the archive contains unreachable build/dev helpers and optional telemetry modules. It still fails rather than passes when a target directory cannot be read. |
 
 ### The preview-runtime case is the hard one
 

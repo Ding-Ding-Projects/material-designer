@@ -430,7 +430,11 @@ jobs:
         # spells out. The application bundle and the shipped web UI are the
         # executable surfaces covered here; the packaged catalogue also carries
         # author-authored example HTML whose demos may intentionally name a CDN.
-        # The Pages workflow continues to scan its complete published site.
+        # The checker still scans markup and CSS recursively, while its
+        # external-request sweep is limited to first-party JavaScript because
+        # dependency trees carry unreachable build/dev helpers and optional
+        # telemetry modules. The Pages workflow continues to scan its complete
+        # published site.
         #
         # It reads the payload path the packer already reported, so it inspects
         # what was really built rather than a directory guessed at from a

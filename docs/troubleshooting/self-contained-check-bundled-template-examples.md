@@ -91,6 +91,14 @@ previews render. The same checker continues to fail when either application
 surface is missing, unreadable, or contains a remote script, stylesheet, image,
 CSS asset, or external request.
 
+For JavaScript external-request matches only, the checker excludes files below
+`node_modules`: dependency packages carry build-time helpers and optional
+development/telemetry modules that are present in the archive but are not
+application-authored runtime behavior. HTML and CSS remain recursive, including
+under dependencies, because those files can render or load assets directly.
+First-party JavaScript remains fully checked. This keeps the check narrow by
+execution responsibility rather than by a filename-shaped allowlist.
+
 The next Release run must confirm the correction against a freshly unpacked
 Squirrel payload and record its actual result here. A workflow edit alone is
 not evidence of a passing release.

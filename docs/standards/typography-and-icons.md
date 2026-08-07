@@ -387,7 +387,7 @@ belongs and then replace it. Blocking briefly is the correct trade for an icon.
 | No migrated component still imports `RemixIcon` | same | Pinned |
 | Every rendered symbol name is one the mapping vouches for | same | Pinned |
 | Every mapped name is a real ligature in the shipped woff2, targeting the same glyph as its published codepoint | offline `cmap` + `GSUB` walk of the file on disk (method above) | **49/49** |
-| The built artifact fetches nothing | `bash scripts/check-self-contained.sh <dir>` — run on `site/` by the Pages workflow and on the packed payload by the release workflow | Wired |
+| The built artifact fetches no asset from its executable surfaces | `bash scripts/check-self-contained.sh <dir>` — run on `site/` by the Pages workflow and on `resources/app` plus `resources/open-design-web-standalone` by the Release workflow; markup/CSS are recursive and first-party JavaScript external requests are checked | Wired |
 | The port stays byte-exact | `bash scripts/verify-port.sh` | 0 gaps |
 
 **What is NOT proved, and must not be claimed:**

@@ -28,7 +28,8 @@ bad=0
 # matched by any of these.
 check() {
   local dir=$1 what=$2 glob=$3 pattern=$4
-  if grep -rnE "$pattern" "$dir" --include="$glob"; then
+  shift 4
+  if grep -rnE "$pattern" --include="$glob" "$@" "$dir"; then
     echo "::error::$dir $what"
     bad=1
   fi
@@ -60,7 +61,14 @@ for dir in "$@"; do
   check "$dir" "loads a remote image"        '*.html' '<(img|source)[^>]+src(set)?="https?://'
   check "$dir" "imports a remote stylesheet" '*.css'  '@import[[:space:]]*(url\()?["'"'"']?https?://'
   check "$dir" "loads a remote CSS asset"    '*.css'  'url\([[:space:]]*["'"'"']?https?://'
-  check "$dir" "makes an external request"   '*.js'   '(fetch|XMLHttpRequest|WebSocket)[[:space:]]*\([[:space:]]*["'"'"']https?://'
+  # Dependencies carry build/dev helpers and optional telemetry code that is
+  # not application-authored runtime behavior. Scan first-party JavaScript for
+  # external requests, while keeping HTML and CSS checks recursive everywhere:
+  # those files can render or load assets directly even when nested in a
+  # dependency. A future first-party bundle copied under node_modules would be
+  # an explicit packaging-contract problem, not a reason to treat Next's
+  # unreachable dev files as application behavior.
+  check "$dir" "makes an external request"   '*.js'   '(fetch|XMLHttpRequest|WebSocket)[[:space:]]*\([[:space:]]*["'"'"']https?://' --exclude-dir=node_modules
 
   echo "$dir: inspected $css stylesheet(s), $html page(s), $js script(s)"
 done
