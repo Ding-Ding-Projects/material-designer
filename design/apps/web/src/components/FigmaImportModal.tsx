@@ -116,17 +116,20 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
         dialog.focus();
         return;
       }
+      const firstFocusable = focusable[0];
+      const lastFocusable = focusable[focusable.length - 1];
+      if (!firstFocusable || !lastFocusable) return;
       const activeElement = document.activeElement;
       const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
       if (activeIndex === -1) {
         e.preventDefault();
-        (e.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+        (e.shiftKey ? lastFocusable : firstFocusable).focus();
       } else if (e.shiftKey && activeIndex === 0) {
         e.preventDefault();
-        focusable[focusable.length - 1].focus();
+        lastFocusable.focus();
       } else if (!e.shiftKey && activeIndex === focusable.length - 1) {
         e.preventDefault();
-        focusable[0].focus();
+        firstFocusable.focus();
       }
     };
     document.addEventListener('keydown', onKey);

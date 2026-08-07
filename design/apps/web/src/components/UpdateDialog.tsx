@@ -238,18 +238,21 @@ export function UpdateDialog() {
         dialog.focus();
         return;
       }
+      const firstFocusable = focusable[0];
+      const lastFocusable = focusable[focusable.length - 1];
+      if (!firstFocusable || !lastFocusable) return;
 
       const activeElement = document.activeElement;
       const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
       if (activeIndex === -1) {
         event.preventDefault();
-        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+        (event.shiftKey ? lastFocusable : firstFocusable).focus();
       } else if (event.shiftKey && activeIndex === 0) {
         event.preventDefault();
-        focusable[focusable.length - 1].focus();
+        lastFocusable.focus();
       } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
         event.preventDefault();
-        focusable[0].focus();
+        firstFocusable.focus();
       }
     };
     document.addEventListener('keydown', onKeyDown);

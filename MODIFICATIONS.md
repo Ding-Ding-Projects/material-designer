@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Repair the web typecheck boundary exposed by the release runner
+
+**Reason:** the first full self-hosted Windows release reached the application
+typecheck and found a missing platform import, three focus traps whose indexed
+element access was not narrowed under strict TypeScript settings, and a test
+fixture using an artifact kind outside the committed contract. The fixes keep
+keyboard focus behavior unchanged while making the non-empty element boundary
+explicit, restore the existing platform helper import, and align the fixture
+with the supported `html` artifact kind.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/tests/components/FileWorkspace.test.tsx`
+
 ### 2026-08-07 — Make every release artifact intentionally unsigned
 
 **Reason:** code signing is permanently prohibited for this project. The active
