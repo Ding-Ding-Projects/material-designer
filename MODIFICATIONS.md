@@ -29,6 +29,21 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Remove redundant Windows standalone pnpm store before Squirrel packaging
+
+**Reason:** Release run `31168712919` reached Squirrel extraction and failed with
+`System.IO.PathTooLongException` after the output and Squirrel temporary roots had
+already been shortened. The Windows standalone hook dereferences its copied links and
+hoists the public package targets, so the remaining `.pnpm` store was redundant. The
+hook now removes that store only on Windows, after the existing Next dedupe, preventing
+peer-qualified store paths from entering the Squirrel package while preserving Unix
+symlink layouts.
+
+**Changed files:**
+
+- `tools/pack/resources/web-standalone-after-pack.cjs`
+- `tools/pack/tests/web-standalone-after-pack.test.ts`
+
 ### 2026-08-07 — Shorten the Squirrel output path during Windows packaging
 
 **Reason:** Release run `31164999787` proved that the unsigned Squirrel controls

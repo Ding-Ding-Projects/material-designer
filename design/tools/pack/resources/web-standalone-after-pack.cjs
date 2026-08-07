@@ -425,6 +425,23 @@ async function dedupeCopiedStandaloneNext(destinationRoot, destinationWebRoot, p
   };
 }
 
+async function pruneCopiedPnpmStore(destinationRoot, platformName) {
+  if (platformName !== "win32") return [];
+
+  // Windows copies the standalone tree with dereference=true and hoists the
+  // public entries before this point. The pnpm store is therefore redundant
+  // in the packaged Windows resource, while its peer-qualified directory
+  // names are exactly the kind of deep paths that Squirrel.Windows cannot
+  // extract with its legacy MAX_PATH handling.
+  const removedPaths = [];
+  await removePathAndRecord(
+    path.join(destinationRoot, "node_modules", ".pnpm"),
+    "copied pnpm store is redundant after Windows link dereference and hoisting",
+    removedPaths,
+  );
+  return removedPaths;
+}
+
 async function pruneBrokenSymlinks(root, current = root, removedPaths = [], reason = "broken symlink") {
   let metadata;
   try {
@@ -894,6 +911,10 @@ async function runWebStandaloneAfterPack(context) {
     installResult.destinationWebRoot,
     context.electronPlatformName,
   );
+  const copiedPnpmStorePrune = await pruneCopiedPnpmStore(
+    installResult.destinationRoot,
+    context.electronPlatformName,
+  );
   const copiedBuildResiduePrune = context.electronPlatformName === "win32"
     ? await pruneSourceBuildResidue(installResult.destinationRoot, "copied standalone source/build residue")
     : [];
@@ -942,6 +963,7 @@ async function runWebStandaloneAfterPack(context) {
     copiedBuildResiduePrune,
     copiedNextDedupe,
     copiedNextDedupeAudit,
+    copiedPnpmStorePrune,
     copiedPrune,
     generatedAt: new Date().toISOString(),
     macAdhocBundleSign,
