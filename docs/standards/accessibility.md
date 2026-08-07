@@ -2,8 +2,10 @@
 
 **Status: partial, source-level audit only.** The design mockup states the intent,
 and the 2026-08-06 audit fixed several concrete source defects: the Figma import
-fields now have durable accessible names and a scrollable modal body; context-menu
-labels wrap instead of disappearing and dismissal restores the opener's focus;
+URL and notes controls now have visible native `label`/`for` associations with
+stable ids, so placeholder text is guidance rather than the only name, and the
+modal body scrolls; context-menu labels wrap instead of disappearing and
+dismissal restores the opener's focus;
 the updater dialog traps focus, restores it on every close path and disables
 progress transitions for reduced motion; and the design-system Back control has
 an explicit localized name. These changes have focused tests, but no installed
@@ -122,7 +124,7 @@ missing.
 | --- | --- |
 | Keyboard reachability audit | **Partial source-level audit.** The updater dialog, context-menu dismissal path and design-system Back control now have focused keyboard/name coverage; the full surface audit is open. |
 | Visible focus on every element | **Partial.** The updater dialog traps focus and returns it on close; the full focus matrix is not verified. |
-| Roles, names, states | **Partial.** Figma URL/notes fields and the design-system Back control have explicit names; the full inventory remains open. |
+| Roles, names, states | **Partial.** Figma URL/notes fields now use explicit native `label`/`for` associations, and the design-system Back control has an explicit name; the full inventory remains open. |
 | Contrast measured | **Not started.** The mockup **states** text is checked at 4.5:1 and boundaries at 3:1. That is a claim in a design file, not a measurement. |
 | Reduced motion | **Partial.** The updater dialog removes progress transitions under `prefers-reduced-motion`; the full application motion inventory remains open. |
 | No clipping across the matrix | **Partial source-level audit.** Figma modal content scrolls and context-menu labels wrap; no installed build has been measured. |
@@ -212,7 +214,10 @@ looks.
 
 **No runtime matrix has been verified.** The source-level fixes have focused
 tests, but no installed build has rendered the full scale, narrow-width,
-display-density and language matrix. The claims in the mockup about contrast and
+display-density and language matrix. The Figma label associations are covered by
+`design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`; the CI command
+is `pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
+That command was not run locally, and the claims in the mockup about contrast and
 target sizes remain design intent, not results.
 
 Conformance requires all of:
