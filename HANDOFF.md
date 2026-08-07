@@ -936,6 +936,34 @@ no bundle is already legal.
 
 ---
 
+## Release CI repair lane (2026-08-07)
+
+- The unsigned Squirrel release lane is on commit
+  [64ef401818d453ea87161c62fcb4997632ccc158](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158).
+  It keeps the self-hosted Windows label, automatic dependency bootstrap,
+  signing prohibition, Authenticode NotSigned check, packaged smoke test,
+  UI-state evidence, Squirrel assets and measured release timing.
+- Release run
+  [31152036272](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152036272)
+  failed before checkout because bare bash resolved to a WSL launcher without a
+  Linux distribution. Release run
+  [31152251945](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152251945)
+  also failed before checkout because the quoted spaced Git-for-Windows path
+  was malformed by the Windows command resolver. Neither run produced an
+  installer, artifact or GitHub Release.
+- The current commit replaces both ambiguous shell forms with the runner's
+  space-free Git-for-Windows path. Local structural validation passed with
+  actionlint -shellcheck=; Node, pnpm and Electron remain deliberately unrun
+  outside CI. The next release run is the authoritative check for checkout,
+  dependency installation, tests, Squirrel packaging, unsigned status, smoke,
+  artifact upload and publication.
+- At this checkpoint the target issue is
+  [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7), and
+  the open issue scan found only that active release task in this repository;
+  the canonical memory repository still has open issues #10, #12 and #14.
+
+---
+
 ## Keeping this file honest
 
 Update this document in the same change that alters the state it describes — not

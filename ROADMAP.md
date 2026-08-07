@@ -52,7 +52,12 @@ imported upstream tree for a shipping product.
 > [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
 > requires intentionally unsigned Squirrel output (`NotSigned`), successful
 > packaged smoke and unique UI-state evidence before publication, and declares the custom self-hosted runner label
-> for `actionlint`. No new labelled-runner verdict is available yet.
+> for `actionlint`. Release runs 31152036272 and 31152251945 both failed before
+> checkout because the Windows shell command was resolved through WSL first and
+> then through a malformed quoted Git-for-Windows path. Commit
+> [64ef401](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158)
+> uses the runner's space-free Git-for-Windows path; a new labelled-runner
+> verdict is still required.
 
 ---
 

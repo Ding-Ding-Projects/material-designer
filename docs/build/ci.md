@@ -88,6 +88,12 @@ resolved to the WSL launcher, which failed before checkout because no Linux
 distribution was installed. Installing or relying on WSL is not part of the
 release contract; the workflow uses the already-installed Git-for-Windows route.
 
+The explicit Windows shell uses the installation's space-free short path. A
+quoted path containing spaces was a second dead end: the runner joined it to a
+PATH shim before starting Bash and failed before checkout. Keeping the
+Git-for-Windows executable explicit while removing the spaces avoids that
+command-line ambiguity without introducing WSL as a dependency.
+
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a

@@ -64,6 +64,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Windows release shell now avoids a second path-shaped trap.** The first
+  repair named Git Bash but quoted an executable path with spaces; the runner
+  combined that command with a PATH shim and failed before checkout. The
+  workflow now uses the installation's space-free Windows short path, keeping
+  the release explicitly on Git-for-Windows without adding WSL
+  ([64ef401](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158)).
+
+  Windows release shell 而家避開第二個 path 陷阱：第一次修補雖然叫咗
+  Git Bash，但 quote 住有空格嘅 executable path，runner 將佢同 PATH shim
+  撈埋一齊，checkout 前已經收工。Workflow 而家用安裝位置嘅無空格
+  Windows short path，繼續明確行 Git-for-Windows，唔使加 WSL。
+
 - **Windows release jobs now ask for Git Bash by name.** The self-hosted runner's
   bare `shell: bash` resolved to a WSL launcher with no installed distribution,
   so the job failed before checkout and never reached the interesting machinery.
