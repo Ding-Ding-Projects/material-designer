@@ -109,8 +109,10 @@ policy-blocked setup-python action; scripts/bootstrap-python.ps1 downloads the
 pinned actions/python-versions archive, verifies SHA-256, locates its
 `python-3.12.10-amd64.exe` installer, and invokes that executable directly with
 `InstallAllUsers=0` into the user-scoped runner cache. It then verifies the
-installed interpreter and adds its directory to GITHUB_PATH. The archive's
-unsigned setup.ps1 is never loaded by PowerShell.
+installed interpreter and adds its directory to GITHUB_PATH. The invocation
+uses `Start-Process -Wait -PassThru` and checks the explicit numeric exit code,
+because `$LASTEXITCODE` is not a reliable result channel for this installer
+shape. The archive's unsigned setup.ps1 is never loaded by PowerShell.
 
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.

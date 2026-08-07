@@ -83,6 +83,12 @@ imported upstream tree for a shipping product.
 > now invokes the archive's installer directly with `InstallAllUsers=0` and
 > verifies the resulting interpreter; another labelled-runner verdict is
 > still required.
+> Release run 31154520542 reached the direct installer, but Windows PowerShell
+> left `$LASTEXITCODE` empty and the null comparison stopped the job before
+> interpreter discovery. Commit
+> [9dcdb2f](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+> now waits for the installer process, validates its explicit exit code, and
+> then checks `python.exe`; another labelled-runner verdict is still required.
 
 ---
 

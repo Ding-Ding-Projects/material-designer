@@ -993,6 +993,18 @@ no bundle is already legal.
   interpreter. Local actionlint, PowerShell parsing and diff checks pass; the
   next labelled-runner run remains the authoritative packaging verdict.
 - Release run
+  [31154520542](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154520542)
+  reached the direct installer, but Windows PowerShell left `$LASTEXITCODE`
+  empty; the script treated the null comparison as failure before checking for
+  `python.exe`. No dependency install, test, package, installer, artifact or
+  GitHub Release was produced.
+- Commit
+  [9dcdb2f](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+  waits for the installer with `Start-Process -Wait -PassThru`, records its
+  explicit exit code, accepts success or reboot-required, and then verifies the
+  installed interpreter. Local actionlint, PowerShell parsing and diff checks
+  pass; the next labelled-runner run remains the authoritative verdict.
+- Release run
   [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
   reached setup, Git-for-Windows shell steps and checkout, but Windows
   PowerShell blocked the generated unsigned temporary script with a

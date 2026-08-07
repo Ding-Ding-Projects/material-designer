@@ -64,6 +64,21 @@ version section when a release carries them.
 
 ### Changed
 
+- **Python installer completion now uses an explicit process result.** Release
+  run [31154520542](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154520542)
+  reached the direct installer, but Windows PowerShell left `$LASTEXITCODE`
+  empty and the null comparison stopped the job before interpreter discovery.
+  Commit [`9dcdb2f`](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+  waits with `Start-Process -Wait -PassThru`, logs the numeric exit code, and
+  accepts only success or the documented reboot-required result before checking
+  `python.exe`.
+
+  31154520542 終於行到 direct installer，但 Windows PowerShell 留低空白
+  `$LASTEXITCODE`，null comparison 又將個 job 提早請出場。`9dcdb2f` 而家用
+  `Start-Process -Wait -PassThru` 等 process 完成，記低實數字 exit code，淨係
+  接受成功或者 documented reboot-required，先再驗 `python.exe`，唔畀空白數字
+  再扮大佬。
+
 - **Python bootstrap now uses the archive's installer executable.** Release run
   [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)
   proved that the verified `actions/python-versions` archive contains
