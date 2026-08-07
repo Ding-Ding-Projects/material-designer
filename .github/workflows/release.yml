@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 120
     defaults:
       run:
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     env:
       # Namespace and channel are literals here. Upstream derives them from a
       # release-metadata job wired to infrastructure this fork does not have,
@@ -108,7 +108,7 @@ jobs:
           arch: x64
 
       - name: Clear prohibited signing inputs
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Stop"
           $signingInputs = @(
