@@ -162,6 +162,11 @@
   gap: 6px;
   margin: 16px;
 }
+.fieldLabel {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
 .urlInput {
   width: 100%;
   padding: 10px 12px;
@@ -177,8 +182,14 @@
 }
 
 /* --- notes -------------------------------------------------------------- */
-.notes {
+.notesField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin: 0 16px;
+}
+.notes {
+  margin: 0;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;

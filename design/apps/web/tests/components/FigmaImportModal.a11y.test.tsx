@@ -37,8 +37,12 @@ describe('FigmaImportModal accessibility and layout', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Figma URL' }));
     expect(screen.getByRole('tabpanel', { name: 'Figma URL' })).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: 'Figma URL' })).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: 'Notes for the build' })).toBeTruthy();
+    const urlField = screen.getByRole('textbox', { name: 'Figma URL' });
+    const notesField = screen.getByRole('textbox', { name: 'Notes for the build' });
+    expect(urlField).toHaveAttribute('id', 'figma-import-url');
+    expect(notesField).toHaveAttribute('id', 'figma-import-notes');
+    expect(document.querySelector('label[for="figma-import-url"]')).toHaveTextContent('Figma URL');
+    expect(document.querySelector('label[for="figma-import-notes"]')).toHaveTextContent('Notes for the build');
   });
 
   it('supports arrow-key tab navigation with a roving tab stop', () => {
