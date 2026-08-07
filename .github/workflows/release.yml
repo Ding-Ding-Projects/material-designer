@@ -253,7 +253,11 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
             throw "The runner installation parent could not be resolved safely"
           }
-          $shortRoot = Join-Path $runnerInstallParent ("md-pack-" + $env:GITHUB_RUN_ID)
+          $runSuffix = $env:GITHUB_RUN_ID
+          if ($runSuffix.Length -gt 8) {
+            $runSuffix = $runSuffix.Substring($runSuffix.Length - 8)
+          }
+          $shortRoot = Join-Path $runnerInstallParent ("m-" + $runSuffix)
           New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
           $env:TEMP = $shortRoot
           $env:TMP = $shortRoot
