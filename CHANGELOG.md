@@ -64,6 +64,21 @@ version section when a release carries them.
 
 ### Changed
 
+- **Python bootstrap now uses the archive's installer executable.** Release run
+  [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)
+  proved that the verified `actions/python-versions` archive contains
+  `python-3.12.10-amd64.exe` and `setup.ps1`, not a portable `python.exe`.
+  The first repair therefore stopped at interpreter discovery. Commit
+  [`c45e243`](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+  locates the installer and runs it directly with `InstallAllUsers=0` into the
+  user-scoped cache, so PowerShell never loads the unsigned setup script.
+
+  個 archive 原來係 installer bundle，唔係 portable `python.exe`：入面有
+  `python-3.12.10-amd64.exe` 同 `setup.ps1`。31154123479 證明第一版只係
+  hash-check 完就搵錯地方，未入到真正 build。`c45e243` 而家直接叫 installer
+  入 user-scoped cache，用 `InstallAllUsers=0`，唔再畀 PowerShell 請 unsigned
+  setup script 入場，個 Python bootstrap 終於識睇門牌。
+
 - **Python now enters the release job through a policy-safe bootstrap.**
   actions/setup-python downloaded the right 3.12 archive but then tried to run
   an unsigned setup.ps1, which the self-hosted runner rejected under AllSigned.

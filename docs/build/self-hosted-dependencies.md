@@ -11,7 +11,7 @@ owns and checks versions before doing project work.
 | --- | --- | --- | --- |
 | `Verify` / `verify` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; Node 24 | `scripts/verify-port.sh` and the committed release-contract test |
 | `Verify` / `test` | `self-hosted`, `linux`, `material-designer` | Everything in `verify`; pnpm 10.33.2; Node 24; Python 3.12; the native compiler and headers required by the lockfile's native modules; workspace dependencies from `design/pnpm-lock.yaml` | `pnpm install --frozen-lockfile` |
-| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | Windows PowerShell (powershell.exe); user-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
+| `Release` / `build` | `self-hosted`, `windows`, `material-designer` | Windows PowerShell (powershell.exe); user-scoped `gh 2.76.2`, `jq 1.8.0`, and 7-Zip 25.01; Node 24; pnpm 10.33.2; Python 3.12 installed by the pinned `python-3.12.10-amd64.exe` with `InstallAllUsers=0`; MSVC x64 and the Windows SDK; workspace dependencies from `design/pnpm-lock.yaml`; Squirrel/electron-builder tools from the lockfile | `pnpm install --frozen-lockfile` |
 | `Pages` / `deploy` | `self-hosted`, `linux`, `material-designer` | Bash, Git, curl, tar, coreutils, `flock`; user-scoped `gh 2.76.2` and `jq 1.8.0`; static-site inputs tracked in `site/` | Static-site validation and publication |
 
 The release job deliberately clears certificate, signer, timestamp, and
@@ -33,7 +33,10 @@ report `NotSigned` for `Setup.exe`.
 - Language and compiler bootstrap: the workflows use the official
   `pnpm/action-setup`, `actions/setup-node`, and `ilammy/msvc-dev-cmd` actions;
   the Windows Release job uses `scripts/bootstrap-python.ps1` because the
-  runner's AllSigned policy blocks the action's unsigned setup script.
+  runner's AllSigned policy blocks the action's unsigned setup script. The
+  bootstrap verifies the `actions/python-versions` archive, invokes its
+  `python-3.12.10-amd64.exe` directly with `InstallAllUsers=0`, and verifies the
+  resulting `python.exe` in the user-scoped cache.
   Project dependencies come only from the committed manifests and lockfile.
 
 ## Fresh-environment bootstrap proof

@@ -75,6 +75,14 @@ imported upstream tree for a shipping product.
 > [511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)
 > replaces that action with a pinned, hash-checked Python bootstrap; another
 > labelled-runner verdict is still required.
+> Release run 31154123479 reached the first Python bootstrap after setup,
+> checkout, the byte-exact verifier, pnpm and Node. The verified archive
+> contained `python-3.12.10-amd64.exe` and `setup.ps1`, so the initial archive
+> scan could not find `python.exe` and no package was attempted. Commit
+> [c45e243](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+> now invokes the archive's installer directly with `InstallAllUsers=0` and
+> verifies the resulting interpreter; another labelled-runner verdict is
+> still required.
 
 ---
 

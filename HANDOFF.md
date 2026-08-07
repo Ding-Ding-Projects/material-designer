@@ -980,6 +980,19 @@ no bundle is already legal.
   bootstrap and adds the contract check that keeps the blocked action out of
   the Windows Release job. The next run remains the authoritative verdict.
 - Release run
+  [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)
+  passed setup, checkout, the byte-exact verifier, pnpm and Node, then failed
+  in the first Python bootstrap because the verified archive contains
+  `python-3.12.10-amd64.exe` plus `setup.ps1`, rather than a portable
+  `python.exe`. No MSVC activation, dependency install, test, package,
+  installer, artifact or GitHub Release was produced.
+- Commit
+  [c45e243](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+  locates the archive's installer and runs it directly with
+  `InstallAllUsers=0` into the user-scoped cache, then verifies the installed
+  interpreter. Local actionlint, PowerShell parsing and diff checks pass; the
+  next labelled-runner run remains the authoritative packaging verdict.
+- Release run
   [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
   reached setup, Git-for-Windows shell steps and checkout, but Windows
   PowerShell blocked the generated unsigned temporary script with a

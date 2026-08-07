@@ -106,8 +106,11 @@ not change the user's persistent execution policy.
 
 The Python runtime follows the same boundary. The release does not call the
 policy-blocked setup-python action; scripts/bootstrap-python.ps1 downloads the
-pinned actions/python-versions archive, verifies SHA-256, extracts it into the
-user-scoped runner cache, and adds the verified interpreter to GITHUB_PATH.
+pinned actions/python-versions archive, verifies SHA-256, locates its
+`python-3.12.10-amd64.exe` installer, and invokes that executable directly with
+`InstallAllUsers=0` into the user-scoped runner cache. It then verifies the
+installed interpreter and adds its directory to GITHUB_PATH. The archive's
+unsigned setup.ps1 is never loaded by PowerShell.
 
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
