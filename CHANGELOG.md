@@ -64,6 +64,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **Figma import fields now carry their own names.** The URL and build-notes
+  controls use visible native `label`/`for` associations and stable ids, so the
+  placeholder remains optional guidance instead of the only accessible name. The
+  focused accessibility spec checks both associations; the local Node/pnpm/
+  Electron toolchain was not run ([`d918d33`](https://github.com/Ding-Ding-Projects/material-designer/commit/d918d33)).
+
+  Figma import 嘅 URL 同 build notes 而家自己有真 label/for 同 stable id，
+  placeholder 只係提示，唔再一個人扮晒 accessible name。Focused accessibility
+  spec 會對返兩條 association；今次冇喺本機開 Node/pnpm/Electron 個重型引擎，
+  留返 CI 做正式驗證。
+
 - **The first self-hosted Release run exposed and received a narrow Windows packer fix.**
   Release `31127492852` completed with failure after `pnpm install --frozen-lockfile`
   resolved the workspace: the post-install packer typecheck passed
