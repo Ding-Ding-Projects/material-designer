@@ -74,6 +74,42 @@ describe('UpdateDialog', () => {
     restoreHost = null;
   });
 
+  it('renders the exact release notes target supplied by update metadata', async () => {
+    let statusListener: OpenDesignHostUpdaterStatusListener | null = null;
+    let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
+    const ready = payloadReadyStatus({
+      metadata: { releaseNotesUrl: 'https://example.test/releases/v1.2.4' },
+    });
+    restoreHost = installMockOpenDesignHost({
+      host: {
+        updater: {
+          status: vi.fn(async () => idleStatus()),
+          subscribe: vi.fn((listener) => {
+            statusListener = listener;
+            return vi.fn();
+          }),
+          subscribeOpenDialog: vi.fn((listener) => {
+            openDialogListener = listener;
+            return vi.fn();
+          }),
+        },
+      },
+    });
+
+    render(<I18nProvider initial="en"><UpdateDialog /></I18nProvider>);
+    await act(async () => {
+      statusListener?.(ready);
+      await Promise.resolve();
+    });
+    await act(async () => {
+      openDialogListener?.({ source: 'metadata-url-test' });
+      await Promise.resolve();
+    });
+
+    const link = await screen.findByTestId('update-dialog-release-notes');
+    expect(link.getAttribute('data-release-notes-url')).toBe('https://example.test/releases/v1.2.4');
+  });
+
   it('updates silently in the background and opens ready state only after the native menu request', async () => {
     let statusListener: OpenDesignHostUpdaterStatusListener | null = null;
     let openDialogListener: OpenDesignHostUpdaterOpenDialogListener | null = null;
