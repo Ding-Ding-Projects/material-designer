@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Keep Figma drops on a visible, named native file control
+
+**Reason:** a file dropped on the URL tab could leave its localized error tied to
+the hidden file surface, and the native file input itself was removed from the
+accessibility tree with `display: none`. The modal now switches every file drop to
+the file tab before reporting the error, focuses the real file control after that
+switch, and keeps the visible dropzone keyboard-operable through a visually-hidden
+native input with a localized accessible name, helper association and error
+association. The focused source spec covers the URL-tab drop path, retry-safe error
+state and the native input contract. `zh-HK` intentionally continues to inherit
+`figmaUrl` and `figmaPlaceholder` from `zh-TW`; no duplicate locale keys are needed.
+
+**Changed files:**
+
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Complete the six Figma import repairs
 
 **Reason:** the final read-only refutation found six remaining source-level gaps in

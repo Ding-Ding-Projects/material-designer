@@ -81,8 +81,8 @@ describe('FigmaImportModal accessibility and layout', () => {
 
   it('clears a valid file before reporting an invalid drop on the visible dropzone', () => {
     renderModal();
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const dropzone = document.querySelector('[role="button"][tabindex="0"]') as HTMLElement;
+    const fileInput = document.getElementById('figma-import-file') as HTMLInputElement;
+    const dropzone = document.querySelector('label[for="figma-import-file"]') as HTMLElement;
 
     fireEvent.change(fileInput, { target: { files: [new File(['valid'], 'design.fig')] } });
     expect(screen.getByRole('button', { name: 'Import & build' })).not.toBeDisabled();
@@ -90,8 +90,47 @@ describe('FigmaImportModal accessibility and layout', () => {
     fireEvent.change(fileInput, { target: { files: [new File(['invalid'], 'notes.txt')] } });
     expect(screen.getByRole('button', { name: 'Import & build' })).toBeDisabled();
     expect(screen.getByRole('alert')).toBeTruthy();
-    expect(dropzone).toHaveAttribute('aria-invalid', 'true');
-    expect(dropzone).toHaveAttribute('aria-describedby', 'figma-import-error');
+    expect(fileInput).toHaveAttribute('aria-invalid', 'true');
+    expect(fileInput).toHaveAttribute('aria-describedby', 'figma-import-file-helper figma-import-error');
+    expect(dropzone).toHaveAttribute('for', 'figma-import-file');
+  });
+
+  it('moves a URL-tab drop to the visible file target and keeps its localized error associated', async () => {
+    renderModal('zh-HK');
+
+    const urlTab = screen.getByRole('tab', { name: 'Figma URL' });
+    fireEvent.click(urlTab);
+    fireEvent.drop(screen.getByRole('dialog'), {
+      dataTransfer: { files: [new File(['invalid'], 'notes.txt')] },
+    });
+
+    const fileTab = screen.getByRole('tab', { name: '上傳 .fig' });
+    await waitFor(() => expect(fileTab).toHaveAttribute('aria-selected', 'true'));
+    expect(urlTab).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tabpanel', { name: '上傳 .fig' })).toBeTruthy();
+    expect(screen.getByRole('alert')).toHaveTextContent('呢個唔係 .fig 檔案');
+
+    const fileInput = document.getElementById('figma-import-file') as HTMLInputElement;
+    expect(fileInput).toHaveAttribute('aria-labelledby', 'figma-import-file-label');
+    expect(fileInput).toHaveAttribute('aria-describedby', 'figma-import-file-helper figma-import-error');
+    await waitFor(() => expect(fileInput).toHaveFocus());
+  });
+
+  it('keeps the native file input named and keyboard-reachable through the visible dropzone', () => {
+    renderModal('zh-HK');
+
+    const fileInput = document.getElementById('figma-import-file') as HTMLInputElement;
+    const dropzone = document.querySelector('label[for="figma-import-file"]') as HTMLElement;
+    const accessibleLabel = document.getElementById('figma-import-file-label');
+
+    expect(dropzone).toHaveAttribute('for', 'figma-import-file');
+    expect(accessibleLabel).toHaveTextContent('上傳 .fig');
+    expect(fileInput).toHaveAttribute('aria-labelledby', 'figma-import-file-label');
+    expect(fileInput).not.toHaveAttribute('aria-hidden');
+    expect(fileInput).toHaveAttribute('accept', '.fig');
+    expect(CSS).not.toMatch(/\.fileInput\s*\{[^}]*display:\s*none/);
+    expect(CSS).toMatch(/\.fileInput\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?clip:\s*rect/);
+    expect(CSS).toMatch(/\.filePicker:focus-within\s+\.dropzone/);
   });
 
   it('keeps URL import failures visible and retryable', async () => {

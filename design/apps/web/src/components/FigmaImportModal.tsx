@@ -21,7 +21,7 @@ import {
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import type { FigmaImportResult } from '@open-design/contracts';
-import { Button } from '@open-design/components';
+import { Button, VisuallyHidden } from '@open-design/components';
 import { Icon } from './Icon';
 import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';
@@ -53,10 +53,14 @@ export const FIGMA_URL_RE = /^https:\/\/(?:www\.)?figma\.com\/(?:file|design)\/[
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
   '[href]',
-  'input:not([disabled]):not([type="file"])',
+  'input:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
+
+const FILE_INPUT_ID = 'figma-import-file';
+const FILE_INPUT_LABEL_ID = 'figma-import-file-label';
+const FILE_INPUT_HELPER_ID = 'figma-import-file-helper';
 
 export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigmaUrl }: Props) {
   const t = useT();
@@ -69,6 +73,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
   const [error, setError] = useState<ImportError | null>(null);
   const [result, setResult] = useState<FigmaImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusFileInputAfterModeRef = useRef(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(
     typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
@@ -88,6 +93,12 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
       if (opener?.isConnected) opener.focus();
     };
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'file' || !focusFileInputAfterModeRef.current) return;
+    focusFileInputAfterModeRef.current = false;
+    inputRef.current?.focus();
+  }, [mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -124,6 +135,12 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
 
   const pickFile = useCallback((files: File[]) => {
     if (files.length === 0) return;
+    focusFileInputAfterModeRef.current = true;
+    setMode('file');
+    if (mode === 'file') {
+      focusFileInputAfterModeRef.current = false;
+      inputRef.current?.focus();
+    }
     const fig = files.find((f) => f.name.toLowerCase().endsWith('.fig'));
     if (!fig) {
       setFile(null);
@@ -134,10 +151,9 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
       });
       return;
     }
-    setMode('file');
     setFile(fig);
     setError(null);
-  }, [t]);
+  }, [mode, t]);
 
   const runImport = useCallback(async () => {
     if (!file) return;
@@ -318,39 +334,41 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 tabIndex={onFigmaUrl ? 0 : undefined}
                 className={styles.tabPanel}
               >
-                <div
-                  className={styles.dropzone}
-                  data-drag={dragOver ? 'true' : 'false'}
-                  onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOver(false);
-                    pickFile(Array.from(e.dataTransfer.files ?? []));
-                  }}
-                  onClick={() => inputRef.current?.click()}
-                  role="button"
-                  tabIndex={0}
-                  aria-invalid={error?.target === 'file' && error.invalid ? true : undefined}
-                  aria-describedby={error?.target === 'file' ? 'figma-import-error' : undefined}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); }
-                  }}
-                >
-                  <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
-                  <p className={styles.dropTitle}>
-                    {file ? file.name : t('dsCreate.uploadFigPrompt')}
-                  </p>
-                  <p className={styles.dropHint}>
-                    {t('dsCreate.uploadFigHelper')}
-                  </p>
+                <div className={styles.filePicker}>
+                  <label
+                    htmlFor={FILE_INPUT_ID}
+                    className={styles.dropzone}
+                    data-drag={dragOver ? 'true' : 'false'}
+                    onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragOver(false);
+                      pickFile(Array.from(e.dataTransfer.files ?? []));
+                    }}
+                  >
+                    <VisuallyHidden id={FILE_INPUT_LABEL_ID}>{t('dsCreate.uploadFigLabel')}</VisuallyHidden>
+                    <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
+                    <span className={styles.dropTitle}>
+                      {file ? file.name : t('dsCreate.uploadFigPrompt')}
+                    </span>
+                    <span id={FILE_INPUT_HELPER_ID} className={styles.dropHint}>
+                      {t('dsCreate.uploadFigHelper')}
+                    </span>
+                  </label>
                   <input
                     ref={inputRef}
+                    id={FILE_INPUT_ID}
                     type="file"
                     accept=".fig"
                     className={styles.fileInput}
+                    aria-labelledby={FILE_INPUT_LABEL_ID}
+                    aria-invalid={error?.target === 'file' && error.invalid ? true : undefined}
+                    aria-describedby={error?.target === 'file'
+                      ? `${FILE_INPUT_HELPER_ID} figma-import-error`
+                      : FILE_INPUT_HELPER_ID}
                     onChange={(e) => {
                       pickFile(Array.from(e.target.files ?? []));
                       e.target.value = '';
