@@ -72,10 +72,11 @@ try {
     Remove-Item -LiteralPath $pythonRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $pythonRoot | Out-Null
     $installerPath = $installer.FullName
+    $targetDirArgument = 'TargetDir="' + $pythonRoot + '"'
     $installerArgs = @(
       '/quiet'
       'InstallAllUsers=0'
-      "TargetDir=$pythonRoot"
+      $targetDirArgument
       'PrependPath=0'
       'Include_pip=1'
       'Include_test=0'
@@ -87,8 +88,12 @@ try {
       'AssociateFiles=0'
     )
     Write-Host "Installing Python $pythonVersion into the user-scoped runner cache without loading setup.ps1"
-    & $installerPath @installerArgs
-    if ($LASTEXITCODE -ne 0) { throw "Python installer exited with code $LASTEXITCODE" }
+    $installProcess = Start-Process -FilePath $installerPath -ArgumentList ($installerArgs -join ' ') -Wait -PassThru
+    if ($null -eq $installProcess) { throw 'Python installer did not return a process result' }
+    Write-Host "Python installer exit code: $($installProcess.ExitCode)"
+    if (($installProcess.ExitCode -ne 0) -and ($installProcess.ExitCode -ne 3010)) {
+      throw "Python installer exited with code $($installProcess.ExitCode)"
+    }
 
     $python = Find-Python $pythonRoot
     if ($null -eq $python) { throw 'the Python installer did not produce python.exe' }
