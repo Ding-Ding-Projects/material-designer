@@ -321,10 +321,11 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
                 className={styles.tabPanel}
               >
                 <div className={styles.urlPane}>
+                  <label className={styles.fieldLabel} htmlFor="figma-import-url">Figma URL</label>
                   <input
+                    id="figma-import-url"
                     type="url"
                     className={styles.urlInput}
-                    aria-label="Figma URL"
                     placeholder="https://figma.com/design/…"
                     value={url}
                     onChange={(e) => { setUrl(e.target.value); setError(null); }}
@@ -336,14 +337,17 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
               </div>
             )}
 
-            <textarea
-              className={styles.notes}
-              aria-label="Notes for the build"
-              placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
+            <div className={styles.notesField}>
+              <label className={styles.fieldLabel} htmlFor="figma-import-notes">Notes for the build</label>
+              <textarea
+                id="figma-import-notes"
+                className={styles.notes}
+                placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+            </div>
 
             {error ? <p className={styles.error}>{error}</p> : null}
             </div>
