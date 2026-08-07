@@ -30,7 +30,7 @@ How Material Designer is built, where that happens, and why.
 | Where do builds run? | Dedicated self-hosted runners labelled `linux, material-designer` for `Verify`/`Pages` and `windows, material-designer` for `Release`. |
 | Can I build locally? | Yes — see [from-source.md](from-source.md). It is not the supported path for producing releases, but every command is documented. |
 | What gets produced? | A Windows installer plus a portable archive and a checksum file, built via electron-builder. |
-| Is the installer signed? | No code-signing certificate is configured. An unsigned installer triggers the operating system's reputation warning, and the release notes say so; see [ci.md](ci.md). |
+| Is the installer signed? | The release path requires a valid Authenticode certificate and refuses publication without it. Historical releases are unsigned; see [ci.md](ci.md). |
 | What must pass before a release? | Typecheck, the three product-identity test suites, payload validation, and a packaged smoke test that installs, launches, health-checks and uninstalls the built application. |
 | What gates every push? | Port verification — that `design/` still matches upstream with every difference declared. |
 

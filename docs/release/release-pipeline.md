@@ -13,10 +13,11 @@ publish are steps of the same run.
 > the run that published it. The packaged smoke test has installed a built
 > application, launched it, had the running process answer its own health
 > endpoint, screenshotted it, uninstalled it and asserted zero residue. What has
-> **not** been demonstrated is code signing (there is no certificate), any
-> platform other than Windows, or a post-migration Squirrel feed run. The new
-> workflow is configured to publish the project-owned feed, but the first CI
-> evidence for it is still pending.
+> **not** been demonstrated is code signing (no certificate is evidenced here), any
+> platform other than Windows, or a post-migration Squirrel feed run. Commit
+> [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> makes the new workflow fail closed instead of publishing an unsigned artifact:
+> the first CI evidence for the signed Squirrel path is still pending.
 
 ## Behaviour
 
@@ -118,9 +119,10 @@ the code under test. See
 
 **9 — Squirrel packaging.** The packer invokes electron-builder's
 Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
-`RELEASES`, full/delta `.nupkg` packages and the local icon asset.
+`RELEASES`, full/delta `.nupkg` packages and the local icon asset. Signed builds
+also require the configured certificate thumbprint and timestamp service.
 
-**10 — Build the installer.** Cleanup, then a packaging build with an explicit
+**10 — Build and verify the installer.** Cleanup, then a packaging build with an explicit
 output directory, cache directory, namespace, portable flag, application version
 and machine-readable output. Then, in order:
 
@@ -171,7 +173,7 @@ into the run summary.
 | --- | --- |
 | Title | `Material Designer <version> — <code name>` |
 | Code name | The dish in English and Traditional Chinese |
-| Install | The asset name, the SHA-256, Squirrel package assets, the stable metadata-feed URL and an explicit reputation-screen warning |
+| Install | The asset name, the SHA-256, Squirrel package assets, the stable metadata-feed URL and the signature-verification statement; a historical unsigned artifact is called out rather than silently treated as current |
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |
@@ -207,12 +209,13 @@ own token as a last fallback. Used for reading prior releases (to find the spent
 code names) and for publishing. Passed only through the environment convention the
 tooling expects, and never printed.
 
-**No code-signing certificate is configured.** An unsigned Windows installer
+**No new code-signing certificate is evidenced here.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
-publisher and hides the proceed button behind a **More info** link. The release
-notes say so explicitly, which is the right place for it: a user who expects it
-will click through, and a user who does not will reasonably assume the download is
-malicious.
+publisher and hides the proceed button behind a **More info** link. The current
+workflow now requires `WIN_SIGN_CERT_SHA1` or `OD_WIN_SIGN_CERT_SHA1`, verifies the
+resulting `Setup.exe` with Authenticode, and refuses publication when the certificate
+is missing or does not match. Historical releases may still be unsigned, but the
+new path does not publish one silently.
 
 ## Failure modes
 
@@ -264,8 +267,9 @@ application.
 
 **Not observed:** a signed installer, any non-Windows artifact, the updater path,
 the new labelled self-hosted runner contract executing a release, and —
-importantly — a *failing* release run. A gate that has only ever been seen
-passing is not known to be a gate.
+importantly — a *failing* release run. The fail-closed signing, smoke and UI-state
+guards are source-checked but have not yet produced a new labelled-runner verdict.
+A gate that has only ever been seen passing is not known to be a gate.
 
 The pipeline is fully proven when one run demonstrates all of:
 

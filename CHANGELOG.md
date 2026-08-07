@@ -64,6 +64,69 @@ version section when a release carries them.
 
 ### Changed
 
+- **The settings overflow menu stopped being a 17-item scavenger hunt.** It now
+  carries its own plain-text-first regex search, keeps an honest empty state,
+  filters only the visible section labels and hints, supports Arrow/Home/End
+  navigation and returns focus to the opener on Escape or Tab. The focused spec
+  covers the independent builder, filtering and keyboard route; no local build,
+  CI or installed-build result is claimed
+  ([`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58)).
+
+  設定 overflow menu 唔再係十七格捉迷藏：而家有自己嘅 plain-text-first
+  regex search、真實 no-match 狀態，只篩 section label 同 hint，仲有
+  Arrow/Home/End 鍵盤路線，Escape 或 Tab 會將 focus 送返 opener。Focused
+  spec 覆蓋獨立 builder、filter 同 keyboard route；今次冇聲稱有本機 build、
+  CI 或 installed-build 結果。
+
+- **The settings menu, onboarding dropdowns and command-palette control now respect
+  the edges.** The overflow surface computes its real width and above/below
+  placement instead of rendering a fixed rectangle; onboarding dropdowns return
+  focus after Escape or selection and expose field-plus-value accessible names; the
+  palette's size toggle is a 48px target. Focused source checks are committed in
+  [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621);
+  no local build, CI or installed-build result is claimed.
+
+  Settings menu、onboarding dropdown 同 command palette control 而家識得睇邊界：
+  overflow surface 會按真實寬高揀向上或者向下開，dropdown 關閉或揀完會返
+  focus 去 trigger，讀屏會聽到 field 加 value，palette size toggle 就有 48px
+  target。Focused source checks 已經 commit，今次冇聲稱有本機 build、CI 或
+  installed-build 結果。
+
+- **The settings overflow refutation is now part of the repair.** The portalled
+  menu sits above the opaque settings page, its own regex builder is a separate
+  focus scope for Tab navigation, stale anchors clamp to the visible viewport,
+  and geometry tests restore the global viewport dimensions they borrow. This is
+  source-level coverage only; no local build, CI or installed-build result is
+  claimed
+  ([`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)).
+
+  設定 overflow menu 嘅 refutation 而家正式收尾：portalled menu 會企喺 opaque
+  settings page 上面，自己個 regex builder 有獨立 focus scope，舊 anchor 出界
+  會夾返入 viewport，geometry test 借完 viewport 尺寸亦會還原。今次只係
+  source-level coverage，冇扮有本機 build、CI 或 installed-build 結果。
+
+- **Update surfaces now open the exact release notes for the update.** HTTPS
+  `releaseNotesUrl` metadata flows through the updater model into the ready dialog
+  and persistent banner, while malformed or non-HTTPS values use the repository
+  releases page instead
+  ([`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)).
+
+  Update surface 而家會開返該次 update 真正嘅 release notes：HTTPS
+  `releaseNotesUrl` 由 metadata 一路傳到 ready dialog 同常駐 banner，亂格式
+  或非 HTTPS 值就穩陣跌返 repository releases page，唔再帶住錯地圖出門口。
+
+- **Squirrel publication now fails closed on release evidence.** The workflow
+  requires a valid Authenticode signature, a successful packaged smoke test and
+  non-duplicate UI-state evidence before publication; persistent self-hosted CI
+  tools are rebuilt from verified sources, and the custom runner label is declared
+  for `actionlint`
+  ([`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)).
+
+  Squirrel release 而家要有真 Authenticode signature、packaged smoke test 成功、
+  UI state 唔重複，先可以出街；persistent self-hosted CI tools 每次由 verified
+  source 重新砌，custom runner label 亦寫入 `actionlint` 設定。證據未齊就停，
+  唔會整個 unsigned installer 出嚟扮完成。
+
 - **The Figma focus-trap regression now proves its wrap edges.**
   [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) extends the
   [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e)

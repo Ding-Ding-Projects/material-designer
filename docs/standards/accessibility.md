@@ -19,10 +19,19 @@ The focus-trap regression contract was corrected in [`cbdc4f5`](https://github.c
 The modal body scrolls; context-menu labels wrap instead of disappearing and
 dismissal restores the opener's focus; the updater dialog traps focus, restores
 it on every close path and disables progress transitions for reduced motion; and
-the design-system Back control has an explicit localized name. Focused source
-tests are committed, but no installed build has yet been rendered through the
+the design-system Back control has an explicit localized name. The settings tab
+overflow menu now has its own plain-text-first regex search, honest no-match
+state, Arrow/Home/End navigation and Escape/Tab focus return, committed at
+[`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). Focused source tests are committed, but no installed build has yet been rendered through the
 full scale, narrow-width and language matrix, so runtime conformance remains
-unverified.
+unverified. The follow-up repair at [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621)
+adds viewport-bounded above/below placement for the settings menu, focus
+restoration and field-plus-value naming for onboarding dropdowns, and a 48px
+command-palette size target. [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+then raises the portalled menu above the opaque page, gives its regex builder a
+separate focus scope for Tab, clamps stale off-screen anchors and restores viewport
+globals in the geometry tests. Its focused source checks are committed; runtime
+evidence remains open.
 
 ## The requirement
 

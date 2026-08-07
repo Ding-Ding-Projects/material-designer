@@ -29,6 +29,45 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-06 — Show the exact release notes in update prompts
+
+**Reason:** the release workflow already writes a validated `releaseNotesUrl` into
+update metadata, but the ready dialog and persistent update banner discarded it and
+opened only a generic releases page. The updater model now accepts HTTPS release-note
+URLs from metadata, rejects malformed or non-HTTPS values, and keeps the repository
+release page as the explicit fallback. Both ready surfaces expose the resulting
+target, with focused model and rendered-surface tests. The source update is
+committed at [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8).
+
+**Changed files:**
+
+- `apps/web/src/lib/updater.ts`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/tests/lib/updater.test.ts`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+
+### 2026-08-06 — Make the Squirrel release path fail closed on signing and smoke
+
+**Reason:** the Windows release was already Squirrel-based and dependencies were
+installed from the frozen workspace lockfile on the self-hosted runner, but the
+packer could still emit an unsigned installer and the publication condition did not
+require the packaged smoke test to run successfully. Squirrel packaging now enables
+`forceCodeSigning` for signed builds, uses the configured certificate thumbprint and
+timestamp service, and the workflow verifies the resulting Authenticode signature.
+Publication requires a successful smoke result; missing or duplicate packaged UI
+state evidence fails the job. The persistent runner bootstrap also re-materializes
+cached `gh.exe` and `7z.exe` from verified archives/installers instead of trusting
+cached binaries. The source update is committed at
+[`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310).
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+- `.github/workflows/release.yml`
+- `scripts/bootstrap-ci-tools.ps1`
+
 ### 2026-08-06 — Keep UI overlays reachable and onboarding controls truthful
 
 **Reason:** the settings overflow surface could exceed a narrow or short viewport,
@@ -38,8 +77,13 @@ smaller than the app's keyboard and touch target. The repair clamps the settings
 surface on both axes with genuine above/below placement, restores focus to dropdown
 triggers, labels each trigger with its field and value, and gives the palette control
 a 48px target. Focused tests cover the geometry, focus return, accessible naming and
-target-size contracts. The source update is being integrated from this allowlisted
-change.
+target-size contracts. The source update is committed at
+[`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621).
+A follow-up at
+[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+raises the portalled menu above the opaque settings page, keeps Tab inside its
+regex-builder focus scope, clamps stale off-screen anchors and restores viewport
+globals in the geometry tests.
 
 **Changed files:**
 

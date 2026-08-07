@@ -68,6 +68,35 @@ no residue.
 > suites were not run locally; CI remains the evidence for those heavy checks.
 
 > [!NOTE]
+> **Updated 2026-08-06.** The settings tab overflow menu repair is committed at
+> [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The menu now has an independent
+> plain-text-first regex field, bounded local filtering, an honest empty state,
+> Arrow/Home/End navigation and Escape/Tab focus restoration. Its focused source
+> spec is committed; no Node, pnpm, Electron, build, CI or installed-build
+> capture was run locally.
+
+> [!NOTE]
+> **Updated 2026-08-06.** The follow-up overlay and onboarding repair is committed at
+> [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621). The
+> settings menu now stays within narrow and short viewports, onboarding dropdowns
+> return focus to their triggers and expose field-plus-value names, and the
+> command-palette size control meets the 48px target. The follow-up
+> [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+> raises the portalled menu above the opaque page, keeps Tab in the regex-builder
+> focus scope, clamps stale anchors and restores viewport globals in the geometry
+> tests. Focused source contracts are committed; no local build, CI run or
+> installed-build capture is claimed.
+
+> [!NOTE]
+> **Updated 2026-08-06.** [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
+> now carries the exact HTTPS release-notes URL from update metadata into the
+> ready dialog and persistent updater banner. [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> makes the Squirrel release path fail closed unless signing, packaged smoke and
+> unique packaged UI-state evidence pass, rebuilds cached CI tools from verified
+> sources, and records the custom runner label for `actionlint`. The new labelled
+> self-hosted run has not yet produced a verdict.
+
+> [!NOTE]
 > **Updated 2026-08-06.** The final six-finding Figma import repair is committed at
 > [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
 > `FigmaImportModal` closes before the host focus callback, rejected Home URL
@@ -147,7 +176,7 @@ line survives, a reader cannot trust the ones beside it either.
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
 | Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
 | Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Published on every green push** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel release remains pending labelled self-hosted verification |
+| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel path now refuses publication without signing and smoke evidence, and remains pending labelled self-hosted verification |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
@@ -387,11 +416,11 @@ Now the gaps.
   at least one route pair was missed by that reading. See
   [`docs/api/README.md`](docs/api/README.md).
 - **Windows is the only target, by decision rather than by omission.** There is
-  no macOS or Linux artifact and no code-signing certificate. New Windows releases
+  no macOS or Linux artifact, and no new signing certificate is evidenced here. New Windows releases
   use Squirrel.Windows and publish `Setup.exe`, `RELEASES`, full/delta NuGet packages
   and the project-owned updater metadata feed; the feed is not yet proven by a new
-  release run in this handoff. Every installer therefore trips the operating
-  system's reputation warning on first run. Read the absence of the other two platforms as scope, not as a backlog:
+  release run in this handoff. The current workflow fails closed instead of publishing an
+  unsigned installer when the required certificate is absent. Read the absence of the other two platforms as scope, not as a backlog:
   nothing here is waiting on a macOS build, and work that would only pay off on
   another platform is out of scope until that changes.
 

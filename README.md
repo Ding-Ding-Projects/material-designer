@@ -110,6 +110,33 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > [`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
 > fixes that call site; no later labelled-runner verdict is claimed yet.
 
+> **2026-08-06 settings-menu accessibility repair.** The settings tab overflow
+> menu now carries its own plain-text-first regex search, honest no-match state,
+> Arrow/Home/End keyboard navigation and Escape/Tab focus return. The focused
+> source contract is [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58); the installed-build and display-scale
+> matrix remains unverified.
+
+> **2026-08-06 overlay and onboarding repair.** The settings overflow surface now
+> clamps its width and height to the viewport and opens above the trigger when the
+> lower edge is crowded. Onboarding dropdowns restore focus after Escape or
+> selection and announce the field together with its value; the command-palette
+> size control has a 48px target. The source commit is
+> [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621); the
+> follow-up [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+> raises the portalled menu above the opaque settings page, keeps Tab inside its
+> regex builder route, clamps stale off-screen anchors and restores viewport test
+> globals. No local build or installed-build matrix is claimed.
+
+> **2026-08-06 updater and release-gate repair.** Commit
+> [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
+> preserves the exact HTTPS release-notes URL from update metadata in both ready
+> surfaces. Commit
+> [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> makes Squirrel publication fail closed without a valid signature, a successful
+> packaged smoke test or unique packaged UI-state evidence, rebuilds persistent
+> cached CI tools from verified sources, and declares the custom runner label for
+> `actionlint`. No new self-hosted CI or release verdict is claimed yet.
+
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
 
@@ -309,14 +336,15 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are releases, and no code-signing certificate.** Two tags have been published, each
-carrying the installer its own run built, a portable archive, a checksum and a dim sum code
-name. New Windows releases are configured as Squirrel.Windows releases: the installer is
-published with `RELEASES`, full/delta `.nupkg` packages and the app's `metadata.json` feed, so
-an installed app can download an update in the background and wait for the user to choose
-**Restart to install update**. The current published links below remain the verified legacy
-build until the next Squirrel release has passed CI. What is still absent is a signing
-certificate, so every installer published from here trips SmartScreen on first run.
+**There are legacy releases, and new Squirrel publication is signing-gated.** Two tags have
+been published, each carrying the installer its own run built, a portable archive, a checksum
+and a dim sum code name. New Windows releases are configured as Squirrel.Windows releases:
+the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
+`metadata.json` feed, so an installed app can download an update in the background and wait
+for the user to choose **Restart to install update**. The current published links below remain
+the verified legacy build until the next Squirrel release has passed CI. The new workflow now
+requires a valid signing certificate and refuses publication when it is missing or invalid;
+no new signed Squirrel release is claimed here.
 
 ## Install
 
@@ -513,8 +541,9 @@ and delta `.nupkg` packages. Other flags include `--app-version`, `--portable`, 
 > [!WARNING]
 > An installer built without a code-signing certificate triggers Windows SmartScreen
 > ("Windows protected your PC", publisher unknown), and the **Run anyway** button is hidden
-> behind **More info**. This repository has no certificate, so any installer it eventually
-> publishes will behave exactly that way until one is obtained.
+> behind **More info**. The release workflow now fails before publication when signing is
+> unavailable; the warning describes a manually built or historical unsigned artifact, not a
+> release the current workflow is allowed to publish.
 
 ### Typecheck and tests
 

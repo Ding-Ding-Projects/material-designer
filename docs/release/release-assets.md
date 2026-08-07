@@ -7,9 +7,10 @@ to the run but *not* to the release, and what is deliberately absent.
 > **Status: published.** Two legacy releases exist, each carrying a Windows
 > installer, its checksum file and a code-name image. The release workflow now
 > stages a project-owned Squirrel.Windows feed for new releases; the first
-> post-migration release is still awaiting its CI evidence. There is **no code
-> signature** and **no macOS or Linux artifact** — both absences are deliberate
-> and are explained below rather than left for a reader to notice.
+> post-migration release is still awaiting its CI evidence. The new workflow
+> requires a code signature before publication, while the two historical releases
+> are unsigned. There is **no macOS or Linux artifact** — that absence is deliberate
+> and is explained below rather than left for a reader to notice.
 
 ## The attached assets
 
@@ -54,8 +55,9 @@ sha256sum -c material-designer-<version>-win-x64-setup.exe.sha256
 > [!WARNING]
 > A checksum published alongside a download proves the file was not **corrupted**.
 > It does not prove it was not **replaced**, because whoever could replace the file
-> could replace the hash. That is what a code signature would prove, and there is
-> not one — see below.
+> could replace the hash. A code signature is the separate authenticity check; the
+> new workflow verifies it before publication, while historical releases remain
+> unsigned — see below.
 
 ## Workflow artifacts, which are not release assets
 
@@ -73,12 +75,13 @@ fails, the installer that failed is the single most useful thing to have.
 
 ## What is deliberately absent
 
-**No code signature.** No certificate is configured. An unsigned Windows installer
+**No new code signature is evidenced here.** An unsigned Windows installer
 triggers the operating system's reputation screen, which reports an unknown
-publisher and hides the proceed button behind a **More info** link. The release
-notes state this explicitly, which is the right place for it: a user who expects
-it will click through, and a user who does not will reasonably assume the download
-is malicious.
+publisher and hides the proceed button behind a **More info** link. The current
+workflow requires `WIN_SIGN_CERT_SHA1` or `OD_WIN_SIGN_CERT_SHA1`, verifies the
+resulting `Setup.exe` with Authenticode and refuses publication when signing is
+missing or mismatched. Historical releases may still be unsigned; the new path
+does not publish one silently.
 
 There is a related trap worth recording, because it looks like plain metadata and
 is not: setting a publisher name in the packaging configuration is rejected
@@ -132,17 +135,18 @@ Two mechanisms enforce it in practice:
 | The published hash does not match the download | Corruption in transit, a mirror, or a replaced file | Do not install it. Re-download from the release page and compare again. |
 | The portable archive is missing | The packaging build did not produce one | Expected: the archive is attached only when it exists. The installer is the primary artifact. |
 | A download link stops working after a few weeks | It pointed at a workflow artifact, not a release asset | Link release assets. Workflow artifacts expire. |
-| The reputation screen blocks the installer | It is unsigned | Documented in the notes. **More info**, then run. |
+| The reputation screen blocks a historical installer | It is unsigned | Documented in the notes. **More info**, then run; a new workflow release should fail before publication instead. |
 | The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
 | The update banner offers no restart action | The downloaded artifact was not identified as a Windows Squirrel installer | Confirm the feed artifact is named `Setup.exe` and the metadata `type` is `installer`. |
 | The code-name image is missing | No dish was available, or its file was absent | Never blocks a release. See [code-names.md](code-names.md). |
 
 ## Security considerations
 
-- **An unsigned installer is a real, disclosed limitation, not a formality.** It is
-  stated in the notes because hiding it trains users to click through warnings, and
-  a user who clicks through every warning is a user who will click through the one
-  that mattered.
+- **The signature gate is a real authenticity boundary.** The workflow compares
+  `Setup.exe`'s Authenticode status and signer thumbprint before publication. A
+  missing or mismatched certificate fails the run rather than training users to
+  click through an unsigned release; historical unsigned releases remain clearly
+  labelled.
 - **The checksum's guarantee is narrower than it looks** — integrity against
   corruption, not authenticity against substitution. Publishing it alongside the
   file it describes is standard and still worth doing; describing it as protection
@@ -162,9 +166,9 @@ file and a code-name image, with the notes stating the hash, the smoke-test
 outcome, the commit, the run link and the provenance.
 
 **Pending CI evidence:** a new release run must prove that the Squirrel build
-produces `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages and
-`metadata.json`, and that the published stable feed is readable by the
-updater.
+produces signed `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages and
+`metadata.json`, that the packaged smoke/UI-state gates pass, and that the
+published stable feed is readable by the updater.
 
 ```bash
 # list what a release actually carries

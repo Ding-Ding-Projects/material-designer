@@ -1779,8 +1779,8 @@ const CATALOGUE = {
     yue: '有邊幾個 process、每個負責啲乜、共用嘅 package、port 同綁定位址、環境變數、運行需求、失敗模式，同埋保安立場。',
   },
   'dc.a.ci': {
-    en: 'The verification gate and the release run, step by step: why the gate checks out without the submodule, what the release notes carry, the triggers, the tokens, and the unsigned-installer position.',
-    yue: '驗證關卡同 release 運行，逐步講：點解個關卡 checkout 嗰陣唔要 submodule、發佈說明入面有啲乜、觸發條件、token，同埋未簽名安裝檔嘅立場。',
+    en: 'The verification gate and the release run, step by step: why the gate checks out without the submodule, how dependencies install from the lockfile, what the release notes carry, the signature and smoke gates, the triggers and the tokens.',
+    yue: '驗證關卡同 release 運行，逐步講：點解個關卡 checkout 嗰陣唔要 submodule、dependencies 點樣由 lockfile 自動裝、發佈說明入面有啲乜、signature 同 smoke 關卡、觸發條件同 token。',
   },
   'dc.a.fromsource': {
     en: 'Building locally: the prerequisites, the package manager on Windows, the line endings to fix before cloning rather than after, installing, running, typechecking, testing, packaging, and what goes wrong at each step.',
@@ -1865,8 +1865,8 @@ const CATALOGUE = {
     yue: '個點心代號點樣喺隨 app 一齊帶嘅目錄度揀、點解用過邊幾款係去舊 release 度讀返而唔係擺個計數器、點解一款點心只可以用一次，同埋點解揾唔到點心都唔會拖住個 release。',
   },
   'dc.a.assets': {
-    en: 'What each published file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts; new Windows releases also carry Squirrel RELEASES, NuGet packages and the project-owned metadata feed.',
-    yue: '每個出街嘅檔案係乜、邊啲上載係去咗 run 度而唔係去 release 度，同埋特登冇嘅嘢 —— 冇簽名、Windows 以外咩都冇；新 Windows release 仲會帶埋 Squirrel RELEASES、NuGet packages 同 project 自己嘅 metadata feed。',
+    en: 'What each published file is, which uploads go to the run rather than the release, and which gates must pass first — a verified signature, packaged smoke and unique UI-state evidence; new Windows releases also carry Squirrel RELEASES, NuGet packages and the project-owned metadata feed.',
+    yue: '每個出街嘅檔案係乜、邊啲上載係去咗 run 度而唔係去 release 度，同埋出街之前要過邊幾關 —— verified signature、packaged smoke 同唔重複 UI state；新 Windows release 仲會帶埋 Squirrel RELEASES、NuGet packages 同 project 自己嘅 metadata feed。',
   },
 
   'dc.a.lineendings': {
@@ -2132,8 +2132,8 @@ const CATALOGUE = {
   },
   'bd.pack.heading': { en: 'Build the Windows installer', yue: 'Build 個 Windows 安裝檔' },
   'bd.pack.note': {
-    en: 'The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. Packaging runs on electron-builder with Electron 41.',
-    yue: '個目標接受 all、dir、nsis、squirrel 或者 zip；Squirrel.Windows 會出 Setup.exe、RELEASES 同 NuGet packages，zip 就用未打包嘅 build 整個免安裝壓縮包。打包係行 electron-builder，配 Electron 41。',
+    en: 'The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. The release workflow requires a verified Authenticode signature before publication. Packaging runs on electron-builder with Electron 41.',
+    yue: '個目標接受 all、dir、nsis、squirrel 或者 zip；Squirrel.Windows 會出 Setup.exe、RELEASES 同 NuGet packages，zip 就用未打包嘅 build 整個免安裝壓縮包。Release workflow 要先驗證 Authenticode signature 先可以出街，打包係行 electron-builder，配 Electron 41。',
   },
   'bd.test.heading': { en: 'Typecheck and tests', yue: '型別檢查同測試' },
   'bd.test.note': {
