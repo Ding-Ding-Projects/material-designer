@@ -64,6 +64,24 @@ version section when a release carries them.
 
 ### Changed
 
+- **The release pipeline now refuses to sign anything.** The active Squirrel
+  packer removes signer and notarization entry points, clears certificate and
+  timestamp inputs, and verifies `Setup.exe` is `NotSigned` before publication.
+  Self-hosted CI now bootstraps Python 3.12 and the Windows C++ toolchain beside
+  Node 24, pnpm 10.33.2 and the utility cache, publishes measured workflow timing,
+  and documents the fresh-runner dependency inventory. The installer warning is
+  intentional: the code-signing cupboard is permanently empty, but Squirrel's
+  update feed still brings its hashes and rollback checks
+  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec5d1cc16312007a40d0c672c9534fdd3f9)).
+
+  發佈流程而家拒絕幫任何嘢簽名：active Squirrel packer 拆走 signer 同
+  notarization 入口，清走 certificate/timestamp inputs，發佈前驗證
+  `Setup.exe` 係 `NotSigned`。Self-hosted CI 加埋 Python 3.12 同 Windows C++
+  toolchain，配合 Node 24、pnpm 10.33.2 同 utility cache，仲會記低真實
+  workflow timing 同 fresh-runner dependency inventory。安裝器個 warning
+  係故意嘅——code-signing 個櫃永久空空如也，但 Squirrel update feed 仲有
+  hash 同 rollback checks，唔會畀個更新流程食白果。
+
 - **The settings overflow menu stopped being a 17-item scavenger hunt.** It now
   carries its own plain-text-first regex search, keeps an honest empty state,
   filters only the visible section labels and hints, supports Arrow/Home/End
