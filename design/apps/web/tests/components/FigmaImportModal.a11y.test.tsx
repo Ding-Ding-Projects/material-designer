@@ -221,6 +221,7 @@ describe('FigmaImportModal accessibility and layout', () => {
       const current = focusable[index]!;
       const nextIndex = (index + (shiftKey ? -1 : 1) + focusable.length) % focusable.length;
       const next = focusable[nextIndex]!;
+      const wraps = (shiftKey && index === 0) || (!shiftKey && index === focusable.length - 1);
       current.focus();
       const event = new KeyboardEvent('keydown', {
         bubbles: true,
@@ -230,9 +231,11 @@ describe('FigmaImportModal accessibility and layout', () => {
       });
       current.dispatchEvent(event);
       // jsdom does not perform the browser's ordinary Tab default action. Let
-      // the real modal handler own the wrap edges, and model the native move
-      // between middle controls so the full path still exercises the input.
-      if (!event.defaultPrevented) next.focus();
+      // the real modal handler own the wrap edges, and model only the native
+      // move between non-edge controls so a broken wrap cannot hide behind the
+      // test helper.
+      expect(event.defaultPrevented).toBe(wraps);
+      if (!wraps) next.focus();
       expect(document.activeElement).toBe(next);
     };
 
