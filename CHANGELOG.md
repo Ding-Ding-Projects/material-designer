@@ -64,6 +64,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Python bootstrap now uses the official embeddable archive.** Release run
+  [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
+  showed the direct installer returning `-2147024891` (`0x80070005`, access
+  denied) for the self-hosted runner service account. Commit
+  [`<NEW_COMMIT>`](<NEW_URL>) switches to the official Python 3.12.10
+  `python-3.12.10-embed-amd64.zip`, verifies its SHA-256 and extracts it into
+  the user-scoped cache without registry or installer operations
+  ([`37534e5`](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)).
+
+  31154756724 試到 direct installer，但 self-hosted runner service account 收到
+  `-2147024891`（`0x80070005`，access denied），連 Python 都未入場。今次改用
+  官方 Python 3.12.10 embeddable archive，先驗 SHA-256，再解壓入 user-scoped
+  cache，唔郁 registry，唔叫 installer，等個 bootstrap 唔使再撞同一度門。
+
 - **Python installer completion now uses an explicit process result.** Release
   run [31154520542](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154520542)
   reached the direct installer, but Windows PowerShell left `$LASTEXITCODE`

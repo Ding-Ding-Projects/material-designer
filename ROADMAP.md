@@ -89,6 +89,13 @@ imported upstream tree for a shipping product.
 > [9dcdb2f](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
 > now waits for the installer process, validates its explicit exit code, and
 > then checks `python.exe`; another labelled-runner verdict is still required.
+> Release run 31154756724 reached the direct installer and returned
+> `-2147024891` (`0x80070005`, access denied) for the self-hosted runner service
+> account. The next repair switches to the official Python 3.12.10 embeddable
+> archive, verifies its SHA-256 and extracts it without registry or installer
+> operations. Commit
+> [37534e5](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+> carries that path; another labelled-runner verdict is still required.
 
 ---
 

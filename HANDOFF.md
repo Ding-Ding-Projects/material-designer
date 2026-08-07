@@ -1005,6 +1005,19 @@ no bundle is already legal.
   installed interpreter. Local actionlint, PowerShell parsing and diff checks
   pass; the next labelled-runner run remains the authoritative verdict.
 - Release run
+  [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
+  reached the direct installer and recorded exit code `-2147024891`
+  (`0x80070005`, access denied) for the self-hosted runner service account. No
+  Python interpreter, dependency install, test, package, installer, artifact or
+  GitHub Release was produced.
+- The next repair switches from the installer bundle to the official Python
+  3.12.10 embeddable archive. Its SHA-256 was measured as
+  `4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3`; the
+-  following commit
+  [37534e5](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+  implements that extraction and interpreter check. The next run must prove
+  that path on the labelled runner.
+- Release run
   [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
   reached setup, Git-for-Windows shell steps and checkout, but Windows
   PowerShell blocked the generated unsigned temporary script with a
