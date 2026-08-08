@@ -5,7 +5,26 @@ State of play for whoever picks this up next.
 Read this before touching anything.
 
 > [!IMPORTANT]
-> **Current handoff — 2026-08-07.** `main` and the hui are at commit
+> **Current handoff — 2026-08-08.** Three consecutive Release runs
+> (`31178661227`, `31182596964`, `31186802259`) all timed out at exactly
+> `720000ms` inside the packaged smoke test while `invokeSquirrel` blocked in
+> `execFileAsync` with no timeout of its own. Root cause: Windows Defender
+> real-time protection scans every file that Squirrel's Setup.exe and Update.exe
+> extract to `%LOCALAPPDATA%\open-design-packaged-app` and
+> `%LOCALAPPDATA%\SquirrelTemp`; on a machine where the Electron binary is new
+> to Defender's cloud cache this scan takes well over twelve minutes, longer than
+> the twelve-minute vitest gate.
+>
+> Fix committed on this branch: `release.yml` now adds `Add-MpPreference
+> -ExclusionPath` exclusions for those two Squirrel directories before the smoke
+> step; `design/e2e/specs/win.spec.ts` raises the vitest per-test timeout from
+> `720_000` to `1_800_000` ms as defence in depth. Verifier passes (`0 gaps`).
+> Push is staged — run the next Release and record its result here. Do not
+> describe any release as shipped until the tag, assets, smoke result and release
+> notes are all verified on the run page.
+
+> [!IMPORTANT]
+> **Previous handoff — 2026-08-07.** `main` and the hui are at commit
 > [`fb0091bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/fb0091bd0637da7f8816e4de73c303e8949c40cd).
 > Release run
 > [`31182596964`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182596964)

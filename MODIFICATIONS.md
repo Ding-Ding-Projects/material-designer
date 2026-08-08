@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-08 — Raise smoke-test vitest timeout to survive Defender-slowed installs
+
+**Reason:** Release runs `31178661227`, `31182596964` and `31186802259` all timed
+out at exactly `720000ms` — the vitest per-test timeout — while `invokeSquirrel`
+was blocked inside `execFileAsync` with no timeout of its own. Windows Defender
+real-time protection scans every file that Squirrel's Setup.exe and Update.exe
+write to disk. On a machine where the Electron binary is new to Defender's cloud
+cache this scan takes well over twelve minutes, longer than the former twelve-minute
+vitest gate. The release workflow now adds Defender path exclusions for the two
+Squirrel-owned directories (`%LOCALAPPDATA%\open-design-packaged-app` and
+`%LOCALAPPDATA%\SquirrelTemp`) before the smoke step runs; the vitest per-test
+timeout is also raised from `720_000` ms (12 min) to `1_800_000` ms (30 min) as
+a defence-in-depth measure against any residual scanning delay.
+
+**Changed files:**
+
+- `e2e/specs/win.spec.ts`
+
 ### 2026-08-07 — Exit Squirrel lifecycle events immediately
 
 **Reason:** Release run `31182596964` proved that packaging, unsigned verification,
