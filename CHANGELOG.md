@@ -26,6 +26,18 @@ Two rules this file is held to:
 Changes land here as they are committed, each with its commit link, and move into a
 version section when a release carries them.
 
+### Changed
+
+- **The packaged smoke test survives a Defender-cold Electron binary.** Three
+  Release runs timed out at exactly `720000ms` while `invokeSquirrel` blocked in
+  `execFileAsync` with no timeout of its own, because Windows Defender's real-time
+  protection scans every file Squirrel writes and a cloud-cold Electron binary can
+  take well over twelve minutes to scan. The release workflow now adds Defender
+  path exclusions for the two Squirrel-owned directories before the smoke step,
+  and the vitest per-test timeout is raised from `720_000` to `1_800_000` ms as
+  defence in depth
+  ([`8931380d`](https://github.com/Ding-Ding-Projects/material-designer/commit/8931380d)).
+
 ### Security
 
 - **The confirmation gate can no longer be defeated five different ways.** An
