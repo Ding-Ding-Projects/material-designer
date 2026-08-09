@@ -11,17 +11,18 @@ Everything else in the pipeline checks that source is well-formed. This is the
 only step that checks the product works.
 
 > [!IMPORTANT]
-> **Status: run, and passing — except for the newest part of it.** The `core`
-> profile has installed, launched, health-checked, screenshotted and uninstalled
-> a real built Windows application inside the `Release` workflow, with zero
-> residue on every check. The **named UI-state set** described below is new and
-> **has never run**; read
-> [Verification](#verification) for what the first run should be inspected for.
-> The Squirrel-aware `core` lifecycle and the published feed still need a new
-> Release run as evidence. The `full` profile additionally exercises the
-> auto-updater, reinstall over a running instance, and upgrade data persistence;
-> it requires a separately-built update fixture and is not silently claimed by
-> the release workflow.
+> **Status: the legacy installer passed; the current Squirrel lane is red.**
+> Historical runs installed, launched, health-checked, screenshotted and
+> uninstalled the legacy Windows package with zero residue. Release run
+> [31186802259](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+> passed Squirrel packaging, Authenticode `NotSigned`, self-contained scanning
+> and artifact upload, then timed out after `720000ms` in the smoke test's first
+> install operation. It produced no lifecycle timing, screenshot or
+> `ui-states.json`, and published no release. The **named UI-state set** described
+> below therefore has not yet run against Squirrel. The `full` profile
+> additionally exercises the auto-updater, reinstall over a running instance,
+> and upgrade data persistence; it requires a separately-built update fixture
+> and is not silently claimed by the release workflow.
 
 ## Behaviour
 
@@ -35,9 +36,21 @@ report is self-describing even when the suite fails. It copies the packaging
 build's machine-readable output in as evidence, saves the full test log, and
 writes a result record with the exit code, duration and status.
 
-The whole test has a **12-minute budget**, and the install alone has its own
-budget of **120 seconds** by default, asserted from the installer's own timing
-record rather than measured from outside.
+The whole test has a **12-minute budget**. Every `tools-pack` action has a
+**150-second budget** by default, and each Squirrel install or uninstall command
+has a **120-second budget**; both are shorter than the suite deadline so cleanup
+and reporting retain time to run. The install also has its own **120-second
+performance budget**, asserted from the installer's timing record after the
+command completes.
+
+Squirrel commands run with ignored stdio and complete when their direct installer
+process exits. Capturing the installer's stdout or stderr is unsafe here because
+Squirrel descendants can inherit those pipe handles and keep a buffered process
+call waiting for EOF after installation has finished. A timed-out Squirrel or
+`tools-pack` action terminates its Windows descendant process tree. The smoke
+harness appends each action's start, spawned process, completion, error or timeout
+to `smoke-steps.jsonl` as it happens, so a failed report names the pending action
+instead of containing only the outer test's declaration line.
 
 ### What it asserts, in order
 

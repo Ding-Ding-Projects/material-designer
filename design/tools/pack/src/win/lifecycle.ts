@@ -1,7 +1,6 @@
+import { spawn } from "node:child_process";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { execFile } from "node:child_process";
-import { dirname, join } from "node:path";
-import { promisify } from "node:util";
+import { basename, dirname, join } from "node:path";
 
 import {
   APP_KEYS,
@@ -70,8 +69,9 @@ import type {
 } from "./types.js";
 
 const PACKAGED_CONFIG_PATH_ENV = "OD_PACKAGED_CONFIG_PATH";
+const SQUIRREL_COMMAND_TIMEOUT_MS = 120_000;
+const SQUIRREL_TERMINATION_TIMEOUT_MS = 10_000;
 const UPDATE_ACTION_TIMEOUT_MS = 10 * 60 * 1000;
-const execFileAsync = promisify(execFile);
 
 function usesSquirrelInstaller(config: ToolPackConfig): boolean {
   return config.to === "squirrel" || config.to === "all";
@@ -112,11 +112,61 @@ async function waitForSquirrelInstalledPaths(timeoutMs = 120_000): Promise<WinSq
   throw new Error(`Squirrel installed no ${PRODUCT_NAME}.exe under ${resolveWinSquirrelInstallRoot()}`);
 }
 
-async function invokeSquirrel(command: string, args: string[]): Promise<void> {
-  await execFileAsync(command, args, {
-    cwd: dirname(command),
+async function terminateSquirrelProcessTree(pid: number): Promise<void> {
+  if (process.platform !== "win32" || pid < 1) return;
+  const terminator = spawn("taskkill.exe", ["/pid", String(pid), "/t", "/f"], {
+    stdio: "ignore",
     windowsHide: true,
-    maxBuffer: 20 * 1024 * 1024,
+  });
+  await new Promise<void>((resolve) => {
+    const timeout = setTimeout(resolve, SQUIRREL_TERMINATION_TIMEOUT_MS);
+    terminator.once("error", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    terminator.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
+}
+
+async function invokeSquirrel(command: string, args: string[]): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    // Squirrel starts the installed application for lifecycle events. Those
+    // descendants can inherit captured stdout/stderr handles, so execFile's
+    // close event may never arrive even after the installer itself exits.
+    // Ignore stdio and treat the direct installer process's exit as completion.
+    const installer = spawn(command, args, {
+      cwd: dirname(command),
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      void terminateSquirrelProcessTree(installer.pid ?? -1).finally(() => {
+        reject(new Error(`${basename(command)} timed out after ${SQUIRREL_COMMAND_TIMEOUT_MS}ms`));
+      });
+    }, SQUIRREL_COMMAND_TIMEOUT_MS);
+    installer.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(error);
+    });
+    installer.once("exit", (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0 && signal == null) {
+        resolve();
+        return;
+      }
+      const suffix = signal == null ? `code ${code ?? "unknown"}` : `signal ${signal}`;
+      reject(new Error(`${basename(command)} exited with ${suffix}`));
+    });
   });
 }
 

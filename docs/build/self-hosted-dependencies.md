@@ -50,14 +50,14 @@ contract. CI is the fresh-runner proof for native compiler availability and the
 full lockfile install; a cache hit only shortens the same path.
 
 Release run
-[31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-proved the Windows tool and dependency bootstrap through `pnpm install
---frozen-lockfile`, completed the repaired application Typecheck and passed the
-Windows identity/installer tests. Locked electron-builder 26.8.1 then rejected
-the unknown `win.sign` property before packaging. Commit
-[e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
-switches to the supported `signAndEditExecutable: false` control; installer and
-release evidence remain pending until the replacement run.
+[31186802259](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+proved the labelled Windows tool and dependency bootstrap through `pnpm install
+--frozen-lockfile`, completed Typecheck and Windows identity/installer tests,
+and produced an unsigned Squirrel package verified as `NotSigned`. The
+self-contained scan and installer artifact upload also passed. The packaged
+smoke then timed out after `720000ms`, emitted no `ui-states.json`, and correctly
+skipped publication. This proves labelled runner execution, not a fresh cache-miss
+download; that distinct bootstrap path remains governed by the committed test.
 
 ## Security boundary
 

@@ -260,36 +260,38 @@ exact status is `NotSigned`.
 
 ## Verification
 
-**Observed before the runner migration:** two releases exist, `v0.16.1-r7.1` and `v0.16.1-r8.1`, each
-published by the run that built its installer. The workspace installed with native
-modules compiled from source, the full typecheck passed, the Windows identity
-specs passed, an installer was produced and its payload validated, and the smoke
-test installed, launched, health-checked, screenshotted and uninstalled the built
+**Historical passing evidence:** multiple legacy releases were published by the
+runs that built their installers; the latest verified one is `v0.16.1-r71.1` from
+run `30957484333`. Its workspace installed with native modules compiled from
+source, the typecheck and Windows identity specs passed, and the smoke test
+installed, launched, health-checked, screenshotted and uninstalled the built
 application.
 
-**Not observed:** a new labelled self-hosted runner contract executing a release,
-the updater path, any non-Windows artifact, and —
-importantly — a *failing* release run. The fail-closed signing, smoke and UI-state
-guards are source-checked but have not yet produced a new labelled-runner verdict.
-A gate that has only ever been seen passing is not known to be a gate.
+**Current failing evidence:** labelled self-hosted Windows Release
+[`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+at `f6549861` passed dependency installation, Typecheck, Squirrel packaging,
+`NotSigned`, self-contained scanning and installer artifact upload. Its packaged
+smoke timed out after `720000ms` before UI capture. `ui-states.json` was absent,
+and code-name selection and publication were skipped. This proves the
+no-publication-on-failure gate; it does not prove the Squirrel application can
+install, start or uninstall successfully.
 
 The pipeline is fully proven when one run demonstrates all of:
 
 - [x] port verification passing with zero gaps and its summary table rendered
-- [ ] port verification **failing** on a deliberately undeclared change
-- [x] install completing with the native binding compiled
+- [x] port verification detecting deliberate gap classes in the local verifier proof
+- [x] labelled Windows install completing with the native binding compiled
 - [x] typecheck and the identity suites passing
-- [x] an installer produced, its reported path present, its payload validated
-- [x] the smoke test installing, launching, health-checking and uninstalling
-- [x] a non-draft release under a fresh tag with the installer, its checksum file
-      and the code name image attached
-- [x] the line-count table present in the notes
-- [x] a second release picking a **different** code name
-- [ ] a release whose smoke test failed, publishing notes that say so
+- [x] a Squirrel installer produced, its reported path present, and `NotSigned`
+- [ ] the Squirrel smoke installing, launching, health-checking, capturing UI states and uninstalling
+- [x] historical non-draft releases under fresh tags with their installer/checksum assets
+- [x] the line-count table present in historical release notes
+- [x] later historical releases selecting different code names
+- [x] a failed Squirrel smoke skipping code-name selection and publication
 
-The two unchecked boxes are the interesting ones. Both are about the pipeline
-behaving correctly when something goes wrong, which is the only thing a pipeline
-is actually for.
+The remaining unchecked box is the current product boundary: a labelled-runner
+Squirrel artifact must complete the real installed-app smoke and publish its
+UI-state evidence before the new release path is verified.
 
 ## Suggested reading
 

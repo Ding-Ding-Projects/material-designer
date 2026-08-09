@@ -540,9 +540,17 @@ jobs:
             {
               echo "### 📷 Packaged UI states"
               echo ""
-              echo "\`ui-states.json\` is absent — the smoke run never reached the capture step."
+              if [ "${{ steps.smoke.outcome }}" = "success" ]; then
+                echo "\`ui-states.json\` is absent after the packaged smoke reported success."
+              else
+                echo "\`ui-states.json\` is absent because the packaged smoke did not complete successfully."
+              fi
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::error::ui-states.json is absent after a successful packaged smoke run" >&2
+            if [ "${{ steps.smoke.outcome }}" = "success" ]; then
+              echo "::error::ui-states.json is absent after a successful packaged smoke run" >&2
+            else
+              echo "::error::packaged smoke failed before UI capture completed" >&2
+            fi
             exit 1
           fi
           # The path travels in the environment rather than as an argument:

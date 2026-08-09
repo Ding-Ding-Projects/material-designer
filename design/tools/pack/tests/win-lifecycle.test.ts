@@ -118,6 +118,13 @@ describe("installPackedWinApp", () => {
     expect(source).toContain("resolveWinSquirrelSetupPath");
     expect(source).toContain('invokeSquirrel(installerPath, config.silent ? ["--silent"] : [])');
     expect(source).toContain('invokeSquirrel(resolveWinSquirrelUpdatePath(), ["--uninstall"])');
+    expect(source).toContain('const installer = spawn(command, args');
+    expect(source).toContain('stdio: "ignore"');
+    expect(source).toContain('installer.once("exit"');
+    expect(source).toContain('SQUIRREL_COMMAND_TIMEOUT_MS = 120_000');
+    expect(source).toContain('spawn("taskkill.exe", ["/pid", String(pid), "/t", "/f"]');
+    expect(source).toContain('timed out after ${SQUIRREL_COMMAND_TIMEOUT_MS}ms');
+    expect(source).not.toContain('execFileAsync(command, args');
     expect(source).toContain('uninstallerPath: squirrel ? resolveWinSquirrelUpdatePath() : registeredPaths.uninstallerPath');
   });
 

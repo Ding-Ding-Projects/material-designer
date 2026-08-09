@@ -13,15 +13,14 @@ How Material Designer is built, where that happens, and why.
 ## Status
 
 > [!IMPORTANT]
-> **The latest Release run is not green.** `Verify` has historical zero-gap
-> evidence, while Release run
-> [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-> passed the self-hosted bootstrap, frozen dependency installation, web Typecheck
-> and Windows identity tests before locked `electron-builder` 26.8.1 rejected the
-> unknown `win.sign` property. Commit
-> [e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
-> switches to the supported `signAndEditExecutable: false` control; no new
-> installer or release is claimed until the replacement run passes.
+> **The latest Release run is not green.** Release
+> [31186802259](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+> at `f6549861` passed the labelled self-hosted Windows bootstrap, frozen
+> dependency installation, Typecheck, Windows identity tests, Squirrel packaging,
+> Authenticode `NotSigned`, self-contained scanning and installer artifact upload.
+> The packaged smoke timed out after `720000ms` before UI capture, so
+> `ui-states.json` was absent and publication was skipped. Verify `31186802470`
+> remains queued; no new Squirrel release is claimed.
 >
 > The 48 workflow files under `design/.github/workflows/` belong to the vendored
 > upstream project and are **inert**, because workflows are only read from the
