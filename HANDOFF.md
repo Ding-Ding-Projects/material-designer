@@ -5,31 +5,31 @@ State of play for whoever picks this up next.
 Read this before touching anything.
 
 > [!IMPORTANT]
-> **Current handoff — 2026-08-07.** `main` and the hui are at commit
-> [`fb0091bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/fb0091bd0637da7f8816e4de73c303e8949c40cd).
+> **Current handoff — 2026-08-07.** `main` and the Git remote are at commit
+> [`f6549861`](https://github.com/Ding-Ding-Projects/material-designer/commit/f6549861f4cbf8783e4dd73765145d60b74db73d).
 > Release run
-> [`31182596964`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182596964)
+> [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
 > passed checkout, self-hosted Windows bootstrap, dependency installation,
-> Typecheck, Windows identity/installer tests, Squirrel.Windows packaging,
-> unsigned verification, the self-contained scan and artifact upload. Its
-> packaged smoke test then timed out after `720000ms` at
-> `design/e2e/specs/win.spec.ts:542:3`; `ui-states.json` was absent and no
-> release was published. The first lifecycle repair detached `Update.exe` and
-> quit after spawning it, but this run proved that asynchronous Electron
-> `app.quit()` still leaves the Squirrel lifecycle process waiting.
+> Typecheck, Windows identity and installer tests, Squirrel.Windows packaging,
+> Authenticode `NotSigned`, the self-contained scan and installer artifact
+> upload. Its packaged smoke test then timed out after `720000ms` at
+> `design/e2e/specs/win.spec.ts:542:3`; no lifecycle timing, screenshot or
+> `ui-states.json` was produced, and release publication was skipped.
 >
-> The next checkpoint changes Squirrel lifecycle switches to immediate
-> `app.exit(0)` and strengthens the source contract. It is currently uncommitted
-> on branch `codex/material-designer-ci-20260807` in the linked checkout
-> created for this task. Commit it with the bilingual message, run
-> `sh scripts/verify-port.sh`, push the branch, fast-forward the integration
-> checkout into `main`, and push `main`. The next Release must prove the smoke
-> test and publication; do not describe the release as shipped until its tag,
-> assets, smoke result and release notes are verified. Main Verify
-> [`31182597141`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182597141)
-> was queued for `fb0091bd`; preserve it as evidence unless a newer push makes
-> it stale. The next agent owns the final `dew jerjer hui` + `mat day` cleanup
-> pass only after the repaired release is verified.
+> The immediate `app.exit(0)` lifecycle repair was present in the failed build.
+> The report did not identify whether pre-clean uninstall, install, or a later
+> `tools-pack` action remained pending. The next checkpoint removes one concrete
+> deadlock source by launching Squirrel with ignored stdio and resolving from the
+> direct installer process's `exit` event. It also bounds every Squirrel and
+> packaged-smoke `tools-pack` action, terminates the Windows process tree on
+> timeout, and persists `smoke-steps.jsonl` before and after each action. This is
+> a diagnosable repair hypothesis, not proof of the old run's exact root cause.
+> Run `sh scripts/verify-port.sh`, commit and push the repair, then require a new
+> Release to prove smoke, screenshots, publication, tag, installer/update assets,
+> timing and release notes before describing the Squirrel release as shipped.
+> Main Verify
+> [`31186802470`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802470)
+> remains queued because the Linux self-hosted runner is offline.
 
 > [!IMPORTANT]
 > **Updated 2026-08-07.** Release run
@@ -218,9 +218,9 @@ line survives, a reader cannot trust the ones beside it either.
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
-| Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. The latest Release evidence is `31158740651`; its exact failure is recorded in `docs/build/ci.md` |
-| Install / build / typecheck / test | **Typecheck and Windows contract tests passing; schema validation failed** | Release `31158740651` completed the workspace install, web Typecheck and Windows identity tests, then rejected the unsupported `win.sign` property before producing an installer |
-| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; code signing is permanently prohibited, and the new Squirrel path clears signing inputs, requires `NotSigned` plus smoke evidence, and remains pending labelled self-hosted verification |
+| Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. Release `31186802259` at `f6549861` passed labelled Windows bootstrap and packaging, then failed at packaged smoke after `720000ms`; Main Verify `31186802470` remains queued |
+| Install / build / typecheck / test | **Typecheck and Windows contract tests passing; packaged smoke failed** | Release `31186802259` completed workspace install, Typecheck, Windows tests, Squirrel packaging, `NotSigned`, self-contained scanning and artifact upload; the smoke produced no lifecycle timing, screenshot or `ui-states.json` |
+| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. The new Squirrel path is explicitly unsigned and passed packaging/`NotSigned`, but no new release was published because its install/start/uninstall smoke did not complete |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
@@ -422,39 +422,33 @@ reasonably assume otherwise. An earlier revision of this section said nothing ha
 been installed, built, tested, packaged or run; all five had happened by then, and
 that is the specific failure this section now exists to avoid repeating.
 
-**What is verified, so the list below is read against something.** The workspace
-installed on the previous hosted Windows runner with the native database binding compiled from
-source; the full workspace typechecks with the rebrand in place; unit suites run on
-Linux and the Windows identity suites run on Windows; two installers were built,
-payload-validated, published, and one of them was installed, launched,
-health-checked and uninstalled by the packaged smoke test with seven residue checks
-clean.
+**What is verified, so the list below is read against something.** Labelled
+self-hosted Windows runs install the workspace and typecheck the rebrand; Windows
+identity and installer suites pass; multiple historical legacy installer releases
+were published, and the latest verified one remains `v0.16.1-r71.1`. Its packaged
+smoke installed, launched, health-checked and uninstalled the application with
+seven residue checks clean. More recent Squirrel runs reached unsigned packaging
+and artifact upload, then failed before install/start/uninstall proof.
 
 Now the gaps.
 
-- **No workflow has been observed failing.** Every gate has been watched passing
-  and none has been watched rejecting a bad tree, so none of them is yet *known*
-  to be a gate. Deliberately introducing an undeclared change under `design/` and
-  watching the port verifier go red is the cheapest way to close this, and it has
-  not been done.
-- **Nobody has looked at the running interface.** The smoke test captures one
-  screenshot, asserts the file is non-zero and saves it into the run's report; it
-  inspects nothing in the image. No capture has been reviewed, none has been taken
-  at any other display scale, and none exists at a narrow width or in a second
-  language. Every visual claim anywhere in this repository is therefore read from
-  source, not seen.
-- **The test run is a gate on identity, not coverage.** The suites that run were
-  chosen because the rebrand changed what they assert. The imported tree carries
-  roughly 1,150 test files; most of them have never run here, and a green release
-  says nothing about them.
-- **The Material Design 3 contract is built but unproved.** The token sheet and its
-  mapping layer landed, so components inherit M3 roles. Whether that produces a
-  correct-looking interface is untested, for the reason two bullets up.
-- **The window title has never been read off a window.** The rebrand *is* proved as
-  installed identity — the smoke test asserts the uninstaller's name, the registry
-  entries' product name and application id, and the running process's version. What
-  no assertion covers is the window's own chrome, including the custom title bar
-  added at `dea6b0a`.
+- **The current Squirrel smoke has not completed.** Release `31186802259` timed
+  out after `720000ms` before it produced lifecycle timing, a screenshot or
+  `ui-states.json`. Publication was correctly skipped. The next run must either
+  pass install/start/inspect/uninstall and capture states, or persist the exact
+  timed-out `tools-pack` action and descendant cleanup evidence.
+- **The visual matrix is incomplete.** Real packaged captures have been reviewed,
+  including a window-title branding defect and later bilingual narrow/200% states.
+  The current Squirrel artifact has no fresh capture, and the complete light/dark,
+  100/125/150/200%, narrow-width and language matrix has not been reviewed as one
+  verified release set.
+- **The test run is a gate on selected capabilities, not exhaustive coverage.**
+  The imported tree carries roughly 1,150 test files; a green release does not
+  imply every imported suite ran.
+- **Material Design 3 conformance remains partly visual.** Tokens and component
+  mappings have tests, while a human review of the complete installed-build state
+  set is still required. Existing captures prove the custom window title is
+  visible; they do not prove every surface, scale, theme and language combination.
 - **No request in the daemon's request collection has been sent.** The 368 requests
   were derived by reading route definitions; no daemon has been started here, and
   at least one route pair was missed by that reading. See
@@ -1253,8 +1247,8 @@ the reader has no way to know.
   Verify `31127492562` is cancelled, and Release `31127492852` is completed
   failure with the `lifecycle.ts(473,95)` action-type error documented above.
 - The irreversible cleanup half was not performed because the request did not
-  include `mat day`. Clean merged task branches and their clean linked
-  worktrees remain available for a later explicitly authorized cleanup pass.
+  include explicit deletion authorization. Clean merged task branches and their
+  clean linked worktrees remain available for a later authorized cleanup pass.
   The `pack-squirrel` linked worktree is not a cleanup candidate: its branch
   still has six uncommitted import lines in `design/tools/pack/src/win/lifecycle.ts`
   and the untracked `design/tools/pack/src/win/squirrel.ts` (2,703 bytes). That

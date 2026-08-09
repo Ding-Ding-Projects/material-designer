@@ -29,6 +29,28 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Bound and identify Squirrel lifecycle commands
+
+**Reason:** Release run `31186802259` passed Typecheck, focused Windows tests,
+unsigned Squirrel packaging, Authenticode `NotSigned`, the self-contained scan
+and installer artifact upload, then timed out after `720000ms` before the smoke
+test reached UI capture. The report did not identify whether pre-clean uninstall,
+install, or a later `tools-pack` command remained pending. Squirrel commands used
+buffered `execFile`, whose captured pipes can remain open in descendants after the
+direct installer exits. The harness now ignores Squirrel stdio, resolves from the
+direct child `exit` event, enforces a 120-second command limit, and terminates the
+Windows descendant tree on timeout. The packaged smoke applies a shorter-than-suite
+timeout to each `tools-pack` action and appends start, spawn, completion, error and
+timeout events to `smoke-steps.jsonl`, so a future failure names the active action
+instead of returning only the outer test declaration. Focused source contracts
+reject the old buffered, unbounded invocation.
+
+**Changed files:**
+
+- e2e/specs/win.spec.ts
+- tools/pack/src/win/lifecycle.ts
+- tools/pack/tests/win-lifecycle.test.ts
+
 ### 2026-08-07 — Exit Squirrel lifecycle events immediately
 
 **Reason:** Release run `31182596964` proved that packaging, unsigned verification,

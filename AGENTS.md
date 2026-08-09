@@ -59,10 +59,12 @@ codebase. Read this file for how work is done *here*.
 `.github/workflows/verify.yml` (*Verify*), `.github/workflows/release.yml` (*Release*) and
 `.github/workflows/pages.yml` (*Pages*) — and **all three have run**. Port verification
 passes at 0 gaps; the workspace has installed with its native modules compiled from source,
-typechecked, and passed the Windows identity suites; Windows installers have been built and
+typechecked, and passed the Windows identity suites; historical Windows installers have been
 put through the packaged smoke test, which installed, launched, health-checked and
-uninstalled the application with zero residue; two releases are published; the documentation
-site is deployed.
+uninstalled the application with zero residue; multiple legacy releases are published, with
+`v0.16.1-r71.1` the latest verified one; the documentation site is deployed. Release
+`31186802259` proved the new unsigned Squirrel package and `NotSigned` gate, then failed in
+packaged smoke before UI capture or publication.
 
 **What is emphatically not finished is the application.** The Cantonese locale, the two
 funny-level sliders, the in-app regex builder, the startup surprise and the changelog viewer
@@ -73,8 +75,9 @@ bar and no more. Never describe any of those as shipped.
 Keep the distinction between a definition and a result sharp in everything you write: a
 workflow that *would* verify, build or deploy is not a verification, a build or a
 deployment. Cite a run, not a file, as evidence — and where no run has demonstrated
-something, say so rather than reasoning from the workflow's contents. No run has yet been
-observed *failing*, so nothing here may be described as a proven gate.
+something, say so rather than reasoning from the workflow's contents. Failed runs have
+proved that release publication is gated, but each individual check still needs its own
+passing or failing run evidence before it is described as verified.
 
 Separately, the 48 workflow files under `design/.github/workflows/` belong to upstream and
 are **inert** — GitHub Actions only reads `.github/workflows/` at the repository root, so

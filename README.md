@@ -38,16 +38,15 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > check and uninstall with no residue.
 >
 > **Current release status (2026-08-07).** Release run
-> [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-> at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` passed the design verifier,
-> self-hosted bootstrap, dependency installation, web Typecheck and the Windows
-> identity tests, then failed before packaging because locked `electron-builder`
-> 26.8.1 rejected the unknown `win.sign` property. No installer, smoke result or
-> release was published. Commit
-> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
-> replaces it with the schema-supported `signAndEditExecutable: false` control;
-> a replacement run must still prove packaging, `NotSigned`, smoke behavior and
-> publication.
+> [31186802259](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+> at [`f6549861`](https://github.com/Ding-Ding-Projects/material-designer/commit/f6549861f4cbf8783e4dd73765145d60b74db73d)
+> passed the design verifier, labelled self-hosted Windows bootstrap, dependency
+> installation, Typecheck, Windows identity tests, Squirrel.Windows packaging,
+> Authenticode `NotSigned`, the self-contained scan and installer artifact upload.
+> The packaged smoke then timed out after `720000ms` before UI capture, so
+> `ui-states.json` was absent and publication was skipped. Main Verify
+> [31186802470](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802470)
+> remains queued; no new Squirrel release is claimed.
 >
 > The Cantonese locale, both tone sliders, the regex builder, the command palette,
 > the changelog viewer, the startup surprise, tab pinning, the notification centre,
@@ -114,14 +113,12 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > edges, so the jsdom focus fallback cannot hide a missing edge guard.
 
 > **Latest CI evidence.** Release run
-> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-> passed the self-hosted tool bootstrap, byte-exact verifier, portable Python,
-> frozen dependency installation, web Typecheck and Windows identity tests, then
-> failed in electron-builder schema validation because `win.sign` is unknown in
-> version 26.8.1. Commit
-> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
-> switches to `signAndEditExecutable: false` and adds a release-contract check;
-> the replacement labelled-runner verdict remains unverified.
+> [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+> proved the labelled Windows bootstrap, schema-supported unsigned builder,
+> `NotSigned`, self-contained scan and installer artifact upload at `f6549861`.
+> Its packaged smoke timed out after `720000ms` before capture, leaving no
+> `ui-states.json`; release publication was skipped. Verify `31186802470` remains
+> queued, so the Squirrel install/start/uninstall path still has no green verdict.
 
 > **2026-08-06 settings-menu accessibility repair.** The settings tab overflow
 > menu now carries its own plain-text-first regex search, honest no-match state,
@@ -350,9 +347,10 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are legacy releases, and new Squirrel publication is explicitly unsigned.** Two tags have
-been published, each carrying the installer its own run built, a portable archive, a checksum
-and a dim sum code name. New Windows releases are configured as Squirrel.Windows releases:
+**There are multiple legacy releases, and new Squirrel publication is explicitly unsigned.**
+The latest verified published build is `v0.16.1-r71.1` from run `30957484333`; it carries the
+installer that run built, a portable archive, a checksum and a dim sum code name. New Windows
+releases are configured as Squirrel.Windows releases:
 the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
 `metadata.json` feed, so an installed app can download an update in the background and wait
 for the user to choose **Restart to install update**. The current published links below remain

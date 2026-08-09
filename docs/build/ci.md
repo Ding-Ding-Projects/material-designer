@@ -10,18 +10,17 @@ where `Pages` fits.
 
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
-> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-> passed the self-hosted toolchain, portable Python bootstrap, frozen dependency
-> installation, repaired web Typecheck and Windows identity tests, then failed
-> during electron-builder schema validation because version 26.8.1 rejected the
-> unknown `win.sign` property. No new installer or release was published by that
-> run. Earlier
-> published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
-> not proof that this current commit is green.
+> [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+> at `f6549861` passed the labelled self-hosted Windows toolchain, portable Python
+> bootstrap, frozen dependency installation, Typecheck, Windows identity tests,
+> Squirrel.Windows packaging, Authenticode `NotSigned`, self-contained scanning
+> and installer artifact upload. The packaged smoke then timed out after
+> `720000ms` before UI capture; `ui-states.json` was absent and release publication
+> was skipped. The latest verified published release remains `v0.16.1-r71.1`.
 >
-> **The current run has failed after Typecheck.** That is useful evidence about
-> the release gate, but it is not a green release. The unticked boxes under
-> [Verification](#verification) remain unverified until a later run passes them.
+> **The failure proves the publication gate, not the packaged application.** A
+> later run must complete install/start/inspect/uninstall and UI-state capture.
+> Main Verify `31186802470` remains queued and has no verdict.
 >
 > Where this page describes what a workflow does, it is describing the committed
 > definition; where it states a result, it says so.
@@ -32,16 +31,16 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
-for `main` at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` completed with **failure**
-in `Build Windows application → Build the Windows installer`. The repaired web
-Typecheck and Windows identity/installer tests passed, then locked
-electron-builder 26.8.1 rejected the unknown `win.sign` property before
-packaging. Commit
-[`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
-switches to the supported `signAndEditExecutable: false` control. Unsigned
-verification, packaged smoke and publication remain unverified until a new
-labelled-runner execution completes.
+Release run [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+for `main` at `f6549861f4cbf8783e4dd73765145d60b74db73d` completed with **failure**
+in `Build Windows application → Smoke test the packaged application`. Typecheck,
+Windows identity/installer tests, Squirrel packaging, the explicit `NotSigned`
+assertion, self-contained scanning and installer artifact upload passed. The
+smoke timed out after `720000ms` at `design/e2e/specs/win.spec.ts:542:3`, before
+it persisted lifecycle timing or UI-state evidence. `ui-states.json` was absent,
+code-name selection and publication were skipped, and no release points at that
+commit. The retained workflow installer is diagnostic evidence, not a published
+release.
 
 ## Behaviour
 

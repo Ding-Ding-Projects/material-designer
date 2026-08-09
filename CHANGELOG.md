@@ -64,6 +64,27 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Squirrel smoke can no longer spend twelve silent minutes hiding the active command.**
+  Release run
+  [31186802259](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
+  at `f6549861` passed Typecheck, Windows tests, unsigned Squirrel packaging,
+  `NotSigned`, self-contained scanning and installer artifact upload, then timed
+  out after `720000ms` before UI capture. The report did not identify whether
+  pre-clean uninstall, install, start or another `tools-pack` action remained
+  pending. Squirrel commands now avoid inherited captured pipes, have a bounded
+  lifetime and terminate their Windows descendant tree on timeout. The packaged
+  smoke also bounds each `tools-pack` action and persists `smoke-steps.jsonl` as
+  actions start and finish, so the next failure names its pending command instead
+  of pointing only at the outer test declaration. Publication remains gated on a
+  successful real smoke (`TBD-COMMIT`).
+
+  Squirrel smoke 以前可以靜靜雞食晒十二分鐘，最後淨係指住 test declaration，
+  完全唔講係 pre-clean uninstall、install、start 定其他 `tools-pack` action 卡住。
+  `31186802259` 證明打包、`NotSigned` 同 artifact upload 過關，但 UI capture 前
+  timeout。依家 Squirrel 唔再攬住 inherited pipe，command 同 process tree 都有
+  時限；smoke 亦一路寫 `smoke-steps.jsonl`，下次再跌低都要講低自己喺邊一級
+  樓梯跣親。真正 release 仲要等 real smoke 綠先算（`TBD-COMMIT`）。
+
 - **The second packaging attempt caught a schema mismatch before the signer could run.**
   Run [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
   at [`f484639a`](https://github.com/Ding-Ding-Projects/material-designer/commit/f484639a3d6a70ce30fc6a2c798e6e59518ecf8e)

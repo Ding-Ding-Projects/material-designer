@@ -1,9 +1,9 @@
 // @vitest-environment node
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -31,6 +31,11 @@ const toolsPackDir = resolveFromWorkspace(process.env.OD_PACKAGED_E2E_TOOLS_PACK
 const namespace = resolvePackagedSmokeNamespace('win');
 const toolsPackBin = join(workspaceRoot, 'tools', 'pack', 'bin', 'tools-pack.mjs');
 const maxInstallDurationMs = Number.parseInt(process.env.OD_PACKAGED_E2E_WIN_MAX_INSTALL_MS ?? '120000', 10);
+const toolsPackActionTimeoutMs = resolvePositiveIntegerEnv(
+  'OD_PACKAGED_E2E_WIN_TOOLS_PACK_TIMEOUT_MS',
+  150_000,
+);
+const toolsPackMaxBufferBytes = 20 * 1024 * 1024;
 const smokeProfile = process.env.OD_PACKAGED_E2E_WIN_SMOKE_PROFILE ?? 'core';
 const verifyCoreOnly = smokeProfile === 'core';
 const verifyReinstallWhileRunning = !verifyCoreOnly && process.env.OD_PACKAGED_E2E_WIN_VERIFY_REINSTALL !== '0';
@@ -49,6 +54,10 @@ const releaseChannel = process.env.OD_PACKAGED_E2E_RELEASE_CHANNEL;
 const releaseVersion = process.env.OD_PACKAGED_E2E_RELEASE_VERSION;
 const updateScenario = resolvePackagedUpdateScenario({ releaseChannel, releaseVersion });
 const installIdentity = resolvePackagedWinInstallIdentity({ namespace, releaseVersion });
+const smokeReportDir = resolveFromWorkspace(
+  process.env.OD_PACKAGED_E2E_REPORT_DIR ?? join('.tmp', 'e2e-release-report', 'win'),
+);
+const smokeStepJournalPath = join(smokeReportDir, 'smoke-steps.jsonl');
 
 const outputNamespaceRoot = join(toolsPackDir, 'out', 'win', 'namespaces', namespace);
 const runtimeNamespaceRoot = join(toolsPackDir, 'runtime', 'win', 'namespaces', namespace);
@@ -1721,6 +1730,130 @@ async function runToolsPackJson<T>(action: string, extraArgs: string[] = []): Pr
   return runToolsPackJsonForVersion(action, releaseVersion, extraArgs);
 }
 
+type ToolsPackActionResult = {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stderr: string;
+  stdout: string;
+};
+
+async function appendSmokeStepJournal(entry: Record<string, unknown>): Promise<void> {
+  await mkdir(smokeReportDir, { recursive: true });
+  await appendFile(
+    smokeStepJournalPath,
+    `${JSON.stringify({ ...entry, timestamp: new Date().toISOString() })}\n`,
+    'utf8',
+  );
+}
+
+async function terminateToolsPackProcessTree(pid: number): Promise<void> {
+  if (process.platform !== 'win32' || pid < 1) return;
+  const terminator = spawn('taskkill.exe', ['/pid', String(pid), '/t', '/f'], {
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  await new Promise<void>((resolveTermination) => {
+    const timeout = setTimeout(resolveTermination, 10_000);
+    terminator.once('error', () => {
+      clearTimeout(timeout);
+      resolveTermination();
+    });
+    terminator.once('exit', () => {
+      clearTimeout(timeout);
+      resolveTermination();
+    });
+  });
+}
+
+async function runToolsPackAction(
+  action: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<ToolsPackActionResult> {
+  const startedAt = Date.now();
+  await appendSmokeStepJournal({ action, event: 'start', timeoutMs });
+  let child: ReturnType<typeof spawn>;
+  try {
+    child = spawn(process.execPath, args, {
+      cwd: workspaceRoot,
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+  } catch (error) {
+    await appendSmokeStepJournal({ action, event: 'spawn-error', message: formatUnknown(error) });
+    throw error;
+  }
+  const pid = child.pid ?? null;
+  await appendSmokeStepJournal({ action, event: 'spawned', pid });
+
+  return await new Promise<ToolsPackActionResult>((resolveAction, rejectAction) => {
+    let settled = false;
+    let stdout = '';
+    let stderr = '';
+    let timeout: NodeJS.Timeout | null = null;
+    const rejectAfterTermination = (
+      event: 'max-buffer' | 'timeout',
+      error: Error,
+      details: Record<string, unknown>,
+    ): void => {
+      if (settled) return;
+      settled = true;
+      if (timeout != null) clearTimeout(timeout);
+      void terminateToolsPackProcessTree(pid ?? -1).finally(async () => {
+        const durationMs = Date.now() - startedAt;
+        await appendSmokeStepJournal({ action, durationMs, event, pid, ...details });
+        rejectAction(error);
+      });
+    };
+    const appendOutput = (current: string, chunk: string, stream: 'stdout' | 'stderr'): string => {
+      const next = current + chunk;
+      if (Buffer.byteLength(next) > toolsPackMaxBufferBytes) {
+        rejectAfterTermination(
+          'max-buffer',
+          new Error(`tools-pack win ${action} exceeded ${toolsPackMaxBufferBytes} bytes on ${stream}`),
+          { stream },
+        );
+        return current;
+      }
+      return next;
+    };
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => {
+      stdout = appendOutput(stdout, chunk, 'stdout');
+    });
+    child.stderr.on('data', (chunk: string) => {
+      stderr = appendOutput(stderr, chunk, 'stderr');
+    });
+    timeout = setTimeout(() => {
+      rejectAfterTermination(
+        'timeout',
+        new Error(`tools-pack win ${action} timed out after ${timeoutMs}ms`),
+        { timeoutMs },
+      );
+    }, timeoutMs);
+    child.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      if (timeout != null) clearTimeout(timeout);
+      const durationMs = Date.now() - startedAt;
+      void appendSmokeStepJournal({ action, durationMs, event: 'error', message: error.message, pid }).finally(() => {
+        rejectAction(error);
+      });
+    });
+    child.once('close', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      if (timeout != null) clearTimeout(timeout);
+      const durationMs = Date.now() - startedAt;
+      void appendSmokeStepJournal({ action, code, durationMs, event: 'complete', pid, signal }).finally(() => {
+        resolveAction({ code, signal, stderr, stdout });
+      });
+    });
+  });
+}
+
 async function runToolsPackJsonForVersion<T>(
   action: string,
   appVersion: string | null | undefined,
@@ -1738,23 +1871,17 @@ async function runToolsPackJsonForVersion<T>(
     '--json',
     ...extraArgs,
   ];
-  const result = await execFileAsync(process.execPath, args, {
-    cwd: workspaceRoot,
-    env: process.env,
-    maxBuffer: 20 * 1024 * 1024,
-  }).catch((error: unknown) => {
-    if (isExecError(error)) {
-      throw new Error(
-        [
-          `tools-pack win ${action} failed`,
-          `message:\n${error.message}`,
-          `stdout:\n${error.stdout}`,
-          `stderr:\n${error.stderr}`,
-        ].join('\n'),
-      );
-    }
-    throw error;
-  });
+  const result = await runToolsPackAction(action, args, toolsPackActionTimeoutMs);
+  if (result.code !== 0 || result.signal != null) {
+    throw new Error(
+      [
+        `tools-pack win ${action} failed`,
+        result.signal == null ? `exit code: ${result.code ?? 'unknown'}` : `signal: ${result.signal}`,
+        `stdout:\n${result.stdout}`,
+        `stderr:\n${result.stderr}`,
+      ].join('\n'),
+    );
+  }
 
   try {
     return JSON.parse(result.stdout) as T;
@@ -2722,6 +2849,16 @@ function formatUnknown(value: unknown): string {
 function normalizeOptionalEnv(value: string | undefined): string | null {
   const normalized = value?.trim();
   return normalized == null || normalized.length === 0 ? null : normalized;
+}
+
+function resolvePositiveIntegerEnv(name: string, fallback: number): number {
+  const normalized = normalizeOptionalEnv(process.env[name]);
+  if (normalized == null) return fallback;
+  const value = Number(normalized);
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer, received ${JSON.stringify(normalized)}`);
+  }
+  return value;
 }
 
 function resolveOptionalFixturePort(value: string | undefined): number | null {

@@ -57,6 +57,9 @@ requireText(release, "signed = $false", "release metadata does not declare unsig
 requireText(release, "WORKFLOW_STARTED_AT", "release notes do not receive the workflow start timestamp");
 requireText(release, "Workflow duration", "release notes do not publish workflow timing");
 requireText(release, "gh release edit", "release notes are not finalized after publication");
+requireText(release, '${{ steps.smoke.outcome }}', "release.yml does not classify missing UI states against the smoke outcome");
+requireText(release, "packaged smoke failed before UI capture completed", "release.yml does not report a failed smoke truthfully before capture");
+requireText(release, "ui-states.json is absent after a successful packaged smoke run", "release.yml does not fail closed when a successful smoke omits UI states");
 requireText(verify, "actions/setup-python@v5", "verify.yml test job does not install Python 3.12 automatically");
 requireText(inventory, "Fresh-environment bootstrap proof", "dependency inventory lacks a fresh-environment proof");
 
