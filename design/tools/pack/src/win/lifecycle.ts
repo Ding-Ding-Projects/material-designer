@@ -42,8 +42,13 @@ import {
   resolveWinPaths,
   resolveWinProductNamespaceRoot,
   resolveWinProductUserDataRoot,
+  resolveWinSquirrelInstallRoot,
+  resolveWinSquirrelSetupPath,
+  resolveWinSquirrelUpdatePath,
 } from "./paths.js";
 import { cleanupWinRegistryResidues, queryWinRegistryEntries, resolveWinRegisteredPaths } from "./registry.js";
+import { shouldBuildWinNsisInstaller, shouldBuildWinSquirrelInstaller } from "./report.js";
+import { invokeSquirrel, resolveWinSquirrelInstalledPaths } from "./squirrel.js";
 import type {
   WinCleanupResult,
   WinIpcDiagnoseAttempt,
@@ -59,6 +64,7 @@ import type {
   WinResidueObservation,
   WinStartResult,
   WinStopResult,
+  WinSquirrelInstalledPaths,
   WinUninstallResult,
   WinPaths,
 } from "./types.js";
