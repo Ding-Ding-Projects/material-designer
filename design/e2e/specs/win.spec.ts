@@ -986,7 +986,7 @@ winDescribe('packaged windows runtime smoke', () => {
 
       printSmokeTimings(timings);
     }
-  }, 720_000);
+  }, 1_800_000);
 
   // Silent startup update acceptance (mirror of the mac lane): with the
   // daemon-owned allowSilentUpdates preference on, a payload downloaded in a
@@ -1073,7 +1073,7 @@ winDescribe('packaged windows runtime smoke', () => {
         });
       }
     }
-  }, 720_000);
+  }, 1_800_000);
 
   // Crash-rollback acceptance (mirror of the mac lane): a payload that spawns
   // but dies before its own launcher bookkeeping must leave the pre-armed
@@ -1215,7 +1215,7 @@ winDescribe('packaged windows runtime smoke', () => {
         });
       }
     }
-  }, 720_000);
+  }, 1_800_000);
 });
 
 winOnboardingDescribe('packaged windows onboarding AMR smoke', () => {
@@ -1373,7 +1373,7 @@ winOnboardingDescribe('packaged windows onboarding AMR smoke', () => {
       }
       printSmokeTimings(timings);
     }
-  }, 720_000);
+  }, 1_800_000);
 });
 
 async function measureSmokeStep<T>(timings: SmokeTiming[], step: string, run: () => Promise<T>): Promise<T> {

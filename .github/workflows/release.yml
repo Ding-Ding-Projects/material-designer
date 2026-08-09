@@ -487,6 +487,26 @@ jobs:
           path: ${{ steps.pack.outputs.staged_dir }}
           if-no-files-found: error
 
+      - name: Exclude Squirrel install paths from Windows Defender real-time scanning
+        # Windows Defender scans every file extracted by Setup.exe as it is
+        # written to disk. On a machine where the Electron binary is new to
+        # Defender's cloud cache the real-time scan can hold Setup.exe for well
+        # over twelve minutes, causing the smoke-test vitest timeout to fire
+        # before the install completes. Adding exclusions for the two
+        # Squirrel-owned directories (%LOCALAPPDATA%\SquirrelTemp and the
+        # install root) removes that overhead without disabling protection
+        # system-wide.
+        if: ${{ steps.pack.outputs.build_json != '' && (github.event_name != 'workflow_dispatch' || inputs.smoke) }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $squirrelInstallRoot = Join-Path $env:LOCALAPPDATA "open-design-packaged-app"
+          $squirrelTemp        = Join-Path $env:LOCALAPPDATA "SquirrelTemp"
+          foreach ($path in @($squirrelInstallRoot, $squirrelTemp)) {
+            New-Item -ItemType Directory -Force -Path $path | Out-Null
+            Add-MpPreference -ExclusionPath $path
+            Write-Host "Defender exclusion added: $path"
+          }
+
       - name: Smoke test the packaged application
         id: smoke
         # On a push there are no inputs, and an empty value compares equal to

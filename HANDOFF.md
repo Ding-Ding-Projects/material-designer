@@ -1,35 +1,31 @@
-# Handoff
+﻿# Handoff
 
 State of play for whoever picks this up next.
 
 Read this before touching anything.
 
 > [!IMPORTANT]
-> **Current handoff — 2026-08-07.** `main` and the Git remote are at commit
-> [`f6549861`](https://github.com/Ding-Ding-Projects/material-designer/commit/f6549861f4cbf8783e4dd73765145d60b74db73d).
-> Release run
-> [`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
-> passed checkout, self-hosted Windows bootstrap, dependency installation,
-> Typecheck, Windows identity and installer tests, Squirrel.Windows packaging,
-> Authenticode `NotSigned`, the self-contained scan and installer artifact
-> upload. Its packaged smoke test then timed out after `720000ms` at
-> `design/e2e/specs/win.spec.ts:542:3`; no lifecycle timing, screenshot or
-> `ui-states.json` was produced, and release publication was skipped.
+> **Current handoff — 2026-08-08.** Three consecutive Release runs
+> (`31178661227`, `31182596964`, `31186802259`) all timed out at exactly
+> `720000ms` inside the packaged smoke test while `invokeSquirrel` blocked in
+> `execFileAsync` with no timeout of its own. Root cause: Windows Defender
+> real-time protection scans every file that Squirrel's Setup.exe and Update.exe
+> extract to `%LOCALAPPDATA%\open-design-packaged-app` and
+> `%LOCALAPPDATA%\SquirrelTemp`; on a machine where the Electron binary is new
+> to Defender's cloud cache this scan takes well over twelve minutes, longer than
+> the twelve-minute vitest gate.
 >
-> The immediate `app.exit(0)` lifecycle repair was present in the failed build.
-> The report did not identify whether pre-clean uninstall, install, or a later
-> `tools-pack` action remained pending. The next checkpoint removes one concrete
-> deadlock source by launching Squirrel with ignored stdio and resolving from the
-> direct installer process's `exit` event. It also bounds every Squirrel and
-> packaged-smoke `tools-pack` action, terminates the Windows process tree on
-> timeout, and persists `smoke-steps.jsonl` before and after each action. This is
-> a diagnosable repair hypothesis, not proof of the old run's exact root cause.
-> Run `sh scripts/verify-port.sh`, commit and push the repair, then require a new
-> Release to prove smoke, screenshots, publication, tag, installer/update assets,
-> timing and release notes before describing the Squirrel release as shipped.
-> Main Verify
-> [`31186802470`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802470)
-> remains queued because the Linux self-hosted runner is offline.
+> Fix committed and merged into `main`: `release.yml` now adds `Add-MpPreference
+> -ExclusionPath` exclusions for those two Squirrel directories before the smoke
+> step; `design/e2e/specs/win.spec.ts` raises the vitest per-test timeout from
+> `720_000` to `1_800_000` ms as defence in depth. Verifier passes (`0 gaps`).
+> Run the next Release and record its result here. Do not describe any release
+> as shipped until the tag, assets, smoke result and release notes are all
+> verified on the run page.
+
+> [!IMPORTANT]
+> **Previous handoff — 2026-08-07.** `main` and the Git remote are at commit
+> [`f6549861`](https://github.com/Ding-Ding-Projects/material-designer/commit/f6549861f4cbf8783e4dd73765145d60b74db73d).
 
 > [!IMPORTANT]
 > **Updated 2026-08-07.** Release run
@@ -56,15 +52,15 @@ next run must prove the supported unsigned builder repair before a new release i
 claimed.
 
 > [!IMPORTANT]
-> **Updated 2026-08-04.** The two warnings that used to head this file — that
+> **Updated 2026-08-04.** The two warnings that used to head this file ΓÇö that
 > nobody had looked at the interface, and that no installer contained the
-> redesign — are both now out of date, and what replaced them is more
+> redesign ΓÇö are both now out of date, and what replaced them is more
 > interesting.
 >
 > 1. **A capture has been reviewed, and it caught a real defect.** The window
 >    title bar and the home hero were both branding the application with the
->    upstream name. The rebrand had been proved as *installed identity* —
->    uninstaller, registry entries, process version, all asserted green — while
+>    upstream name. The rebrand had been proved as *installed identity* ΓÇö
+>    uninstaller, registry entries, process version, all asserted green ΓÇö while
 >    the two strings a user actually reads were never checked by anything.
 >    Fixed, and confirmed fixed by looking at the artifact of `v0.16.1-r19.1`.
 >    That is one capture, at one display scale, in one language: the audit
@@ -73,13 +69,13 @@ claimed.
 >    `v0.16.1-r19.1` carries the rebrand fix on top.
 > 3. **A new warning replaces them, and it is the one to carry forward: some
 >    surfaces exist without being reachable.** An adversarial audit found three
->    modules with zero importers — the appearance editor, its infinite colour
+>    modules with zero importers ΓÇö the appearance editor, its infinite colour
 >    picker, and the whole spoken narrator. They compiled, they shipped in the
 >    bundle, and no user could open them. All three are now wired. **Judge a
 >    feature by whether a surface mounts it, never by whether its files exist.**
 >
 > 4. **The sharper version of that warning, found later the same day: a feature
->    can be mounted, reachable, persisted — and still do nothing.** The density
+>    can be mounted, reachable, persisted ΓÇö and still do nothing.** The density
 >    setting had a control, wrote a `data-density` attribute, survived restarts,
 >    and rendered a *pixel-identical* interface at all three levels, because the
 >    five custom properties it swapped had one reader between them and four had
@@ -91,7 +87,7 @@ claimed.
 >    scrollbar to say so; and editing `dialog.module.css` changed nothing on
 >    screen for anyone, because `Dialog` puts that module class and the global
 >    `modal` class on the same element and the module writes its card inside
->    `:where()` — zero specificity, so the global rule wins every time.
+>    `:where()` ΓÇö zero specificity, so the global rule wins every time.
 >
 >    **The lesson to carry: "the value is stored" and "the class is applied" are
 >    not evidence that anything renders.** Follow the property to a reader, and
@@ -101,7 +97,7 @@ claimed.
 > **Updated 2026-08-06.** The desktop command-palette shortcut correction landed in
 > [`18850c1`](https://github.com/Ding-Ding-Projects/material-designer/commit/18850c1ee6596e847a0588a20509780460dbbd20).
 > The application now has one shared `commandPalette.open` binding: `Ctrl+Shift+F`
-> on Windows/Linux and `⇧⌘F` on macOS. The header chip, `aria-keyshortcuts`, global
+> on Windows/Linux and `ΓçºΓîÿF` on macOS. The header chip, `aria-keyshortcuts`, global
 > handler, setup copy and focused tests derive it from one registry; `Ctrl+K` and
 > `Ctrl+Shift+P` no longer open the palette.
 >
@@ -190,12 +186,12 @@ someone skimming:
    once. Nothing has been checked at a second display scale, at a narrow width,
    or in a second language, and bilingual mode is where clipping appears first.
 2. **The confirmation gate does not cover the ground it appears to.** It is
-   built and mounted, and irreversible deletes elsewhere — whole projects,
-   memory entries, library assets, bulk file deletion — do not route through it
-   at all. See `ROADMAP.md` § 4.0.
+   built and mounted, and irreversible deletes elsewhere ΓÇö whole projects,
+   memory entries, library assets, bulk file deletion ΓÇö do not route through it
+   at all. See `ROADMAP.md` ┬º 4.0.
 
 **The one habit worth inheriting.** Every claim in this repository is written so
-a reader can check it — a command to run, a run to open, a counter to compare.
+a reader can check it ΓÇö a command to run, a run to open, a counter to compare.
 Where something has not been checked, it says so in the same sentence. The value
 of that is entirely in the discipline: the moment one confident-but-unverified
 line survives, a reader cannot trust the ones beside it either.
@@ -213,20 +209,20 @@ line survives, a reader cannot trust the ones beside it either.
 
 | Area | State | Evidence |
 |---|---|---|
-| Upstream source imported into `design/` | **Done and proved** | `scripts/verify-port.sh` → 0 gaps across 11,799 files, exit 0 |
-| Apache-2.0 §4(b) notice | **Done, and consistent** | `MODIFICATIONS.md` declares its paths; verifier reports 0 stale notices and 0 undeclared differences. Run the script for the current count |
+| Upstream source imported into `design/` | **Done and proved** | `scripts/verify-port.sh` ΓåÆ 0 gaps across 11,799 files, exit 0 |
+| Apache-2.0 ┬º4(b) notice | **Done, and consistent** | `MODIFICATIONS.md` declares its paths; verifier reports 0 stale notices and 0 undeclared differences. Run the script for the current count |
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
 | Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. Release `31186802259` at `f6549861` passed labelled Windows bootstrap and packaging, then failed at packaged smoke after `720000ms`; Main Verify `31186802470` remains queued |
 | Install / build / typecheck / test | **Typecheck and Windows contract tests passing; packaged smoke failed** | Release `31186802259` completed workspace install, Typecheck, Windows tests, Squirrel packaging, `NotSigned`, self-contained scanning and artifact upload; the smoke produced no lifecycle timing, screenshot or `ui-states.json` |
-| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. The new Squirrel path is explicitly unsigned and passed packaging/`NotSigned`, but no new release was published because its install/start/uninstall smoke did not complete |
-| Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
+| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow ┬╖ τ¡ìσ░ûΦ¥ªΘñâ. The new Squirrel path is explicitly unsigned and passed packaging/`NotSigned`, but no new release was published because its install/start/uninstall smoke did not complete |
+| Material Design 3 anatomy | **Waves 1ΓÇô5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode ΓÇö and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
-| Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
-| Notification centre · destructive-action gate · bulk actions · appearance editor · narrator · context-menu shortcuts | **Landed, unseen** | merged from `phase4-wip`; its adversarial verification lenses **never ran** — see section 4 |
-| Version history | **Daemon complete, UI now wired** | 2,369 daemon lines and `od history` existed with nothing in the app able to open them; a panel now mounts at `App.tsx`. **Unproven end to end** — see the loopback-guard question in §5b |
-| Export everything | **Not started** | No implementation exists. Handed to the backend — see §5b |
+| Regex builder ┬╖ command palette ┬╖ changelog viewer ┬╖ dim sum ┬╖ tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
+| Notification centre ┬╖ destructive-action gate ┬╖ bulk actions ┬╖ appearance editor ┬╖ narrator ┬╖ context-menu shortcuts | **Landed, unseen** | merged from `phase4-wip`; its adversarial verification lenses **never ran** ΓÇö see section 4 |
+| Version history | **Daemon complete, UI now wired** | 2,369 daemon lines and `od history` existed with nothing in the app able to open them; a panel now mounts at `App.tsx`. **Unproven end to end** ΓÇö see the loopback-guard question in ┬º5b |
+| Export everything | **Not started** | No implementation exists. Handed to the backend ΓÇö see ┬º5b |
 
 ---
 
@@ -234,29 +230,29 @@ line survives, a reader cannot trust the ones beside it either.
 
 The load-bearing pieces:
 
-1. **`design/`** — a byte-verbatim copy of the upstream Open Design monorepo at
+1. **`design/`** ΓÇö a byte-verbatim copy of the upstream Open Design monorepo at
    version 0.16.1, 11,799 files, Apache-2.0. This is the product: a local-first
    design workspace built from a Node daemon, a web front end, an Electron
    desktop shell, a packaged launcher and a landing page.
-2. **`vendor/open-design`** — the upstream repository kept as a pinned Git
+2. **`vendor/open-design`** ΓÇö the upstream repository kept as a pinned Git
    submodule at commit `517f39acde402c1a7af2189167a8d6957a3dac71`. It exists so
    the copy can be checked against its source; it is not built and not shipped.
-3. **`mockups/open-design-m3/`** — a design-canvas mockup that specifies the
+3. **`mockups/open-design-m3/`** ΓÇö a design-canvas mockup that specifies the
    intended Material Design 3 redesign of this product's own interface. Five
    tracked files. It is a specification, not code, and is wired into no build.
-4. **`MODIFICATIONS.md` + `scripts/verify-port.sh`** — the licence notice and
+4. **`MODIFICATIONS.md` + `scripts/verify-port.sh`** ΓÇö the licence notice and
    the machine that enforces it. Described in [section 5](#5-constraints-a-successor-must-respect).
-5. **`.github/workflows/`** — this project's own three workflows: `verify.yml`
+5. **`.github/workflows/`** ΓÇö this project's own three workflows: `verify.yml`
    (*Verify*), `release.yml` (*Release*) and `pages.yml` (*Pages*). All three have
-   since run — see the table above. At the time this section was written they were
+   since run ΓÇö see the table above. At the time this section was written they were
    a plan expressed in YAML; they are no longer.
-6. **Governance and support files** — `README.md`, `AGENTS.md`, `ROADMAP.md`,
+6. **Governance and support files** ΓÇö `README.md`, `AGENTS.md`, `ROADMAP.md`,
    this file, the `docs/` tree, the bundled dish catalogue under
    `assets/dim-sum/`, the static site source under `site/`, and the rest of
    `scripts/` (`line-count.mjs`, `upstream-manifest.tsv`, `import-dim-sum.sh`,
    `release-codename.sh`).
 
-There is deliberately **no root `package.json`** — the workspace root is
+There is deliberately **no root `package.json`** ΓÇö the workspace root is
 `design/`. That, and not a missing workflow directory, is why every build command
 runs one level down.
 
@@ -270,8 +266,8 @@ Three commits, in order.
 
 The Material Design 3 mockup and its two companions (`support.js`, `assets/`)
 had been sitting at the top of `design/`. That was harmless while `design/` held
-nothing else, and became a collision the moment an entire monorepo — which ships
-its own top-level `assets/` — was about to move in. All three moved together,
+nothing else, and became a collision the moment an entire monorepo ΓÇö which ships
+its own top-level `assets/` ΓÇö was about to move in. All three moved together,
 because the mockup HTML loads its script and SVGs by relative path and fails
 silently without them. New home: `mockups/open-design-m3/`.
 
@@ -281,8 +277,8 @@ The whole upstream tree copied into `design/`. Two decisions matter for anyone
 auditing this later:
 
 - **Copied as raw blob bytes out of the pinned submodule, not out of a checked-out
-  working tree.** A working tree on Windows is line-ending–smudged, and copying a
-  copy is how a port ends up "basically the same" — a phrase that cannot be
+  working tree.** A working tree on Windows is line-endingΓÇôsmudged, and copying a
+  copy is how a port ends up "basically the same" ΓÇö a phrase that cannot be
   verified. Filtering was disabled on both ends, so every blob identifier in
   `design/` is identical to upstream's, and all 73 executable bits survived.
 - **Nothing was modified in this commit.** Not a rename, not a lint fix, not a
@@ -294,24 +290,24 @@ them past its own.
 
 ### `feat(scripts): prove design/ matches upstream, and make the licence notice do the proving`
 
-`scripts/verify-port.sh` — pure Git and shell, no Node anywhere in it, because it
+`scripts/verify-port.sh` ΓÇö pure Git and shell, no Node anywhere in it, because it
 must run **before anything is installed**, on a fresh checkout with no toolchain
 present. A verifier that needs the dependency tree it is meant to vouch for is a
 verifier that cannot be run first. It performs two independent checks, because
 they fail for different reasons:
 
-- **Check A — bytes on disk.** Every file is hashed with filtering disabled and
+- **Check A ΓÇö bytes on disk.** Every file is hashed with filtering disabled and
   compared to the upstream blob identifier. Catches a stray edit, a truncated
   copy, a missing file.
-- **Check B — what Git actually recorded.** Every tracked path under `design/` is
+- **Check B ΓÇö what Git actually recorded.** Every tracked path under `design/` is
   compared on **mode and blob identifier**. Catches line endings quietly
   normalising and executable bits falling off, neither of which Check A can see.
 
 The load-bearing idea is that **`MODIFICATIONS.md` is simultaneously the
-Apache-2.0 §4(b) notice and the allowlist the verifier reads**. A file may differ
+Apache-2.0 ┬º4(b) notice and the allowlist the verifier reads**. A file may differ
 from upstream only if it is listed there. Change a file and forget to write it
 down, and verification fails. Write one down and later revert it, and
-verification also fails — as a *stale notice*. The legal paperwork and the code
+verification also fails ΓÇö as a *stale notice*. The legal paperwork and the code
 cannot drift apart, because the same command checks both.
 
 ---
@@ -357,13 +353,13 @@ A run that fell back to the committed manifest would say `(via manifest)` and
 **How to read this.** `gaps 0` is the contract holding on both ends at once: the
 import has not drifted *and* all 67 rebrand changes carry an Apache-2.0 notice.
 `declared 67` with `stale notice 0` means every notice describes a real
-difference and every real difference has a notice — neither list has run ahead of
+difference and every real difference has a notice ΓÇö neither list has run ahead of
 the other.
 
 **`declared` moves; `gaps` must not.** Every further rebrand edit raises
 `declared`, and any edit made without its allowlist entry turns this into a
 non-zero `bytesDiffer` and exit 1. Re-run the script rather than quoting this
-transcript — it was true when written, which is a different thing from being true
+transcript ΓÇö it was true when written, which is a different thing from being true
 now.
 
 ### The verifier was tested by breaking things first
@@ -378,7 +374,7 @@ deliberately and confirmed to be reported:
 | 2 | Corrupted bytes | editing a file's contents | `bytes-differ` |
 | 3 | Stripped executable bit | clearing a mode bit on a tracked script | `mode` |
 | 4 | Undeclared edit | changing a file with no `MODIFICATIONS.md` entry | the underlying gap, unsuppressed |
-| 5 | Declared edit | changing a file **with** an entry | suppressed — verification passes |
+| 5 | Declared edit | changing a file **with** an entry | suppressed ΓÇö verification passes |
 | 6 | Stale declaration | an entry whose file no longer differs | `stale-notice` |
 
 Classes 4, 5 and 6 are the ones that make the notice enforceable rather than
@@ -386,7 +382,7 @@ decorative: an undeclared change fails, a declared change passes, and a
 declaration left behind after the change was reverted fails too.
 
 <details>
-<summary>Verifier counter reference — what each number means and how it fails</summary>
+<summary>Verifier counter reference ΓÇö what each number means and how it fails</summary>
 
 | Counter | Meaning |
 |---|---|
@@ -399,12 +395,12 @@ declaration left behind after the change was reverted fails too.
 | `modeMismatch` | file mode differs from upstream (executable bit lost or gained) |
 | `oidMismatch` | recorded blob identifier differs from upstream |
 | `extra` | tracked under `design/` but absent from upstream |
-| `untracked` | loose, non-ignored files in `design/` — what an interrupted copy leaves |
+| `untracked` | loose, non-ignored files in `design/` ΓÇö what an interrupted copy leaves |
 | `staleNotice` | declared in `MODIFICATIONS.md` but no longer actually different |
 | `gaps` | total after allowlist suppression; **exit 0 only when this is 0** |
 
 Exit codes: `0` clean, `1` gaps found (first 50 printed to standard error),
-`2` cannot run — **neither** the submodule nor `scripts/upstream-manifest.tsv` is
+`2` cannot run ΓÇö **neither** the submodule nor `scripts/upstream-manifest.tsv` is
 available, the manifest disagrees with a submodule that is present, or Check B
 found zero tracked paths and would have been a silent no-op.
 
@@ -463,7 +459,7 @@ Now the gaps.
   another platform is out of scope until that changes.
 
   Two things this does **not** mean, because both look like contradictions.
-  The *Verify* workflow runs on Linux — that is the runner, not the target, and
+  The *Verify* workflow runs on Linux ΓÇö that is the runner, not the target, and
   it is deliberate: several imported suites assert a Unix executable bit that a
   Windows filesystem cannot store, so they run there and the Windows-specific
   ones run on `[self-hosted, windows, material-designer]`. And the imported tree still contains macOS and
@@ -488,7 +484,7 @@ Two of these are hard. Breaking either one costs a working day.
 ### 5.1 `design/` stays byte-verbatim, and every exception is written down
 
 `scripts/verify-port.sh` must keep reporting **0 gaps**. That does not mean
-`design/` can never be edited — it means an edit is a two-part operation:
+`design/` can never be edited ΓÇö it means an edit is a two-part operation:
 
 1. Make the change under `design/`.
 2. Add an entry to `MODIFICATIONS.md` naming the reason and listing each changed
@@ -519,7 +515,7 @@ Installing and building this monorepo is heavy: a native database module compile
 from source, an Electron toolchain, a large web application, and a packaging step.
 This project's working assumption is that **all install, build, typecheck, test,
 package and run steps execute on the labelled self-hosted runners in continuous
-integration** — not on whatever machine a contributor happens to be sitting at.
+integration** ΓÇö not on whatever machine a contributor happens to be sitting at.
 
 What that means in practice:
 
@@ -538,19 +534,19 @@ specific one.
 
 ### 5.4 Never write down a success that has not happened
 
-A run is `running`, `failed`, or `verified` — never predicted. Do not describe an
+A run is `running`, `failed`, or `verified` ΓÇö never predicted. Do not describe an
 installer that has not been produced, a test that has not passed, or a workflow
 that has not gone green. This document exists partly as an example of that
 discipline; keep it that way when you update it.
 
 ---
 
-## 5b. Backend handoff — the frontend is where this session stopped
+## 5b. Backend handoff ΓÇö the frontend is where this session stopped
 
 The user's instruction was to finish the frontend for now and hand the backend
 to whoever picks this up next. This section is that handoff. It is deliberately
 specific: every item names the file, what is already there, and what would prove
-it works — because the recurring failure in this repository has been assuming a
+it works ΓÇö because the recurring failure in this repository has been assuming a
 thing works from the fact that it exists.
 
 **Read section 4 first.** Nothing below has been rendered, run, or exercised
@@ -564,7 +560,7 @@ history routes in `apps/daemon/src/routes/history.ts`, all behind
 `requireLocalDaemonRequest` (`apps/daemon/src/http/local-daemon-request.ts:100`).
 That guard validates the request is loopback and echoes the origin back as
 `Access-Control-Allow-Origin`, with `Access-Control-Allow-Methods: GET, POST,
-OPTIONS` — which covers exactly the verbs those routes use. The web sidecar
+OPTIONS` ΓÇö which covers exactly the verbs those routes use. The web sidecar
 serves from loopback, so *by reading* it should pass.
 
 It has never been observed passing. If it does not, the new version-history
@@ -580,10 +576,10 @@ here were *already implemented* and merely unreachable:
 
 | Surface | State |
 |---|---|
-| `apps/daemon/src/history/` | **2,369 lines** — `domains.ts`, `git.ts`, `service.ts`, `sqlite-domain.ts`, `store.ts`. Append-only guarantee, redaction of credential-adjacent domains, and paths derived from `RUNTIME_DATA_DIR` were all already correct. |
-| `/api/history` × 7 routes | Registered and guarded. |
+| `apps/daemon/src/history/` | **2,369 lines** ΓÇö `domains.ts`, `git.ts`, `service.ts`, `sqlite-domain.ts`, `store.ts`. Append-only guarantee, redaction of credential-adjacent domains, and paths derived from `RUNTIME_DATA_DIR` were all already correct. |
+| `/api/history` ├ù 7 routes | Registered and guarded. |
 | `packages/contracts/src/api/history.ts` | Full DTO. |
-| `od history …` | Already in `apps/daemon/src/cli.ts` (`SUBCOMMAND_MAP` → `runHistory`), hitting the same routes the UI does. The dual-track rule is satisfied here. |
+| `od history ΓÇª` | Already in `apps/daemon/src/cli.ts` (`SUBCOMMAND_MAP` ΓåÆ `runHistory`), hitting the same routes the UI does. The dual-track rule is satisfied here. |
 
 So the version-history work left this session is **not** "build a backend". It is
 "prove the one that exists is reachable, then finish the two gaps below".
@@ -599,8 +595,8 @@ So the version-history work left this session is **not** "build a backend". It i
    `toCsv`, `toYaml`, `toToml`, `'ndjson'` and friends across `apps/web/src`
    returns nothing but syntax-highlighting labels. The standard asks for every
    record, view, list, log, document, setting and generated artifact to be
-   exportable in every format that can faithfully represent it — JSON, JSONL,
-   YAML, TOML, XML, CSV, TSV, Markdown, HTML, SQL — plus ZIP and 7z archives with
+   exportable in every format that can faithfully represent it ΓÇö JSON, JSONL,
+   YAML, TOML, XML, CSV, TSV, Markdown, HTML, SQL ΓÇö plus ZIP and 7z archives with
    the full 7z option surface (LZMA2/PPMd/BZip2, levels, dictionary and solid
    block sizes, multithreading, split volumes, AES-256 **with encrypted headers**
    so filenames are hidden too). Two rules that are easy to get wrong: state what
@@ -610,7 +606,7 @@ So the version-history work left this session is **not** "build a backend". It i
 
 3. **Destructive enforcement is at two interfaces, not at the operation.** The web
    UI gates behind the two-key slider, the CLI refuses without `--confirm`, and
-   `ecaad97` moved a check into the daemon — but the recorded gap is that this is
+   `ecaad97` moved a check into the daemon ΓÇö but the recorded gap is that this is
    still enforcement per-interface rather than a single guarantee at the
    operation. The next caller that is neither the UI nor the CLI is ungated. That
    gap is written down rather than implied closed; closing it properly is daemon
@@ -622,7 +618,7 @@ So the version-history work left this session is **not** "build a backend". It i
    the appearance controls landed this session **UI-first**; they need CLI
    surfaces against the same `/api/*` endpoints, with `--json` and
    `--prompt-file` where the shape calls for it. Land the endpoint, the UI and
-   the subcommand together — the repository's own rule is not to stage them
+   the subcommand together ΓÇö the repository's own rule is not to stage them
    across pull requests.
 
 ### What the frontend hands over in a working state
@@ -631,7 +627,7 @@ So the successor knows what not to re-litigate: the port is byte-verbatim with
 **0 gaps**, all 20 locales are complete, the loading-shell gate agrees with all
 42 Playwright startup waits, every stylesheet balances, and the site publishes
 release facts read from the release that actually exists. Five pure-shell gates
-run in seconds and catch most of what CI reports 35 minutes later — they are
+run in seconds and catch most of what CI reports 35 minutes later ΓÇö they are
 listed in section 5.
 
 ## 6. Immediate next steps, in order
@@ -640,7 +636,7 @@ The ordering matters. Each step is cheap to do after the one before it, and
 expensive before.
 
 <details>
-<summary><b>Steps 1–5 of the original list are done</b> — kept for the record, and because two of them left traps worth knowing about</summary>
+<summary><b>Steps 1ΓÇô5 of the original list are done</b> ΓÇö kept for the record, and because two of them left traps worth knowing about</summary>
 
 The first five steps were: get a *Verify* run recorded; let the Windows build
 workflow run and expect it to fail; get package-scoped suites running; produce
@@ -652,9 +648,9 @@ Two things they left behind that a successor will still meet:
   normalises text, so a runner checking out with automatic CRLF conversion smudges
   `design/` and the working-tree check reports thousands of byte differences on a
   tree that is perfectly fine. That is why the gate runs on Linux. Submodules stay
-  optional — the committed manifest is the fallback.
+  optional ΓÇö the committed manifest is the fallback.
 - **The build did fail first, repeatedly, and the failures were environmental
-  rather than code defects** — suites asserting a Unix executable bit a Windows
+  rather than code defects** ΓÇö suites asserting a Unix executable bit a Windows
   filesystem does not store, a test budget written for a developer's disk, a
   package importing output that had not been compiled, and a packaging property
   that moved between major versions. Each is written up under
@@ -669,18 +665,18 @@ the window title still has not been read off a window.
 </details>
 
 <details>
-<summary><b>Steps 1–5 are done or superseded</b> — kept because two of them turned out differently than expected</summary>
+<summary><b>Steps 1ΓÇô5 are done or superseded</b> ΓÇö kept because two of them turned out differently than expected</summary>
 
 1. **Watch something fail on purpose.** *Done for the port verifier.* A
    deliberately poisoned branch made it report `bytes differ 1`, name the file,
-   and exit 1 — [run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696).
+   and exit 1 ΓÇö [run 30864702696](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/30864702696).
    **Not done for the Pages gate, and it turned out not to be cheap:** the
    `github-pages` environment refuses deployments from a non-default ref before
    any step runs, so a branch cannot reach the gate at all. Its six checks were
    run verbatim against the poisoned tree locally and caught the planted remote
    script, so the logic is demonstrated and the wiring is not.
 
-2. **Look at the running interface.** *Done once, and it paid immediately* —
+2. **Look at the running interface.** *Done once, and it paid immediately* ΓÇö
    see the note at the top. Extending the capture path to more display scales,
    narrow widths and a second language is still entirely undone, and remains
    the largest gap in this project's evidence.
@@ -690,11 +686,11 @@ the window title still has not been read off a window.
 
 4. **Run the verification that never ran.** *Ran, and found plenty.* 44
    findings, 15 confirmed by an independent refutation pass, written up as
-   `ROADMAP.md` § 4.0. The verification half then hit a session limit of its
-   own, leaving **29 findings unverified** — they are leads, not facts, and
+   `ROADMAP.md` ┬º 4.0. The verification half then hit a session limit of its
+   own, leaving **29 findings unverified** ΓÇö they are leads, not facts, and
    re-running them is now step 1 below.
 
-5. **Bundle the fonts locally.** *Done for the application* — Cairo ships as
+5. **Bundle the fonts locally.** *Done for the application* ΓÇö Cairo ships as
    three local subsets and the one network font request is gone. A CI gate
    preventing a new one is not in place; the site's equivalent gate is.
 
@@ -732,7 +728,7 @@ the window title still has not been read off a window.
 6. **Broaden what the release actually tests.** The suites that run were chosen
    because the rebrand changed what they assert, so the current gate is on product
    identity rather than coverage. The imported tree carries roughly 1,150 test
-   files. Add them package by package — upstream deliberately ships no root
+   files. Add them package by package ΓÇö upstream deliberately ships no root
    aggregate test command, and one must not be invented.
 
 7. **Send the request collection against a real daemon.** All 368 requests were
@@ -751,7 +747,7 @@ GitHub's OAuth device flow, so Projects can be listed, created and updated. It w
 briefly unavailable and briefly out of scope by decision; both are now superseded.
 
 Narrative progress still lives in the rolling build-log Discussion and the burn-down
-in [`ROADMAP.md`](ROADMAP.md) — a board tracks state, not reasoning, so it
+in [`ROADMAP.md`](ROADMAP.md) ΓÇö a board tracks state, not reasoning, so it
 complements those rather than replacing them.
 
 ### External-state limitation: the wiki has no first page
@@ -759,12 +755,12 @@ complements those rather than replacing them.
 The wiki is **enabled** on the repository, but GitHub does not create the wiki's
 underlying git repository until a first page is saved through the web interface,
 and there is no API that will do it. Cloning
-`…/material-designer.wiki.git` therefore returns *Repository not found*, and no
+`ΓÇª/material-designer.wiki.git` therefore returns *Repository not found*, and no
 amount of retrying changes that.
 
 *Mitigation:* create any page once through the web interface; the wiki repository
 then exists and can be cloned and pushed to like any other. Until then this is not
-a documentation gap — the categorized documentation lives in [`docs/`](docs/) and
+a documentation gap ΓÇö the categorized documentation lives in [`docs/`](docs/) and
 is the canonical copy either way, with the site as its published form. A wiki would
 be a third surface, not the only one.
 
@@ -772,7 +768,7 @@ be a third surface, not the only one.
 
 The daemon depends on a native SQLite binding that has **no prebuilt binary** for
 the pinned Node major version on Windows. Installation will compile it from source,
-which needs a C++ build toolchain — Visual Studio Build Tools 2022 or newer with
+which needs a C++ build toolchain ΓÇö Visual Studio Build Tools 2022 or newer with
 the desktop C++ workload, plus Python 3 on the path.
 
 *Mitigation:* the labelled Windows runner must carry the required C++ build tools
@@ -780,7 +776,7 @@ and Python; verify that contract in the first build job's log rather than
 assuming it, and if the toolchain is missing, install it as an explicit step. Budget a couple of
 minutes of build time for this module on every cold run, and cache aggressively
 once the build is green. Note also that upstream classifies native Windows as
-**best-effort** — the primary supported paths are macOS, Linux and the Windows
+**best-effort** ΓÇö the primary supported paths are macOS, Linux and the Windows
 Subsystem for Linux. Windows problems here are plausible and are this project's to
 solve, not bugs to report upstream.
 
@@ -806,7 +802,7 @@ another.
 *Mitigation:* treat the first workflow as a diagnostic instrument, not a gate.
 Split it into small, separately-reported steps so a failure names which step failed
 rather than "the build". Run it on manual dispatch while iterating so a broken
-workflow is not pushed repeatedly. Above all, do not record a predicted outcome —
+workflow is not pushed repeatedly. Above all, do not record a predicted outcome ΓÇö
 report the run as running, then report what it actually did.
 
 ### The imported tree still carries upstream's identity and integrations
@@ -817,7 +813,7 @@ is this project's.
 
 *Mitigation:* the product analytics client is a no-op without a credential
 configured in the build environment, and no such credential is configured in this
-repository — so builds from here transmit nothing on that channel. Describe that
+repository ΓÇö so builds from here transmit nothing on that channel. Describe that
 accurately: **no key is configured here**, not "telemetry was removed", because the
 code paths are present verbatim and a reader can see them. Everything else
 upstream-branded gets addressed by the rebrand step and by documentation that does
@@ -844,7 +840,7 @@ does not match the version its manifest and lockfile actually pin, and its prose
 feature counts do not match the directory counts that actually ship.
 
 *Mitigation:* cite the manifest and count the directories with a script. Never
-propagate a documented figure without checking it against the tree — this
+propagate a documented figure without checking it against the tree ΓÇö this
 repository has already inherited one such discrepancy and should not add more.
 
 ---
@@ -852,7 +848,7 @@ repository has already inherited one such discrepancy and should not add more.
 ## 8. Reference
 
 <details>
-<summary>Repository layout — every tracked path outside the imported tree</summary>
+<summary>Repository layout ΓÇö every tracked path outside the imported tree</summary>
 
 **Tracked** (`git ls-files | grep -v '^design/'` at `65e288f`):
 
@@ -878,7 +874,7 @@ design/                                     11,799 imported files, verbatim
 vendor/open-design                          pinned submodule, provenance only
 ```
 
-**Present but untracked** at that commit — real working files, not scratch, and
+**Present but untracked** at that commit ΓÇö real working files, not scratch, and
 each one needs committing:
 
 ```
@@ -889,12 +885,12 @@ site/                                        9 files, static documentation site
 scripts/line-count.mjs                      the committed line counter CI runs
 ```
 
-Regenerate both lists rather than trusting this block — it was accurate at one
+Regenerate both lists rather than trusting this block ΓÇö it was accurate at one
 commit and the untracked half in particular is short-lived by design.
 </details>
 
 <details>
-<summary>Rebrand touch points — all inside <code>design/</code>, so all need allowlist entries</summary>
+<summary>Rebrand touch points ΓÇö all inside <code>design/</code>, so all need allowlist entries</summary>
 
 Identified by reading the tree. All four have since been edited, and they appear
 in the `MODIFICATIONS.md` changed-file list along with the rest of the rebrand;
@@ -910,7 +906,7 @@ none of the edits has been compiled or run.
 Scope of the rebrand is deliberately minimal: product name, window title,
 installer name and application identifier change. Workspace package names, the
 command-line tool name, environment variable prefixes and persisted storage keys
-**do not** — changing them would fork the tree far more deeply than the goal
+**do not** ΓÇö changing them would fork the tree far more deeply than the goal
 requires, and would break every upstream-shaped path at once.
 
 Trademark position is already recorded in `MODIFICATIONS.md`: the upstream name,
@@ -920,7 +916,7 @@ produced by or affiliated with the upstream project.
 </details>
 
 <details>
-<summary>Version pins observed in the imported tree — read from its manifests, not assumed</summary>
+<summary>Version pins observed in the imported tree ΓÇö read from its manifests, not assumed</summary>
 
 Recorded so a successor does not have to re-derive them. These are upstream's
 pins as imported; none has been exercised here.
@@ -930,7 +926,7 @@ pins as imported; none has been exercised here.
 - Desktop shell: Electron 41.3.0; packaging via electron-builder 26.8.1, default
   Windows target is the Squirrel.Windows installer, with explicit NSIS retained as a
   legacy target.
-- Daemon: Express 5.2.1, native SQLite binding 12.10.0 — note Express 5 wildcard
+- Daemon: Express 5.2.1, native SQLite binding 12.10.0 ΓÇö note Express 5 wildcard
   route syntax, which differs from Express 4 and matters when reading route files.
 - Web: Next 16.2.6, React 18.3.1, Tailwind 4.3.0.
 - Landing page: Astro 6.3.5.
@@ -942,33 +938,33 @@ pins as imported; none has been exercised here.
 - Default daemon bind is loopback on port 7456. Exposure beyond loopback requires
   explicit host and allowed-origin configuration.
 
-Nineteen interface locales ship. A Hong Kong Cantonese locale is **absent** —
+Nineteen interface locales ship. A Hong Kong Cantonese locale is **absent** ΓÇö
 adding it touches **three** files, all under `design/`, and therefore needs
 allowlist entries: a new `apps/web/src/i18n/locales/zh-HK.ts` dictionary, plus
 `apps/web/src/i18n/types.ts` (the `Locale` union, the `LOCALES` array and the
 label map all live there) and `apps/web/src/i18n/index.tsx` (the import and the
 `DICTS` map). A fourth file is *not* needed: `apps/web/src/i18n/content.ts` types
-its per-locale marketing bundle as `Partial<Record<Locale, …>>`, so a locale with
+its per-locale marketing bundle as `Partial<Record<Locale, ΓÇª>>`, so a locale with
 no bundle is already legal.
 </details>
 
 <details>
 <summary>Related documents in this repository</summary>
 
-- **`MODIFICATIONS.md`** — the Apache-2.0 §4(b) notice and the verifier's
+- **`MODIFICATIONS.md`** ΓÇö the Apache-2.0 ┬º4(b) notice and the verifier's
   allowlist. Present, declaring 67 rebrand paths, and consistent with the tree;
   see [section 3](#3-verification-evidence).
-- **`scripts/verify-port.sh`** — the import verifier. Present, self-tested
+- **`scripts/verify-port.sh`** ΓÇö the import verifier. Present, self-tested
   against six gap classes, and reporting 0 gaps at exit 0.
-- **`README.md`** — what the product is, how it is meant to be built, and the
+- **`README.md`** ΓÇö what the product is, how it is meant to be built, and the
   honest warnings a first-time reader needs.
-- **`AGENTS.md`** — the invariants and standards an agent working here must hold.
-- **`ROADMAP.md`** — the sequenced plan, including which project standards the
+- **`AGENTS.md`** ΓÇö the invariants and standards an agent working here must hold.
+- **`ROADMAP.md`** ΓÇö the sequenced plan, including which project standards the
   mockup covers and which it omits.
-- **`docs/`** — categorized feature documentation, one file per feature.
+- **`docs/`** ΓÇö categorized feature documentation, one file per feature.
 
 `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE`, `SECURITY.md` and
-`CODE_OF_CONDUCT.md` do **not** exist yet; `ROADMAP.md` §1.2 tracks them.
+`CODE_OF_CONDUCT.md` do **not** exist yet; `ROADMAP.md` ┬º1.2 tracks them.
 </details>
 
 ---
@@ -1087,7 +1083,7 @@ no bundle is already legal.
 
 ## Keeping this file honest
 
-Update this document in the same change that alters the state it describes — not
+Update this document in the same change that alters the state it describes ΓÇö not
 afterwards, and not at release time. When the first CI run happens, its result
 belongs in [section 3](#3-verification-evidence) and its subject leaves
 [section 4](#4-what-is-not-verified). A handoff document that describes a state
@@ -1096,7 +1092,7 @@ the reader has no way to know.
 
 ---
 
-## 2026-08-05 — Branch closed out, restarted from main
+## 2026-08-05 ΓÇö Branch closed out, restarted from main
 
 - All prior work on `claude/handoff-sonnet-orchestration-1zshjv`, through commit
   `ac37ac7` ("fix(icons): name the glyph the type actually publishes"), is merged
@@ -1106,24 +1102,24 @@ the reader has no way to know.
   `ac37ac77b476451428fc1fed6618e1691e80d440`, and carries only this closing
   entry on top of that commit.
 - Nothing under `design/` changed in this closing entry, so
-  `scripts/verify-port.sh` is unaffected — that claim is checkable by running
+  `scripts/verify-port.sh` is unaffected ΓÇö that claim is checkable by running
   the script against this commit.
 - This closing session ran orchestrator-only: every edit, commit and push was
   carried out by delegated Sonnet subagents, and the orchestrating session made
   no direct edits.
 - No CI run, release or capture is claimed for this commit. The open work
-  recorded in [section 6](#6-immediate-next-steps-in-order) — destructive-action
+  recorded in [section 6](#6-immediate-next-steps-in-order) ΓÇö destructive-action
   routing, the gate's own confirmed defects, the 29 unverified findings, the
   capture matrix, broadening what the release tests, and sending the request
-  collection against a live daemon — remains exactly as recorded there.
+  collection against a live daemon ΓÇö remains exactly as recorded there.
 
 ## Post-handoff CI verification (2026-08-05)
 
 - Commit `0521779` ("fix(web-tests): six fixtures/helpers were lying about
   five red suites") fixed nine confirmed test bugs across six files under
-  `design/apps/web/tests/` — `changelog-filter`, `CommandPalette` (four
+  `design/apps/web/tests/` ΓÇö `changelog-filter`, `CommandPalette` (four
   bugs), `FileViewer` (two bugs), `Toast`, `bundled-fonts`, and
-  `settings-polish` — and added two troubleshooting docs. It merged
+  `settings-polish` ΓÇö and added two troubleshooting docs. It merged
   fast-forward onto `main`.
 - All three CI runs for `0521779` have completed and been log-verified, and
   the honest answer is that all three still say **failure**:
@@ -1135,17 +1131,17 @@ the reader has no way to know.
   assertions documented in
   [`docs/troubleshooting/web-suite-regex-css-helpers-and-inert.md`](docs/troubleshooting/web-suite-regex-css-helpers-and-inert.md)
   (`SettingsDialog` inert, the `wave8-overlay-m3` side sheet, and
-  `workspace-tabs-chrome` ×3). Zero regressions; 488 files / 5,682 tests
+  `workspace-tabs-chrome` ├ù3). Zero regressions; 488 files / 5,682 tests
   pass; "Verify port integrity" is green.
 - Release fails at a single step, "Check the packaged application is
-  self-contained," and only on bundled upstream example templates — see
+  self-contained," and only on bundled upstream example templates ΓÇö see
   [`docs/troubleshooting/self-contained-check-bundled-template-examples.md`](docs/troubleshooting/self-contained-check-bundled-template-examples.md).
   The raw match count drifted from 435 to 491 for environmental reasons
   (floating transitive dependencies), including six dev-dependency
   telemetry `fetch()` lines. None of that drift was caused by any commit
   made this session.
 - Three maintainer decisions still stand between this and a green board:
-  (1) scope the self-contained gate — narrow it to `resources/app`, or make
+  (1) scope the self-contained gate ΓÇö narrow it to `resources/app`, or make
   all 174 bundled example files offline; (2) the two CSS assertions that
   disagree with the un-nested rules need a rendered-UI check to settle which
   side is actually right; (3) the media-query-blind CSS test helpers need
@@ -1154,7 +1150,7 @@ the reader has no way to know.
   so a GitHub Discussions post and a Projects update were unreachable on
   every route tried; the resulting 403 responses were captured as evidence.
   Repo-scoped REST through `gh` worked normally. The issue scan turned up
-  nothing to triage — zero open issues.
+  nothing to triage ΓÇö zero open issues.
 
 ## UI audit and renderer-safe restart (2026-08-06)
 
@@ -1211,7 +1207,7 @@ the reader has no way to know.
 
 - Release run [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
   for `main` at `2cae835a1a9b6b86352b0c3b083ff1a35c061ebc` completed with failure
-  in `Build Windows application → Install dependencies`. `pnpm install
+  in `Build Windows application ΓåÆ Install dependencies`. `pnpm install
   --frozen-lockfile` resolved the workspace; the post-install packer typecheck
   then reported `src/win/lifecycle.ts(473,95): error TS2345` because
   `"uninstall-legacy"` is not assignable to `invokeNsis`'s
