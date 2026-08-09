@@ -4,13 +4,20 @@ Every popover, menu, dropdown, tooltip and anchored panel draws its own
 background, border, elevation and shape; is bounded by the viewport; and scrolls
 inside that bound rather than hiding what does not fit.
 
-**Status: partial, source-level audit only.** The 2026-08-06 audit fixed two
-concrete overlay failures: the Figma import modal body now scrolls inside its
-bounded card, its invalid form state is announced as an assertive alert, and
-context-menu labels wrap instead of being clipped. Focus
-returns to the originating context-menu control after dismissal. No installed
-build has yet been rendered and measured at the full scale, narrow-width and
-language matrix.
+**Status: partial, source-level audit only.** The final Figma import repair is
+committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe),
+with the residual drop/input repair at [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd).
+The modal body now scrolls inside its bounded card, closes before the host focus
+callback runs, keeps rejected URL handoffs open for retry, and announces errors
+while associating them with the invalid URL input or the native file input behind
+the visible labelled dropzone; a file dropped on the URL tab first switches to
+that visible file panel. Context-menu labels wrap instead of being clipped and
+focus returns to the originating control after dismissal. No installed build has
+yet been rendered and measured
+at the full scale, narrow-width and language matrix; no build, CI or capture
+success is claimed by this source-level update.
+
+The native-input focus contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e); its source test now traverses the complete modal keyboard order in both directions, including `figma-import-file`. [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) also requires the real handler to prevent the default event at both wrap edges, without claiming runtime rendering.
 
 ## The requirement
 
@@ -160,8 +167,10 @@ setting for this rule:
 ## Verification
 
 **No runtime overlay matrix has been verified.** The Figma modal and context
-menu changes have focused source tests, but no overlay has been rendered and
-measured in an installed build from this repository.
+menu changes have focused source tests, including the URL-tab drop routing and
+native-input label/focus contract plus full focus-trap traversal, but no overlay has been rendered and measured
+in an installed build from this repository. The focused tests are committed but
+were not run locally; CI remains the verification boundary.
 
 Conformance requires all of:
 

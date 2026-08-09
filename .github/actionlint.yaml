@@ -1,0 +1,6 @@
+# The project uses a private, write-scoped runner label in addition to
+# actionlint's built-in self-hosted/OS labels. Keeping it here makes the
+# workflow contract lintable without pretending that the runner is hosted.
+self-hosted-runner:
+  labels:
+    - material-designer

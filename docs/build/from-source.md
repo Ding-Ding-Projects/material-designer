@@ -311,10 +311,11 @@ build starts but shows nothing.
 Toolchain: Electron 41.3.0 for the desktop and packaged applications,
 electron-builder 26.8.1 for packaging.
 
-**The installer will be unsigned** unless a code-signing certificate is
-configured. An unsigned Windows installer triggers the operating system's
-reputation screen, which reports an unknown publisher and hides the proceed
-button behind a **More info** link. Expect it, and tell users to expect it.
+**The installer is intentionally unsigned.** Code signing is permanently
+prohibited for this project. The release workflow clears signing inputs and
+verifies that `Setup.exe` reports `NotSigned`; Windows may therefore show an
+unknown-publisher reputation screen with the proceed button behind **More info**.
+Expect it, and tell users to expect it.
 
 ## Failure modes
 

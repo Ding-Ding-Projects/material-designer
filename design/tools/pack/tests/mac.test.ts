@@ -318,13 +318,13 @@ describe("runElectronBuilder", () => {
     };
   }
 
-  it("does not explicitly disable electron-builder notarization for notarized mac builds", async () => {
+  it("keeps mac builds unsigned when notarization is requested", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
     try {
       const builderConfig = await prepareElectronBuilderConfig(root, { macNotarize: true });
 
-      expect(builderConfig.afterSign).toContain("notarize.cjs");
-      expect(builderConfig.mac).not.toHaveProperty("notarize");
+      expect(builderConfig.afterSign).toBeUndefined();
+      expect(builderConfig.mac?.notarize).toBe(false);
     } finally {
       await rm(root, { force: true, recursive: true });
     }

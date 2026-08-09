@@ -30,13 +30,24 @@ both languages on every label, so it produces the longest strings in the product
 where clipping appears first; that is why the capture set covers it.</sub>
 
 > [!NOTE]
-> **The application ships, and what it ships is now most of the way through the
-> standards.** Continuous integration verifies the port, installs the workspace,
-> runs the guard, the craft lint and the translation check, typechecks on Linux and
-> Windows, runs **563 test files** across five packages, builds a Windows installer and publishes a
-> release — and the packaged smoke test installs that build, launches it, has the
-> running process answer its own health endpoint and uninstalls it with no residue.
-> All observed, every push.
+> **The application ships, and historical CI evidence has carried it most of the
+> way through the standards.** Earlier successful runs verified the port, installed
+> the workspace, ran the guard, craft lint and translation check, typechecked on
+> Linux and Windows, ran **563 test files** across five packages, built a Windows
+> installer, published a release, and smoke-tested installation, launch, health
+> check and uninstall with no residue.
+>
+> **Current release status (2026-08-07).** Release run
+> [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+> at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` passed the design verifier,
+> self-hosted bootstrap, dependency installation, web Typecheck and the Windows
+> identity tests, then failed before packaging because locked `electron-builder`
+> 26.8.1 rejected the unknown `win.sign` property. No installer, smoke result or
+> release was published. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> replaces it with the schema-supported `signAndEditExecutable: false` control;
+> a replacement run must still prove packaging, `NotSigned`, smoke behavior and
+> publication.
 >
 > The Cantonese locale, both tone sliders, the regex builder, the command palette,
 > the changelog viewer, the startup surprise, tab pinning, the notification centre,
@@ -71,13 +82,74 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > tools in a locked user-scoped cache. Focused tests are committed, but no new
 > installed-build capture or new labelled-runner verification is claimed yet.
 
+> **2026-08-06 final Figma import repair.** The six-finding source repair is
+> [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
+> It closes the modal before the host focus callback, keeps rejected Home URL
+> imports open for a real retry, targets `aria-invalid` and `aria-describedby`
+> only at the visible invalid source control, clears a stale file after an
+> invalid drop, rejects arbitrary URL suffixes while accepting query/hash
+> forms, and localizes the remaining Figma title, source labels, helper,
+> actions, failure copy and summary labels. The catalog additions keep the
+> English fallback, use `zh-TW` as the Traditional Chinese seed, and add
+> deliberate `zh-HK` overrides. The focused spec and allowlist are committed;
+> no Node, pnpm, Electron, build, CI, or capture result is claimed from local
+> work.
+
+> **2026-08-06 Figma residual accessibility repair.** Commit
+> [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+> closes the two follow-up source gaps: a file dropped while the URL tab is open
+> now switches to the file tab, focuses the native file control, and keeps the
+> localized error associated with that visible path; the native input is now
+> visually hidden rather than removed with `display: none`, has a catalogued
+> accessible name and helper/error associations, and stays inside the modal focus
+> trap while the visible dropzone remains keyboard-operable. `zh-HK` intentionally
+> inherits `figmaUrl` and `figmaPlaceholder` from `zh-TW`, so no duplicate keys were
+> added. Focused source coverage is committed; no Node, pnpm, Electron, build, CI,
+> or capture result was run or claimed locally. The follow-up focus contract is
+> [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal
+> keyboard order in both directions, explicitly including `figma-import-file`,
+> while leaving wrap behavior to the real handler. Commit
+> [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56)
+> now asserts that the handler actually prevents the default event at both wrap
+> edges, so the jsdom focus fallback cannot hide a missing edge guard.
+
 > **Latest CI evidence.** Release run
-> [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
-> reached the frozen dependency install and then failed in the Windows packer
-> typecheck because `lifecycle.ts:473` passed `"uninstall-legacy"` to an API that
-> accepts `"install" | "uninstall"`. Commit
-> [`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
-> fixes that call site; no later labelled-runner verdict is claimed yet.
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+> passed the self-hosted tool bootstrap, byte-exact verifier, portable Python,
+> frozen dependency installation, web Typecheck and Windows identity tests, then
+> failed in electron-builder schema validation because `win.sign` is unknown in
+> version 26.8.1. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> switches to `signAndEditExecutable: false` and adds a release-contract check;
+> the replacement labelled-runner verdict remains unverified.
+
+> **2026-08-06 settings-menu accessibility repair.** The settings tab overflow
+> menu now carries its own plain-text-first regex search, honest no-match state,
+> Arrow/Home/End keyboard navigation and Escape/Tab focus return. The focused
+> source contract is [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58); the installed-build and display-scale
+> matrix remains unverified.
+
+> **2026-08-06 overlay and onboarding repair.** The settings overflow surface now
+> clamps its width and height to the viewport and opens above the trigger when the
+> lower edge is crowded. Onboarding dropdowns restore focus after Escape or
+> selection and announce the field together with its value; the command-palette
+> size control has a 48px target. The source commit is
+> [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621); the
+> follow-up [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+> raises the portalled menu above the opaque settings page, keeps Tab inside its
+> regex builder route, clamps stale off-screen anchors and restores viewport test
+> globals. No local build or installed-build matrix is claimed.
+
+> **2026-08-06 updater and release-gate repair.** Commit
+> [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
+> preserves the exact HTTPS release-notes URL from update metadata in both ready
+> surfaces. Commit
+> [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> makes Squirrel publication fail closed unless the artifact is intentionally
+> unsigned (`NotSigned`), the packaged smoke test succeeds and unique packaged
+> UI-state evidence exists, and rebuilds persistent
+> cached CI tools from verified sources, and declares the custom runner label for
+> `actionlint`. No new self-hosted CI or release verdict is claimed yet.
 
 <details>
 <summary><b>More captures</b> — the command palette, the settings dialog, the onboarding rename before and after, and the header search bar</summary>
@@ -278,14 +350,16 @@ Separately, upstream ships 48 workflow files under `design/.github/workflows/`. 
 Actions only reads workflows at the repository root, so every one of those is inert here.
 Do not read them as this project's CI.
 
-**There are releases, and no code-signing certificate.** Two tags have been published, each
-carrying the installer its own run built, a portable archive, a checksum and a dim sum code
-name. New Windows releases are configured as Squirrel.Windows releases: the installer is
-published with `RELEASES`, full/delta `.nupkg` packages and the app's `metadata.json` feed, so
-an installed app can download an update in the background and wait for the user to choose
-**Restart to install update**. The current published links below remain the verified legacy
-build until the next Squirrel release has passed CI. What is still absent is a signing
-certificate, so every installer published from here trips SmartScreen on first run.
+**There are legacy releases, and new Squirrel publication is explicitly unsigned.** Two tags have
+been published, each carrying the installer its own run built, a portable archive, a checksum
+and a dim sum code name. New Windows releases are configured as Squirrel.Windows releases:
+the installer is published with `RELEASES`, full/delta `.nupkg` packages and the app's
+`metadata.json` feed, so an installed app can download an update in the background and wait
+for the user to choose **Restart to install update**. The current published links below remain
+the verified legacy build until the next Squirrel release has passed CI. Code signing is
+permanently prohibited: the new workflow clears signing inputs and discovery, packages
+unsigned Squirrel artifacts and refuses publication unless `Setup.exe` reports `NotSigned`;
+no new Squirrel release is claimed here until CI proves that path.
 
 ## Install
 
@@ -305,8 +379,8 @@ Har Gow · 筍尖蝦餃**, built from commit `5544035` by [run 30957484333](http
 > [!WARNING]
 > **The installer is not code-signed**, so Windows SmartScreen warns on first run
 > ("Windows protected your PC", publisher unknown) and the **Run anyway** button is hidden
-> behind **More info**. This repository has no certificate; that is why, and it will keep
-> happening until one is obtained.
+> behind **More info**. Code signing is permanently prohibited, so the warning is
+> expected; the release workflow verifies `NotSigned` before publication.
 
 ### Or build from source
 
@@ -480,10 +554,10 @@ and delta `.nupkg` packages. Other flags include `--app-version`, `--portable`, 
 `--dir`, `--cache-dir` and `--json`. Packaging runs on electron-builder with Electron 41.
 
 > [!WARNING]
-> An installer built without a code-signing certificate triggers Windows SmartScreen
-> ("Windows protected your PC", publisher unknown), and the **Run anyway** button is hidden
-> behind **More info**. This repository has no certificate, so any installer it eventually
-> publishes will behave exactly that way until one is obtained.
+> An intentionally unsigned installer triggers Windows SmartScreen ("Windows protected your
+> PC", publisher unknown), and the **Run anyway** button is hidden behind **More info**.
+> Code signing is permanently prohibited; the release workflow clears signer inputs and
+> publishes only after verifying `Setup.exe` reports `NotSigned`.
 
 ### Typecheck and tests
 

@@ -1,20 +1,37 @@
 # Accessibility and sizing
 
 **Status: partial, source-level audit only.** The design mockup states the intent,
-and the 2026-08-06 audit fixed several concrete source defects: the Figma import
-URL and notes controls now have visible native `label`/`for` associations with
-stable ids, so placeholder text is guidance rather than the only name. The
-upload labels, helper copy and placeholders come from `useT` through the
-existing `dsCreate.*` catalog entries, with the provider-less English fallback;
-invalid URL and import errors are assertive alerts associated with the invalid
-controls through `aria-invalid` and `aria-describedby`. The modal body scrolls;
-context-menu labels wrap instead of disappearing and
-dismissal restores the opener's focus;
-the updater dialog traps focus, restores it on every close path and disables
-progress transitions for reduced motion; and the design-system Back control has
-an explicit localized name. These changes have focused tests, but no installed
-build has yet been rendered through the full scale, narrow-width and language
-matrix, so runtime conformance remains unverified.
+the final six-finding Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe),
+and the residual drop/input repair is committed at [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd).
+The modal now closes before host focus work, keeps rejected Home URL handoffs
+open for retry, scopes `aria-invalid` and `aria-describedby` to the invalid URL
+or native file input, clears a stale file after an invalid drop, and switches
+URL-tab file drops to the visible file panel before reporting the error. The
+native file input is visually hidden without `display: none`, has a localized
+accessible name plus helper/error associations, remains in the modal focus trap,
+and gives the visible dropzone a keyboard focus ring through `:focus-within`.
+The URL validator rejects arbitrary URL suffixes while accepting query/hash
+forms, and localizes every visible Figma label and summary. The catalog keeps the
+English fallback, uses `zh-TW` as the Traditional Chinese seed and adds
+deliberate `zh-HK` overrides; `zh-HK` intentionally inherits `figmaUrl` and
+`figmaPlaceholder` from `zh-TW`.
+The focus-trap regression contract was corrected in [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e): it traverses the complete modal keyboard order in both directions and explicitly includes `figma-import-file`. Commit [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) tightens the edge proof by requiring `event.defaultPrevented` at both wrap edges, so the jsdom fallback cannot mask a missing real handler.
+The modal body scrolls; context-menu labels wrap instead of disappearing and
+dismissal restores the opener's focus; the updater dialog traps focus, restores
+it on every close path and disables progress transitions for reduced motion; and
+the design-system Back control has an explicit localized name. The settings tab
+overflow menu now has its own plain-text-first regex search, honest no-match
+state, Arrow/Home/End navigation and Escape/Tab focus return, committed at
+[`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). Focused source tests are committed, but no installed build has yet been rendered through the
+full scale, narrow-width and language matrix, so runtime conformance remains
+unverified. The follow-up repair at [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621)
+adds viewport-bounded above/below placement for the settings menu, focus
+restoration and field-plus-value naming for onboarding dropdowns, and a 48px
+command-palette size target. [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+then raises the portalled menu above the opaque page, gives its regex builder a
+separate focus scope for Tab, clamps stale off-screen anchors and restores viewport
+globals in the geometry tests. Its focused source checks are committed; runtime
+evidence remains open.
 
 ## The requirement
 
@@ -128,7 +145,7 @@ missing.
 | --- | --- |
 | Keyboard reachability audit | **Partial source-level audit.** The updater dialog, context-menu dismissal path and design-system Back control now have focused keyboard/name coverage; the full surface audit is open. |
 | Visible focus on every element | **Partial.** The updater dialog traps focus and returns it on close; the full focus matrix is not verified. |
-| Roles, names, states | **Partial.** Figma URL/notes fields now use explicit native `label`/`for` associations, localized upload copy, and assertive invalid-state associations; the design-system Back control has an explicit name; the full inventory remains open. |
+| Roles, names, states | **Partial.** Figma URL/notes fields now use explicit native `label`/`for` associations, and the file input has a localized labelled association plus helper/error references; localized upload copy and assertive invalid-state associations are covered by focused source tests; the design-system Back control has an explicit name; the full inventory remains open. |
 | Contrast measured | **Not started.** The mockup **states** text is checked at 4.5:1 and boundaries at 3:1. That is a claim in a design file, not a measurement. |
 | Reduced motion | **Partial.** The updater dialog removes progress transitions under `prefers-reduced-motion`; the full application motion inventory remains open. |
 | No clipping across the matrix | **Partial source-level audit.** Figma modal content scrolls and context-menu labels wrap; no installed build has been measured. |
@@ -218,13 +235,16 @@ looks.
 
 **No runtime matrix has been verified.** The source-level fixes have focused
 tests, but no installed build has rendered the full scale, narrow-width,
-display-density and language matrix. The Figma label associations, localized
-upload copy, English fallback, and invalid-URL alert association are covered by
+display-density and language matrix. The Figma focus handoff, URL retry,
+URL-tab file-drop routing, visible-control error targeting, invalid-file reset,
+native file-input naming and full focus-trap traversal, anchored URL forms,
+localized catalog coverage and callback ordering are covered by
 `design/apps/web/tests/components/FigmaImportModal.a11y.test.tsx`;
-the CI command
-is `pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
-That command was not run locally, and the claims in the mockup about contrast and
-target sizes remain design intent, not results.
+the CI command is
+`pnpm --filter @open-design/web exec vitest run tests/components/FigmaImportModal.a11y.test.tsx`.
+That command was not run locally. Builds, CI runs, captures and the claims in
+the mockup about contrast and target sizes remain unverified design intent, not
+results.
 
 Conformance requires all of:
 

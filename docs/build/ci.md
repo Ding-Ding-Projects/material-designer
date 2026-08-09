@@ -9,17 +9,19 @@ runner, with Linux and Windows kept as separate contracts. `Pages` is documented
 where `Pages` fits.
 
 > [!IMPORTANT]
-> **All three workflows have run.** `Verify` has passed on a clean checkout with
-> zero gaps; `Release` has installed the workspace with native modules compiled
-> from source, typechecked it, run the Windows identity suites, built an
-> installer, validated its payload, put it through the packaged smoke test and
-> published it; `Pages` has deployed the site. Two releases exist,
-> `v0.16.1-r7.1` and `v0.16.1-r8.1`.
+> **The current Release run is not green.** Run
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+> passed the self-hosted toolchain, portable Python bootstrap, frozen dependency
+> installation, repaired web Typecheck and Windows identity tests, then failed
+> during electron-builder schema validation because version 26.8.1 rejected the
+> unknown `win.sign` property. No new installer or release was published by that
+> run. Earlier
+> published releases `v0.16.1-r7.1` and `v0.16.1-r8.1` remain historical evidence,
+> not proof that this current commit is green.
 >
-> **What has not been observed is any of them failing.** No run has been seen
-> rejecting a bad tree, and a gate that has only ever been watched passing is not
-> known to be a gate. The unticked boxes under [Verification](#verification) are
-> exactly those cases.
+> **The current run has failed after Typecheck.** That is useful evidence about
+> the release gate, but it is not a green release. The unticked boxes under
+> [Verification](#verification) remain unverified until a later run passes them.
 >
 > Where this page describes what a workflow does, it is describing the committed
 > definition; where it states a result, it says so.
@@ -30,16 +32,16 @@ where `Pages` fits.
 
 ### Latest observed execution
 
-Release run [`31127492852`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)
-for `main` at `2cae835a1a9b6b86352b0c3b083ff1a35c061ebc` completed with **failure** in
-`Build Windows application → Install dependencies`. The frozen install resolved the
-workspace and then the post-install packer typecheck reported
-`src/win/lifecycle.ts(473,95): error TS2345`: `"uninstall-legacy"` was not assignable
-to `invokeNsis`'s `"install" | "uninstall"` action type. Commit
-[`5d66600`](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
-passes the supported `"uninstall"` action while retaining the separate
-`runTimed` legacy timing label. A new labelled-runner execution is still required;
-this page does not call the fix green before that run exists.
+Release run [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+for `main` at `f484639a3d6a70ce30fc6a2c798e6e59518ecf8e` completed with **failure**
+in `Build Windows application → Build the Windows installer`. The repaired web
+Typecheck and Windows identity/installer tests passed, then locked
+electron-builder 26.8.1 rejected the unknown `win.sign` property before
+packaging. Commit
+[`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+switches to the supported `signAndEditExecutable: false` control. Unsigned
+verification, packaged smoke and publication remain unverified until a new
+labelled-runner execution completes.
 
 ## Behaviour
 
@@ -75,22 +77,61 @@ non-language tools the workflows call:
   pinned SHA-256 package hashes, serializes cache updates, and adds that
   directory through `GITHUB_PATH`. It then verifies Bash, Git, `gh`, `jq` and
   every standard utility used by the workflows.
-- Windows runs `scripts/bootstrap-ci-tools.ps1`. It validates cached `gh`, `jq`
-  and `7z` versions under a Windows file lock, verifies pinned SHA-256 package
-  hashes, installs the official binaries when a cache entry is absent or wrong,
-  adds the directory to `PATH`, and fails before packaging if any tool or
-  version is still wrong.
+- Windows runs `scripts/bootstrap-ci-tools.ps1`. It validates the pinned package
+  hashes under a Windows file lock and re-materializes cached `gh` and `7z` from
+  their verified archive/installer on every bootstrap, so a modified executable
+  cannot survive merely by reporting the expected version. It adds the directory
+  to `PATH` and fails before packaging if any tool or version is still wrong.
+
+The Windows release workflow selects the runner's Git-for-Windows Bash executable
+explicitly for the few steps that invoke the repository's Bash scripts. Bare
+`shell: bash` is not equivalent on every self-hosted machine: on this runner it
+resolved to the WSL launcher, which failed before checkout because no Linux
+distribution was installed. Installing or relying on WSL is not part of the
+release contract; the workflow uses the already-installed Git-for-Windows route.
+
+The explicit Windows shell uses the installation's space-free short path. A
+quoted path containing spaces was a second dead end: the runner joined it to a
+PATH shim before starting Bash and failed before checkout. Keeping the
+Git-for-Windows executable explicit while removing the spaces avoids that
+command-line ambiguity without introducing WSL as a dependency.
+
+The labelled Windows image exposes powershell.exe but not pwsh. The workflow
+therefore invokes Windows PowerShell directly, and the utility bootstrap avoids
+PowerShell 7-only syntax so a clean runner can execute the cache-miss path with
+the shell it actually provides.
+
+The shell template also carries the per-process execution-policy bypass. Setting
+Bypass only inside a step is too late when Windows PowerShell blocks the
+generated step while loading it; the bypass must wrap the loader itself and must
+not change the user's persistent execution policy.
+
+The Python runtime follows the same boundary. The release does not call the
+policy-blocked setup-python action; scripts/bootstrap-python.ps1 downloads the
+official Python 3.12.10 `python-3.12.10-embed-amd64.zip`, verifies SHA-256,
+extracts it into the user-scoped runner cache, and adds the verified interpreter
+directory to GITHUB_PATH. The embeddable archive needs no registry operation,
+installer process or downloaded setup script. Release run 31154756724 proved
+that the prior installer bundle returned `-2147024891` (`0x80070005`, access
+denied) for the self-hosted service account; the next run must prove this
+portable path on the labelled runner.
 
 The workspace dependency step remains separate and authoritative: `pnpm`
 10.33.2 resolves `design/pnpm-lock.yaml` with `pnpm install --frozen-lockfile`.
 The bootstrap does not commit binaries, alter machine-wide settings, or treat a
 cached `node_modules` directory as an installation.
 
+The complete per-job inventory and cache-miss recipe is maintained in
+[self-hosted-dependencies.md](self-hosted-dependencies.md). The Windows release
+job also bootstraps Python 3.12 and the x64 MSVC/Windows SDK toolchain because
+the locked native dependency compiles from source; neither is assumed to exist
+on the labelled runner.
+
 The SHA-256 checks authenticate packages at download time. The persistent
-runner cache is user-scoped runner state, not a cryptographic trust boundary:
-cached executables are selected by their pinned version output and are safe only
-when the runner account and cache are trusted. A runner whose cache is not
-trusted must be reprovisioned or have this tool cache removed before use.
+runner cache is user-scoped runner state, not a cryptographic trust boundary;
+the bootstrap therefore rebuilds the executable from the verified package rather
+than trusting a cached binary. A runner whose cache or account is not trusted
+must still be reprovisioned before use.
 
 ## `Verify` — the fast gate
 
@@ -116,7 +157,7 @@ pull-request code must not execute on a self-hosted runner.
 | Bootstrap | Validate or install the pinned user-scoped Linux utility set under a cache lock. |
 | Verify | `bash scripts/verify-port.sh`. A non-zero exit fails the job. |
 | Report | Re-runs with `--json` and writes a summary table of every counter. Runs with `always()`, so a failing verification still gets its table. |
-| Set up Node | The setup action installs Node 24; the workflow checks the resolved major version. |
+| Set up runtimes | The setup actions install Node 24 and Python 3.12; the workflow checks both versions. |
 | Count lines | `node scripts/line-count.mjs` appended to the run summary. Skips gracefully if the script is absent. |
 
 ### Why it checks out without the submodule
@@ -171,11 +212,14 @@ locked user-scoped runner cache before any packaging or release command uses the
 needs `design/`, not the provenance pin, and a clean checkout prevents stale
 `node_modules` or generated files on the persistent runner from becoming inputs.
 
-**2 — Package manager, then Node.** `pnpm/action-setup` installs pnpm 10.33.2
-with `run_install: false`, then `actions/setup-node` installs Node 24. The cache
+**2 — Package manager, runtimes and native compiler.** `pnpm/action-setup`
+installs pnpm 10.33.2 with `run_install: false`, then `actions/setup-node`
+installs Node 24 and `actions/setup-python` installs Python 3.12. The
+`ilammy/msvc-dev-cmd` action exposes the x64 MSVC/Windows SDK toolchain for the
+native database build. The cache
 key is `design/pnpm-lock.yaml` and contains only the pnpm store; it is a
 performance optimisation, not a `node_modules` dependency. A version-check step
-fails if either tool is not the requested version. The workflow notes explicitly
+fails if the requested Node, pnpm or Python version is not present. The workflow notes explicitly
 that the Node package-manager shim is not used, because it fails with a
 permission error on Windows.
 
@@ -204,7 +248,9 @@ it surfaces — before an installer is built, not after a user runs one.
 **7 — Squirrel packaging.** The packaging tool invokes electron-builder's
 Squirrel.Windows target. The build is expected to produce `Setup.exe`,
 `RELEASES`, full/delta `.nupkg` packages and the local icon asset; the release
-step fails closed if any required Squirrel output is missing.
+step fails closed if any required Squirrel output is missing. Code signing is
+permanently prohibited; the workflow clears signing inputs and discovery before
+packaging, and the next step must verify that Authenticode reports `NotSigned`.
 
 **8 — Build the installer.** Cleanup, then `tools-pack win build` with an
 explicit output directory, cache directory, namespace, `--portable`, the app
@@ -218,6 +264,12 @@ version, `--to all` and `--json`. Then:
   `material-designer-<version>-win-x64-setup.exe`, a matching `.sha256` file,
   `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, the icon and the
   portable archive when one was produced.
+
+The workflow then verifies `Setup.exe` with `Get-AuthenticodeSignature` and
+requires the exact status `NotSigned`. Any unexpected signature fails the
+release rather than silently changing the policy.
+Publication also requires the packaged smoke step to succeed and the packaged
+UI-state report to exist without duplicate frames.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
@@ -260,7 +312,7 @@ and every staged asset plus the code name's image.
 | --- | --- |
 | Title | `Material Designer <version> — <code name>` |
 | Code name | The dish in English and Traditional Chinese |
-| Install | The asset name and the SHA-256, plus an explicit SmartScreen warning |
+| Install | The asset name and the SHA-256, plus the explicit `NotSigned` status and unknown-publisher warning |
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run** — read from the step's actual outcome, never predicted — and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to `MODIFICATIONS.md`, and a statement of non-affiliation |
@@ -298,7 +350,7 @@ exercise the build without creating a release.
 | Name | Purpose | Status |
 | --- | --- | --- |
 | Release token | Publishing releases and reading prior ones for the code name | Resolved as a repository-scoped token, then an organisation token, then the run's own token as the last fallback |
-| Code-signing certificate | Signing the installer | **Not configured.** See below. |
+| Code-signing certificate | Signing the installer | **Prohibited and unused.** No certificate, private key, timestamp credential or signer service may enter the build. |
 | Telemetry key | Analytics destination | **Not configured, and must not be added silently.** |
 
 Tokens are passed only through the environment convention the tooling expects,
@@ -306,15 +358,25 @@ and never printed.
 
 ### Unsigned installers
 
-No code-signing certificate is configured. An unsigned Windows installer triggers
-the operating system's reputation screen, which reports an unknown publisher and
-hides the proceed button behind a **More info** link.
+Code signing is permanently prohibited. Every Windows release is intentionally
+unsigned, so the operating system may show an unknown-publisher reputation
+screen and place the proceed button behind **More info**. The workflow clears
+certificate, timestamp and signer-discovery inputs, sets the packaging controls
+to false, and verifies `Setup.exe` with `Get-AuthenticodeSignature`; publication
+continues only when the exact status is `NotSigned`.
 
-The release notes state this explicitly, which is the right place for it: a user
-who expects it will click through, and a user who does not will reasonably assume
-the download is malicious.
+Automatic updates still use HTTPS feed metadata, package hashes and rollback
+checks. Those controls protect transport and corruption boundaries; they do not
+claim publisher authenticity or replace a code signature.
 
 ### Runner selection
+
+The root workflows use the explicitly labelled `material-designer` self-hosted
+runner contract. `.github/actionlint.yaml` declares that custom label so local
+structural lint can validate the workflow files. On Windows, the local check is
+run as `actionlint -shellcheck=` because the repository records a known
+actionlint/shellcheck pipe hang on this host; that pass validates workflow
+structure, while the CI actionlint step remains the evidence for shell blocks.
 
 The root workflows use an explicit self-hosted contract:
 

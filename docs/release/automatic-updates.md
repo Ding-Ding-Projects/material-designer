@@ -97,8 +97,11 @@ The updater constrains all downloaded and staged paths to its owned cache and
 re-hashes the installer immediately before launch. SHA-256 protects against
 corruption and an incomplete download; it is not publisher authentication.
 
-Code signing is not configured yet, so Windows may show its unknown-publisher
-reputation warning. Do not describe checksum verification as a signature.
+Code signing is permanently prohibited, so Windows may show its unknown-publisher
+reputation warning. Release notes identify the artifact as unsigned and the
+release workflow verifies `NotSigned` before publication. Do not describe
+checksum verification as a signature: SHA-256 detects corruption, not publisher
+authenticity.
 
 ## Verification
 

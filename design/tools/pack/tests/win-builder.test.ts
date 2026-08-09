@@ -153,7 +153,17 @@ describe("Windows pack artifact boundaries", () => {
     const typeSource = await readFile(new URL("../src/win/types.ts", import.meta.url), "utf8");
 
     expect(builderSource).toContain("squirrelWindows:");
-    expect(builderSource).toContain("author: PRODUCT_NAME");
+    expect(builderSource).toContain("author: { name: PRODUCT_NAME },");
+    expect(builderSource).not.toContain("\n    author: PRODUCT_NAME,");
+    expect(builderSource).toContain("forceCodeSigning: false");
+    expect(builderSource).toContain("signAndEditExecutable: false");
+    expect(builderSource).toContain('signExts: ["!exe"],');
+    expect(builderSource).toContain("verifyUpdateCodeSignature: false");
+    expect(builderSource).toContain("withShortWindowsOutputRoot");
+    expect(builderSource).toContain('execFileAsync("subst"');
+    expect(builderSource).toContain("no unused Windows drive letter is available for the Squirrel output path");
+    expect(builderSource).toContain('CSC_IDENTITY_AUTO_DISCOVERY: "false"');
+    expect(builderSource).not.toContain("signAndVerifyWinFile");
     expect(builderSource).toContain("iconUrl: SQUIRREL_ICON_URL");
     expect(builderSource).toContain("artifactName: resolveWinSquirrelArtifactName(config.namespace)");
     expect(constantsSource).toMatch(/SQUIRREL_ICON_URL = \"https:\/\//);
@@ -162,7 +172,7 @@ describe("Windows pack artifact boundaries", () => {
     expect(builderSource.indexOf('"squirrel-installer:build"')).toBeLessThan(
       builderSource.indexOf('if (shouldBuildWinNsisInstaller(config.to) || shouldBuildWinPortableZip(config.to))'),
     );
-    expect(pathsSource).toContain('return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.${ext}`');
+    expect(pathsSource).toContain('return `Material-Designer-${sanitizeNamespace(namespace)}-Setup.\\${ext}`');
     expect(reportSource).toContain('endsWith("-full.nupkg")');
     expect(reportSource).toContain('endsWith("-delta.nupkg")');
     expect(reportSource).toContain("resolveWinSquirrelReleasesPath(paths)");

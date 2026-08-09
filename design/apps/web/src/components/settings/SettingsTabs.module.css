@@ -157,7 +157,10 @@
 /* Portalled, because `.modal-body` clips its overflow — an anchored menu
    rendered inside the strip would be cut off at the first tab row. */
 .menu {
-  z-index: 60;
+  /* The portalled card sits over the opaque settings page (z-index 100),
+     while staying below notifications, the command palette and tooltips. */
+  z-index: 130;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -168,6 +171,30 @@
   box-shadow: var(--md-sys-elevation-3);
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.menuSearch {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 2px 2px 6px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.menuSearchInput {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.menuSearchInput:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
 }
 
 .menuItem {
@@ -206,6 +233,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.menuEmpty {
+  margin: 8px 10px;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-small-size);
 }
 
 .menuItemMarker {

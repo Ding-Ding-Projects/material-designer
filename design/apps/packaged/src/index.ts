@@ -137,7 +137,7 @@ export function handleSquirrelStartupEvent(): boolean {
   if (event == null) return false;
 
   if (event === "--squirrel-obsolete") {
-    app.quit();
+    app.exit(0);
     return true;
   }
 
@@ -150,16 +150,25 @@ export function handleSquirrelStartupEvent(): boolean {
   const quit = () => {
     if (quitRequested) return;
     quitRequested = true;
-    app.quit();
+    // Electron's quit path is asynchronous and can wait on unrelated imported
+    // handlers. Squirrel needs this lifecycle process to exit immediately so
+    // Setup.exe can finish its transaction.
+    app.exit(0);
   };
 
   try {
     const updater = spawn(updateExe, updateArguments, {
+      detached: true,
       stdio: "ignore",
       windowsHide: true,
     });
-    updater.once("error", quit);
-    updater.once("close", quit);
+    // Squirrel waits for this lifecycle process to exit before Setup.exe can
+    // finish. The helper owns the shortcut operation, so keep it detached and
+    // let the packaged process quit immediately instead of waiting for the
+    // helper's close event.
+    updater.once("error", () => undefined);
+    updater.unref();
+    quit();
   } catch {
     // A missing or unusable Update.exe must not fall through into normal app
     // startup with a Squirrel lifecycle switch still on the command line.

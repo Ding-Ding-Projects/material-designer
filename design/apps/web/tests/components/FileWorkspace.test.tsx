@@ -2845,7 +2845,7 @@ describe('FileWorkspace sketch save', () => {
       mime: 'text/html',
       artifactManifest: {
         version: 1,
-        kind: 'html-document',
+        kind: 'html',
         title: 'Page',
         entry: 'page.html',
         renderer: 'html',

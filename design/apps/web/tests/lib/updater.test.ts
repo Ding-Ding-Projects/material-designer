@@ -88,6 +88,29 @@ describe('web updater model', () => {
     expect(model.promptKey).toContain('1.2.3-beta.4');
   });
 
+  it('keeps the validated release notes URL from update metadata', () => {
+    const model = deriveUpdaterModel(
+      downloadedStatus({
+        metadata: { releaseNotesUrl: 'https://example.test/releases/v1.2.3-beta.4' },
+      }),
+      { hostAvailable: true },
+    );
+    expect(model.releaseNotesUrl).toBe('https://example.test/releases/v1.2.3-beta.4');
+  });
+
+  it('rejects non-HTTPS or malformed release notes metadata', () => {
+    expect(
+      deriveUpdaterModel(downloadedStatus({ metadata: { releaseNotesUrl: 'http://example.test' } }), {
+        hostAvailable: true,
+      }).releaseNotesUrl,
+    ).toBeNull();
+    expect(
+      deriveUpdaterModel(downloadedStatus({ metadata: { releaseNotesUrl: 'not a URL' } }), {
+        hostAvailable: true,
+      }).releaseNotesUrl,
+    ).toBeNull();
+  });
+
   it('marks a ready Windows Squirrel installer as restart-to-install', () => {
     const model = deriveUpdaterModel(
       downloadedStatus({

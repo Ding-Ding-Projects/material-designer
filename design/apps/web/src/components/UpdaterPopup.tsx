@@ -6,6 +6,7 @@ import { Icon } from './Icon';
 import { popoverIn } from '../motion';
 import { openExternalUrl } from '../providers/registry';
 import {
+  DEFAULT_RELEASES_URL,
   deriveUpdaterModel,
   openUpdaterInstaller,
   quitAfterUpdaterInstallerOpen,
@@ -493,6 +494,20 @@ function ReinstallLearnMoreLink({ t, url }: { t: Translator; url: string }) {
   );
 }
 
+function ReleaseNotesLink({ t, url }: { t: Translator; url: string }) {
+  return (
+    <button
+      className="updater-popup__link"
+      data-release-notes-url={url}
+      data-testid="updater-release-notes"
+      type="button"
+      onClick={() => void openExternalUrl(url)}
+    >
+      {t('updater.viewVersionFeatures')} <Icon name="external-link" size={12} />
+    </button>
+  );
+}
+
 function UpdaterPopupPanel({
   allowSilentUpdatesChecked,
   channelLabel,
@@ -540,8 +555,10 @@ function UpdaterPopupPanel({
         {quitRecoverable && model.updateKind === 'payload'
           ? null
           : <p>{quitRecoverable ? t('updater.quitFailedBody') : versionText(t, model)}</p>}
-        {!quitRecoverable && model.reinstall?.url != null ? (
-          <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
+        {!quitRecoverable ? (
+          model.reinstall?.url != null
+            ? <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
+            : <ReleaseNotesLink t={t} url={model.releaseNotesUrl ?? DEFAULT_RELEASES_URL} />
         ) : null}
         {channelLabel != null ? <span className="updater-popup__badge">{channelLabel}</span> : null}
         {installError != null ? (

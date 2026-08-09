@@ -4,13 +4,56 @@ State of play for whoever picks this up next.
 
 Read this before touching anything.
 
+> [!IMPORTANT]
+> **Current handoff — 2026-08-07.** `main` and the hui are at commit
+> [`fb0091bd`](https://github.com/Ding-Ding-Projects/material-designer/commit/fb0091bd0637da7f8816e4de73c303e8949c40cd).
+> Release run
+> [`31182596964`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182596964)
+> passed checkout, self-hosted Windows bootstrap, dependency installation,
+> Typecheck, Windows identity/installer tests, Squirrel.Windows packaging,
+> unsigned verification, the self-contained scan and artifact upload. Its
+> packaged smoke test then timed out after `720000ms` at
+> `design/e2e/specs/win.spec.ts:542:3`; `ui-states.json` was absent and no
+> release was published. The first lifecycle repair detached `Update.exe` and
+> quit after spawning it, but this run proved that asynchronous Electron
+> `app.quit()` still leaves the Squirrel lifecycle process waiting.
+>
+> The next checkpoint changes Squirrel lifecycle switches to immediate
+> `app.exit(0)` and strengthens the source contract. It is currently uncommitted
+> on branch `codex/material-designer-ci-20260807` in the linked checkout
+> created for this task. Commit it with the bilingual message, run
+> `sh scripts/verify-port.sh`, push the branch, fast-forward the integration
+> checkout into `main`, and push `main`. The next Release must prove the smoke
+> test and publication; do not describe the release as shipped until its tag,
+> assets, smoke result and release notes are verified. Main Verify
+> [`31182597141`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31182597141)
+> was queued for `fb0091bd`; preserve it as evidence unless a newer push makes
+> it stale. The next agent owns the final `dew jerjer hui` + `mat day` cleanup
+> pass only after the repaired release is verified.
+
+> [!IMPORTANT]
+> **Updated 2026-08-07.** Release run
+> [`31158740651`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+> passed the design verifier, self-hosted bootstrap, dependency installation, web
+> Typecheck and the Windows identity/installer tests, then failed before packaging
+> because locked `electron-builder` 26.8.1 rejected the unknown `win.sign`
+> property. No installer, smoke result or release was published. Commit
+> [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> replaces that invalid property with the supported
+> `signAndEditExecutable: false` control and adds a release-contract assertion.
+> The replacement run must still prove packaging, `NotSigned`, smoke behavior and
+> publication.
+
 **Where it is.** The upstream tree was imported and *proved* byte-for-byte
 identical to its source, rebranded into a genuinely standalone application, and
-brought onto Material Design 3. All three workflows have run and passed. Two
-Windows installers have been built and published under their own tags, and the
-packaged smoke test installed one of them, launched it, made the running process
-answer its own health endpoint from inside its renderer, and uninstalled it with
-no residue.
+brought onto Material Design 3. Historical runs built and published two Windows
+installers under their own tags, and the packaged smoke test installed one of
+them, launched it, made the running process answer its own health endpoint from
+inside its renderer, and uninstalled it with no residue. The current main
+Release run 31158740651 passed dependency installation, web Typecheck and the
+Windows identity tests but failed at electron-builder schema validation; the
+next run must prove the supported unsigned builder repair before a new release is
+claimed.
 
 > [!IMPORTANT]
 > **Updated 2026-08-04.** The two warnings that used to head this file — that
@@ -68,18 +111,77 @@ no residue.
 > suites were not run locally; CI remains the evidence for those heavy checks.
 
 > [!NOTE]
-> **Updated 2026-08-06.** The bounded Figma-label and error-state lane is committed at
-> [`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc).
-> `FigmaImportModal` now gives the URL and notes controls visible native
-> `label`/`for` associations and stable ids. Its upload labels, helper copy and
-> placeholders come from the existing `dsCreate.*` catalog entries, with the
-> provider-less English fallback covered as well. Invalid URL and import errors
-> are assertive alerts associated with invalid URL, notes and file controls;
-> the focused accessibility spec drives that path rather than checking markup only.
-> `MODIFICATIONS.md`
-> records the changed `design/` paths. No Node, pnpm or Electron command was run
-> locally. UpdateDialog focus containment remains owned by the separate updater
-> lane at `6de08bb` and is intentionally not included in `9c8d492`.
+> **Updated 2026-08-06.** The settings tab overflow menu repair is committed at
+> [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The menu now has an independent
+> plain-text-first regex field, bounded local filtering, an honest empty state,
+> Arrow/Home/End navigation and Escape/Tab focus restoration. Its focused source
+> spec is committed; no Node, pnpm, Electron, build, CI or installed-build
+> capture was run locally.
+
+> [!NOTE]
+> **Updated 2026-08-06.** The follow-up overlay and onboarding repair is committed at
+> [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621). The
+> settings menu now stays within narrow and short viewports, onboarding dropdowns
+> return focus to their triggers and expose field-plus-value names, and the
+> command-palette size control meets the 48px target. The follow-up
+> [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+> raises the portalled menu above the opaque page, keeps Tab in the regex-builder
+> focus scope, clamps stale anchors and restores viewport globals in the geometry
+> tests. Focused source contracts are committed; no local build, CI run or
+> installed-build capture is claimed.
+
+> [!NOTE]
+> **Updated 2026-08-06.** [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
+> now carries the exact HTTPS release-notes URL from update metadata into the
+> ready dialog and persistent updater banner. [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> makes the Squirrel release path fail closed unless the artifact is intentionally
+> unsigned (`NotSigned`), packaged smoke and unique packaged UI-state evidence pass,
+> rebuilds cached CI tools from verified
+> sources, and records the custom runner label for `actionlint`. The new labelled
+> self-hosted run has not yet produced a verdict.
+
+> [!NOTE]
+> **Updated 2026-08-06.** The final six-finding Figma import repair is committed at
+> [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f).
+> `FigmaImportModal` closes before the host focus callback, rejected Home URL
+> handoffs keep the modal open with a real retry path, and `aria-invalid` /
+> `aria-describedby` are scoped to the invalid URL input or native file input;
+> the visible dropzone is the file input's labelled keyboard surface rather
+> than a second fake control. Invalid drops clear stale files, the URL
+> expression is anchored while retaining query/hash support, and the complete
+> visible surface uses the i18n catalog. English fallback, the `zh-TW`
+> Traditional Chinese seed and deliberate `zh-HK` overrides are included;
+> `MODIFICATIONS.md` lists every changed `design/` path. The focused source spec
+> is committed, but no Node, pnpm, Electron, build, CI or capture result was run
+> or claimed locally; hosted verification remains pending.
+
+> **Residual Figma input repair:** commit
+> [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+> makes a file dropped on the URL tab switch to the file tab, focuses the native
+> file input, and keeps the localized alert associated with that visible file
+> path. The native input is visually hidden without `display: none`, named through
+> a real localized label, associated with its helper and error text, and included
+> in the modal focus trap; the visible dropzone keeps the keyboard focus ring via
+> `:focus-within`. `zh-HK` intentionally inherits `figmaUrl` and
+> `figmaPlaceholder` from `zh-TW`. The URL-tab drop and native-input contracts are
+> covered by focused source tests; no Node, pnpm, Electron, build, CI or capture
+> command was run locally.
+
+> **Focus-trap contract correction:** commit
+> [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e)
+> replaces the button-only regression list with the complete modal keyboard order,
+> asserts that `figma-import-file` is present, and drives forward and reverse Tab
+> traversal through every control. The test models jsdom's ordinary middle-control
+> move while the real modal handler remains responsible for both wrap edges. This
+> corrects the documentation claim without claiming a runtime or CI verdict.
+
+> **Wrap-edge assertion hardening:** commit
+> [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56)
+> makes that boundary explicit in the test: both the first reverse move and the
+> last forward move must have `event.defaultPrevented === true`. The helper only
+> advances focus for ordinary middle-control moves, so a missing real wrap
+> handler can no longer pass through a jsdom fallback. This remains source-level
+> evidence; no runtime, build or CI verdict is claimed.
 
 **What that does not mean.** The claims most likely to be overclaimed by
 someone skimming:
@@ -116,9 +218,9 @@ line survives, a reader cannot trust the ones beside it either.
 | Verifier for the import | **Done and self-tested** | six deliberate gap classes, all detected |
 | Material Design 3 mockup preserved | **Done** | `mockups/open-design-m3/`, 5 tracked files |
 | Rebrand to Material Designer | **Built, installed and asserted** | the smoke test checks the installed uninstaller's name, the registry entries' product name and application id, and the running process's version |
-| Continuous integration | **All three workflows have run, and have failed and been fixed** | *Verify*, *Release* and *Pages* have each completed. Failures are recorded in `docs/troubleshooting/` rather than forgotten |
-| Install / build / typecheck / test | **Run, and passing** | workspace install with the native binding compiled from source, full typecheck on both Linux and Windows, unit suites on Linux, Windows identity suites on Windows |
-| Windows installer | **Published on every green push** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; the new Squirrel release remains pending labelled self-hosted verification |
+| Continuous integration | **All three workflows have run; the current Release gate is red** | *Verify*, *Release* and *Pages* have each completed. The latest Release evidence is `31158740651`; its exact failure is recorded in `docs/build/ci.md` |
+| Install / build / typecheck / test | **Typecheck and Windows contract tests passing; schema validation failed** | Release `31158740651` completed the workspace install, web Typecheck and Windows identity tests, then rejected the unsupported `win.sign` property before producing an installer |
+| Windows installer | **Legacy release verified; new path gated** | Latest verified legacy release: `v0.16.1-r71.1`, Bamboo Shoot Har Gow · 筍尖蝦餃. Its run attached the installer, its `.sha256`, a portable archive and a dim sum photo; code signing is permanently prohibited, and the new Squirrel path clears signing inputs, requires `NotSigned` plus smoke evidence, and remains pending labelled self-hosted verification |
 | Material Design 3 anatomy | **Waves 1–5 and 7 landed; 6 and 8 in progress** | chrome, home, collections, lists and switches, conversation, overlays. Verified by typecheck and unit tests. **No wave box is ticked**, because a wave's own definition of done is capture from an installed build in both themes, at four display scales, at narrow width and in bilingual mode — and that has not been done |
 | Language modes | **Landed, unseen** | `zh-HK` Cantonese, bilingual mode, two per-language funny sliders. 20 locales, 4,504 keys, no duplicates |
 | Regex builder · command palette · changelog viewer · dim sum · tab pinning and bulk close | **Landed, unseen** | on `main`, typechecked, unit-tested |
@@ -358,11 +460,11 @@ Now the gaps.
   at least one route pair was missed by that reading. See
   [`docs/api/README.md`](docs/api/README.md).
 - **Windows is the only target, by decision rather than by omission.** There is
-  no macOS or Linux artifact and no code-signing certificate. New Windows releases
+  no macOS or Linux artifact, and code signing is permanently prohibited. New Windows releases
   use Squirrel.Windows and publish `Setup.exe`, `RELEASES`, full/delta NuGet packages
   and the project-owned updater metadata feed; the feed is not yet proven by a new
-  release run in this handoff. Every installer therefore trips the operating
-  system's reputation warning on first run. Read the absence of the other two platforms as scope, not as a backlog:
+  release run in this handoff. The current workflow clears signing inputs and fails
+  closed unless Authenticode reports `NotSigned`. Read the absence of the other two platforms as scope, not as a backlog:
   nothing here is waiting on a macOS build, and work that would only pay off on
   another platform is out of scope until that changes.
 
@@ -874,6 +976,118 @@ no bundle is already legal.
 `CHANGELOG.md`, `CONTRIBUTING.md`, `LICENSE`, `SECURITY.md` and
 `CODE_OF_CONDUCT.md` do **not** exist yet; `ROADMAP.md` §1.2 tracks them.
 </details>
+
+---
+
+## Release CI repair lane (2026-08-07)
+
+- The unsigned Squirrel release lane is on commit
+  [64ef401818d453ea87161c62fcb4997632ccc158](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158).
+  It keeps the self-hosted Windows label, automatic dependency bootstrap,
+  signing prohibition, Authenticode NotSigned check, packaged smoke test,
+  UI-state evidence, Squirrel assets and measured release timing.
+- Release run
+  [31152036272](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152036272)
+  failed before checkout because bare bash resolved to a WSL launcher without a
+  Linux distribution. Release run
+  [31152251945](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152251945)
+  also failed before checkout because the quoted spaced Git-for-Windows path
+  was malformed by the Windows command resolver. Neither run produced an
+  installer, artifact or GitHub Release.
++- Commit 84f70d6 replaces both ambiguous shell forms with the runner's
+  space-free Git-for-Windows path. Local structural validation passed with
+  actionlint -shellcheck=; Node, pnpm and Electron remain deliberately unrun
+  outside CI. The next release run is the authoritative check for checkout,
+  dependency installation, tests, Squirrel packaging, unsigned status, smoke,
+  artifact upload and publication.
+- Release run
+  [31152929139](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31152929139)
+  passed setup, the Git-for-Windows shell steps and checkout, then failed at
+  Bootstrap Windows CI tools with `pwsh: command not found`. No dependency
+  install, test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)
+  switches the workflow to powershell.exe, rewrites the bootstrap's PowerShell
+  7-only null-coalescing expression for Windows PowerShell compatibility, and
+  adds a release-contract check that rejects pwsh. The next run is still the
+  authoritative packaging and publication verdict.
+- Release run
+  [31153486526](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153486526)
+  passed tool bootstrap, the byte-exact verifier, pnpm setup and Node setup,
+  then failed in actions/setup-python because its unsigned setup.ps1 was
+  rejected by the runner's AllSigned policy. No MSVC activation, dependency
+  install, test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)
+  replaces that action with a pinned, SHA-256-checked, user-scoped Python
+  bootstrap and adds the contract check that keeps the blocked action out of
+  the Windows Release job. The next run remains the authoritative verdict.
+- Release run
+  [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)
+  passed setup, checkout, the byte-exact verifier, pnpm and Node, then failed
+  in the first Python bootstrap because the verified archive contains
+  `python-3.12.10-amd64.exe` plus `setup.ps1`, rather than a portable
+  `python.exe`. No MSVC activation, dependency install, test, package,
+  installer, artifact or GitHub Release was produced.
+- Commit
+  [c45e243](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+  locates the archive's installer and runs it directly with
+  `InstallAllUsers=0` into the user-scoped cache, then verifies the installed
+  interpreter. Local actionlint, PowerShell parsing and diff checks pass; the
+  next labelled-runner run remains the authoritative packaging verdict.
+- Release run
+  [31154520542](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154520542)
+  reached the direct installer, but Windows PowerShell left `$LASTEXITCODE`
+  empty; the script treated the null comparison as failure before checking for
+  `python.exe`. No dependency install, test, package, installer, artifact or
+  GitHub Release was produced.
+- Commit
+  [9dcdb2f](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+  waits for the installer with `Start-Process -Wait -PassThru`, records its
+  explicit exit code, accepts success or reboot-required, and then verifies the
+  installed interpreter. Local actionlint, PowerShell parsing and diff checks
+  pass; the next labelled-runner run remains the authoritative verdict.
+- Release run
+  [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
+  reached the direct installer and recorded exit code `-2147024891`
+  (`0x80070005`, access denied) for the self-hosted runner service account. No
+  Python interpreter, dependency install, test, package, installer, artifact or
+  GitHub Release was produced.
+- The next repair switches from the installer bundle to the official Python
+  3.12.10 embeddable archive. Its SHA-256 was measured as
+  `4ACBED6DD1C744B0376E3B1CF57CE906F9DC9E95E68824584C8099A63025A3C3`; the
+-  following commit
+  [37534e5](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+  implements that extraction and interpreter check. The next run must prove
+  that path on the labelled runner.
+- Release run
+  [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+  passed the portable Python bootstrap and frozen dependency installation,
+  then failed at Typecheck with 10 `apps/web` errors: one missing
+  `isMacPlatform` import, nine strict indexed-focus/test-fixture type errors.
+  Tests, packaging, installer verification and publication were skipped.
+- Commit
+  [a769c35](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+  repairs those five design files and declares them in `MODIFICATIONS.md`;
+  `scripts/verify-port.sh --json` reports 0 gaps, 0 byte differences and 0
+  stale notices. The next labelled-runner run remains the authoritative
+  Typecheck, test, packaging and publication verdict.
+- Release run
+  [31153286001](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31153286001)
+  reached setup, Git-for-Windows shell steps and checkout, but Windows
+  PowerShell blocked the generated unsigned temporary script with a
+  PSSecurityException before the bootstrap body ran. No dependency install,
+  test, package, installer, artifact or GitHub Release was produced.
+- Commit
+  [129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)
+  moves ExecutionPolicy Bypass onto the shell template itself. The user's
+  persistent execution policy is not changed; the next run remains the
+  authoritative packaging and publication verdict.
+- At this checkpoint the target issue is
+  [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7), and
+  the open issue scan found only that active release task in this repository;
+  the canonical memory repository still has open issues #10 and #12; #14 is
+  no longer open.
 
 ---
 

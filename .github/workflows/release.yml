@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 120
     defaults:
       run:
-        shell: pwsh
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     env:
       # Namespace and channel are literals here. Upstream derives them from a
       # release-metadata job wired to infrastructure this fork does not have,
@@ -48,7 +48,7 @@ jobs:
 
     steps:
       - name: Keep the checkout byte-exact
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         # Git for Windows ships core.autocrlf=true in its system configuration,
         # and the root .gitattributes says `* text=auto` — so an unguarded
         # checkout here would write every text file under design/ with CRLF.
@@ -68,10 +68,10 @@ jobs:
           fetch-depth: 0
 
       - name: Bootstrap Windows CI tools
-        run: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
       - name: Verify design/ against the pinned upstream tree
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         # Verify and Release are separate workflows on the same trigger, so a
         # red Verify does not stop a release. The release notes published by
         # this job assert what design/ contains, so this job is where that
@@ -96,6 +96,37 @@ jobs:
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
+      - name: Bootstrap Python 3.12
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-python.ps1
+
+      - name: Activate the Windows C++ build toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Clear prohibited signing inputs
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $signingInputs = @(
+            "CSC_LINK",
+            "CSC_KEY_PASSWORD",
+            "WIN_CSC_LINK",
+            "WIN_CSC_KEY_PASSWORD",
+            "OD_WIN_SIGN_CERT_SHA1",
+            "WIN_SIGN_CERT_SHA1",
+            "OD_WIN_SIGNTOOL_PATH",
+            "WIN_SIGNTOOL_PATH",
+            "OD_WIN_SIGN_TIMESTAMP_URL",
+            "WIN_SIGN_TIMESTAMP_URL"
+          )
+          foreach ($name in $signingInputs) {
+            Remove-Item -Path "Env:$name" -ErrorAction SilentlyContinue
+            "$name=" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
+          "CSC_IDENTITY_AUTO_DISCOVERY=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Cleared prohibited signing inputs and disabled certificate auto-discovery."
+
       - name: Verify the CI Node and pnpm toolchain
         run: |
           $ErrorActionPreference = "Stop"
@@ -107,7 +138,11 @@ jobs:
           if ($pnpmVersion -ne "10.33.2") {
             throw "expected pnpm 10.33.2, found $pnpmVersion"
           }
-          Write-Host "using $nodeVersion and pnpm $pnpmVersion"
+          $pythonVersion = (python --version 2>&1).ToString().Trim()
+          if ($pythonVersion -notmatch '^Python 3\.12\.') {
+            throw "expected Python 3.12, found $pythonVersion"
+          }
+          Write-Host "using $nodeVersion, pnpm $pnpmVersion, and $pythonVersion"
 
       - name: Read application version
         id: version
@@ -203,9 +238,42 @@ jobs:
         working-directory: design
         run: |
           $ErrorActionPreference = "Stop"
-          $toolsPackDir = "${{ runner.temp }}/tools-pack"
-          $cacheDir = "${{ runner.temp }}/tools-pack-cache"
-          $buildJsonPath = Join-Path "${{ runner.temp }}" "windows-tools-pack-build.json"
+          # Squirrel.Windows creates nested nuspec/package paths. The hosted
+          # runner workspace plus runner.temp can exceed MAX_PATH before the
+          # packer gets to emit Setup.exe, so use a run-scoped short temp root.
+          # The Windows system temp parent is not readable by this service
+          # account. Keep the replacement under the runner-owned installation
+          # parent instead: it is accessible, on the same drive as the source,
+          # and shorter than the nested runner temp directory while preserving
+          # the relative imports used by the prebundle step.
+          # This is process/job-local state; it does not change the runner's
+          # persistent TEMP setting or touch another job's files.
+          $runnerTemp = $env:RUNNER_TEMP
+          $runnerInstallParent = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $runnerTemp))
+          if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
+            throw "The runner installation parent could not be resolved safely"
+          }
+          $runSuffix = $env:GITHUB_RUN_ID
+          if ($runSuffix.Length -gt 8) {
+            $runSuffix = $runSuffix.Substring($runSuffix.Length - 8)
+          }
+          $shortRoot = Join-Path $runnerInstallParent ("m-" + $runSuffix)
+          New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
+          $env:TEMP = $shortRoot
+          $env:TMP = $shortRoot
+          # Squirrel.Windows does not use TEMP for its Releasify extraction
+          # directory. Its Utility.WithTempDirectory reads SQUIRREL_TEMP, so
+          # leave that process-local root short as well; otherwise the nupkg
+          # expands under the runner user's long LocalAppData path and can
+          # still trip MAX_PATH even when electron-builder's output is mapped.
+          $squirrelTemp = Join-Path $shortRoot "squirrel-temp"
+          New-Item -ItemType Directory -Force -Path $squirrelTemp | Out-Null
+          $env:SQUIRREL_TEMP = $squirrelTemp
+          $toolsPackDir = Join-Path $shortRoot "pack"
+          $cacheDir = Join-Path $shortRoot "cache"
+          $buildJsonPath = Join-Path $shortRoot "build.json"
+          "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
 
@@ -235,6 +303,11 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
           if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
             throw "the build reported no Squirrel Setup.exe at '$setupPath'"
+          }
+
+          $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
+          if ($signature.Status -ne 'NotSigned') {
+            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
           }
 
           $installer = Get-Item -LiteralPath $setupPath
@@ -291,6 +364,7 @@ jobs:
             schemaVersion = 1
             channel = "stable"
             releaseVersion = "${{ steps.version.outputs.app_version }}"
+            signed = $false
             releaseNotesUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
             platforms = [ordered]@{
               win = [ordered]@{
@@ -320,6 +394,7 @@ jobs:
           "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "signature_status=$($signature.Status)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_release_name=RELEASES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_package_count=$($packagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -329,16 +404,37 @@ jobs:
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
           Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
+      - name: Verify the Squirrel installer is unsigned
+        if: ${{ steps.pack.outputs.build_json != '' }}
+        working-directory: design
+        run: |
+          $ErrorActionPreference = "Stop"
+          $build = Get-Content -Raw -LiteralPath "${{ steps.pack.outputs.build_json }}" | ConvertFrom-Json
+          $setupPath = $build.squirrelSetupPath
+          if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
+          if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
+            throw "cannot verify a Squirrel installer that was not produced"
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
+          if ($signature.Status -ne 'NotSigned') {
+            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
+          }
+          Write-Host "Squirrel Setup.exe verified unsigned (NotSigned)"
+
       - name: Check the packaged application is self-contained
         if: ${{ steps.pack.outputs.build_json != '' }}
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         # The same rule the published site is held to, asked of the artifact a
         # user actually installs — and asked of the BUILD OUTPUT, not the
         # source, because a bundler can inline a remote URL that no source file
-        # spells out. The four bundled faces (Roboto Flex, Roboto Mono,
-        # Material Symbols Rounded, Cairo) exist so that this step has nothing
-        # to find; if a font CDN import ever comes back, it fails here rather
-        # than on a stranger's machine with no network.
+        # spells out. The application bundle and the shipped web UI are the
+        # executable surfaces covered here; the packaged catalogue also carries
+        # author-authored example HTML whose demos may intentionally name a CDN.
+        # The checker still scans markup and CSS recursively, while its
+        # external-request sweep is limited to first-party JavaScript because
+        # dependency trees carry unreachable build/dev helpers and optional
+        # telemetry modules. The Pages workflow continues to scan its complete
+        # published site.
         #
         # It reads the payload path the packer already reported, so it inspects
         # what was really built rather than a directory guessed at from a
@@ -374,7 +470,13 @@ jobs:
             7z x -bso0 -bsp0 -y -o"$target" "$payload"
           fi
 
-          bash scripts/check-self-contained.sh "$target"
+          resource_root="$target/payload/resources"
+          if [ ! -d "$resource_root" ] && [ -d "$target/resources" ]; then
+            resource_root="$target/resources"
+          fi
+          bash scripts/check-self-contained.sh \
+            "$resource_root/app" \
+            "$resource_root/open-design-web-standalone"
 
       - name: Upload the installer as a workflow artifact
         # Always, so a failed smoke test still leaves something to inspect.
@@ -399,7 +501,7 @@ jobs:
           OD_PACKAGED_E2E_RELEASE_CHANNEL: stable
           OD_PACKAGED_E2E_RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
           OD_PACKAGED_E2E_REPORT_DIR: ${{ runner.temp }}/release-report/win
-          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ runner.temp }}/tools-pack
+          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ steps.pack.outputs.tools_pack_dir }}
           # `core` installs the Squirrel app, launches it, proves the running
           # process answers its own health endpoint, then uninstalls and checks
           # that nothing was left behind. The updater's feed and restart path
@@ -427,7 +529,7 @@ jobs:
         # months. So the state set is printed on the run page itself, and every
         # state that produced no file is raised as a warning annotation.
         if: ${{ always() && steps.smoke.outcome != 'skipped' }}
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         run: |
           set -uo pipefail
           # RUNNER_TEMP is a Windows path with backslashes, and this step runs
@@ -440,7 +542,8 @@ jobs:
               echo ""
               echo "\`ui-states.json\` is absent — the smoke run never reached the capture step."
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            echo "::error::ui-states.json is absent after a successful packaged smoke run" >&2
+            exit 1
           fi
           # The path travels in the environment rather than as an argument:
           # `node -` reads the script from stdin, and what argv[1] then holds
@@ -480,6 +583,10 @@ jobs:
               `::warning title=UI state frame is a duplicate::${entry.name} is byte-identical to ${entry.duplicateOf}; the window compositor may be returning a stale frame`,
             );
           }
+          if (duplicates.length > 0) {
+            console.error('::error::one or more packaged UI state frames are byte-identical to an earlier state');
+            process.exitCode = 1;
+          }
           console.log(out.join('\n'));
           NODE
 
@@ -491,13 +598,13 @@ jobs:
           path: |
             design/.tmp/**/*.log
             design/.tmp/**/logs/**
-            ${{ runner.temp }}/tools-pack/**/*.log
+            ${{ steps.pack.outputs.tools_pack_dir }}/**/*.log
           if-no-files-found: warn
 
       - name: Count lines
         id: lines
         if: ${{ always() }}
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         # --blame is what produces the agent-versus-human surviving-line
         # attribution the release notes carry; without it the table publishes
         # "not computed". --blame-paths keeps that pass to this repository's own
@@ -525,7 +632,7 @@ jobs:
       - name: Choose the release code name
         id: codename
         if: ${{ success() }}
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
@@ -540,8 +647,8 @@ jobs:
           bash scripts/release-codename.sh --used "${used:-}" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
-        if: ${{ success() && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
-        shell: bash
+        if: ${{ success() && steps.smoke.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
@@ -562,6 +669,11 @@ jobs:
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP}/release-notes.md"
+          WORKFLOW_STARTED_AT=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          if [ -z "$WORKFLOW_STARTED_AT" ]; then
+            echo "::error::GitHub Actions did not return the workflow startedAt timestamp"
+            exit 1
+          fi
           {
             echo "## Material Designer ${APP_VERSION}"
             if [ -n "${CODENAME:-}" ]; then
@@ -580,9 +692,8 @@ jobs:
             echo "SHA-256  ${INSTALLER_SHA}"
             echo "\`\`\`"
             echo ""
-            echo "> [!NOTE]"
-            echo "> The installer is not code-signed, so Windows SmartScreen will warn on first run."
-            echo "> Choose **More info** then **Run anyway**."
+            echo "> [!WARNING]"
+            echo "> The Squirrel installer is intentionally unsigned (Windows Authenticode status: \`NotSigned\`). Windows may show an unknown-publisher or SmartScreen warning; that is expected under the permanent no-signing policy."
             echo ""
             echo "### Verification"
             echo ""
@@ -641,11 +752,37 @@ jobs:
             --latest \
             "${assets[@]}"
 
+          workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          workflow_duration=$(WORKFLOW_STARTED_AT="$WORKFLOW_STARTED_AT" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
+          const start = Date.parse(process.env.WORKFLOW_STARTED_AT ?? "");
+          const end = Date.parse(process.env.WORKFLOW_COMPLETED_AT ?? "");
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+            throw new Error("workflow timing timestamps were invalid");
+          }
+          const seconds = Math.floor((end - start) / 1000);
+          const hours = Math.floor(seconds / 3600);
+          const minutes = Math.floor((seconds % 3600) / 60);
+          const remainder = seconds % 60;
+          process.stdout.write(
+            [hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":")
+          );
+          NODE
+          )
+          {
+            echo ""
+            echo "### Workflow timing"
+            echo ""
+            echo "- Workflow started: ${WORKFLOW_STARTED_AT}"
+            echo "- Workflow completed: ${workflow_completed_at}"
+            echo "- Workflow duration: ${workflow_duration}"
+          } >> "$notes"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes"
+
           echo "Published $TAG"
 
       - name: Summarise
         if: ${{ always() }}
-        shell: bash
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         run: |
           {
             echo "### Windows build"
@@ -655,6 +792,16 @@ jobs:
             echo "| Version | ${{ steps.version.outputs.app_version }} |"
             echo "| Tag | ${{ steps.version.outputs.tag }} |"
             echo "| Installer | ${{ steps.pack.outputs.asset_name || 'not produced' }} |"
+            echo "| Signature | ${{ steps.pack.outputs.signature_status || 'not verified' }} |"
             echo "| Smoke test | ${{ steps.smoke.outcome || 'not run' }} |"
             echo "| Code name | ${{ steps.codename.outputs.codename || 'none' }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean the run-scoped Windows packaging paths
+        if: ${{ always() }}
+        run: |
+          $ErrorActionPreference = "Continue"
+          $shortRoot = "${{ steps.pack.outputs.short_root }}"
+          if (-not [string]::IsNullOrWhiteSpace($shortRoot) -and (Test-Path -LiteralPath $shortRoot)) {
+            Remove-Item -LiteralPath $shortRoot -Recurse -Force -ErrorAction SilentlyContinue
+          }

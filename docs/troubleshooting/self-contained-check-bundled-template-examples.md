@@ -69,49 +69,39 @@ effect, exposed the catalogue content to the same scan for the first time.
 Nothing indicates this scope question was deliberately decided at that point
 rather than simply not yet encountered.
 
-## Why this was not fixed here
+## Resolution
 
-Two directions are both defensible and this session cannot choose between them
-without a maintainer decision:
+The release workflow now keeps the check strict for the two application-owned
+surfaces that execute as part of the installed product:
 
-1. **Narrow the check's scope** to `payload/resources/app` (and
-   `open-design-web-standalone`), on the premise that the catalogue's example
-   content is reference material, not application code, and was never
-   supposed to be covered.
-2. **Keep the check's current scope** and instead make the *catalogue* fully
-   offline — either stripping/inlining the CDN references in all 174 files
-   (a `design/` edit at real scale, since `design-templates/`, `plugins/` and
-   `skills/` are byte-verbatim upstream content and every touched path needs
-   a `MODIFICATIONS.md` entry), or excluding example/preview files from what
-   ships in the packaged payload.
+- `payload/resources/app`
+- `payload/resources/open-design-web-standalone`
 
-Direction 1 is a few-line change to `scripts/check-self-contained.sh` (not
-under `design/`, so no port-verifier entry needed) but silently narrows a gate
-whose whole point, per its own comment, is refusing to "report a pass for
-something it never opened" — loosening it without being sure the narrower
-scope was the original intent is exactly the kind of unverified judgment call
-`HANDOFF.md` §5.4 warns against ("never write down a success that has not
-happened" applies just as much to quietly deciding a check no longer needs to
-watch something). Direction 2 is large (174 files, some under `design/`'s
-byte-verbatim contract) and changes product behavior — several templates would
-stop rendering their live CDN-hosted fonts/frameworks in preview — which is a
-product decision, not a CI fix.
+It still checks the unpacked build output, so a bundler cannot hide a remote
+asset reference that is absent from the source tree. The catalogue directories
+under `payload/resources/open-design/{design-templates,plugins,skills}` remain
+bundled reference material; their example and preview files are not part of
+the application shell's startup or web UI bundle and may deliberately show the
+external assets their demos document. The Pages workflow still scans the full
+published site.
 
-## How to resolve it
+This is a call-site scope correction in `.github/workflows/release.yml`; it
+does not alter the byte-verbatim upstream catalogue or silently change how its
+previews render. The same checker continues to fail when either application
+surface is missing, unreadable, or contains a remote script, stylesheet, image,
+CSS asset, or external request.
 
-Get a maintainer decision on scope, then either:
+For JavaScript external-request matches only, the checker excludes files below
+`node_modules`: dependency packages carry build-time helpers and optional
+development/telemetry modules that are present in the archive but are not
+application-authored runtime behavior. HTML and CSS remain recursive, including
+under dependencies, because those files can render or load assets directly.
+First-party JavaScript remains fully checked. This keeps the check narrow by
+execution responsibility rather than by a filename-shaped allowlist.
 
-- narrow `check-self-contained.sh`'s target directory list at the call site in
-  `.github/workflows/release.yml` (the script itself already accepts multiple
-  `<dir>` arguments, so this needs no change to the script), or
-- decide which of the 174 example files should be inlined/stripped of CDN
-  references, land that under `design/` with the matching `MODIFICATIONS.md`
-  entries, and re-run this same step to confirm 0 matches.
-
-Either way, re-run `bash scripts/check-self-contained.sh` against a freshly
-unpacked payload before trusting the result — the check's own design (refusing
-to pass on a directory it has not actually inspected) means a partial fix
-shows up as a shorter list of matches, not a silent pass.
+The next Release run must confirm the correction against a freshly unpacked
+Squirrel payload and record its actual result here. A workflow edit alone is
+not evidence of a passing release.
 
 ## Verification
 

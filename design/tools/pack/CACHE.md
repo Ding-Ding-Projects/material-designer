@@ -139,14 +139,11 @@ Adding a materialization-time parameter without (2) is not permitted.
 
 ## Signing boundary
 
-Signing material never enters cache content. `resolveWinSigningCacheKey`
-(`src/win/sign.ts`) contributes only the certificate SHA-1, digest algorithm,
-timestamp algorithm, and timestamp URL, and appears in the keys of
-`win.nsis-payload-overlay`, `win.nsis-installer`, and `win.portable-zip`.
-
-`win.nsis-payload-base` correctly omits signing: it is built before
-`ensureSignedUnpacked()`, while the overlay is built after. Keep that ordering
-when changing the payload split.
+Code signing is prohibited. Windows Squirrel, NSIS and portable artifacts are
+always unsigned; `forceCodeSigning` and certificate auto-discovery stay false,
+and no certificate or timestamp value may enter a cache key or build process.
+The release workflow verifies the generated `Setup.exe` reports `NotSigned`
+before publication.
 
 ## Confidence tiers
 

@@ -4029,7 +4029,10 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
   const [resolvedPlacement, setResolvedPlacement] = useState(placement);
   const [menuMaxHeight, setMenuMaxHeight] = useState(240);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const dropdownIdRef = useRef(`onboarding-dropdown-${Math.random().toString(36).slice(2)}`);
+  const labelId = `${dropdownIdRef.current}-label`;
+  const triggerValueId = `${dropdownIdRef.current}-value`;
   const selectedValues = Array.isArray(value)
     ? value
     : value || allowEmptyValue
@@ -4055,6 +4058,12 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
         )
       : options;
   const emptyMessage = searchable ? t('homeHero.footer.noMatches') : t('settings.fetchModelsEmpty');
+
+  const closeDropdown = useCallback((restoreFocus = false) => {
+    setOpen(false);
+    setQuery('');
+    if (restoreFocus) triggerRef.current?.focus();
+  }, []);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -4090,13 +4099,14 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+        closeDropdown();
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setOpen(false);
+        event.preventDefault();
+        closeDropdown(true);
       }
     }
 
@@ -4106,7 +4116,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open]);
+  }, [closeDropdown, open]);
 
   useEffect(() => {
     if (!open) {
@@ -4117,7 +4127,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
   useEffect(() => {
     function handlePeerOpen(event: Event) {
       if ((event as CustomEvent<string>).detail !== dropdownIdRef.current) {
-        setOpen(false);
+        closeDropdown();
       }
     }
 
@@ -4125,7 +4135,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
     return () => {
       window.removeEventListener(ONBOARDING_DROPDOWN_OPEN_EVENT, handlePeerOpen);
     };
-  }, []);
+  }, [closeDropdown]);
 
   function toggleOpen() {
     setOpen((current) => {
@@ -4149,25 +4159,27 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
       ref={rootRef}
     >
       <span
+        id={labelId}
         className="onboarding-view__select-label"
         data-source-tone={sourceTone || undefined}
       >
         {label}
       </span>
       <button
+        ref={triggerRef}
         type="button"
         className={`onboarding-view__select-trigger${open ? ' is-open' : ''}${
           hasValue ? ' has-value' : ''
         }`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={triggerLabel}
+        aria-labelledby={`${labelId} ${triggerValueId}`}
         aria-describedby={selectedTagDescriptionId}
-        title={triggerLabel}
+        title={`${label}: ${triggerLabel}`}
         onClick={toggleOpen}
       >
         <span className="onboarding-view__select-trigger-value">
-          <span>{triggerLabel}</span>
+          <span id={triggerValueId}>{triggerLabel}</span>
           {selectedTag ? (
             <span
               className="onboarding-view__select-badge"
@@ -4241,7 +4253,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
                       return;
                     }
                     props.onChange(option.value);
-                    setOpen(false);
+                    closeDropdown(true);
                   }}
                 >
                   <span className="onboarding-view__select-option-content">

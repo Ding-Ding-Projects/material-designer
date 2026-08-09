@@ -168,6 +168,11 @@ jobs:
           esac
           echo "using $node_version"
 
+      - name: Verify the self-hosted release contract
+        if: ${{ always() }}
+        shell: bash
+        run: node scripts/test-release-contract.mjs
+
       - name: Count lines
         if: ${{ always() }}
         shell: bash
@@ -219,6 +224,12 @@ jobs:
           cache: pnpm
           cache-dependency-path: design/pnpm-lock.yaml
 
+      - name: Set up Python for native dependency bootstrap
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+
       - name: Verify the CI Node and pnpm toolchain
         shell: bash
         run: |
@@ -233,7 +244,12 @@ jobs:
             echo "::error::expected pnpm 10.33.2, found $pnpm_version"
             exit 1
           fi
-          echo "using $node_version and pnpm $pnpm_version"
+          python_version=$(python --version 2>&1)
+          case "$python_version" in
+            "Python 3.12."*) ;;
+            *) echo "::error::expected Python 3.12, found $python_version"; exit 1 ;;
+          esac
+          echo "using $node_version, pnpm $pnpm_version, and $python_version"
 
       - name: Install dependencies
         working-directory: design

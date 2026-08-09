@@ -480,6 +480,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const nextAttachmentOrderRef = useRef(0);
     const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
     const [figmaModalOpen, setFigmaModalOpen] = useState(false);
+    const [pendingFigmaPrompt, setPendingFigmaPrompt] = useState<string | null>(null);
     const [figmaHelpOpen, setFigmaHelpOpen] = useState(false);
     const [projectReferenceOpen, setProjectReferenceOpen] = useState(false);
     const [stagedVisualComments, setStagedVisualComments] = useState<ChatCommentAttachment[]>([]);
@@ -585,6 +586,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // host. Replaces the old textareaRef + manual selection plumbing. IME
     // composition guarding now lives inside the editor's command handlers.
     const editorRef = useRef<LexicalComposerInputHandle | null>(null);
+    useEffect(() => {
+      if (figmaModalOpen || !pendingFigmaPrompt) return;
+      const prompt = pendingFigmaPrompt;
+      draftRef.current = prompt;
+      setDraft(prompt);
+      editorRef.current?.setText(prompt);
+      editorRef.current?.focus();
+      setPendingFigmaPrompt(null);
+    }, [figmaModalOpen, pendingFigmaPrompt]);
     // Always points at the latest `applyDesignToolboxAction` closure so the
     // imperative handle (whose deps array doesn't track `draft`/`t`) never seeds
     // the composer from a stale draft when the next-step card fires an action.
@@ -3159,16 +3169,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             resolveProjectId={async () => projectId}
             onImported={(result) => {
               // Prefill the composer with the reshape prompt; the user reviews
-              // and sends to build the page from the decoded snapshot.
-              setDraft(result.suggestedPrompt);
-              editorRef.current?.setText(result.suggestedPrompt);
-              editorRef.current?.focus();
+              // and sends to build the page from the decoded snapshot. Queue
+              // focus until the modal has actually unmounted.
+              setPendingFigmaPrompt(result.suggestedPrompt);
+              setFigmaModalOpen(false);
             }}
             onFigmaUrl={(url, notes) => {
               const prompt = `Migrate the Figma file at ${url} into a responsive webpage using its design system.${notes ? ` ${notes}` : ''}`;
-              setDraft(prompt);
-              editorRef.current?.setText(prompt);
-              editorRef.current?.focus();
+              setPendingFigmaPrompt(prompt);
               setFigmaModalOpen(false);
             }}
           />

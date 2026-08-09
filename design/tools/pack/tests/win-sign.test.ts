@@ -4,7 +4,18 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { resolveSigntoolPath } from "../src/win/sign.js";
+import {
+  resolveSigntoolPath,
+  resolveWinSigningConfig,
+  signAndVerifyWinFile,
+} from "../src/win/sign.js";
+
+describe("Windows signing policy", () => {
+  it("rejects signer configuration and invocation", async () => {
+    expect(() => resolveWinSigningConfig()).toThrow(/code signing is prohibited/i);
+    await expect(signAndVerifyWinFile()).rejects.toThrow(/code signing is prohibited/i);
+  });
+});
 
 describe("resolveSigntoolPath", () => {
   it("probes filesystem candidates before falling back to bare signtool", async () => {

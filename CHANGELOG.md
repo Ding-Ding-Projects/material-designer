@@ -64,6 +64,328 @@ version section when a release carries them.
 
 ### Changed
 
+- **The second packaging attempt caught a schema mismatch before the signer could run.**
+  Run [31158740651](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31158740651)
+  at [`f484639a`](https://github.com/Ding-Ding-Projects/material-designer/commit/f484639a3d6a70ce30fc6a2c798e6e59518ecf8e)
+  passed the design verifier, self-hosted bootstrap, dependency installation, web
+  Typecheck and the Windows identity/installer tests. Locked `electron-builder`
+  26.8.1 then rejected `win.sign` as an unknown Windows configuration property
+  before packaging. No installer, smoke result or release was published. Commit
+  [`e768b5b`](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+  replaces the invalid property with the supported
+  `signAndEditExecutable: false` control and adds a release-contract assertion.
+  A replacement run is required before publication is claimed.
+
+  第二次 packaging 想行快啲，點知先畀 schema mismatch 截停，signer 仲未有機會
+  出場。31158740651 過咗 verifier、self-hosted bootstrap、dependency install、web
+  Typecheck 同 Windows identity/installer tests，但 locked electron-builder 26.8.1
+  唔識 `win.sign`，所以未開始 packaging 就報 unknown Windows configuration property。
+  `e768b5b` 改用佢真正支援嘅 `signAndEditExecutable: false`，再加 release contract
+  assertion；installer、smoke 同 release 仍然要等 replacement run 實證。
+
+- **The replacement Release reached Squirrel packaging and found the last two builder gaps.**
+  Run [31156822158](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31156822158)
+  at [`64d58b1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/64d58b1e32d3055ffc90bf03cf8266865190ced5)
+  passed the design verifier, self-hosted bootstrap, dependency installation, web
+  Typecheck and the Windows identity/installer tests. Packaging then logged repeated
+  `signing with signtool.exe` lines and Squirrel.Windows stopped with `Authors is
+  required.` No installer, smoke result or release was published. Commit
+  [`6911c62`](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+  adds a top-level package author, `win.sign: false` and
+  `verifyUpdateCodeSignature: false`, with source-contract assertions for the
+  unsigned builder. A replacement run is required before publication is claimed.
+
+  Replacement Release 終於行到 Squirrel packaging，先發現 builder 仲有兩個窿。
+  31156822158 過咗 verifier、self-hosted bootstrap、dependency install、web
+  Typecheck 同 Windows identity/installer tests，去到 packaging 卻再三叫
+  `signing with signtool.exe`，跟住 Squirrel.Windows 報 `Authors is required.`，所以
+  installer、smoke result 同 release 都未出街。`6911c62` 補返 top-level package
+  author，明確設 `win.sign: false` 同 `verifyUpdateCodeSignature: false`，再用
+  source contract tests 望實 unsigned builder；要等 replacement run 真正驗證先可以
+  報 publication 完成。
+
+- **The web repair passed Typecheck, and the next Windows contract caught a stale expectation.**
+  Release run [31155747324](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155747324)
+  at [`2b7e06a`](https://github.com/Ding-Ding-Projects/material-designer/commit/2b7e06a2009148878f2eded00acbebd5be0b0956)
+  passed the design verifier, self-hosted bootstrap, dependency installation and
+  web Typecheck, then failed the Windows identity/installer test with 125 tests
+  passing, 1 skipped and 1 stale source-contract assertion. Commit
+  [`0357266`](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+  updates that assertion to the escaped Squirrel artifact template exposed by
+  `resolveWinSquirrelArtifactName` and declares the changed test in
+  `MODIFICATIONS.md`. No installer or release is claimed from the failed run.
+
+  Web repair pass 咗 Typecheck，但下一關 Windows contract test 發現自己仲望住舊
+  template。31155747324 過咗 verifier、self-hosted bootstrap、dependency install
+  同 web Typecheck，125 個 tests pass、1 個 skip，偏偏 1 個 assertion 仲守住舊
+  Squirrel string。`0357266` 對返 `resolveWinSquirrelArtifactName` 真正輸出，等個
+  test 唔使再同化石鬥氣；installer 同 release 仲未可以當已經出街。
+
+- **Release CI now reaches the web typecheck with a precise failure report.**
+  Run [31155063471](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31155063471)
+  passed the portable Python bootstrap and frozen dependency installation, then
+  found 10 existing `apps/web` type errors before packaging. Commit
+  [`a769c35`](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+  restores the missing platform import, narrows three focus-trap element
+  accesses, aligns the HTML fixture with `ArtifactKind`, and declares all five
+  changed `design/` paths in `MODIFICATIONS.md`.
+
+  Release CI 而家終於行到 web typecheck，唔再畀 bootstrap 遮住真相。31155063471
+  過咗 portable Python 同 frozen dependency install，先揪出 `apps/web` 十個
+  type errors。`a769c35` 補返 platform import、收窄三個 focus trap、將 HTML
+  fixture 對返 `ArtifactKind`，仲喺 `MODIFICATIONS.md` 報齊五條 design path，
+  等 compiler 唔使再對住空氣發脾氣。
+
+- **Python bootstrap now uses the official embeddable archive.** Release run
+  [31154756724](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154756724)
+  showed the direct installer returning `-2147024891` (`0x80070005`, access
+  denied) for the self-hosted runner service account. Commit
+  [`37534e5`](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+  switches to the official Python 3.12.10
+  `python-3.12.10-embed-amd64.zip`, verifies its SHA-256 and extracts it into
+  the user-scoped cache without registry or installer operations
+  ([`37534e5`](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)).
+
+  31154756724 試到 direct installer，但 self-hosted runner service account 收到
+  `-2147024891`（`0x80070005`，access denied），連 Python 都未入場。今次改用
+  官方 Python 3.12.10 embeddable archive，先驗 SHA-256，再解壓入 user-scoped
+  cache，唔郁 registry，唔叫 installer，等個 bootstrap 唔使再撞同一度門。
+
+- **Python installer completion now uses an explicit process result.** Release
+  run [31154520542](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154520542)
+  reached the direct installer, but Windows PowerShell left `$LASTEXITCODE`
+  empty and the null comparison stopped the job before interpreter discovery.
+  Commit [`9dcdb2f`](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+  waits with `Start-Process -Wait -PassThru`, logs the numeric exit code, and
+  accepts only success or the documented reboot-required result before checking
+  `python.exe`.
+
+  31154520542 終於行到 direct installer，但 Windows PowerShell 留低空白
+  `$LASTEXITCODE`，null comparison 又將個 job 提早請出場。`9dcdb2f` 而家用
+  `Start-Process -Wait -PassThru` 等 process 完成，記低實數字 exit code，淨係
+  接受成功或者 documented reboot-required，先再驗 `python.exe`，唔畀空白數字
+  再扮大佬。
+
+- **Python bootstrap now uses the archive's installer executable.** Release run
+  [31154123479](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31154123479)
+  proved that the verified `actions/python-versions` archive contains
+  `python-3.12.10-amd64.exe` and `setup.ps1`, not a portable `python.exe`.
+  The first repair therefore stopped at interpreter discovery. Commit
+  [`c45e243`](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+  locates the installer and runs it directly with `InstallAllUsers=0` into the
+  user-scoped cache, so PowerShell never loads the unsigned setup script.
+
+  個 archive 原來係 installer bundle，唔係 portable `python.exe`：入面有
+  `python-3.12.10-amd64.exe` 同 `setup.ps1`。31154123479 證明第一版只係
+  hash-check 完就搵錯地方，未入到真正 build。`c45e243` 而家直接叫 installer
+  入 user-scoped cache，用 `InstallAllUsers=0`，唔再畀 PowerShell 請 unsigned
+  setup script 入場，個 Python bootstrap 終於識睇門牌。
+
+- **Python now enters the release job through a policy-safe bootstrap.**
+  actions/setup-python downloaded the right 3.12 archive but then tried to run
+  an unsigned setup.ps1, which the self-hosted runner rejected under AllSigned.
+  The release now uses a user-scoped, lock-protected bootstrap with a pinned
+  actions/python-versions archive, SHA-256 verification and an explicit PATH
+  handoff
+  ([511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)).
+
+  Python 而家經 policy-safe bootstrap 入 release job：actions/setup-python
+  download 到啱嘅 3.12 archive，但跟住要跑 unsigned setup.ps1，畀 self-hosted
+  runner 個 AllSigned 擋住。今次改用 user-scoped、lock-protected bootstrap，
+  pinned actions/python-versions archive，SHA-256 驗證，同埋明確 PATH handoff，
+  唔再畀個 action 喺門口跌倒。
+
+- **The Windows release shell now bypasses policy at the loader boundary.**
+  Windows PowerShell existed, but its default command wrapper tried to load the
+  generated step before the step body could invoke a child process with Bypass.
+  The shell template now carries the per-process execution-policy switch, leaving
+  the user's persistent policy untouched
+  ([129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)).
+
+  Windows release shell 而家喺 loader boundary 就 bypass policy：Windows
+  PowerShell 明明存在，但 default wrapper 先 load generated step，step body
+  仲未有機會叫 child process 設 Bypass 就已經畀 unsigned script 擋低。
+  Shell template 而家帶住 per-process execution-policy switch，唔郁用戶
+  persistent policy，個 script 終於有機會入場。
+
+- **Windows release bootstrap now uses the shell the runner actually has.** The
+  labelled image has powershell.exe but no pwsh command, so the first default
+  branch run reached checkout and then stopped before dependency installation.
+  The workflow now invokes Windows PowerShell, the bootstrap script remains
+  compatible with that engine, and the contract test rejects a future pwsh
+  regression
+  ([993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)).
+
+  Windows release bootstrap 而家用 runner 真係有嗰個 shell：labelled image
+  有 powershell.exe，但冇 pwsh command，第一次 default branch run 去到
+  checkout 先發現 dependency 門口冇人開門。Workflow 而家行 Windows
+  PowerShell，bootstrap script 同 engine 相容，contract test 仲會擋住
+  pwsh 偷偷返生。
+
+- **The Windows release shell now avoids a second path-shaped trap.** The first
+  repair named Git Bash but quoted an executable path with spaces; the runner
+  combined that command with a PATH shim and failed before checkout. The
+  workflow now uses the installation's space-free Windows short path, keeping
+  the release explicitly on Git-for-Windows without adding WSL
+  ([64ef401](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158)).
+
+  Windows release shell 而家避開第二個 path 陷阱：第一次修補雖然叫咗
+  Git Bash，但 quote 住有空格嘅 executable path，runner 將佢同 PATH shim
+  撈埋一齊，checkout 前已經收工。Workflow 而家用安裝位置嘅無空格
+  Windows short path，繼續明確行 Git-for-Windows，唔使加 WSL。
+
+- **Windows release jobs now ask for Git Bash by name.** The self-hosted runner's
+  bare `shell: bash` resolved to a WSL launcher with no installed distribution,
+  so the job failed before checkout and never reached the interesting machinery.
+  The release workflow now selects the installed Git-for-Windows Bash executable
+  explicitly, leaving WSL out of the dependency list
+  ([`99974ae`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974ae2fb9b4bdc2ee6bd80cdc3a1dcb1cf542a)).
+
+  Windows release job 而家明確叫 Git Bash：self-hosted runner 將 bare
+  `shell: bash` 誤認成冇 distro 嘅 WSL launcher，未 checkout 就已經收工，
+  連真正 machinery 都未見過。Workflow 而家直接揀 Git-for-Windows Bash，
+  WSL 唔再偷偷混入 dependency list。
+
+- **The release pipeline now refuses to sign anything.** The active Squirrel
+  packer removes signer and notarization entry points, clears certificate and
+  timestamp inputs, and verifies `Setup.exe` is `NotSigned` before publication.
+  Self-hosted CI now bootstraps Python 3.12 and the Windows C++ toolchain beside
+  Node 24, pnpm 10.33.2 and the utility cache, publishes measured workflow timing,
+  and documents the fresh-runner dependency inventory. The installer warning is
+  intentional: the code-signing cupboard is permanently empty, but Squirrel's
+  update feed still brings its hashes and rollback checks
+  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec5d1cc16312007a40d0c672c9534fdd3f9)).
+
+  發佈流程而家拒絕幫任何嘢簽名：active Squirrel packer 拆走 signer 同
+  notarization 入口，清走 certificate/timestamp inputs，發佈前驗證
+  `Setup.exe` 係 `NotSigned`。Self-hosted CI 加埋 Python 3.12 同 Windows C++
+  toolchain，配合 Node 24、pnpm 10.33.2 同 utility cache，仲會記低真實
+  workflow timing 同 fresh-runner dependency inventory。安裝器個 warning
+  係故意嘅——code-signing 個櫃永久空空如也，但 Squirrel update feed 仲有
+  hash 同 rollback checks，唔會畀個更新流程食白果。
+
+- **The settings overflow menu stopped being a 17-item scavenger hunt.** It now
+  carries its own plain-text-first regex search, keeps an honest empty state,
+  filters only the visible section labels and hints, supports Arrow/Home/End
+  navigation and returns focus to the opener on Escape or Tab. The focused spec
+  covers the independent builder, filtering and keyboard route; no local build,
+  CI or installed-build result is claimed
+  ([`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58)).
+
+  設定 overflow menu 唔再係十七格捉迷藏：而家有自己嘅 plain-text-first
+  regex search、真實 no-match 狀態，只篩 section label 同 hint，仲有
+  Arrow/Home/End 鍵盤路線，Escape 或 Tab 會將 focus 送返 opener。Focused
+  spec 覆蓋獨立 builder、filter 同 keyboard route；今次冇聲稱有本機 build、
+  CI 或 installed-build 結果。
+
+- **The settings menu, onboarding dropdowns and command-palette control now respect
+  the edges.** The overflow surface computes its real width and above/below
+  placement instead of rendering a fixed rectangle; onboarding dropdowns return
+  focus after Escape or selection and expose field-plus-value accessible names; the
+  palette's size toggle is a 48px target. Focused source checks are committed in
+  [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621);
+  no local build, CI or installed-build result is claimed.
+
+  Settings menu、onboarding dropdown 同 command palette control 而家識得睇邊界：
+  overflow surface 會按真實寬高揀向上或者向下開，dropdown 關閉或揀完會返
+  focus 去 trigger，讀屏會聽到 field 加 value，palette size toggle 就有 48px
+  target。Focused source checks 已經 commit，今次冇聲稱有本機 build、CI 或
+  installed-build 結果。
+
+- **The settings overflow refutation is now part of the repair.** The portalled
+  menu sits above the opaque settings page, its own regex builder is a separate
+  focus scope for Tab navigation, stale anchors clamp to the visible viewport,
+  and geometry tests restore the global viewport dimensions they borrow. This is
+  source-level coverage only; no local build, CI or installed-build result is
+  claimed
+  ([`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)).
+
+  設定 overflow menu 嘅 refutation 而家正式收尾：portalled menu 會企喺 opaque
+  settings page 上面，自己個 regex builder 有獨立 focus scope，舊 anchor 出界
+  會夾返入 viewport，geometry test 借完 viewport 尺寸亦會還原。今次只係
+  source-level coverage，冇扮有本機 build、CI 或 installed-build 結果。
+
+- **Update surfaces now open the exact release notes for the update.** HTTPS
+  `releaseNotesUrl` metadata flows through the updater model into the ready dialog
+  and persistent banner, while malformed or non-HTTPS values use the repository
+  releases page instead
+  ([`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)).
+
+  Update surface 而家會開返該次 update 真正嘅 release notes：HTTPS
+  `releaseNotesUrl` 由 metadata 一路傳到 ready dialog 同常駐 banner，亂格式
+  或非 HTTPS 值就穩陣跌返 repository releases page，唔再帶住錯地圖出門口。
+
+- **Squirrel publication now fails closed on release evidence.** The workflow
+  requires a valid Authenticode signature, a successful packaged smoke test and
+  non-duplicate UI-state evidence before publication; persistent self-hosted CI
+  tools are rebuilt from verified sources, and the custom runner label is declared
+  for `actionlint`
+  ([`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)).
+
+  Squirrel release 而家要有真 Authenticode signature、packaged smoke test 成功、
+  UI state 唔重複，先可以出街；persistent self-hosted CI tools 每次由 verified
+  source 重新砌，custom runner label 亦寫入 `actionlint` 設定。證據未齊就停，
+  唔會整個 unsigned installer 出嚟扮完成。
+
+- **The Figma focus-trap regression now proves its wrap edges.**
+  [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56) extends the
+  [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e)
+  coverage from the complete modal keyboard order to the handler's actual edge
+  contract: forward and reverse traversal must call `preventDefault()` at the
+  corresponding wrap edge, so the jsdom fallback cannot mask a broken real
+  handler. This is source-level coverage only; no local Node, pnpm, Electron,
+  build, CI or capture result is claimed.
+
+  Figma focus-trap regression 而家唔止行到 native file input，連 wrap 邊位都要
+  真係交由 handler 取消 default：forward 同 reverse 到邊界都必須有
+  `preventDefault()`，唔畀 jsdom 後備 focus 偷偷扮成功。呢個係 source-level
+  coverage，今次冇扮有本機 Node、pnpm、Electron、build、CI 或 capture 結果。
+
+- **Figma file drops now stay attached to a visible, named native control.**
+  [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd)
+  moves a file dropped on the URL tab to the file tab before reporting the
+  localized error, focuses the real file input, and keeps the alert plus retry
+  path associated with that control. The input is visually hidden with a real
+  accessible name and helper/error relationships instead of being removed with
+  `display: none`; the visible dropzone remains keyboard-operable and the modal
+  focus trap includes the native control. `zh-HK` deliberately inherits
+  `figmaUrl` and `figmaPlaceholder` from `zh-TW`, so no duplicate locale keys were
+  introduced. Focused static coverage is committed; no local Node, pnpm, Electron,
+  build, CI or capture result is claimed.
+
+  Figma file drop 而家唔會同 visible native control 走失：URL tab 開住時掉
+  file，會先跳返 file tab，再將 focus 放返真 input，localized error、alert 同
+  retry 路徑全部黐實正確 control。Input 用真正可讀嘅 visually-hidden strategy，
+  有 accessible name 同 helper/error 關聯，唔再用 `display: none` 變隱形人；
+  visible dropzone 照樣畀 keyboard 用，modal focus trap 亦冇漏低 native control。
+  `zh-HK` 有意繼承 `zh-TW` 嘅 `figmaUrl` 同 `figmaPlaceholder`，所以冇重複 locale
+  key。Focused static coverage 已 commit；今次冇扮有本機 Node、pnpm、Electron、
+  build、CI 或 capture 結果。
+
+- **The final Figma import refutation repairs all six remaining source gaps.**
+  [`FigmaImportModal`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f)
+  now closes before the host focus callback can reach the underlying UI; Home
+  keeps a rejected URL handoff visible and retryable; `aria-invalid` and
+  `aria-describedby` target only the visible invalid source control; invalid
+  file drops clear the previous selection; `FIGMA_URL_RE` is anchored while
+  accepting valid query/hash forms; and the title, source labels, helper,
+  actions, failure copy and summary labels use the i18n catalog. English
+  fallback entries, the `zh-TW` Traditional Chinese seed and deliberate
+  `zh-HK` overrides cover the complete visible surface. The focused spec and
+  `MODIFICATIONS.md` allowlist are committed, but no local Node, pnpm,
+  Electron, build, CI or capture result is claimed; hosted verification remains
+  the evidence boundary.
+
+  Figma import 嘅 final refutation 六個 bugs 而家一次過收掂：modal 先收場，
+  host 之後先可以搶返 focus；Home 個 URL handoff 失敗會留低畀人再試；
+  `aria-invalid` 同 `aria-describedby` 只黐住真係出事嗰粒可見 control；
+  壞 file drop 會清走舊選擇；`FIGMA_URL_RE` 收實條尾但照食合法 query/hash；
+  title、source label、helper、button、failure copy 同 summary 全部返入 i18n
+  catalog。英文 fallback、`zh-TW` Traditional Chinese seed 同刻意寫落去嘅
+  `zh-HK` overrides 都齊。Focused spec 同 `MODIFICATIONS.md` 已入 commit，
+  但本機冇扮 Node/pnpm/Electron、build、CI 或 capture 證人，真正驗證留返
+  hosted CI。
+
 - **Figma import copy and errors now use the real localization and accessibility seams.** The URL and notes
   controls use visible native `label`/`for` associations and stable ids, while
   `useT` reads the existing `dsCreate.*` catalog entries for labels, upload

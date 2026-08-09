@@ -6,7 +6,6 @@ Local packaging control plane for Open Design.
 
 - `tools-pack mac build --to all`
 - `tools-pack mac build --to app|dmg|zip`
-- `tools-pack mac build --to all --signed`
 - `tools-pack mac build --to all --portable` for release artifacts that must not bake local tools-pack runtime paths
 - `tools-pack mac install`
 - `tools-pack mac start`
@@ -174,7 +173,7 @@ Linux desktop apps in this space split across formats: VS Code ships `.deb` + `.
 
 ### Out of scope (later phases)
 
-- AppImage signing (`--signed`) — deferred pending a GPG key infrastructure decision and a user-facing verification flow design (no ETA).
+- Code signing is prohibited for every release artifact. Windows releases are intentionally unsigned and the release workflow verifies `NotSigned`; macOS and Linux signing options are not exposed.
 - AppImage auto-update feed (`latest-linux.yml`) — the linux electron-builder config has no `publish` block wired, so a generated feed would point users at a feed that never updates. Tracked alongside signing.
 - Additional package formats: `.deb`, `.rpm`, Snap, Flatpak — deferred until there is demand and an owner for per-distro metadata, signing/store/repository plumbing, install/remove hooks, and release validation.
 - Full Linux AppImage and headless packaged smoke remain outside the main PR gate; run the applicable tools-pack validation manually or through a release lane when Linux packaging changes.

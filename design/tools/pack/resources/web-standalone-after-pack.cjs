@@ -172,6 +172,7 @@ async function copyRequired(sourcePath, destinationPath, options = {}) {
   await mkdir(path.dirname(destinationPath), { recursive: true });
   await cp(sourcePath, destinationPath, {
     dereference: options.dereference === true,
+    filter: options.filter,
     recursive: true,
     verbatimSymlinks: options.dereference === true ? false : true,
   });
@@ -198,7 +199,9 @@ async function linkRelative(sourcePath, destinationPath, options = {}) {
 
 async function linkPnpmPublicHoist(destinationRoot, options = {}) {
   const nodeModulesRoot = path.join(destinationRoot, "node_modules");
-  const hoistRoot = path.join(nodeModulesRoot, ".pnpm", "node_modules");
+  const hoistRoot = options.sourceStandaloneRoot
+    ? path.join(options.sourceStandaloneRoot, "node_modules", ".pnpm", "node_modules")
+    : path.join(nodeModulesRoot, ".pnpm", "node_modules");
   const entries = await readdir(hoistRoot, { withFileTypes: true }).catch(() => []);
   const linked = [];
 
@@ -234,11 +237,18 @@ async function resolveStandaloneSourceWebRoot(standaloneSourceRoot) {
   throw new Error(`[tools-pack web-standalone] standalone server.js not found under ${standaloneSourceRoot}`);
 }
 
+function isPnpmStoreRoot(sourcePath) {
+  return path.basename(sourcePath) === ".pnpm" && path.basename(path.dirname(sourcePath)) === "node_modules";
+}
+
 async function installStandaloneResource(config, resourcesRoot, platformName) {
   const sourceWebRoot = await resolveStandaloneSourceWebRoot(config.standaloneSourceRoot);
   const destinationRoot = path.join(resourcesRoot, config.resourceName);
   const destinationWebRoot = path.join(destinationRoot, "apps", "web");
-  const copyOptions = { dereference: platformName === "win32" };
+  const copyOptions = {
+    dereference: platformName === "win32",
+    filter: platformName === "win32" ? (sourcePath) => !isPnpmStoreRoot(sourcePath) : undefined,
+  };
 
   await rm(destinationRoot, { force: true, recursive: true });
   await mkdir(destinationWebRoot, { recursive: true });
@@ -247,7 +257,10 @@ async function installStandaloneResource(config, resourcesRoot, platformName) {
   await copyRequired(path.join(sourceWebRoot, "server.js"), path.join(destinationWebRoot, "server.js"));
   await copyOptional(path.join(sourceWebRoot, "package.json"), path.join(destinationWebRoot, "package.json"));
   const copiedNestedNodeModules = await copyOptional(path.join(sourceWebRoot, "node_modules"), path.join(destinationWebRoot, "node_modules"), copyOptions);
-  const linkedHoistEntries = await linkPnpmPublicHoist(destinationRoot, { copyInsteadOfSymlink: platformName === "win32" });
+  const linkedHoistEntries = await linkPnpmPublicHoist(destinationRoot, {
+    copyInsteadOfSymlink: platformName === "win32",
+    sourceStandaloneRoot: platformName === "win32" ? config.standaloneSourceRoot : undefined,
+  });
   await copyRequired(path.join(sourceWebRoot, ".next"), path.join(destinationWebRoot, ".next"));
   const copiedStatic = await copyOptional(config.webStaticSourceRoot, path.join(destinationWebRoot, ".next", "static"));
   const copiedPublic = await copyOptional(config.webPublicSourceRoot, path.join(destinationWebRoot, "public"));
@@ -344,11 +357,11 @@ async function rewriteCopiedStandaloneSymlinks(options) {
   return rewrittenSymlinks;
 }
 
-async function removePathAndRecord(targetPath, reason, removedPaths) {
+async function removePathAndRecord(targetPath, reason, removedPaths, options = {}) {
   const existed = await pathExists(targetPath);
-  const bytes = await sizePathBytes(targetPath);
+  const bytes = options.measureBytes === false ? null : await sizePathBytes(targetPath);
   await rm(targetPath, { force: true, recursive: true });
-  if (existed || bytes > 0) {
+  if (existed || (bytes ?? 0) > 0) {
     removedPaths.push({ bytes, path: targetPath, reason });
   }
 }
@@ -423,6 +436,24 @@ async function dedupeCopiedStandaloneNext(destinationRoot, destinationWebRoot, p
     removedPaths,
     retainedPath: webNextRoot,
   };
+}
+
+async function pruneCopiedPnpmStore(destinationRoot, platformName) {
+  if (platformName !== "win32") return [];
+
+  // Windows copies the standalone tree with dereference=true and hoists the
+  // public entries before this point. The pnpm store is therefore redundant
+  // in the packaged Windows resource, while its peer-qualified directory
+  // names are exactly the kind of deep paths that Squirrel.Windows cannot
+  // extract with its legacy MAX_PATH handling.
+  const removedPaths = [];
+  await removePathAndRecord(
+    path.join(destinationRoot, "node_modules", ".pnpm"),
+    "copied pnpm store is redundant after Windows link dereference and hoisting",
+    removedPaths,
+    { measureBytes: false },
+  );
+  return removedPaths;
 }
 
 async function pruneBrokenSymlinks(root, current = root, removedPaths = [], reason = "broken symlink") {
@@ -894,6 +925,10 @@ async function runWebStandaloneAfterPack(context) {
     installResult.destinationWebRoot,
     context.electronPlatformName,
   );
+  const copiedPnpmStorePrune = await pruneCopiedPnpmStore(
+    installResult.destinationRoot,
+    context.electronPlatformName,
+  );
   const copiedBuildResiduePrune = context.electronPlatformName === "win32"
     ? await pruneSourceBuildResidue(installResult.destinationRoot, "copied standalone source/build residue")
     : [];
@@ -942,6 +977,7 @@ async function runWebStandaloneAfterPack(context) {
     copiedBuildResiduePrune,
     copiedNextDedupe,
     copiedNextDedupeAudit,
+    copiedPnpmStorePrune,
     copiedPrune,
     generatedAt: new Date().toISOString(),
     macAdhocBundleSign,

@@ -12,6 +12,7 @@ import {
 import { useI18n } from '../i18n';
 import { openExternalUrl } from '../providers/registry';
 import {
+  DEFAULT_RELEASES_URL,
   checkForUpdaterUpdate,
   deriveUpdaterModel,
   downloadUpdaterUpdate,
@@ -27,8 +28,6 @@ import {
 } from '../lib/updater';
 import styles from './UpdateDialog.module.css';
 
-// This fork's own release page, never upstream's — see SettingsDialog.
-const RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
 const MENU_SOURCE = 'mac-app-menu';
 const FOCUSABLE_SELECTOR = [
   'button:not([disabled])',
@@ -239,18 +238,21 @@ export function UpdateDialog() {
         dialog.focus();
         return;
       }
+      const firstFocusable = focusable[0];
+      const lastFocusable = focusable[focusable.length - 1];
+      if (!firstFocusable || !lastFocusable) return;
 
       const activeElement = document.activeElement;
       const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
       if (activeIndex === -1) {
         event.preventDefault();
-        (event.shiftKey ? focusable[focusable.length - 1] : focusable[0]).focus();
+        (event.shiftKey ? lastFocusable : firstFocusable).focus();
       } else if (event.shiftKey && activeIndex === 0) {
         event.preventDefault();
-        focusable[focusable.length - 1].focus();
+        lastFocusable.focus();
       } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
         event.preventDefault();
-        focusable[0].focus();
+        firstFocusable.focus();
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -381,8 +383,8 @@ export function UpdateDialog() {
       page_name: 'app',
       ...versionProps,
     });
-    void openExternalUrl(RELEASES_URL);
-  }, [analytics.track, versionProps]);
+    void openExternalUrl(model.releaseNotesUrl ?? DEFAULT_RELEASES_URL);
+  }, [analytics.track, model.releaseNotesUrl, versionProps]);
 
   if (!open) return null;
 
@@ -517,6 +519,8 @@ export function UpdateDialog() {
             ) : (
               <button
                 className={styles.releaseLink}
+                data-release-notes-url={model.releaseNotesUrl ?? DEFAULT_RELEASES_URL}
+                data-testid="update-dialog-release-notes"
                 onClick={openReleaseNotes}
                 type="button"
               >

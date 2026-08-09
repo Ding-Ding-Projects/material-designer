@@ -195,12 +195,15 @@ describe("web standalone afterPack hook", () => {
     try {
       expect(await pathExists(join(fixture.destinationRoot, "node_modules", "next"))).toBe(false);
       expect(await pathExists(join(fixture.destinationRoot, "node_modules", ".pnpm", "node_modules", "next"))).toBe(false);
+      expect(await pathExists(join(fixture.destinationRoot, "node_modules", ".pnpm"))).toBe(false);
+      expect(await pathExists(join(fixture.destinationRoot, "node_modules", "react", "package.json"))).toBe(true);
       expect(await pathExists(join(fixture.destinationRoot, "apps", "web", "node_modules", "next", "package.json"))).toBe(true);
 
       const report = JSON.parse(await readFile(fixture.auditReportPath, "utf8")) as {
         copiedAudit: { resolvedModules: Record<string, string>; brokenSymlinks: string[] };
         copiedNextDedupe: { removedPaths: Array<{ reason: string }>; retainedPath: string };
         copiedNextDedupeAudit: { resolvedNextPackagePath: string; remainingPaths: string[] };
+        copiedPnpmStorePrune: { bytes: null; reason: string }[];
       };
       const resolvedNextPath = report.copiedNextDedupeAudit.resolvedNextPackagePath.split(path.sep).join("/");
 
@@ -212,6 +215,7 @@ describe("web standalone afterPack hook", () => {
         /apps\/web\/node_modules\/next$/,
       );
       expect(report.copiedNextDedupeAudit.remainingPaths).toEqual([]);
+      expect(report.copiedPnpmStorePrune).toEqual([]);
       expect(resolvedNextPath).toMatch(
         /open-design-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
       );

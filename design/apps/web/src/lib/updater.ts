@@ -23,6 +23,8 @@ import {
 
 export type UpdaterEnvironment = 'desktop' | 'web';
 
+export const DEFAULT_RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
+
 export type UpdaterDownloadProgress = {
   percent: number | null;
   receivedBytes: number;
@@ -53,6 +55,7 @@ export type UpdaterModel = {
   hasDownloadedInstaller: boolean;
   installerOpened: boolean;
   platform: string | null;
+  releaseNotesUrl: string | null;
   requiresRestartToInstall: boolean;
   updateKind: 'installer' | 'payload' | 'unknown';
   promptKey: string | null;
@@ -104,6 +107,19 @@ function downloadProgressFromStatus(
   };
 }
 
+function releaseNotesUrlFromStatus(
+  status: OpenDesignHostUpdaterStatusSnapshot | null,
+): string | null {
+  const raw = status?.metadata?.releaseNotesUrl;
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function deriveUpdaterModel(
   status: OpenDesignHostUpdaterStatusSnapshot | null,
   options: { hostAvailable?: boolean } = {},
@@ -139,6 +155,7 @@ export function deriveUpdaterModel(
   const requiresRestartToInstall = platform === 'win32' && updateKind === 'installer';
   const availableVersion = status?.availableVersion ?? null;
   const currentVersion = status?.currentVersion ?? null;
+  const releaseNotesUrl = releaseNotesUrlFromStatus(status);
   const downloadProgress = downloadProgressFromStatus(status);
   const upToDate = state === OPEN_DESIGN_HOST_UPDATER_STATES.NOT_AVAILABLE;
   const promptKey =
@@ -168,6 +185,7 @@ export function deriveUpdaterModel(
     hasDownloadedInstaller,
     installerOpened,
     platform,
+    releaseNotesUrl,
     requiresRestartToInstall,
     updateKind,
     promptKey,

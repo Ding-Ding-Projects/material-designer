@@ -36,6 +36,93 @@ imported upstream tree for a shipping product.
 >    but nothing has been checked at a second display scale, at a narrow width,
 >    or in a second language. No claim below about how anything renders is
 >    evidence of anything.
+>
+> **2026-08-06 UI repair checkpoint.** Commit
+> [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621)
+> adds viewport-bounded settings overflow placement, onboarding dropdown focus
+> restoration and field-plus-value names, and a 48px command-palette size target.
+> [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+> adds the stacking, regex-builder focus-scope, stale-anchor and test-isolation
+> follow-up. These are focused source contracts only; the installed-build,
+> display-scale and bilingual runtime matrix remains open.
+
+> **2026-08-06 updater/release checkpoint.** Commit
+> [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8)
+> keeps release-note links exact in update surfaces. Commit
+> [`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310)
+> requires intentionally unsigned Squirrel output (`NotSigned`), successful
+> packaged smoke and unique UI-state evidence before publication, and declares the custom self-hosted runner label
+> for `actionlint`. Release runs 31152036272 and 31152251945 both failed before
+> checkout because the Windows shell command was resolved through WSL first and
+> then through a malformed quoted Git-for-Windows path. Commit
+> [64ef401](https://github.com/Ding-Ding-Projects/material-designer/commit/64ef401818d453ea87161c62fcb4997632ccc158)
+> uses the runner's space-free Git-for-Windows path; a new labelled-runner
+> verdict is still required.
+> Release run 31152929139 reached checkout and then failed at the automatic
+> utility bootstrap because the runner has no pwsh command. Commit
+> [993f86a](https://github.com/Ding-Ding-Projects/material-designer/commit/993f86ad3540333d55f3a4b2e4f92dbb0346aabd)
+> switches the job to powershell.exe and keeps the bootstrap script compatible
+> with that engine; another labelled-runner verdict is still required.
+> Release run 31153286001 reached checkout and then failed while Windows
+> PowerShell loaded the generated step: its execution policy rejected the
+> unsigned temporary script before the bootstrap body ran. Commit
+> [129cb90](https://github.com/Ding-Ding-Projects/material-designer/commit/129cb90120c5b57b1e644f0ba0a142b1fea86c2b)
+> moves the per-process Bypass switch onto the shell template; another
+> labelled-runner verdict is still required.
+> Release run 31153486526 passed tool bootstrap, the byte-exact verifier, pnpm
+> and Node setup, then failed in actions/setup-python because its unsigned
+> temporary setup.ps1 was rejected by the runner's AllSigned policy. Commit
+> [511c452](https://github.com/Ding-Ding-Projects/material-designer/commit/511c4526535031791fe9ead0e4127ed6c7431dcd)
+> replaces that action with a pinned, hash-checked Python bootstrap; another
+> labelled-runner verdict is still required.
+> Release run 31154123479 reached the first Python bootstrap after setup,
+> checkout, the byte-exact verifier, pnpm and Node. The verified archive
+> contained `python-3.12.10-amd64.exe` and `setup.ps1`, so the initial archive
+> scan could not find `python.exe` and no package was attempted. Commit
+> [c45e243](https://github.com/Ding-Ding-Projects/material-designer/commit/c45e243da8001435b4fafd8eeb03659ecb195fb7)
+> now invokes the archive's installer directly with `InstallAllUsers=0` and
+> verifies the resulting interpreter; another labelled-runner verdict is
+> still required.
+> Release run 31154520542 reached the direct installer, but Windows PowerShell
+> left `$LASTEXITCODE` empty and the null comparison stopped the job before
+> interpreter discovery. Commit
+> [9dcdb2f](https://github.com/Ding-Ding-Projects/material-designer/commit/9dcdb2f31de96dd54e7425066ef6cecb4761f65d)
+> now waits for the installer process, validates its explicit exit code, and
+> then checks `python.exe`; another labelled-runner verdict is still required.
+> Release run 31154756724 reached the direct installer and returned
+> `-2147024891` (`0x80070005`, access denied) for the self-hosted runner service
+> account. The next repair switches to the official Python 3.12.10 embeddable
+> archive, verifies its SHA-256 and extracts it without registry or installer
+> operations. Commit
+> [37534e5](https://github.com/Ding-Ding-Projects/material-designer/commit/37534e58ccbe28fdef6a3010a845d9bd46db9ced)
+> carries that path; another labelled-runner verdict is still required.
+> Release run 31155063471 passed the portable Python bootstrap and frozen
+> dependency installation, then failed at Typecheck with 10 existing `apps/web`
+> errors: a missing `isMacPlatform` import, strict indexed focus access in three
+> dialogs, and an unsupported HTML artifact fixture. Commit
+> [a769c35](https://github.com/Ding-Ding-Projects/material-designer/commit/a769c35609254e6e4dc71daddf4be076cad396b2)
+> repairs those files and declares the design-copy paths; another
+> labelled-runner verdict is still required.
+> Release run 31155747324 then passed the repaired web Typecheck and failed one
+> Windows pack source-contract assertion after 125 tests passed and 1 was skipped.
+> Commit [0357266](https://github.com/Ding-Ding-Projects/material-designer/commit/0357266f1e529c87da5988b4c2d1ecd3128192f9)
+> updates the assertion to the escaped Squirrel artifact template; another
+> labelled-runner verdict is required before packaging or publication is claimed.
+> Release run 31156822158 then passed the repaired Typecheck and Windows identity
+> tests but failed during Squirrel packaging: the log recorded repeated
+> `signing with signtool.exe` lines and Squirrel reported `Authors is required.`
+> Commit [6911c62](https://github.com/Ding-Ding-Projects/material-designer/commit/6911c6235917cb59d2fcf2a31e6041aad9c81488)
+> supplies the top-level package author and explicit `win.sign: false` and
+> `verifyUpdateCodeSignature: false` controls; a replacement run must prove that
+> no signer runs and that the unsigned Squirrel artifacts, smoke test and release
+> publication complete.
+> Release run 31158740651 then passed the repaired Typecheck and Windows identity
+> tests but stopped at electron-builder schema validation because version 26.8.1
+> rejects the unknown `win.sign` property. Commit
+> [e768b5b](https://github.com/Ding-Ding-Projects/material-designer/commit/e768b5bef5a308a93747ef0c60e01881baef5ce0)
+> switches to the supported `signAndEditExecutable: false` control and adds a
+> release-contract assertion; a replacement run must prove the packer accepts the
+> configuration before publication is claimed.
 
 ---
 
@@ -81,11 +168,14 @@ mockup describing the intended redesign of its interface, a verifier that proves
 the import has not drifted, a rebrand being written on top of it, and the
 scaffolding around all of that — three workflows, the governance documents, a
 categorized documentation set, a bundled dish catalogue and a static site source.
-All three workflows have now run: the port verifies at zero gaps on a clean
-checkout, the release pipeline has built two Windows installers and published
-them under their own tags, and the documentation site is deployed. The packaged
-smoke test has installed one of those builds, launched it, made the running
-process answer its own health endpoint and uninstalled it.
+Historical runs have built two Windows installers and published them under
+their own tags, and the documentation site is deployed. The current main
+Release run 31158740651 passed the portable toolchain, frozen dependency
+installation, web Typecheck and Windows identity tests but failed during
+electron-builder schema validation; the next run must prove the supported
+unsigned builder repair before a new release is claimed. The port
+verifier still reports zero gaps on a clean checkout, and the earlier packaged
+smoke evidence remains historical.
 
 That is the machinery working, and it is worth separating from the product. What
 those runs prove is that this project can build and ship the imported application
@@ -208,7 +298,8 @@ Not by a local build — local builds do not happen here.
       *Release* through to publication, *Pages* through to deployment.
 - [~] **Install job on the labelled self-hosted Windows runner.** `release.yml`
       now selects `[self-hosted, windows, material-designer]`, installs pnpm
-      10.33.2 and Node 24 through setup actions, verifies both versions, cleans
+      10.33.2, Node 24 and Python 3.12 through setup actions, exposes the x64
+      MSVC/Windows SDK toolchain for native compilation, verifies the versions, cleans
       the checkout, and resolves the workspace with `pnpm install
       --frozen-lockfile`. The install compiles a native SQLite binding from
       source because no prebuilt binary exists for this platform/runtime pair.
@@ -337,14 +428,17 @@ Not by a local build — local builds do not happen here.
       a tag no earlier release used, each carrying the installer its own run
       built. **The gating half is unproved**: no run has failed, so nothing has
       demonstrated that a failing run publishes nothing.
-- [x] **Do not sign the installer yet, and say so in the release notes.** The
-      generated notes say it outright: the installer is not code-signed, so the
+- [x] **Keep every installer unsigned, and say so in the release notes.** Code
+      signing is permanently prohibited. The generated notes say it outright:
+      the installer is not code-signed, so the
       operating system's reputation prompt appears on first run, and its "run
       anyway" affordance is hidden behind a "more info" link. Users will hit
       this. Documenting it is not optional politeness; it is the difference
       between a confused user and an abandoned install.
       *Verified by:* both published releases carrying that warning in their notes,
-      directly beneath the download instruction rather than buried at the bottom.
+      directly beneath the download instruction rather than buried at the bottom;
+      the new workflow additionally requires `Get-AuthenticodeSignature` to report
+      `NotSigned` before publication.
 - [x] **Commit a line-count script and have CI run it at the released commit.**
       `scripts/line-count.mjs` is written, tracked, and invoked by both workflows
       (`release.yml` into the release notes, `verify.yml` into the job summary).
@@ -1609,8 +1703,8 @@ rows say so rather than counting their file size as progress.
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
 | 2 | Full Material Design 3 conformance | 2.1–2.4 | **Colour landed; anatomy did not, and a capture proved it.** The token sheet, its mapping layer and the Windows frameless title bar are real, so every component inherits M3 roles. But the mockup's defining furniture is absent from the running screen: no persistent navigation rail (the component exists and collapses to a **zero-width** track, so a fresh install shows none), no header search bar, no 28px status bar. A reader comparing the shipped capture to `mockups/` would say it is still the upstream screen in new colours, and for the anatomy they would be right |
 | 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Built and reachable.** Theme, accent and density persist and are reachable from the settings dialog and the command palette. The editor behind them — the infinite colour picker, the colour translator, the contrast readout, presets and typography — had **zero importers** and is now mounted: the picker is the accent control, with the fixed swatches kept as a convenience layered on it rather than replacing it, and the runtime mounts in `App.tsx` so a chosen preset survives a reload. Unaudited: nobody has operated any of it |
-| 4 | Regex builder on every search bar | 3.3 | **Partial.** The command palette now has an anchored full builder with bounded local matching; the remaining search inventory, including the four tab-discovery fields, is still open. No installed-build capture or hosted run verifies the rendered result |
-| 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, and the bar just moved.** The workspace tab strip, pinning and the text-matched bulk closes are built; tab *groups* and the four discovery searches are absent. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the settings window, per-project settings, properties panels, appearance editors and the site's configuration pages, carrying the whole feature rather than the word. The capture at `90e52d3` shows a seventeen-item scrolling section list, so this is unmet here and newly tracked |
+| 4 | Regex builder on every search bar | 3.3 | **Partial.** The command palette and the settings tab overflow menu now have independent anchored builders with bounded local matching; the remaining search inventory, including the four tab-discovery fields, is still open. [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6) is source-level evidence only |
+| 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, with the settings surface now tabbed.** The settings dialog has a 17-section tab strip, a viewport-bounded above/below overflow surface, local search and its own regex builder; the workspace tab strip, pinning, grouping, four discovery searches and bulk-close actions remain open. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the capture at `90e52d3` records the old scrolling section list, while [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621) records the follow-up geometry repair |
 | 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
 | 7 | Super-confirmation gate | 4.3 | **The boundary exists; the interface routing is unfinished.** The gate is built and mounted, its eight confirmed defects are closed, and the three irreversible deletes are now enforced in the daemon's own handler behind a single-use per-resource token — so a `curl`, a script or a third-party client cannot delete in one replayable request. That is the authorization boundary the standard asks for. What remains is affordance coverage: some delete buttons still reach the operation through a plain dialog rather than two keys and a slider. Nobody has operated any of it |
 | 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface, live inline controls whose union is exhaustive, and its own anchored regex builder. Unverified: whether the index covers every setting the dialog actually has, and whether the new builder passes hosted verification |
@@ -1619,7 +1713,7 @@ rows say so rather than counting their file size as progress.
 | 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
 | 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
-| 14 | Accessibility and sizing as blockers | Every phase | **Partial, source-level audit only.** The 2026-08-06 pass fixed Figma field names and modal scrolling, and [`9c8d492`](https://github.com/Ding-Ding-Projects/material-designer/commit/9c8d4927dce44451bacec50e1c3d38aca837dbcc) makes the URL/notes names explicit through native `label`/`for` associations; upload labels, helper copy and placeholders now use `useT` with the existing `dsCreate.*` catalog and English fallback, while invalid URL/import errors are assertive alerts associated with the affected controls. Context-menu label clipping and focus return, updater-dialog focus/reduced-motion behavior, and the design-system Back name are also covered. The 100/125/150/200% narrow-width bilingual runtime matrix and installed-build captures remain open |
+| 14 | Accessibility and sizing as blockers | Every phase | **Partial, source-level audit only.** The final six-finding Figma repair is [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe), the residual drop/input repair is [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd), the corrected focus-trap contract is [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e) with wrap-edge proof tightened in [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56), and the settings overflow menu's local search/keyboard route is [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6). Focused source tests and the `MODIFICATIONS.md` allowlist are committed; no local build, CI run, installed-build capture or runtime matrix is claimed. The 100/125/150/200% narrow-width bilingual runtime matrix and installed-build captures remain open |
 | 15 | All assets bundled locally | 2.2, 1.3 | **Met for the application and the site.** The site is bundled and its deployment enforces that at publish time; the application's one CDN font import is gone, with the three Cairo subsets bundled under `apps/web/public/fonts/cairo/`. The mockup still carries three, and it ships to nobody. Roboto Flex, Roboto Mono and Material Symbols are not bundled because nothing consumes them yet — 2.2 tracks that as its own work, not as a violation of this row |
 | 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 

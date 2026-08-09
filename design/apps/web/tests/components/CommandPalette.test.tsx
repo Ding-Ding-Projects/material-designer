@@ -112,6 +112,9 @@ describe('CommandPalette regex wiring contract', () => {
     expect(PALETTE_STYLES).toMatch(
       /\.regexToggle\s*\{[\s\S]*min-width:\s*48px;[\s\S]*min-height:\s*48px;/,
     );
+    expect(PALETTE_STYLES).toMatch(
+      /\.sizeButton\s*\{[\s\S]*width:\s*48px;[\s\S]*height:\s*48px;/,
+    );
     expect(REGEX_FIELD_STYLES).toContain('min-width: 0;');
     expect(REGEX_FIELD_STYLES).toContain('max-width: calc(100vw - 24px);');
   });

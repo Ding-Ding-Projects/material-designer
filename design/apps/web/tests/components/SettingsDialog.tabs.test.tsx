@@ -5,6 +5,7 @@
 // tab strip (roles, roving focus, an overflow surface, persistence) and a search
 // field wired to the command palette's own settings index.
 
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,6 +32,16 @@ vi.mock('../../src/providers/registry', async () => {
 });
 
 const originalFetch = globalThis.fetch;
+const originalInnerWidth = window.innerWidth;
+const originalInnerHeight = window.innerHeight;
+const SETTINGS_TABS_CSS = readFileSync(
+  new URL('../../src/components/settings/SettingsTabs.module.css', import.meta.url),
+  'utf8',
+);
+const SETTINGS_PAGE_CSS = readFileSync(
+  new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
+  'utf8',
+);
 
 const baseConfig: AppConfig = {
   mode: 'api',
@@ -89,6 +100,8 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+  Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalInnerHeight });
   globalThis.fetch = originalFetch;
   vi.restoreAllMocks();
 });
@@ -171,6 +184,137 @@ describe('Settings: the tab strip', () => {
 
     expect(screen.queryByTestId('settings-tabs-overflow-menu')).toBeNull();
     expect(tab('language').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('keeps the overflow surface inside a narrow, short viewport', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 240 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 150 });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === 'settings-tabs-overflow') {
+        return {
+          x: 180,
+          y: 92,
+          width: 32,
+          height: 32,
+          top: 92,
+          right: 212,
+          bottom: 124,
+          left: 180,
+          toJSON: () => ({}),
+        };
+      }
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        toJSON: () => ({}),
+      };
+    });
+
+    renderSettings();
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
+
+    const menu = screen.getByTestId('settings-tabs-overflow-menu') as HTMLElement;
+    expect(menu.style.width).toBe('216px');
+    expect(menu.style.top).toBe('auto');
+    expect(menu.style.bottom).toBe('62px');
+    expect(menu.style.maxHeight).toBe('76px');
+  });
+
+  it('keeps a portalled overflow surface above the opaque settings page', () => {
+    const menuZ = Number(SETTINGS_TABS_CSS.match(/\.menu\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]);
+    const pageZ = Number(SETTINGS_PAGE_CSS.match(/\.page\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]);
+    expect(menuZ).toBeGreaterThan(pageZ);
+  });
+
+  it('keeps the menu in the viewport when the trigger is outside a tiny viewport', () => {
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 10 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 8 });
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === 'settings-tabs-overflow') {
+        return {
+          x: -120,
+          y: -40,
+          width: 32,
+          height: 32,
+          top: -40,
+          right: -88,
+          bottom: -8,
+          left: -120,
+          toJSON: () => ({}),
+        };
+      }
+      return {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        toJSON: () => ({}),
+      };
+    });
+
+    renderSettings();
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow'));
+
+    const menu = screen.getByTestId('settings-tabs-overflow-menu') as HTMLElement;
+    const left = Number.parseFloat(menu.style.left);
+    const top = Number.parseFloat(menu.style.top);
+    const width = Number.parseFloat(menu.style.width);
+    const maxHeight = Number.parseFloat(menu.style.maxHeight);
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(left + width).toBeLessThanOrEqual(window.innerWidth);
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(top + maxHeight).toBeLessThanOrEqual(window.innerHeight);
+  });
+
+  it('gives the overflow menu its own searchable regex field and keyboard route', () => {
+    renderSettings();
+
+    const overflow = screen.getByTestId('settings-tabs-overflow');
+    fireEvent.click(overflow);
+
+    const menu = screen.getByTestId('settings-tabs-overflow-menu');
+    const search = screen.getByTestId('settings-tabs-overflow-search') as HTMLInputElement;
+    expect(search.getAttribute('data-regex-mode')).toBe('text');
+    expect(menu.querySelectorAll('[role="menuitem"]')).toHaveLength(SETTINGS_TAB_ORDER.length);
+
+    fireEvent.change(search, { target: { value: 'appearance' } });
+    const filtered = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.getAttribute('data-section')).toBe('appearance');
+
+    fireEvent.click(screen.getByTestId('settings-tabs-overflow-search-regex-toggle'));
+    const regexPopover = screen.getByTestId('settings-tabs-overflow-search-regex-popover');
+    expect(regexPopover.getAttribute('data-focus-scope')).toBeTruthy();
+    const regexControl = regexPopover.querySelector<HTMLElement>('button, input, select, textarea');
+    expect(regexControl).toBeTruthy();
+    regexControl?.focus();
+    fireEvent.keyDown(regexControl!, { key: 'Tab' });
+    expect(screen.getByTestId('settings-tabs-overflow-menu')).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '' } });
+    const allItems = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    allItems[0]?.focus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(allItems[1]);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(document.activeElement).toBe(allItems[allItems.length - 1]);
+    fireEvent.keyDown(menu, { key: 'Escape' });
+    expect(document.activeElement).toBe(overflow);
+    expect(screen.queryByTestId('settings-tabs-overflow-menu')).toBeNull();
   });
 
   it('persists the tab so the next generic open lands where the user left off', () => {

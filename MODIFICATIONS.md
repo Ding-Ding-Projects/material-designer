@@ -29,6 +29,328 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-07 — Exit Squirrel lifecycle events immediately
+
+**Reason:** Release run `31182596964` proved that packaging, unsigned verification,
+self-contained scanning and artifact upload passed, but the packaged Windows smoke
+test still timed out after `720000ms` while Squirrel was completing installation.
+Detaching the shortcut helper was not enough because Electron's asynchronous
+`app.quit()` can wait on imported quit handlers. Lifecycle switches now use
+`app.exit(0)` so the event process terminates immediately after handing the
+shortcut operation to `Update.exe`; the source contract rejects the asynchronous
+quit path.
+
+**Changed files:**
+
+- apps/packaged/src/index.ts
+- apps/packaged/tests/squirrel-startup.test.ts
+
+### 2026-08-07 — Let Squirrel lifecycle startup exit without waiting on its helper
+
+**Reason:** Release run 31178661227 built and verified the unsigned Squirrel
+installer but the packaged Windows smoke test timed out after 720000ms during
+the install path. Squirrel launches the packaged executable for lifecycle
+switches before Setup.exe can finish. The lifecycle handler now detaches the
+shortcut helper, keeps an asynchronous spawn failure from becoming an
+unhandled process error, and quits immediately instead of waiting for the
+helper's close event. The focused source contract covers the detached handoff
+and rejects the old wait.
+
+**Changed files:**
+
+- apps/packaged/src/index.ts
+- apps/packaged/tests/squirrel-startup.test.ts
+
+### 2026-08-07 — Exclude the redundant Windows standalone pnpm store before Squirrel packaging
+
+**Reason:** Release run `31168712919` reached Squirrel extraction and failed with
+`System.IO.PathTooLongException` after the output and Squirrel temporary roots had
+already been shortened. The Windows standalone hook dereferences its copied links and
+hoists the public package targets, so the remaining `.pnpm` store was redundant. The
+the Windows copy now excludes that store before materializing the packaged resource and
+reads public hoist entries from the standalone source while copying them into their
+final locations. The earlier post-copy cleanup and recursive audit made the first repair
+spend too long in the packaging hook. The exclusion prevents peer-qualified store paths
+from entering the Squirrel package while preserving Unix symlink layouts.
+
+**Changed files:**
+
+- `tools/pack/resources/web-standalone-after-pack.cjs`
+- `tools/pack/tests/web-standalone-after-pack.test.ts`
+
+### 2026-08-07 — Shorten the Squirrel output path during Windows packaging
+
+**Reason:** Release run `31164999787` proved that the unsigned Squirrel controls
+were working, but `electron-winstaller` still rejected `open-design-packaged-app.nuspec`
+because NuGet received an unpacked output tree whose fully qualified paths exceeded
+Windows `MAX_PATH`. The Windows packer now maps the output namespace parent to an
+unused drive letter only for the electron-builder process, passes the short output
+path to Squirrel, and removes the mapping in a `finally` block even after a failed
+build. The focused source contract covers the mapping and its failure message.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
+### 2026-08-07 — Stop the Squirrel target from invoking executable signing
+
+**Reason:** Release run `31160806459` proved that electron-builder's general
+`signAndEditExecutable: false` control does not cover the Squirrel target's
+direct `packager.signIf` calls for its stub, application executable and setup
+executable. The generated Windows configuration now excludes `.exe` files with
+`signExts: ["!exe"]`, while retaining the hard-disabled signing controls and
+the `NotSigned` release gate.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
+### 2026-08-07 — Keep Squirrel author metadata inside the application package
+
+**Reason:** Release run `31159842997` reached the Windows packer and electron-builder
+26.8.1 rejected the generated top-level `author` field because it is not a valid
+builder option. Squirrel.Windows obtains its required `Authors` value from
+`appInfo.companyName`, which is derived from the application package's author object.
+The builder now keeps `{ name: PRODUCT_NAME }` inside `extraMetadata`, and the
+focused source contract rejects the invalid root form.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
+### 2026-08-07 — Keep the Squirrel artifact contract test aligned with its helper
+
+**Reason:** the release runner reached the focused Windows pack tests and found that
+the source-contract assertion still expected the pre-helper artifact template. The
+packaging implementation correctly centralizes that template in
+`resolveWinSquirrelArtifactName`; the test now asserts the escaped electron-builder
+extension template that the helper actually contains.
+
+**Changed files:**
+
+- `tools/pack/tests/win-builder.test.ts`
+
+### 2026-08-07 — Repair the web typecheck boundary exposed by the release runner
+
+**Reason:** the first full self-hosted Windows release reached the application
+typecheck and found a missing platform import, three focus traps whose indexed
+element access was not narrowed under strict TypeScript settings, and a test
+fixture using an artifact kind outside the committed contract. The fixes keep
+keyboard focus behavior unchanged while making the non-empty element boundary
+explicit, restore the existing platform helper import, and align the fixture
+with the supported `html` artifact kind.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/tests/components/FileWorkspace.test.tsx`
+
+### 2026-08-07 — Make every release artifact intentionally unsigned
+
+**Reason:** code signing is permanently prohibited for this project. The active
+Windows packer no longer exposes signing or notarization options, never invokes a
+signer, hard-disables electron-builder signing and certificate discovery, and
+removes signing inputs from cache keys. The release workflow clears signing
+environment values, bootstraps Python and the MSVC/Windows SDK toolchain, and
+verifies that every generated `Setup.exe` reports `NotSigned` before publication.
+Focused packer tests assert the unsigned boundary.
+
+**Changed files:**
+
+- `tools/pack/CACHE.md`
+- `tools/pack/README.md`
+- `tools/pack/src/config.ts`
+- `tools/pack/src/index.ts`
+- `tools/pack/src/mac/builder.ts`
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/src/win/custom-installer.ts`
+- `tools/pack/src/win/sign.ts`
+- `tools/pack/tests/config.test.ts`
+- `tools/pack/tests/mac.test.ts`
+- `tools/pack/tests/win-builder.test.ts`
+- `tools/pack/tests/win-sign.test.ts`
+
+### 2026-08-06 — Show the exact release notes in update prompts
+
+**Reason:** the release workflow already writes a validated `releaseNotesUrl` into
+update metadata, but the ready dialog and persistent update banner discarded it and
+opened only a generic releases page. The updater model now accepts HTTPS release-note
+URLs from metadata, rejects malformed or non-HTTPS values, and keeps the repository
+release page as the explicit fallback. Both ready surfaces expose the resulting
+target, with focused model and rendered-surface tests. The source update is
+committed at [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f4015b8).
+
+**Changed files:**
+
+- `apps/web/src/lib/updater.ts`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/tests/lib/updater.test.ts`
+- `apps/web/tests/components/UpdateDialog.test.tsx`
+
+### 2026-08-06 — Make the Squirrel release path fail closed on signing and smoke
+
+**Reason:** the Windows release was already Squirrel-based and dependencies were
+installed from the frozen workspace lockfile on the self-hosted runner, but the
+packer could still emit an unsigned installer and the publication condition did not
+require the packaged smoke test to run successfully. Squirrel packaging now enables
+`forceCodeSigning` for signed builds, uses the configured certificate thumbprint and
+timestamp service, and the workflow verifies the resulting Authenticode signature.
+Publication requires a successful smoke result; missing or duplicate packaged UI
+state evidence fails the job. The persistent runner bootstrap also re-materializes
+cached `gh.exe` and `7z.exe` from verified archives/installers instead of trusting
+cached binaries. The source update is committed at
+[`6daae310`](https://github.com/Ding-Ding-Projects/material-designer/commit/6daae310).
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+- `tools/pack/tests/win-builder.test.ts`
+
+### 2026-08-06 — Keep UI overlays reachable and onboarding controls truthful
+
+**Reason:** the settings overflow surface could exceed a narrow or short viewport,
+onboarding dropdowns could strand focus after Escape or selection and announced only
+the selected value without the field name, and the command-palette size control was
+smaller than the app's keyboard and touch target. The repair clamps the settings
+surface on both axes with genuine above/below placement, restores focus to dropdown
+triggers, labels each trigger with its field and value, and gives the palette control
+a 48px target. Focused tests cover the geometry, focus return, accessible naming and
+target-size contracts. The source update is committed at
+[`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621).
+A follow-up at
+[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7)
+raises the portalled menu above the opaque settings page, keeps Tab inside its
+regex-builder focus scope, clamps stale off-screen anchors and restores viewport
+globals in the geometry tests.
+
+**Changed files:**
+
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.module.css`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/tests/components/CommandPalette.test.tsx`
+- `apps/web/tests/components/EntryShell.onboarding-dropdown.test.tsx`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+
+### 2026-08-06 — Search and drive the settings overflow menu
+
+**Reason:** the new settings tab strip made every section reachable through an
+overflow menu, but that menu still exposed all seventeen dynamic items as an
+unsearchable list and offered no arrow-key route. The menu now has its own
+plain-text-first regex search field, bounded local filtering, an honest empty
+state, arrow/Home/End navigation, and focus restoration on Escape or Tab. The
+focused settings spec covers the filter, the menu's independent builder, the
+keyboard route and focus return. The source change is committed at
+[`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58).
+
+**Changed files:**
+
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+
+### 2026-08-06 — Prove the Figma focus-trap wrap edges
+
+**Reason:** the previous regression helper moved focus itself whenever jsdom did
+not mark the Tab event as prevented. That could make the test pass at the first
+or last control even if the real modal handler failed to own the wrap edge. The
+test now identifies the two edge cases and requires the handler to call
+`preventDefault()` there, while retaining the helper only for ordinary middle
+control movement. The correction is committed at
+[`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56).
+
+**Changed files:**
+
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
+### 2026-08-06 — Exercise the native Figma input in the focus contract
+
+**Reason:** the residual Figma repair added the native file input to the modal's
+production focus selector, but its regression test built a button-only list and
+could therefore pass without ever traversing that input. The focused test now
+builds the modal's complete keyboard order, asserts that the native input is in
+it, and drives forward and reverse Tab traversal through every control. The
+jsdom helper models the browser's ordinary middle control move while leaving
+wrap-edge ownership to the real modal handler; the later edge assertion is
+recorded separately in [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56).
+The correction is committed at [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e).
+
+**Changed files:**
+
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
+### 2026-08-06 — Keep Figma drops on a visible, named native file control
+
+**Reason:** a file dropped on the URL tab could leave its localized error tied to
+the hidden file surface, and the native file input itself was removed from the
+accessibility tree with `display: none`. The modal now switches every file drop to
+the file tab before reporting the error, focuses the real file control after that
+switch, and keeps the visible dropzone keyboard-operable through a visually-hidden
+native input with a localized accessible name, helper association and error
+association. The focused source spec covers the URL-tab drop path, retry-safe error
+state and the native input contract. `zh-HK` intentionally continues to inherit
+`figmaUrl` and `figmaPlaceholder` from `zh-TW`; no duplicate locale keys are needed.
+
+**Changed files:**
+
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/FigmaImportModal.module.css`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
+### 2026-08-06 — Complete the six Figma import repairs
+
+**Reason:** the final read-only refutation found six remaining source-level gaps in
+the Figma import flow: focus could be handed back while the modal was still mounted,
+rejected Home URL handoffs closed the retry surface, invalid state was broader than
+the visible control, several visible strings bypassed the catalog, invalid file drops
+left a stale valid selection behind, and the URL expression accepted arbitrary
+trailing content. The repair closes the modal before the host focus handoff, keeps a
+rejected URL import open with a retry path, associates file errors with the visible
+dropzone and URL errors only with the URL field, clears invalid file selections,
+anchors the URL expression while retaining query/hash support, and routes the full
+surface through the catalog. `types.ts` and every locale retain the established
+English fallback shape; `zh-TW.ts` carries the Traditional Chinese seed and
+`zh-HK.ts` adds deliberate Hong Kong Cantonese overrides. The final source tip
+is [`81ca738`](https://github.com/Ding-Ding-Projects/material-designer/commit/81ca73826312e1c599e52ff8be943620ee1ec04f);
+its follow-up restores only pre-existing locale indentation and changes no
+user-facing value.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
+
 ### 2026-08-06 — Switch Windows packaging to Squirrel and add restartable updates
 
 **Reason:** Windows releases previously built the legacy NSIS target and the

@@ -4,7 +4,10 @@ $ErrorActionPreference = 'Stop'
 # the pinned tools in a user-scoped cache, lock the cache while updating it,
 # validate the cached versions, and expose only this cache through GITHUB_PATH.
 
-$toolRoot = Join-Path ($env:RUNNER_TOOL_CACHE ?? $env:RUNNER_TEMP) 'material-designer-ci-tools'
+$cacheRoot = $env:RUNNER_TOOL_CACHE
+if ([string]::IsNullOrWhiteSpace($cacheRoot)) { $cacheRoot = $env:RUNNER_TEMP }
+if ([string]::IsNullOrWhiteSpace($cacheRoot)) { throw 'RUNNER_TOOL_CACHE and RUNNER_TEMP are both unavailable' }
+$toolRoot = Join-Path $cacheRoot 'material-designer-ci-tools'
 $binDir = Join-Path $toolRoot 'bin'
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 
@@ -45,11 +48,19 @@ try {
   }
 
   $ghReady = $false
-  if ((Test-Path -LiteralPath $ghPath -PathType Leaf) -and (Test-Path -LiteralPath $ghZip -PathType Leaf)) {
+  if (Test-Path -LiteralPath $ghZip -PathType Leaf) {
     try {
-      $ghLine = (& $ghPath --version 2>$null | Select-Object -First 1) -join ''
-      $ghReady = $ghLine -like "gh version $ghVersion *"
-      if ($ghReady) { Assert-FileHash $ghZip $ghSha256 }
+      # The runner is persistent, so a cached gh.exe can be modified while its
+      # matching archive remains intact. Re-materialize the executable from the
+      # verified archive on every run instead of trusting the cached binary.
+      Assert-FileHash $ghZip $ghSha256
+      Remove-Item -LiteralPath $ghExtract -Recurse -Force -ErrorAction SilentlyContinue
+      New-Item -ItemType Directory -Force -Path $ghExtract | Out-Null
+      Expand-Archive -LiteralPath $ghZip -DestinationPath $ghExtract -Force
+      $ghExe = Get-ChildItem -LiteralPath $ghExtract -Filter gh.exe -Recurse | Select-Object -First 1
+      if ($null -eq $ghExe) { throw 'GitHub CLI archive did not contain gh.exe' }
+      Copy-Item -LiteralPath $ghExe.FullName -Destination $ghPath -Force
+      $ghReady = $true
     } catch {
       $ghReady = $false
     }
@@ -83,11 +94,19 @@ try {
 
   $expectedSevenZip = "$($sevenZipVersion.Substring(0, 2)).$($sevenZipVersion.Substring(2, 2))"
   $sevenZipReady = $false
-  if ((Test-Path -LiteralPath $sevenZipPath -PathType Leaf) -and (Test-Path -LiteralPath $sevenZipInstaller -PathType Leaf)) {
+  if (Test-Path -LiteralPath $sevenZipInstaller -PathType Leaf) {
     try {
-      $sevenZipInfo = (& $sevenZipPath i 2>$null | Select-Object -First 3) -join "`n"
-      $sevenZipReady = $sevenZipInfo -match [regex]::Escape($expectedSevenZip)
-      if ($sevenZipReady) { Assert-FileHash $sevenZipInstaller $sevenZipSha256 }
+      # Re-run the verified installer on every bootstrap so a tampered cached
+      # 7z.exe cannot survive merely because it reports the expected version.
+      Assert-FileHash $sevenZipInstaller $sevenZipSha256
+      Remove-Item -LiteralPath $sevenZipRoot -Recurse -Force -ErrorAction SilentlyContinue
+      New-Item -ItemType Directory -Force -Path $sevenZipRoot | Out-Null
+      $process = Start-Process -FilePath $sevenZipInstaller -ArgumentList @('/S', "/D=`"$sevenZipRoot`"") -Wait -PassThru -WindowStyle Hidden
+      if ($process.ExitCode -ne 0) { throw "7-Zip bootstrap exited with code $($process.ExitCode)" }
+      $sevenZipExe = Get-ChildItem -LiteralPath $sevenZipRoot -Filter 7z.exe -Recurse | Select-Object -First 1
+      if ($null -eq $sevenZipExe) { throw '7-Zip bootstrap did not produce 7z.exe' }
+      Copy-Item -LiteralPath $sevenZipExe.FullName -Destination $sevenZipPath -Force
+      $sevenZipReady = $true
     } catch {
       $sevenZipReady = $false
     }

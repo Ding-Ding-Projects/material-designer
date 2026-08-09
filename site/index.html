@@ -691,7 +691,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
       <p>
         <strong class="md-callout__title" data-i18n="rl.update.title">Squirrel.Windows updates are ready when you are</strong>
-        <span data-i18n="rl.update.body">Stable Windows builds use this project's own metadata feed. The app downloads the Squirrel Setup.exe in the background, verifies its SHA-256, asks the renderer to finish pending sketch saves, and waits for you to choose Restart to install update or Later.</span>
+        <span data-i18n="rl.update.body">Stable Windows builds use this project's own metadata feed. The release path verifies the Squirrel Setup.exe signature before publication; the app downloads it in the background, verifies its SHA-256, asks the renderer to finish pending sketch saves, and waits for you to choose Restart to install update or Later.</span>
       </p>
     </div>
   </section>
@@ -908,7 +908,7 @@ pnpm tools-dev check</code></pre>
 pnpm tools-pack win build --to squirrel
 pnpm tools-pack win install
 pnpm tools-pack win cleanup</code></pre>
-    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. Packaging runs on electron-builder with Electron 41.</p>
+    <p class="md-body-small on-surface-variant" data-i18n="bd.pack.note">The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. The release workflow requires a verified Authenticode signature before publication. Packaging runs on electron-builder with Electron 41.</p>
 
     <h3 class="md-title-large" style="margin-top:1.5rem" data-i18n="bd.test.heading">Typecheck and tests</h3>
     <p class="md-body-medium on-surface-variant" data-i18n="bd.test.note">Tests are package-scoped by design — there is no root aggregate test script. Build the three prerequisites first, exactly as upstream's own continuous integration does, then run a package's suite.</p>

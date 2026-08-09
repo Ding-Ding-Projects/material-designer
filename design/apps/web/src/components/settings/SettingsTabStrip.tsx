@@ -28,6 +28,8 @@ import { createPortal } from 'react-dom';
 
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
+import { RegexSearchField } from '../regex/RegexSearchField';
+import { useRegexSearch } from '../regex/useRegexSearch';
 import type { SettingsSection } from '../SettingsDialog';
 import { SETTINGS_TABS, type SettingsTabDef } from './settingsTabs';
 import styles from './SettingsTabs.module.css';
@@ -45,7 +47,10 @@ const VIEWPORT_MARGIN = 12;
 interface MenuAnchor {
   top: number;
   left: number;
+  width: number;
   maxHeight: number;
+  placement: 'top' | 'bottom';
+  bottom?: number;
 }
 
 export interface SettingsTabStripProps {
@@ -86,6 +91,12 @@ export function SettingsTabStrip({
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [menuQuery, setMenuQuery] = useState('');
+  const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
+
+  const filteredTabs = tabs.filter((tab) =>
+    menuSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`),
+  );
 
   const registerTab = useCallback((section: SettingsSection, node: HTMLButtonElement | null) => {
     if (node) tabNodes.current.set(section, node);
@@ -137,14 +148,32 @@ export function SettingsTabStrip({
     const button = overflowRef.current;
     if (!button || typeof window === 'undefined') return;
     const rect = button.getBoundingClientRect();
-    const width = Math.min(MENU_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2);
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const width = Math.max(1, Math.min(MENU_WIDTH, viewportWidth - VIEWPORT_MARGIN * 2));
+    const horizontalMargin = viewportWidth >= width + VIEWPORT_MARGIN * 2 ? VIEWPORT_MARGIN : 0;
+    const maxLeft = Math.max(horizontalMargin, viewportWidth - width - horizontalMargin);
+    const anchorRight = Math.min(viewportWidth, Math.max(0, rect.right));
+    const left = Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
+    // A trigger can be in a scrolled-away strip while the menu is opening.
+    // Measure the visible edge, not the stale document coordinate, or the
+    // fixed card can be born with a negative top/bottom value.
+    const anchorTop = Math.min(viewportHeight, Math.max(0, rect.top));
+    const anchorBottom = Math.min(viewportHeight, Math.max(0, rect.bottom));
+    const spaceBelow = Math.max(0, viewportHeight - anchorBottom - VIEWPORT_MARGIN - 4);
+    const spaceAbove = Math.max(0, anchorTop - VIEWPORT_MARGIN - 4);
+    const placement = spaceBelow >= 240 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
+    const maxHeight = Math.max(1, placement === 'top' ? spaceAbove : spaceBelow);
+    const maxTop = Math.max(0, viewportHeight - maxHeight);
     setMenuAnchor({
-      top: rect.bottom + 4,
-      left: Math.max(
-        VIEWPORT_MARGIN,
-        Math.min(rect.right - width, window.innerWidth - width - VIEWPORT_MARGIN),
-      ),
-      maxHeight: Math.max(160, window.innerHeight - rect.bottom - VIEWPORT_MARGIN - 4),
+      top: placement === 'bottom' ? Math.min(maxTop, Math.max(0, anchorBottom + 4)) : 0,
+      left,
+      width,
+      maxHeight,
+      placement,
+      bottom: placement === 'top'
+        ? Math.min(maxTop, Math.max(0, viewportHeight - anchorTop + 4))
+        : undefined,
     });
   }, []);
 
@@ -167,11 +196,50 @@ export function SettingsTabStrip({
       return Boolean(menuRef.current?.contains(target) || overflowRef.current?.contains(target));
     };
     const onPointerDown = (event: MouseEvent) => {
-      if (!isInside(event.target)) setMenuOpen(false);
+      if (!isInside(event.target)) {
+        setMenuOpen(false);
+        setMenuQuery('');
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [menuOpen]);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    setMenuQuery('');
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    if (menuOpen) {
+      closeMenu();
+      return;
+    }
+    setMenuQuery('');
+    setMenuOpen(true);
+  }, [closeMenu, menuOpen]);
+
+  const moveMenuFocus = useCallback(
+    (offset: number) => {
+      const items = Array.from(
+        menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+      );
+      if (items.length === 0) return;
+      const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+      const nextIndex = currentIndex < 0
+        ? offset > 0 ? 0 : items.length - 1
+        : (currentIndex + offset + items.length) % items.length;
+      items[nextIndex]?.focus();
+    },
+    [],
+  );
+
+  const focusMenuEdge = useCallback((last: boolean) => {
+    const items = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [],
+    );
+    (last ? items[items.length - 1] : items[0])?.focus();
+  }, []);
 
   const focusTab = useCallback(
     (section: SettingsSection) => {
@@ -205,10 +273,12 @@ export function SettingsTabStrip({
   const menuStyle: CSSProperties = menuAnchor
     ? {
         position: 'fixed',
-        top: menuAnchor.top,
         left: menuAnchor.left,
-        width: MENU_WIDTH,
+        width: menuAnchor.width,
         maxHeight: menuAnchor.maxHeight,
+        ...(menuAnchor.placement === 'top'
+          ? { top: 'auto', bottom: menuAnchor.bottom }
+          : { top: menuAnchor.top, bottom: 'auto' }),
       }
     : { position: 'fixed', top: 0, left: 0, width: MENU_WIDTH };
 
@@ -282,7 +352,7 @@ export function SettingsTabStrip({
         aria-label={t('settings.tabsOverflow')}
         title={t('settings.tabsOverflow')}
         data-testid="settings-tabs-overflow"
-        onClick={() => setMenuOpen((open) => !open)}
+        onClick={toggleMenu}
       >
         <Icon name="more-horizontal" size={15} />
         {hiddenCount > 0 ? (
@@ -303,14 +373,59 @@ export function SettingsTabStrip({
               style={menuStyle}
               data-testid="settings-tabs-overflow-menu"
               onKeyDown={(event) => {
-                if (event.key !== 'Escape') return;
-                event.preventDefault();
-                event.stopPropagation();
-                setMenuOpen(false);
-                overflowRef.current?.focus?.();
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closeMenu();
+                  overflowRef.current?.focus?.();
+                  return;
+                }
+                const target = event.target as HTMLElement;
+                const focusScope = target.closest<HTMLElement>('[data-focus-scope]');
+                if (
+                  event.key === 'Tab'
+                  && focusScope?.getAttribute('data-focus-scope') === menuId
+                ) return;
+                const typing = target instanceof HTMLInputElement
+                  || target instanceof HTMLTextAreaElement
+                  || target instanceof HTMLSelectElement;
+                if (typing && event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+                if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+                  event.preventDefault();
+                  moveMenuFocus(1);
+                } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                  event.preventDefault();
+                  moveMenuFocus(-1);
+                } else if (event.key === 'Home') {
+                  event.preventDefault();
+                  focusMenuEdge(false);
+                } else if (event.key === 'End') {
+                  event.preventDefault();
+                  focusMenuEdge(true);
+                } else if (event.key === 'Tab') {
+                  event.preventDefault();
+                  closeMenu();
+                  overflowRef.current?.focus?.();
+                }
               }}
             >
-              {tabs.map((tab) => {
+              <RegexSearchField
+                search={menuSearch}
+                fieldLabel={t('settings.tabsOverflow')}
+                ariaLabel={t('settings.searchAria')}
+                placeholder={t('settings.searchPlaceholder')}
+                className={styles.menuSearchInput}
+                hostClassName={styles.menuSearch}
+                testId="settings-tabs-overflow-search"
+                focusScopeId={menuId}
+                autoFocus
+              />
+              {filteredTabs.length === 0 ? (
+                <p className={styles.menuEmpty} role="status">
+                  {t('settings.searchNoMatches')}
+                </p>
+              ) : null}
+              {filteredTabs.map((tab) => {
                 const active = tab.section === activeSection;
                 const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
                 return (
@@ -320,7 +435,7 @@ export function SettingsTabStrip({
                     role="menuitem"
                     className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
                     onClick={() => {
-                      setMenuOpen(false);
+                      closeMenu();
                       focusTab(tab.section);
                     }}
                   >
