@@ -589,3 +589,28 @@
     --md-sys-color-inverse-primary: #4C6700;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Reference geometry shared by the production UI.
+   These measurements come from the checked-in M3 mockup. They are
+   deliberately separate from density-controlled content controls:
+   changing density must not make the window furniture drift away
+   from its design contract.
+   ============================================================ */
+:root {
+  --md-ref-shell-titlebar-height: 40px;
+  --md-ref-shell-tabs-height: 42px;
+  --md-ref-shell-tab-height: 36px;
+  --md-ref-shell-app-bar-height: 64px;
+  --md-ref-shell-nav-width: 88px;
+  --md-ref-shell-nav-expanded-width: 260px;
+  --md-ref-shell-nav-row-height: 56px;
+  --md-ref-shell-nav-pill-width: 56px;
+  --md-ref-shell-nav-pill-height: 32px;
+  --md-ref-shell-status-height: 28px;
+  --md-ref-touch-target: 48px;
+  --md-ref-content-max-width: 1280px;
+  --md-ref-content-padding-inline: clamp(16px, 3vw, 32px);
+  --md-ref-selection-action-height: 64px;
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

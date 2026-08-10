@@ -519,3 +519,56 @@ dialog {
 [class*='-scrim'] {
   background: var(--md-sys-color-scrim);
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Shared safety floor. Deliberately narrow selectors: component modules keep
+   ownership of their layout and this block only fixes focus, viewport bounds
+   and M3 control geometry that must not vary by screen.
+   ============================================================ */
+:where(button, [role='button'], [role='menuitem'], [role='option'], a[href]):focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+:where(.btn, .od-select-trigger) {
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.od-select-trigger {
+  min-height: 40px;
+  border-color: var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container-lowest);
+}
+
+.od-select-menu {
+  max-width: min(420px, calc(var(--od-vw, 100vw) - 24px));
+  max-height: min(420px, calc(var(--od-vh, 100vh) - 24px));
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.od-select-option {
+  min-height: 40px;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.od-select-option:hover:not(:disabled),
+.od-select-option.active:not(:disabled) {
+  background: var(--ripple);
+}
+
+:where(dialog, [role='dialog'], [aria-modal='true']) {
+  max-width: min(720px, calc(var(--od-vw, 100vw) - 32px));
+  max-height: calc(var(--od-vh, 100vh) - 32px);
+  border-radius: var(--md-sys-shape-corner-xl);
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(*, *::before, *::after) {
+    scroll-behavior: auto !important;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

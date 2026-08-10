@@ -365,3 +365,107 @@
     background-position: -200% 0, 0 0;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Recent projects as responsive Material 3 outlined cards.
+   ============================================================ */
+.recent-projects {
+  gap: 16px;
+}
+
+.recent-projects__title {
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+.recent-projects__view-all {
+  min-height: 40px;
+  padding-inline: 12px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-primary);
+}
+
+.recent-projects__view-all:hover,
+.recent-projects__view-all:focus-visible {
+  background: var(--ripple);
+  color: var(--md-sys-color-primary);
+}
+
+.recent-projects__row {
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+
+.recent-projects__card {
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+  box-shadow: none;
+}
+
+.recent-projects__card:hover {
+  border-color: var(--md-sys-color-outline);
+  box-shadow: var(--md-sys-elevation-2);
+  transform: translateY(-2px);
+}
+
+.recent-projects__card-meta {
+  padding: 12px 14px 16px;
+}
+
+.recent-projects__card-name {
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+}
+
+.recent-projects__card-time {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.recent-projects__card-more {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.recent-projects__card-more:hover,
+.recent-projects__card-more:focus-visible {
+  border-color: transparent;
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+}
+
+.recent-projects__card-menu {
+  min-width: 180px;
+  padding: 8px;
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.recent-projects__card-menu button {
+  min-height: 40px;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.recent-projects__card-menu button:hover,
+.recent-projects__card-menu button:focus-visible {
+  background: var(--ripple);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recent-projects__card,
+  .recent-projects__card-more {
+    transition-duration: 0.01ms;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

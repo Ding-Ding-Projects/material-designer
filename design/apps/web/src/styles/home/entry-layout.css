@@ -4931,3 +4931,211 @@
     flex: 1 1 180px;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Home shell: exact rail geometry, 64px search bar, bounded content.
+   ============================================================ */
+.entry-shell--no-header {
+  --entry-rail-width: var(--md-ref-shell-nav-width, 88px);
+  --entry-rail-width-expanded: var(--md-ref-shell-nav-expanded-width, 260px);
+}
+
+.entry-nav-rail {
+  padding-block: 8px;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.entry-nav-rail::after {
+  background: var(--md-sys-color-outline-variant);
+  opacity: 1;
+}
+
+.entry-nav-rail__brand {
+  width: var(--md-ref-shell-nav-row-height, 56px);
+  height: var(--md-ref-shell-nav-row-height, 56px);
+}
+
+.entry-nav-rail__logo,
+.entry-nav-rail .entry-nav-rail__collapse {
+  width: var(--md-ref-touch-target, 48px);
+  height: var(--md-ref-touch-target, 48px);
+  border-radius: var(--md-sys-shape-corner-l);
+}
+
+.entry-nav-rail__group,
+.entry-nav-rail__footer {
+  gap: 2px;
+}
+
+/* The interactive destination is a 56px row. Its selected/state-layer pill
+   remains the contract's 56x32 measurement, centred inside that target. */
+.entry-nav-rail__btn {
+  width: var(--md-ref-shell-nav-pill-width, 56px);
+  min-width: var(--md-ref-shell-nav-pill-width, 56px);
+  height: var(--md-ref-shell-nav-row-height, 56px);
+  min-height: var(--md-ref-shell-nav-row-height, 56px);
+  border-radius: 0;
+  background: transparent;
+}
+
+.entry-nav-rail__btn::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: -2;
+  width: var(--md-ref-shell-nav-pill-width, 56px);
+  height: var(--md-ref-shell-nav-pill-height, 32px);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  transform: translate(-50%, -50%);
+  transition: background-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  pointer-events: none;
+}
+
+.entry-nav-rail__btn::after {
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  width: var(--md-ref-shell-nav-pill-width, 56px);
+  height: var(--md-ref-shell-nav-pill-height, 32px);
+  border-radius: var(--md-sys-shape-corner-full);
+  transform: translate(-50%, -50%);
+}
+
+.entry-nav-rail__btn.is-active {
+  background: transparent;
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.entry-nav-rail__btn.is-active::before {
+  background: var(--md-sys-color-secondary-container);
+}
+
+.entry-nav-rail__btn:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--md-sys-shape-corner-l);
+}
+
+.entry-nav-rail.is-open .entry-nav-rail__btn {
+  display: grid;
+  grid-template-columns: var(--md-ref-shell-nav-pill-width, 56px) minmax(0, 1fr);
+  width: 100%;
+  height: var(--md-ref-shell-nav-row-height, 56px);
+  min-height: var(--md-ref-shell-nav-row-height, 56px);
+  gap: 12px;
+  padding-inline: 0 12px;
+  justify-content: stretch;
+  text-align: left;
+}
+
+.entry-nav-rail.is-open .entry-nav-rail__btn::before,
+.entry-nav-rail.is-open .entry-nav-rail__btn::after {
+  left: 0;
+  transform: translateY(-50%);
+}
+
+.entry-nav-rail.is-open .entry-nav-rail__btn > svg {
+  justify-self: center;
+}
+
+/* Primary rail action. This is intentionally visually different from a
+   selected destination: 56px high, primary-container and slightly raised. */
+.entry-nav-rail__btn[data-testid='entry-nav-new-project'] {
+  border-radius: var(--md-sys-shape-corner-l);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.entry-nav-rail__btn[data-testid='entry-nav-new-project']::before {
+  width: var(--md-ref-shell-nav-row-height, 56px);
+  height: var(--md-ref-shell-nav-row-height, 56px);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-primary-container);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.entry-nav-rail__btn[data-testid='entry-nav-new-project']::after {
+  width: var(--md-ref-shell-nav-row-height, 56px);
+  height: var(--md-ref-shell-nav-row-height, 56px);
+  border-radius: var(--md-sys-shape-corner-l);
+}
+
+.entry-nav-rail__btn[data-testid='entry-nav-new-project']:hover::before {
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.entry-nav-rail.is-open .entry-nav-rail__btn[data-testid='entry-nav-new-project']::before,
+.entry-nav-rail.is-open .entry-nav-rail__btn[data-testid='entry-nav-new-project']::after {
+  width: 100%;
+}
+
+.entry-main--scroll {
+  --entry-topbar-h: var(--md-ref-shell-app-bar-height, 64px);
+  background: var(--md-sys-color-surface);
+}
+
+.entry-main__topbar {
+  min-height: var(--md-ref-shell-app-bar-height, 64px);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
+}
+
+.entry-main__topbar::before {
+  background: var(--md-sys-color-surface);
+}
+
+.entry-main__inner,
+.entry-main__inner--wide {
+  max-width: var(--md-ref-content-max-width, 1280px);
+  padding: 32px var(--md-ref-content-padding-inline, 32px) 64px;
+  gap: 32px;
+}
+
+.entry-main__topbar-chips--icon-only .entry-discord-badge,
+.entry-main__topbar-chips--icon-only .use-everywhere-chip,
+.entry-main__topbar-chips--icon-only .inline-switcher__chip {
+  width: var(--md-ref-touch-target, 48px);
+  height: var(--md-ref-touch-target, 48px);
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+@media (max-height: 780px) {
+  .entry-nav-rail.is-open .entry-nav-rail__btn {
+    height: var(--md-ref-touch-target, 48px);
+    min-height: var(--md-ref-touch-target, 48px);
+  }
+
+  .entry-nav-rail.is-open .entry-nav-rail__btn[data-testid='entry-nav-new-project'] {
+    height: var(--md-ref-shell-nav-row-height, 56px);
+    min-height: var(--md-ref-shell-nav-row-height, 56px);
+  }
+}
+
+@media (max-width: 900px) {
+  .entry-shell--no-header {
+    --entry-rail-width: var(--md-ref-shell-nav-width, 88px);
+    --entry-rail-width-expanded: var(--md-ref-shell-nav-expanded-width, 260px);
+  }
+
+  .entry-main__topbar {
+    padding-inline: 8px;
+  }
+
+  .entry-main__inner,
+  .entry-main__inner--wide {
+    max-width: 100%;
+    padding: 24px 16px 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-shell--no-header .entry,
+  .entry-nav-rail__btn,
+  .entry-nav-rail__btn::before,
+  .entry-nav-rail__btn::after {
+    transition-duration: 0.01ms;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

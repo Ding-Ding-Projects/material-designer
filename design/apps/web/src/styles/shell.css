@@ -1661,3 +1661,206 @@ a.avatar-item:visited {
 .split-resize-handle:focus-visible {
   outline: none;
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Production shell geometry and Material 3 state treatment.
+   Behaviour, routes, drag regions and test ids remain owned by React.
+   ============================================================ */
+.workspace-tabs-chrome.app-chrome-header {
+  min-height: var(--md-ref-shell-tabs-height, 42px);
+  height: var(--md-ref-shell-tabs-height, 42px);
+  align-items: flex-end;
+  padding: 0 8px;
+  background: var(--md-sys-color-surface-container);
+  box-shadow: none;
+}
+
+.workspace-tabs-chrome.app-chrome-header::after {
+  height: 1px;
+  background: var(--md-sys-color-outline-variant);
+  transform: none;
+}
+
+.workspace-tabs-strip {
+  align-items: flex-end;
+}
+
+/* The mockup attaches tabs to the workspace below: rounded on top, square at
+   the content edge. The previous bottom-rounded geometry visually attached
+   them to the title strip instead. */
+.workspace-tab {
+  height: var(--md-ref-shell-tab-height, 36px);
+  align-self: flex-end;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--md-sys-shape-corner-m) var(--md-sys-shape-corner-m) 0 0;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  box-shadow: none;
+}
+
+.workspace-tab.is-pinned {
+  background: transparent;
+}
+
+.workspace-tab:hover,
+.workspace-tab.is-drag-over-before,
+.workspace-tab.is-drag-over-after {
+  border-color: transparent;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.workspace-tab.is-active,
+.workspace-tab.is-pinned.is-active {
+  border-color: var(--md-sys-color-outline-variant);
+  border-bottom-color: var(--md-sys-color-surface);
+  background: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--md-sys-color-on-surface) 5%, transparent) inset;
+}
+
+.workspace-tab__main {
+  border-radius: inherit;
+}
+
+.workspace-tab__close,
+.workspace-tabs-new-btn,
+.workspace-tabs-icon-btn {
+  border-radius: var(--md-sys-shape-corner-full);
+}
+
+.workspace-tabs-new-btn,
+.workspace-tabs-icon-btn {
+  width: 40px;
+  height: 40px;
+  margin-block: 0 1px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.workspace-tabs-new-btn:hover:not(:disabled),
+.workspace-tabs-icon-btn:hover:not(:disabled),
+.workspace-tabs-icon-btn.is-active {
+  border-color: transparent;
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+.workspace-tabs-strip.is-overflowing .workspace-tabs-new-btn {
+  background: var(--md-sys-color-surface-container);
+}
+
+/* Project/view app bars are 64px. The 42px workspace tab strip above opts out
+   through the :not() guard, so the two kinds of chrome cannot resize each
+   other by import order. */
+.app-chrome-header:not(.workspace-tabs-chrome) {
+  min-height: var(--md-ref-shell-app-bar-height, 64px);
+  padding: 8px 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface);
+}
+
+.app-chrome-back,
+.settings-icon-btn {
+  width: var(--md-ref-touch-target, 48px);
+  height: var(--md-ref-touch-target, 48px);
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.app-chrome-back:hover:not(:disabled),
+.settings-icon-btn:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+.chrome-action {
+  min-height: 40px;
+  height: 40px;
+  padding-inline: 16px;
+  border-color: var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+}
+
+.chrome-action:hover:not(:disabled),
+.chrome-action-secondary:hover:not(:disabled) {
+  border-color: var(--md-sys-color-outline);
+  background: var(--ripple);
+}
+
+.chrome-action-primary {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.chrome-action-primary:hover:not(:disabled) {
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 92%, var(--md-sys-color-on-primary));
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.chrome-action-export {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-1);
+}
+
+.chrome-action-export:hover:not(:disabled) {
+  border-color: var(--md-sys-color-primary);
+  background: color-mix(in srgb, var(--md-sys-color-primary) 92%, var(--md-sys-color-on-primary));
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.zoom-menu-popover,
+.workspace-tabs-popover {
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.zoom-menu-item,
+.workspace-tabs-list__item {
+  min-height: 40px;
+  border-radius: var(--md-sys-shape-corner-m);
+}
+
+.zoom-menu-item:hover,
+.workspace-tabs-list__item:hover,
+.workspace-tabs-list__item.is-active {
+  background: var(--ripple);
+}
+
+@media (max-width: 720px) {
+  .app-chrome-header:not(.workspace-tabs-chrome) {
+    padding-inline: 8px;
+  }
+
+  .chrome-action {
+    min-width: 40px;
+    padding-inline: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-tab,
+  .workspace-tabs-new-btn,
+  .workspace-tabs-icon-btn,
+  .app-chrome-back,
+  .settings-icon-btn,
+  .chrome-action {
+    transition-duration: 0.01ms;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

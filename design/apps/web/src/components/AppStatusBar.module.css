@@ -161,3 +161,41 @@
     border: 0;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Status strip: exact contract geometry with logical spacing and safe shrink.
+   ============================================================ */
+.bar {
+  height: var(--md-ref-shell-status-height, 28px);
+  min-height: var(--md-ref-shell-status-height, 28px);
+  padding-inline: 16px;
+  border-top-color: var(--md-sys-color-outline-variant);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.item {
+  max-width: min(34vw, 360px);
+}
+
+.daemonItem,
+.spacer {
+  max-width: none;
+}
+
+@media (max-width: 980px) {
+  .bar {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .item {
+    max-width: min(28vw, 240px);
+  }
+
+  .daemonItem,
+  .spacer {
+    max-width: none;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

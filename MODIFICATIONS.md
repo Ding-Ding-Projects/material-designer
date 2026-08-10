@@ -29,6 +29,32 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-10 — Finish the production Material 3 shell against the checked-in UI contract
+
+**Reason:** The production interface already carried the Material 3 token layer and most
+component anatomy, but several high-visibility measurements still disagreed with the
+checked-in mockup. Workspace tabs were rounded toward the title strip instead of the
+workspace; collapsed navigation destinations used the 56×32 visual indicator as their
+entire pointer/keyboard target; the primary New Project action did not have its own 56px
+filled treatment; and app-bar, search, recent-project and overlay geometry could still
+fall back to legacy dimensions. This change centralizes the contract measurements,
+corrects those shell defects, keeps the 88/260px rail and 28px status strip exact,
+normalizes the home prompt and scenario cards, bounds menus/dialogs to the viewport,
+and preserves reduced-motion and visible-focus behavior. It changes presentation only:
+existing React routes, commands, state, data-testid values and local-only asset behavior
+remain intact.
+
+**Changed files:**
+
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/EntryTopbarSearch.module.css`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/home/home-hero.css`
+- `apps/web/src/styles/home/recent-projects.css`
+- `apps/web/src/styles/md3-tokens.css`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/src/styles/shell.css`
+
 ### 2026-08-07 — Bound and identify Squirrel lifecycle commands
 
 **Reason:** Release run `31186802259` passed Typecheck, focused Windows tests,

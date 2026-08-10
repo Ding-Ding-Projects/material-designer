@@ -3514,3 +3514,144 @@ html[data-od-language-mode='bilingual']
     transition: none;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Home hero, prompt surface and scenario-card completion.
+   ============================================================ */
+.home-view {
+  gap: 32px;
+}
+
+.home-view > .home-hero {
+  max-width: var(--md-ref-content-max-width, 1280px);
+}
+
+.home-hero {
+  --home-hero-surface-width: min(920px, 100%);
+  gap: 16px;
+  padding-block: 40px 8px;
+}
+
+.home-hero__title {
+  max-width: 900px;
+  font-size: clamp(36px, 4.2vw, 44px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.home-hero__subtitle {
+  max-width: 620px;
+}
+
+.home-hero__input-card {
+  border-radius: var(--md-sys-shape-corner-xl);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.home-hero__input-card:hover {
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.home-hero__input-card:focus-within {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: var(--md-sys-elevation-2),
+    0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 38%, transparent);
+}
+
+.home-hero__type-tab {
+  min-height: 40px;
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  box-shadow: none;
+}
+
+.home-hero__type-tab:hover:not(:disabled) {
+  border-color: var(--md-sys-color-outline);
+  background: var(--ripple);
+  color: var(--md-sys-color-on-surface);
+}
+
+.home-hero__type-tab.is-active {
+  border-color: transparent;
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  box-shadow: none;
+}
+
+.home-hero__type-tabs.home-hero__scenario-cards {
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 16px;
+}
+
+.home-hero__scenario-card.home-hero__type-tab {
+  min-height: 184px;
+  padding: 18px;
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.home-hero__scenario-card.home-hero__type-tab:hover:not(:disabled) {
+  border-color: var(--md-sys-color-outline);
+  background: var(--md-sys-color-surface-container);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.home-hero__scenario-card-art {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-l);
+}
+
+.home-hero__template-menu,
+.home-hero__shortcut-menu-panel,
+.home-hero__plugin-picker,
+.home-hero__plus-popup,
+.home-hero__plus-flyout {
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  box-shadow: var(--md-sys-elevation-2);
+}
+
+.home-hero__template-search {
+  min-height: 48px;
+  border-color: var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.home-hero__template-card {
+  min-height: 120px;
+  border-color: var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--md-sys-color-surface-container-low);
+}
+
+@media (max-width: 700px) {
+  .home-hero {
+    padding-top: 24px;
+  }
+
+  .home-hero__title {
+    font-size: clamp(32px, 9vw, 40px);
+  }
+
+  .home-hero__input-card {
+    padding: 16px 14px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-hero__input-card,
+  .home-hero__type-tab,
+  .home-hero__scenario-card.home-hero__type-tab,
+  .home-hero__template-card {
+    transition-duration: 0.01ms;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

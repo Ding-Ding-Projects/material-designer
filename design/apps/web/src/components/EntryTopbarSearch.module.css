@@ -161,3 +161,61 @@
     flex-basis: 560px;
   }
 }
+/* ============================================================
+   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
+   Header command search: bounded width, M3 state layer and usable targets.
+   ============================================================ */
+.field {
+  flex-basis: clamp(280px, 38vw, 560px);
+  max-width: 560px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: none;
+}
+
+.field:hover {
+  background: var(--md-sys-color-surface-container-highest);
+  box-shadow: none;
+}
+
+.field:focus-within {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
+}
+
+.shortcut {
+  min-width: 48px;
+  height: 40px;
+  justify-content: center;
+  border-color: var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.shortcut:hover {
+  background: var(--ripple);
+}
+
+@media (max-width: 760px) {
+  .field {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .shortcut {
+    min-width: 40px;
+    padding-inline: 8px;
+  }
+
+  .kbd {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field,
+  .shortcut {
+    transition-duration: 0.01ms;
+  }
+}
+/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */
