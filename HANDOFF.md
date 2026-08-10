@@ -1248,12 +1248,12 @@ the reader has no way to know.
   run is not treated as verification merely because its workflow was created.
   Verify `31127492562` is cancelled, and Release `31127492852` is completed
   failure with the `lifecycle.ts(473,95)` action-type error documented above.
-- The irreversible cleanup half was not performed because the request did not
-  include explicit deletion authorization. Clean merged task branches and their
-  clean linked worktrees remain available for a later authorized cleanup pass.
-  The `pack-squirrel` linked worktree is not a cleanup candidate: its branch
-  still has six uncommitted import lines in `design/tools/pack/src/win/lifecycle.ts`
-  and the untracked `design/tools/pack/src/win/squirrel.ts` (2,703 bytes). That
-  work is preserved outside `main` rather than committed or deleted blindly.
+- The `pack-squirrel` checkpoint was reconciled on the integration branch rather
+  than wired into the active runtime. Merge `d0630480` preserves its ancestry;
+  `412e1fc7` removes the uncalled `squirrel.ts` module and `693f6439` removes the
+  duplicate/orphan lifecycle imports. The current lifecycle keeps the newer
+  ignored-stdio/process-tree implementation that addresses the documented smoke
+  deadlock risk. After the final dew, the now-ancestor remote branch is safe to
+  delete under the explicitly authorized cleanup pass.
 - `git stash list` is empty. Open issue scans for `material-designer` and
   `agent-global-memory` returned zero issues at this final checkpoint.

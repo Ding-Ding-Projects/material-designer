@@ -28,6 +28,13 @@ version section when a release carries them.
 
 ### Changed
 
+- **The half-wired Squirrel checkpoint is preserved but no longer shipped as code.**
+  Merge `d0630480` records the checkpoint ancestry; `412e1fc7` removes its stale
+  `squirrel.ts` module and `693f6439` restores the single active lifecycle import
+  boundary. The existing ignored-stdio/process-tree repair remains the runtime
+  implementation; no new release or packaged-runtime proof is claimed
+  ([`693f6439`](https://github.com/Ding-Ding-Projects/material-designer/commit/693f64394efbd0a8749878c2fb7bc6882f67d772)).
+
 - **The production M3 shell now matches the checked-in geometry contract.** The
   bounded CSS completion blocks centralize rail, tab, app-bar, home, overlay,
   focus and reduced-motion measurements without changing routes, commands,
