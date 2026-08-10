@@ -1,5 +1,8 @@
 # Material Designer
 
+> **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
+> geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
+
 A local-first design workspace, rebuilt on Material Design 3.
 
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)

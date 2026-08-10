@@ -1,7 +1,8 @@
 # Material Design 3 and appearance customization
 
-**Status: partial.** The token layer and the window chrome exist in code as of
-commit `dea6b0a`; component anatomy does not. The mockup specifies every colour
+**Status: partial, with the production shell geometry landed.** The token layer,
+window chrome and bounded shell/home completion blocks exist in code as of
+commit [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651); full component anatomy and runtime visual proof do not. The mockup specifies every colour
 role, the shape and motion scales, the density system, the window chrome and ten
 screens — the first three of those and the window chrome have been transcribed
 into the application, and the screens have not been rebuilt on them.
@@ -12,7 +13,7 @@ nothing that consumes it had to change. Not one component has been rewritten to
 M3 anatomy. Inheriting a colour role is not conformance, and this file's tables
 below keep the two apart.
 
-**Nobody has looked at the result.** The packaged smoke test launches the built
+**The source contract is checked; the rendered result is still pending.** The packaged smoke test launches the built
 application and captures one screenshot, but asserts only that the file is
 non-zero and inspects nothing in it. Every implementation claim on this page is
 read from the tree or from a unit suite, never from a rendered interface.

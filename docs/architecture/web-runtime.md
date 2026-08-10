@@ -7,12 +7,9 @@ them rather than with the framework.
 
 > [!IMPORTANT]
 > **Status: imported, redesign in progress.** The interface is upstream's,
-> carried into `design/` byte-for-byte. What this repository has changed so far is
-> the style layer: a Material Design 3 token sheet plus a mapping layer that
-> rewires the app's existing token names onto M3 roles. No component has been
-> rewritten. The Cantonese locale, the tone sliders, the in-app regex builder, the
-> startup surprise and the changelog viewer **are not in the application** — the
-> documentation site demonstrates them; the app does not have them yet.
+> carried into `design/` byte-for-byte apart from declared changes. The style layer
+> now includes bounded production shell/home completion blocks from
+> [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651): M3 geometry tokens, rail/tab/app-bar sizing, home bounds, overlay safety, focus and reduced-motion rules. No React behavior or application data flow changed. The Cantonese locale, the tone sliders, the in-app regex builder, the startup surprise and the changelog viewer **are not in the application** — the documentation site demonstrates them; the app does not have them yet. Packaged runtime and visual-matrix proof remain pending CI.
 
 ## Behaviour
 

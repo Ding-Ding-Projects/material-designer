@@ -428,6 +428,12 @@ and artifact upload, then failed before install/start/uninstall proof.
 
 Now the gaps.
 
+- **The production M3 shell geometry is integrated at `a03c16d9`.** The eight
+  bounded CSS blocks and matching `MODIFICATIONS.md` entry are committed;
+  `run_static_checks.py` and `scripts/verify-port.sh --json` both report zero
+  errors/gaps. This is source/static evidence only. The Windows packaged runtime,
+  installed-build screenshots and complete visual matrix still require CI.
+
 - **The current Squirrel smoke has not completed.** Release `31186802259` timed
   out after `720000ms` before it produced lifecycle timing, a screenshot or
   `ui-states.json`. Publication was correctly skipped. The next run must either

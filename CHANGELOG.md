@@ -28,6 +28,13 @@ version section when a release carries them.
 
 ### Changed
 
+- **The production M3 shell now matches the checked-in geometry contract.** The
+  bounded CSS completion blocks centralize rail, tab, app-bar, home, overlay,
+  focus and reduced-motion measurements without changing routes, commands,
+  state, data flow or assets. Static CSS and port-integrity checks pass; packaged
+  runtime and visual-matrix proof remain pending CI
+  ([`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651)).
+
 - **The packaged smoke test survives a Defender-cold Electron binary.** Three
   Release runs timed out at exactly `720000ms` while `invokeSquirrel` blocked in
   `execFileAsync` with no timeout of its own, because Windows Defender's real-time

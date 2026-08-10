@@ -1774,13 +1774,10 @@ verbatim and describe it as a fork with a recorded delta. That decision is not
 made here, but it should be revisited when the allowlist passes a few dozen
 paths.
 
-**A drop-in contract that is now wired but still unseen.** The mockup's handoff
+**A drop-in contract whose production shell is now wired, but still unseen at runtime.** The mockup's handoff
 sheet maps 18 tokens onto variables that all existed, and names 12 component
-files that all existed. The mapping layer landed at `dea6b0a`, so those variables
-now resolve to Material Design 3 roles and the components consuming them inherit
-the scheme. Whether that produces a *correct-looking* interface has still not been
-checked, because nobody has looked at one. The contract has gone from promising to
-built; it has not gone to proven.
+files that all existed. The mapping layer landed at `dea6b0a`, and the bounded
+shell/home completion landed at [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651), so those variables and geometry contracts now resolve in source. Whether that produces a *correct-looking* installed interface has still not been checked. The contract has gone from promising to statically checked; it has not gone to runtime-proven.
 
 **Upstream Windows support is best-effort.** The imported project treats macOS,
 Linux and a Linux compatibility layer as its primary platforms and Windows as
