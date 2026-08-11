@@ -131,8 +131,8 @@ jobs:
         working-directory: design
         run: |
           $ErrorActionPreference = "Stop"
-          $runnerTemp = $env:RUNNER_TEMP
-          $runnerInstallParent = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $runnerTemp))
+          $runnerTemp = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
+          $runnerInstallParent = Split-Path -Parent $runnerTemp
           if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
             throw "The runner installation parent could not be resolved safely"
           }
