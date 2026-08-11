@@ -1,5 +1,14 @@
 # Self-hosted CI dependency inventory
 
+> [!IMPORTANT]
+> **Current contract — 2026-08-11.** The active delivery route is hosted
+> `windows-2022`; the older self-hosted Linux/Windows rows below are historical
+> inventory, not an availability claim. The configured self-hosted runners were
+> offline when the exact-SHA runs were queued, which is why a hosted fallback is
+> now required. Actions no longer runs tests, lint, typecheck or static-analysis
+> checks. Manual build scripts and local verification own those checks; release
+> publication only depends on packaging and publication evidence.
+
 This is the hand-written dependency inventory for every job in the three root
 workflows. A self-hosted label selects a machine; it does not prove that the
 machine already has the tools a job needs. Each workflow bootstraps the tools it

@@ -45,7 +45,7 @@ import {
   writeBuiltAppManifest,
   writePackagedConfig,
 } from "./manifest.js";
-import { ensureNsisPersianLanguageAlias, writeNsisInclude } from "./nsis.js";
+import { writeNsisInclude } from "./nsis.js";
 import { resolveWinSquirrelArtifactName, sanitizeNamespace } from "./paths.js";
 import {
   resolveElectronBuilderWinTargets,
@@ -329,23 +329,7 @@ async function runElectronBuilderRawWithPaths(
     });
   };
 
-  await runSegment("electron-builder-raw:ensure-nsis-persian-alias", async () => {
-    await ensureNsisPersianLanguageAlias(config);
-  });
-  try {
-    await build("electron-builder-raw:process");
-  } catch (error) {
-    const output = `${(error as { stdout?: unknown }).stdout ?? ""}\n${(error as { stderr?: unknown }).stderr ?? ""}`;
-    const retried = output.includes("Persian.nlf") && await runSegment(
-      "electron-builder-raw:retry-ensure-nsis-persian-alias",
-      async () => ensureNsisPersianLanguageAlias(config),
-    );
-    if (retried) {
-      await build("electron-builder-raw:process-retry");
-      return segments;
-    }
-    throw error;
-  }
+  await build("electron-builder-raw:process");
   return segments;
 }
 

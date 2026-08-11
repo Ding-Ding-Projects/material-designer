@@ -1,5 +1,14 @@
 # Building from source
 
+> [!TIP]
+> The supported fresh-machine entry points are the root scripts:
+> `build.bat /s` builds the runnable packages and
+> `build-installer.bat --candidate 1 /s` produces the unsigned Squirrel
+> installer and its commit-bound manifest. They bootstrap the declared toolchain
+> where the Windows package catalog permits it, fail with the exact missing
+> dependency otherwise, and never publish. The commands below remain the
+> package-level reference for maintainers.
+
 Every command needed to install, run, check, test and package this project on a
 local machine.
 

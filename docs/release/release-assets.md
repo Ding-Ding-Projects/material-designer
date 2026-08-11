@@ -1,5 +1,15 @@
 # Release assets
 
+> [!IMPORTANT]
+> **Current release boundary — 2026-08-11.** A new release is not claimed from
+> the queued runs at `887d5a06`. The next publication must contain the real
+> unsigned Squirrel `Setup.exe`, `RELEASES`, full package (and delta packages
+> when produced), `metadata.json`, icon, checksum and provenance evidence. The
+> older `v0.16.1-r71.1` record predates that feed and is intentionally retained
+> as historical evidence. A dim-sum image cannot be staged by copying the
+> consumer repository's legacy catalogue; the contradictory photo requirements
+> are a release blocker until resolved.
+
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
 

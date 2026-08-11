@@ -1,11 +1,22 @@
 # The release pipeline
 
+> [!IMPORTANT]
+> **Release-shutdown boundary — 2026-08-11.** The release definition is being reduced
+> to hosted `windows-2022` packaging, unsigned Squirrel artifact collection and
+> publication evidence. Actions must not run tests, lint, typecheck, static
+> analysis or screenshot gates, and none of those results may hold back a
+> release. Any successful publication still has to be exactly one unique,
+> non-draft release targeted at the workflow SHA, with timing, hashes, required
+> Squirrel files and post-publication verification. The dim-sum rule is currently
+> contradictory (attach a downloadable photo versus never copying catalogue
+> photos); the workflow must stop and record that blocker until a policy decision
+> resolves it.
+
 How a release is produced, end to end, from a push to a published installer.
-Everything happens inside one workflow run on one dedicated self-hosted Windows
-runner selected by `[self-hosted, windows, material-designer]`, because the
-artifact a user downloads must be the artifact the passing run built, at the
-commit it claims — and that is only enforceable when the build, the tests and the
-publish are steps of the same run.
+Everything happens inside one workflow run on the pinned hosted `windows-2022`
+image, because the artifact a user downloads must be the artifact that run built,
+at the commit it claims. Tests, lint, typecheck, static analysis and screenshot
+checks are local/manual evidence and are not workflow steps or publication gates.
 
 > [!IMPORTANT]
 > **Status: run, and publishing.** Two legacy releases exist —
@@ -26,11 +37,10 @@ publish are steps of the same run.
 
 ```yaml
 on:
-  push: { branches: [main] }
+  push:
   workflow_dispatch:
-    inputs: { smoke: boolean = true, publish: boolean = true }
 
-runs-on: [self-hosted, windows, material-designer]
+runs-on: windows-2022
 timeout-minutes: 120
 permissions: { contents: write }
 concurrency: { group: release-<ref>, cancel-in-progress: false }
@@ -43,10 +53,9 @@ Three of those lines are decisions rather than boilerplate:
   cheaper than that.
 - **`timeout-minutes: 120`.** Generous rather than optimistic, because the install
   step compiles a native database binding from source on Windows.
-- **`contents: write`.** The `Verify` workflow has `contents: read` and runs only
-  on trusted pushes and manual dispatch because its runner is self-hosted. The
-  gate cannot write anything, and untrusted pull requests never execute on the
-  project runner.
+- **`contents: write`.** The release job alone can publish; `Verify` is
+  provenance-only and has read access. There is no pull-request trigger on the
+  hosted delivery path.
 
 ### The build steps, in order
 
@@ -99,9 +108,9 @@ packages and tools and compiles the native modules from source. It is the long
 pole of the job. Concurrency is raised, which only overlaps targets that do not
 depend on each other — the post-install already knows its own dependency order.
 
-**7 — Typecheck.** The daemon and the desktop shell are built **first**, because
-their declaration files must exist before the packaged application can typecheck
-against them, and a fresh clone has not produced them. Then a recursive typecheck.
+**7 — Build packaging prerequisites.** The daemon, desktop shell and web sidecar
+are built before packaging. Typecheck is deliberately not an Actions step under
+the current workflow contract; run it locally when a code change needs it.
 
 > [!WARNING]
 > Every command in the step is gated on its own exit code. In this shell a native
@@ -110,13 +119,8 @@ against them, and a fresh clone has not produced them. Then a recursive typechec
 > passes the step as long as the command after it succeeds. This is the single
 > easiest way to write a green pipeline that tests nothing.
 
-**8 — Test what only Windows can answer.** The identity the installer writes, the
-paths it installs to, its build targets and its launcher payload — the specs whose
-failure would mean a broken installer. Everything else runs on Linux in the
-`Verify` workflow. That split is not a convenience: several specs assert things a
-Windows filesystem cannot represent, and they fail here for reasons unrelated to
-the code under test. See
-[../troubleshooting/platform-specific-tests.md](../troubleshooting/platform-specific-tests.md).
+**8 — Package only.** Installer identity and runtime tests remain committed local
+checks, but Actions does not run them and they never gate publication.
 
 **9 — Squirrel packaging.** The packer invokes electron-builder's
 Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
@@ -141,11 +145,13 @@ The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
 not have, and an empty namespace or version fails the packer outright.
 
-**11 — Upload the installer as a workflow artifact**, with `always()` so a failed
-smoke test still leaves something to inspect, and failing if no file was found.
+**11 — Upload the installer as a workflow artifact**, with `always()`,
+`if-no-files-found: warn`, `continue-on-error: true` and bounded retention so a
+packaging failure still leaves safe evidence without masking the root failure.
 
-**12 — Smoke test the packaged application.** Documented in full in
-[packaged-smoke-test.md](packaged-smoke-test.md).
+**12 — Do not smoke-test in Actions.** The packaged application is captured and
+smoke-tested locally when the task requires it; a missing local result is reported
+as unverified rather than silently turning into a workflow gate.
 
 > [!NOTE]
 > The step's condition tests the **event name** explicitly rather than relying on
@@ -162,8 +168,10 @@ because one of its own self-checks tripped, and that reason belongs in the log.
 
 **15 — Choose the code name.** See [code-names.md](code-names.md).
 
-**16 — Publish.** A generated notes file, `--latest`, and every staged asset plus
-the code name's image.
+**16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
+the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
+verification. Publication is currently held by the contradictory dim-sum photo
+rules recorded above.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.

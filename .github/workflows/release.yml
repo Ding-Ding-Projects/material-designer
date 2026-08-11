@@ -1,31 +1,17 @@
 name: Release
 
-# Builds the Windows application and publishes it.
-#
-# The build steps here deliberately keep the upstream workspace setup, while
-# this repository's Windows delivery is Squirrel.Windows: the release carries
-# Setup.exe, RELEASES, the full/delta NuGet packages, and the metadata feed the
-# packaged updater verifies before offering a restart.
-#
-# Nothing is built on a contributor machine. This workflow is the supported
-# path, and its logs are the evidence.
+# Build and publish the Windows Squirrel.Windows package.  Actions performs no
+# tests, lint, type checks, static analysis, accessibility checks, or screenshot
+# gates; publication is contingent only on the packaging path and its required
+# unsigned-artifact evidence.
 
 on:
   push:
-    branches: [main]
   workflow_dispatch:
-    inputs:
-      smoke:
-        description: Run the packaged smoke test (installs, launches and uninstalls the built app)
-        type: boolean
-        default: true
-      publish:
-        description: Publish a GitHub Release with the installer attached
-        type: boolean
-        default: true
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -33,57 +19,27 @@ concurrency:
 
 jobs:
   build:
-    name: Build Windows application
-    runs-on: [self-hosted, windows, material-designer]
+    name: Build and publish Windows application
+    runs-on: windows-2022
     timeout-minutes: 120
     defaults:
       run:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     env:
-      # Namespace and channel are literals here. Upstream derives them from a
-      # release-metadata job wired to infrastructure this fork does not have,
-      # and an empty --namespace or --app-version fails the packer outright.
       PACK_NAMESPACE: release-stable-win
       PACK_CHANNEL: stable
 
     steps:
-      - name: Keep the checkout byte-exact
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
-        # Git for Windows ships core.autocrlf=true in its system configuration,
-        # and the root .gitattributes says `* text=auto` — so an unguarded
-        # checkout here would write every text file under design/ with CRLF.
-        # That is a different tree from the one the verifier attests to, and
-        # design/.gitattributes pins eol=lf on three files, so those would stay
-        # LF while everything around them flipped. The installer must be built
-        # from the bytes the provenance claim is about.
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           clean: true
-          # The build needs design/, not the provenance submodule.
           fetch-depth: 0
 
       - name: Bootstrap Windows CI tools
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
-      - name: Verify design/ against the pinned upstream tree
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
-        # Verify and Release are separate workflows on the same trigger, so a
-        # red Verify does not stop a release. The release notes published by
-        # this job assert what design/ contains, so this job is where that
-        # claim is checked — before the long install, so drift fails fast.
-        # The checkout carries no submodule; the verifier falls back to the
-        # committed manifest of upstream blob ids, which answers the same
-        # question.
-        run: bash scripts/verify-port.sh
-
       - name: Set up pnpm
-        # Before setup-node, which needs pnpm on PATH to resolve the store for
-        # its cache. Not corepack: it fails with EPERM on Windows.
         uses: pnpm/action-setup@v4
         with:
           version: 10.33.2
@@ -105,7 +61,6 @@ jobs:
           arch: x64
 
       - name: Clear prohibited signing inputs
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = "Stop"
           $signingInputs = @(
@@ -125,147 +80,69 @@ jobs:
             "$name=" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           }
           "CSC_IDENTITY_AUTO_DISCOVERY=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "Cleared prohibited signing inputs and disabled certificate auto-discovery."
+          Write-Host "Signing inputs cleared; certificate auto-discovery disabled."
 
-      - name: Verify the CI Node and pnpm toolchain
+      - name: Verify the Windows toolchain
         run: |
           $ErrorActionPreference = "Stop"
           $nodeVersion = (node --version).Trim()
+          if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch '^v24\.') { throw "expected Node 24, found $nodeVersion" }
           $pnpmVersion = (pnpm --version).Trim()
-          if ($nodeVersion -notmatch '^v24\.') {
-            throw "expected Node 24, found $nodeVersion"
-          }
-          if ($pnpmVersion -ne "10.33.2") {
-            throw "expected pnpm 10.33.2, found $pnpmVersion"
-          }
+          if ($LASTEXITCODE -ne 0 -or $pnpmVersion -ne "10.33.2") { throw "expected pnpm 10.33.2, found $pnpmVersion" }
           $pythonVersion = (python --version 2>&1).ToString().Trim()
-          if ($pythonVersion -notmatch '^Python 3\.12\.') {
-            throw "expected Python 3.12, found $pythonVersion"
-          }
+          if ($LASTEXITCODE -ne 0 -or $pythonVersion -notmatch '^Python 3\.12\.') { throw "expected Python 3.12, found $pythonVersion" }
           Write-Host "using $nodeVersion, pnpm $pnpmVersion, and $pythonVersion"
 
       - name: Read application version
         id: version
         working-directory: design
         run: |
+          $ErrorActionPreference = "Stop"
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
           if ([string]::IsNullOrWhiteSpace($pkg.version)) { throw "design/package.json has no version" }
-          # The packaged version must advance for every new workflow run or an
-          # installed Squirrel build will correctly decide that the next release
-          # is the same build. Keep the package baseline as the major/minor
-          # contract and use the monotonic workflow run number for the patch.
           $baseVersion = [version]$pkg.version
           $runNumber = [int64]"${{ github.run_number }}"
           $patch = [int64]$baseVersion.Build + $runNumber
           $appVersion = "$($baseVersion.Major).$($baseVersion.Minor).$patch"
-          # The attempt is part of the tag because run_number does not change
-          # when a run is re-run — only run_attempt does. Without it, re-running
-          # a run that already published rebuilds for an hour and then dies on
-          # `gh release create` because the tag exists.
           "app_version=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "tag=v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "base $($pkg.version), build version $appVersion, tag v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}"
+          Write-Host "base $($pkg.version), build version $appVersion"
 
       - name: Install dependencies
         working-directory: design
-        # postinstall also builds the workspace packages and tools, and compiles
-        # the native modules from source. It is the long pole of this job.
-        #
-        # The postinstall build is serial unless it is told otherwise, and it
-        # already knows the dependency order between its targets, so raising the
-        # concurrency only overlaps targets that do not depend on each other.
-        # better-sqlite3 has no prebuilt binary for this platform and Node
-        # version, so node-gyp compiles it here; that is why the timeout is
-        # generous rather than optimistic.
         timeout-minutes: 45
         env:
           OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
-        # The setup actions install the requested tools; this frozen-lockfile
-        # install resolves the workspace from the committed manifest and lockfile.
-        # setup-node's pnpm-store cache is an optimisation only, never a
-        # substitute for installation and never a cached node_modules tree.
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
+      - name: Build packaging prerequisites
         working-directory: design
-        # The daemon and desktop declaration files have to exist before the
-        # packaged app can typecheck against them, which a fresh clone has not
-        # done yet.
-        #
-        # Every command is gated on its own exit code. $ErrorActionPreference
-        # does not make a native command's non-zero exit terminating — that is
-        # $PSNativeCommandUseErrorActionPreference, which is $false by default —
-        # and the runner's wrapper propagates only the LAST exit code. Without
-        # these guards a failed build would still pass the step as long as the
-        # command after it succeeded.
         run: |
           $ErrorActionPreference = "Stop"
           pnpm --filter @open-design/daemon run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --filter @open-design/desktop run build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm -r --workspace-concurrency=4 --if-present run typecheck
+          pnpm --filter @open-design/web run build:sidecar
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Test the Windows identity and installer logic
-        working-directory: design
-        # This job runs the specs that only Windows can answer: the identity the
-        # installer writes, the paths it installs to, its build targets and its
-        # launcher payload. If the identity logic and its four independent copies
-        # ever disagree again, it shows up here — before an installer is built,
-        # rather than after a user runs one.
-        #
-        # Everything else is tested on Linux, by the `test` job in verify.yml,
-        # which runs the FULL suite for tools-pack, packaged and desktop. That
-        # split is not a convenience: several specs assert things a Windows
-        # filesystem cannot represent — a macOS binary keeping its executable
-        # bit, a symlinked module layout — and fail here for reasons that have
-        # nothing to do with the code under test. Between the two jobs every spec
-        # runs somewhere, and neither job is quietly skipping the awkward ones.
-        run: |
-          $ErrorActionPreference = "Stop"
-          # --testTimeout: two of these specs are `runIf(win32)`, so this job is
-          # the only place they execute, and they do real filesystem work
-          # (syncing launcher runtimes, writing cleanup metadata). vitest's 5s
-          # default is a developer-machine assumption; the self-hosted runner's disk is
-          # slower and they time out. Raising the budget gives slow I/O room
-          # without weakening a single assertion — the tests still have to pass.
-          pnpm --filter @open-design/tools-pack exec vitest run --testTimeout=30000 win- launcher- release-workflows config versions resources
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Build the Windows installer
+      - name: Build the Windows Squirrel installer
         id: pack
         working-directory: design
         run: |
           $ErrorActionPreference = "Stop"
-          # Squirrel.Windows creates nested nuspec/package paths. The hosted
-          # runner workspace plus runner.temp can exceed MAX_PATH before the
-          # packer gets to emit Setup.exe, so use a run-scoped short temp root.
-          # The Windows system temp parent is not readable by this service
-          # account. Keep the replacement under the runner-owned installation
-          # parent instead: it is accessible, on the same drive as the source,
-          # and shorter than the nested runner temp directory while preserving
-          # the relative imports used by the prebundle step.
-          # This is process/job-local state; it does not change the runner's
-          # persistent TEMP setting or touch another job's files.
           $runnerTemp = $env:RUNNER_TEMP
           $runnerInstallParent = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $runnerTemp))
           if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
             throw "The runner installation parent could not be resolved safely"
           }
           $runSuffix = $env:GITHUB_RUN_ID
-          if ($runSuffix.Length -gt 8) {
-            $runSuffix = $runSuffix.Substring($runSuffix.Length - 8)
-          }
+          if ($runSuffix.Length -gt 8) { $runSuffix = $runSuffix.Substring($runSuffix.Length - 8) }
           $shortRoot = Join-Path $runnerInstallParent ("m-" + $runSuffix)
+          if (Test-Path -LiteralPath $shortRoot) { Remove-Item -LiteralPath $shortRoot -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $shortRoot | Out-Null
           $env:TEMP = $shortRoot
           $env:TMP = $shortRoot
-          # Squirrel.Windows does not use TEMP for its Releasify extraction
-          # directory. Its Utility.WithTempDirectory reads SQUIRREL_TEMP, so
-          # leave that process-local root short as well; otherwise the nupkg
-          # expands under the runner user's long LocalAppData path and can
-          # still trip MAX_PATH even when electron-builder's output is mapped.
           $squirrelTemp = Join-Path $shortRoot "squirrel-temp"
           New-Item -ItemType Directory -Force -Path $squirrelTemp | Out-Null
           $env:SQUIRREL_TEMP = $squirrelTemp
@@ -276,6 +153,7 @@ jobs:
           "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
+          if ($LASTEXITCODE -ne 0) { throw "tools-pack win cleanup exited with code $LASTEXITCODE" }
 
           $buildOutput = pnpm.cmd exec tools-pack win build `
             --dir $toolsPackDir `
@@ -286,7 +164,6 @@ jobs:
             --to all `
             --json
           if ($LASTEXITCODE -ne 0) { throw "tools-pack win build exited with code $LASTEXITCODE" }
-
           $buildOutput | Set-Content -Path $buildJsonPath
           $build = $buildOutput | ConvertFrom-Json
 
@@ -304,61 +181,39 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
             throw "the build reported no Squirrel Setup.exe at '$setupPath'"
           }
-
           $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
-          if ($signature.Status -ne 'NotSigned') {
-            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
-          }
-
+          if ($signature.Status -ne 'NotSigned') { throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned" }
           $installer = Get-Item -LiteralPath $setupPath
           $hash = (Get-FileHash -LiteralPath $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 
           $squirrelRoot = $installer.DirectoryName
           $releasesPath = $build.squirrelReleasesPath
           if ([string]::IsNullOrWhiteSpace($releasesPath) -or -not (Test-Path -LiteralPath $releasesPath)) {
-            $releasesPath = (Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File | Where-Object { $_.Name -ceq "RELEASES" } | Select-Object -First 1).FullName
+            $releaseItem = Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File | Where-Object { $_.Name -ceq "RELEASES" } | Select-Object -First 1
+            if ($null -ne $releaseItem) { $releasesPath = $releaseItem.FullName }
           }
-          if ([string]::IsNullOrWhiteSpace($releasesPath) -or -not (Test-Path -LiteralPath $releasesPath)) {
-            throw "the Squirrel build reported no RELEASES index"
-          }
+          if ([string]::IsNullOrWhiteSpace($releasesPath) -or -not (Test-Path -LiteralPath $releasesPath)) { throw "the Squirrel build reported no RELEASES index" }
 
           $fullPackagePaths = @()
           $deltaPackagePaths = @()
-          if ($build.PSObject.Properties.Name -contains "squirrelFullPackagePaths") {
-            $fullPackagePaths = @($build.squirrelFullPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) })
-          }
-          if ($build.PSObject.Properties.Name -contains "squirrelDeltaPackagePaths") {
-            $deltaPackagePaths = @($build.squirrelDeltaPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) })
-          }
-          if ($fullPackagePaths.Count -eq 0) {
-            $fullPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-full.nupkg" | Select-Object -ExpandProperty FullName)
-          }
-          if ($deltaPackagePaths.Count -eq 0) {
-            $deltaPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-delta.nupkg" | Select-Object -ExpandProperty FullName)
-          }
+          if ($build.PSObject.Properties.Name -contains "squirrelFullPackagePaths") { $fullPackagePaths = @($build.squirrelFullPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) }) }
+          if ($build.PSObject.Properties.Name -contains "squirrelDeltaPackagePaths") { $deltaPackagePaths = @($build.squirrelDeltaPackagePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -LiteralPath $_) }) }
+          if ($fullPackagePaths.Count -eq 0) { $fullPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-full.nupkg" | Select-Object -ExpandProperty FullName) }
+          if ($deltaPackagePaths.Count -eq 0) { $deltaPackagePaths = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter "*-delta.nupkg" | Select-Object -ExpandProperty FullName) }
           if ($fullPackagePaths.Count -eq 0) { throw "the Squirrel build reported no full .nupkg package" }
           $packagePaths = @($fullPackagePaths + $deltaPackagePaths)
 
-          # Give the asset a name that says what it is outside this repository.
-          $staged = Join-Path "${{ runner.temp }}" "release-assets"
+          $staged = Join-Path $env:RUNNER_TEMP ("release-assets-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          if (Test-Path -LiteralPath $staged) { Remove-Item -LiteralPath $staged -Recurse -Force -ErrorAction SilentlyContinue }
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
           "$hash  $assetName" | Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding utf8
-
           Copy-Item -LiteralPath $releasesPath -Destination (Join-Path $staged "RELEASES") -Force
-          foreach ($packagePath in $packagePaths) {
-            $package = Get-Item -LiteralPath $packagePath
-            Copy-Item -LiteralPath $package.FullName -Destination (Join-Path $staged $package.Name) -Force
-          }
+          foreach ($packagePath in $packagePaths) { Copy-Item -LiteralPath $packagePath -Destination (Join-Path $staged (Split-Path -Leaf $packagePath)) -Force }
 
           $iconSource = Join-Path $env:GITHUB_WORKSPACE "design/tools/pack/resources/win/icon.ico"
           Copy-Item -LiteralPath $iconSource -Destination (Join-Path $staged "material-designer.ico") -Force
-
-          # The feed moves at `releases/latest/download/metadata.json`, but the
-          # artifacts inside it must remain pinned to the exact release this run
-          # built and tested. A moving installer URL would let a cached metadata
-          # response download bytes from a different release.
           $downloadRoot = "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}"
           $metadata = [ordered]@{
             schemaVersion = 1
@@ -366,29 +221,23 @@ jobs:
             releaseVersion = "${{ steps.version.outputs.app_version }}"
             signed = $false
             releaseNotesUrl = "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
-            platforms = [ordered]@{
-              win = [ordered]@{
-                enabled = $true
-                arch = "x64"
-                artifacts = [ordered]@{
-                  installer = [ordered]@{
-                    type = "installer"
-                    name = "Setup.exe"
-                    url = "$downloadRoot/$assetName"
-                    size = [int64]$installer.Length
-                    sha256 = $hash
-                    sha256Url = "$downloadRoot/$assetName.sha256"
-                  }
-                }
-              }
-            }
+            platforms = [ordered]@{ win = [ordered]@{ enabled = $true; arch = "x64"; artifacts = [ordered]@{ installer = [ordered]@{ type = "installer"; name = "Setup.exe"; url = "$downloadRoot/$assetName"; size = [int64]$installer.Length; sha256 = $hash; sha256Url = "$downloadRoot/$assetName.sha256" } } } }
           }
-          $metadataPath = Join-Path $staged "metadata.json"
-          $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $metadataPath -Encoding utf8
+          $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $staged "metadata.json") -Encoding utf8
+          if (-not [string]::IsNullOrWhiteSpace($build.portableZipPath) -and (Test-Path -LiteralPath $build.portableZipPath)) { Copy-Item -LiteralPath $build.portableZipPath -Destination (Join-Path $staged "material-designer-${{ steps.version.outputs.app_version }}-win-x64-portable.zip") -Force }
 
-          if (-not [string]::IsNullOrWhiteSpace($build.portableZipPath) -and (Test-Path -LiteralPath $build.portableZipPath)) {
-            Copy-Item -LiteralPath $build.portableZipPath -Destination (Join-Path $staged "material-designer-${{ steps.version.outputs.app_version }}-win-x64-portable.zip") -Force
+          $evidence = [ordered]@{
+            commit = "${{ github.sha }}"
+            runId = "${{ github.run_id }}"
+            runAttempt = "${{ github.run_attempt }}"
+            runnerImage = "windows-2022"
+            version = "${{ steps.version.outputs.app_version }}"
+            installer = $assetName
+            installerSha256 = $hash
+            installerBytes = [int64]$installer.Length
+            signed = $false
           }
+          $evidence | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $staged "build-evidence.json") -Encoding utf8
 
           "build_json=$buildJsonPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -396,15 +245,13 @@ jobs:
           "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "signature_status=$($signature.Status)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_bytes=$($installer.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "squirrel_release_name=RELEASES" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_package_count=$($packagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_full_package_count=$($fullPackagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "squirrel_delta_package_count=$($deltaPackagePaths.Count)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "metadata_name=metadata.json" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "installer $assetName ($([math]::Round($installer.Length / 1MB, 1)) MB)"
           Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
-      - name: Verify the Squirrel installer is unsigned
+      - name: Confirm unsigned Squirrel output
         if: ${{ steps.pack.outputs.build_json != '' }}
         working-directory: design
         run: |
@@ -412,270 +259,57 @@ jobs:
           $build = Get-Content -Raw -LiteralPath "${{ steps.pack.outputs.build_json }}" | ConvertFrom-Json
           $setupPath = $build.squirrelSetupPath
           if ([string]::IsNullOrWhiteSpace($setupPath)) { $setupPath = $build.installerPath }
-          if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) {
-            throw "cannot verify a Squirrel installer that was not produced"
-          }
+          if ([string]::IsNullOrWhiteSpace($setupPath) -or -not (Test-Path -LiteralPath $setupPath)) { throw "cannot verify a Squirrel installer that was not produced" }
           $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
-          if ($signature.Status -ne 'NotSigned') {
-            throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned"
-          }
+          if ($signature.Status -ne 'NotSigned') { throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned" }
           Write-Host "Squirrel Setup.exe verified unsigned (NotSigned)"
 
-      - name: Check the packaged application is self-contained
-        if: ${{ steps.pack.outputs.build_json != '' }}
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
-        # The same rule the published site is held to, asked of the artifact a
-        # user actually installs — and asked of the BUILD OUTPUT, not the
-        # source, because a bundler can inline a remote URL that no source file
-        # spells out. The application bundle and the shipped web UI are the
-        # executable surfaces covered here; the packaged catalogue also carries
-        # author-authored example HTML whose demos may intentionally name a CDN.
-        # The checker still scans markup and CSS recursively, while its
-        # external-request sweep is limited to first-party JavaScript because
-        # dependency trees carry unreachable build/dev helpers and optional
-        # telemetry modules. The Pages workflow continues to scan its complete
-        # published site.
-        #
-        # It reads the payload path the packer already reported, so it inspects
-        # what was really built rather than a directory guessed at from a
-        # convention. A payload that cannot be read fails the step: the script
-        # refuses to report a pass for a directory it never opened.
-        run: |
-          set -euo pipefail
-          # readFileSync keeps a UTF-8 BOM, which JSON.parse rejects outright —
-          # and PowerShell's Set-Content is exactly the kind of writer that
-          # leaves one. Strip it rather than debug it later.
-          payload=$(node -e "const t=require('fs').readFileSync(process.argv[1],'utf8').replace(/^\uFEFF/,'');process.stdout.write(JSON.parse(t).payloadPath ?? '')" "${{ steps.pack.outputs.build_json }}")
-          if [ -z "$payload" ]; then
-            echo "::error::the packer reported no payload path, so nothing was verified" >&2
-            exit 1
-          fi
-          echo "payload: $payload"
-
-          # The packer reports its payload as a .7z, not a directory — the first
-          # run of this gate failed on exactly that, which is the script doing
-          # its job: it refuses to report a pass for something it never opened.
-          #
-          # Extracting is the right answer rather than pointing the gate at some
-          # earlier build directory, because the archive IS what ships. A CDN
-          # URL that a bundler inlined after the last directory anyone thought to
-          # check is precisely the thing this is meant to catch.
-          if [ -d "$payload" ]; then
-            target="$payload"
-          else
-            target="${RUNNER_TEMP}/payload-unpacked"
-            rm -rf "$target"
-            mkdir -p "$target"
-            echo "unpacking the payload to inspect what actually ships"
-            7z x -bso0 -bsp0 -y -o"$target" "$payload"
-          fi
-
-          resource_root="$target/payload/resources"
-          if [ ! -d "$resource_root" ] && [ -d "$target/resources" ]; then
-            resource_root="$target/resources"
-          fi
-          bash scripts/check-self-contained.sh \
-            "$resource_root/app" \
-            "$resource_root/open-design-web-standalone"
-
-      - name: Upload the installer as a workflow artifact
-        # Always, so a failed smoke test still leaves something to inspect.
-        if: ${{ always() && steps.pack.outputs.staged_dir != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: material-designer-win-x64
-          path: ${{ steps.pack.outputs.staged_dir }}
-          if-no-files-found: error
-
-      - name: Exclude Squirrel install paths from Windows Defender real-time scanning
-        # Windows Defender scans every file extracted by Setup.exe as it is
-        # written to disk. On a machine where the Electron binary is new to
-        # Defender's cloud cache the real-time scan can hold Setup.exe for well
-        # over twelve minutes, causing the smoke-test vitest timeout to fire
-        # before the install completes. Adding exclusions for the two
-        # Squirrel-owned directories (%LOCALAPPDATA%\SquirrelTemp and the
-        # install root) removes that overhead without disabling protection
-        # system-wide.
-        if: ${{ steps.pack.outputs.build_json != '' && (github.event_name != 'workflow_dispatch' || inputs.smoke) }}
-        run: |
-          $ErrorActionPreference = "Stop"
-          $squirrelInstallRoot = Join-Path $env:LOCALAPPDATA "open-design-packaged-app"
-          $squirrelTemp        = Join-Path $env:LOCALAPPDATA "SquirrelTemp"
-          foreach ($path in @($squirrelInstallRoot, $squirrelTemp)) {
-            New-Item -ItemType Directory -Force -Path $path | Out-Null
-            Add-MpPreference -ExclusionPath $path
-            Write-Host "Defender exclusion added: $path"
-          }
-
-      - name: Smoke test the packaged application
-        id: smoke
-        # On a push there are no inputs, and an empty value compares equal to
-        # false in an expression — so test the event explicitly rather than
-        # letting the default silently skip the step that proves the app runs.
-        if: ${{ steps.pack.outputs.build_json != '' && (github.event_name != 'workflow_dispatch' || inputs.smoke) }}
-        working-directory: design/e2e
-        env:
-          OD_PACKAGED_E2E_BUILD_JSON_PATH: ${{ steps.pack.outputs.build_json }}
-          OD_PACKAGED_E2E_WIN: "1"
-          OD_PACKAGED_E2E_NAMESPACE: release-stable-win
-          OD_PACKAGED_E2E_RELEASE_CHANNEL: stable
-          OD_PACKAGED_E2E_RELEASE_VERSION: ${{ steps.version.outputs.app_version }}
-          OD_PACKAGED_E2E_REPORT_DIR: ${{ runner.temp }}/release-report/win
-          OD_PACKAGED_E2E_TOOLS_PACK_DIR: ${{ steps.pack.outputs.tools_pack_dir }}
-          # `core` installs the Squirrel app, launches it, proves the running
-          # process answers its own health endpoint, then uninstalls and checks
-          # that nothing was left behind. The updater's feed and restart path
-          # have their own focused tests; the `full` profile requires a
-          # separately-built update fixture and is not silently claimed here.
-          OD_PACKAGED_E2E_WIN_SMOKE_PROFILE: core
-        run: |
-          $ErrorActionPreference = "Stop"
-          pnpm exec tsx scripts/release-smoke.ts win specs/win.spec.ts
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Upload the smoke test report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: material-designer-win-smoke-report
-          path: ${{ runner.temp }}/release-report/win
-          if-no-files-found: warn
-
-      - name: Report the captured UI states
-        # The smoke report is a downloadable artifact, which means nobody opens
-        # it unless something has already gone wrong. The visual evidence base
-        # is exactly the thing that shrinks silently — one state stops being
-        # reachable, the report still looks complete, and nobody finds out for
-        # months. So the state set is printed on the run page itself, and every
-        # state that produced no file is raised as a warning annotation.
-        if: ${{ always() && steps.smoke.outcome != 'skipped' }}
-        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
-        run: |
-          set -uo pipefail
-          # RUNNER_TEMP is a Windows path with backslashes, and this step runs
-          # under Git Bash. Normalize the separators once rather than hoping
-          # every consumer below tolerates the mix.
-          states="${RUNNER_TEMP//\\//}/release-report/win/ui-states.json"
-          if [ ! -f "$states" ]; then
-            {
-              echo "### 📷 Packaged UI states"
-              echo ""
-              if [ "${{ steps.smoke.outcome }}" = "success" ]; then
-                echo "\`ui-states.json\` is absent after the packaged smoke reported success."
-              else
-                echo "\`ui-states.json\` is absent because the packaged smoke did not complete successfully."
-              fi
-            } >> "$GITHUB_STEP_SUMMARY"
-            if [ "${{ steps.smoke.outcome }}" = "success" ]; then
-              echo "::error::ui-states.json is absent after a successful packaged smoke run" >&2
-            else
-              echo "::error::packaged smoke failed before UI capture completed" >&2
-            fi
-            exit 1
-          fi
-          # The path travels in the environment rather than as an argument:
-          # `node -` reads the script from stdin, and what argv[1] then holds
-          # is not worth depending on.
-          OD_UI_STATES_JSON="$states" node - >> "$GITHUB_STEP_SUMMARY" <<'NODE'
-          const { readFileSync } = require('node:fs');
-          const report = JSON.parse(readFileSync(process.env.OD_UI_STATES_JSON, 'utf8'));
-          const captured = Array.isArray(report.captured) ? report.captured : [];
-          const skipped = Array.isArray(report.skipped) ? report.skipped : [];
-          const duplicates = captured.filter((entry) => entry.duplicateOf);
-          // A newline or a pipe inside a reason would silently break the table
-          // and hide the very row that matters most.
-          const cell = (value) => String(value == null ? '' : value).replace(/\s*[\r\n]+\s*/g, ' ').replace(/\|/g, '\\|');
-          const out = [];
-          out.push(`### 📷 Packaged UI states — ${captured.length} captured, ${skipped.length} not reachable`);
-          out.push('');
-          out.push('Every frame below is the real running packaged application, driven into that');
-          out.push('state through the app’s own settings and shortcuts.');
-          out.push('');
-          out.push('| State | File | Bytes | How it was reached |');
-          out.push('|---|---|---:|---|');
-          for (const entry of captured) {
-            const note = entry.duplicateOf ? ` ⚠️ identical bytes to \`${cell(entry.duplicateOf)}\`` : '';
-            out.push(`| \`${cell(entry.name)}\`${note} | \`${cell(entry.reportRelpath)}\` | ${entry.bytes} | ${cell(entry.driver)} |`);
-          }
-          if (skipped.length > 0) {
-            out.push('');
-            out.push('| Not captured | Why |');
-            out.push('|---|---|');
-            for (const entry of skipped) out.push(`| \`${cell(entry.name)}\` | ${cell(entry.reason)} |`);
-          }
-          for (const entry of skipped) {
-            console.error(`::warning title=UI state not captured::${cell(entry.name)}: ${cell(entry.reason)}`);
-          }
-          for (const entry of duplicates) {
-            console.error(
-              `::warning title=UI state frame is a duplicate::${entry.name} is byte-identical to ${entry.duplicateOf}; the window compositor may be returning a stale frame`,
-            );
-          }
-          if (duplicates.length > 0) {
-            console.error('::error::one or more packaged UI state frames are byte-identical to an earlier state');
-            process.exitCode = 1;
-          }
-          console.log(out.join('\n'));
-          NODE
-
-      - name: Upload build logs
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: material-designer-build-logs
-          path: |
-            design/.tmp/**/*.log
-            design/.tmp/**/logs/**
-            ${{ steps.pack.outputs.tools_pack_dir }}/**/*.log
-          if-no-files-found: warn
-
-      - name: Count lines
+      - name: Count lines for release notes
         id: lines
         if: ${{ always() }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
-        # --blame is what produces the agent-versus-human surviving-line
-        # attribution the release notes carry; without it the table publishes
-        # "not computed". --blame-paths keeps that pass to this repository's own
-        # files: the counter spawns one `git blame` per counted file, and the
-        # imported upstream tree is ~11,800 of them. The counter reports the
-        # scope it used, so the published table says what it covers rather than
-        # implying the whole tree.
-        #
-        # stderr is not discarded. When this counter exits non-zero it is
-        # because its own accounting self-check or its attribution invariant
-        # tripped — the reason belongs in the step log, not in a bit bucket.
         run: |
-          set -uo pipefail
-          out="${RUNNER_TEMP}/line-count.md"
-          blame_paths='scripts/**,mockups/**,assets/**,docs/**,site/**,.github/**,*.md,.git*'
-          if [ ! -f scripts/line-count.mjs ]; then
-            echo "_The line count was not available for this build._" > "$out"
-          elif ! node scripts/line-count.mjs --blame --blame-paths "$blame_paths" > "$out"; then
-            echo "line-count: the attribution pass failed (reason above); counting without it" >&2
-            node scripts/line-count.mjs > "$out" \
-              || echo "_The line count was not available for this build._" > "$out"
-          fi
+          set -euo pipefail
+          out="${RUNNER_TEMP//\\//}/line-count-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+          test -f scripts/line-count.mjs || { echo "::error::the committed line counter is missing" >&2; exit 1; }
+          node scripts/line-count.mjs --blame --blame-paths 'scripts/**,mockups/**,assets/**,docs/**,site/**,.github/**,*.md,.git*' > "$out"
+          test -s "$out" || { echo "::error::the line counter produced no table" >&2; exit 1; }
           echo "path=$out" >> "$GITHUB_OUTPUT"
 
-      - name: Choose the release code name
+      - name: Choose a public catalog code name
         id: codename
-        if: ${{ success() }}
+        if: ${{ steps.pack.outputs.build_json != '' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
-          # A dish is used once. Read the spent ones out of the existing
-          # releases rather than from a counter a re-run would repeat.
-          used=$(gh release list --limit 200 --json tagName --jq '.[].tagName' 2>/dev/null \
+          raw="${RUNNER_TEMP//\\//}/codename-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.env"
+          used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
             | while read -r tag; do
-                gh release view "$tag" --json body --jq '.body' 2>/dev/null \
+                gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
                   | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
               done | sort -u | paste -sd, -)
-          bash scripts/release-codename.sh --used "${used:-}" >> "$GITHUB_OUTPUT"
+          bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
+          if grep -qx 'source=public' "$raw"; then
+            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
+            printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check dim-sum photo publication contract
+        id: dim_sum_contract
+        if: ${{ steps.pack.outputs.build_json != '' }}
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        run: |
+          set -euo pipefail
+          echo "::error::release publication is blocked: the standing contract requires a downloadable dim-sum photo, while the public-source rule forbids copying or attaching catalog photos in this repository; resolve that policy conflict before publishing"
+          exit 1
 
       - name: Publish the release
-        if: ${{ success() && steps.smoke.outcome == 'success' && (github.event_name != 'workflow_dispatch' || inputs.publish) }}
+        id: publish
+        if: ${{ always() && steps.pack.outputs.build_json != '' && steps.dim_sum_contract.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
@@ -683,30 +317,30 @@ jobs:
           APP_VERSION: ${{ steps.version.outputs.app_version }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
           INSTALLER_SHA: ${{ steps.pack.outputs.installer_sha256 }}
-          SQUIRREL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_package_count }}
           SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
           CODENAME: ${{ steps.codename.outputs.codename }}
-          DISH_ID: ${{ steps.codename.outputs.id }}
-          DISH_IMAGE: ${{ steps.codename.outputs.image }}
-          DISH_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
-          DISH_ALT: ${{ steps.codename.outputs.alt_en }}
-          SMOKE_RESULT: ${{ steps.smoke.outcome }}
+          LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
-          notes="${RUNNER_TEMP}/release-notes.md"
-          WORKFLOW_STARTED_AT=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
-          if [ -z "$WORKFLOW_STARTED_AT" ]; then
-            echo "::error::GitHub Actions did not return the workflow startedAt timestamp"
-            exit 1
-          fi
+          notes="${RUNNER_TEMP//\\//}/release-notes-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.md"
+          workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
+          [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
+          [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
+
           {
             echo "## Material Designer ${APP_VERSION}"
             if [ -n "${CODENAME:-}" ]; then
               echo ""
               echo "**Code name: ${CODENAME}**"
+              if [ -n "${DISH_PHOTO_URL:-}" ]; then
+                echo "Public catalog photo: ${DISH_PHOTO_URL}"
+              fi
+            else
+              echo ""
+              echo "No public catalog code name was resolved for this build; the version remains authoritative."
             fi
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
@@ -714,122 +348,129 @@ jobs:
             echo "### Install"
             echo ""
             echo "Download \`${ASSET_NAME}\` below and run it. This is the Squirrel.Windows installer and does not require administrator rights."
-            echo "The release also carries the Squirrel \`RELEASES\` index, ${SQUIRREL_FULL_PACKAGE_COUNT:-0} full package(s), ${SQUIRREL_DELTA_PACKAGE_COUNT:-0} delta package(s), and \`metadata.json\` for the in-app update check."
+            echo "The release also carries the Squirrel \`RELEASES\` index, ${SQUIRREL_FULL_PACKAGE_COUNT:-0} full package(s), ${SQUIRREL_DELTA_PACKAGE_COUNT:-0} delta package(s), and \`metadata.json\`."
             echo ""
-            echo "\`\`\`"
             echo "SHA-256  ${INSTALLER_SHA}"
-            echo "\`\`\`"
             echo ""
             echo "> [!WARNING]"
             echo "> The Squirrel installer is intentionally unsigned (Windows Authenticode status: \`NotSigned\`). Windows may show an unknown-publisher or SmartScreen warning; that is expected under the permanent no-signing policy."
             echo ""
-            echo "### Verification"
-            echo ""
-            case "${SMOKE_RESULT:-skipped}" in
-              success) echo "- Packaged smoke test: **passed** — the built application installs, launches, answers its own health check, and uninstalls without residue." ;;
-              failure) echo "- Packaged smoke test: **failed** — see the workflow run." ;;
-              *)       echo "- Packaged smoke test: **not run** for this build." ;;
-            esac
-            echo "- Built from \`${GITHUB_SHA}\` by [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
-            echo ""
-            cat "${{ steps.lines.outputs.path }}"
-            echo ""
-            if [ -n "${CODENAME:-}" ]; then
-              echo "### Code name"
-              echo ""
-              echo "This build is **${CODENAME}**. Every build gets its own dish, so no two"
-              echo "are ever called the same thing in conversation."
-              echo ""
-              if [ -n "${DISH_PHOTO_URL:-}" ]; then
-                echo "<img src=\"${DISH_PHOTO_URL}\" alt=\"${DISH_ALT}\" width=\"320\">"
-                echo ""
-                echo "Photo from the public [dim sum catalog](https://github.com/Ding-Ding-Projects/dim-sum-photos), which is where the dish names come from too."
-                echo ""
-              fi
-            fi
-            if [ -n "${DISH_IMAGE_DISH:-}" ]; then
-              echo "A dim sum photo (\`codename-${DISH_IMAGE_DISH}.png\`) is attached below,"
-              echo "because a release should come with something to look at."
-              echo ""
-            fi
             echo "### Provenance"
+            echo ""
+            echo "Built from \`${GITHUB_SHA}\` by [run ${GITHUB_RUN_ID}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+            echo ""
+            if [ -f "$LINE_COUNT_PATH" ]; then cat "$LINE_COUNT_PATH"; else echo "_The line count was unavailable for this build._"; fi
             echo ""
             echo "Contains Open Design v0.16.1 (\`517f39acde402c1a7af2189167a8d6957a3dac71\`), Apache-2.0."
             echo "Changes to the imported work are listed in \`MODIFICATIONS.md\`."
             echo "This build is not produced by, endorsed by, or affiliated with that project."
-            if [ -n "${DISH_ID:-}" ]; then
-              echo ""
-              echo "<!-- dim-sum-id: ${DISH_ID} -->"
-            fi
           } > "$notes"
 
-          # The photo asset is keyed on the image, not on the code name: the two
-          # come from different places now, and a build that runs out of unused
-          # dishes must still ship a steamer basket.
           assets=("$STAGED"/*)
-          if [ -n "${DISH_IMAGE:-}" ] && [ -f "$DISH_IMAGE" ]; then
-            cp "$DISH_IMAGE" "$STAGED/codename-${DISH_IMAGE_DISH:-dim-sum}.png"
-            assets=("$STAGED"/*)
-          else
-            echo "::warning::no dim sum photo was attached to $TAG"
-          fi
-
-          gh release create "$TAG" \
-            --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" \
-            --notes-file "$notes" \
-            --latest \
-            "${assets[@]}"
+          [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
 
           workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          workflow_duration=$(WORKFLOW_STARTED_AT="$WORKFLOW_STARTED_AT" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
+          workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
           const start = Date.parse(process.env.WORKFLOW_STARTED_AT ?? "");
           const end = Date.parse(process.env.WORKFLOW_COMPLETED_AT ?? "");
-          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-            throw new Error("workflow timing timestamps were invalid");
-          }
+          if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) throw new Error("workflow timing timestamps were invalid");
           const seconds = Math.floor((end - start) / 1000);
           const hours = Math.floor(seconds / 3600);
           const minutes = Math.floor((seconds % 3600) / 60);
           const remainder = seconds % 60;
-          process.stdout.write(
-            [hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":")
-          );
+          process.stdout.write([hours, minutes, remainder].map((value) => String(value).padStart(2, "0")).join(":"));
           NODE
           )
           {
             echo ""
             echo "### Workflow timing"
             echo ""
-            echo "- Workflow started: ${WORKFLOW_STARTED_AT}"
+            echo "- Workflow started: ${workflow_started_at}"
             echo "- Workflow completed: ${workflow_completed_at}"
             echo "- Workflow duration: ${workflow_duration}"
           } >> "$notes"
-          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes"
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes" --draft=false --latest
 
-          echo "Published $TAG"
-
-      - name: Summarise
-        if: ${{ always() }}
+      - name: Verify the published release
+        if: ${{ always() && steps.pack.outputs.build_json != '' && steps.publish.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
-          {
-            echo "### Windows build"
-            echo ""
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Version | ${{ steps.version.outputs.app_version }} |"
-            echo "| Tag | ${{ steps.version.outputs.tag }} |"
-            echo "| Installer | ${{ steps.pack.outputs.asset_name || 'not produced' }} |"
-            echo "| Signature | ${{ steps.pack.outputs.signature_status || 'not verified' }} |"
-            echo "| Smoke test | ${{ steps.smoke.outcome || 'not run' }} |"
-            echo "| Code name | ${{ steps.codename.outputs.codename || 'none' }} |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          release_json=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease,assets,body)
+          [ "$(printf '%s' "$release_json" | jq -r '.tagName')" = "$TAG" ]
+          [ "$(printf '%s' "$release_json" | jq -r '.isDraft')" = "false" ]
+          [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ]
+          body=$(printf '%s' "$release_json" | jq -r '.body // ""')
+          printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
+          printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
 
-      - name: Clean the run-scoped Windows packaging paths
+          ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
+          object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
+          object_type=$(printf '%s' "$ref_json" | jq -r '.object.type')
+          if [ "$object_type" = "tag" ]; then
+            object_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}" --jq '.object.sha')
+          fi
+          [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
+
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json; do
+            jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
+          done
+          jq -e '[.assets[] | select(.name | endswith("-full.nupkg"))] | length > 0' <<< "$release_json" >/dev/null
+
+          verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$verify_dir"
+          mkdir -p "$verify_dir"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
+          (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
+
+      - name: Upload release evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: material-designer-release-evidence-${{ github.run_id }}
+          path: |
+            ${{ steps.pack.outputs.staged_dir }}
+            ${{ runner.temp }}\release-notes-${{ github.run_id }}-${{ github.run_attempt }}.md
+            ${{ runner.temp }}\line-count-${{ github.run_id }}-${{ github.run_attempt }}.md
+            ${{ runner.temp }}\release-verify-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Summarise release
+        if: ${{ always() }}
+        run: |
+          @(
+            "### Windows release"
+            ""
+            "- Version: ${{ steps.version.outputs.app_version }}"
+            "- Tag: ${{ steps.version.outputs.tag }}"
+            "- Installer: ${{ steps.pack.outputs.asset_name || 'not produced' }}"
+            "- Signature: ${{ steps.pack.outputs.signature_status || 'not verified' }}"
+            "- Code name source: ${{ steps.codename.outputs.source || 'unavailable' }}"
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+
+      - name: Clean run-scoped packaging paths
         if: ${{ always() }}
         run: |
           $ErrorActionPreference = "Continue"
-          $shortRoot = "${{ steps.pack.outputs.short_root }}"
-          if (-not [string]::IsNullOrWhiteSpace($shortRoot) -and (Test-Path -LiteralPath $shortRoot)) {
-            Remove-Item -LiteralPath $shortRoot -Recurse -Force -ErrorAction SilentlyContinue
+          $paths = @(
+            "${{ steps.pack.outputs.short_root }}",
+            "${{ steps.pack.outputs.staged_dir }}",
+            (Join-Path $env:RUNNER_TEMP "release-verify-${{ github.run_id }}-${{ github.run_attempt }}"),
+            (Join-Path $env:RUNNER_TEMP "release-notes-${{ github.run_id }}-${{ github.run_attempt }}.md"),
+            (Join-Path $env:RUNNER_TEMP "line-count-${{ github.run_id }}-${{ github.run_attempt }}.md"),
+            (Join-Path $env:RUNNER_TEMP "codename-${{ github.run_id }}-${{ github.run_attempt }}.env")
+          )
+          foreach ($path in $paths) {
+            if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path)) {
+              Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue
+            }
           }

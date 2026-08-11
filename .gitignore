@@ -1,0 +1,20 @@
+# Release-shutdown build and installer evidence (generated, commit-bound, and reproducible)
+/.yum-tong/
+
+# Workspace dependencies and generated build output
+/design/node_modules/
+/design/.pnpm-store/
+/design/.next/
+/design/**/dist/
+/design/**/out/
+/design/**/build/
+/design/**/.turbo/
+/design/**/.tmp/
+
+# Local editor and operating-system noise
+/.vscode/
+/.idea/
+*.user
+*.suo
+Thumbs.db
+Desktop.ini

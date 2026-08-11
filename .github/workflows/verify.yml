@@ -1,450 +1,68 @@
 name: Verify
 
-# The fast gate. It runs on everything, so it must stay cheap: no dependency
-# install, no build. It answers one question — is design/ still an exact copy of
-# the upstream tree, with every intentional difference declared?
+# This workflow records the exact Windows checkout used by a trusted run.  It is
+# intentionally not a test, lint, type-check, static-analysis, accessibility, or
+# release gate.  Release acceptance belongs to the packaging/publication job.
 
 on:
   push:
   workflow_dispatch:
 
-# This workflow uses a self-hosted runner. Do not attach an untrusted
-# pull_request trigger to it: a pull request could execute repository-controlled
-# code on the persistent runner. Pushes and manual dispatches are the trusted
-# paths for this contract.
-
 permissions:
   contents: read
 
-# Supersede rather than queue. Several pushes in quick succession used to leave
-# four Verify runs stacked behind each other, each spending its full time on a
-# commit that a later one had already replaced — so the verdict that actually
-# mattered arrived twenty minutes after the push that needed it.
-#
-# `cancel-in-progress` is safe HERE and would not be on the release workflow:
-# this job publishes nothing and has no side effects, so a cancelled run leaves
-# nothing half-done. It costs the superseded commit its verdict, which is the
-# intended trade — nobody is waiting on the result for a commit that is no
-# longer the tip.
 concurrency:
   group: verify-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify port integrity
-    runs-on: [self-hosted, linux, material-designer]
+  provenance:
+    name: Record Windows provenance
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
     steps:
-      - name: Keep the checkout byte-exact
-        # verify-port.sh compares the bytes on disk against upstream blob ids with
-        # `git hash-object --no-filters`. The root .gitattributes says `* text=auto`,
-        # so a checkout that translates line endings would rewrite every text file
-        # under design/ and report thousands of false differences. Linux never does
-        # that, which is why this job runs here — this makes the requirement
-        # explicit rather than an unstated property of the runner.
-        run: |
-          git config --global core.autocrlf false
-          git config --global core.eol lf
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           clean: true
-          # No submodule. verify-port.sh falls back to the committed manifest of
-          # upstream blob ids, which answers exactly the same question without
-          # cloning a 1.7 GB object store on every push. When the submodule IS
-          # present the script cross-checks the manifest against it, so the
-          # shortcut cannot drift from the thing it stands in for.
           fetch-depth: 0
 
-      - name: Bootstrap Linux CI tools
-        shell: bash
-        run: bash scripts/bootstrap-ci-tools.sh
+      - name: Bootstrap Windows CI tools
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
-      - name: Verify design/ against the pinned upstream tree
-        shell: bash
-        run: bash scripts/verify-port.sh
-
-      - name: Balance-check every tracked stylesheet
-        shell: bash
-        # A single stray brace in a web stylesheet fails the Windows build at
-        # minute 35, with an error that names the import graph's entry file
-        # rather than the file at fault — four Release runs in a row died
-        # exactly that way. Typecheck does not read CSS and the port verifier
-        # only compares bytes, so this is the one gate that can catch the
-        # fault class in seconds. A raw brace count is deliberate: all 507
-        # tracked stylesheets balance today, comments included, so a mismatch
-        # is a defect, not noise.
+      - name: Record checkout provenance
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
-          set -uo pipefail
-          bad=0
-          while IFS= read -r f; do
-            n=$(awk '{o+=gsub(/{/,"{"); c+=gsub(/}/,"}")} END{print o-c}' "$f")
-            if [ "$n" != "0" ]; then
-              echo "::error file=$f::unbalanced braces (open minus close = $n)"
-              bad=1
-            fi
-          done < <(git ls-files '*.css')
-          exit "$bad"
+          $ErrorActionPreference = "Stop"
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($head)) {
+            throw "git could not resolve the checked-out commit"
+          }
+          $record = Join-Path $env:RUNNER_TEMP "material-designer-provenance.md"
+          @(
+            "# Windows provenance"
+            ""
+            "- Commit: ``$head``"
+            "- Requested SHA: ``${{ github.sha }}``"
+            "- Ref: ``${{ github.ref }}``"
+            "- Run: [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+            "- Runner image: ``windows-2022``"
+            "- Recorded at (UTC): ``$((Get-Date).ToUniversalTime().ToString('o'))``"
+          ) | Set-Content -LiteralPath $record -Encoding utf8
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "### Windows provenance"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ""
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- Commit: ``$head``"
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "- Runner image: ``windows-2022``"
 
-      - name: Check every translation key is declared and every locale complete
-        shell: bash
-        # Pure shell, so it runs in this job rather than behind the workspace
-        # install: a component using a key no locale declares is a typecheck
-        # failure forty minutes into the Windows build and a four-second
-        # failure here. `zh-HK` satisfies Dict by spreading `zh-TW`, so its
-        # completeness is the compiler's to prove, not this script's — it says
-        # so rather than silently passing the locale.
-        run: bash scripts/check-i18n-keys.sh
-
-      - name: Check the startup waits match the text the app renders
-        shell: bash
-        # The one string in the product whose mismatch nothing reports: 42
-        # Playwright waits synchronise on the loading shell being hidden, and a
-        # wait for text the app never renders is satisfied immediately. Drift
-        # here does not go red, it quietly disarms every startup gate.
-        run: bash scripts/check-loading-shell.sh
-
-      - name: Check the command-palette regex contract
-        shell: bash
-        # Keep this before dependency installation. The palette's own builder
-        # wiring, independent controller and narrow-layout target are source
-        # contracts; none of them needs Node to be checked.
-        run: bash scripts/check-command-palette-regex.sh
-
-      - name: Report port integrity
+      - name: Upload provenance record
         if: ${{ always() }}
-        shell: bash
-        run: |
-          set -uo pipefail
-          json=$(bash scripts/verify-port.sh --json 2>/dev/null | tail -1)
-          if [ -z "$json" ]; then
-            echo "### ❌ Port integrity" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "The verifier produced no output." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          get() { printf '%s' "$json" | sed -n "s/.*\"$1\":\([0-9]*\).*/\1/p"; }
-          pinned=$(printf '%s' "$json" | sed -n 's/.*"pinned":"\([^"]*\)".*/\1/p')
-          gaps=$(get gaps)
-          {
-            if [ "${gaps:-1}" = "0" ]; then
-              echo "### ✅ Port integrity — 0 gaps"
-            else
-              echo "### ❌ Port integrity — ${gaps} gap(s)"
-            fi
-            echo ""
-            echo "Compared against upstream \`${pinned}\`."
-            echo ""
-            echo "| Measure | Count |"
-            echo "|---|---:|"
-            echo "| Files expected | $(get expected) |"
-            echo "| Files tracked | $(get tracked) |"
-            echo "| Declared differences | $(get declared) |"
-            echo "| Missing | $(get missing) |"
-            echo "| Bytes differ | $(get bytesDiffer) |"
-            echo "| Mode mismatch | $(get modeMismatch) |"
-            echo "| Blob id mismatch | $(get oidMismatch) |"
-            echo "| Extra | $(get extra) |"
-            echo "| Untracked | $(get untracked) |"
-            echo "| Stale notices | $(get staleNotice) |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Set up Node
-        if: ${{ always() }}
-        uses: actions/setup-node@v4
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
-          node-version: 24
-
-      - name: Verify the CI Node toolchain
-        if: ${{ always() }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          node_version=$(node --version)
-          case "$node_version" in
-            v24.*) ;;
-            *) echo "::error::expected Node 24, found $node_version"; exit 1 ;;
-          esac
-          echo "using $node_version"
-
-      - name: Verify the self-hosted release contract
-        if: ${{ always() }}
-        shell: bash
-        run: node scripts/test-release-contract.mjs
-
-      - name: Count lines
-        if: ${{ always() }}
-        shell: bash
-        run: |
-          set -uo pipefail
-          if [ ! -f scripts/line-count.mjs ]; then
-            echo "scripts/line-count.mjs is not present yet; skipping." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          # tee, not a plain redirect: a table that exists only in the job
-          # summary cannot be read back from the logs when something looks wrong.
-          if ! node scripts/line-count.mjs | tee -a "$GITHUB_STEP_SUMMARY"; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "The line counter failed; see the step log." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-  test:
-    name: Unit tests
-    runs-on: [self-hosted, linux, material-designer]
-    timeout-minutes: 60
-    # Separate from the port-integrity job above so that gate stays cheap: this
-    # one installs the whole workspace and compiles native modules.
-    #
-    # It runs on Linux deliberately. Several suites unpack macOS prebuilt
-    # binaries and assert their executable bit survived, which a Windows
-    # filesystem cannot represent — so the Windows release job excludes those
-    # specs and this job is where they actually run. Between the two, every spec
-    # runs somewhere.
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          clean: true
-
-      - name: Bootstrap Linux CI tools
-        shell: bash
-        run: bash scripts/bootstrap-ci-tools.sh
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.33.2
-          run_install: false
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: design/pnpm-lock.yaml
-
-      - name: Set up Python for native dependency bootstrap
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          architecture: x64
-
-      - name: Verify the CI Node and pnpm toolchain
-        shell: bash
-        run: |
-          set -euo pipefail
-          node_version=$(node --version)
-          pnpm_version=$(pnpm --version)
-          case "$node_version" in
-            v24.*) ;;
-            *) echo "::error::expected Node 24, found $node_version"; exit 1 ;;
-          esac
-          if [ "$pnpm_version" != "10.33.2" ]; then
-            echo "::error::expected pnpm 10.33.2, found $pnpm_version"
-            exit 1
-          fi
-          python_version=$(python --version 2>&1)
-          case "$python_version" in
-            "Python 3.12."*) ;;
-            *) echo "::error::expected Python 3.12, found $python_version"; exit 1 ;;
-          esac
-          echo "using $node_version, pnpm $pnpm_version, and $python_version"
-
-      - name: Install dependencies
-        working-directory: design
-        timeout-minutes: 40
-        env:
-          OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
-        # The setup actions install the requested tools; this frozen-lockfile
-        # install resolves the workspace from the committed manifest and lockfile.
-        # setup-node's pnpm-store cache is an optimisation only, never a
-        # substitute for installation and never a cached node_modules tree.
-        run: pnpm install --frozen-lockfile
-
-      - name: Build the packages the tests import
-        working-directory: design
-        # postinstall builds the shared packages and the tools, but not the
-        # desktop app — and the packaged app's tests import `@open-design/desktop/main`,
-        # which is the built `dist/`, not the source. Without this the suite dies
-        # with ERR_MODULE_NOT_FOUND before running a single assertion.
-        run: |
-          pnpm --filter @open-design/daemon run build
-          pnpm --filter @open-design/desktop run build
-          # The web sidecar's declaration output is the third thing upstream's
-          # own CI builds here, and it was the one missing. `apps/packaged`
-          # imports `@open-design/web/sidecar`, which resolves to dist/ — so
-          # without this the packaged suite dies at import time rather than on
-          # an assertion, and the error names a module rather than a cause.
-          pnpm --filter @open-design/web run build:sidecar
-
-      - name: Rebuild the changelog module from the changelog
-        shell: bash
-        # `lib/changelog/generated.ts` embeds the changelog markdown and every
-        # commit it references, resolved against git. It is committed, so it can
-        # go stale the moment `CHANGELOG.md` is edited — and a stale copy means
-        # the in-app changelog viewer documents the past while claiming to
-        # document the present.
-        #
-        # Regenerating here rather than only checking means the built app always
-        # carries current data even when the committed copy has drifted. The
-        # drift itself is a warning, not a failure: it is untidy, not wrong.
-        #
-        # A commit that does NOT resolve is a different matter and fails the
-        # build, because that is a dead link in a document whose whole promise
-        # is that every entry is traceable to the code that made it.
-        run: |
-          set -euo pipefail
-          node scripts/generate-changelog.mjs
-          if ! git diff --quiet -- design/apps/web/src/lib/changelog/generated.ts; then
-            echo "::warning::the committed changelog module was stale; CI rebuilt it. Run 'node scripts/generate-changelog.mjs' and commit the result."
-          fi
-          # The generator records an abbreviation it could not resolve rather
-          # than emitting a link to it. Any entry in that list is a changelog
-          # line pointing at a commit this repository does not have.
-          unresolved=$(sed -n 's/.*unresolved: \[\(.*\)\].*/\1/p' design/apps/web/src/lib/changelog/generated.ts | tr -d " '\"" )
-          if [ -n "$unresolved" ]; then
-            echo "::error::changelog references commits that do not exist here: $unresolved"
-            exit 1
-          fi
-          echo "changelog module rebuilt; every referenced commit resolved"
-
-      - name: Guard, craft lint and translation coverage
-        working-directory: design
-        shell: bash
-        # Three checks the workspace ships and nothing ran. They are grouped
-        # because they share the install above and each takes seconds; they are
-        # separate commands rather than one so a failure names which of the
-        # three it was.
-        #
-        # `|| true` appears nowhere here on purpose. A check wired in to be
-        # ignored is worse than one that is not wired in at all, because the
-        # green tick then means less than it appears to across the whole job.
-        run: |
-          set -euo pipefail
-          pnpm guard
-          pnpm lint:craft
-          pnpm i18n:check
-
-      - name: Typecheck
-        working-directory: design
-        shell: bash
-        # This runs HERE, on Linux, and not only in the release job, because a
-        # type error is the cheapest failure in the build to find and the most
-        # expensive one to find late. The web app's translation dictionary is a
-        # typed interface: a component using a key that no locale declares is a
-        # type error, and discovering that at the end of a forty-minute Windows
-        # packaging run rather than five minutes into a Linux one wastes most of
-        # an hour for a one-line cause.
-        run: |
-          set -euo pipefail
-          pnpm -r --workspace-concurrency=4 --if-present run typecheck
-
-      - name: Test the packages that carry product identity
-        working-directory: design
-        shell: bash
-        # Each suite tees to its own log so the summary step can report counts
-        # per package. `pipefail` is what keeps `tee` from swallowing a failing
-        # exit code — without it the step would go green on a red suite, which
-        # is a worse outcome than having no summary at all.
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/testlogs"
-          pnpm --filter @open-design/tools-pack run test 2>&1 | tee "$RUNNER_TEMP/testlogs/tools-pack.log"
-          pnpm --filter @open-design/packaged run test 2>&1 | tee "$RUNNER_TEMP/testlogs/packaged.log"
-          pnpm --filter @open-design/desktop run test 2>&1 | tee "$RUNNER_TEMP/testlogs/desktop.log"
-
-      - name: Test the shared component primitives
-        working-directory: design
-        shell: bash
-        # Small and fast, and it covers the one primitive every dialog in the
-        # application is built from — including its focus trap, which is an
-        # accessibility contract rather than a detail.
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/testlogs"
-          pnpm --filter @open-design/components run test 2>&1 | tee "$RUNNER_TEMP/testlogs/components.log"
-
-      - name: Test the web application
-        working-directory: design
-        shell: bash
-        # The largest suite in the workspace by a wide margin — 459 files. It
-        # runs last so a failure here does not delay the verdict of the
-        # cheaper checks above, and in its own step so a failure says "the web
-        # suite" rather than "the tests".
-        #
-        # Its first run in this repository's history reported 454 of 459
-        # passing. Every one of the five failures was a test describing
-        # behaviour the product had deliberately moved on from — a one-click
-        # batch delete that now opens a preview dialog, menu items that gained
-        # proper `role="menuitem"` semantics, a tab drop that is now confined
-        # to its own region — plus one genuine defect in the regex highlighter
-        # and two mistaken fixtures. All are fixed; the suite is a gate again.
-        #
-        # Its own config pins the worker count, so this adds no parallelism
-        # flags of its own.
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/testlogs"
-          pnpm --filter @open-design/web run test 2>&1 | tee "$RUNNER_TEMP/testlogs/web.log"
-
-      - name: Report test counts per package
-        if: ${{ always() }}
-        shell: bash
-        # A coverage regression is invisible in a green tick. Reporting the
-        # per-package counts in the job summary makes "the web suite quietly
-        # lost forty files" something you notice on the run page rather than
-        # something you find by opening logs you had no reason to open.
-        #
-        # It reads what each suite actually printed rather than a number kept
-        # anywhere else, and a suite that did not run says so instead of
-        # reporting zero — zero and "never started" mean very different things.
-        run: |
-          set -uo pipefail
-          logs="$RUNNER_TEMP/testlogs"
-          {
-            echo "### Test counts"
-            echo ""
-            echo "| Package | Test files | Tests | Result |"
-            echo "| --- | ---: | ---: | --- |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          total_files=0
-          total_tests=0
-          for pkg in tools-pack packaged desktop components web; do
-            f="$logs/$pkg.log"
-            if [ ! -f "$f" ]; then
-              echo "| \`$pkg\` | — | — | did not run |" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-            # Vitest prints "Test Files  N passed (M)" / "Tests  N passed (M)";
-            # the parenthesised figure is the total, which is the one that moves
-            # when coverage regresses.
-            #
-            # The colour codes have to come off FIRST. Vitest keeps colour on in
-            # Actions, and the escape sequence sits between the line start and
-            # the word, so an anchored pattern matches "Test Files" and silently
-            # misses "Tests" — giving a summary that looks fine and is missing a
-            # column. Verified against real colourised output, both passing and
-            # failing, before this was trusted.
-            clean=$(sed 's/\x1b\[[0-9;]*m//g' "$f")
-            files=$(printf '%s\n' "$clean" | grep -oE 'Test Files[^(]*\(([0-9]+)\)' | tail -1 | sed 's/.*(\([0-9]*\))/\1/')
-            tests=$(printf '%s\n' "$clean" | grep -oE '(^|[^a-zA-Z])Tests[^(]*\(([0-9]+)\)' | tail -1 | sed 's/.*(\([0-9]*\))/\1/')
-            if printf '%s\n' "$clean" | grep -qE 'Test Files.*failed'; then
-              result='❌ failed'
-            elif [ -n "$files" ]; then
-              result='✅ passed'
-            else
-              result='⚠️ no counts found'
-            fi
-            echo "| \`$pkg\` | ${files:-—} | ${tests:-—} | $result |" >> "$GITHUB_STEP_SUMMARY"
-            [ -n "$files" ] && total_files=$(( total_files + files ))
-            [ -n "$tests" ] && total_tests=$(( total_tests + tests ))
-          done
-
-          {
-            echo "| **Total** | **$total_files** | **$total_tests** | |"
-            echo ""
-            echo "Counts are read from each suite's own output. A package that never"
-            echo "started reports \`did not run\` rather than zero."
-          } >> "$GITHUB_STEP_SUMMARY"
+          name: material-designer-provenance-${{ github.run_id }}
+          path: ${{ runner.temp }}\material-designer-provenance.md
+          if-no-files-found: warn
+          retention-days: 7

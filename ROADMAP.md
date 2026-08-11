@@ -1,5 +1,20 @@
 # Roadmap
 
+> [!IMPORTANT]
+> **Release-shutdown status — 2026-08-11.** Default branch `main` is at
+> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b) and matches `origin/main`.
+> The pure port verifier has a recorded zero-gap result. The latest exact-SHA
+> Verify (`31379243564`) and Release (`31379243614`) runs are queued, so the
+> release and installed-build capture matrix remain unverified. The shutdown
+> work is repairing the root build scripts and workflows; it does not turn
+> queued or historical evidence into a green result.
+
+The remaining release blocker is explicit: the current standards require a
+downloadable dim-sum image on every release while also forbidding a consumer
+repository from copying catalogue photos. The workflow must not choose a side
+silently; until the policy is resolved, a release stops before publication and
+records the reason.
+
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
 

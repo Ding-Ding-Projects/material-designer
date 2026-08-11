@@ -1,5 +1,27 @@
 ﻿# Handoff
 
+> [!IMPORTANT]
+> **Current release-shutdown handoff — 2026-08-11.** `main` and `origin/main` are both
+> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b), with one primary checkout and no
+> stashes or linked worktrees. The exact-SHA Verify and Release runs
+> [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
+> and [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
+> are queued; they do not prove a green result. The historical latest release
+> `v0.16.1-r71.1` is stale and lacks the Squirrel feed assets required for a
+> current release.
+>
+> The active repair lanes add the root build scripts, move workflow execution
+> to hosted `windows-2022`, remove test/lint/typecheck/static/screenshot gates
+> from Actions, and add artifact/target/timing verification. No new release is
+> published until a real unsigned Squirrel installer, the line-count evidence,
+> and the contradictory dim-sum asset rule are all handled honestly. Eight
+> installed-build screenshots are now committed from the local portable
+> artifact: splash, English and Traditional Chinese onboarding in light/dark
+> themes, the local coding-agent editor in both languages, its narrow layout,
+> and its authentication error state. They are evidence for commit `887d5a06`,
+> not a published release; the remaining destinations, settings and editor
+> matrix still needs a later run with a verified release artifact.
+
 State of play for whoever picks this up next.
 
 Read this before touching anything.

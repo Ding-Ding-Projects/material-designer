@@ -1,5 +1,13 @@
 # Release code names
 
+> [!IMPORTANT]
+> **Policy conflict recorded — 2026-08-11.** The current standards require a
+> downloadable dim-sum photo on every release, while the public-source rule
+> forbids a consumer repository from copying or attaching catalogue photos. The
+> old bundled-image fallback is not a compliant resolution and is no longer a
+> publication path. Until the owner chooses a permitted asset route, the release
+> workflow must fail closed and state that no release was published.
+
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
 names together, resolved from the public catalogue at
 [`Ding-Ding-Projects/dim-sum-photos`](https://github.com/Ding-Ding-Projects/dim-sum-photos).
@@ -7,9 +15,9 @@ It sits beside the version, never in place of it, and **a dish is used exactly
 once**.
 
 > [!IMPORTANT]
-> **Status: built and running, after a real failure.** `scripts/release-codename.sh`
-> picks the name, the `Release` workflow calls it, and published releases carry a
-> code name, a photo and a spent-marker. The requirement that the code name also
+> **Status: picker built; publication is blocked by a policy conflict.** `scripts/release-codename.sh`
+> picks a public code name when the catalogue is reachable, and the `Release`
+> workflow calls it. No current release carries a new photo or spent-marker. The requirement that the code name also
 > appear in the app's About surface, the changelog viewer and the landing page's
 > release section is **not met** — today it appears in the release notes and
 > nowhere else.
@@ -55,12 +63,12 @@ down rather than left implicit:
 - **A consumer repository must not copy public catalogue photos** or add to its
   bundled set; it may *link* the public photo.
 
-Both are satisfied at once. The **code name and its photo link** come from the
-public catalogue. The **attached asset** is one of the twenty-four images already
-tracked here, rotated deterministically by the number of dishes spent. Nothing is
-fetched or vendored at publish time, and the release still carries a real photo
-you can download. The attached photo names its own dish, so it is never mistaken
-for the code name's.
+They are not currently satisfiable together in this consumer repository. The
+**code name and its photo link** come from the public catalogue, but attaching a
+copied image from this repository would violate the public-source rule. The
+workflow therefore records the contradiction and stops before publication rather
+than choosing one requirement silently. A future policy decision must identify a
+permitted downloadable-image route before a release can proceed.
 
 ### How the spent dishes are found
 
@@ -92,19 +100,19 @@ The flattening takes each field **once per record**, because `description` carri
 its own `en` and the `name`/`alt` objects span several lines; a naive "last match
 wins" pass silently names the build after a sentence from the description.
 
-### It never blocks a release
+### Publication behaviour while the conflict remains
 
 Three degradations, in order:
 
 | Situation | Behaviour |
 | --- | --- |
-| Public catalogue unreachable | Falls back to the bundled index, says so on standard error |
-| No unused dish resolvable anywhere | Emits an empty `id`, exits `0`, release ships with its version alone |
-| No photo available to attach | Emits a workflow warning; the release still publishes |
+| Public catalogue unreachable | Emits a warning and leaves the code-name fields empty |
+| No unused dish resolvable anywhere | Emits an empty `id`; the version remains authoritative |
+| The required downloadable photo cannot be attached without copying a catalogue image | The workflow fails closed before publication and records the policy conflict |
 
-This is deliberate and worth preserving. A code name is decoration with a purpose;
-a release must never be blocked, delayed or renamed because a catalogue is
-unavailable.
+This is deliberate and auditable. A code name is decoration with a purpose, but
+the contradictory asset requirements are an unresolved release contract, not a
+reason to attach an unapproved binary or claim a successful publication.
 
 ### Output
 
@@ -117,14 +125,12 @@ The script prints key-value lines suitable for a workflow output file:
 | `name_en` / `name_zh` | English and Traditional Chinese names. |
 | `jyutping` | Romanisation. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
-| `photo_url` | Public asset URL for the code name's photo. Empty on the bundled fallback. |
-| `image` | Repository-relative path to the bundled image that gets attached. |
-| `image_dish` | Which dish that attached image depicts. |
-| `source` | `public` or `bundled`, so the notes can say where the name came from. |
+| `photo_url` | Public asset URL for the code name's photo. |
+| `source` | `public` when the name was resolved from the catalogue, otherwise `unavailable`. |
 
 The workflow uses `codename` in the release title and notes, `id` in the
-spent-marker comment, `photo_url` for the inline picture, and `image` to attach a
-photo asset named after `image_dish`.
+spent-marker comment, and `photo_url` as a public link. It does not copy or
+attach a catalogue image in this repository.
 
 ### The dish's names stay factual
 
@@ -151,7 +157,7 @@ catalogue is not auditable.
 | The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
 | The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
 | The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
-| No photo attached at all | `assets/dim-sum/images` is empty or unreadable | The workflow emits a warning rather than failing the publish. |
+| No photo attached at all | The global downloadable-photo requirement conflicts with the public no-copy rule | Publication stops before `gh release create`; resolve the policy before retrying. |
 | Only some prior releases were consulted | The release listing is capped at 200 | Fine for now; if this project ever exceeds it, the cap becomes a correctness bug rather than a performance one. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
 
@@ -161,13 +167,14 @@ catalogue is not auditable.
   chain and passed through the environment convention the tooling expects. It is
   never printed, and the script itself never receives it for that purpose — the
   workflow does the listing and hands the script a list of ids.
-- **Nothing binary is fetched at publish time.** The catalogue index is JSON that
-  is parsed as text; the attached photo is already in the tree and reviewed. An
-  image downloaded during publishing would be an unreviewed binary in a release.
+- **No catalogue image is copied or fetched at publish time.** The catalogue index
+  is parsed as text and the workflow can link a published public asset, but it does
+  not attach a duplicate binary.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
-- **A catalogue fetch failure degrades, never fails open.** An unreachable public
-  index falls back to reviewed local content rather than to an unchecked one.
+- **A catalogue fetch failure is reported.** An unreachable public index leaves the
+  code-name fields empty; the unresolved downloadable-photo policy still prevents
+  publication until the conflict is resolved.
 
 ## Verification
 

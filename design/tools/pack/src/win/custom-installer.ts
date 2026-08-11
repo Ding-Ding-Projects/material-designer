@@ -11,7 +11,6 @@ import { PRODUCT_NAME } from "./constants.js";
 import { pathExists } from "./fs.js";
 import { resolveWinInstallIdentity } from "./identity.js";
 import { readPackagedVersion } from "./manifest.js";
-import { ensureNsisPersianLanguageAlias } from "./nsis.js";
 import { sanitizeNamespace } from "./paths.js";
 import type { WinBuiltAppManifest, WinPackTiming, WinPaths } from "./types.js";
 
@@ -23,7 +22,10 @@ const NSIS_LANGUAGES = [
   { macro: "LANG_TRADCHINESE", name: "TradChinese" },
   { macro: "LANG_PORTUGUESEBR", name: "PortugueseBR" },
   { macro: "LANG_RUSSIAN", name: "Russian" },
-  { macro: "LANG_PERSIAN", name: "Persian" },
+  // NSIS ships this language as Farsi.nlf/.nsh.  Its English display name is
+  // still "Persian", so use the native identifier instead of trying to write
+  // a Persian alias into the protected Program Files installation.
+  { macro: "LANG_FARSI", name: "Farsi" },
 ] as const;
 
 const WIN_NSIS_OVERLAY_RELATIVE_PATHS = [
@@ -1215,10 +1217,6 @@ export async function buildCustomWinNsisInstaller(
   const { runExecSegment, runSegment, timings } = createWinNsisTimingHelpers();
   const makensisCommand = await runSegment("nsis:resolve-makensis", async () => resolveMakensisCommand(config));
   const packagedVersion = await runSegment("nsis:read-version", async () => readPackagedVersion(config));
-  await runSegment("nsis:ensure-persian-language", async () => {
-    await ensureNsisPersianLanguageAlias(config);
-  });
-
   await runSegment("nsis:prepare", async () => {
     await mkdir(dirname(paths.setupPath), { recursive: true });
     await rm(paths.setupPath, { force: true });

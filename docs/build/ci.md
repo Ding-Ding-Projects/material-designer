@@ -1,12 +1,23 @@
 # Building in continuous integration
 
-Three workflows live at the repository root: **`Verify`**, a cheap gate that runs
-on trusted pushes and manual dispatch; **`Release`**, which builds the Windows
-application and publishes it; and **`Pages`**, which deploys `site/` and enforces
-the bundled-assets rule at publish time. All three select a labelled self-hosted
-runner, with Linux and Windows kept as separate contracts. `Pages` is documented in full under
-[../site/](../site/) — this page covers the two build workflows and summarises
-where `Pages` fits.
+> [!IMPORTANT]
+> **2026-08-11 release-shutdown status.** The committed workflows are being repaired to
+> use hosted `windows-2022` execution for the active desktop scope. Actions no
+> longer runs tests, lint, typecheck, static analysis or screenshot checks; those
+> remain local/manual evidence and are never release conditions. The exact-SHA
+> runs [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
+> and [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
+> for `887d5a06` are queued, so no green result is claimed. The historical
+> self-hosted/Linux descriptions below are retained as history and must not be
+> read as the current runner contract.
+
+Three workflows live at the repository root: **`Verify`**, a provenance report;
+**`Release`**, which builds and publishes the Windows application; and **`Pages`**,
+which deploys `site/`. The active jobs use the pinned hosted `windows-2022`
+image. No workflow runs tests, lint, typecheck, static analysis or screenshot
+checks, and none of those local/manual results can hold back publication.
+`Pages` is documented in full under [../site/](../site/) — this page covers the
+two build workflows and summarises where `Pages` fits.
 
 > [!IMPORTANT]
 > **The current Release run is not green.** Run
@@ -54,10 +65,11 @@ platform and runtime pair. The release workflow's own comment calls that step
 each job cleans its checkout and installs the pinned toolchain before resolving
 the workspace from its committed lockfile.
 
-**A build should be a fact about the code.** The runner labels select dedicated
-machines with the required platform and project contract. Checkout cleanup plus
-the setup actions for Node 24 and pnpm 10.33.2 prevent a prior job's workspace or
-preinstalled package manager from becoming an invisible input.
+**A build should be a fact about the code.** The pinned hosted image supplies the
+required platform while the workflow bootstraps Node 24, pnpm 10.33.2, Python
+3.12 and the native compiler. Checkout cleanup plus the setup actions prevent a
+prior job's workspace or preinstalled package manager from becoming an invisible
+input.
 
 **Release artifacts should be produced by the thing that tested them.** The
 installer a user downloads must be the artifact the passing run built, at the

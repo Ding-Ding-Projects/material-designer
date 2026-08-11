@@ -6,14 +6,22 @@ How a release is produced, what proves it works, and what each published file is
 
 | File | What it covers |
 | --- | --- |
-| [release-pipeline.md](release-pipeline.md) | The whole run, step by step: the line-ending guard, port verification inside the release job, install, typecheck, the Windows-only identity suites, the installer build with its explicit existence check, the smoke test, the notes, and publication. **Start here.** |
-| [packaged-smoke-test.md](packaged-smoke-test.md) | The only step that checks the product works: it installs the built installer, launches it, makes the running process answer its own health endpoint, screenshots it, uninstalls it and asserts zero residue. Assertion by assertion — and an explicit list of what it does *not* prove. |
+| [release-pipeline.md](release-pipeline.md) | The whole run, step by step: checkout, dependency bootstrap, packaging, evidence, notes and publication. Local smoke testing is documented separately and is not an Actions gate. **Start here.** |
+| [packaged-smoke-test.md](packaged-smoke-test.md) | The local/manual step that checks the product works: it installs the built installer, launches it, makes the running process answer its own health endpoint, captures it, uninstalls it and asserts zero residue. Assertion by assertion — and an explicit list of what it does *not* prove. |
 | [automatic-updates.md](automatic-updates.md) | The Windows Squirrel feed, background download, checksum verification, explicit restart action, configuration, failure modes and verification boundary. |
 | [line-count.md](line-count.md) | How the published figure is produced by a committed script at the released commit, what its two scopes and three totals mean, how authorship is attributed per surviving line, and why nobody ever counts by hand. |
-| [code-names.md](code-names.md) | How the dim sum code name is chosen from the bundled catalogue, why the spent dishes are read out of prior releases rather than a counter, why a dish is spent exactly once, and why a missing dish never blocks a release. |
+| [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, why spent dishes are read out of prior releases rather than a counter, and why the unresolved photo conflict currently stops publication. |
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
 
 ## Status
+
+> [!WARNING]
+> The current release path is not published. The exact-SHA runs at `887d5a06`
+> were queued before the workflow repair and do not prove a green result. The
+> local candidate installer was built and verified unsigned, but publication is
+> intentionally held because the standing rules simultaneously require a
+> downloadable dim-sum photo and forbid copying or attaching catalogue photos in
+> this consumer repository.
 
 > [!IMPORTANT]
 > **Releases exist.** The latest verified legacy release is `v0.16.1-r71.1`,
@@ -35,14 +43,14 @@ How a release is produced, what proves it works, and what each published file is
 | Question | Answer |
 | --- | --- |
 | What triggers a release? | Every push to the default branch, plus manual dispatch with two inputs. |
-| Where does it build? | One dedicated self-hosted Windows runner labelled `self-hosted, windows, material-designer`, from clean checkout to publication. |
+| Where does it build? | The pinned hosted `windows-2022` image, from clean checkout to publication. |
 | What is the tag? | `v<version>-r<run number>.<run attempt>` — unique and monotonic without a counter to maintain. |
-| What must pass first? | Port verification, the pinned Node 24/pnpm 10.33.2 setup check, the frozen-lockfile install, typecheck, the Windows identity suites, payload validation, an explicit installer-path existence check, and the packaged smoke test. |
+| What must pass first? | Dependency bootstrap, frozen-lockfile install, packaging, payload validation, the explicit installer-path check, unsigned-artifact evidence and publication verification. Tests, lint, typecheck, static analysis and screenshot checks run only locally/manual and never gate Actions. |
 | What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, a portable archive when one was built, and the code name's photograph. |
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |
 | Who counts the lines? | The run does, using a committed script, at the released commit. Never a person. |
-| Can a missing code name block a release? | No. The picker exits cleanly with none and the release ships with its version alone. |
+| Can the current photo conflict block a release? | Yes. The workflow stops before publication and records the conflict; it must not copy a catalogue image silently. |
 
 ## The one rule everything here serves
 

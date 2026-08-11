@@ -28,6 +28,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Release shutdown now records the boundary instead of guessing past it.**
+  The default branch is [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b8), while exact-SHA Verify
+  [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
+  and Release [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
+  remain queued. The shutdown repair adds the manual build path, hosted
+  `windows-2022` workflow route, defensive artifact evidence and target-SHA
+  checks. No new release or complete installed-build screenshot matrix is claimed until
+  those checks finish. The contradictory dim-sum photo rules remain an explicit
+  publication blocker rather than an excuse to copy a catalogue image.
+
+  Release shutdown 而家先畫清楚 release 條界線，唔再靠估。`887d5a06` 係目前 default
+  branch，但兩個 exact-SHA workflow 仲排緊隊；手動 build path、hosted
+  `windows-2022`、artifact provenance 同 target-SHA proof 先補齊，真正 release
+  同 installed-build screenshot 要等證據到位。dim-sum 相片兩條規矩互相打架，
+  未解決之前寧願停 publish，都唔會偷運 catalogue 相入 release。
+
 - **The half-wired Squirrel checkpoint is preserved but no longer shipped as code.**
   Merge `d0630480` records the checkpoint ancestry; `412e1fc7` removes its stale
   `squirrel.ts` module and `693f6439` restores the single active lifecycle import

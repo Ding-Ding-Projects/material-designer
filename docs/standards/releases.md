@@ -1,5 +1,14 @@
 # Releases
 
+> [!IMPORTANT]
+> **2026-08-11 release-shutdown status.** Release-grade proof is pending: the current
+> exact-SHA workflows are queued, the latest published release is stale and
+> lacks the complete Squirrel feed, and no fresh complete installed-build screenshot matrix
+> has been captured. The release workflow is being repaired to publish only
+> from a real unsigned installer targeted at the workflow SHA, with line-count,
+> timing, hash and post-publication evidence. Do not read historical release
+> records as proof for `887d5a06`.
+
 What every release must carry, what the in-app changelog must show, and how
 version history works.
 

@@ -1,7 +1,75 @@
 # Material Designer
 
+> [!IMPORTANT]
+> **Release-shutdown checkpoint — 2026-08-11.** The current default branch is
+> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b), and the working tree and
+> `origin/main` are aligned. The pure port verifier was last recorded at zero
+> gaps. The exact-SHA Verify run
+> [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
+> and Release run
+> [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
+> were queued, not green; both were configured for unavailable self-hosted
+> runners. No new release is claimed from those runs.
+>
+> This shutdown pass is repairing the manual `build.bat` / `build-installer.bat`
+> path, moving active workflows to a pinned hosted Windows runner, removing
+> test/lint/typecheck/static checks from Actions, and adding release provenance
+> and artifact evidence. A fresh set of installed-build screenshots is now
+> recorded below for the local portable artifact. The public dim-sum photo rules conflict with the older requirement
+> to attach a downloadable image; until that policy is resolved, publication
+> must fail closed rather than copy a catalogue photo into this repository's
+> release.
+
+## Build and installer scripts
+
+The repository root now carries the two supported manual entry points required
+for a fresh Windows checkout:
+
+```bat
+build.bat /s
+build-installer.bat --candidate 1 /s
+```
+
+Both scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
+3.12 and native compiler prerequisites, install the frozen workspace, and use
+the same `tools-pack win build --to all` Squirrel path as the release workflow.
+The installer script refuses signing, requires `NotSigned`, requires
+`Setup.exe`, `RELEASES` and a full `.nupkg`, and writes a commit-bound manifest
+and SHA-256 under `.yum-tong/`. They never tag, publish or create a release. Omit
+`/s` for the final local launch question after a successful build.
+
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
+
+<details>
+<summary><b>Fresh local installer screenshots — commit <code>887d5a06</code></b></summary>
+
+These captures are from the real portable archive produced by
+`build-installer.bat --candidate 1 /s` at commit `887d5a06`. The installer
+manifest recorded SHA-256
+`c0e2a8c556411ba7ba9183a91bbd33599e6f954ab0c8e175805b561525690d92` and
+`NotSigned` status. The archive was launched on an isolated hidden desktop and
+driven through the application’s own renderer; these are not mockups. They are
+local evidence only: no GitHub release was created for this candidate, and the
+full destination/settings/editor matrix is still unverified.
+
+![Material Designer splash screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-splash.png)
+
+![English light onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-english-light.png)
+
+![Traditional Chinese light onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-cantonese-light.png)
+
+![Traditional Chinese dark onboarding screen from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-onboarding-cantonese-dark.png)
+
+![English dark local coding-agent editor from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-english-dark.png)
+
+![Traditional Chinese dark local coding-agent editor from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-cantonese-dark.png)
+
+![English local coding-agent editor at the narrow supported window size from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-narrow-dark.png)
+
+![English local coding-agent authentication error state from the local 0.16.2 portable artifact](assets/screenshots/material-designer-0.16.2-local-agent-error-dark.png)
+
+</details>
 
 A local-first design workspace, rebuilt on Material Design 3.
 
