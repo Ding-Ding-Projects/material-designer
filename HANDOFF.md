@@ -1,12 +1,13 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **Current release-shutdown handoff — 2026-08-11.** `main` and `origin/main` are both
-> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b), with one primary checkout and no
+> **Current release-shutdown handoff — 2026-08-11.** The local candidate packaging commit is
+> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72), while `origin/main` still points at
+> `887d5a06` until this lane is dewed; this documentation update follows it. There is one primary checkout and no
 > stashes or linked worktrees. The exact-SHA Verify and Release runs
 > [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
 > and [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-> are queued; they do not prove a green result. The historical latest release
+> are queued against the older commit; they do not prove a green result. The historical latest release
 > `v0.16.1-r71.1` is stale and lacks the Squirrel feed assets required for a
 > current release.
 >
@@ -18,7 +19,7 @@
 > installed-build screenshots are now committed from the local portable
 > artifact: splash, English and Traditional Chinese onboarding in light/dark
 > themes, the local coding-agent editor in both languages, its narrow layout,
-> and its authentication error state. They are evidence for commit `887d5a06`,
+> and its authentication error state. They are evidence for commit `0d6e47c7`,
 > not a published release; the remaining destinations, settings and editor
 > matrix still needs a later run with a verified release artifact.
 

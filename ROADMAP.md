@@ -1,8 +1,9 @@
 # Roadmap
 
 > [!IMPORTANT]
-> **Release-shutdown status — 2026-08-11.** Default branch `main` is at
-> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b) and matches `origin/main`.
+> **Release-shutdown status — 2026-08-11.** The candidate packaging commit is
+> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72); the remote default branch remains at `887d5a06`
+> until this lane is dewed.
 > The pure port verifier has a recorded zero-gap result. The latest exact-SHA
 > Verify (`31379243564`) and Release (`31379243614`) runs are queued, so the
 > release and installed-build capture matrix remain unverified. The shutdown

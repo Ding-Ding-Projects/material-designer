@@ -1,15 +1,17 @@
 # Material Designer
 
 > [!IMPORTANT]
-> **Release-shutdown checkpoint — 2026-08-11.** The current default branch is
-> [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b), and the working tree and
-> `origin/main` are aligned. The pure port verifier was last recorded at zero
+> **Release-shutdown checkpoint — 2026-08-11.** The local candidate packaging commit is
+> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72); the remote default branch still points at
+> `887d5a06` until this focused lane is dewed. This status update follows that
+> packaging commit; the working tree is 🧹 and the
+> pure port verifier was last recorded at zero
 > gaps. The exact-SHA Verify run
 > [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
 > and Release run
 > [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-> were queued, not green; both were configured for unavailable self-hosted
-> runners. No new release is claimed from those runs.
+> were queued against the older `887d5a06` workflow definition, not green, and
+> do not verify this candidate. No new release is claimed from those runs.
 >
 > This shutdown pass is repairing the manual `build.bat` / `build-installer.bat`
 > path, moving active workflows to a pinned hosted Windows runner, removing
@@ -42,10 +44,10 @@ and SHA-256 under `.yum-tong/`. They never tag, publish or create a release. Omi
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
 
 <details>
-<summary><b>Fresh local installer screenshots — commit <code>887d5a06</code></b></summary>
+<summary><b>Fresh local installer screenshots — commit <code>0d6e47c7</code></b></summary>
 
 These captures are from the real portable archive produced by
-`build-installer.bat --candidate 1 /s` at commit `887d5a06`. The installer
+`build-installer.bat --candidate 1 /s` at commit `0d6e47c7`. The installer
 manifest recorded SHA-256
 `c0e2a8c556411ba7ba9183a91bbd33599e6f954ab0c8e175805b561525690d92` and
 `NotSigned` status. The archive was launched on an isolated hidden desktop and

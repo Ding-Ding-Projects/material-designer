@@ -7,7 +7,7 @@
 > has been captured. The release workflow is being repaired to publish only
 > from a real unsigned installer targeted at the workflow SHA, with line-count,
 > timing, hash and post-publication evidence. Do not read historical release
-> records as proof for `887d5a06`.
+> records as proof for the local candidate `0d6e47c7`.
 
 What every release must carry, what the in-app changelog must show, and how
 version history works.

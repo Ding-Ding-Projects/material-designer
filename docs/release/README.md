@@ -16,8 +16,9 @@ How a release is produced, what proves it works, and what each published file is
 ## Status
 
 > [!WARNING]
-> The current release path is not published. The exact-SHA runs at `887d5a06`
-> were queued before the workflow repair and do not prove a green result. The
+> The current release path is not published. The exact-SHA runs at the older
+> `887d5a06` commit were queued before the workflow repair and do not prove a
+> green result for local candidate `0d6e47c7`. The
 > local candidate installer was built and verified unsigned, but publication is
 > intentionally held because the standing rules simultaneously require a
 > downloadable dim-sum photo and forbid copying or attaching catalogue photos in

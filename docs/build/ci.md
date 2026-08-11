@@ -7,7 +7,8 @@
 > remain local/manual evidence and are never release conditions. The exact-SHA
 > runs [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
 > and [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-> for `887d5a06` are queued, so no green result is claimed. The historical
+> for the older `887d5a06` workflow definition are queued, so no green result is
+> claimed for the local candidate `0d6e47c7`. The historical
 > self-hosted/Linux descriptions below are retained as history and must not be
 > read as the current runner contract.
 

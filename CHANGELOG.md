@@ -29,7 +29,7 @@ version section when a release carries them.
 ### Changed
 
 - **Release shutdown now records the boundary instead of guessing past it.**
-  The default branch is [`887d5a06`](https://github.com/Ding-Ding-Projects/material-designer/commit/887d5a06f2b40a1462ce8b78f37d8e74ea8a56b8), while exact-SHA Verify
+  The local candidate is [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72), while exact-SHA Verify
   [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
   and Release [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
   remain queued. The shutdown repair adds the manual build path, hosted
@@ -38,7 +38,7 @@ version section when a release carries them.
   those checks finish. The contradictory dim-sum photo rules remain an explicit
   publication blocker rather than an excuse to copy a catalogue image.
 
-  Release shutdown 而家先畫清楚 release 條界線，唔再靠估。`887d5a06` 係目前 default
+  Release shutdown 而家先畫清楚 release 條界線，唔再靠估。`0d6e47c7` 係目前 local candidate
   branch，但兩個 exact-SHA workflow 仲排緊隊；手動 build path、hosted
   `windows-2022`、artifact provenance 同 target-SHA proof 先補齊，真正 release
   同 installed-build screenshot 要等證據到位。dim-sum 相片兩條規矩互相打架，
