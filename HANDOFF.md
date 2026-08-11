@@ -1,15 +1,16 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **Current release-shutdown handoff — 2026-08-11.** The local candidate packaging commit is
-> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72), while `origin/main` still points at
-> `887d5a06` until this lane is dewed; this documentation update follows it. There is one primary checkout and no
-> stashes or linked worktrees. The exact-SHA Verify and Release runs
-> [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
-> and [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-> are queued against the older commit; they do not prove a green result. The historical latest release
-> `v0.16.1-r71.1` is stale and lacks the Squirrel feed assets required for a
-> current release.
+> **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match
+> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). There is one primary checkout and no
+> stashes or linked worktrees. Exact-SHA Verify
+> [`31480515255`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515255)
+> and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
+> are green. Release [`31480515300`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515300)
+> reached Squirrel packaging, passed the unsigned and line-count checks, and then
+> failed closed at the documented dim-sum photo-policy conflict before publication.
+> The historical latest release `v0.16.1-r71.1` is stale and lacks the Squirrel feed
+> assets required for a current release.
 >
 > The active repair lanes add the root build scripts, move workflow execution
 > to hosted `windows-2022`, remove test/lint/typecheck/static/screenshot gates

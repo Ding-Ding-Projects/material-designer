@@ -1,17 +1,15 @@
 # Material Designer
 
 > [!IMPORTANT]
-> **Release-shutdown checkpoint — 2026-08-11.** The local candidate packaging commit is
-> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72); the remote default branch still points at
-> `887d5a06` until this focused lane is dewed. This status update follows that
-> packaging commit; the working tree is 🧹 and the
-> pure port verifier was last recorded at zero
-> gaps. The exact-SHA Verify run
-> [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
-> and Release run
-> [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-> were queued against the older `887d5a06` workflow definition, not green, and
-> do not verify this candidate. No new release is claimed from those runs.
+> **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
+> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). The working tree is 🧹 and the
+> pure port verifier has a recorded zero-gap result. Exact-SHA Verify
+> [`31480515255`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515255)
+> and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
+> are green. Release [`31480515300`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515300)
+> reached real Squirrel packaging and passed its unsigned check, then failed closed
+> at the documented dim-sum photo-policy conflict before publication. No new release
+> is claimed.
 >
 > This shutdown pass is repairing the manual `build.bat` / `build-installer.bat`
 > path, moving active workflows to a pinned hosted Windows runner, removing

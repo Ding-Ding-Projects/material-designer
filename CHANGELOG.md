@@ -28,21 +28,37 @@ version section when a release carries them.
 
 ### Changed
 
-- **Release shutdown now records the boundary instead of guessing past it.**
-  The local candidate is [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72), while exact-SHA Verify
-  [`31379243564`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243564)
-  and Release [`31379243614`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31379243614)
-  remain queued. The shutdown repair adds the manual build path, hosted
-  `windows-2022` workflow route, defensive artifact evidence and target-SHA
-  checks. No new release or complete installed-build screenshot matrix is claimed until
-  those checks finish. The contradictory dim-sum photo rules remain an explicit
-  publication blocker rather than an excuse to copy a catalogue image.
+- **The hosted release path now reaches the real packaging gate.** Commit
+  [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db)
+  fixes the release workflow's temporary-parent calculation: the previous
+  three-level walk collapsed `RUNNER_TEMP` to `D:\\`, so the workflow rejected
+  its own hosted workspace before Squirrel ran. Exact-SHA Verify
+  [`31480515255`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515255)
+  and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
+  are green; Release [`31480515300`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515300)
+  built the unsigned Squirrel payload and line-count evidence, then stopped at
+  the documented dim-sum photo policy conflict before publication. No new
+  release is claimed.
 
-  Release shutdown 而家先畫清楚 release 條界線，唔再靠估。`0d6e47c7` 係目前 local candidate
-  branch，但兩個 exact-SHA workflow 仲排緊隊；手動 build path、hosted
-  `windows-2022`、artifact provenance 同 target-SHA proof 先補齊，真正 release
-  同 installed-build screenshot 要等證據到位。dim-sum 相片兩條規矩互相打架，
-  未解決之前寧願停 publish，都唔會偷運 catalogue 相入 release。
+  Hosted release 個 temp parent 之前行三層，行到 `D:\\` 就自己嚇親自己，Squirrel
+  未出場已經被 safety check 逐客。`e99f40de` 改用 `RUNNER_TEMP` 直接上一層，
+  Verify 同 Pages 綠晒，Release 真係打到 unsigned Squirrel 包，最後先喺兩條
+  dim-sum 規矩打交嗰度停低；未有亂 publish。
+
+- **Release shutdown now records the boundary instead of guessing past it.**
+  The local candidate is [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db), while exact-SHA Verify
+  [`31480515255`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515255)
+  and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
+  are green. Release [`31480515300`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515300)
+  reached packaging and then stopped at the explicit dim-sum publication blocker.
+  The manual build path, hosted `windows-2022` workflow route, defensive artifact
+  evidence and target-SHA checks are present; no new release is claimed while the
+  photo-policy conflict remains unresolved.
+
+  Release shutdown 而家先畫清楚 release 條界線，唔再靠估。`e99f40de` 已經接棒；
+  Verify 同 Pages 有綠色證據，Release 去到 packaging 後喺 dim-sum 相片規矩衝突位
+  停低。手動 build path、hosted `windows-2022`、artifact provenance 同 target-SHA
+  proof 都留低，未解決之前寧願停 publish，都唔會偷運 catalogue 相入 release。
 
 - **The half-wired Squirrel checkpoint is preserved but no longer shipped as code.**
   Merge `d0630480` records the checkpoint ancestry; `412e1fc7` removes its stale

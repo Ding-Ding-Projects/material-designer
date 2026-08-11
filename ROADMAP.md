@@ -1,14 +1,12 @@
 # Roadmap
 
 > [!IMPORTANT]
-> **Release-shutdown status — 2026-08-11.** The candidate packaging commit is
-> [`0d6e47c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d6e47c7f9f9b8ec7a68cfc06d8f4d4b5ad91b72); the remote default branch remains at `887d5a06`
-> until this lane is dewed.
-> The pure port verifier has a recorded zero-gap result. The latest exact-SHA
-> Verify (`31379243564`) and Release (`31379243614`) runs are queued, so the
-> release and installed-build capture matrix remain unverified. The shutdown
-> work is repairing the root build scripts and workflows; it does not turn
-> queued or historical evidence into a green result.
+> **Release-shutdown status — 2026-08-11.** The local `main` and `origin/main` now match
+> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db).
+> The pure port verifier has a recorded zero-gap result. Exact-SHA Verify
+> (`31480515255`) and Pages (`31480515281`) are green. Release (`31480515300`)
+> built the unsigned Squirrel payload, then failed closed at the explicit dim-sum
+> photo-policy conflict before publication; no new release exists.
 
 The remaining release blocker is explicit: the current standards require a
 downloadable dim-sum image on every release while also forbidding a consumer
