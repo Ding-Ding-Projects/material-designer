@@ -28,6 +28,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **FileViewer menu ownership and focus boundaries are now explicit.** Commit
+  [`919073e7a`](https://github.com/Ding-Ding-Projects/material-designer/commit/919073e7ae3cc0d55316000549ba1aa2cf15c810)
+  repairs the ten-menu source contract: simple actions live in a nested menu
+  collection, mixed Share/Export/Access/Publish content lives in a named dialog
+  or group without flattening listboxes, each owner has a local searchable action
+  registry and exact regex-builder token, version Download has one head/footer
+  origin at a time, and measured placement clamps, flips and scrolls inside the
+  viewport. Actual opener refs now restore focus; programmatic opens explicitly
+  have no opener. Search, toggle and action hit areas use a 48px floor. The
+  hand-written negative-regression contract covers nested widgets, focus,
+  geometry and the dual viewer scopes. This is source-level evidence only: no
+  installed build, runtime geometry, or screen capture is claimed.
+
+  FileViewer menu ownership 同 focus boundary 而家講清楚晒。`919073e7a`
+  將十個 menu 分好：普通 action 放入 nested menu collection，Share/Export/
+  Access/Publish 呢啲混合內容就用 named dialog/group，listbox 唔會畀人撈亂；
+  每個 owner 有自己 searchable action registry 同 exact regex-builder token，
+  version Download 一次只會有 head 或 footer 一個來源。實際 opener ref 會
+  收返 focus，programmatic open 就明講冇 opener；placement 會量度、避位、
+  clamp 同內部 scroll，search/toggle/action hit area 有 48px 底線。呢個係
+  source-level evidence，未有 installed build、runtime geometry 或 screen-capture claim。
+
 - **FileViewer menus now search locally, restore focus, and wrap long labels.**
   Commit [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
   adds independent plain-text-first search and anchored regex builders to the

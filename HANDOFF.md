@@ -38,6 +38,23 @@
 > public continuation record.
 
 > [!IMPORTANT]
+> **FileViewer menu boundary repair — 2026-08-21.** Commit
+> [`919073e7a`](https://github.com/Ding-Ding-Projects/material-designer/commit/919073e7ae3cc0d55316000549ba1aa2cf15c810)
+> repairs the ten-menu source contract. Simple action surfaces now have a
+> named outer group and nested menu collection. Mixed Share/Export/Access/Publish
+> surfaces use a named dialog/group while preserving their listbox and tab
+> widgets. Each menu owns a local searchable action registry and exact builder
+> token; version Download tracks one head/footer origin so only one menu mounts.
+> Actual opener refs restore focus, programmatic opens explicitly have no opener,
+> and measured placement clamps/flips/scrolls within the viewport. Search,
+> toggle and action wrappers have a 48px minimum hit area. The hand-written
+> source contract covers the ten rows, nested-widget exclusion, focus, geometry,
+> and deliberate red-then-green boundary mutations. `git diff --check` was
+> green. No local Node/pnpm/Electron execution, hosted run, installed build,
+> runtime geometry or screen capture is claimed. The branch remains local and
+> unmerged for the integration owner to incorporate.
+
+> [!IMPORTANT]
 > **FileViewer menu accessibility lane — 2026-08-21.** The source-level lane adds
 > independent search and focus handling to the ten FileViewer menus named in
 > `docs/standards/context-menu-shortcuts.md`: Download, Share, Present, Zoom,
