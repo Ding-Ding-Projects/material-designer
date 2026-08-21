@@ -44,6 +44,17 @@ uses the shared dialog focus scope while upload work is pending. No fixture card
 catalog photos, or release assets were added; hosted/runtime verification remains
 pending.
 
+The continuation parser now accepts only omitted/`null` terminal cursors or
+non-negative safe JSON numbers; coercible strings and other malformed values are
+rejected. Library page walks carry abort and generation identity so stale rows and
+errors cannot overwrite a newer view. Element filtering remains open to both
+image and HTML snapshots marked with `metadata.element`, while kind chips use an
+`aria-pressed` group and menu/listbox search fields remain outside their owned
+interactive roles. Manual uploads use cancellable XHR request progress, byte-
+weighted aggregate progress, the shared byte limit for pasted text, and visible
+partial outcomes. These source contracts remain unverified until the hosted app
+checks run.
+
 **Changed files:**
 
 - `apps/daemon/src/library-store.ts`

@@ -86,20 +86,38 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const loadGenerationRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     setLoading(true);
     setLoadError(null);
     try {
-      const result = await fetchAllLibraryAssets();
+      const result = await fetchAllLibraryAssets({}, { signal: controller.signal });
+      if (generation !== loadGenerationRef.current) return;
       if (!result.ok) {
+        if (result.error.kind === 'aborted') return;
         setLoadError(result.error);
         return;
       }
       setAssets(result.assets);
     } finally {
-      setLoading(false);
+      if (generation === loadGenerationRef.current) {
+        loadAbortRef.current = null;
+        setLoading(false);
+      }
     }
+  }, []);
+
+  useEffect(() => () => {
+    loadGenerationRef.current += 1;
+    loadAbortRef.current?.abort();
+    loadAbortRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -211,11 +229,10 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
             autoFocus
             testId="library-picker-search"
           />
-          <div className={styles.kinds} role="tablist">
+          <div className={styles.kinds} role="group" aria-label={t('libraryPicker.kindFilter')}>
             <button
               type="button"
-              role="tab"
-              aria-selected={kind === ''}
+              aria-pressed={kind === ''}
               className={`${styles.chip}${kind === '' ? ` ${styles.chipActive}` : ''}`}
               onClick={() => setKind('')}
             >
@@ -225,8 +242,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
               <button
                 key={k}
                 type="button"
-                role="tab"
-                aria-selected={kind === k}
+                aria-pressed={kind === k}
                 className={`${styles.chip}${kind === k ? ` ${styles.chipActive}` : ''}`}
                 onClick={() => setKind((prev) => (prev === k ? '' : k))}
               >

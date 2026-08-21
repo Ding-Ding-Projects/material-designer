@@ -140,6 +140,9 @@
 .item[data-status='error'] .itemIcon {
   color: var(--red);
 }
+.item[data-status='cancelled'] .itemIcon {
+  color: var(--text-muted);
+}
 .itemName {
   flex: 1 1 auto;
   min-width: 0;
@@ -155,6 +158,12 @@
   color: var(--text-muted);
   max-width: 45%;
   overflow-wrap: anywhere;
+}
+.itemProgress {
+  flex: 0 1 120px;
+  width: 120px;
+  height: 6px;
+  accent-color: var(--accent);
 }
 .item[data-status='error'] .itemStatus {
   color: var(--red);
@@ -182,6 +191,12 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+.aggregateProgress {
+  flex: 0 1 140px;
+  width: 140px;
+  height: 8px;
+  accent-color: var(--accent);
+}
 
 @media (max-width: 560px) {
   .backdrop {
@@ -200,5 +215,10 @@
   }
   .summary {
     flex: 1 1 100%;
+  }
+  .itemProgress,
+  .aggregateProgress {
+    flex-basis: 100%;
+    width: 100%;
   }
 }

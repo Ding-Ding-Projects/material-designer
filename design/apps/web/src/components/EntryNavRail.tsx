@@ -75,7 +75,6 @@ import { MessageCenter } from './MessageCenter';
 import type { EntrySettingsSection } from './EntrySettingsMenu';
 import { useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
-import { ENTRY_RAIL_TOGGLE_EVENT } from './entryRailBridge';
 import {
   beginWorkspaceScopedRead,
   notifyTeamProjectsChanged,
@@ -1673,21 +1672,14 @@ export function EntryNavRail({
               describing where the rail currently is. */}
           <button
             type="button"
-            className="entry-nav-rail__collapse"
+            className="entry-nav-rail__collapse od-tooltip"
             onClick={open ? onClose : onOpen}
             aria-label={open ? t('entry.navCollapse') : t('entry.navExpand')}
             aria-expanded={open}
             title={open ? t('entry.navCollapse') : t('entry.navExpand')}
             data-testid="entry-nav-collapse"
-            className="entry-nav-rail__collapse od-tooltip"
-            aria-label={t('entry.navCollapse')}
-            title={t('entry.navCollapse')}
-            data-tooltip={t('entry.navCollapse')}
+            data-tooltip={open ? t('entry.navCollapse') : t('entry.navExpand')}
             data-tooltip-placement="bottom"
-            data-testid="entry-rail-collapse"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-            }}
           >
             <Icon name="panel-left" size={15} />
           </button>

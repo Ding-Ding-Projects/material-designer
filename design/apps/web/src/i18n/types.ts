@@ -130,6 +130,7 @@ export interface Dict {
   'designFiles.library.title': string;
   'libraryPicker.title': string;
   'libraryPicker.searchPlaceholder': string;
+  'libraryPicker.kindFilter': string;
   'libraryPicker.empty': string;
   'libraryPicker.allKinds': string;
   'libraryPicker.add': string;
@@ -5752,6 +5753,10 @@ export interface Dict {
   'library.uploadFailed'?: string;
   'library.uploadNothing'?: string;
   'library.uploadSummary'?: string;
+  'library.uploadProgress'?: string;
+  'library.cancelUpload'?: string;
+  'library.cancellingUpload'?: string;
+  'library.uploadCancelled'?: string;
   'library.uploadMaxHint'?: string;
   'library.pastedText'?: string;
   'library.noColor'?: string;
@@ -5762,6 +5767,15 @@ export interface Dict {
   'library.hideHtml'?: string;
   'library.copy'?: string;
   'library.copied'?: string;
+  'library.deleteAction'?: string;
+  'library.deleteTarget'?: string;
+  'library.deleteItemOwned'?: string;
+  'library.deleteItemReferenced'?: string;
+  'library.deleteMore'?: string;
+  'library.deleteDetailMixed'?: string;
+  'library.deleteDetailOwned'?: string;
+  'library.deleteDetailReferenced'?: string;
+  'library.handoffPrompt'?: string;
   'mcp.aboutTemplate': string;
   'mcp.approvedRefresh': string;
   'mcp.approveInBrowserHint': string;

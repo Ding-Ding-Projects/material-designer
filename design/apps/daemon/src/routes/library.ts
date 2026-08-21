@@ -255,6 +255,19 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
   const RECONCILE_THROTTLE_MS = 10_000;
   let lastReconcileAt = 0;
   let reconcileInFlight: Promise<ReconcileLibraryResult> | null = null;
+  // Live ingest/reconciliation feed. It is declared before runReconcile so a
+  // GET-triggered reconcile can notify every active Library view as soon as
+  // it discovers newly indexed referenced assets.
+  const sseClients = new Set<(event: string, data: unknown) => void>();
+  const emit = (event: string, data: unknown) => {
+    for (const send of sseClients) {
+      try {
+        send(event, data);
+      } catch {
+        // a dead client must not block the rest
+      }
+    }
+  };
   const EMPTY_RECONCILE: ReconcileLibraryResult = {
     designSystems: 0,
     projectAssets: 0,
@@ -270,25 +283,15 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
       LIBRARY_DIR,
       PROJECTS_DIR,
       USER_DESIGN_SYSTEMS_DIR,
+    }).then((summary) => {
+      if (summary.total > 0) emit('reconcile', summary);
+      return summary;
     }).finally(() => {
       lastReconcileAt = Date.now();
       reconcileInFlight = null;
     });
     return reconcileInFlight;
   }
-
-  // Live ingest/enrichment feed. Clipper captures flow through this route, so
-  // the web grid can update without polling.
-  const sseClients = new Set<(event: string, data: unknown) => void>();
-  const emit = (event: string, data: unknown) => {
-    for (const send of sseClients) {
-      try {
-        send(event, data);
-      } catch {
-        // a dead client must not block the rest
-      }
-    }
-  };
 
   // --- pairing -------------------------------------------------------------
 
@@ -526,10 +529,6 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
   app.post('/api/library/sync', requireLocalDaemonRequest, async (_req, res) => {
     try {
       const summary = await runReconcile(true);
-      // Reconcile can add or update rows without an ingest event. Broadcast a
-      // distinct event so every open Library view refreshes from its own real
-      // provider boundary instead of one view remaining stale.
-      emit('reconcile', summary);
       res.json(summary);
     } catch (err) {
       return sendApiError(res, 500, 'LIBRARY_SYNC_FAILED', err instanceof Error ? err.message : String(err));

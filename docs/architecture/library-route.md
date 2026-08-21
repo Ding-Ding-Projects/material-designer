@@ -28,6 +28,18 @@ Reconciliation emits an SSE refresh event consumed by every active Library view.
 Bulk selection and handoff actions operate on visible matching ids only and show
 the visible scope beside the count.
 
+The kind chips in `LibraryPicker` are an `aria-pressed` button group rather than
+tabs without a panel. Search inputs remain outside the owned listbox/menu
+containers; the dynamic handoff menu's role is limited to its actual menu-item
+children, while its search, divider, heading, and no-match status stay in the
+surrounding presentation group. This keeps the outer dialog's focus scope and
+the inner widget ownership contracts separate.
+
+Element captures are a badge-level filter, not a storage kind: both image
+screenshots and HTML snapshots carrying `metadata.element` are included. The
+daemon query therefore stays open for `element`, and the renderer applies the
+same `badgeKind` projection used by the picker and grid.
+
 ## Configuration
 
 The route's staged-rollout seam is `LIBRARY_UI_VISIBLE` in
@@ -50,6 +62,12 @@ No menu or dropdown borrows a hidden controller from another surface.
   fabricate sample assets.
 - A malformed or stalled continuation is a typed provider failure. The UI keeps
   the prior rows and exposes retry instead of claiming a complete list.
+- A continuation is terminal only when `nextOffset` is omitted or `null`.
+  Non-negative safe JSON numbers are the only accepted cursors; strings,
+  booleans, fractional values, non-finite values, and negatives are invalid.
+- Page walks carry an `AbortController` and generation identity. A newer search,
+  filter, retry, unmount, or SSE refresh cancels the older walk, and neither its
+  rows nor its error may overwrite the current view.
 - An invalid or partially typed regex is handled by the shared bounded matcher;
   the last valid pattern is retained where the shared controller supports it,
   and the UI never sends the raw pattern to the daemon keyword query.
@@ -57,6 +75,12 @@ No menu or dropdown borrows a hidden controller from another surface.
   screen-reader result-count update rather than a blank loading surface.
 - Destructive actions remain behind the existing two-key confirmation and are
   not made easier by the route or search changes.
+- Destructive action, target, item, blast-radius, and recovery copy comes from
+  the locale catalog; no upstream product name is embedded in the Library gate.
+- Manual uploads prevent the browser's default drop/paste action, refuse
+  re-entry while a batch is active, expose byte-backed per-file and aggregate
+  progress, allow bounded cancellation, and retain done, deduped, failed, and
+  cancelled rows so partial outcomes are visible.
 
 ## Security considerations
 
@@ -67,6 +91,10 @@ work. Continuation page size and page count are both bounded, with malformed or
 non-advancing offsets rejected. The route does not add a network source, fixture
 archive, catalog image, or alternate asset store. Existing upload, raw-asset,
 project handoff and destructive-provider boundaries remain the source of truth.
+Upload request progress uses the browser's cancellable XHR upload boundary, and
+the aggregate is weighted by each file's byte size rather than averaging files
+of wildly different sizes. Text uploads are subject to the same byte ceiling as
+file uploads before a request is sent.
 
 ## Verification
 
@@ -79,6 +107,11 @@ JSON form remain the permitted source-only checks; this lane deliberately did
 not run Node, package-manager commands, builds, type checks, tests, UI actions or
 captures locally. Hosted verification, installed interaction, and a deterministic
 provider/API-backed capture fixture remain pending.
+
+The follow-up source repair also pins strict terminal-cursor parsing, stale-walk
+abort/generation boundaries, element filtering across image and HTML snapshots,
+menu/listbox ARIA ownership, kind-button semantics, and cancellable byte-backed
+upload progress. These changes are source-only until the hosted Chut runs.
 
 ## Suggested reading
 

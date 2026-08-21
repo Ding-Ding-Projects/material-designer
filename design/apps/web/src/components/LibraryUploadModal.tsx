@@ -23,12 +23,14 @@ import { useT } from '../i18n';
 import { uploadLibraryFile, uploadLibraryText, type LibraryUploadOutcome } from '../providers/registry';
 import styles from './LibraryUploadModal.module.css';
 
-type ItemStatus = 'uploading' | 'done' | 'deduped' | 'error';
+type ItemStatus = 'uploading' | 'done' | 'deduped' | 'error' | 'cancelled';
 
 interface UploadItem {
   id: string;
   name: string;
+  size: number;
   status: ItemStatus;
+  progress: number;
   message?: string;
 }
 
@@ -51,49 +53,94 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inFlight = useRef(0);
+  const uploadAbortRef = useRef<AbortController | null>(null);
   const seededRef = useRef<File[] | null>(null);
+  const [cancelRequested, setCancelRequested] = useState(false);
+
+  useEffect(() => () => {
+    // The modal normally refuses to close while work is pending, but a parent
+    // route can still unmount it. Cancel the exact batch in that case so a
+    // late response cannot update a surface that no longer owns the upload.
+    uploadAbortRef.current?.abort();
+    uploadAbortRef.current = null;
+  }, []);
+
+  const updateProgress = useCallback((id: string, progress: number) => {
+    setItems((prev) => prev.map((item) => (
+      item.id === id && item.status === 'uploading'
+        ? { ...item, progress: Math.max(0, Math.min(100, Math.round(progress))) }
+        : item
+    )));
+  }, []);
 
   const finishItem = useCallback((id: string, outcome: LibraryUploadOutcome) => {
-    inFlight.current -= 1;
+    inFlight.current = Math.max(0, inFlight.current - 1);
+    const cancelled = outcome.code === 'ABORTED';
     setItems((prev) =>
       prev.map((it) =>
         it.id === id
           ? outcome.ok
-            ? { ...it, status: outcome.deduped ? 'deduped' : 'done' }
-            : { ...it, status: 'error', message: outcome.error ?? t('library.uploadFailed') }
+            ? { ...it, status: outcome.deduped ? 'deduped' : 'done', progress: 100 }
+            : {
+                ...it,
+                status: cancelled ? 'cancelled' : 'error',
+                // A failed or cancelled transfer did not complete. Keeping
+                // the last measured byte progress makes the aggregate honest
+                // instead of painting a green-looking 100% row for a request
+                // that stopped halfway through.
+                progress: it.progress,
+                message: outcome.error ?? t('library.uploadFailed'),
+              }
           : it,
       ),
     );
     // Refresh the grid once every dispatched upload has settled.
-    if (inFlight.current === 0) onUploaded();
+    if (inFlight.current === 0) {
+      uploadAbortRef.current = null;
+      setCancelRequested(false);
+      onUploaded();
+    }
   }, [onUploaded, t]);
 
   const addFiles = useCallback(
     (files: File[]) => {
       if (inFlight.current > 0) return;
+      const controller = new AbortController();
+      uploadAbortRef.current = controller;
+      setCancelRequested(false);
       for (const file of files) {
         const id = nextItemId();
-        setItems((prev) => [{ id, name: file.name, status: 'uploading' }, ...prev]);
+        setItems((prev) => [{ id, name: file.name, size: file.size, status: 'uploading', progress: 0 }, ...prev]);
         inFlight.current += 1;
-        void uploadLibraryFile(file)
+        void uploadLibraryFile(file, {
+          signal: controller.signal,
+          onProgress: (progress) => updateProgress(id, progress),
+        })
           .then((outcome) => finishItem(id, outcome))
           .catch(() => finishItem(id, { ok: false, error: t('library.uploadFailed') }));
       }
     },
-    [finishItem, t],
+    [finishItem, t, updateProgress],
   );
 
   const addText = useCallback(
     (text: string) => {
       if (inFlight.current > 0) return;
+      const controller = new AbortController();
+      uploadAbortRef.current = controller;
+      setCancelRequested(false);
       const id = nextItemId();
-      setItems((prev) => [{ id, name: t('library.pastedText', { count: text.length }), status: 'uploading' }, ...prev]);
+      const size = new Blob([text]).size;
+      setItems((prev) => [{ id, name: t('library.pastedText', { count: text.length }), size, status: 'uploading', progress: 0 }, ...prev]);
       inFlight.current += 1;
-      void uploadLibraryText(text)
+      void uploadLibraryText(text, {}, {
+        signal: controller.signal,
+        onProgress: (progress) => updateProgress(id, progress),
+      })
         .then((outcome) => finishItem(id, outcome))
         .catch(() => finishItem(id, { ok: false, error: t('library.uploadFailed') }));
     },
-    [finishItem, t],
+    [finishItem, t, updateProgress],
   );
 
   // Enqueue files handed in from a section-wide drop. The ref guard makes this
@@ -143,9 +190,9 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   };
 
   const onDrop = (e: React.DragEvent) => {
-    if (inFlight.current > 0) return;
     e.preventDefault();
     setDragOver(false);
+    if (inFlight.current > 0) return;
     const files = Array.from(e.dataTransfer.files ?? []);
     if (files.length) addFiles(files);
   };
@@ -153,6 +200,16 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const pending = items.some((it) => it.status === 'uploading');
   const okCount = items.filter((it) => it.status === 'done' || it.status === 'deduped').length;
   const errCount = items.filter((it) => it.status === 'error').length;
+  const cancelledCount = items.filter((it) => it.status === 'cancelled').length;
+  const totalBytes = items.reduce((total, item) => total + item.size, 0);
+  const overallProgress = totalBytes > 0
+    ? Math.round(items.reduce((total, item) => total + item.size * item.progress, 0) / totalBytes)
+    : 0;
+  const cancelUpload = useCallback(() => {
+    if (!pending || cancelRequested) return;
+    setCancelRequested(true);
+    uploadAbortRef.current?.abort();
+  }, [cancelRequested, pending]);
   const requestClose = useCallback(() => {
     if (inFlight.current > 0) return;
     onClose();
@@ -225,6 +282,8 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                     <Icon name="spinner" size={15} className={styles.spin} />
                   ) : it.status === 'error' ? (
                     <Icon name="alert-triangle" size={15} />
+                  ) : it.status === 'cancelled' ? (
+                    <Icon name="close" size={15} />
                   ) : (
                     <Icon name="check" size={15} />
                   )}
@@ -239,8 +298,19 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                       ? t('library.uploadDeduped')
                       : it.status === 'done'
                         ? t('library.uploadDone')
+                        : it.status === 'cancelled'
+                          ? t('library.uploadCancelled')
                         : (it.message ?? t('library.uploadFailed'))}
+                  {it.status === 'uploading' ? ` · ${it.progress}%` : ''}
                 </span>
+                {it.status === 'uploading' ? (
+                  <progress
+                    className={styles.itemProgress}
+                    value={it.progress}
+                    max={100}
+                    aria-label={t('library.uploadProgress', { progress: it.progress })}
+                  />
+                ) : null}
               </li>
             ))}
           </ul>
@@ -251,9 +321,24 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
             {items.length === 0
               ? t('library.uploadNothing')
               : pending
-                ? t('library.uploadStatus')
-                : t('library.uploadSummary', { added: okCount, failed: errCount })}
+                ? (cancelRequested
+                  ? t('library.cancellingUpload')
+                  : t('library.uploadProgress', { progress: overallProgress }))
+                : t('library.uploadSummary', { added: okCount, failed: errCount + cancelledCount })}
           </span>
+          {pending ? (
+            <progress
+              className={styles.aggregateProgress}
+              value={overallProgress}
+              max={100}
+              aria-label={t('library.uploadProgress', { progress: overallProgress })}
+            />
+          ) : null}
+          {pending ? (
+            <Button variant="ghost" onClick={cancelUpload} disabled={cancelRequested}>
+              {cancelRequested ? t('library.cancellingUpload') : t('library.cancelUpload')}
+            </Button>
+          ) : null}
           <Button variant="ghost" onClick={requestClose} disabled={pending}>
             {t('common.close')}
           </Button>
