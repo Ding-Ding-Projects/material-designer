@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { createRef, useState, type ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,6 +20,19 @@ import { I18nProvider } from '../../src/i18n';
 import type { Locale } from '../../src/i18n/types';
 import type { AppliedPluginSnapshot, ProjectMetadata } from '@open-design/contracts';
 import { composerText, pressEnter, typeAndSettle, typeInComposer } from '../helpers/lexical-composer';
+
+const CHAT_COMPOSER_SOURCE = readFileSync(
+  new URL('../../src/components/ChatComposer.tsx', import.meta.url),
+  'utf8',
+);
+const CHAT_STYLES_SOURCE = readFileSync(
+  new URL('../../src/styles/chat.css', import.meta.url),
+  'utf8',
+);
+const ROUTINES_STYLES_SOURCE = readFileSync(
+  new URL('../../src/styles/viewer/routines.css', import.meta.url),
+  'utf8',
+);
 
 const COMMUNITY_PLUGIN = {
   id: 'community-deck',
@@ -318,8 +332,24 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
-  it('auto-stages the active workspace context and re-stages after a tab change', async () => {
+  it('keeps automatic file context paths removed from the composer contract', () => {
+    expect(CHAT_COMPOSER_SOURCE).not.toMatch(/^\s*const\s+activeProjectFileName\b/m);
+    expect(CHAT_COMPOSER_SOURCE).not.toMatch(/^\s*const\s+activeFileContext\b/m);
+    expect(CHAT_COMPOSER_SOURCE).not.toMatch(/^\s*const\s+activeFileDisplayName\b/m);
+    expect(CHAT_COMPOSER_SOURCE).not.toContain('composer-active-file-mode');
+    expect(CHAT_STYLES_SOURCE).not.toContain('composer-active-file-mode');
+    expect(ROUTINES_STYLES_SOURCE).not.toContain('composer-active-file-mode');
+    expect(CHAT_COMPOSER_SOURCE).toContain("activeWorkspaceContext?.kind === 'project'");
+  });
+
+  it('keeps automatic context project-wide when the viewer tab changes', async () => {
     const onSend = vi.fn();
+    const projectContext = {
+      id: 'project:project-1',
+      kind: 'project' as const,
+      label: 'Project',
+      title: 'Project',
+    };
     const fileContext = {
       id: 'file:index.html',
       kind: 'file' as const,
@@ -334,22 +364,52 @@ describe('ChatComposer context pickers', () => {
       url: 'https://dribbble.com/',
       tabId: '__browser__:1',
     };
-    const view = renderComposer({ activeWorkspaceContext: fileContext, onSend });
+    const view = renderComposer({
+      activeWorkspaceContext: projectContext,
+      workspaceContexts: [fileContext],
+      onSend,
+    });
     await flushMounts();
 
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('Currentindex.html');
-    fireEvent.click(screen.getByLabelText('Remove index.html'));
-    await waitFor(() => expect(screen.queryByText('index.html')).toBeNull());
-
-    view.rerender(composerElement({ activeWorkspaceContext: browserContext, onSend }));
-    await waitFor(() => expect(screen.getByTestId('staged-contexts').textContent).toContain('CurrentDribbble'));
+    expect(screen.getByTestId('staged-contexts').textContent).toContain('CurrentProject');
+    view.rerender(composerElement({
+      activeWorkspaceContext: projectContext,
+      workspaceContexts: [browserContext],
+      onSend,
+    }));
 
     await typeAndSettle('Use the current tab.');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalled());
     const meta = onSend.mock.calls[0]?.[3];
-    expect(meta?.context?.workspaceItems).toEqual([browserContext]);
+    expect(meta?.context?.workspaceItems).toEqual([projectContext]);
+  });
+
+  it('does not infer a file-only active viewer context into a send', async () => {
+    const onSend = vi.fn();
+    const fileContext = {
+      id: 'file:index.html',
+      kind: 'file' as const,
+      label: 'index.html',
+      path: 'index.html',
+      tabId: 'index.html',
+    };
+
+    renderComposer({
+      activeWorkspaceContext: fileContext,
+      projectMetadata: { kind: 'prototype', importedFrom: 'folder' },
+      onSend,
+    });
+    await flushMounts();
+
+    expect(screen.queryByTestId('staged-contexts')).toBeNull();
+    await typeAndSettle('Keep this project-wide.');
+    fireEvent.click(screen.getByTestId('chat-send'));
+
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.[1]).toEqual([]);
+    expect(onSend.mock.calls[0]?.[3]?.context?.workspaceItems ?? []).toEqual([]);
   });
 
   it('opens the @ panel even when every source is empty', async () => {

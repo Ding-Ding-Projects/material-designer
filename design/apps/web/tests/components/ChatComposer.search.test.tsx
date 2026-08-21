@@ -722,7 +722,7 @@ describe('ChatComposer /search command', () => {
     expect(composerText()).toContain('keep this draft');
   });
 
-  it('does not attach a project file until the user explicitly chooses it', async () => {
+  it('mounts a folder-imported composer without selecting a file', async () => {
     const onSend = vi.fn();
 
     render(
@@ -749,12 +749,6 @@ describe('ChatComposer /search command', () => {
 
     expect(screen.queryByTestId('composer-active-file')).toBeNull();
     expect(screen.getByTestId('chat-composer').className).not.toContain('composer-active-file-mode');
-    const activeFileStrip = screen.getByTestId('composer-active-file');
-    expect(activeFileStrip.textContent).toContain('Editing');
-    expect(activeFileStrip.textContent).toContain('site/index.html');
-    expect(screen.getByTestId('chat-composer').className).toContain('composer-active-file-mode');
-
-    expect(screen.getAllByText('Ask OpenDesign to change index.html...').length).toBeGreaterThan(0);
     await typeAndSettle('Make the hero clearer');
     fireEvent.click(screen.getByTestId('chat-send'));
 

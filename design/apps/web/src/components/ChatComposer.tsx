@@ -494,11 +494,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const { locale, t } = useI18n();
     const analytics = useAnalytics();
     const { workspaceContext } = useProjectCollabContext();
-    const activeFileContext =
-      projectMetadata?.importedFrom === 'folder' && activeProjectFileName
-        ? activeProjectFileName
-        : null;
-    const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
@@ -633,7 +628,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     );
     const [promotedWorkspaceContextDir, setPromotedWorkspaceContextDir] = useState<string | null>(null);
     const [dismissedWorkspaceContextId, setDismissedWorkspaceContextId] = useState<string | null>(null);
-    const activeWorkspaceContextId = activeWorkspaceContext?.id ?? null;
+    // Only the project context supplied by the host is implicit. File, browser,
+    // and other viewer contexts remain available through explicit @, toolbox,
+    // upload, or attachment actions; changing a visible tab must not silently
+    // alter the next project-wide send.
+    const implicitProjectWorkspaceContext =
+      activeWorkspaceContext?.kind === 'project' ? activeWorkspaceContext : null;
+    const activeWorkspaceContextId = implicitProjectWorkspaceContext?.id ?? null;
     const previousWorkspaceContextIdRef = useRef<string | null>(activeWorkspaceContextId);
     const [dragActive, setDragActive] = useState(false);
     // Lexical owns the caret, so the mention/slash trigger state only carries
@@ -752,8 +753,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       setRecentDirs(persisted);
     }, []);
     const visibleWorkspaceContext =
-      activeWorkspaceContext && activeWorkspaceContext.id !== dismissedWorkspaceContextId
-        ? activeWorkspaceContext
+      implicitProjectWorkspaceContext && implicitProjectWorkspaceContext.id !== dismissedWorkspaceContextId
+        ? implicitProjectWorkspaceContext
         : null;
     const selectedWorkspaceContexts = useMemo(() => {
       const out: WorkspaceContextItem[] = [];
@@ -2830,7 +2831,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         className={[
           'composer',
           dragActive ? 'drag-active' : '',
-          activeFileContext ? 'composer-active-file-mode' : '',
           inputDisabled ? 'composer-readonly' : '',
         ].filter(Boolean).join(' ')}
         data-testid="chat-composer"

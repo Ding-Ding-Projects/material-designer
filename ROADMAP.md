@@ -45,13 +45,16 @@ with the project's standards.
       with exact folder-only `FileOk` validation. Built-artifact interaction proof
       remains pending the hosted package containing `cb03705b`.
 
-- [x] **Keep chat context project-wide across tab and file switches.** Commit
+- [ ] **Keep chat context project-wide across tab and file switches.** Commits
       [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
       removes implicit primary-file/Design Files preview selection and binds the
       automatic context to the project. Follow-up
       [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
       removes the remaining active-file attachment path; narrower evidence now
-      reaches a send only through an explicit user action.
+      reaches a send only through an explicit user action. A source-reconciliation
+      follow-up now removes the orphaned active-file mode and filters host context
+      admission to `kind === 'project'`; direct source regressions are committed,
+      while hosted build/runtime interaction evidence remains pending.
 
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an

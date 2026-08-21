@@ -75,6 +75,16 @@
 > also removes the separate folder-project path that attached the currently
 > visible file to every send. Explicit file selection remains available through
 > the file controls and `@` picker.
+>
+> **Project-file context repair — 2026-08-21, local jer only.** Source
+> reconciliation had reintroduced an undeclared active-file symbol and the
+> obsolete file-mode class into `ChatComposer`. The follow-up removes those
+> paths, admits only `kind === 'project'` from the host's implicit context, and
+> keeps file/browser context on explicit `@`, toolbox, upload and attachment
+> routes. Direct component regressions cover file-only active context, explicit
+> file selection, folder-imported mounting and stable project context across
+> viewer-tab changes; an exact source check protects the removal. Hosted
+> build/runtime/capture verification remains pending in this local handoff.
 > Release [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
 > then exposed a workflow-only PowerShell boundary: ordinary tools-pack stderr
 > progress was promoted to a terminating `NativeCommandError` before the native

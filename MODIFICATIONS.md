@@ -29,6 +29,26 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Keep automatic composer context project-only after source reconciliation
+
+**Reason:** a later source reconciliation reintroduced an orphaned active-file name and
+the obsolete file-mode styling path into the chat composer. The composer now accepts only
+the host's `project` context implicitly, so changing a visible file or browser tab cannot
+change the next project-wide send. File and browser context remain available through
+explicit `@` selection, toolbox actions, uploads and attachments. Direct component
+regressions cover the file-only active state, explicit file selection, folder-imported
+mounting and stable project context across viewer-tab changes; an exact source check keeps
+the removed identifiers and mode class from returning. This lane contains no hosted build,
+runtime interaction or capture verdict.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+- `apps/web/tests/components/ChatComposer.search.test.tsx`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values
