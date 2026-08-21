@@ -80,6 +80,28 @@ version section when a release carries them.
   source-level contract，未有 built artifact 或 visual parity evidence，唔會扮
   verify 完成。
 
+- **Capture readiness now has bounded failure and isolation semantics.** Commit
+  [`484ff023c`](https://github.com/Ding-Ding-Projects/material-designer/commit/484ff023c3f8151dd3d58cf40d496e59110b5787)
+  forwards the sidecar origin and isolation proof through desktop startup,
+  applies main-process timeouts to every readiness evaluation, requires a
+  renderer-owned settled witness after configuration, onboarding and cloud
+  identity decisions, and rechecks the route across a bounded stability
+  interval. Renderer loss before readiness produces a terminal `ready: false`
+  receipt with `capture.renderer_process_gone`; unready capture keeps live
+  content hidden behind a self-contained failure splash. Capture also receives
+  a separate user-data namespace and bypasses ordinary existing-window and
+  single-instance handoff. This remains source-level evidence only.
+
+  Capture readiness 而家有 bounded failure 同 isolation semantics。`484ff023c`
+  令 sidecar origin 同 isolation proof 真係由 desktop startup 傳到 runtime；
+  每個 readiness evaluation 都有 main-process timeout，configuration、
+  onboarding 同 cloud identity 決定完成後要有 renderer-owned settled witness，
+  再隔一段穩定時間重查 route。Readiness 前 renderer 結束會記低
+  `ready: false` 同 `capture.renderer_process_gone`；未 ready 嘅 capture 只留喺
+  self-contained failure splash 後面，唔會露出 live content。Capture 仲有獨立
+  user-data namespace，唔會畀普通 existing-window 或 single-instance handoff
+  搶走。依然只係 source-level evidence。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
