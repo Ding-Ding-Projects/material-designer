@@ -129,14 +129,12 @@ export function updateRestartSafetyError(safety: Exclude<UpdateRestartSafety, { 
       code: UPDATE_RESTART_BLOCKED_ERROR_CODE,
       details: { activeRunCount: safety.activeRunCount },
       message: `Material Designer is still working on ${safety.activeRunCount} active task${safety.activeRunCount === 1 ? "" : "s"}.`,
-      message: `OpenDesign is still working on ${safety.activeRunCount} active task${safety.activeRunCount === 1 ? "" : "s"}.`,
     };
   }
   return {
     code: UPDATE_RESTART_UNKNOWN_ERROR_CODE,
     details: { activeRunCount: null },
     message: "Material Designer could not confirm whether tasks are still running.",
-    message: "OpenDesign could not confirm whether tasks are still running.",
   };
 }
 

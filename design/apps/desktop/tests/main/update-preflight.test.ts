@@ -6,6 +6,9 @@ import {
   finishUpdateQuitAfterRendererSave,
   parseUpdateActionRequest,
   parseUpdateRendererSavePreparationResponse,
+  updateRestartSafetyError,
+  UPDATE_RESTART_BLOCKED_ERROR_CODE,
+  UPDATE_RESTART_UNKNOWN_ERROR_CODE,
   UPDATE_RENDERER_SAVE_FAILED_ERROR_CODE,
   UPDATE_RENDERER_SAVE_UNAVAILABLE_ERROR_CODE,
 } from "../../src/main/update-preflight.js";
@@ -48,6 +51,23 @@ describe("desktop update restart preflight", () => {
       fetchImpl: async () => new Response(JSON.stringify({ runs: "not-an-array" }), { status: 200 }),
     });
     expect(malformed).toMatchObject({ activeRunCount: null, state: "unknown" });
+  });
+
+  it("keeps Material Designer identity in blocked and unknown restart errors", () => {
+    expect(updateRestartSafetyError({ activeRunCount: 2, state: "blocked" })).toEqual({
+      code: UPDATE_RESTART_BLOCKED_ERROR_CODE,
+      details: { activeRunCount: 2 },
+      message: "Material Designer is still working on 2 active tasks.",
+    });
+    expect(updateRestartSafetyError({
+      activeRunCount: null,
+      reason: "daemon unavailable",
+      state: "unknown",
+    })).toEqual({
+      code: UPDATE_RESTART_UNKNOWN_ERROR_CODE,
+      details: { activeRunCount: null },
+      message: "Material Designer could not confirm whether tasks are still running.",
+    });
   });
 
   it("accepts only the force and source fields used by updater UI actions", () => {

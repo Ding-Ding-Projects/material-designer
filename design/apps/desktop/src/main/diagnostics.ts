@@ -40,7 +40,6 @@ export async function exportDiagnosticsToFile(
   // shell is an OS-side stall no app option can unblock.
   const dialogOptions = {
     title: "Export Material Designer diagnostics",
-    title: "Export OpenDesign diagnostics",
     defaultPath: filename,
     filters: [{ name: "Zip archive", extensions: ["zip"] }],
     properties: ["dontAddToRecent" as const],
