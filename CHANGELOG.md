@@ -28,6 +28,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Added a real source handoff registry destination.** Commit
+  [`2f3ded458`](https://github.com/Ding-Ding-Projects/material-designer/commit/2f3ded4588a6f3573d78df09ef865fdfcea3053f)
+  adds `/handoff`, a virtual Settings/search/palette route, exactly 18
+  Material Design 3 token mappings, exactly 12 component owners, two
+  independent anchored regex searches, keyboard/range selection and faithful
+  JSON/Markdown/CSV exports. The source contract deliberately complains when a
+  row or route disappears, because an inventory that only sees what remains is
+  a very polite ghost. Runtime and visual parity capture remain unverified.
+
+  **廣東話：** 交接登記冊而家有真地址：18 個 token 對應、12 個元件負責人、
+  兩個各自有主見嘅 regex search，同埋可以拎走嘅 JSON/Markdown/CSV。個
+  contract script 會喺資料或者 route 走失時即刻黑面，唔會俾空表扮冇事；
+  runtime 同 visual capture 仲要等 hosted proof。
+
 - **Appearance startup now waits for the native theme to answer before it
   reveals the window.** Commit
   [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
