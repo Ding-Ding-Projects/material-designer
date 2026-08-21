@@ -17,6 +17,12 @@ export function findPackagedDeeplinkArg(argv: readonly string[]): string | null 
   return argv.find((arg) => arg.startsWith("opendesign://")) ?? null;
 }
 
+function isParityCaptureArg(arg: string, argv: readonly string[]): boolean {
+  return arg.startsWith("material-designer://")
+    && (process.env.OD_DESIGN_PARITY_CAPTURE === "1"
+      || argv.includes("--design-parity-capture"));
+}
+
 export type PackagedPayloadDesktopLaunchPlan = {
   args: string[];
   command: string;
@@ -35,6 +41,7 @@ export function planPackagedPayloadDesktopDelegation(
   if (runtime.source !== "payload" || runtime.payloadDesktopProcess) return null;
   if (runtime.desktopExecutablePath == null) return null;
 
+  const forwardedArgs = options.forwardedArgs ?? process.argv;
   return {
     args: [
       ...buildLauncherAfterQuitArgs({
@@ -53,9 +60,10 @@ export function planPackagedPayloadDesktopDelegation(
       // after a payload update, Electron delivers the invite URL to that outer
       // process first; preserve only this explicit protocol argument when the
       // outer delegates to the versioned payload.
-      ...(options.forwardedArgs ?? process.argv).filter((arg) =>
-        arg.startsWith("opendesign://")
+      ...forwardedArgs.filter((arg) =>
+        arg.startsWith("opendesign://") || isParityCaptureArg(arg, forwardedArgs)
       ),
+      ...(forwardedArgs.includes("--design-parity-capture") ? ["--design-parity-capture"] : []),
       ...createProcessStampArgs(stamp, OPEN_DESIGN_SIDECAR_CONTRACT),
     ],
     command: runtime.desktopExecutablePath,

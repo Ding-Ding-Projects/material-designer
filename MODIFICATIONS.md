@@ -29,6 +29,36 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Add a fail-closed deterministic production parity route
+
+**Reason:** The parity registry described `material-designer://` routes, but
+the installed desktop entry did not parse or carry those tuples into the real
+renderer. The desktop now accepts the route only in explicit developer/capture
+mode, rejects missing or duplicate route arguments, validates every v2 tuple
+field and query boundary, maps only semantically owned destinations to the
+existing web router, and reports stable blockers for the four rows that still
+need product-owned destinations. The preload-time capture context freezes
+clock/randomness/motion and applies the requested locale before the first
+document. Capture uses an isolated session, rejects external navigation,
+validates the exact loopback sidecar origin, blocks redirects, and records a
+terminal readiness receipt from the canonical URL/search, renderer-owned route
+witness, real component invariant, fixture source and network proof. The
+renderer adds only a witness from its actual router state; it does not receive
+replacement DOM or a second screen implementation. Capture remains unready
+until a real deterministic fixture/provider and capture-aware sidecars exist.
+
+**Changed files:**
+
+- `apps/desktop/src/main/deterministic-parity-route.ts`
+- `apps/desktop/src/main/index.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/deterministic-parity-route.test.ts`
+- `apps/packaged/tests/protocol.test.ts`
+- `apps/packaged/src/index.ts`
+- `apps/packaged/src/protocol.ts`
+- `apps/packaged/src/payload-desktop-launch.ts`
+- `apps/web/src/App.tsx`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

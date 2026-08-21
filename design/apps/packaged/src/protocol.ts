@@ -1,4 +1,4 @@
-import { net, protocol } from "electron";
+import { net, protocol, session } from "electron";
 
 const OD_SCHEME = "od";
 const OD_ENTRY_URL = `${OD_SCHEME}://app/`;
@@ -24,6 +24,13 @@ type OdProtocolTarget = string | null;
  */
 type OdProtocolTargetResolver = () => OdProtocolTarget;
 
+export type OdProtocolRegistrationOptions = {
+  /** Capture sessions must not follow a sidecar redirect. */
+  blockRedirects?: boolean;
+  /** Capture sessions accept only the validated loopback sidecar origin. */
+  requireLoopbackOrigin?: boolean;
+};
+
 protocol.registerSchemesAsPrivileged([
   {
     privileges: {
@@ -48,7 +55,30 @@ protocol.registerSchemesAsPrivileged([
  * that the #895 catch exists to prevent. A `null` lets the caller answer with
  * an honest status instead.
  */
-function toWebRuntimeUrl(webRuntimeUrl: OdProtocolTarget, requestUrl: string): string | null {
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "127.0.0.1"
+    || hostname === "localhost"
+    || hostname === "[::1]"
+    || hostname === "::1";
+}
+
+export function isValidatedLoopbackSidecarUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return (parsed.protocol === "http:" || parsed.protocol === "https:")
+      && isLoopbackHostname(parsed.hostname)
+      && parsed.username.length === 0
+      && parsed.password.length === 0;
+  } catch {
+    return false;
+  }
+}
+
+function toWebRuntimeUrl(
+  webRuntimeUrl: OdProtocolTarget,
+  requestUrl: string,
+  requireLoopbackOrigin = false,
+): string | null {
   if (webRuntimeUrl == null || webRuntimeUrl.length === 0) return null;
   let target: URL;
   try {
@@ -56,6 +86,7 @@ function toWebRuntimeUrl(webRuntimeUrl: OdProtocolTarget, requestUrl: string): s
   } catch {
     return null;
   }
+  if (requireLoopbackOrigin && !isValidatedLoopbackSidecarUrl(webRuntimeUrl)) return null;
   const incoming = new URL(requestUrl);
   target.pathname = incoming.pathname;
   target.search = incoming.search;
@@ -112,6 +143,8 @@ type OdProxyRetryOptions = {
   attempts?: number;
   backoffMs?: number;
   delay?: (ms: number) => Promise<void>;
+  redirectPolicy?: "follow" | "block";
+  requireLoopbackOrigin?: boolean;
 };
 
 const defaultRetryDelay = (ms: number): Promise<void> =>
@@ -177,6 +210,7 @@ async function fetchOdTargetOnce(
   request: Request,
   target: string,
   fetchImpl: OdProtocolFetch,
+  options: Pick<OdProxyRetryOptions, "redirectPolicy" | "requireLoopbackOrigin"> = {},
 ): Promise<Response> {
   const controller = new AbortController();
   const abortUpstream = () => controller.abort();
@@ -193,8 +227,41 @@ async function fetchOdTargetOnce(
       // streaming request bodies and absent from the lib.dom Request typings.
       duplex: "half",
       signal: controller.signal,
+      redirect: options.redirectPolicy === "block" ? "manual" : "follow",
     }),
   );
+  if (options.redirectPolicy === "block" && upstream.status >= 300 && upstream.status < 400) {
+    return new Response(
+      JSON.stringify({
+        error: "OD_PROTOCOL_REDIRECT_BLOCKED",
+        target,
+        location: upstream.headers.get("location"),
+      }),
+      {
+        status: 502,
+        headers: {
+          "content-type": "application/json",
+          "access-control-allow-origin": "*",
+        },
+      },
+    );
+  }
+  if (
+    options.requireLoopbackOrigin
+    && upstream.url.length > 0
+    && new URL(upstream.url).origin !== new URL(target).origin
+  ) {
+    return new Response(
+      JSON.stringify({ error: "OD_PROTOCOL_ORIGIN_MISMATCH", target, upstream: upstream.url }),
+      {
+        status: 502,
+        headers: {
+          "content-type": "application/json",
+          "access-control-allow-origin": "*",
+        },
+      },
+    );
+  }
   if (upstream.body == null) {
     return new Response(null, {
       status: upstream.status,
@@ -320,7 +387,7 @@ async function fetchOdTargetWithTransientRetry(
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      return await fetchOdTargetOnce(request, target, fetchImpl);
+      return await fetchOdTargetOnce(request, target, fetchImpl, options);
     } catch (error) {
       lastError = error;
       // Retrying a request the client abandoned can only fail again, and each
@@ -402,7 +469,7 @@ export async function handleOdRequest(
   fetchImpl: OdProtocolFetch = fetch,
   retryOptions: OdProxyRetryOptions = {},
 ): Promise<Response> {
-  const target = toWebRuntimeUrl(webRuntimeUrl, request.url);
+  const target = toWebRuntimeUrl(webRuntimeUrl, request.url, retryOptions.requireLoopbackOrigin === true);
   // No address to proxy to. Say so plainly rather than dialling a placeholder.
   if (target == null) return buildTargetUnavailableResponse(request, webRuntimeUrl);
   try {
@@ -474,9 +541,30 @@ function resolveOdProxyFetch(): OdProtocolFetch {
  * See `OdProtocolTargetResolver` for why this takes a provider rather than the
  * address itself.
  */
-export function registerOdProtocol(resolveWebRuntimeUrl: OdProtocolTargetResolver): void {
+export function registerOdProtocol(
+  resolveWebRuntimeUrl: OdProtocolTargetResolver,
+  partition?: string,
+  options: OdProtocolRegistrationOptions = {},
+): () => void {
   const fetchImpl = resolveOdProxyFetch();
-  protocol.handle(OD_SCHEME, async (request) => {
-    return await handleOdRequest(request, resolveWebRuntimeUrl(), fetchImpl);
+  const targetProtocol = partition == null
+    ? protocol
+    : session.fromPartition(partition).protocol;
+  targetProtocol.handle(OD_SCHEME, async (request) => {
+    return await handleOdRequest(request, resolveWebRuntimeUrl(), fetchImpl, {
+      redirectPolicy: options.blockRedirects ? "block" : "follow",
+      requireLoopbackOrigin: options.requireLoopbackOrigin === true,
+    });
   });
+  let disposed = false;
+  return () => {
+    if (disposed) return;
+    disposed = true;
+    try {
+      targetProtocol.unhandle(OD_SCHEME);
+    } catch {
+      // The session may already have torn down its protocol registry. The
+      // disposer remains idempotent either way.
+    }
+  };
 }

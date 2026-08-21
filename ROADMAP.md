@@ -33,6 +33,24 @@ with the project's standards.
       rows compact labelled controls while retaining accessible names. Hosted
       interaction and high-scale capture evidence remains pending.
 
+- [~] **Add the production deterministic parity-route foundation.** The real
+      desktop entry now parses the exact v2 `material-designer://` tuple only in
+      explicit developer/capture mode, rejects missing or duplicate route
+      arguments, maps six semantically owned destinations to the existing web
+      router, applies frozen clock/random/motion and locale controls before
+      first render, isolates capture protocol handling, blocks external
+      navigation, and records a terminal readiness receipt against the
+      canonical URL/search, renderer-owned route witness, route component
+      invariant and fixture/network proof. The six mapped rows remain
+      foundation-only because the renderer still reports ordinary daemon data
+      and no capture provider or capture-aware sidecar isolation exists. Studio,
+      Library, Settings Appearance and standalone Handoff remain explicit
+      unresolved blockers; dark presentation is also blocked because the
+      product is light-only: `route.theme_dark_unresolved`,
+      `route.studio_unresolved`, `route.library_hidden`,
+      `route.settings_appearance_unresolved` and `route.handoff_unresolved`.
+      Hosted runtime proof and the four product-owned destinations remain open.
+
 - [x] **Repair installed Squirrel startup identity and runtime roots.** Commit
       [`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)
       removes the CI host's absolute namespace root from installed config and

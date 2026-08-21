@@ -1,6 +1,38 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Production parity route foundation — 2026-08-21.** The isolated route lane
+> adds a strict v2 `material-designer://` tuple parser and wires it through the
+> packaged Electron startup only when `OD_DESIGN_PARITY_CAPTURE=1` or
+> `--design-parity-capture` is explicit. Six inventoried destinations map to
+> the real web router (`/`, `/projects`, `/design-systems`, `/automations`,
+> `/plugins`, `/integrations`). The route prelude freezes time, randomness and
+> motion, applies the capture locale/language context before the first
+> document. Capture uses an isolated in-memory renderer session with the local
+> `od://` proxy, suppresses the separate pet window, rejects capture-mode
+> external navigation, blocks requests outside the exact current loopback
+> sidecar origin, and returns an idempotent protocol disposer. Readiness now
+> compares the canonical URL and full query, actual theme/viewport/device
+> scale/fonts, a renderer-owned route witness, route-specific component/ARIA
+> invariant, and fixture/network isolation proofs. Because the capture
+> provider and capture-aware sidecars are not implemented, the six reachable
+> rows remain foundation-only with a terminal `ready: false` receipt; ordinary
+> daemon data is explicitly detected rather than accepted as fixture data.
+>
+> Four rows remain intentionally fail-closed and are not claimed as reachable:
+> dark presentation is also blocked as `route.theme_dark_unresolved` because
+> the product is light-only. The destination blockers are
+> `route.studio_unresolved` (no production Studio destination),
+> `route.library_hidden` (the product flag hides Library),
+> `route.settings_appearance_unresolved` (the Settings page does not yet
+> accept the appearance state from the route), and
+> `route.handoff_unresolved` (handoff is project/file-scoped). Source-level
+> route contracts were added but no local Node, build, test, Electron, UI or
+> capture command was run. Hosted build/runtime proof and the remaining product
+> route work are still required; the parity verifier remains intentionally
+> unready.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

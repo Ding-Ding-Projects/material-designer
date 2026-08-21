@@ -31,12 +31,17 @@ vi.mock('electron', () => ({
   protocol: {
     registerSchemesAsPrivileged: vi.fn(),
     handle: vi.fn(),
+    unhandle: vi.fn(),
   },
 }));
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { net, protocol } from 'electron';
-import { handleOdRequest, registerOdProtocol } from '../src/protocol.js';
+import {
+  handleOdRequest,
+  isValidatedLoopbackSidecarUrl,
+  registerOdProtocol,
+} from '../src/protocol.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -44,6 +49,60 @@ afterEach(() => {
 });
 
 describe('od:// protocol proxy', () => {
+  it('accepts only credential-free loopback sidecar origins for capture validation', () => {
+    expect(isValidatedLoopbackSidecarUrl('http://127.0.0.1:17579/')).toBe(true);
+    expect(isValidatedLoopbackSidecarUrl('https://localhost:17579/')).toBe(true);
+    expect(isValidatedLoopbackSidecarUrl('http://example.test:17579/')).toBe(false);
+    expect(isValidatedLoopbackSidecarUrl('http://127.0.0.1:17579@evil.test/')).toBe(false);
+  });
+
+  it('blocks redirects in capture mode instead of following them', async () => {
+    const captured: Request[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      captured.push(input as Request);
+      return new Response(null, {
+        status: 302,
+        headers: { location: 'http://127.0.0.1:17580/elsewhere' },
+      });
+    };
+
+    const response = await handleOdRequest(
+      new Request('od://app/'),
+      'http://127.0.0.1:17579/',
+      fetchImpl,
+      { redirectPolicy: 'block', requireLoopbackOrigin: true },
+    );
+
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe('OD_PROTOCOL_REDIRECT_BLOCKED');
+    expect(captured[0]?.redirect).toBe('manual');
+  });
+
+  it('blocks a final response whose origin is not the validated sidecar', async () => {
+    const responseFromOtherOrigin = new Response('unexpected', { status: 200 });
+    Object.defineProperty(responseFromOtherOrigin, 'url', {
+      configurable: true,
+      value: 'https://example.test/redirected',
+    });
+    const response = await handleOdRequest(
+      new Request('od://app/'),
+      'http://127.0.0.1:17579/',
+      async () => responseFromOtherOrigin,
+      { redirectPolicy: 'block', requireLoopbackOrigin: true },
+    );
+
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe('OD_PROTOCOL_ORIGIN_MISMATCH');
+  });
+
+  it('returns an idempotent disposer that unhandles the registered scheme once', () => {
+    const dispose = registerOdProtocol(() => 'http://127.0.0.1:17579/');
+    dispose();
+    dispose();
+    expect(vi.mocked(protocol.unhandle)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(protocol.unhandle)).toHaveBeenCalledWith('od');
+  });
+
   it('proxies the request through fetchImpl with the rewritten target URL', async () => {
     const captured: Request[] = [];
     const fetchImpl: typeof fetch = async (input) => {

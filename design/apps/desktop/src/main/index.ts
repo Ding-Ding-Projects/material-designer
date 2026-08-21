@@ -67,6 +67,11 @@ import {
   registerDesktopDiagnosticsIpc,
 } from "./diagnostics.js";
 import { notifyDesktopExternalShow } from "./external-show.js";
+import {
+  deterministicParityChromiumLocale,
+  parseDeterministicParityRouteArgv,
+  type DeterministicParityRoute,
+} from "./deterministic-parity-route.js";
 
 // Re-export pure URL-policy helpers so the packaged workspace's
 // vitest can pin their behaviour without spinning up a full Electron
@@ -84,6 +89,27 @@ export {
   type SplashBootStage,
   type SplashStageSurface,
 } from "./runtime.js";
+
+export {
+  DETERMINISTIC_PARITY_CAPTURE_ENV,
+  DETERMINISTIC_PARITY_CAPTURE_FLAG,
+  DETERMINISTIC_PARITY_FONTS,
+  DETERMINISTIC_PARITY_FIXTURE_REVISION,
+  DETERMINISTIC_PARITY_NETWORK,
+  DETERMINISTIC_PARITY_PROTOCOL,
+  DETERMINISTIC_PARITY_RANDOM_SEED,
+  DETERMINISTIC_PARITY_TIME,
+  DeterministicParityRouteError,
+  deterministicParityChromiumLocale,
+  deterministicParityRouteIds,
+  deterministicParitySessionPartition,
+  isDeterministicParityCaptureEnabled,
+  parseDeterministicParityRouteArgv,
+  resolveDeterministicParityRoute,
+  type DeterministicParityRoute,
+  type DeterministicParityReadiness,
+  type DeterministicParityTuple,
+} from "./deterministic-parity-route.js";
 
 // Re-export the path-validation helpers for the same reason (#974).
 // shell.openPath is privileged main-process behaviour; pinning the
@@ -180,6 +206,12 @@ export type DesktopMainOptions = {
   discoverDaemonUrl?: () => Promise<string | null>;
   /** Stable installed launcher used for Windows opendesign:// registration. */
   inviteProtocolClientPath?: string | null;
+  /**
+   * Developer-only deterministic design-parity route. Normal launches leave
+   * this unset; the packaged entry passes it only after validating an explicit
+   * `material-designer://` capture argument.
+   */
+  captureRoute?: DeterministicParityRoute | null;
   preloadPath?: string;
   windowTitle?: string;
   onDesktopReady?: (controls: {
@@ -737,7 +769,22 @@ export async function runDesktopMain(
   // `apps/packaged/src/index.ts` has already applied the switch before
   // its own `whenReady`; this call is then a no-op for the switch and
   // only recovers the locale string for the BrowserWindow below.
-  const osLocale = applyOsLocaleSwitch(app);
+  const captureRoute =
+    options.captureRoute
+    ?? parseDeterministicParityRouteArgv(
+      process.argv,
+      process.env,
+    );
+  // The packaged entry normally applies this switch before `whenReady()`. A
+  // tools-dev invocation may enter here directly, so keep the same route
+  // self-contained and apply it before Chromium creates its first session.
+  const osLocale = captureRoute
+    ? deterministicParityChromiumLocale(captureRoute.tuple)
+    : applyOsLocaleSwitch(app);
+  if (captureRoute && !options.captureRoute) {
+    app.commandLine.appendSwitch("force-device-scale-factor", String(captureRoute.tuple.scale));
+    app.commandLine.appendSwitch("lang", osLocale);
+  }
   // Same dev-vs-packaged split as the locale switch above: dev lands the
   // switch here, packaged has already applied it pre-whenReady.
   applyLoopbackConnectionLimitSwitch(app);
@@ -997,6 +1044,7 @@ export async function runDesktopMain(
     requestQuit: shutdownAndExit,
     splashWindow: options.splashWindow,
     splashStartedAt: options.splashStartedAt,
+    captureRoute,
     updater,
     windowTitle: options.windowTitle,
   });

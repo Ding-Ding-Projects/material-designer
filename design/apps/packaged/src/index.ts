@@ -19,7 +19,11 @@ import {
   applyLoopbackConnectionLimitSwitch,
   applyOsLocaleSwitch,
   createSplashWindow,
+  deterministicParityChromiumLocale,
+  deterministicParitySessionPartition,
+  parseDeterministicParityRouteArgv,
   setSplashStage,
+  type DeterministicParityRoute,
 } from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
 import { spawn, spawnSync } from "node:child_process";
@@ -216,12 +220,29 @@ async function main(): Promise<void> {
     return;
   }
 
+  // A normalized parity route is accepted only in the explicit developer /
+  // capture mode. Unknown, malformed, or semantically unresolved rows fail
+  // before sidecars or a renderer can start; normal launches have no route.
+  const deterministicParityRoute: DeterministicParityRoute | null =
+    parseDeterministicParityRouteArgv(process.argv, process.env);
+
   // Must run BEFORE `app.whenReady()` below, because Chromium consumes
   // `--lang` at session bootstrap. Doing it here lets the packaged
   // renderer's `navigator.language` follow the OS instead of Chromium's
   // en-US default. runDesktopMain (called later) calls the same helper
   // again to recover the resolved locale string for the BrowserWindow.
-  applyOsLocaleSwitch(app);
+  if (deterministicParityRoute) {
+    app.commandLine.appendSwitch(
+      "force-device-scale-factor",
+      String(deterministicParityRoute.tuple.scale),
+    );
+    app.commandLine.appendSwitch(
+      "lang",
+      deterministicParityChromiumLocale(deterministicParityRoute.tuple),
+    );
+  } else {
+    applyOsLocaleSwitch(app);
+  }
   // Must also land before whenReady — see the helper's docblock for the
   // connection-pool deadlock it prevents (electron/electron#47097).
   applyLoopbackConnectionLimitSwitch(app);
@@ -389,10 +410,22 @@ async function main(): Promise<void> {
   // Resolve the web sidecar address per request instead of freezing it here.
   // The restart supervisor may bind a fresh ephemeral port, while a temporary
   // lack of a target should surface as the protocol layer's structured 503.
-  registerOdProtocol(() => sidecars.currentWebUrl());
+  const disposeOdProtocol = registerOdProtocol(
+    () => sidecars.currentWebUrl(),
+    deterministicParityRoute == null
+      ? undefined
+      : deterministicParitySessionPartition(deterministicParityRoute),
+    {
+      blockRedirects: deterministicParityRoute != null,
+      requireLoopbackOrigin: deterministicParityRoute != null,
+    },
+  );
 
   const { runDesktopMain } = await import("@open-design/desktop/main");
   await runDesktopMain(runtime, {
+    captureRoute: deterministicParityRoute,
+    captureNetworkOrigin: () => sidecars.currentWebUrl(),
+    captureNetworkIsolationReady: false,
     splashWindow: splash.window,
     splashStartedAt: splash.startedAt,
     async beforeShutdown() {
@@ -400,14 +433,18 @@ async function main(): Promise<void> {
         await retireObsoleteInstalledOuter();
       } finally {
         try {
-          await sidecars.close();
+          disposeOdProtocol();
         } finally {
-          await identity.close();
+          try {
+            await sidecars.close();
+          } finally {
+            await identity.close();
+          }
         }
       }
     },
     async discoverWebUrl() {
-      return packagedEntryUrl();
+      return deterministicParityRoute?.browserUrl ?? packagedEntryUrl();
     },
     // Round-7 (lefarcen P2 @ runtime.ts:336): packaged main-process
     // fetch targets the daemon sidecar's real http URL — never the
