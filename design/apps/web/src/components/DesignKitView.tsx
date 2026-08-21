@@ -30,8 +30,6 @@ import { Button, Textarea } from '@open-design/components';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { DesignSystemEditClickProps } from '@open-design/contracts/analytics';
 import { tv, useT } from '../i18n';
-import { openExternalUrl, projectRawUrl } from '../providers/registry';
-import { useT } from '../i18n';
 import {
   fetchProjectFileText,
   openExternalUrl,

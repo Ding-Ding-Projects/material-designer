@@ -13,7 +13,6 @@
 // switch between shown and hidden, and because a fresh install has no stored
 // preference, the default state rendered no navigation at all.
 
-import type { ReactNode } from 'react';
 import { EntryHelpMenu } from './EntryHelpMenu';
 // Team-edition entry navigation rail (Lovart/Manus-style labeled column).
 //

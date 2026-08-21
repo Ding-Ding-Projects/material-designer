@@ -22,18 +22,18 @@ import {
   projectKindFromMetadataToTracking,
   fidelityToTracking,
 } from '@open-design/contracts/analytics';
-import type {
-  AmrModelsResponse,
-  ChatSessionMode,
-  LocalCatalogScope,
-  RunContextSelection,
-  TeamProject,
-  WorkspaceCollabContext,
-  WorkspaceInvalidationSsePayload,
-  ProjectWorkspaceScope,
-  WorkspaceProjectSummary,
+import {
+  DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID,
+  type AmrModelsResponse,
+  type ChatSessionMode,
+  type LocalCatalogScope,
+  type RunContextSelection,
+  type TeamProject,
+  type WorkspaceCollabContext,
+  type WorkspaceInvalidationSsePayload,
+  type ProjectWorkspaceScope,
+  type WorkspaceProjectSummary,
 } from '@open-design/contracts';
-import { DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID } from '@open-design/contracts';
 import { EntryView } from './components/EntryView';
 import type { ProjectTitleHint } from './components/EntryShell';
 import type { IntegrationTab } from './components/IntegrationsView';
@@ -67,6 +67,7 @@ import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { TooltipLayer } from './components/TooltipLayer';
 import {
   openWorkspaceTab,
+  removeWorkspaceProjectTabs,
   WorkspaceTabsBar,
   WORKSPACE_TAB_PANEL_ID,
 } from './components/WorkspaceTabsBar';
@@ -74,11 +75,6 @@ import { WindowTitleBar } from './components/WindowTitleBar';
 import { AppStatusBar } from './components/AppStatusBar';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
-import {
-  openWorkspaceTab,
-  removeWorkspaceProjectTabs,
-  WorkspaceTabsBar,
-} from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
@@ -227,14 +223,12 @@ import {
   duplicatePluginAsProject,
   patchProject,
   resolvedWorkspaceContextForWrite,
+  type PluginShareAction,
+  type PluginShareProjectOutcome,
+  type WorkspaceProjectListView,
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
-import type {
-  PluginShareAction,
-  PluginShareProjectOutcome,
-  WorkspaceProjectListView,
-} from './state/projects';
 import {
   markProjectDisplaySnapshotsDirty,
   patchProjectDisplaySnapshots,
@@ -245,22 +239,22 @@ import {
 } from './state/project-display-cache';
 import { getOpenDesignHost, type OpenDesignHostProjectImportSuccess } from '@open-design/host';
 import { useI18n } from './i18n';
-import { liveArtifactTabId } from './types';
-import type {
-  AgentInfo,
-  AgentModelChoice,
-  ApiProtocol,
-  AppConfig,
-  AppVersionInfo,
-  ChatAttachment,
-  DesignSystemGenerationJob,
-  DesignSystemSummary,
-  Project,
-  ProjectMetadata,
-  ProjectTemplate,
-  ProviderModelOption,
-  PromptTemplateSummary,
-  SkillSummary,
+import {
+  liveArtifactTabId,
+  type AgentInfo,
+  type AgentModelChoice,
+  type ApiProtocol,
+  type AppConfig,
+  type AppVersionInfo,
+  type ChatAttachment,
+  type DesignSystemGenerationJob,
+  type DesignSystemSummary,
+  type Project,
+  type ProjectMetadata,
+  type ProjectTemplate,
+  type ProviderModelOption,
+  type PromptTemplateSummary,
+  type SkillSummary,
 } from './types';
 
 type AppCreateProjectInput = Omit<CreateInput, 'metadata'> & {

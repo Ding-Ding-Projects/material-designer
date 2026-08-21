@@ -20,10 +20,8 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import type { FigmaImportResult } from '@open-design/contracts';
 import { Button, VisuallyHidden } from '@open-design/components';
 import type { FigmaImportResult, WorkspaceCollabContext } from '@open-design/contracts';
-import { Button } from '@open-design/components';
 import { Icon } from './Icon';
 import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';

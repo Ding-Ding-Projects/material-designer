@@ -1,8 +1,7 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
-import { useT } from '../i18n';
+import { useT, type TranslationVars } from '../i18n';
 import { LIBRARY_UI_VISIBLE } from '../features/libraryUi';
 import type { Dict } from '../i18n/types';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
@@ -61,7 +60,6 @@ import {
 } from './shortcuts/useShortcuts';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import { Toast } from './Toast';
-import type { TranslationVars } from '../i18n';
 
 type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 

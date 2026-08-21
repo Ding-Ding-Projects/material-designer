@@ -6,9 +6,6 @@
 // onOpen / onViewAll) so the strip can be reused later by other
 // surfaces (e.g. an in-project quick-switcher pane).
 
-import type { CSSProperties } from 'react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import {
   useCallback,
   useEffect,
@@ -17,6 +14,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
 } from 'react';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 

@@ -14,7 +14,13 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { hasOdCard } from '@open-design/contracts';
+import {
+  hasOdCard,
+  type AppliedPluginSnapshot,
+  type ChatSessionMode,
+  type RunContextSelection,
+  type WorkspaceContextItem,
+} from '@open-design/contracts';
 import { useAnalytics } from '../analytics/provider';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
@@ -29,8 +35,7 @@ import {
   runAgentProviderId,
 } from '../analytics/run-task';
 import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
-import { tv, useT, type TranslationVars } from '../i18n';
-import { useI18n, useT } from '../i18n';
+import { tv, useI18n, useT, type TranslationVars } from '../i18n';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import {
@@ -49,13 +54,6 @@ import { useProjectCollabContext } from '../collab/collab-context';
 import { takeComposerSeedFor } from '../state/libraryHandoff';
 import { splitOnQuestionForms } from '../artifacts/question-form';
 import { stripArtifact } from '../artifacts/strip';
-import type { TodoItem } from '../runtime/todos';
-import type {
-  AppliedPluginSnapshot,
-  ChatSessionMode,
-  RunContextSelection,
-  WorkspaceContextItem,
-} from '@open-design/contracts';
 import type {
   TrackingProjectKind,
   TrackingRunRecoveryActionType,
@@ -69,6 +67,7 @@ import {
   isTodoWriteToolName,
   latestTodoWriteInputForPinnedCard,
   unfinishedTodosFromEvents,
+  type TodoItem,
 } from '../runtime/todos';
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, Project, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
 import { agentDisplayName } from '../utils/agentLabels';
