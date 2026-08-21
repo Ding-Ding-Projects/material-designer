@@ -6,7 +6,7 @@ installed interaction, and process-level editor evidence remain open.
 
 | Surface | Route or owner | Scope | Source verdict |
 | --- | --- | --- | --- |
-| Complete project handoff | POST /api/projects/:id/archive/prepare plus staged GET | Whole project root, including empty projects | Implemented: deterministic ZIP, omission ledger, per-entry lengths/hashes, receipt digest, bounded staged lifetime |
+| Complete project handoff | POST /api/projects/:id/archive/prepare plus staged GET | Whole project root, including empty projects | Implemented: deterministic for fixed source/project/build inputs, omission ledger, per-entry lengths/hashes, receipt digest, bounded staged lifetime |
 | Active-file website handoff | GET /api/projects/:id/archive and downloadProjectArchive | Complete project when the file has no version; versioned artifact path otherwise | Existing path retained; project-level action is the preferred no-file route |
 | Desktop scaffold | target=desktop-scaffold and downloadDesktopScaffold | Complete project plus generated desktop source scaffold | Separate named target; never silently substituted into the ordinary handoff |
 | Selected design-system package | Design-system archive route and downloadDesignSystemArchive | Design-system package and generated usage guide | Existing route retained; shared Markdown helper now protects generated guide headings/lists |

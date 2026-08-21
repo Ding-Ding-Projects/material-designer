@@ -45,13 +45,17 @@ separate.
 **Changed files:**
 
 - `packages/contracts/src/api/export-safety.ts`
+- `packages/contracts/src/api/data-export.ts`
 - `packages/contracts/src/index.ts`
 - `packages/contracts/tests/export-safety.test.ts`
 - `apps/daemon/src/projects.ts`
 - `apps/daemon/src/data-export/serialize.ts`
+- `apps/daemon/src/data-export/archive.ts`
 - `apps/daemon/src/design-systems/index.ts`
+- `apps/daemon/src/desktop-scaffold.ts`
 - `apps/daemon/src/import-export-routes.ts`
 - `apps/daemon/src/server.ts`
+- `apps/daemon/src/routes/editor.ts`
 - `apps/daemon/tests/project-archive.test.ts`
 - `apps/web/src/runtime/exports.ts`
 - `apps/web/src/providers/registry.ts`
@@ -60,8 +64,10 @@ separate.
 - `apps/web/src/components/ProjectArchiveAction.tsx`
 - `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/styles/design-system-flow.css`
+- `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/components/HandoffButton.test.tsx`
 - `apps/web/tests/components/ProjectArchiveAction.test.tsx`
+- `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 

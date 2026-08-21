@@ -2371,6 +2371,15 @@ a.ds-source-link-open:focus-visible {
   gap: 6px;
   min-width: 0;
   max-width: 100%;
+  min-height: 48px;
+}
+.project-export-action__scaffold,
+.project-export-action__cancel { min-height: 48px; }
+.project-export-action__progress {
+  min-width: 120px;
+  max-width: 180px;
+  height: 8px;
+  flex: 1 1 120px;
 }
 .project-export-action__trigger span {
   min-width: 0;
@@ -2396,7 +2405,7 @@ a.ds-source-link-open:focus-visible {
 .project-export-action__receipt { color: var(--success, #2e7d32); }
 .project-export-action__error { color: var(--danger, #b3261e); }
 @media (max-width: 760px) {
-  .project-export-action { max-width: 44vw; }
+  .project-export-action { max-width: 100%; flex-wrap: wrap; }
   .project-export-action__trigger span { display: none; }
 }
 .ws-focus-toggle {

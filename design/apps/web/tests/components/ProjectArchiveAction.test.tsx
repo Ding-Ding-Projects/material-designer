@@ -44,6 +44,8 @@ describe('ProjectArchiveAction', () => {
         ok: true,
         receipt: {
           schema: 'open-design.project-export-receipt.v1',
+          target: 'project',
+          projectId: 'project-1',
           token: 'receipt-token',
           filename: 'project-one.zip',
           bytes: 100,

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { exportPathCollisionKey, redactExportText } from '@open-design/contracts';
 
 export const DESKTOP_SCAFFOLD_FILE_ROLES = {
   package: 'desktop/package.json',
@@ -71,7 +72,8 @@ function safePackageName(projectName: string): string {
 }
 
 function safeProjectLabel(projectName: string): string {
-  return String(projectName ?? '').trim().replace(/[\r\n\u0000]/g, ' ').slice(0, 120) || 'Desktop application';
+  const bounded = String(projectName ?? '').trim().replace(/[\r\n\u0000]/g, ' ').slice(0, 120) || 'Desktop application';
+  return redactExportText(bounded, 'desktop-scaffold.projectName').value;
 }
 
 function escapeHtml(value: string): string {
@@ -167,14 +169,10 @@ document.documentElement.dataset.desktopStarterReady = 'true';
 export function createDesktopScaffoldFiles(input: DesktopScaffoldBuildInput): DesktopScaffoldFile[] {
   const state = desktopScaffoldState(input);
   const label = safeProjectLabel(input.projectName);
-  const projectId = typeof input.projectId === 'string' && input.projectId.trim()
-    ? input.projectId.trim()
-    : undefined;
   const config = {
     schema: 'open-design.desktop-scaffold.v1',
     ...state,
     projectName: label,
-    ...(projectId ? { projectId } : {}),
     designManifest: '../DESIGN-MANIFEST.json',
     designHandoff: '../DESIGN-HANDOFF.md',
   };
@@ -267,11 +265,10 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => app.quit());
 `;
-  const preload = `'use strict';
+const preload = `'use strict';
 const { contextBridge } = require('electron');
 contextBridge.exposeInMainWorld('desktopShell', Object.freeze({
   scaffoldVersion: 1,
-  projectId: ${JSON.stringify(projectId ?? null)},
 }));
 `;
   const renderer = `'use strict';
@@ -302,10 +299,10 @@ The selected agent may now wire the real application into the source files. Keep
 export function assertDesktopScaffoldCollisions(
   entries: readonly { relPath?: string; name?: string }[],
 ): void {
-  const existingPaths = new Set(entries.map((entry) => String(entry.relPath ?? entry.name ?? '').replace(/\\/g, '/').toLowerCase()));
+  const existingPaths = new Set(entries.map((entry) => exportPathCollisionKey(String(entry.relPath ?? entry.name ?? ''))).filter(Boolean));
   const generated = Object.values(DESKTOP_SCAFFOLD_FILE_ROLES);
-  const collisions = generated.filter((name) => existingPaths.has(name.toLowerCase()));
-  if (existingPaths.has('desktop')) collisions.unshift('desktop');
+  const collisions = generated.filter((name) => existingPaths.has(exportPathCollisionKey(name)));
+  if (existingPaths.has(exportPathCollisionKey('desktop'))) collisions.unshift('desktop');
   if (collisions.length > 0) {
     const err = new Error(`desktop scaffold path already exists: ${collisions.join(', ')}`);
     (err as Error & { code?: string }).code = 'BAD_REQUEST';

@@ -1539,7 +1539,8 @@ installed build.
       an encrypted archive as protected while leaving filenames in the clear.
       **Source checkpoint:** the project-level complete-tree ZIP now has a
       separate action that works without an active file, including an empty
-      project; deterministic timestamps/order, an omission ledger,
+      project; deterministic timestamps/order for fixed source/project/build
+      inputs, an omission ledger,
       per-entry lengths/hashes, staged receipt/digest validation, and exact
       editor handoff are implemented. Hosted build and installed proof remain
       open.

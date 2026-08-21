@@ -7,11 +7,10 @@
 // All paths flowing in from HTTP handlers are validated against the project
 // directory to prevent path traversal — see resolveSafe().
 
-import { constants as fsConstants, createReadStream } from 'node:fs';
+import { constants as fsConstants } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { link, lstat, mkdir, readdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { Readable } from 'node:stream';
 import JSZip from 'jszip';
 import {
   inferLegacyManifest,
@@ -42,11 +41,14 @@ import {
 } from './desktop-scaffold.js';
 import {
   compareExportPaths,
+  canonicalExportPath,
+  exportPathCollisionKey,
   exportPathOmissionReason,
   markdownHeading,
   markdownInlineCode,
   markdownListItem,
   redactExportText,
+  PROJECT_EXPORT_LIMITS,
   type ExportOmission,
 } from '@open-design/contracts';
 
@@ -63,47 +65,57 @@ export const projectFileWriteTestHooks = {
   afterCommit: null as null | ((write: { safeName: string; target: string; body: Buffer | string }) => Promise<void> | void),
 };
 
-function createLazyArchiveFileStream(filePath: string): Readable {
-  return Readable.from((async function* readFileChunks() {
-    const noFollow = fsConstants.O_NOFOLLOW ?? 0;
-    const source = createReadStream(filePath, {
-      flags: fsConstants.O_RDONLY | noFollow,
-    });
-    for await (const chunk of source) yield chunk;
-  })());
-}
-
 const MAX_EXPORT_TEXT_SCAN_BYTES = 1_000_000;
 const TEXT_EXPORT_EXTENSION_RE = /\.(?:c|cc|cpp|css|csv|html?|jsx?|json|md|mdx|mjs|py|rs|scss|sh|sql|toml|ts|tsx|txt|vue|xml|yaml|yml)$/i;
 
-async function digestFile(filePath: string): Promise<{ bytes: number; sha256: string }> {
-  const hash = createHash('sha256');
-  let bytes = 0;
-  const source = createReadStream(filePath, {
-    flags: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
-  });
-  for await (const chunk of source) {
-    const buffer = Buffer.from(chunk);
-    bytes += buffer.length;
-    hash.update(buffer);
+async function readStableProjectFile(
+  filePath: string,
+  expected: { size: number; ino?: number; dev?: number },
+  signal?: AbortSignal,
+): Promise<Buffer> {
+  if (signal?.aborted) throw new DOMException('export aborted', 'AbortError');
+  const handle = await open(filePath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+  try {
+    const opened = await handle.stat();
+    if (!opened.isFile() || opened.size !== expected.size) throw new Error('project export source changed');
+    if (expected.ino && opened.ino && expected.ino !== opened.ino) throw new Error('project export source changed');
+    if (expected.dev && opened.dev && expected.dev !== opened.dev) throw new Error('project export source changed');
+    const content = Buffer.allocUnsafe(opened.size);
+    let offset = 0;
+    while (offset < content.length) {
+      if (signal?.aborted) throw new DOMException('export aborted', 'AbortError');
+      const result = await handle.read(content, offset, Math.min(1024 * 1024, content.length - offset), offset);
+      if (result.bytesRead <= 0) throw new Error('project export source ended before its declared length');
+      offset += result.bytesRead;
+    }
+    const after = await handle.stat();
+    if (after.size !== opened.size || (opened.ino && after.ino && opened.ino !== after.ino)) {
+      throw new Error('project export source changed while reading');
+    }
+    return content;
+  } finally {
+    await handle.close().catch(() => {});
   }
-  return { bytes, sha256: hash.digest('hex') };
 }
 
 async function prepareArchiveFile(entry: {
   relPath: string;
   fullPath: string;
   size: number;
-}, omissions: ExportOmission[]): Promise<{
+  ino?: number;
+  dev?: number;
+}, omissions: ExportOmission[], signal?: AbortSignal): Promise<{
   relPath: string;
   fullPath: string;
   mtime: number;
   size: number;
   sha256: string;
   content?: Buffer;
-}> {
+} | null> {
+  if (entry.size > 64 * 1024 * 1024) return null;
+  if (TEXT_EXPORT_EXTENSION_RE.test(entry.relPath) && entry.size > MAX_EXPORT_TEXT_SCAN_BYTES) return null;
+  const original = await readStableProjectFile(entry.fullPath, entry, signal);
   if (TEXT_EXPORT_EXTENSION_RE.test(entry.relPath) && entry.size <= MAX_EXPORT_TEXT_SCAN_BYTES) {
-    const original = await readFile(entry.fullPath);
     const decoded = original.toString('utf8');
     const redaction = redactExportText(decoded, entry.relPath);
     omissions.push(...redaction.omissions);
@@ -119,8 +131,7 @@ async function prepareArchiveFile(entry: {
       };
     }
   }
-  const digest = await digestFile(entry.fullPath);
-  return { ...entry, mtime: 0, size: digest.bytes, sha256: digest.sha256 };
+  return { ...entry, mtime: 0, size: original.length, sha256: createHash('sha256').update(original).digest('hex'), content: original };
 }
 
 export function isRunTouchedProjectFile(fileMtimeMs, runStartTimeMs) {
@@ -389,7 +400,8 @@ export async function buildProjectArchive(projectsRoot, projectId, root, metadat
     metadata,
     options,
   );
-  const buffer = await collectArchiveStream(stream);
+  const buffer = await collectArchiveStream(stream, options.signal);
+  if (buffer.length > PROJECT_EXPORT_LIMITS.maxArchiveBytes) throw new Error('project archive exceeds the supported size');
   await validateProjectArchiveBuffer(buffer);
   return { buffer, baseName };
 }
@@ -416,7 +428,7 @@ export async function validateProjectArchiveBuffer(buffer: Buffer): Promise<void
   }
   const raw = await zip.file(EXPORT_MANIFEST_FILENAME)?.async('string');
   const manifest = raw ? JSON.parse(raw) : null;
-  if (!manifest || manifest.schema !== 'open-design.project-export-manifest.v1' || !Array.isArray(manifest.files)) {
+  if (!manifest || manifest.schema !== 'open-design.project-export-manifest.v1' || !Array.isArray(manifest.files) || !Array.isArray(manifest.generated) || !Array.isArray(manifest.excludedEntries)) {
     throw new Error('project archive manifest is malformed');
   }
   for (const entry of [...manifest.files, ...(Array.isArray(manifest.generated) ? manifest.generated : [])]) {
@@ -429,6 +441,14 @@ export async function validateProjectArchiveBuffer(buffer: Buffer): Promise<void
     if (content.length !== entry.bytes) throw new Error(`project archive length mismatch for ${entry.path}`);
     const digest = createHash('sha256').update(content).digest('hex');
     if (digest !== entry.sha256) throw new Error(`project archive hash mismatch for ${entry.path}`);
+  }
+  const covered = new Set<string>([
+    ...manifest.files.map((entry) => entry.path),
+    ...manifest.generated.map((entry) => entry.path),
+    ...manifest.excludedEntries.map((entry) => entry.path),
+  ]);
+  if (covered.size !== names.length || names.some((name) => !covered.has(name))) {
+    throw new Error('project archive manifest does not cover its exact ZIP entries');
   }
 }
 
@@ -475,8 +495,18 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
 
   const entries = [];
   const omissions: ExportOmission[] = [];
-  await collectArchiveEntries(archiveRoot, '', entries, omissions);
+  await collectArchiveEntries(archiveRoot, '', entries, omissions, options.signal);
   entries.sort((left, right) => compareExportPaths(left.relPath, right.relPath));
+  const collisionKeys = new Set<string>();
+  for (const entry of entries) {
+    const collisionKey = exportPathCollisionKey(entry.relPath);
+    if (!collisionKey || collisionKeys.has(collisionKey)) {
+      const err = new Error('project archive contains a case-insensitive or Unicode path collision');
+      err.code = 'PROJECT_EXPORT_PATH_COLLISION';
+      throw err;
+    }
+    collisionKeys.add(collisionKey);
+  }
   if (entries.length === 0 && options.allowEmptyRoot !== true) {
     const err = new Error('archive root is empty');
     err.code = 'ENOENT';
@@ -487,7 +517,7 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
   for (const entry of entries) {
     zip.file(
       entry.relPath,
-      entry.content ?? createLazyArchiveFileStream(entry.fullPath),
+      entry.content,
       {
       // A fixed DOS-compatible epoch makes the archive bytes reproducible;
       // source mtimes are metadata on the host, not part of the handoff.
@@ -498,21 +528,31 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
   }
   addDesignHandoff(zip, entries, archiveBaseName || path.basename(projectRoot));
   addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot), omissions);
-  addExportManifest(zip, entries, omissions, archiveBaseName || path.basename(projectRoot));
+  const generatedFiles = [
+    { path: DESIGN_HANDOFF_FILENAME, body: buildDesignHandoff(entries, archiveBaseName || path.basename(projectRoot)) },
+    { path: DESIGN_MANIFEST_FILENAME, body: buildDesignManifest(entries, archiveBaseName || path.basename(projectRoot)) },
+  ];
   if (options.target === 'desktop-scaffold') {
     assertDesktopScaffoldCollisions(entries);
     const { entryFile } = projectFileMap(entries);
+    if (!entryFile || !/\.html?$/i.test(entryFile)) {
+      const err = new Error('desktop scaffold export requires an HTML entry file');
+      err.code = 'DESKTOP_SCAFFOLD_HTML_REQUIRED';
+      throw err;
+    }
     for (const file of createDesktopScaffoldFiles({
       projectName: archiveBaseName || path.basename(projectRoot),
       entryFile,
     })) {
-        zip.file(file.path, file.body, { date: new Date(0), binary: false });
+      zip.file(file.path, file.body, { date: new Date(0), binary: false });
+      generatedFiles.push({ path: file.path, body: file.body });
     }
   } else if (options.target != null && options.target !== 'project') {
     const err = new Error(`unsupported archive target: ${options.target}`);
     err.code = 'BAD_REQUEST';
     throw err;
   }
+  addExportManifest(zip, entries, omissions, archiveBaseName || path.basename(projectRoot), generatedFiles);
   // Level 6 is the zlib default — balances speed and ratio for typical
   // project trees (HTML/CSS/JS plus a handful of assets). Level 9 buys
   // <5% on already-compressed PNGs/fonts at 2-3× CPU; level 1 produces
@@ -619,7 +659,12 @@ export async function createBatchArchiveStream(projectsRoot, projectId, fileName
       continue;
     }
 
-    eligible.push({ name, filePath, mtime: st.mtimeMs });
+    if (st.size > PROJECT_EXPORT_LIMITS.maxEntryBytes) {
+      rejected.push({ name, reason: 'file exceeds the export size limit' });
+      continue;
+    }
+    const content = await readStableProjectFile(filePath, { size: st.size, ino: st.ino, dev: st.dev });
+    eligible.push({ name, filePath, content });
   }
 
   // Fail-fast: any rejected entry means the request is invalid — mirror the
@@ -641,8 +686,8 @@ export async function createBatchArchiveStream(projectsRoot, projectId, fileName
 
   const zip = new JSZip();
   for (const entry of eligible) {
-    zip.file(entry.name, createLazyArchiveFileStream(entry.filePath), {
-      date: new Date(entry.mtime),
+    zip.file(entry.name, entry.content, {
+      date: new Date(0),
       binary: true,
     });
   }
@@ -655,17 +700,28 @@ export async function createBatchArchiveStream(projectsRoot, projectId, fileName
   return { stream, baseName: '' };
 }
 
-async function collectArchiveStream(stream) {
+async function collectArchiveStream(stream, signal?: AbortSignal) {
   return new Promise<Buffer>((resolve, reject) => {
     const chunks = [];
+    const abort = () => {
+      stream.destroy(new DOMException('export aborted', 'AbortError'));
+    };
+    signal?.addEventListener('abort', abort, { once: true });
     stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-    stream.once('error', reject);
-    stream.once('end', () => resolve(Buffer.concat(chunks)));
+    stream.once('error', (error) => {
+      signal?.removeEventListener('abort', abort);
+      reject(error);
+    });
+    stream.once('end', () => {
+      signal?.removeEventListener('abort', abort);
+      resolve(Buffer.concat(chunks));
+    });
     stream.resume();
   });
 }
 
-async function collectArchiveEntries(dir, relDir, out, omissions: ExportOmission[] = []) {
+async function collectArchiveEntries(dir, relDir, out, omissions: ExportOmission[] = [], signal?: AbortSignal) {
+  if (signal?.aborted) throw new DOMException('export aborted', 'AbortError');
   const dirStat = await lstat(dir).catch((err) => {
     if (err && err.code === 'ENOENT') return null;
     throw err;
@@ -694,7 +750,7 @@ async function collectArchiveEntries(dir, relDir, out, omissions: ExportOmission
       }
       const st = await lstat(full);
       if (!st.isDirectory() || st.isSymbolicLink()) continue;
-      await collectArchiveEntries(full, rel, out, omissions);
+      await collectArchiveEntries(full, rel, out, omissions, signal);
       continue;
     }
     if (e.name.endsWith('.artifact.json')) continue;
@@ -703,17 +759,23 @@ async function collectArchiveEntries(dir, relDir, out, omissions: ExportOmission
     // metadata collection. Keep the archive allowlist fail-closed; the lazy
     // O_NOFOLLOW open below repeats the check when bytes are actually read.
     if (!st.isFile() || st.isSymbolicLink()) continue;
-    const omissionReason = exportPathOmissionReason(rel);
+    const canonical = canonicalExportPath(rel);
+    const omissionReason = canonical ? exportPathOmissionReason(canonical) : 'path is not a canonical relative export path';
     if (omissionReason) {
       omissions.push({ path: rel, reason: omissionReason });
       continue;
     }
-    out.push(await prepareArchiveFile({ relPath: rel, fullPath: full, size: st.size }, omissions));
+    const prepared = await prepareArchiveFile({ relPath: canonical!, fullPath: full, size: st.size, ino: st.ino, dev: st.dev }, omissions, signal);
+    if (prepared) out.push(prepared);
+    else omissions.push({ path: rel, reason: 'file exceeds the bounded export size or changed while reading' });
+    if (out.length > PROJECT_EXPORT_LIMITS.maxEntries) throw new Error('project archive has too many entries');
+    const totalBytes = out.reduce((sum, item) => sum + item.size, 0);
+    if (totalBytes > PROJECT_EXPORT_LIMITS.maxUncompressedBytes) throw new Error('project archive exceeds the uncompressed size limit');
   }
 }
 
 function addDesignHandoff(zip, entries, projectLabel) {
-  if (entries.some((entry) => entry.relPath.toLowerCase() === DESIGN_HANDOFF_FILENAME.toLowerCase())) {
+  if (entries.some((entry) => exportPathCollisionKey(entry.relPath) === exportPathCollisionKey(DESIGN_HANDOFF_FILENAME))) {
     const err = new Error(`generated archive path already exists: ${DESIGN_HANDOFF_FILENAME}`);
     err.code = 'BAD_REQUEST';
     throw err;
@@ -725,7 +787,7 @@ function addDesignHandoff(zip, entries, projectLabel) {
 }
 
 function addDesignManifest(zip, entries, projectLabel, _omissions: ExportOmission[] = []) {
-  if (entries.some((entry) => entry.relPath.toLowerCase() === DESIGN_MANIFEST_FILENAME.toLowerCase())) {
+  if (entries.some((entry) => exportPathCollisionKey(entry.relPath) === exportPathCollisionKey(DESIGN_MANIFEST_FILENAME))) {
     const err = new Error(`generated archive path already exists: ${DESIGN_MANIFEST_FILENAME}`);
     err.code = 'BAD_REQUEST';
     throw err;
@@ -736,8 +798,14 @@ function addDesignManifest(zip, entries, projectLabel, _omissions: ExportOmissio
   });
 }
 
-function addExportManifest(zip, entries, omissions: ExportOmission[], projectLabel: string): void {
-  if (entries.some((entry) => entry.relPath.toLowerCase() === EXPORT_MANIFEST_FILENAME.toLowerCase())) {
+function addExportManifest(
+  zip,
+  entries,
+  omissions: ExportOmission[],
+  projectLabel: string,
+  generatedFiles: Array<{ path: string; body: string }>,
+): void {
+  if (entries.some((entry) => exportPathCollisionKey(entry.relPath) === exportPathCollisionKey(EXPORT_MANIFEST_FILENAME))) {
     const err = new Error(`generated archive path already exists: ${EXPORT_MANIFEST_FILENAME}`);
     err.code = 'BAD_REQUEST';
     throw err;
@@ -747,15 +815,12 @@ function addExportManifest(zip, entries, omissions: ExportOmission[], projectLab
   const files = entries
     .map((entry) => ({ path: entry.relPath, bytes: entry.size, sha256: entry.sha256 }))
     .sort((left, right) => compareExportPaths(left.path, right.path));
-  const generated = [
-    { path: DESIGN_HANDOFF_FILENAME, content: buildDesignHandoff(entries, projectLabel || 'project') },
-    { path: DESIGN_MANIFEST_FILENAME, content: buildDesignManifest(entries, projectLabel || 'project') },
-  ].map(({ path: generatedPath, content }) => {
-    const bytes = Buffer.byteLength(content, 'utf8');
+  const generated = [...generatedFiles].sort((left, right) => compareExportPaths(left.path, right.path)).map(({ path: generatedPath, body }) => {
+    const bytes = Buffer.byteLength(body, 'utf8');
     return {
       path: generatedPath,
       bytes,
-      sha256: createHash('sha256').update(content, 'utf8').digest('hex'),
+      sha256: createHash('sha256').update(body, 'utf8').digest('hex'),
     };
   });
   const body = JSON.stringify({
@@ -791,7 +856,7 @@ function isFrameWrapperHtmlFile(file: string): boolean {
 }
 
 function projectFileMap(entries) {
-  const files = entries.map((entry) => entry.relPath).sort((a, b) => a.localeCompare(b));
+  const files = entries.map((entry) => entry.relPath).sort(compareExportPaths);
   const htmlFiles = files.filter((name) => /\.html?$/i.test(name));
   const screenHtmlFiles = htmlFiles.filter((name) => !isFrameWrapperHtmlFile(name));
   const cssFiles = files.filter((name) => /\.css$/i.test(name));
@@ -801,14 +866,13 @@ function projectFileMap(entries) {
     || screenHtmlFiles[0]
     || htmlFiles.find((name) => /(^|\/)index\.html$/i.test(name))
     || htmlFiles[0]
-    || files[0]
-    || 'index.html';
+    || null;
   return { files, htmlFiles, screenHtmlFiles, cssFiles, jsFiles, assetFiles, entryFile };
 }
 
 function buildDesignManifest(entries, projectLabel) {
   const { files, htmlFiles, screenHtmlFiles, cssFiles, jsFiles, assetFiles, entryFile } = projectFileMap(entries);
-  const screenFiles = screenHtmlFiles.length > 0 ? screenHtmlFiles : [entryFile];
+  const screenFiles = screenHtmlFiles.length > 0 ? screenHtmlFiles : entryFile ? [entryFile] : [];
   const safeProjectLabel = redactExportText(projectLabel || 'OpenDesign project', 'project').value;
   return JSON.stringify({
     schema: 'open-design.design-manifest.v1',
@@ -836,7 +900,7 @@ function buildDesignManifest(entries, projectLabel) {
     }),
     screenFilePolicy: {
       mode: 'screen-file-first',
-      entryFileRole: screenFiles.length > 1 && /(^|\/)index\.html?$/i.test(entryFile) ? 'launcher-overview' : 'primary-screen',
+      entryFileRole: entryFile && screenFiles.length > 1 && /(^|\/)index\.html?$/i.test(entryFile) ? 'launcher-overview' : entryFile ? 'primary-screen' : null,
       rules: [
         'Each distinct user-facing screen or surface must be delivered and implemented as its own file/route.',
         'If a landing page is present or requested, keep it in landing.html and do not merge it into the product app screen.',
@@ -858,12 +922,12 @@ function buildDesignManifest(entries, projectLabel) {
       requiredSections: ['hero', 'value props', 'product proof/screenshots', 'feature proof', 'CTA'],
     },
     tokens: {
-      source: cssFiles.length > 0 ? cssFiles : [entryFile],
+      source: cssFiles.length > 0 ? cssFiles : entryFile ? [entryFile] : [],
       required: ['background', 'surface', 'foreground', 'muted text', 'border', 'accent', 'radius', 'shadow', 'spacing', 'type scale', 'motion'],
       note: 'Extract/freeze tokens before framework implementation so coding tools do not substitute default theme colors or typography.',
     },
     interactions: {
-      source: jsFiles.length > 0 ? jsFiles : [entryFile],
+      source: jsFiles.length > 0 ? jsFiles : entryFile ? [entryFile] : [],
       requiredStates: ['default', 'hover', 'focus', 'active', 'disabled', 'loading', 'empty', 'error', 'success'],
       requiredBehaviors: ['forms/validation where present', 'tabs/filters where present', 'dialogs/sheets/drawers where present', 'copy/generate/share actions where present', 'player or quick controls where present'],
       note: 'If the prototype is static, derive missing behavior from visible controls and document it before coding.',
@@ -900,11 +964,12 @@ function buildDesignHandoff(entries, projectLabel) {
     cssFiles.length > 0 ||
     files.some((name) => /(screens?|pages?|components?|app|src)\//i.test(name));
   const safeProjectLabel = redactExportText(projectLabel || 'OpenDesign project', 'project').value;
+  const entryReference = entryFile ? markdownInlineCode(entryFile) : 'no HTML entry file yet';
   const list = (items) => items.length > 0 ? items.map((name) => `- ${markdownInlineCode(markdownListItem(name))}`).join('\n') : '- None detected';
 
   return `${markdownHeading(`${safeProjectLabel} implementation handoff`)}
 
-This archive is the source of truth for turning the design into production code. Start from ${markdownInlineCode(entryFile)}, then preserve the visual system, responsive behavior, and interactions found in the exported files.
+This archive is the source of truth for turning the design into production code. Start from ${entryReference}, then preserve the visual system, responsive behavior, and interactions found in the exported files.
 
 ## Implementation target
 - Build production UI from the exported design, not a loose reinterpretation.
@@ -914,7 +979,7 @@ This archive is the source of truth for turning the design into production code.
 - Treat this handoff as a visual contract: if implementation choices conflict, match the exported pixels and behavior first, then refactor internals.
 
 ## Source map
-- Primary entry: ${markdownInlineCode(entryFile)}
+- Primary entry: ${entryReference}
 - HTML screens detected: ${htmlFiles.length}
 - Stylesheets detected: ${cssFiles.length}
 - Script/component files detected: ${jsFiles.length}
@@ -947,7 +1012,7 @@ For responsive web exports, treat these as a modern breakpoint system for one ad
 - Use ${markdownInlineCode(DESIGN_MANIFEST_FILENAME)} as the machine-readable map for screens, app modules, OS widgets, landing pages, tokens, interactions, and viewport checks.
 - Screen-file-first: when multiple user-facing surfaces exist, implement each HTML screen as its own route/file. Treat \`index.html\` as a launcher/overview when the manifest marks it that way, not as a combined final UI.
 - If \`landing.html\`, app screens, platform screens, or OS widget files exist, preserve those boundaries in the target app instead of merging them into one page.
-- A single self-contained \`${entryFile}\` is acceptable only when the export truly contains one user-facing screen and its CSS/JS are structured enough to extract tokens, components, states, and behavior.
+- A single self-contained ${entryReference} is acceptable only when the export truly contains one user-facing screen and its CSS/JS are structured enough to extract tokens, components, states, and behavior.
 - If separate \`css/\` or \`js/\` files exist, treat them as source of truth for token/component/interactions before porting to React, Vue, SwiftUI, Compose, or another target stack.
 - In-app modules/components are product UI blocks inside the app. OS widgets are home-screen/lock-screen/quick-access surfaces outside the app. Do not merge those concepts.
 
@@ -957,7 +1022,7 @@ For responsive web exports, treat these as a modern breakpoint system for one ad
 - ${accentLikelyBrandLed ? 'A stylesheet or design/token file was detected; inspect it for canonical color variables before choosing framework theme tokens.' : 'No obvious token stylesheet was detected; sample colors from the entry file and convert them into named tokens before coding.'}
 
 ## Implementation sequence for AI coding tools
-1. Open \`${entryFile}\` and \`${DESIGN_MANIFEST_FILENAME}\`; identify every screen file, launcher/overview file, app module, and interaction before coding.
+1. Open ${entryReference} and ${markdownInlineCode(DESIGN_MANIFEST_FILENAME)}; identify every screen file, launcher/overview file, app module, and interaction before coding.
 2. If multiple HTML screens exist, map them to separate routes/surfaces first; do not merge \`landing.html\`, product app screens, platform screens, or OS widgets into one route.
 3. Extract a token table from CSS/root styles and inline styles before building framework components.
 4. Build product screens and domain-specific in-app modules from largest layout regions down to controls; avoid starting with isolated atoms that lose spatial intent.
@@ -979,7 +1044,7 @@ ${list(jsFiles)}
 ${list(assetFiles)}
 
 ## Coding checklist for AI tools
-1. Inspect \`${entryFile}\` and \`${DESIGN_MANIFEST_FILENAME}\` first and identify reusable components before coding.
+1. Inspect ${entryReference} and ${markdownInlineCode(DESIGN_MANIFEST_FILENAME)} first and identify reusable components before coding.
 2. Implement each user-facing screen file as its own route/surface; keep launcher, landing, app, platform, and OS widget files separate.
 3. Extract design tokens into the target stack: colors, type scale, spacing, radius, shadows, and motion.
 4. Implement layout with real 2025–2026 responsive breakpoints, fluid type/spacing, and container-query-aware component behavior; test with no horizontal overflow.

@@ -6,6 +6,34 @@
  */
 
 export const PROJECT_EXPORT_POLICY_VERSION = 1 as const;
+export const PROJECT_EXPORT_RECEIPT_SCHEMA = 'open-design.project-export-receipt.v1' as const;
+export const PROJECT_EXPORT_TARGETS = ['project', 'desktop-scaffold'] as const;
+export type ProjectExportTarget = (typeof PROJECT_EXPORT_TARGETS)[number];
+
+export interface ProjectExportReceipt {
+  schema: typeof PROJECT_EXPORT_RECEIPT_SCHEMA;
+  target: ProjectExportTarget;
+  projectId: string;
+  token: string;
+  filename: string;
+  bytes: number;
+  sha256: string;
+  editorPath: string;
+  downloadUrl: string;
+  expiresAt: number;
+  archiveDigestScope: string;
+}
+
+export const PROJECT_EXPORT_LIMITS = {
+  maxEntries: 2_048,
+  maxPathLength: 240,
+  maxEntryBytes: 64 * 1024 * 1024,
+  maxUncompressedBytes: 256 * 1024 * 1024,
+  maxArchiveBytes: 256 * 1024 * 1024,
+  maxCompressionRatio: 200,
+  maxCentralDirectoryBytes: 16 * 1024 * 1024,
+  maxCommentBytes: 1_024,
+} as const;
 
 export interface ExportOmission {
   path: string;
@@ -22,16 +50,34 @@ const SENSITIVE_PATH_RE = /(^|\/)(?:\.env(?:\.[^/]+)?|credentials?(?:\.[^/]+)?|s
 const SENSITIVE_EXTENSION_RE = /\.(?:pem|key|p12|pfx|kdbx|sqlite|db-wal|db-shm)$/i;
 const CACHE_SEGMENTS = new Set(['.cache', '.parcel-cache', '.next', '.vite', '.turbo', '__pycache__']);
 
+/** Canonical relative path used for slash, Unicode, and case-fold checks. */
+export function canonicalExportPath(raw: string): string | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.normalize('NFC').trim();
+  if (!value || value.length > PROJECT_EXPORT_LIMITS.maxPathLength) return null;
+  for (const character of value) {
+    const code = character.codePointAt(0) ?? 0;
+    if (code < 0x20 || code === 0x7f) return null;
+  }
+  const unified = value.replace(/\\/g, '/');
+  if (unified.startsWith('/') || unified.startsWith('//') || /^[A-Za-z]:/.test(unified)) return null;
+  const segments = unified.split('/');
+  if (segments.some((segment) => !segment || segment === '.' || segment === '..')) return null;
+  return segments.join('/');
+}
+
+export function exportPathCollisionKey(raw: string): string | null {
+  const canonical = canonicalExportPath(raw);
+  return canonical ? canonical.toLowerCase() : null;
+}
+
 /** Return an omission reason for a project-relative path, or null to include it. */
 export function exportPathOmissionReason(rawPath: string): string | null {
-  const normalized = String(rawPath ?? '').replace(/\\/g, '/').replace(/^\.\//, '');
-  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) {
+  const normalized = String(rawPath ?? '').replace(/^\.\//, '');
+  if (!canonicalExportPath(normalized)) {
     return 'absolute or empty export path';
   }
-  const segments = normalized.split('/').filter(Boolean);
-  if (segments.some((segment) => segment === '..' || segment === '.')) {
-    return 'path traversal segment';
-  }
+  const segments = canonicalExportPath(normalized)!.split('/');
   if (segments.some((segment) => CACHE_SEGMENTS.has(segment.toLowerCase()))) {
     return 'local build/cache data is not part of a shareable project handoff';
   }
@@ -43,10 +89,20 @@ export function exportPathOmissionReason(rawPath: string): string | null {
 
 /** Stable code-point ordering, independent of the host locale. */
 export function compareExportPaths(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
+  const a = Array.from(String(left ?? '').normalize('NFC'));
+  const b = Array.from(String(right ?? '').normalize('NFC'));
+  const length = Math.min(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    const ac = a[index]!.codePointAt(0)!;
+    const bc = b[index]!.codePointAt(0)!;
+    if (ac !== bc) return ac < bc ? -1 : 1;
+  }
+  return a.length - b.length;
 }
 
-const LOCAL_ABSOLUTE_PATH_RE = /(?:[A-Za-z]:[\\/](?:Users|Documents and Settings|home|tmp)[\\/][^\s"'`<>]+|\/(?:Users|home|private\/var|tmp)\/[^\s"'`<>]+)/g;
+const LOCAL_ABSOLUTE_PATH_RE = /(?:[A-Za-z]:[\\/][^\r\n"'<>]+|\\\\[^\r\n"'<>]+|\/(?:Users|home|private\/var|tmp|var\/tmp)\/[^\r\n"'<>]+)/g;
+const PRIVATE_KEY_RE = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g;
+const CREDENTIAL_ASSIGNMENT_RE = /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|password|passphrase|client[_-]?secret|secret|authorization)\s*[=:]\s*)(["']?)[^\s"'&,}]+\2/gi;
 
 /**
  * Redact local absolute paths from bounded UTF-8 text. Binary files are never
@@ -54,13 +110,24 @@ const LOCAL_ABSOLUTE_PATH_RE = /(?:[A-Za-z]:[\\/](?:Users|Documents and Settings
  * was changed so recipients can tell a deliberate redaction from corruption.
  */
 export function redactExportText(value: string, path: string): ExportTextRedaction {
-  const redacted = value.replace(LOCAL_ABSOLUTE_PATH_RE, '[REDACTED:local-path]');
-  return redacted === value
-    ? { value, omissions: [] }
-    : {
-        value: redacted,
-        omissions: [{ path, field: 'content', reason: 'local absolute path redacted' }],
-      };
+  let redacted = value;
+  const omissions: ExportOmission[] = [];
+  const privateKeyRedacted = redacted.replace(PRIVATE_KEY_RE, '[REDACTED:private-key]');
+  if (privateKeyRedacted !== redacted) {
+    redacted = privateKeyRedacted;
+    omissions.push({ path, field: 'content', reason: 'private-key material redacted' });
+  }
+  const credentialsRedacted = redacted.replace(CREDENTIAL_ASSIGNMENT_RE, '$1$2[REDACTED:credential]$2');
+  if (credentialsRedacted !== redacted) {
+    redacted = credentialsRedacted;
+    omissions.push({ path, field: 'content', reason: 'credential field redacted' });
+  }
+  const pathsRedacted = redacted.replace(LOCAL_ABSOLUTE_PATH_RE, '[REDACTED:local-path]');
+  if (pathsRedacted !== redacted) {
+    redacted = pathsRedacted;
+    omissions.push({ path, field: 'content', reason: 'local absolute path redacted' });
+  }
+  return { value: redacted, omissions };
 }
 
 /** Escape a dynamic Markdown heading without changing its visible text. */
@@ -71,7 +138,10 @@ export function markdownHeading(value: string, level = 1): string {
 
 /** Escape dynamic Markdown list content. */
 export function markdownListItem(value: string): string {
-  return String(value ?? '').replace(/[\r\n]+/g, ' ').replace(/^\s*[-*+]\s+/u, '\\- ');
+  return String(value ?? '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/^\s*[-*+]\s+/u, '\\- ')
+    .replace(/[|]/g, '\\|');
 }
 
 /** Escape dynamic Markdown table content, including pipes and newlines. */

@@ -194,7 +194,7 @@ surface's own search, like any other setting.
 **Source verification only for this lane.** No Node, pnpm, Electron, build, or test
 command was run locally. The staged project ZIP path, ZIP-byte validation, export
 policy, deterministic manifest, cancellation/progress controller, and editor
-preference boundary are covered by committed source-level Chuts. Hosted build,
+preference boundary are covered by committed source-level checks. Hosted build,
 installed interaction, and real editor process evidence remain pending.
 
 Conformance will be demonstrated by:

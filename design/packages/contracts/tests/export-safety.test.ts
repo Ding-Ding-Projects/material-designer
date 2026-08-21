@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   compareExportPaths,
+  canonicalExportPath,
+  exportPathCollisionKey,
   exportPathOmissionReason,
   markdownCodeFence,
   markdownInlineCode,
@@ -26,7 +28,11 @@ describe('export safety contract', () => {
   });
 
   it('orders paths by code point, not the machine locale', () => {
-    expect(['z.txt', 'a.txt', 'ä.txt'].sort(compareExportPaths)).toEqual(['a.txt', 'z.txt', 'ä.txt']);
+    expect(['z.txt', 'a.txt', 'ä.txt', '😀.txt'].sort(compareExportPaths)).toEqual(['a.txt', 'z.txt', 'ä.txt', '😀.txt']);
+    expect(compareExportPaths('😀.txt', '\uFFFF.txt')).toBeLessThan(0);
+    expect(exportPathOmissionReason('Cafe\u0301/index.html')).toBeNull();
+    expect(canonicalExportPath('Cafe\u0301/index.html')).toBe('Café/index.html');
+    expect(exportPathCollisionKey('Readme.md')).toBe(exportPathCollisionKey('README.md'));
   });
 
   it('keeps dynamic Markdown tables and code fences intact', () => {

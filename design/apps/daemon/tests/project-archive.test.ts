@@ -241,6 +241,9 @@ describe('buildProjectArchive', () => {
       'EXPORT-MANIFEST.json',
     ]));
     expect(Object.values(zip.files).filter((entry) => !entry.dir)).toHaveLength(3);
+    const manifest = JSON.parse(await zip.file('DESIGN-MANIFEST.json')?.async('string') || '{}');
+    expect(manifest.entryFile).toBeNull();
+    expect(manifest.screens).toEqual([]);
   });
 
   it('throws ENOENT with "does not exist" when the archive root is missing', async () => {

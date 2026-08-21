@@ -1,6 +1,8 @@
 import type { Express, Response } from 'express';
 import { createHash } from 'node:crypto';
 import {
+  PROJECT_EXPORT_RECEIPT_SCHEMA,
+  PROJECT_EXPORT_TARGETS,
   PROJECT_EXPORT_MANIFEST_SCHEMA,
   isExportFormat,
   type StandaloneHtmlExportRequest,
@@ -605,15 +607,19 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
   type StagedProjectArchive = {
     token: string;
     projectId: string;
+    target: 'project' | 'desktop-scaffold';
     filePath: string;
     filename: string;
     bytes: number;
     sha256: string;
     expiresAt: number;
+    mtimeMs: number;
   };
   const stagedProjectArchives = new Map<string, StagedProjectArchive>();
   const PROJECT_ARCHIVE_STAGE_TTL_MS = 15 * 60 * 1000;
   const MAX_STAGED_PROJECT_ARCHIVES = 8;
+  const MAX_PROJECT_ARCHIVE_BYTES = 256 * 1024 * 1024;
+  const PROJECT_ARCHIVE_RECONCILE_MS = 60_000;
   const projectArchiveStageRoot = path.join(
     RUNTIME_DATA_DIR_CANONICAL,
     'exports',
@@ -628,15 +634,87 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
     }
   }
 
+  let reconcilePromise: Promise<void> | null = null;
+  async function removeStagedFileWithRetry(filePath: string): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await fs.promises.rm(filePath, { force: true });
+        return;
+      } catch {
+        if (attempt === 2) return;
+      }
+    }
+  }
+
+  async function reconcileStagedProjectArchives(): Promise<void> {
+    if (reconcilePromise) return reconcilePromise;
+    reconcilePromise = (async () => {
+      await fs.promises.mkdir(projectArchiveStageRoot, { recursive: true });
+      const now = Date.now();
+      sweepStagedProjectArchives(now);
+      const diskEntries = await fs.promises.readdir(projectArchiveStageRoot, { withFileTypes: true });
+      const known = new Set<string>();
+      for (const [token, staged] of stagedProjectArchives) {
+        known.add(path.basename(staged.filePath));
+        if (staged.expiresAt <= now) {
+          stagedProjectArchives.delete(token);
+          await removeStagedFileWithRetry(staged.filePath);
+          continue;
+        }
+        try {
+          const info = await fs.promises.stat(staged.filePath);
+          if (!info.isFile() || info.size !== staged.bytes || info.mtimeMs !== staged.mtimeMs) {
+            stagedProjectArchives.delete(token);
+            await removeStagedFileWithRetry(staged.filePath);
+          }
+        } catch {
+          stagedProjectArchives.delete(token);
+        }
+      }
+      for (const entry of diskEntries) {
+        if (!entry.isFile() || !/^[A-Za-z0-9_-]{1,120}\.zip$/.test(entry.name)) continue;
+        if (!known.has(entry.name)) await removeStagedFileWithRetry(path.join(projectArchiveStageRoot, entry.name));
+      }
+    })().finally(() => {
+      reconcilePromise = null;
+    });
+    return reconcilePromise;
+  }
+
+  function projectExportError(error: any): { status: number; code: string; message: string } {
+    switch (error?.code) {
+      case 'ENOENT': return { status: 404, code: 'PROJECT_EXPORT_SOURCE_UNAVAILABLE', message: 'project export source is unavailable or empty' };
+      case 'ENOTDIR': return { status: 400, code: 'PROJECT_EXPORT_SOURCE_INVALID', message: 'project export source root is not a directory' };
+      case 'DESKTOP_SCAFFOLD_HTML_REQUIRED': return { status: 422, code: 'DESKTOP_SCAFFOLD_HTML_REQUIRED', message: 'desktop scaffold export requires an HTML entry file' };
+      case 'PROJECT_EXPORT_TOO_LARGE': return { status: 413, code: 'PROJECT_EXPORT_TOO_LARGE', message: 'project export exceeds the supported archive size' };
+      case 'PROJECT_EXPORT_STORAGE_LIMIT': return { status: 413, code: 'PROJECT_EXPORT_STORAGE_LIMIT', message: 'staged project exports exceed the supported storage limit' };
+      case 'PROJECT_EXPORT_PATH_COLLISION': return { status: 409, code: 'PROJECT_EXPORT_PATH_COLLISION', message: 'project export contains colliding paths' };
+      case 'AbortError': return { status: 499, code: 'PROJECT_EXPORT_CANCELLED', message: 'project export was cancelled' };
+      default: return { status: 400, code: 'PROJECT_EXPORT_FAILED', message: 'project export could not be prepared' };
+    }
+  }
+
+  void reconcileStagedProjectArchives();
+  const reconcileTimer = setInterval(() => void reconcileStagedProjectArchives(), PROJECT_ARCHIVE_RECONCILE_MS);
+  reconcileTimer.unref?.();
+
   // Prepare a complete project archive before sending any response bytes.
   // The staged path is deliberately under the daemon data root, so the
   // existing `/api/editor/open` route can open the exact exported artifact
   // without guessing where a browser saved a download.
   app.post('/api/projects/:id/archive/prepare', async (req, res) => {
+    const abortController = new AbortController();
+    const abortExport = () => abortController.abort();
+    req.once('aborted', abortExport);
+    res.once('close', () => {
+      if (!res.writableEnded) abortExport();
+    });
+    let stagedPath: string | null = null;
     try {
       sweepStagedProjectArchives();
-      if (req.body?.target != null && req.body.target !== 'project') {
-        return sendApiError(res, 400, 'BAD_REQUEST', 'project preparation only supports target=project; scaffold export is separate');
+      const target = (req.body?.target == null ? 'project' : req.body.target) as 'project' | 'desktop-scaffold';
+      if (typeof target !== 'string' || !PROJECT_EXPORT_TARGETS.includes(target as typeof PROJECT_EXPORT_TARGETS[number])) {
+        return sendApiError(res, 400, 'PROJECT_EXPORT_TARGET_INVALID', 'project export target is invalid');
       }
       const authority = await authorizeExportRead(req, res);
       if (!authority) return;
@@ -650,8 +728,15 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         // A project-level handoff remains reachable before its first file is
         // created. The generated manifests and handoff still make the empty
         // project useful to the receiving coding tool.
-        { target: 'project', allowEmptyRoot: true },
+        { target, allowEmptyRoot: target === 'project', signal: abortController.signal },
       );
+      if (buffer.length > MAX_PROJECT_ARCHIVE_BYTES) {
+        return sendApiError(res, 413, 'PROJECT_EXPORT_TOO_LARGE', 'project export exceeds the supported archive size');
+      }
+      const stagedBytes = [...stagedProjectArchives.values()].reduce((sum, item) => sum + item.bytes, 0);
+      if (stagedBytes + buffer.length > MAX_PROJECT_ARCHIVE_BYTES) {
+        return sendApiError(res, 413, 'PROJECT_EXPORT_STORAGE_LIMIT', 'staged project exports exceed the supported storage limit');
+      }
       await fs.promises.mkdir(projectArchiveStageRoot, { recursive: true });
       const token = randomId();
       if (!/^[A-Za-z0-9_-]{1,120}$/.test(token)) {
@@ -661,16 +746,19 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const fileSlug = sanitizeArchiveFilename(baseName || fallbackName) || 'project';
       const filename = `${fileSlug}.zip`;
       const filePath = path.join(projectArchiveStageRoot, `${token}.zip`);
+      stagedPath = filePath;
       await fs.promises.writeFile(filePath, buffer, { flag: 'wx' });
       const sha256 = createHash('sha256').update(buffer).digest('hex');
       const expiresAt = Date.now() + PROJECT_ARCHIVE_STAGE_TTL_MS;
       const staged: StagedProjectArchive = {
         token,
         projectId: req.params.id,
+        target,
         filePath,
         filename,
         bytes: buffer.length,
         sha256,
+        mtimeMs: (await fs.promises.stat(filePath)).mtimeMs,
         expiresAt,
       };
       while (stagedProjectArchives.size >= MAX_STAGED_PROJECT_ARCHIVES) {
@@ -680,20 +768,29 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         await fs.promises.rm(oldest.filePath, { force: true }).catch(() => {});
       }
       stagedProjectArchives.set(token, staged);
+      await reconcileStagedProjectArchives();
+      res.setHeader('Cache-Control', 'no-store, private');
+      res.setHeader('Pragma', 'no-cache');
       res.json({
-        schema: 'open-design.project-export-receipt.v1',
+        schema: PROJECT_EXPORT_RECEIPT_SCHEMA,
+        target,
+        projectId: req.params.id,
         token,
         filename,
         bytes: staged.bytes,
         sha256,
         editorPath: filePath,
-        downloadUrl: `/api/projects/${encodeURIComponent(req.params.id)}/archive/staged/${encodeURIComponent(token)}`,
+        downloadUrl: `/api/projects/${encodeURIComponent(req.params.id)}/archive/staged/${encodeURIComponent(token)}?target=${encodeURIComponent(target)}`,
         expiresAt,
         archiveDigestScope: 'complete ZIP byte stream, including EXPORT-MANIFEST.json',
       });
     } catch (err: any) {
-      const status = err?.code === 'ENOENT' ? 404 : 400;
-      sendApiError(res, status, status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST', String(err?.message || err));
+      if (stagedPath) await removeStagedFileWithRetry(stagedPath);
+      if (abortController.signal.aborted) return;
+      const safe = projectExportError(err);
+      sendApiError(res, safe.status, safe.code, safe.message);
+    } finally {
+      req.removeListener('aborted', abortExport);
     }
   });
 
@@ -704,25 +801,31 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       if (!staged || staged.projectId !== req.params.id) {
         return sendApiError(res, 404, 'FILE_NOT_FOUND', 'prepared project archive has expired or does not exist');
       }
+      if (req.query?.target !== staged.target) {
+        return sendApiError(res, 400, 'PROJECT_EXPORT_TARGET_INVALID', 'project export target does not match its receipt');
+      }
       if (!await authorizeExportRead(req, res)) return;
       const info = await fs.promises.stat(staged.filePath);
-      if (!info.isFile() || info.size !== staged.bytes) {
+      if (!info.isFile() || info.size !== staged.bytes || info.mtimeMs !== staged.mtimeMs) {
         stagedProjectArchives.delete(staged.token);
         await fs.promises.rm(staged.filePath, { force: true }).catch(() => {});
         return sendApiError(res, 409, 'BAD_REQUEST', 'prepared project archive changed before download');
       }
       const asciiFallback = staged.filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_') || 'project.zip';
+      res.setHeader('Cache-Control', 'no-store, private');
+      res.setHeader('Pragma', 'no-cache');
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Length', String(staged.bytes));
       res.setHeader('Content-Disposition', `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(staged.filename)}`);
       res.setHeader('X-OD-Archive-SHA256', staged.sha256);
-      res.setHeader('X-OD-Archive-Target', 'project');
+      res.setHeader('X-OD-Archive-Target', staged.target);
       const stream = fs.createReadStream(staged.filePath);
       stream.once('error', (error) => res.destroy(error));
       res.once('close', () => stream.destroy());
       stream.pipe(res);
     } catch (err: any) {
-      sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
+      const safe = projectExportError(err);
+      sendApiError(res, safe.status, safe.code, safe.message);
     }
   });
 
@@ -1386,7 +1489,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const root = typeof req.query?.root === 'string' ? req.query.root : '';
       const target = typeof req.query?.target === 'string' ? req.query.target : 'project';
       if (target !== 'project' && target !== 'desktop-scaffold') {
-        sendApiError(res, 400, 'BAD_REQUEST', `unsupported archive target: ${target}`);
+        sendApiError(res, 400, 'PROJECT_EXPORT_TARGET_INVALID', 'project export target is invalid');
         return;
       }
       if (!await authorizeExportRead(req, res, { allowNavigationQuery: true })) return;
@@ -1409,6 +1512,8 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const asciiFallback =
         filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_') || 'project.zip';
       res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Cache-Control', 'no-store, private');
+      res.setHeader('Pragma', 'no-cache');
       res.setHeader(
         'Content-Disposition',
         `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
@@ -1416,14 +1521,8 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       res.setHeader('X-OD-Archive-Target', target);
       pipeArchiveDownload(res, stream);
     } catch (err: any) {
-      const code = err && err.code;
-      const status = code === 'ENOENT' || code === 'ENOTDIR' ? 404 : 400;
-      sendApiError(
-        res,
-        status,
-        status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST',
-        String(err?.message || err),
-      );
+      const safe = projectExportError(err);
+      sendApiError(res, safe.status, safe.code, safe.message);
     }
   });
 
@@ -1449,20 +1548,16 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const asciiFallback =
         filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_') || 'project.zip';
       res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Cache-Control', 'no-store, private');
+      res.setHeader('Pragma', 'no-cache');
       res.setHeader(
         'Content-Disposition',
         `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       );
       pipeArchiveDownload(res, stream);
     } catch (err: any) {
-      const code = err && err.code;
-      const status = code === 'ENOENT' ? 404 : 400;
-      sendApiError(
-        res,
-        status,
-        status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST',
-        String(err?.message || err),
-      );
+      const safe = projectExportError(err);
+      sendApiError(res, safe.status, safe.code, safe.message);
     }
   });
 

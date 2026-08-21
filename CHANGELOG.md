@@ -28,7 +28,7 @@ version section when a release carries them.
 
 ### Changed
 
-- **Complete project ZIP handoffs are now deterministic and editor-ready.**
+- **Complete project ZIP handoffs are now deterministic for fixed inputs and editor-ready.**
   Commit [79238c736](https://github.com/Ding-Ding-Projects/material-designer/commit/79238c73656eb914c41571b14dc2f7114195ec6e)
   adds a project-root prepare/stage/download route and a project-level action
   that remains available without an active file, including for an empty project.

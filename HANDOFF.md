@@ -29,8 +29,8 @@
 > expected files, 13,082 tracked files, 599 declared modifications, and zero
 > gaps. No Node, pnpm, Electron, build, or test command was run locally.
 > Hosted source checks, built-artifact interaction, installed ZIP download, and
-> real VS Code/editor process proof remain open. This jer is local-only and was
-> not dewed or merged, per the app-only handoff scope.
+> real VS Code/editor process proof remain open. This work remains local-only and was
+> not pushed or merged, per the desktop-app-only handoff scope.
 >
 > **廣東話摘要。** 79238c736 加咗 project-level complete-tree ZIP action，唔使
 > 依賴 active file，empty project 都會有 handoff/manifests。Daemon 會喺自己
@@ -41,7 +41,7 @@
 > structure、content type、manifest、length 同 digest，驗完先 save。Editor
 > 用真 staged path 加 containing workspace root；揀咗嘅 preference 唔會偷偷
 > 換 editor。Source checks 同 port verifier green，hosted/build/installed/
-> real editor proof 仲 pending；呢條 jer 只係 local，未 dewed 或 merge。
+> real editor proof 仲 pending；呢條 work 只係 local，未 push 或 merge。
 
 > [!IMPORTANT]
 > **Desktop project-creation lane — source handoff, 2026-08-21.** Commit
