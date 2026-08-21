@@ -1,6 +1,43 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Session closeout — 2026-08-21.** The default branch and remote now point to
+> [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
+> This session advanced the Open Design baseline from `517f39acd` to
+> `393af2f99` (v0.20.2, 309 upstream commits), preserved 574 declared product
+> paths, added the desktop scaffold ZIP and Markdown Download routing, compacted
+> narrow workspace actions, retained the temporary dim-sum-photo omission, and
+> carried forward the Squirrel launch, shortcut, checksum and full-folder-browser
+> repairs. The exact local port commands `scripts/verify-port.sh` and
+> `scripts/verify-port.sh --json` are green at zero gaps: 12,835 expected upstream
+> files, 13,079 tracked files, 574 declarations, and zero missing, byte, mode,
+> object-ID, extra, untracked or stale-notice findings.
+>
+> Hosted Verify
+> [`32450372891`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372891)
+> and Pages
+> [`32450372890`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372890)
+> are green for `aa0673659`. Release
+> [`32450372884`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372884)
+> is still running in **Install dependencies**; it has not built a Squirrel
+> package, checked `NotSigned`, recorded the photo exception, published, or
+> verified a release. Earlier Release `32449571270` failed in package postinstall
+> on a duplicate release-channel registry, and `32449844884` failed on daemon
+> syntax created by overlapping three-way union hunks; commits `69b562d10` and
+> `aa0673659` repair those exact boundaries. The active run's terminal result is
+> the next owner's first check.
+>
+> **Still open:** installed Squirrel launch proof for the repaired build; updater
+> `available` → `downloading` → `ready-to-restart` evidence; real interaction and
+> captures for the Explorer-style folder browser, Markdown Download, desktop
+> scaffold export and narrow action row; the complete ten-screen light/dark,
+> normal/narrow and 100/125/150/200% design-parity matrix; labelled comparisons,
+> diffs and per-control Material Design audits; and resolution of any further
+> v0.20.2 merge diagnostics exposed by the active Release. Issue
+> [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7) is the
+> public continuation record.
+>
+> [!IMPORTANT]
 > **Upstream and export checkpoint — 2026-08-21.** The Open Design submodule,
 > mirror, and manifest now target `393af2f991525a6c85cb04ee4aea0cd8967693c8`
 > (v0.20.2), 309 commits beyond the former baseline. `scripts/verify-port.sh
