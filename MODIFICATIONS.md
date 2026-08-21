@@ -150,6 +150,36 @@ collisions rather than overwriting user content.
 - `apps/daemon/src/projects.ts`
 - `apps/daemon/tests/project-archive.test.ts`
 
+### 2026-08-21 — Create desktop projects with an explicit scaffold and agent handoff
+
+**Reason:** The desktop target previously existed only as an archive option and a
+platform label. Project creation now records an explicit desktop application intent,
+materializes a versioned source scaffold from one shared generator, and optionally
+queues a typed first-run handoff to the selected coding agent. The generated shell
+keeps its context-isolation, sandbox, no-Node, no-webview, local-only and narrow
+preload boundaries. The platform picker now owns a plain-text-by-default regex search,
+localized no-match output, and roving keyboard focus. Source contracts and focused
+regressions cover these paths; hosted and installed-artifact proof remains separate.
+
+**Changed files:**
+
+- `apps/daemon/src/desktop-scaffold.ts`
+- `apps/daemon/src/projects.ts`
+- `apps/daemon/src/prompts/system.ts`
+- `apps/daemon/src/routes/project/index.ts`
+- `apps/daemon/tests/desktop-scaffold.test.ts`
+- `apps/daemon/tests/project-archive.test.ts`
+- `apps/daemon/tests/prompts/system.test.ts`
+- `packages/contracts/src/api/projects.ts`
+- `packages/contracts/src/plugins/scenario-defaults.ts`
+- `packages/contracts/src/prompts/system.ts`
+- `packages/contracts/tests/scenario-defaults.test.ts`
+- `packages/contracts/tests/system-prompt.test.ts`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/NewProjectModal.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/tests/components/NewProjectPanel.test.tsx`
+
 ### 2026-08-10 — Finish the production Material 3 shell against the checked-in UI contract
 
 **Reason:** The production interface already carried the Material 3 token layer and most

@@ -19,6 +19,7 @@ import type {
   ProjectTemplate,
   PromptTemplateSummary,
   SkillSummary,
+  AgentInfo,
 } from '../types';
 import { Icon } from './Icon';
 import {
@@ -50,6 +51,8 @@ interface Props {
   onOpenConnectorsTab?: () => void;
   onClose: () => void;
   initialTab?: CreateTab;
+  agents?: AgentInfo[];
+  selectedAgentId?: string | null;
 }
 
 // The `open` flag stays the public API, but the close animation has to play
@@ -86,6 +89,8 @@ function NewProjectModalBody({
   onOpenConnectorsTab,
   onClose,
   initialTab,
+  agents,
+  selectedAgentId,
 }: Omit<Props, 'open'>) {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const [creating, setCreating] = useState(false);
@@ -188,6 +193,8 @@ function NewProjectModalBody({
             {...(onImportFolderResponse ? { onImportFolderResponse } : {})}
             {...(onOpenConnectorsTab ? { onOpenConnectorsTab } : {})}
             {...(initialTab ? { initialTab } : {})}
+            {...(agents ? { agents } : {})}
+            {...(selectedAgentId !== undefined ? { selectedAgentId } : {})}
           />
           {creating ? (
             <div className="new-project-modal__status" role="status">

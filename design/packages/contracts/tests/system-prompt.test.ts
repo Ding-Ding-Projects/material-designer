@@ -64,6 +64,31 @@ describe('DISCOVERY_AND_PHILOSOPHY (contracts copy) — TodoWrite plan item coun
 });
 
 describe('DISCOVERY_AND_PHILOSOPHY (contracts copy) — prompt routing parity', () => {
+  it('renders the desktop scaffold and reuses the existing first-run wire-up path', () => {
+    const prompt = composeSystemPrompt({
+      metadata: {
+        kind: 'prototype',
+        intent: 'desktop-app',
+        entryFile: 'index.html',
+        desktopScaffold: {
+          revision: 1,
+          framework: 'electron',
+          platform: 'windows',
+          entryFile: 'index.html',
+          rendererFile: 'src/renderer.js',
+          packagingTarget: 'squirrel-windows',
+          codeSigning: 'disabled',
+        },
+        desktopWireup: { enabled: true, status: 'not_started', agentId: 'selected-agent' },
+      } as any,
+    });
+    expect(prompt).toContain('intent**: desktop-app');
+    expect(prompt).toContain('context isolation');
+    expect(prompt).toContain('existing first-run run path');
+    expect(prompt).toContain('selected-agent');
+    expect(prompt).toContain('arbitrary shell');
+  });
+
   it('keeps image result copy user-friendly without discarding tool diagnostics', () => {
     const prompt = composeSystemPrompt({
       locale: 'zh-CN',

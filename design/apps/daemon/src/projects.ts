@@ -35,6 +35,10 @@ import {
   SANDBOX_IMPORTED_PROJECT_UNAVAILABLE_MESSAGE,
 } from './sandbox-mode.js';
 import { isOrchestratorScratchWorkspace } from './workspace-contract.js';
+import {
+  assertDesktopScaffoldCollisions,
+  createDesktopScaffoldFiles,
+} from './desktop-scaffold.js';
 
 const FORBIDDEN_SEGMENT = /^$|^\.\.?$/;
 const RESERVED_PROJECT_FILE_SEGMENTS = new Set(['.file-versions', '.live-artifacts']);
@@ -386,7 +390,14 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
   addDesignHandoff(zip, entries, archiveBaseName || path.basename(projectRoot));
   addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot));
   if (options.target === 'desktop-scaffold') {
-    addDesktopScaffold(zip, entries);
+    assertDesktopScaffoldCollisions(entries);
+    const { entryFile } = projectFileMap(entries);
+    for (const file of createDesktopScaffoldFiles({
+      projectName: archiveBaseName || path.basename(projectRoot),
+      entryFile,
+    })) {
+      zip.file(file.path, file.body, { date: new Date(0), binary: false });
+    }
   } else if (options.target != null && options.target !== 'project') {
     const err = new Error(`unsupported archive target: ${options.target}`);
     err.code = 'BAD_REQUEST';
@@ -601,131 +612,6 @@ function addDesignManifest(zip, entries, projectLabel) {
     date: new Date(0),
     binary: false,
   });
-}
-
-const DESKTOP_SCAFFOLD_PATHS = [
-  'desktop/README.md',
-  'desktop/package.json',
-  'desktop/desktop-scaffold.json',
-  'desktop/src/main.cjs',
-  'desktop/src/preload.cjs',
-];
-
-function addDesktopScaffold(zip, entries) {
-  const existingPaths = new Set(entries.map((entry) => entry.relPath.toLowerCase()));
-  const collisions = DESKTOP_SCAFFOLD_PATHS.filter((name) =>
-    existingPaths.has(name.toLowerCase()));
-  if (existingPaths.has('desktop')) collisions.unshift('desktop');
-  if (collisions.length > 0) {
-    const err = new Error(`desktop scaffold path already exists: ${collisions.join(', ')}`);
-    err.code = 'BAD_REQUEST';
-    throw err;
-  }
-  const { entryFile, htmlFiles } = projectFileMap(entries);
-  if (htmlFiles.length === 0) {
-    const err = new Error('desktop scaffold requires an HTML entry file');
-    err.code = 'BAD_REQUEST';
-    throw err;
-  }
-  const fixedDate = new Date(0);
-  const scaffold = {
-    schema: 'open-design.desktop-scaffold.v1',
-    framework: 'electron',
-    platform: 'windows',
-    mode: 'scaffold-only',
-    sourceRoot: '..',
-    entryFile,
-    designManifest: '../DESIGN-MANIFEST.json',
-    designHandoff: '../DESIGN-HANDOFF.md',
-    packagingTarget: 'squirrel-windows',
-    codeSigning: 'disabled',
-  };
-  const packageJson = {
-    name: 'desktop-scaffold',
-    version: '0.0.0',
-    private: true,
-    type: 'commonjs',
-    main: 'src/main.cjs',
-    scripts: { start: 'electron .' },
-    devDependencies: { electron: '41.3.0' },
-  };
-  const main = `'use strict';
-const { app, BrowserWindow } = require('electron');
-const path = require('node:path');
-const { fileURLToPath } = require('node:url');
-const config = require('../desktop-scaffold.json');
-
-function pathIsInside(root, candidate) {
-  const relative = path.relative(root, candidate);
-  return relative === '' || (!relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
-}
-
-function isAllowedRendererUrl(rawUrl, sourceRoot) {
-  try {
-    const parsed = new URL(rawUrl);
-    if (parsed.protocol === 'about:' || parsed.protocol === 'blob:' || parsed.protocol === 'data:') return true;
-    if (parsed.protocol !== 'file:') return false;
-    return pathIsInside(sourceRoot, fileURLToPath(parsed));
-  } catch {
-    return false;
-  }
-}
-
-function resolveSource() {
-  const desktopRoot = path.resolve(__dirname, '..');
-  const sourceRoot = path.resolve(desktopRoot, config.sourceRoot);
-  if (path.isAbsolute(config.entryFile)) throw new Error('entryFile must be relative');
-  const entry = path.resolve(sourceRoot, config.entryFile);
-  if (!pathIsInside(sourceRoot, entry) || entry === sourceRoot) {
-    throw new Error('entryFile escapes the scaffold source root');
-  }
-  return { entry, sourceRoot };
-}
-
-app.whenReady().then(() => {
-  const { entry, sourceRoot } = resolveSource();
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      webviewTag: false,
-      partition: 'desktop-scaffold',
-    },
-  });
-  window.webContents.session.webRequest.onBeforeRequest((details, callback) => {
-    callback({ cancel: !isAllowedRendererUrl(details.url, sourceRoot) });
-  });
-  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  window.webContents.on('will-navigate', (event, url) => {
-    if (!isAllowedRendererUrl(url, sourceRoot)) event.preventDefault();
-  });
-  return window.loadFile(entry);
-});
-
-app.on('window-all-closed', () => app.quit());
-`;
-  const preload = `'use strict';
-const { contextBridge } = require('electron');
-contextBridge.exposeInMainWorld('desktopShell', Object.freeze({ scaffoldVersion: 1 }));
-`;
-  const readme = `# Desktop application scaffold
-
-This folder is a source scaffold, not a finished or installable application. The website project remains at the archive root, with its machine-readable map in \`DESIGN-MANIFEST.json\` and implementation guidance in \`DESIGN-HANDOFF.md\`.
-
-For development, run \`npm install\` and \`npm start\` from this \`desktop\` directory. The shell loads only the relative local entry file declared in \`desktop-scaffold.json\`, refuses local-file requests outside the exported source root, blocks network requests and secondary windows by default, and exposes no filesystem, shell, credential, environment, or arbitrary IPC access to the renderer.
-
-A coding agent still needs to wire the real application identity, persistence, narrowly typed IPC, accessibility behavior, tests, packaging layout, and update feed. The supported Windows installer target is Squirrel.Windows. Code signing is intentionally disabled. This archive does not produce an installer or release, and no secret or machine-local absolute path belongs in these files.
-`;
-  zip.file('desktop/README.md', readme, { date: fixedDate, binary: false });
-  zip.file('desktop/package.json', `${JSON.stringify(packageJson, null, 2)}\n`, { date: fixedDate, binary: false });
-  zip.file('desktop/desktop-scaffold.json', `${JSON.stringify(scaffold, null, 2)}\n`, { date: fixedDate, binary: false });
-  zip.file('desktop/src/main.cjs', main, { date: fixedDate, binary: false });
-  zip.file('desktop/src/preload.cjs', preload, { date: fixedDate, binary: false });
 }
 
 // A file is treated as a preview-chrome wrapper only when it lives inside

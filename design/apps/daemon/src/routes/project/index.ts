@@ -124,6 +124,11 @@ import { localPluginRegistryScope } from '../../plugins/local-source.js';
 import type { WorkspaceDirectoryFetchResult } from '../../collab/vela-workspace-context.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
 import {
+  createDesktopScaffoldFiles,
+  createDesktopStarterFiles,
+  desktopScaffoldState,
+} from '../../desktop-scaffold.js';
+import {
   issueDeleteConfirmation,
   requireDeleteConfirmation,
 } from '../../http/confirm-delete.js';
@@ -3677,10 +3682,11 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // inside the otherwise extensible project metadata object.
       const clientMetadata = metadata && typeof metadata === 'object'
         ? Object.fromEntries(
-            Object.entries(metadata).filter(([key]) => key !== 'localCatalogScopes'),
+            Object.entries(metadata).filter(([key]) =>
+              key !== 'localCatalogScopes' && key !== 'desktopScaffold' && key !== 'desktopWireup'),
           )
         : null;
-      const projectMetadata =
+      const projectMetadataBase =
         clientMetadata
           ? {
               ...clientMetadata,
@@ -3726,6 +3732,37 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
                     localCatalogScopes,
                   }
                 : null;
+      const desktopApplicationSelected =
+        projectMetadataBase &&
+        typeof projectMetadataBase === 'object' &&
+        projectMetadataBase.intent === 'desktop-app';
+      const requestedDesktopWireup =
+        metadata && typeof metadata === 'object' &&
+        metadata.desktopWireup && typeof metadata.desktopWireup === 'object'
+          ? metadata.desktopWireup as Record<string, unknown>
+          : null;
+      const desktopWireup = desktopApplicationSelected
+        ? {
+            enabled: requestedDesktopWireup?.enabled === true,
+            status: 'not_started' as const,
+            ...(typeof requestedDesktopWireup?.agentId === 'string' && requestedDesktopWireup.agentId.trim()
+              ? { agentId: requestedDesktopWireup.agentId.trim().slice(0, 120) }
+              : {}),
+            ...(typeof requestedDesktopWireup?.prompt === 'string' && requestedDesktopWireup.prompt.trim()
+              ? { prompt: requestedDesktopWireup.prompt.trim().slice(0, 4000) }
+              : {}),
+          }
+        : undefined;
+      const projectMetadata = desktopApplicationSelected
+        ? {
+            ...projectMetadataBase,
+            platform: 'desktop-app',
+            platformTargets: ['desktop-app'],
+            entryFile: 'index.html',
+            desktopScaffold: desktopScaffoldState({ entryFile: 'index.html', revision: 1 }),
+            desktopWireup,
+          }
+        : projectMetadataBase;
       const now = Date.now();
       const cid = randomId();
       const initialSessionMode = normalizeChatSessionMode(
@@ -3865,6 +3902,36 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
             .json(pluginResolutionState.failure.body);
         }
         throw err;
+      }
+      if (desktopApplicationSelected) {
+        try {
+          await ensureProject(PROJECTS_DIR, id, projectMetadata);
+          const starterFiles = createDesktopStarterFiles(name.trim());
+          const scaffoldFiles = createDesktopScaffoldFiles({
+            projectName: name.trim(),
+            projectId: id,
+            entryFile: 'index.html',
+            revision: 1,
+          });
+          for (const file of [...starterFiles, ...scaffoldFiles]) {
+            await writeProjectFile(
+              PROJECTS_DIR,
+              id,
+              file.path,
+              Buffer.from(file.body, 'utf8'),
+              { overwrite: false },
+              projectMetadata,
+            );
+          }
+        } catch (err) {
+          dbDeleteProject(db, id);
+          if (externalProjectDir) {
+            await rm(externalProjectDir, { recursive: true, force: true }).catch(() => {});
+          } else {
+            await removeProjectDir(PROJECTS_DIR, id).catch(() => {});
+          }
+          throw err;
+        }
       }
       // For "from template" projects, seed the chosen template's snapshot
       // HTML into the new project folder so the agent can Read/edit files

@@ -26,6 +26,7 @@ import { isStoredMediaProviderEntryPresent } from '../state/config';
 import { isMediaProviderPickerReady } from '../media/provider-readiness';
 import type {
   AudioKind,
+  AgentInfo,
   DesignSystemSummary,
   MediaAspect,
   ProjectKind,
@@ -62,6 +63,8 @@ import { Icon } from './Icon';
 import { Skeleton } from './Loading';
 import { Toast } from './Toast';
 import { useOpenFolderImport } from './useOpenFolderImport';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import type { TranslationVars } from '../i18n';
 
 // Snapshot of a curated prompt template, captured at New Project time and
@@ -132,6 +135,9 @@ export interface CreateInput {
   designSystemId: string | null;
   metadata: ProjectMetadata;
   userWorkingDirToken?: string;
+  pendingPrompt?: string;
+  autoSendFirstMessage?: boolean;
+  conversationMode?: 'design' | 'chat' | 'plan';
 }
 
 export type ImportClaudeDesignOutcome =
@@ -168,6 +174,8 @@ interface Props {
   onOpenConnectorsTab?: () => void;
   loading?: boolean;
   initialTab?: CreateTab;
+  agents?: AgentInfo[];
+  selectedAgentId?: string | null;
 }
 
 const TAB_LABEL_KEYS: Record<CreateTab, keyof Dict> = {
@@ -289,6 +297,8 @@ export function NewProjectPanel({
   onOpenConnectorsTab,
   loading = false,
   initialTab = 'prototype',
+  agents = [],
+  selectedAgentId = null,
 }: Props) {
   const t = useT();
   const { locale } = useI18n();
@@ -350,6 +360,8 @@ export function NewProjectPanel({
     'high-fidelity',
   );
   const [platformTargets, setPlatformTargets] = useState<NewProjectPlatform[]>(['responsive']);
+  const [desktopWireupEnabled, setDesktopWireupEnabled] = useState(true);
+  const [desktopWireupPrompt, setDesktopWireupPrompt] = useState('');
   const [includeLandingPage, setIncludeLandingPage] = useState(false);
   const [includeOsWidgets, setIncludeOsWidgets] = useState(false);
   const [speakerNotes, setSpeakerNotes] = useState(false);
@@ -427,6 +439,18 @@ export function NewProjectPanel({
   }, [tab, skills, startTemplateId, designTemplates]);
   const showDesignSystemPicker =
     tabSupportsDesignSystem && !tabDefaultSkillForcesNoDs;
+  const desktopApplicationSelected = platformTargets.includes('desktop-app');
+  const selectedDesktopAgent =
+    agents.find((agent) => agent.id === selectedAgentId) ??
+    agents.find((agent) => agent.available) ??
+    null;
+
+  useEffect(() => {
+    if (!desktopApplicationSelected) {
+      setDesktopWireupEnabled(true);
+      setDesktopWireupPrompt('');
+    }
+  }, [desktopApplicationSelected]);
 
   useEffect(() => {
     if (dsSelectionTouched) return;
@@ -729,6 +753,9 @@ export function NewProjectPanel({
       mediaSurface,
       fidelity,
       platformTargets,
+      desktopWireupEnabled,
+      desktopWireupPrompt,
+      desktopAgentId: selectedDesktopAgent?.id ?? null,
       includeLandingPage,
       includeOsWidgets,
       speakerNotes,
@@ -764,6 +791,10 @@ export function NewProjectPanel({
       },
       { requestId },
     );
+    const desktopPrompt = metadata.desktopWireup?.enabled
+      ? metadata.desktopWireup.prompt?.trim() ||
+        `Wire up the desktop application scaffold for "${trimmedName || 'this project'}" using the existing selected agent. Preserve the generated desktop security boundary, then build the real application in the project files.`
+      : undefined;
     onCreate({
       name: trimmedName || autoName(tab, mediaSurface, t),
       skillId: startTemplateId ?? skillIdForTab,
@@ -773,6 +804,11 @@ export function NewProjectPanel({
         nameSource: trimmedName ? 'user' : 'generated',
         ...(workingDir ? { userWorkingDir: workingDir } : {}),
       },
+      ...(desktopPrompt ? {
+        pendingPrompt: desktopPrompt,
+        autoSendFirstMessage: true,
+        conversationMode: 'design' as const,
+      } : {}),
       ...(workingDirToken ? { userWorkingDirToken: workingDirToken } : {}),
       requestId,
     });
@@ -1007,6 +1043,17 @@ export function NewProjectPanel({
           <PlatformPicker value={platformTargets} onChange={setPlatformTargets} />
         ) : null}
 
+        {desktopApplicationSelected ? (
+          <DesktopApplicationOptions
+            agents={agents}
+            selectedAgent={selectedDesktopAgent}
+            enabled={desktopWireupEnabled}
+            prompt={desktopWireupPrompt}
+            onEnabled={setDesktopWireupEnabled}
+            onPrompt={setDesktopWireupPrompt}
+          />
+        ) : null}
+
         {tab === 'prototype' || tab === 'live-artifact' || tab === 'template' || tab === 'other' ? (
           <SurfaceOptions
             includeLandingPage={includeLandingPage}
@@ -1206,8 +1253,12 @@ function PlatformPicker({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const listboxId = useId();
+  const search = useRegexSearch(query, setQuery);
 
   function togglePlatform(next: NewProjectPlatform) {
     const active = value.includes(next);
@@ -1242,13 +1293,47 @@ function PlatformPicker({
 
   const primary = DESIGN_PLATFORMS.find((o) => o.value === value[0]) ?? null;
   const extraCount = Math.max(0, value.length - 1);
+  const filteredOptions = DESIGN_PLATFORMS.filter((option) => {
+    const haystack = `${t(option.labelKey)} ${t(option.hintKey)} ${option.value}`;
+    return search.matches(haystack);
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    setFocusedIndex(0);
+    itemRefs.current = [];
+  }, [open, query]);
+
+  function handleOptionKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+      event.preventDefault();
+      const next = Math.min(index + 1, filteredOptions.length - 1);
+      setFocusedIndex(next);
+      itemRefs.current[next]?.focus();
+    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      const next = Math.max(index - 1, 0);
+      setFocusedIndex(next);
+      itemRefs.current[next]?.focus();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : Math.max(filteredOptions.length - 1, 0);
+      setFocusedIndex(next);
+      itemRefs.current[next]?.focus();
+    } else if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      const option = filteredOptions[index];
+      if (option) togglePlatform(option.value);
+    }
+  }
 
   return (
     <div
       className={`newproj-section ds-picker platform-picker${open ? ' open' : ''}`}
       ref={wrapRef}
     >
-      <label className="newproj-label">Target platforms</label>
+      <label className="newproj-label">{t('newproj.targetPlatformsLabel')}</label>
+      <p className="platform-picker-hint">{t('newproj.targetPlatformsHint')}</p>
       <button
         type="button"
         className={`ds-picker-trigger${open ? ' open' : ''}${primary ? '' : ' empty'}`}
@@ -1260,7 +1345,7 @@ function PlatformPicker({
         <span className="ds-picker-meta">
           <span className="ds-picker-title">
             <span className="ds-picker-title-text">
-              {primary ? t(primary.labelKey) : 'Pick a platform'}
+              {primary ? t(primary.labelKey) : t('newproj.targetPlatformsLabel')}
             </span>
             {extraCount > 0 ? (
               <span className="ds-picker-extra-pill">+{extraCount}</span>
@@ -1279,20 +1364,30 @@ function PlatformPicker({
           className="ds-picker-popover"
           id={listboxId}
           role="listbox"
-          aria-label="Target platforms"
+          aria-label={t('newproj.targetPlatformsLabel')}
           aria-multiselectable="true"
         >
+          <RegexSearchField
+            search={search}
+            fieldLabel={t('newproj.targetPlatformsLabel')}
+            placeholder={t('newproj.dsSearch')}
+            ariaLabel={t('newproj.dsSearch')}
+            className="ds-picker-search"
+          />
           <div className="ds-picker-list">
-            {DESIGN_PLATFORMS.map((option) => {
+            {filteredOptions.map((option, index) => {
               const active = value.includes(option.value);
               return (
                 <button
                   key={option.value}
+                  ref={(element) => { itemRefs.current[index] = element; }}
                   type="button"
                   role="option"
                   aria-selected={active}
+                  tabIndex={index === focusedIndex ? 0 : -1}
                   className={`ds-picker-item${active ? ' active' : ''}`}
                   onClick={() => togglePlatform(option.value)}
+                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 >
                   <span className="ds-picker-item-text">
                     <span className="ds-picker-item-title">
@@ -1311,10 +1406,71 @@ function PlatformPicker({
                 </button>
               );
             })}
+            {filteredOptions.length === 0 ? (
+              <p className="ds-picker-empty">{t('newproj.dsEmpty', { query })}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function DesktopApplicationOptions({
+  agents,
+  selectedAgent,
+  enabled,
+  prompt,
+  onEnabled,
+  onPrompt,
+}: {
+  agents: AgentInfo[];
+  selectedAgent: AgentInfo | null;
+  enabled: boolean;
+  prompt: string;
+  onEnabled: (value: boolean) => void;
+  onPrompt: (value: string) => void;
+}) {
+  const t = useT();
+  const agentReady = Boolean(selectedAgent?.available);
+  return (
+    <section className="newproj-section desktop-application-options" aria-labelledby="desktop-application-options-title">
+      <div className="newproj-label" id="desktop-application-options-title">
+        {t('newproj.platform.desktopApp.label')}
+      </div>
+      <p className="platform-picker-hint">{t('newproj.platform.desktopApp.hint')}</p>
+      <label className="compact-toggle desktop-wireup-toggle">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={!agentReady}
+          onChange={(event) => onEnabled(event.currentTarget.checked)}
+          aria-describedby="desktop-wireup-status"
+        />
+        <span>
+          {t('agentPicker.selectAgent')}: {selectedAgent?.name ?? t('agentPicker.noAgents')}
+        </span>
+      </label>
+      <p id="desktop-wireup-status" className="platform-picker-hint" role="status">
+        {agentReady
+          ? t('designs.status.notStarted')
+          : agents.length === 0
+            ? t('agentPicker.noAgents')
+            : t('agentPicker.notInstalled')}
+      </p>
+      {enabled && agentReady ? (
+        <label className="newproj-desktop-wireup-prompt">
+          <span className="newproj-label">{t('newproj.platform.desktopApp.hint')}</span>
+          <textarea
+            value={prompt}
+            onChange={(event) => onPrompt(event.currentTarget.value.slice(0, 4000))}
+            placeholder={t('chat.placeholder')}
+            rows={3}
+            maxLength={4000}
+          />
+        </label>
+      ) : null}
+    </section>
   );
 }
 
@@ -3094,6 +3250,9 @@ function buildMetadata(input: {
   mediaSurface: MediaSurface;
   fidelity: 'wireframe' | 'high-fidelity';
   platformTargets: NewProjectPlatform[];
+  desktopWireupEnabled: boolean;
+  desktopWireupPrompt: string;
+  desktopAgentId: string | null;
   includeLandingPage: boolean;
   includeOsWidgets: boolean;
   speakerNotes: boolean;
@@ -3129,6 +3288,26 @@ function buildMetadata(input: {
     platform: selectedPlatforms[0],
     platformTargets: concreteTargets,
     ...surfaceOptions,
+    ...(input.desktopWireupEnabled && Boolean(input.desktopAgentId) && input.platformTargets.includes('desktop-app')
+      ? {
+          intent: 'desktop-app' as const,
+          platform: 'desktop-app' as const,
+          skipDiscoveryBrief: true,
+          desktopWireup: {
+            enabled: true,
+            status: 'not_started' as const,
+            ...(input.desktopAgentId ? { agentId: input.desktopAgentId } : {}),
+            ...(input.desktopWireupPrompt.trim()
+              ? { prompt: input.desktopWireupPrompt.trim().slice(0, 4000) }
+              : {}),
+          },
+        }
+      : input.platformTargets.includes('desktop-app')
+        ? {
+            intent: 'desktop-app' as const,
+            desktopWireup: { enabled: false, status: 'not_started' as const },
+          }
+        : {}),
   };
   const inspirations = input.inspirationIds.length > 0
     ? { inspirationDesignSystemIds: input.inspirationIds }

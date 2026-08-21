@@ -130,6 +130,7 @@ describe('buildProjectArchive', () => {
       'desktop/desktop-scaffold.json',
       'desktop/src/main.cjs',
       'desktop/src/preload.cjs',
+      'desktop/src/renderer.js',
     ];
     for (const name of generated) expect(zip.file(name)).not.toBeNull();
     expect(await zip.file('ui-design/index.html')?.async('string')).toBe('<!doctype html>hi');
@@ -150,8 +151,10 @@ describe('buildProjectArchive', () => {
     expect(main).toContain("partition: 'desktop-scaffold'");
     expect(main).toContain('webRequest.onBeforeRequest');
     expect(main).toContain('setWindowOpenHandler');
+    expect(main).toContain('will-attach-webview');
     expect(main).toContain("parsed.protocol !== 'file:'");
     expect(main).toContain('pathIsInside(sourceRoot, fileURLToPath(parsed))');
+    expect(await zip.file('desktop/src/renderer.js')?.async('string')).toContain('desktopScaffoldReady');
     expect(main).not.toMatch(/[A-Z]:\\|\/Users\//);
   });
 
