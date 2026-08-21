@@ -51,9 +51,11 @@ with the project's standards.
       automatic context to the project. Follow-up
       [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
       removes the remaining active-file attachment path; narrower evidence now
-      reaches a send only through an explicit user action. A source-reconciliation
-      follow-up now removes the orphaned active-file mode and filters host context
-      admission to `kind === 'project'`; direct source regressions are committed,
+      reaches a send only through an explicit user action. Follow-up
+      [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+      repairs source reconciliation, removes the orphaned active-file mode and
+      filters host context admission to `kind === 'project'`; direct source
+      regressions are committed,
       while hosted build/runtime interaction evidence remains pending.
 
 Most of what is here is not done. This document exists so that the size of the

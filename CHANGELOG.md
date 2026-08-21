@@ -28,6 +28,21 @@ version section when a release carries them.
 
 ### Changed
 
+- **Project chat context now stays project-wide after source reconciliation.** Commit
+  [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+  removes the orphaned active-file symbols and file-mode styling that could return after
+  a merge, admits only `kind === 'project'` from the host's implicit context, and leaves
+  file/browser context on explicit `@`, toolbox, upload and attachment routes. Direct
+  component regressions cover a file-only active viewer, explicit `@file` selection,
+  folder-imported mounting and viewer-tab stability. Hosted build, runtime interaction
+  and capture evidence remain pending for this local development line.
+
+  Source reconciliation 之後，project chat context 又差啲畀舊 file mode 偷偷返生。
+  `6abc40be3` 清走孤兒 active-file symbols 同 styling，只准 host implicit context
+  入面 `kind === 'project'` 自動上車；file/browser 要靠明確 `@`、toolbox、upload
+  或 attachment。Direct component regression 已寫低，hosted build、runtime
+  interaction 同 capture 證據仍然 pending。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)

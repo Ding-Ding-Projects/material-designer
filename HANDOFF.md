@@ -76,8 +76,10 @@
 > visible file to every send. Explicit file selection remains available through
 > the file controls and `@` picker.
 >
-> **Project-file context repair — 2026-08-21, local jer only.** Source
-> reconciliation had reintroduced an undeclared active-file symbol and the
+> **Project-file context repair — 2026-08-21, local development line only.** Commit
+> [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+> repairs source reconciliation, which had reintroduced an undeclared
+> active-file symbol and the
 > obsolete file-mode class into `ChatComposer`. The follow-up removes those
 > paths, admits only `kind === 'project'` from the host's implicit context, and
 > keeps file/browser context on explicit `@`, toolbox, upload and attachment
