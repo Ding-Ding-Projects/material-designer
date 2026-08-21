@@ -12,6 +12,11 @@
 > also removes the separate folder-project path that attached the currently
 > visible file to every send. Explicit file selection remains available through
 > the file controls and `@` picker.
+> Release [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
+> then exposed a workflow-only PowerShell boundary: ordinary tools-pack stderr
+> progress was promoted to a terminating `NativeCommandError` before the native
+> exit code could be checked. The next commit scopes `Continue` to that command;
+> no package, unsigned or installed-runtime verdict came from the failed run.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match

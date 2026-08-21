@@ -28,6 +28,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **The hosted Squirrel build now judges the packer by its exit code instead of
+  treating ordinary stderr progress as a fatal PowerShell exception.** Release
+  [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
+  completed prerequisites and packaged for nine minutes, then Windows
+  PowerShell terminated the assignment on the first captured phase diagnostic
+  before the explicit exit-code check. The repair scopes `Continue` to that one
+  native call, restores `Stop` immediately afterward, and keeps every unsigned,
+  signer-process and artifact validation unchanged.
+
+  Hosted Squirrel build 行咗九分鐘先畀 PowerShell 誤會普通 stderr progress 係致命
+  exception，真正 exit code 仲未有機會出聲。修正只喺嗰一下 native call 暫時用
+  `Continue`，跟住即刻還原 `Stop`；unsigned、signer process 同 artifact validation
+  一樣照睇實，唔會因為 PowerShell 太緊張就放水。
+
 - **Project chat context no longer follows incidental file/tab selection, and
   Windows delivery requests only Squirrel.Windows.** Commit
   [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)

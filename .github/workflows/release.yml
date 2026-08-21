@@ -167,15 +167,25 @@ jobs:
             }
           }
           try {
-            $buildOutput = pnpm.cmd exec tools-pack win build `
-              --dir $toolsPackDir `
-              --cache-dir $cacheDir `
-              --namespace "$env:PACK_NAMESPACE" `
-              --app-version "${{ steps.version.outputs.app_version }}" `
-              --to squirrel `
-              --json 2>&1
-            $packExitCode = $LASTEXITCODE
-            $buildOutput | Set-Content -LiteralPath $buildLogPath -Encoding utf8
+            $previousErrorActionPreference = $ErrorActionPreference
+            try {
+              # tools-pack writes normal phase diagnostics to stderr. Windows
+              # PowerShell promotes native stderr to ErrorRecords under Stop,
+              # which can terminate a successful build before its exit code is
+              # inspected. Keep this relaxation scoped to the native call.
+              $ErrorActionPreference = 'Continue'
+              $buildOutput = pnpm.cmd exec tools-pack win build `
+                --dir $toolsPackDir `
+                --cache-dir $cacheDir `
+                --namespace "$env:PACK_NAMESPACE" `
+                --app-version "${{ steps.version.outputs.app_version }}" `
+                --to squirrel `
+                --json 2>&1
+              $packExitCode = $LASTEXITCODE
+              $buildOutput | Set-Content -LiteralPath $buildLogPath -Encoding utf8
+            } finally {
+              $ErrorActionPreference = $previousErrorActionPreference
+            }
           } finally {
             New-Item -ItemType File -Path $signerStopPath -Force | Out-Null
             Wait-Job -Job $signerAuditJob -Timeout 10 | Out-Null

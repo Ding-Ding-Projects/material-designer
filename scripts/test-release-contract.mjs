@@ -49,6 +49,8 @@ requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
+requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does not scope Windows PowerShell native stderr handling around tools-pack");
+requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
 requireText(release, "$env:SQUIRREL_TEMP", "release.yml does not keep Squirrel's extraction temp root short");
