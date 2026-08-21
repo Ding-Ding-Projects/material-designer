@@ -47,6 +47,11 @@ import {
   renderInLanguage,
   type Translate,
 } from './interpolate';
+import {
+  isStudioFixtureCaptureStorageLocked,
+  studioFixtureCaptureLanguageState,
+  studioFixtureRouteFromCurrentLocation,
+} from '../capture/studio-fixture';
 
 export { LOCALES, LOCALE_LABEL, LANGUAGE_MODES, FUNNY_LEVELS } from './types';
 export type { Locale, LanguageMode, FunnyLanguage, FunnyLevel } from './types';
@@ -204,10 +209,14 @@ function writeStored(key: string, value: string): void {
 }
 
 export function detectInitialLanguageMode(): LanguageMode {
+  const route = studioFixtureRouteFromCurrentLocation();
+  if (route) return studioFixtureCaptureLanguageState(route).languageMode;
   return readStored(LS_LANGUAGE_MODE_KEY) === 'bilingual' ? 'bilingual' : DEFAULT_LANGUAGE_MODE;
 }
 
 export function detectInitialFunnyLevels(): Record<FunnyLanguage, FunnyLevel> {
+  const route = studioFixtureRouteFromCurrentLocation();
+  if (route) return { ...studioFixtureCaptureLanguageState(route).funnyLevels };
   const levels: Record<FunnyLanguage, FunnyLevel> = { ...DEFAULT_FUNNY_LEVELS };
   for (const language of ['en', 'zh-HK'] as const) {
     const stored = Number(readStored(`${LS_FUNNY_LEVEL_PREFIX}${language}`));
@@ -262,6 +271,7 @@ function readDesktopHostOsLocale(): string | undefined {
 // full I18nProvider.
 export function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'en';
+  if (studioFixtureRouteFromCurrentLocation()) return 'en';
   let storedLocale: string | null = null;
   let storedSource: string | null = null;
   try {
@@ -364,6 +374,7 @@ export function I18nProvider({ initial, children }: ProviderProps) {
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);
+    if (isStudioFixtureCaptureStorageLocked()) return;
     try {
       window.localStorage.setItem(LS_KEY, next);
       // Marker so detectInitialLocale knows this came from a deliberate
@@ -376,6 +387,7 @@ export function I18nProvider({ initial, children }: ProviderProps) {
 
   const setLanguageMode = useCallback((next: LanguageMode) => {
     setLanguageModeState(next);
+    if (isStudioFixtureCaptureStorageLocked()) return;
     writeStored(LS_LANGUAGE_MODE_KEY, next);
   }, []);
 
@@ -385,11 +397,13 @@ export function I18nProvider({ initial, children }: ProviderProps) {
       next[language] = level;
       return next;
     });
+    if (isStudioFixtureCaptureStorageLocked()) return;
     writeStored(`${LS_FUNNY_LEVEL_PREFIX}${language}`, String(level));
   }, []);
 
   const dismissFunnyDisclosure = useCallback(() => {
     setFunnyDisclosureSeenState(true);
+    if (isStudioFixtureCaptureStorageLocked()) return;
     writeStored(LS_FUNNY_DISCLOSURE_KEY, 'seen');
   }, []);
 

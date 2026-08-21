@@ -23,7 +23,15 @@
 > readiness receipt, direct live-artifact preview navigation uses the fixture
 > transport, refresh returns `{artifact, refresh}`, and normal routes retain the
 > original provider. Fixture config is explicit and analytics/error buffers are
-> disabled for the capture lifetime. This is
+> disabled for the capture lifetime. The capture provider now requires the
+> desktop-owned per-run identity in addition to the tuple witness; queryless
+> file continuation is refused when that session proof is missing. Boot
+> consumers are explicitly inventoried (including Vela status/refresh, AMR
+> models, complete version metadata and `providers: {}`), finite message/version
+> IDs and exact project/conversation scopes return structured 404/400 responses,
+> capture-owned appearance/language values ignore the user profile, and config
+> and provider writes are suppressed. Direct artifact data previews carry a
+> bounded reload identity and remount key. This is
 > source-only: hosted typecheck, built rendering, and installed capture
 > evidence remain pending; dim-sum photo work remains intentionally deferred.
 >

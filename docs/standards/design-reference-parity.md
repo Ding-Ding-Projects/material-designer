@@ -66,6 +66,20 @@ and direct error buffers are disabled for the capture lifetime. The provider is
 inactive for ordinary routes. This is source-level route readiness only: no
 hosted build, installed capture, or provider reachability is claimed here.
 
+The fixture boundary is session-scoped as well. A canonical renderer handoff
+must carry the desktop-owned per-run capture identity and exact tuple witness;
+queryless file continuations are accepted only while that same identity and
+witness remain live. Fixture runs, messages, versions, live-artifact scopes and
+text previews use finite public IDs and declared project/conversation query
+scopes; foreign or malformed values return structured 404/400 responses rather
+than falling through to a live daemon or an internal error. The hand-written
+fixture consumer manifest covers Vela status (including refresh), AMR models,
+the complete version response and the empty `providers` object. Capture
+appearance and language settings are forced from the tuple/fixture presentation
+in per-run storage, config and provider writes are suppressed, and the direct
+artifact data preview carries a bounded reload identity so refreshes cannot
+reuse stale bytes.
+
 ## Evidence boundary
 
 The inventory is structurally complete and all ten rows are currently marked

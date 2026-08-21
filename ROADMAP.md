@@ -490,7 +490,13 @@ Not by a local build — local builds do not happen here.
       stays bound to the fixture project/conversation across known file switches,
       serves a direct-loadable live-artifact preview, returns the exact refresh
       envelope, and isolates config/analytics state. The renderer exposes route and
-      provider witnesses for the desktop readiness receipt; the source-level
+      provider witnesses for the desktop readiness receipt. The fixture now also
+      requires a per-run capture identity alongside the tuple witness, keeps
+      queryless file continuation inside that session, inventories boot consumers,
+      suppresses config/provider writes, bounds text-preview and fixture numeric
+      inputs, and rejects foreign message/version/live-artifact scopes with
+      structured responses. Direct artifact data preview carries a reload identity.
+      The source-level
       route is ready, but every row remains pending until the installed build is captured at
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable

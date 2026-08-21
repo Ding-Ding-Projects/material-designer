@@ -28,6 +28,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **Studio capture isolation now fails closed at the per-run boundary.** The
+  fixture requires the desktop-owned capture identity as well as the tuple
+  witness, keeps queryless file continuation inside that accepted session,
+  inventories Vela status/refresh and AMR boot consumers, returns complete
+  version metadata and `providers: {}`, and suppresses config, active-context
+  and provider writes during capture. Run/message/version/live-artifact scopes
+  are finite and structured 404/400 responses reject foreign or malformed
+  values. Text previews are bounded, and direct live-artifact data previews
+  carry the reload identity so a refresh remounts the exact fixture bytes.
+  Source commit: [`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26).
+
+  Studio capture isolation 而家喺每次 run 個 boundary fail closed：要有
+  desktop-owned capture identity 加 tuple witness，換 file 仍然只留喺同一個
+  accepted session。Vela status/refresh 同 AMR boot calls 有清楚 manifest，version
+  metadata 齊晒，`providers: {}` 亦唔會扮成 array。Capture 期間 config、active
+  context 同 provider writes 全部收聲；foreign/malformed IDs 同 scope 返
+  structured 404/400。Text preview 有界，live-artifact data preview 帶埋
+  reload identity，refresh 唔會食舊 bytes。Source commit：[`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26)。
+
 - **The Studio parity route now drives the real project workspace components.**
   The desktop foundation owns the frozen `material-designer://studio` launch
   address and translates it to the canonical

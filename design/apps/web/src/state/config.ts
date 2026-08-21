@@ -22,6 +22,7 @@ import {
   DEFAULT_SUCCESS_SOUND_ID,
 } from '../utils/notifications';
 import { randomUUID } from '../utils/uuid';
+import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 3;
@@ -973,6 +974,7 @@ export async function fetchMediaProvidersFromDaemon(): Promise<DaemonMediaProvid
 export async function syncComposioConfigToDaemon(
   config: AppConfig['composio'] | undefined,
 ): Promise<boolean> {
+  if (isStudioFixtureCaptureStorageLocked()) return false;
   const apiKey = config?.apiKey ?? '';
   const payload = {
     ...(apiKey.trim() || !config?.apiKeyConfigured ? { apiKey } : {}),
@@ -1021,6 +1023,7 @@ function sanitizeAgentCliEnv(agentCliEnv: AppConfig['agentCliEnv']): AppConfig['
 }
 
 export function saveConfig(config: AppConfig): void {
+  if (isStudioFixtureCaptureStorageLocked()) return;
   const sanitized: AppConfig = {
     ...config,
     agentCliEnv: sanitizeAgentCliEnv(config.agentCliEnv),
@@ -1223,6 +1226,7 @@ export async function syncMediaProvidersToDaemon(
     throwOnError?: boolean;
   },
 ): Promise<void> {
+  if (isStudioFixtureCaptureStorageLocked()) return;
   if (!providers) return;
   try {
     const payload = buildMediaProvidersForDaemonSave(
@@ -1260,6 +1264,7 @@ export async function syncConfigToDaemon(
     allowOnboardingReset?: boolean;
   },
 ): Promise<void> {
+  if (isStudioFixtureCaptureStorageLocked()) return;
   const prefs: AppConfigPrefs = {
     ...(config.onboardingCompleted === true
       ? { onboardingCompleted: true }

@@ -209,6 +209,8 @@ import {
   STUDIO_FIXTURE_RENDERER_STATE,
   STUDIO_FIXTURE_SOURCE,
   createStudioFixtureSafeConfig,
+  studioFixtureCaptureAppearanceForRoute,
+  studioFixtureCaptureLanguageState,
   studioFixtureProjectPath,
   isStudioFixtureCaptureActiveForCurrentLocation,
   studioFixtureRouteFromCurrentLocation,
@@ -897,16 +899,32 @@ export function App() {
     if (!studioFixtureCaptureKey || !studioFixtureRoute || typeof document === 'undefined') return undefined;
     const root = document.documentElement;
     const rendererPath = studioFixtureProjectPath(studioFixtureRoute);
+    const language = studioFixtureCaptureLanguageState(studioFixtureRoute);
+    const appearance = studioFixtureCaptureAppearanceForRoute(studioFixtureRoute);
     root.dataset.odRendererRoutePath = rendererPath;
     root.dataset.odRendererRouteState = STUDIO_FIXTURE_RENDERER_STATE;
     root.dataset.odFixtureSource = STUDIO_FIXTURE_SOURCE;
     root.dataset.odFixtureRevision = studioFixtureRoute.fixtureRevision;
+    root.dataset.odCaptureLanguageMode = language.languageMode;
+    root.dataset.odCaptureFunnyEnglish = String(language.funnyLevels.en);
+    root.dataset.odCaptureFunnyCantonese = String(language.funnyLevels['zh-HK']);
+    root.dataset.odCaptureSeed = appearance.seed;
+    root.dataset.odCaptureDensity = appearance.density;
+    root.dataset.odCaptureUiScale = String(appearance.uiScale);
+    root.dataset.odCaptureFontStack = appearance.typography.fontStackId;
     return () => {
       if (root.dataset.odRendererRoutePath === rendererPath) {
         delete root.dataset.odRendererRoutePath;
         delete root.dataset.odRendererRouteState;
         delete root.dataset.odFixtureSource;
         delete root.dataset.odFixtureRevision;
+        delete root.dataset.odCaptureLanguageMode;
+        delete root.dataset.odCaptureFunnyEnglish;
+        delete root.dataset.odCaptureFunnyCantonese;
+        delete root.dataset.odCaptureSeed;
+        delete root.dataset.odCaptureDensity;
+        delete root.dataset.odCaptureUiScale;
+        delete root.dataset.odCaptureFontStack;
       }
     };
     // The key intentionally stays stable while the user switches known
@@ -952,6 +970,11 @@ function AppInner() {
       : ['workspace-account', workspaceAccountGeneration, currentWorkspaceIdentity],
   );
   const workspaceBilling = useWorkspaceBilling();
+  const route = useRoute();
+  const acceptedStudioFixtureRouteRef = useRef(studioFixtureRouteFromCurrentLocation());
+  const studioFixtureCaptureActive =
+    acceptedStudioFixtureRouteRef.current !== null
+    || isStudioFixtureCaptureActiveForCurrentLocation();
   const workspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
   const workspaceContextStateRef = useRef(workspaceContextState);
   const projectRouteWorkspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
@@ -1000,6 +1023,44 @@ function AppInner() {
       document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
     }
   }, []);
+  useEffect(() => {
+    if (!studioFixtureCaptureActive || typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const acceptedRoute = acceptedStudioFixtureRouteRef.current;
+    const expectedPath = acceptedRoute ? studioFixtureProjectPath(acceptedRoute) : null;
+    let settled = false;
+    let timeout: number | null = null;
+    let observer: MutationObserver;
+    const markSettled = () => {
+      if (settled || expectedPath === null) return;
+      const studio = document.querySelector('[data-testid="entry-view-studio"][data-active="true"]');
+      if (!studio) return;
+      settled = true;
+      root.dataset.odCaptureSettled = '1';
+      root.dataset.odCaptureSettledRoute = expectedPath;
+      root.dataset.odCaptureSettledRevision = 'capture-settled-v1';
+      observer.disconnect();
+      if (timeout !== null) window.clearTimeout(timeout);
+    };
+    observer = new MutationObserver(markSettled);
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-active'],
+    });
+    markSettled();
+    timeout = window.setTimeout(() => observer.disconnect(), 10_000);
+    return () => {
+      observer.disconnect();
+      if (timeout !== null) window.clearTimeout(timeout);
+      if (root.dataset.odCaptureSettledRoute === expectedPath) {
+        delete root.dataset.odCaptureSettled;
+        delete root.dataset.odCaptureSettledRoute;
+        delete root.dataset.odCaptureSettledRevision;
+      }
+    };
+  }, [studioFixtureCaptureActive]);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -1408,7 +1469,6 @@ function AppInner() {
   // mistake for "no key saved" — and to disable Save/Clear so a misclick
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
-  const route = useRoute();
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
@@ -1968,6 +2028,7 @@ function AppInner() {
     config.privacyDecisionAt == null &&
     config.onboardingCompleted === true;
   useEffect(() => {
+    if (studioFixtureCaptureActive) return;
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
       : { active: false };
@@ -1978,7 +2039,7 @@ function AppInner() {
     }).catch(() => {
       // Daemon down or transient network — not worth surfacing.
     });
-  }, [activeProjectId, activeFileName]);
+  }, [activeProjectId, activeFileName, studioFixtureCaptureActive]);
 
   useEffect(() => {
     if (!daemonLive) return;

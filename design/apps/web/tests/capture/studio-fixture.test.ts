@@ -3,19 +3,30 @@ import {
   isStudioFixtureProjectId,
   parseStudioFixtureRoute,
   studioFixtureAgent,
+  studioFixtureAmrModelsResponse,
+  studioFixtureAppVersionResponse,
   studioFixtureArtifact,
   studioFixtureArtifactPreviewUrl,
+  studioFixtureCaptureAppearance,
+  studioFixtureCaptureFunnyLevels,
+  studioFixtureCaptureSessionIsValid,
   studioFixtureCaptureWitnessMatches,
   studioFixtureConversation,
   studioFixtureFileText,
   studioFixtureFiles,
   studioFixtureInitialFileSelection,
   studioFixtureMessages,
+  studioFixtureMediaProvidersResponse,
   studioFixtureNetworkAllows,
   studioFixtureProject,
   studioFixtureProjectFilePath,
   studioFixtureProjectPath,
   studioFixtureRun,
+  studioFixtureVelaStatus,
+  STUDIO_FIXTURE_MESSAGE_IDS,
+  STUDIO_FIXTURE_VERSION_ID,
+  STUDIO_FIXTURE_TIME_MS,
+  STUDIO_FIXTURE_BOOT_CONSUMER_MANIFEST,
   studioFixtureEndpointStatus,
   studioFixtureSafeConfig,
   studioFixtureTabs,
@@ -89,6 +100,27 @@ describe('Studio capture fixture contract', () => {
     expect(studioFixtureCaptureWitnessMatches(route!, witness)).toBe(true);
     expect(studioFixtureCaptureWitnessMatches(route!, { ...witness, fixtureRevision: 'other' })).toBe(false);
     expect(studioFixtureCaptureWitnessMatches(route!, null)).toBe(false);
+  });
+
+  it('requires a valid per-run capture identity as well as the tuple witness', () => {
+    const route = parseStudioFixtureRoute(STUDIO_RENDERER_URL);
+    const witness = {
+      screen: 'studio',
+      state: 'default',
+      theme: 'light',
+      viewport: { width: 1440, height: 900 },
+      scale: 1,
+      locale: 'en-US',
+      fixtureRevision: STUDIO_FIXTURE_REVISION,
+      time: '2026-08-02T21:22:17.000Z',
+      motion: 'frozen',
+      randomSeed: 3003,
+      fonts: 'bundled-roboto-v1',
+      network: 'disabled',
+    };
+    expect(studioFixtureCaptureSessionIsValid(route!, 'run-0123456789abcdef0123456789abcdef', witness)).toBe(true);
+    expect(studioFixtureCaptureSessionIsValid(route!, 'run-not-a-capture', witness)).toBe(false);
+    expect(studioFixtureCaptureSessionIsValid(route!, 'run-0123456789abcdef0123456789abcdef', { ...witness, network: 'enabled' })).toBe(false);
   });
 
   it('rejects a revision, state, or query-boundary drift instead of activating a near miss', () => {
@@ -179,14 +211,47 @@ describe('Studio capture fixture contract', () => {
     expect(studioFixtureEndpointStatus('/api/projects/fixture-studio-project/files/DESIGN.md/versions', 'GET')).toBe(200);
     expect(studioFixtureEndpointStatus('/api/live-artifacts/fixture-studio-artifact/refresh', 'POST')).toBe(200);
     expect(studioFixtureEndpointStatus('/api/live-artifacts/fixture-studio-artifact/preview', 'POST')).toBe(405);
+    expect(studioFixtureEndpointStatus('/api/projects/fixture-studio-project/conversations/fixture-studio-conversation/messages/foreign-message', 'GET')).toBe(404);
+    expect(studioFixtureEndpointStatus(`/api/projects/${STUDIO_FIXTURE_PROJECT_ID}/files/${STUDIO_FIXTURE_ACTIVE_FILE}/versions/foreign-version`, 'GET')).toBe(404);
+    expect(studioFixtureEndpointStatus(`/api/projects/${STUDIO_FIXTURE_PROJECT_ID}/text-preview/foreign.txt`, 'GET')).toBe(404);
+    expect(studioFixtureEndpointStatus(`/api/projects/${STUDIO_FIXTURE_PROJECT_ID}/text-preview/${STUDIO_FIXTURE_ACTIVE_FILE}`, 'GET')).toBe(200);
+    expect(studioFixtureEndpointStatus(`/api/projects/${STUDIO_FIXTURE_PROJECT_ID}/files/${STUDIO_FIXTURE_ACTIVE_FILE}/versions/${STUDIO_FIXTURE_VERSION_ID}`, 'GET')).toBe(200);
     expect(studioFixtureTabsStateIsValid(studioFixtureTabs)).toBe(true);
+    expect(studioFixtureTabsStateIsValid({ ...studioFixtureTabs, updatedAt: STUDIO_FIXTURE_TIME_MS + 1 })).toBe(false);
     expect(studioFixtureTabsStateIsValid({ ...studioFixtureTabs, tabs: ['unknown.txt'] })).toBe(false);
     expect(studioFixtureTabsStateIsValid({ ...studioFixtureTabs, active: 'unknown.txt' })).toBe(false);
     expect(studioFixtureTabsStateIsValid({ ...studioFixtureTabs, extra: true })).toBe(false);
   });
 
   it('provides a direct-loadable live-artifact preview transport', () => {
-    expect(studioFixtureArtifactPreviewUrl(STUDIO_FIXTURE_PROJECT_ID, studioFixtureArtifact.id)).toMatch(/^data:text\/html/);
+    const first = studioFixtureArtifactPreviewUrl(STUDIO_FIXTURE_PROJECT_ID, studioFixtureArtifact.id, 0);
+    const second = studioFixtureArtifactPreviewUrl(STUDIO_FIXTURE_PROJECT_ID, studioFixtureArtifact.id, 1);
+    expect(first).toMatch(/^data:text\/html/);
+    expect(first).not.toBe(second);
     expect(studioFixtureArtifactPreviewUrl('another-project', studioFixtureArtifact.id)).toBeNull();
+  });
+
+  it('keeps boot consumers explicit and capture-owned', () => {
+    const paths = STUDIO_FIXTURE_BOOT_CONSUMER_MANIFEST.map((entry) => entry.path);
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(paths).toContain('/api/integrations/vela/status');
+    expect(paths).toContain('/api/integrations/vela/status?refresh=1');
+    expect(paths).toContain('/api/amr/models');
+    expect(studioFixtureAppVersionResponse.version).toEqual({
+      version: 'fixture-1.0',
+      channel: 'stable',
+      packaged: true,
+      platform: 'win32',
+      arch: 'x64',
+    });
+    expect(studioFixtureMediaProvidersResponse).toEqual({ providers: {} });
+    expect(studioFixtureVelaStatus.loggedIn).toBe(false);
+    expect(studioFixtureAmrModelsResponse.models).toEqual([]);
+    expect(studioFixtureCaptureAppearance.uiScale).toBe(1);
+    expect(studioFixtureCaptureFunnyLevels).toEqual({ en: 5, 'zh-HK': 5 });
+    expect(STUDIO_FIXTURE_MESSAGE_IDS).toEqual([
+      'fixture-studio-user-message',
+      'fixture-studio-assistant-message',
+    ]);
   });
 });

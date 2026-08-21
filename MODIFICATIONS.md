@@ -47,7 +47,12 @@ selection one-shot while binding the provider to the fixture project and
 conversation across known file switches. It publishes route/provider witnesses
 for the desktop readiness receipt, supplies a direct-loadable live-artifact
 preview, and disables analytics/error buffers for the capture lifetime.
-Ordinary routes retain their existing provider and selection behavior. Hosted
+The follow-up hardens that boundary with a per-run capture identity, finite
+message/version IDs, exact project/conversation and live-artifact scopes,
+explicit Vela/AMR/version/media boot consumers, capture-owned appearance and
+language values, suppressed config/provider writes, bounded text preview, and a
+reload-keyed direct artifact preview. Ordinary routes retain their existing
+provider and selection behavior. Hosted
 typecheck, built rendering, and installed capture evidence remain pending.
 
 **Changed files:**
@@ -58,8 +63,11 @@ typecheck, built rendering, and installed capture evidence remain pending.
 - `apps/web/src/analytics/error-tracking.ts`
 - `apps/web/src/capture/studio-fixture.ts`
 - `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/appearance/store.ts`
 - `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/i18n/index.tsx`
 - `apps/web/src/router.ts`
+- `apps/web/src/state/config.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding

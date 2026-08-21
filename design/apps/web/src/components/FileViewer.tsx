@@ -2267,14 +2267,14 @@ export function LiveArtifactViewer({
   }, [projectId, liveArtifact.artifactId, liveArtifact.updatedAt, workspaceContext]);
 
   const previewUrl = useMemo(() => {
-    const fixtureUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId);
+    const fixtureUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId, reloadKey);
     if (fixtureUrl) return fixtureUrl;
     return appendResourceQuery(
       liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       `v=${reloadKey}`,
     );
   }, [projectId, liveArtifact.artifactId, reloadKey, workspaceContext]);
-  const directPreviewUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId);
+  const directPreviewUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId, reloadKey);
   const previewScale = zoom / 100;
 
   // Instrument the live-artifact iframe so failed loads — usually a
@@ -2582,6 +2582,7 @@ export function LiveArtifactViewer({
             <div style={previewScaleShellStyle(previewViewport, previewScale)}>
               <PreviewDrawOverlay>
                 <iframe
+                  key={`live-artifact-preview-${liveArtifact.artifactId}-${reloadKey}`}
                   ref={iframeRef}
                   data-testid="live-artifact-preview-frame"
                   title={liveArtifact.title}

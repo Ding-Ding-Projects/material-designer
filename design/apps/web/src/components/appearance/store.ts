@@ -24,6 +24,10 @@ import {
   writeStoredAppearancePreferences,
   type AppearancePreferences,
 } from '../../state/appearance';
+import {
+  isStudioFixtureCaptureStorageLocked,
+  studioFixtureCaptureAppearanceForCurrentLocation,
+} from '../../capture/studio-fixture';
 
 type Listener = (prefs: AppearancePreferences) => void;
 
@@ -34,7 +38,9 @@ function ensureLoaded(): AppearancePreferences {
   if (current === null) {
     current = typeof window === 'undefined'
       ? DEFAULT_APPEARANCE_PREFERENCES
-      : readStoredAppearancePreferences();
+      : isStudioFixtureCaptureStorageLocked()
+        ? studioFixtureCaptureAppearanceForCurrentLocation()
+        : readStoredAppearancePreferences();
   }
   return current;
 }
@@ -52,7 +58,7 @@ export function getAppearancePreferences(): AppearancePreferences {
  */
 export function setAppearancePreferences(next: AppearancePreferences): void {
   current = next;
-  writeStoredAppearancePreferences(next);
+  if (!isStudioFixtureCaptureStorageLocked()) writeStoredAppearancePreferences(next);
   if (typeof document !== 'undefined') {
     applyAppearancePreferencesToDocument(next);
   }
