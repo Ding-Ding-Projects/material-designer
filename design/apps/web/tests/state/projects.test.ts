@@ -1090,37 +1090,59 @@ describe('deleteProject', () => {
     vi.unstubAllGlobals();
   });
 
-  it('attaches workspace identity headers so the daemon can enforce ownership', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
+  function stubConfirmedProjectDelete(deleteResponse: () => Response) {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).endsWith('/confirm-delete')) {
+        return Response.json({
+          token: 'project-delete-token',
+          expiresAt: Date.now() + 120_000,
+          expiresInMs: 120_000,
+          summary: {
+            kind: 'project',
+            id: 'project',
+            label: 'Project',
+            items: [],
+            reversible: false,
+          },
+        });
+      }
+      return deleteResponse();
+    });
     vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  }
+
+  it('attaches workspace identity headers so the daemon can enforce ownership', async () => {
+    const fetchMock = stubConfirmedProjectDelete(() => new Response(null, { status: 200 }));
 
     await deleteProject('leaked-team-project', personalWorkspaceContext());
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/projects/leaked-team-project',
-      expect.objectContaining({
-        method: 'DELETE',
-        headers: expect.objectContaining({
-          'x-od-workspace-id': 'ws-personal',
-          'x-od-workspace-member-id': 'wm-1',
-          'x-od-workspace-type': 'personal',
-        }),
-      }),
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.get('x-od-workspace-id')).toBe('ws-personal');
+      expect(headers.get('x-od-workspace-member-id')).toBe('wm-1');
+      expect(headers.get('x-od-workspace-type')).toBe('personal');
+    }
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get('x-od-confirm-token'))
+      .toBe('project-delete-token');
   });
 
   it('omits workspace headers when there is no workspace context (legacy local mode)', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubConfirmedProjectDelete(() => new Response(null, { status: 200 }));
 
     await deleteProject('local-only-project');
 
-    const [, init] = fetchMock.mock.calls[0]!;
-    expect(init).toEqual({ method: 'DELETE' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.has('x-od-workspace-id')).toBe(false);
+      expect(headers.has('x-od-workspace-member-id')).toBe(false);
+    }
   });
 
   it('reports failure when the daemon refuses the delete', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 403 })));
+    stubConfirmedProjectDelete(() => new Response(null, { status: 403 }));
 
     await expect(deleteProject('someone-elses-project', personalWorkspaceContext())).rejects.toMatchObject({
       name: 'ProjectDeleteError',
@@ -1129,13 +1151,13 @@ describe('deleteProject', () => {
   });
 
   it('preserves the daemon error code for analytics drill-down', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+    stubConfirmedProjectDelete(() => new Response(JSON.stringify({
       error: {
         code: 'WORKSPACE_AUTHORITY_UNAVAILABLE',
         message: 'workspace authority is temporarily unavailable',
         retryable: true,
       },
-    }), { status: 503 })));
+    }), { status: 503 }));
 
     await expect(deleteProject('project-1', personalWorkspaceContext())).rejects.toMatchObject({
       name: 'ProjectDeleteError',
@@ -1146,18 +1168,18 @@ describe('deleteProject', () => {
   });
 
   it('treats a structured missing-project response as an idempotent success', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
+    stubConfirmedProjectDelete(() => new Response(JSON.stringify({
       error: {
         code: 'PROJECT_NOT_FOUND',
         message: 'not found',
       },
-    }), { status: 404 })));
+    }), { status: 404 }));
 
     await expect(deleteProject('already-deleted', personalWorkspaceContext())).resolves.toBe(true);
   });
 
   it('does not hide an unstructured 404 from an incompatible daemon', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 404 })));
+    stubConfirmedProjectDelete(() => new Response(null, { status: 404 }));
 
     await expect(deleteProject('project-1', personalWorkspaceContext())).rejects.toMatchObject({
       name: 'ProjectDeleteError',
@@ -2343,7 +2365,6 @@ describe('deleteProject local caches', () => {
     return fetchMock;
   }
 
-  it('prunes the project tabs cache on a successful delete', async () => {
   it('prunes tabs and Design Browser caches on a successful delete', async () => {
     const store = stubWindowStore();
     const fetchMock = stubConfirmingDaemon(200);
@@ -2354,8 +2375,8 @@ describe('deleteProject local caches', () => {
     // lands in every access and proxy log on the way.
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/projects/p1/confirm-delete');
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe('/api/projects/p1');
-    const deleteHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
-    expect(deleteHeaders['x-od-confirm-token']).toBe('tok-1');
+    const deleteHeaders = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
+    expect(deleteHeaders.get('x-od-confirm-token')).toBe('tok-1');
     expect(store.has(historyKey)).toBe(false);
     expect(store.has(viewportKey)).toBe(false);
   });
@@ -2363,8 +2384,13 @@ describe('deleteProject local caches', () => {
   it('keeps tabs and Design Browser caches when the delete fails', async () => {
     const store = stubWindowStore();
     stubConfirmingDaemon(500);
-    await expect(deleteProject('p1')).resolves.toBe(false);
+    await expect(deleteProject('p1')).rejects.toMatchObject({
+      name: 'ProjectDeleteError',
+      status: 500,
+    });
     expect(store.has(tabsKey)).toBe(true);
+    expect(store.has(historyKey)).toBe(true);
+    expect(store.has(viewportKey)).toBe(true);
   });
 
   it('keeps the tabs cache when the daemon refuses to issue a confirmation', async () => {
@@ -2374,15 +2400,12 @@ describe('deleteProject local caches', () => {
     const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 428 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(deleteProject('p1')).resolves.toBe(false);
-    expect(store.has(tabsKey)).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(null, { status: 500 })));
     await expect(deleteProject('p1')).rejects.toMatchObject({
       name: 'ProjectDeleteError',
-      status: 500,
+      status: 428,
     });
     expect(store.has(tabsKey)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(store.has(historyKey)).toBe(true);
     expect(store.has(viewportKey)).toBe(true);
   });

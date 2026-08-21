@@ -29,6 +29,33 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Reconcile destructive request and appearance merge boundaries
+
+**Reason:** The v0.20.2 import left several product changes and upstream changes adjacent
+instead of combining them, producing duplicate declarations and unreachable function bodies.
+The reconciliation keeps the single-use destructive confirmation handshake while carrying
+workspace identity through both requests, preserves structured authorization errors and scoped
+cache invalidation, restores one Figma import component with its captured workspace context,
+retains the Material Design 3 role-based accent alongside both swatch catalogs, and keeps one
+pre-hydration appearance script and one project CLI flag registry. Focused contracts now pin the
+two-request delete sequence, confirmation-header precedence, workspace headers, cache behavior,
+and the uniqueness of every repaired declaration.
+
+**Changed files:**
+
+- `apps/daemon/src/cli.ts`
+- `apps/web/app/layout.tsx`
+- `apps/web/src/components/FigmaImportModal.tsx`
+- `apps/web/src/lib/confirm-delete.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/lib/confirm-delete.test.ts`
+- `apps/web/tests/providers/project-workspace-transport-scope.test.ts`
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/web/tests/state/force-light-theme.test.ts`
+- `apps/web/tests/state/projects.test.ts`
+
 ### 2026-08-21 — Export a secure desktop application scaffold
 
 **Reason:** Project archives already carried the complete website source, a human-readable

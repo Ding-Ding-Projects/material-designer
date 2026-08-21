@@ -2,12 +2,43 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  ACCENT_SWATCHES,
+  CUSTOM_ACCENT_FALLBACK,
   DEFAULT_ACCENT_COLOR,
   applyAppearanceToDocument,
   normalizeAccentColor,
   resolveAccentColor,
   uiScaleApplication,
 } from '../../src/state/appearance';
+
+describe('accent swatch union', () => {
+  it('keeps the Material role default and every distinct product/upstream swatch', () => {
+    expect(DEFAULT_ACCENT_COLOR).toBe('var(--md-sys-color-primary)');
+    expect(CUSTOM_ACCENT_FALLBACK).toBe('#c96442');
+    expect(ACCENT_SWATCHES).toEqual([
+      DEFAULT_ACCENT_COLOR,
+      CUSTOM_ACCENT_FALLBACK,
+      '#353535',
+      '#202020',
+      '#848484',
+      '#87ea5c',
+      '#0d5400',
+      '#1a74ff',
+      '#ffba12',
+      '#ff7528',
+      '#f04142',
+      '#2563eb',
+      '#7c3aed',
+      '#059669',
+      '#dc2626',
+      '#d97706',
+      '#0891b2',
+      '#db2777',
+    ]);
+    expect(new Set(ACCENT_SWATCHES.map((value) => value.toLowerCase())).size)
+      .toBe(ACCENT_SWATCHES.length);
+  });
+});
 
 describe('normalizeAccentColor', () => {
   it('accepts six-digit hex colors and normalizes casing', () => {

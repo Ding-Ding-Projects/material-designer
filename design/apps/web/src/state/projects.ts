@@ -36,7 +36,7 @@ import type {
   WorkspaceProjectsResponse,
 } from '@open-design/contracts';
 import { randomUUID } from '../utils/uuid';
-import { confirmedDelete } from '../lib/confirm-delete';
+import { confirmedDelete, ConfirmedDeleteError } from '../lib/confirm-delete';
 import { markProjectDisplaySnapshotsDirty } from './project-display-cache';
 import {
   workspaceIdentityCacheKey,
@@ -1081,26 +1081,8 @@ export async function patchProject(
 /**
  * Delete a project through the daemon's confirmation handshake.
  *
- * The DELETE is refused without a single-use token bound to this id, so this
- * mints one first (`confirmedDelete`). That refusal is the authorization
- * boundary; the two-key gate in `DesignsTab` and `FileWorkspace` is the
- * user-facing half and is untouched.
- *
- * It also closes a hole that predates the boundary: `RecentProjectsStrip`
- * reaches this same function through a plain one-button dialog and never met
- * the gate at all. It still does not — but it can no longer reach the daemon
- * route in one request either.
- */
-export async function deleteProject(id: string): Promise<boolean> {
-  const ok = await confirmedDelete(`/api/projects/${encodeURIComponent(id)}`);
-  // Drop the project's local tab-state cache once it is gone server-side, so
-  // the `open-design:project-tabs:*` keys don't accumulate in localStorage
-  // for the lifetime of the browser profile as projects are deleted.
-  if (ok) removeCachedTabs(id);
-  return ok;
- * Delete a project.
- *
- * `workspaceContext`, when known, MUST be attached: `enforceWorkspaceProjectMutation`
+ * `workspaceContext`, when known, is attached to both the confirmation mint
+ * and the DELETE. `enforceWorkspaceProjectMutation`
  * (apps/daemon/src/routes/project/index.ts) treats a request carrying NEITHER
  * `x-od-workspace-id` NOR `x-od-workspace-member-id` as a legacy pre-workspace
  * caller and skips its ownership check entirely (`ctx === null` → allowed).
@@ -1115,12 +1097,20 @@ export async function deleteProject(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<true> {
+  const resourcePath = `/api/projects/${encodeURIComponent(id)}`;
   try {
-    const resp = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
+    await confirmedDelete(resourcePath, undefined, {
       ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
+      throwOnFailure: true,
     });
-    if (!resp.ok) {
+    // Drop per-project browser caches once the project is gone server-side so
+    // they do not accumulate in localStorage for the lifetime of the profile.
+    removeCachedTabs(id, workspaceContext);
+    removeDesignBrowserProjectCache(id);
+    return true;
+  } catch (error) {
+    if (error instanceof ConfirmedDeleteError && error.response) {
+      const resp = error.response;
       let message = `project delete failed with status ${resp.status}`;
       let code: string | undefined;
       try {
@@ -1156,15 +1146,13 @@ export async function deleteProject(
       }
       throw new ProjectDeleteError(message, resp.status, code);
     }
-    // Drop per-project browser caches once the project is gone server-side so
-    // they do not accumulate in localStorage for the lifetime of the profile.
-    removeCachedTabs(id, workspaceContext);
-    removeDesignBrowserProjectCache(id);
-    return true;
-  } catch (error) {
     if (error instanceof ProjectDeleteError) throw error;
     throw new ProjectDeleteError(
-      error instanceof Error ? error.message : 'Project delete request failed.',
+      error instanceof ConfirmedDeleteError && error.requestCause instanceof Error
+        ? error.requestCause.message
+        : error instanceof Error
+          ? error.message
+          : 'Project delete request failed.',
       undefined,
       'network_error',
     );

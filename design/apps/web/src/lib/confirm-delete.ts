@@ -22,6 +22,76 @@ import {
   type ConfirmDeleteResponse,
 } from '@open-design/contracts';
 
+export type ConfirmedDeletePhase = 'confirm' | 'delete';
+
+/**
+ * Opt-in detailed failure for callers that must preserve daemon authorization
+ * errors. Existing callers keep the original `false`-on-failure contract.
+ */
+export class ConfirmedDeleteError extends Error {
+  constructor(
+    readonly phase: ConfirmedDeletePhase,
+    readonly response?: Response,
+    readonly requestCause?: unknown,
+  ) {
+    super(
+      response
+        ? `${phase} request failed with status ${response.status}`
+        : `${phase} request failed`,
+    );
+    this.name = 'ConfirmedDeleteError';
+  }
+}
+
+export interface ConfirmedDeleteOptions {
+  /** Identity/authorization headers that must accompany both handshake legs. */
+  headers?: HeadersInit;
+  /** Throw a phase-aware error instead of resolving `false` on failure. */
+  throwOnFailure?: boolean;
+}
+
+interface DeleteConfirmationAttempt {
+  confirmation: ConfirmDeleteResponse | null;
+  response: Response;
+}
+
+function requestHeaders(
+  headers: HeadersInit | undefined,
+  payload: unknown,
+): Headers | undefined {
+  const merged = new Headers(headers);
+  // A stale/caller-supplied confirmation value belongs to neither leg. The
+  // mint never needs one, and the DELETE receives the freshly minted value
+  // below after every other caller header has been copied.
+  merged.delete(CONFIRM_DELETE_HEADER);
+  if (payload !== undefined) merged.set('Content-Type', 'application/json');
+  let hasHeaders = false;
+  merged.forEach(() => { hasHeaders = true; });
+  return hasHeaders ? merged : undefined;
+}
+
+async function requestDeleteConfirmationAttempt(
+  resourcePath: string,
+  payload: unknown,
+  headers?: HeadersInit,
+): Promise<DeleteConfirmationAttempt> {
+  const mergedHeaders = requestHeaders(headers, payload);
+  const resp = await fetch(confirmDeleteUrlFor(resourcePath), {
+    method: 'POST',
+    ...(mergedHeaders ? { headers: mergedHeaders } : {}),
+    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+  });
+  if (!resp.ok) return { confirmation: null, response: resp };
+  // Parse a clone so an opt-in caller can still inspect an invalid successful
+  // envelope through ConfirmedDeleteError.response without meeting a consumed
+  // body stream.
+  const body = (await resp.clone().json()) as ConfirmDeleteResponse;
+  if (typeof body?.token !== 'string' || body.token.length === 0) {
+    return { confirmation: null, response: resp };
+  }
+  return { confirmation: body, response: resp };
+}
+
 /**
  * Ask the daemon for a confirmation token bound to one resource.
  *
@@ -36,23 +106,8 @@ export async function requestDeleteConfirmation(
   payload?: unknown,
 ): Promise<ConfirmDeleteResponse | null> {
   try {
-    const resp = await fetch(confirmDeleteUrlFor(resourcePath), {
-      method: 'POST',
-      // Most gated resources are named entirely by their URL, so the mint is a
-      // bare POST. `DELETE /api/projects/:id/folders` is the exception — the
-      // folder is in the body — and the mint has to be told the same folder the
-      // DELETE will name, or it would bind the token to the wrong thing.
-      ...(payload === undefined
-        ? {}
-        : {
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-          }),
-    });
-    if (!resp.ok) return null;
-    const body = (await resp.json()) as ConfirmDeleteResponse;
-    if (typeof body?.token !== 'string' || body.token.length === 0) return null;
-    return body;
+    const attempt = await requestDeleteConfirmationAttempt(resourcePath, payload);
+    return attempt.confirmation;
   } catch {
     return null;
   }
@@ -75,23 +130,45 @@ export async function requestDeleteConfirmation(
 export async function confirmedDelete(
   resourcePath: string,
   payload?: unknown,
+  options: ConfirmedDeleteOptions = {},
 ): Promise<boolean> {
   // The same value goes to both legs, deliberately: the daemon binds the token
   // to what the mint was told, and re-deriving the body for the DELETE is how
   // the two come to name different folders and every correct caller gets a 428.
-  const confirmation = await requestDeleteConfirmation(resourcePath, payload);
-  if (!confirmation) return false;
+  let attempt: DeleteConfirmationAttempt;
   try {
+    attempt = await requestDeleteConfirmationAttempt(
+      resourcePath,
+      payload,
+      options.headers,
+    );
+  } catch (error) {
+    if (options.throwOnFailure) throw new ConfirmedDeleteError('confirm', undefined, error);
+    return false;
+  }
+  if (!attempt.confirmation) {
+    if (options.throwOnFailure) {
+      throw new ConfirmedDeleteError('confirm', attempt.response);
+    }
+    return false;
+  }
+  try {
+    const headers = requestHeaders(options.headers, payload) ?? new Headers();
+    // Set this after caller headers so no caller-supplied value can replace the
+    // freshly minted, single-use token.
+    headers.set(CONFIRM_DELETE_HEADER, attempt.confirmation.token);
     const resp = await fetch(resourcePath, {
       method: 'DELETE',
-      headers: {
-        [CONFIRM_DELETE_HEADER]: confirmation.token,
-        ...(payload === undefined ? {} : { 'Content-Type': 'application/json' }),
-      },
+      headers,
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
     });
+    if (!resp.ok && options.throwOnFailure) {
+      throw new ConfirmedDeleteError('delete', resp);
+    }
     return resp.ok;
-  } catch {
+  } catch (error) {
+    if (error instanceof ConfirmedDeleteError) throw error;
+    if (options.throwOnFailure) throw new ConfirmedDeleteError('delete', undefined, error);
     return false;
   }
 }

@@ -367,6 +367,20 @@ describe('persisted project Workspace transport scope', () => {
       if (url.endsWith('/design-systems/ds-1/workspace')) {
         return Response.json({ project: { id: 'project-1' }, files: [] });
       }
+      if (url.endsWith('/design-systems/ds-1/confirm-delete')) {
+        return Response.json({
+          token: 'design-system-delete-token',
+          expiresAt: Date.now() + 120_000,
+          expiresInMs: 120_000,
+          summary: {
+            kind: 'design-system',
+            id: 'ds-1',
+            label: 'DS',
+            items: [],
+            reversible: false,
+          },
+        });
+      }
       if (url.endsWith('/design-systems/ds-1')) {
         return Response.json({ designSystem: { id: 'ds-1', title: 'DS', body: '' } });
       }
@@ -437,9 +451,13 @@ describe('persisted project Workspace transport scope', () => {
     await syncDesignSystemAssetsFromWorkspace('ds-1', workspaceA);
     await deleteDesignSystemDraft('ds-1', workspaceA);
 
-    expect(fetchMock).toHaveBeenCalledTimes(27);
+    expect(fetchMock).toHaveBeenCalledTimes(28);
     for (const [, init] of fetchMock.mock.calls) {
       expect(requestScope(init)).toEqual(['workspace-a', 'member-a']);
     }
+    const deleteCall = fetchMock.mock.calls.find(([input, init]) =>
+      String(input).endsWith('/design-systems/ds-1') && init?.method === 'DELETE');
+    expect(new Headers(deleteCall?.[1]?.headers).get('x-od-confirm-token'))
+      .toBe('design-system-delete-token');
   });
 });

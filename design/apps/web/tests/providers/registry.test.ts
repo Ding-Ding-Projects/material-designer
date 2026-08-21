@@ -168,7 +168,51 @@ describe('design-system Workspace scope', () => {
   });
 
   it('preserves the permission code from a denied design-system delete', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).endsWith('/confirm-delete')) {
+        return Response.json({
+          token: 'design-system-delete-token',
+          expiresAt: Date.now() + 120_000,
+          expiresInMs: 120_000,
+          summary: {
+            kind: 'design-system',
+            id: 'user:team-brand',
+            label: 'Team brand',
+            items: [],
+            reversible: false,
+          },
+        });
+      }
+      return new Response(JSON.stringify({
+        error: 'WORKSPACE_RESOURCE_MANAGE_DENIED',
+      }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const context = teamWorkspaceContext();
+
+    await expect(deleteDesignSystemDraft('user:team-brand', context)).rejects.toEqual(
+      expect.objectContaining<Partial<DesignSystemDeleteError>>({
+        name: 'DesignSystemDeleteError',
+        status: 403,
+        code: 'WORKSPACE_RESOURCE_MANAGE_DENIED',
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual([
+      '/api/design-systems/user%3Ateam-brand/confirm-delete',
+      '/api/design-systems/user%3Ateam-brand',
+    ]);
+    for (const [, init] of fetchMock.mock.calls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.get('x-od-workspace-id')).toBe(context.workspaceId);
+      expect(headers.get('x-od-workspace-member-id')).toBe(context.workspaceMemberId);
+    }
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get('x-od-confirm-token'))
+      .toBe('design-system-delete-token');
+  });
+
+  it('preserves a permission denial from the confirmation mint', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
       error: 'WORKSPACE_RESOURCE_MANAGE_DENIED',
     }), { status: 403, headers: { 'Content-Type': 'application/json' } }));
     vi.stubGlobal('fetch', fetchMock);
@@ -181,13 +225,12 @@ describe('design-system Workspace scope', () => {
         code: 'WORKSPACE_RESOURCE_MANAGE_DENIED',
       }),
     );
-    expect(fetchMock).toHaveBeenCalledWith('/api/design-systems/user%3Ateam-brand', {
-      method: 'DELETE',
-      headers: expect.objectContaining({
-        'x-od-workspace-id': context.workspaceId,
-        'x-od-workspace-member-id': context.workspaceMemberId,
-      }),
-    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0]))
+      .toBe('/api/design-systems/user%3Ateam-brand/confirm-delete');
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get('x-od-workspace-id')).toBe(context.workspaceId);
+    expect(headers.get('x-od-workspace-member-id')).toBe(context.workspaceMemberId);
   });
 
   it('materializes the exact team Workspace catalog before listing design systems', async () => {
