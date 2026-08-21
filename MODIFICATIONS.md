@@ -50,7 +50,11 @@ daemon/config/onboarding/cloud-identity decisions, recheck the route across a
 stability interval, and keep live content hidden behind a self-contained
 capture-failure splash when they fail. Capture startup uses a separate
 user-data namespace and bypasses ordinary existing-window/single-instance
-handoff. The terminal readiness receipt comes from the canonical URL/search,
+handoff. Each launch receives a validated unique run identity, an exact
+exclusive lease, and an evidence-retention retirement marker; the route id
+remains separate from storage identity. Capture sidecars clear telemetry,
+provider, update, and proxy egress environment, and readiness remains false
+until that audit is explicitly proven. The terminal readiness receipt comes from the canonical URL/search,
 renderer-owned route witness, real component invariant, fixture source and
 network proof. The renderer adds only witnesses from its actual router state;
 it does not receive replacement DOM or a second screen implementation. Capture
@@ -64,10 +68,17 @@ sidecars exist.
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
 - `apps/desktop/tests/main/deterministic-parity-route.test.ts`
+- `apps/daemon/src/routes/vela.ts`
+- `apps/daemon/src/sidecar/capture-network-policy.ts`
+- `apps/daemon/src/sidecar/index.ts`
 - `apps/packaged/tests/protocol.test.ts`
+- `apps/packaged/src/capture-run.ts`
 - `apps/packaged/src/index.ts`
 - `apps/packaged/src/protocol.ts`
+- `apps/packaged/src/sidecars.ts`
 - `apps/packaged/src/payload-desktop-launch.ts`
+- `apps/web/sidecar/capture-network-policy.ts`
+- `apps/web/sidecar/index.ts`
 - `apps/web/src/App.tsx`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding

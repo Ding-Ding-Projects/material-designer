@@ -8,6 +8,9 @@ import {
   DETERMINISTIC_PARITY_RANDOM_SEED,
   DETERMINISTIC_PARITY_TIME,
   DETERMINISTIC_PARITY_NOT_READY_REASON,
+  createDeterministicParityCaptureRunId,
+  deterministicParityCaptureRunNamespace,
+  deterministicParitySessionPartition,
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
   isDeterministicParityReadinessInspectionExpression,
@@ -189,5 +192,21 @@ describe("deterministic material-designer capture routes", () => {
     expect(isDeterministicParityReadinessInspectionExpression(
       "document.querySelector('button').click()",
     )).toBe(false);
+  });
+
+  it("keeps tuple route identity separate from each capture run namespace", () => {
+    const resolved = resolveDeterministicParityRoute(route("home"));
+    const firstRun = "run-0123456789abcdef0123456789abcdef";
+    const secondRun = "run-fedcba9876543210fedcba9876543210";
+    expect(createDeterministicParityCaptureRunId()).toMatch(/^run-[0-9a-f]{32}$/);
+    expect(deterministicParityCaptureRunNamespace(firstRun)).toBe(
+      "design-parity-captures/run-0123456789abcdef0123456789abcdef",
+    );
+    expect(deterministicParitySessionPartition(resolved, firstRun)).not.toBe(
+      deterministicParitySessionPartition(resolved, secondRun),
+    );
+    expect(() => deterministicParityCaptureRunNamespace("run-not-valid")).toThrow(
+      /^capture\.run_id_invalid:/,
+    );
   });
 });

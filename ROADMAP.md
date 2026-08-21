@@ -40,17 +40,26 @@ with the project's standards.
       router, applies frozen clock/random/motion and locale controls before
       first render, isolates capture protocol handling, allows only the exact
       accepted `od://` route through main-frame navigation and redirects,
-      blocks external navigation, uses a separate capture user-data namespace
-      without ordinary existing-window/single-instance handoff, and records a
-      terminal readiness receipt against the canonical URL/search,
+      blocks external navigation, uses a forced capture root with a unique
+      per-launch run lease and no ordinary existing-window/single-instance
+      handoff, and records a terminal readiness receipt against the canonical URL/search,
       renderer-owned route witness, capture-settled witness, route component
       invariant and fixture/network proof. Readiness evaluations are
       main-process time-bounded and recheck the route across a bounded stability
       interval. Screenshot/capture RPCs refuse before readiness, eval is limited
       to receipt inspection, and unready capture keeps live content hidden behind
-      a self-contained failure splash. The six mapped rows remain
+      a self-contained failure splash. Capture sidecars clear telemetry,
+      provider, update, and proxy egress inputs; both sidecars enforce
+      loopback-only fetches and direct Vela requests refuse external traffic.
+      Readiness remains false until that audit is proven, and renderer loss,
+      failed main-frame load or an HTTP error document invalidates a previously
+      ready receipt and returns to the failure splash. A retired run keeps its
+      evidence bytes under an explicit retention marker, and same-run namespace
+      collisions are rejected.
+      The six mapped rows remain
       foundation-only because the renderer still reports ordinary daemon data
-      and no capture provider or capture-aware sidecar isolation exists. Studio,
+      and no capture fixture/provider exists; the sidecar boundary is source
+      only until hosted runtime proof. Studio,
       Library, Settings Appearance and standalone Handoff remain explicit
       unresolved blockers; dark presentation is also blocked because the
       product is light-only: `route.theme_dark_unresolved`,

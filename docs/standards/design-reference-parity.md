@@ -42,8 +42,16 @@ yet been captured.
   external network requests in an isolated capture session, suppresses the
   separate pet window, allows only the exact accepted `od://` route through
   both main-frame navigation events, rejects capture-mode external navigation,
-  uses a separate capture user-data namespace without ordinary existing-window
-  handoff, and records a typed readiness receipt only after the canonical route
+  uses a forced capture root with a unique per-launch run lease, separate
+  storage identity, evidence-retention retirement marker, and no ordinary
+  existing-window or single-instance handoff. Capture sidecars clear telemetry,
+  provider, update, and proxy egress environment; both sidecars enforce
+  loopback-only fetches and direct Vela requests refuse external capture
+  traffic. Readiness stays false until that network audit is explicitly proven.
+  A ready receipt is invalidated by renderer loss, failed main-frame load or an
+  HTTP error document, which returns the hidden content to the capture-failure
+  splash. It records a typed readiness receipt
+  only after the canonical route
   URL/search, actual theme, viewport, device scale, bundled fonts,
   renderer-owned route witness, capture-settled witness, route-specific
   component invariant, mount state and capture network proof agree across a
@@ -52,8 +60,9 @@ yet been captured.
   that receipt is ready; eval is limited to the readiness receipt inspection.
   Pre-readiness renderer loss and any other unready result keep live content
   hidden and show a self-contained capture-failure splash. The fixture/provider
-  and sidecar-isolation proof are intentionally absent today, so the receipt
-  remains `ready: false` until those product seams exist.
+  is intentionally absent today, and the sidecar boundary is source-only until
+  hosted runtime proof, so the receipt remains `ready: false` until those
+  product seams exist.
 - `design/apps/packaged/src/protocol.ts`, which registers the packaged `od://`
   proxy on that same capture session, validates the exact loopback sidecar
   origin, blocks redirects in capture mode, preserves normal launch redirect
@@ -75,12 +84,16 @@ and capture startup context, but the default verifier still stops before capture
 evidence. Only six rows currently have semantically identical production paths,
 and none is runtime-ready for parity evidence yet: the real renderer witness
 proves the route component, but ordinary daemon-backed data is detected and no
-capture fixture/provider or capture-aware sidecar isolation proof exists.
+capture fixture/provider exists; the sidecar boundary is source-only until
+hosted runtime proof.
 Unexpected blocked requests also fail readiness. This is deliberate
 fail-closed foundation status, not a visual-parity verdict. The runtime refuses
 raw screenshot/capture requests while that receipt is unready and permits only
 the minimal readiness-receipt inspection through eval; no live-daemon screen can
-be interacted with or promoted into parity evidence.
+be interacted with or promoted into parity evidence. Every capture run has a
+unique lease beneath the forced capture root; the exact run is retired by a
+marker while its evidence bytes remain retained for review, and a duplicate run
+identity is rejected rather than reused.
 The remaining rows are intentionally unresolved: `route.studio_unresolved` (no
 production Studio route), `route.library_hidden` (the Library component is
 hidden by its product feature flag), `route.settings_appearance_unresolved`

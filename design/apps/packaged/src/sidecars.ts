@@ -87,6 +87,28 @@ const PACKAGED_DESKTOP_HANDOFF_ENV_KEYS = [
   "OD_UPDATE_PLATFORM",
 ] as const;
 
+const CAPTURE_EXTERNAL_NETWORK_ENV_KEYS = [
+  "ALL_PROXY",
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "NO_PROXY",
+  "NODE_USE_ENV_PROXY",
+  "OD_ALLOWED_INTERNAL_HOSTS",
+  "all_proxy",
+  "http_proxy",
+  "https_proxy",
+  "no_proxy",
+] as const;
+
+function captureSafeChildSourceEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const sanitized = { ...env };
+  for (const key of CAPTURE_EXTERNAL_NETWORK_ENV_KEYS) delete sanitized[key];
+  for (const key of Object.keys(sanitized)) {
+    if (key.endsWith("_API_KEY") || key.endsWith("_TOKEN")) delete sanitized[key];
+  }
+  return sanitized;
+}
+
 function shouldForwardPackagedChildEnv(key: string, includeProviderSecrets = false): boolean {
   return (
     PACKAGED_CHILD_ENV_ALLOWLIST.includes(
@@ -673,6 +695,8 @@ export type PackagedDaemonSpawnEnvOptions = {
    */
   velaWebUrl?: string | null;
   velaWebUrls?: Record<string, string>;
+  /** Capture launches must not inherit provider, telemetry, or proxy egress. */
+  captureMode?: boolean;
 };
 
 /**
@@ -704,23 +728,23 @@ export function buildPackagedDaemonSpawnEnv(
     ...(options.nodeCommand == null || options.nodeCommand.length === 0
       ? {}
       : { OD_NODE_BIN: options.nodeCommand }),
-    ...(options.amrProfile == null || options.amrProfile.length === 0
+    ...(options.captureMode || options.amrProfile == null || options.amrProfile.length === 0
       ? {}
       : { OPEN_DESIGN_AMR_PROFILE: options.amrProfile }),
-    ...workspaceTeamTransportEnv(options.amrProfile, options.velaWebUrl),
-    ...(options.velaWebUrls == null || Object.keys(options.velaWebUrls).length === 0
+    ...(options.captureMode ? {} : workspaceTeamTransportEnv(options.amrProfile, options.velaWebUrl)),
+    ...(options.captureMode || options.velaWebUrls == null || Object.keys(options.velaWebUrls).length === 0
       ? {}
       : { OD_VELA_WEB_URLS: JSON.stringify(options.velaWebUrls) }),
     ...(options.appVersion == null ? {} : { OD_APP_VERSION: options.appVersion }),
-    ...(options.mcpBootstrapCommand == null
+    ...(options.captureMode || options.mcpBootstrapCommand == null
       || options.mcpBootstrapCommand.length === 0
       ? {}
       : { OD_MCP_BOOTSTRAP_COMMAND: options.mcpBootstrapCommand }),
-    ...(options.mcpBootstrapArgs == null
+    ...(options.captureMode || options.mcpBootstrapArgs == null
       ? {}
       : { OD_MCP_BOOTSTRAP_ARGS: JSON.stringify(options.mcpBootstrapArgs) }),
-    ...pickPackagedDesktopHandoffEnv(options.desktopHandoffEnv ?? {}),
-    ...(options.telemetryRelayUrl == null || options.telemetryRelayUrl.length === 0
+    ...pickPackagedDesktopHandoffEnv(options.captureMode ? {} : options.desktopHandoffEnv ?? {}),
+    ...(options.captureMode || options.telemetryRelayUrl == null || options.telemetryRelayUrl.length === 0
       ? {}
       : { OPEN_DESIGN_TELEMETRY_RELAY_URL: options.telemetryRelayUrl }),
     // OD_LEGACY_DATA_DIR is the one-shot recovery handle for users
@@ -729,7 +753,7 @@ export function buildPackagedDaemonSpawnEnv(
     // for packaged children would otherwise drop it. Forward only
     // when set so we do not invent an empty string and trigger the
     // daemon's "env set but path invalid" error path.
-    ...(options.legacyDataDir == null || options.legacyDataDir.length === 0
+    ...(options.captureMode || options.legacyDataDir == null || options.legacyDataDir.length === 0
       ? {}
       : { OD_LEGACY_DATA_DIR: options.legacyDataDir }),
     // PostHog analytics ingest key, baked into the bundle at packaging time
@@ -737,12 +761,13 @@ export function buildPackagedDaemonSpawnEnv(
     // for fork builds without the CI secret — the daemon's analytics
     // module no-ops cleanly in that case, and /api/analytics/config
     // returns enabled=false regardless of user consent.
-    ...(options.posthogKey == null || options.posthogKey.length === 0
+    ...(options.captureMode || options.posthogKey == null || options.posthogKey.length === 0
       ? {}
       : { POSTHOG_KEY: options.posthogKey }),
-    ...(options.posthogHost == null || options.posthogHost.length === 0
+    ...(options.captureMode || options.posthogHost == null || options.posthogHost.length === 0
       ? {}
       : { POSTHOG_HOST: options.posthogHost }),
+    ...(options.captureMode ? { OD_DESIGN_PARITY_CAPTURE: "1" } : {}),
   };
 }
 
@@ -763,6 +788,7 @@ async function spawnSidecarChild(options: {
   nodeCommand: string | null;
   paths: PackagedNamespacePaths;
   runtime: SidecarRuntimeContext<SidecarStamp>;
+  captureMode?: boolean;
 }): Promise<ManagedSidecarChild> {
   const ipcPath = resolveAppIpcPath({
     app: options.app,
@@ -788,15 +814,16 @@ async function spawnSidecarChild(options: {
     contract: OPEN_DESIGN_SIDECAR_CONTRACT,
     extraEnv: {
       ...resolvePackagedChildBaseEnv(
-        process.env,
-        options.app === APP_KEYS.DAEMON,
-        resolveSystemProxyEnv(),
-        options.app !== APP_KEYS.DAEMON,
+        options.captureMode ? captureSafeChildSourceEnv(process.env) : process.env,
+        options.app === APP_KEYS.DAEMON && options.captureMode !== true,
+        options.captureMode ? {} : resolveSystemProxyEnv(),
+        options.app !== APP_KEYS.DAEMON && options.captureMode !== true,
       ),
       ...options.env,
       NODE_ENV: "production",
       PATH: resolvePackagedPathEnv(),
       ...(usesElectronAsNode ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+      ...(options.captureMode ? { OD_DESIGN_PARITY_CAPTURE: "1" } : {}),
     },
     stamp,
   });
@@ -910,6 +937,8 @@ export async function startPackagedSidecars(
      * clears) instead of a frozen frame; headless callers omit it.
      */
     onPhase?: (phase: "daemon-spawning" | "daemon-ready" | "web-spawning" | "web-ready") => void;
+    /** Capture launches disable provider, telemetry, and proxy egress. */
+    captureMode?: boolean;
   },
 ): Promise<PackagedSidecarHandle> {
   await mkdir(paths.namespaceRoot, { recursive: true });
@@ -958,7 +987,9 @@ export async function startPackagedSidecars(
         amrProfile: options.amrProfile,
         daemonCliEntry: options.daemonCliEntry,
         desktopHandoffEnv: process.env,
-        legacyDataDir: process.env.OD_LEGACY_DATA_DIR ?? null,
+        legacyDataDir: options.captureMode
+          ? null
+          : process.env.OD_LEGACY_DATA_DIR ?? null,
         mcpBootstrapArgs: options.mcpBootstrapArgs,
         mcpBootstrapCommand: options.mcpBootstrapCommand,
         nodeCommand: options.nodeCommand,
@@ -968,11 +999,13 @@ export async function startPackagedSidecars(
         posthogHost: options.posthogHost,
         velaWebUrl: options.velaWebUrl,
         velaWebUrls: options.velaWebUrls,
+        captureMode: options.captureMode,
       }),
       electronNodeCommand: options.electronNodeCommand,
       nodeCommand: options.nodeCommand,
       paths,
       runtime,
+      captureMode: options.captureMode,
     });
     children.push(daemon);
     // The web prewarm overlaps the daemon's boot wait: its read set (web
@@ -1028,6 +1061,7 @@ export async function startPackagedSidecars(
         nodeCommand: options.nodeCommand,
         paths,
         runtime,
+        captureMode: options.captureMode,
       }),
       waitUntilReady: async (web) => await waitForStatus<WebStatusSnapshot>(
         web.ipcPath,

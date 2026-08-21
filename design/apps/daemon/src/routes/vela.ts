@@ -252,6 +252,10 @@ export function pipeProxyStreamWithGuard(
 }
 
 function proxyAmrApiRequest(req: Request, res: Response): void {
+  if (process.env.OD_DESIGN_PARITY_CAPTURE === '1') {
+    res.status(503).json({ error: 'capture.network_blocked_external' });
+    return;
+  }
   const suffix = req.originalUrl.slice(AMR_API_PROXY_PREFIX.length);
   if (!suffix.startsWith('/api/v1/')) {
     res.status(404).json({ error: 'unknown_amr_api_proxy_path' });
@@ -350,6 +354,10 @@ function proxyVelaMessageCenterRequest(
   context: { apiUrl: string; controlKey?: string },
   proxyPrefix = VELA_MESSAGE_CENTER_PREFIX,
 ): void {
+  if (process.env.OD_DESIGN_PARITY_CAPTURE === '1') {
+    res.status(503).json({ error: 'capture.network_blocked_external' });
+    return;
+  }
   const suffix = req.originalUrl.slice(proxyPrefix.length);
   const parsedSuffix = new URL(suffix, 'http://message-center.local');
   if (!isAllowedMessageCenterRequest(req.method, parsedSuffix.pathname)) {

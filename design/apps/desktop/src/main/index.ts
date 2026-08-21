@@ -68,6 +68,7 @@ import {
 } from "./diagnostics.js";
 import { notifyDesktopExternalShow } from "./external-show.js";
 import {
+  createDeterministicParityCaptureRunId,
   deterministicParityChromiumLocale,
   parseDeterministicParityRouteArgv,
   type DeterministicParityRoute,
@@ -97,11 +98,14 @@ export {
   DETERMINISTIC_PARITY_FIXTURE_REVISION,
   DETERMINISTIC_PARITY_NETWORK,
   DETERMINISTIC_PARITY_NOT_READY_REASON,
+  DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT,
   DETERMINISTIC_PARITY_PROTOCOL,
   DETERMINISTIC_PARITY_RANDOM_SEED,
   DETERMINISTIC_PARITY_TIME,
   DeterministicParityRouteError,
   deterministicParityChromiumLocale,
+  createDeterministicParityCaptureRunId,
+  deterministicParityCaptureRunNamespace,
   deterministicParityRouteIds,
   deterministicParitySessionPartition,
   isDeterministicParityCaptureReady,
@@ -110,6 +114,7 @@ export {
   isDeterministicParityReadinessInspectionExpression,
   parseDeterministicParityRouteArgv,
   resolveDeterministicParityRoute,
+  validateDeterministicParityCaptureRunId,
   type DeterministicParityRoute,
   type DeterministicParityReadiness,
   type DeterministicParityTuple,
@@ -220,6 +225,8 @@ export type DesktopMainOptions = {
   captureNetworkOrigin?: () => string | null;
   /** True only after the sidecars prove capture-aware fixture/network isolation. */
   captureNetworkIsolationReady?: boolean;
+  /** Unique per-launch capture storage identity; separate from route identity. */
+  captureRunId?: string | null;
   preloadPath?: string;
   windowTitle?: string;
   onDesktopReady?: (controls: {
@@ -783,6 +790,9 @@ export async function runDesktopMain(
       process.argv,
       process.env,
     );
+  const captureRunId = captureRoute == null
+    ? null
+    : options.captureRunId ?? createDeterministicParityCaptureRunId();
   // The packaged entry normally applies this switch before `whenReady()`. A
   // tools-dev invocation may enter here directly, so keep the same route
   // self-contained and apply it before Chromium creates its first session.
@@ -838,6 +848,19 @@ export async function runDesktopMain(
       namespace: runtime.namespace,
       runtimeBase: runtime.base,
       source: runtime.source,
+      // Capture routes are local evidence sessions, never update clients.
+      // Clear inherited feed and automatic-action variables before config
+      // resolution so no updater request or scheduler can start.
+      env: captureRoute == null
+        ? process.env
+        : {
+            ...process.env,
+            OD_UPDATE_ENABLED: "0",
+            OD_UPDATE_AUTO_CHECK: "0",
+            OD_UPDATE_AUTO_DOWNLOAD: "0",
+            OD_UPDATE_AUTO_OPEN: "0",
+            OD_UPDATE_METADATA_URL: undefined,
+          },
     },
     { openPath: (path) => shell.openPath(path) },
   );
@@ -1055,6 +1078,7 @@ export async function runDesktopMain(
     captureRoute,
     captureNetworkOrigin: options.captureNetworkOrigin,
     captureNetworkIsolationReady: options.captureNetworkIsolationReady,
+    captureRunId,
     updater,
     windowTitle: options.windowTitle,
   });
@@ -1106,21 +1130,23 @@ export async function runDesktopMain(
     protocolClientPath: options.inviteProtocolClientPath,
   });
   const discoverUpdaterAppConfigBaseUrl = resolveDaemonBaseUrl(runtime, options);
-  updateScheduler = createDesktopUpdaterScheduler(updater, {
-    backoffInitialMs: updater.config.checkBackoffInitialMs,
-    backoffMaxMs: updater.config.checkBackoffMaxMs,
-    initialDelayMs: updater.config.checkInitialDelayMs,
-    intervalMs: updater.config.checkIntervalMs,
-    startupSilentPayloadUpdate: {
-      isEnabled: async () => {
-        const baseUrl = await discoverUpdaterAppConfigBaseUrl();
-        const config = await readAppConfigFromDaemon(baseUrl);
-        return config.allowSilentUpdates === true;
+  if (captureRoute == null) {
+    updateScheduler = createDesktopUpdaterScheduler(updater, {
+      backoffInitialMs: updater.config.checkBackoffInitialMs,
+      backoffMaxMs: updater.config.checkBackoffMaxMs,
+      initialDelayMs: updater.config.checkInitialDelayMs,
+      intervalMs: updater.config.checkIntervalMs,
+      startupSilentPayloadUpdate: {
+        isEnabled: async () => {
+          const baseUrl = await discoverUpdaterAppConfigBaseUrl();
+          const config = await readAppConfigFromDaemon(baseUrl);
+          return config.allowSilentUpdates === true;
+        },
+        requestQuit: shutdownAndExit,
       },
-      requestQuit: shutdownAndExit,
-    },
-  });
-  if (updater.shouldAutoCheck()) updateScheduler.start();
+    });
+    if (updater.shouldAutoCheck()) updateScheduler.start();
+  }
 
   attachParentMonitor(shutdown);
 

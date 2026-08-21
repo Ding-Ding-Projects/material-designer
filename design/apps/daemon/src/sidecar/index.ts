@@ -3,6 +3,7 @@ import { bootstrapSidecarRuntime } from "@open-design/sidecar";
 import { readProcessStamp } from "@open-design/platform";
 
 import { startDaemonSidecar } from "./server.js";
+import { installCaptureNetworkPolicy } from "./capture-network-policy.js";
 import {
   executeLegacyPayloadDesktopHandoff,
   prepareLegacyPayloadDesktopHandoff,
@@ -11,6 +12,10 @@ import {
 async function main(): Promise<void> {
   const stamp = readProcessStamp(process.argv.slice(2), OPEN_DESIGN_SIDECAR_CONTRACT);
   if (stamp == null) throw new Error("sidecar stamp is required");
+
+  // Capture runs are local evidence sessions. Install the egress boundary
+  // before startup work or route registration can issue a provider request.
+  installCaptureNetworkPolicy();
 
   const runtime = bootstrapSidecarRuntime(stamp, process.env, {
     app: APP_KEYS.DAEMON,

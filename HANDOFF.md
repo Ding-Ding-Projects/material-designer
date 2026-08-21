@@ -11,10 +11,13 @@
 > document. Capture uses an isolated in-memory renderer session with the local
 > `od://` proxy, suppresses the separate pet window, allows only the exact
 > accepted `od://` route through both main-frame navigation events, rejects
-> capture-mode external navigation, uses a separate capture user-data namespace
-> without ordinary existing-window or single-instance handoff, blocks requests
-> outside the exact current loopback sidecar origin, and returns an idempotent
-> protocol disposer.
+> capture-mode external navigation, uses a forced capture root with a unique
+> validated per-launch run identity and exclusive lease, bypasses ordinary
+> existing-window or single-instance handoff, blocks requests outside the exact
+> current loopback sidecar origin, and returns an idempotent protocol disposer.
+> The route id remains tuple identity only; the exact run is retired with a
+> retention marker while evidence bytes remain available for review, and a
+> same-run collision is rejected.
 > Readiness now compares the canonical URL and full query, actual
 > theme/viewport/device scale/fonts, a renderer-owned route witness,
 > route-specific component/ARIA invariant, renderer-owned capture-settled
@@ -23,10 +26,17 @@
 > stability interval. Screenshot/capture RPCs refuse before readiness; eval is
 > limited to the readiness receipt inspection. Pre-readiness renderer loss and
 > every other unready result keep the live window hidden and show a
-> self-contained capture-failure splash. Because the capture provider and
-> capture-aware sidecars are not implemented, the six reachable rows remain
-> foundation-only with a terminal `ready: false` receipt; ordinary daemon data
-> is explicitly detected rather than accepted as fixture data.
+> self-contained capture-failure splash. Because the capture provider/fixture
+> is not implemented and the network boundary has no hosted runtime proof, the
+> six reachable rows remain foundation-only with a terminal `ready: false`
+> receipt; ordinary daemon data
+> is explicitly detected rather than accepted as fixture data. Capture startup
+> clears startup telemetry, provider, update and proxy egress inputs; both
+> sidecars install a loopback-only fetch boundary and the Vela direct-request
+> routes refuse external capture traffic. Readiness remains false until that
+> network audit is proven. A ready capture also invalidates its receipt and
+> returns to the failure splash on renderer loss, failed main-frame load or an
+> HTTP error document.
 >
 > Four rows remain intentionally fail-closed and are not claimed as reachable:
 > dark presentation is also blocked as `route.theme_dark_unresolved` because

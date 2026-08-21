@@ -54,6 +54,7 @@ import {
   registerWindowControlHandlers,
 } from "./window-controls.js";
 import {
+  createDeterministicParityCaptureRunId,
   DETERMINISTIC_PARITY_NOT_READY_REASON,
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
@@ -510,6 +511,8 @@ export type DesktopRuntimeOptions = {
   onUpdateMenuLabels?: (labels: OpenDesignHostUpdaterMenuLabels) => void;
   /** Developer-only normalized design-parity route. */
   captureRoute?: DeterministicParityRoute | null;
+  /** Unique per-launch capture storage identity; never part of tuple identity. */
+  captureRunId?: string | null;
   /** Exact current web-sidecar origin allowed by the capture session. */
   captureNetworkOrigin?: () => string | null;
   /** True only after the sidecars prove capture-aware fixture/network isolation. */
@@ -738,7 +741,10 @@ async function measureDeterministicCaptureReadiness(
   actual.networkPolicy = networkIsolationReady ? route.tuple.network : null;
   actual.networkOrigin = networkOrigin;
   actual.networkIsolationReady = networkIsolationReady;
-  if (!networkIsolationReady) reasons.push("capture.network_isolation_unresolved");
+  if (!networkIsolationReady) {
+    reasons.push("capture.network_isolation_unresolved");
+    reasons.push("capture.network_audit_unresolved");
+  }
   if (networkOrigin == null) reasons.push("capture.network_origin_unresolved");
   if (blockedNetworkRequests > 0) reasons.push("capture.network_blocked_requests");
   if (actual.networkPolicy !== route.tuple.network) reasons.push("capture.network_policy_mismatch");
@@ -2331,6 +2337,9 @@ async function showDirectoryPickerForSender(
 export async function createDesktopRuntime(options: DesktopRuntimeOptions): Promise<DesktopRuntime> {
   const preloadPath = options.preloadPath ?? join(dirname(fileURLToPath(import.meta.url)), "preload.cjs");
   const captureRoute = options.captureRoute ?? null;
+  const captureRunId = captureRoute == null
+    ? null
+    : options.captureRunId ?? createDeterministicParityCaptureRunId();
   const captureNetworkOrigin = options.captureNetworkOrigin ?? (() => null);
   const captureNetworkIsolationReady = options.captureNetworkIsolationReady === true;
   let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
@@ -2565,6 +2574,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // emitting recovery-attempt events.
   let rendererRecoveryAttempts = 0;
 
+  let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
+  let revealed = false;
+  let revealing = false;
+
   const consoleEntries: DesktopConsoleEntry[] = [];
   // The floating pet is a separate BrowserWindow on the default session. It
   // is deliberately absent during parity capture so it cannot load a sibling
@@ -2575,7 +2588,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const windowTitle = options.windowTitle ?? "Material Designer";
   let blockedCaptureNetworkRequests = 0;
   const captureSession = captureRoute
-    ? session.fromPartition(deterministicParitySessionPartition(captureRoute))
+    ? session.fromPartition(deterministicParitySessionPartition(captureRoute, captureRunId!))
     : null;
   const window = new BrowserWindow({
     height: captureRoute?.tuple.viewport.height ?? 900,
@@ -2600,7 +2613,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
-      ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute) } : {}),
+      ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute, captureRunId!) } : {}),
       preload: preloadPath,
       sandbox: true,
       webviewTag: true,
@@ -2822,16 +2835,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       reason: details.reason,
       url: gone ? null : window.webContents.getURL(),
     });
-    if (
-      captureRoute != null
-      && !stopped
-      && !revealed
-      && deterministicCaptureReadiness == null
-    ) {
-      deterministicCaptureReadiness = createCaptureFailureReadiness("capture.renderer_process_gone");
-      captureFailureSurfacePending = true;
-      presentCaptureFailureSurface?.();
-      console.error("[open-design desktop] deterministic parity capture failed before readiness", {
+    if (captureRoute != null && !stopped) {
+      invalidateCaptureReadiness("capture.renderer_process_gone");
+      console.error("[open-design desktop] deterministic parity capture renderer failed", {
         reason: "capture.renderer_process_gone",
         routeId: captureRoute.id,
       });
@@ -2884,7 +2890,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // cancel (a new load started), so ignore it and sub-frame failures; anything
   // else means the load to the web server failed and needs a retry.
   window.webContents.on("did-fail-load", (_event, errorCode, _description, _url, isMainFrame) => {
-    if (isMainFrame && errorCode !== -3) markRendererFailed();
+    if (!isMainFrame || errorCode === -3) return;
+    if (captureRoute != null) {
+      invalidateCaptureReadiness("capture.did_fail_load");
+      return;
+    }
+    markRendererFailed();
   });
   // `did-fail-load` never fires for an HTTP error *document* — a 5xx response
   // with a body is a successful load to Electron — so a 502 page (e.g. the
@@ -2898,6 +2909,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       httpResponseCode,
       url,
     });
+    if (captureRoute != null) {
+      invalidateCaptureReadiness("capture.http_error_document");
+      return;
+    }
     markRendererFailed();
   });
 
@@ -3324,12 +3339,61 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   };
   if (captureFailureSurfacePending) presentCaptureFailureSurface();
 
-  let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
-  let revealed = false;
-  let revealing = false;
+  const installCaptureReadinessReceipt = async (): Promise<boolean> => {
+    if (captureRoute == null || deterministicCaptureReadiness == null) return true;
+    const readinessJson = JSON.stringify(deterministicCaptureReadiness);
+    try {
+      await withTimeout(
+        window.webContents.executeJavaScript(`(() => {
+        const root = document.documentElement;
+        root.dataset.odParityReady = ${deterministicCaptureReadiness.ready ? '"1"' : '"0"'};
+        root.dataset.odParityActualPath = window.location.pathname;
+        root.dataset.odParityActualUrl = window.location.href;
+        root.dataset.odParityBlockedNetworkRequests = ${blockedCaptureNetworkRequests};
+        root.dataset.odParityReceiptVersion = "2";
+        root.dataset.odParityReadinessReasons = ${JSON.stringify(deterministicCaptureReadiness.reasons.join(","))};
+        if ("__MATERIAL_DESIGNER_CAPTURE_READINESS__" in globalThis) {
+          delete globalThis.__MATERIAL_DESIGNER_CAPTURE_READINESS__;
+        }
+        Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_READINESS__", {
+          value: Object.freeze(${readinessJson}),
+          configurable: true,
+          writable: false,
+        });
+        return true;
+      })()`, true),
+        CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+        "capture.readiness_receipt_timeout",
+      );
+      return true;
+    } catch (error) {
+      console.error("[open-design desktop] deterministic parity readiness receipt installation failed", {
+        error: error instanceof Error ? error.message : String(error),
+        routeId: captureRoute.id,
+      });
+      return false;
+    }
+  };
 
-  const revealMainWindow = (): void => {
+  const invalidateCaptureReadiness = (reason: string): void => {
+    if (captureRoute == null || stopped) return;
+    deterministicCaptureReadiness = createCaptureFailureReadiness(reason);
+    captureFailureSurfacePending = true;
+    revealing = false;
+    revealed = false;
+    if (!window.isDestroyed()) window.hide();
+    presentCaptureFailureSurface?.();
+    void installCaptureReadinessReceipt();
+  };
+
+  const revealMainWindow = async (): Promise<void> => {
     if (revealed || window.isDestroyed()) return;
+    if (captureRoute && deterministicCaptureReadiness != null) {
+      if (!await installCaptureReadinessReceipt()) {
+        invalidateCaptureReadiness("capture.readiness_receipt_install_failed");
+        return;
+      }
+    }
     revealed = true;
     showWindowButtons(window);
     window.show();
@@ -3341,38 +3405,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
     if (splash != null && !splash.isDestroyed()) splash.close();
     if (captureRoute && deterministicCaptureReadiness != null) {
-      const readinessJson = JSON.stringify(deterministicCaptureReadiness);
-      void withTimeout(
-        window.webContents.executeJavaScript(`(() => {
-        const root = document.documentElement;
-        root.dataset.odParityReady = ${deterministicCaptureReadiness.ready ? '"1"' : '"0"'};
-        root.dataset.odParityActualPath = window.location.pathname;
-        root.dataset.odParityActualUrl = window.location.href;
-        root.dataset.odParityBlockedNetworkRequests = ${blockedCaptureNetworkRequests};
-        root.dataset.odParityReceiptVersion = "2";
-        root.dataset.odParityReadinessReasons = ${JSON.stringify(deterministicCaptureReadiness.reasons.join(","))};
-        Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_READINESS__", {
-          value: Object.freeze(${readinessJson}),
-          configurable: false,
-          writable: false,
-        });
-        return true;
-      })()`, true),
-        CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
-        "capture.readiness_receipt_timeout",
-      ).then(() => {
-        console.info("[open-design desktop] deterministic parity route ready", {
-          blockedNetworkRequests: blockedCaptureNetworkRequests,
-          routeId: captureRoute.id,
-          requestedPath: captureRoute.browserPath,
-          semanticState: captureRoute.semanticState,
-          readiness: deterministicCaptureReadiness,
-        });
-      }).catch((error: unknown) => {
-        console.error("[open-design desktop] deterministic parity readiness failed", {
-          error: error instanceof Error ? error.message : String(error),
-          routeId: captureRoute.id,
-        });
+      console.info("[open-design desktop] deterministic parity route ready", {
+        blockedNetworkRequests: blockedCaptureNetworkRequests,
+        routeId: captureRoute.id,
+        requestedPath: captureRoute.browserPath,
+        semanticState: captureRoute.semanticState,
+        readiness: deterministicCaptureReadiness,
       });
     }
     // The app is now truly up (mounted + shown). Fire once — revealed guards
@@ -3460,7 +3498,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     setSplashStage(splash, "finishing");
     const remaining = MIN_SPLASH_MS - (Date.now() - splashStartedAt);
     if (remaining > 0) await delay(remaining);
-    revealMainWindow();
+    await revealMainWindow();
   };
 
   const schedule = (delayMs: number) => {

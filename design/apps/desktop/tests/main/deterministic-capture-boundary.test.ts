@@ -41,6 +41,98 @@ describe("deterministic capture boundary source contracts", () => {
     expect(packaged).toContain("inspectExistingDesktopForLauncher");
   });
 
+  it("audits capture child networking and startup telemetry before readiness", () => {
+    const packaged = readFileSync(
+      join(desktopRoot, "../packaged/src/index.ts"),
+      "utf8",
+    );
+    const sidecars = readFileSync(
+      join(desktopRoot, "../packaged/src/sidecars.ts"),
+      "utf8",
+    );
+    const runtime = source("src/main/runtime.ts");
+    expect(packaged).toContain("startupTelemetryContext = null");
+    expect(packaged).toContain("if (deterministicParityRoute == null) applyPackagedUpdaterEnv");
+    expect(packaged).toContain("captureMode: deterministicParityRoute != null");
+    expect(sidecars).toContain("captureSafeChildSourceEnv");
+    expect(sidecars).toContain("options.captureMode ? {} : resolveSystemProxyEnv()");
+    expect(sidecars).toContain("options.captureMode ? {} : options.desktopHandoffEnv");
+    expect(sidecars).toContain("options.captureMode || options.posthogKey");
+    expect(sidecars).toContain("options.captureMode || options.telemetryRelayUrl");
+    expect(runtime).toContain('reasons.push("capture.network_audit_unresolved")');
+  });
+
+  it("does not forward migration state, update feeds, or uninstall writes into capture", () => {
+    const packaged = readFileSync(
+      join(desktopRoot, "../packaged/src/index.ts"),
+      "utf8",
+    );
+    const sidecars = readFileSync(
+      join(desktopRoot, "../packaged/src/sidecars.ts"),
+      "utf8",
+    );
+    const desktop = source("src/main/index.ts");
+    expect(sidecars).toContain("legacyDataDir: options.captureMode");
+    expect(sidecars).toContain("options.captureMode || options.legacyDataDir");
+    expect(packaged).toContain("if (deterministicParityRoute == null) {");
+    expect(packaged).toContain("syncWindowsUninstallDisplayVersion");
+    expect(desktop).toContain("OD_UPDATE_ENABLED: \"0\"");
+    expect(desktop).toContain("if (captureRoute == null) {");
+  });
+
+  it("invalidates a ready capture on renderer and HTTP load failure", () => {
+    const runtime = source("src/main/runtime.ts");
+    expect(runtime).toContain("capture.renderer_process_gone");
+    expect(runtime).toContain("capture.did_fail_load");
+    expect(runtime).toContain("capture.http_error_document");
+    expect(runtime).toContain("invalidateCaptureReadiness");
+    expect(runtime).toContain("await installCaptureReadinessReceipt()");
+    expect(runtime).toContain("configurable: true");
+  });
+
+  it("arms both packaged sidecars with the capture-only egress policy", () => {
+    const daemon = readFileSync(
+      join(desktopRoot, "../../daemon/src/sidecar/index.ts"),
+      "utf8",
+    );
+    const web = readFileSync(
+      join(desktopRoot, "../../web/sidecar/index.ts"),
+      "utf8",
+    );
+    const vela = readFileSync(
+      join(desktopRoot, "../../daemon/src/routes/vela.ts"),
+      "utf8",
+    );
+    const daemonPolicy = readFileSync(
+      join(desktopRoot, "../../daemon/src/sidecar/capture-network-policy.ts"),
+      "utf8",
+    );
+    const webPolicy = readFileSync(
+      join(desktopRoot, "../../web/sidecar/capture-network-policy.ts"),
+      "utf8",
+    );
+    expect(daemon).toContain("installCaptureNetworkPolicy");
+    expect(web).toContain("installCaptureNetworkPolicy");
+    expect(vela).toContain("capture.network_blocked_external");
+    expect(daemonPolicy).toContain("isLoopbackHttpUrl");
+    expect(webPolicy).toContain("isLoopbackHttpUrl");
+    expect(daemonPolicy).toContain("capture.network_blocked_external");
+    expect(webPolicy).toContain("capture.network_blocked_external");
+  });
+
+  it("keeps per-run locking and evidence-retention policy exact", () => {
+    const captureRun = readFileSync(
+      join(desktopRoot, "../packaged/src/capture-run.ts"),
+      "utf8",
+    );
+    expect(captureRun).toContain("capture.run_namespace_collision");
+    expect(captureRun).toContain('await mkdir(root)');
+    expect(captureRun).toContain('await open(lockPath, "wx")');
+    expect(captureRun).toContain("CAPTURE_RUN_RETENTION_POLICY");
+    expect(captureRun).toContain('join(root, "retired.json")');
+    expect(captureRun).not.toContain("rm(");
+  });
+
   it("publishes a renderer-owned settled witness after startup decisions", () => {
     const app = readFileSync(
       join(desktopRoot, "../web/src/App.tsx"),

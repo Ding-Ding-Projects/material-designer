@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 /**
  * Developer-only resolver for the checked-in design-parity capture routes.
  *
@@ -14,6 +16,8 @@ export const DETERMINISTIC_PARITY_TIME = "2026-08-02T21:22:17.000Z";
 export const DETERMINISTIC_PARITY_RANDOM_SEED = 3003;
 export const DETERMINISTIC_PARITY_FONTS = "bundled-roboto-v1";
 export const DETERMINISTIC_PARITY_NETWORK = "disabled";
+export const DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT = "design-parity-captures";
+const DETERMINISTIC_PARITY_CAPTURE_RUN_ID_PATTERN = /^run-[0-9a-f]{32}$/;
 
 const QUERY_KEYS = [
   "state",
@@ -387,8 +391,26 @@ export function deterministicParityChromiumLocale(tuple: DeterministicParityTupl
 }
 
 /** In-memory Electron session used only by the capture renderer. */
-export function deterministicParitySessionPartition(route: DeterministicParityRoute): string {
-  return `material-designer-parity-${route.id}`;
+export function createDeterministicParityCaptureRunId(): string {
+  return `run-${randomBytes(16).toString("hex")}`;
+}
+
+export function validateDeterministicParityCaptureRunId(value: string): string {
+  if (!DETERMINISTIC_PARITY_CAPTURE_RUN_ID_PATTERN.test(value)) {
+    fail("capture.run_id_invalid", "capture run identity must match the run-<32 lowercase hex> form");
+  }
+  return value;
+}
+
+export function deterministicParityCaptureRunNamespace(runId: string): string {
+  return `${DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT}/${validateDeterministicParityCaptureRunId(runId)}`;
+}
+
+export function deterministicParitySessionPartition(
+  route: DeterministicParityRoute,
+  runId: string,
+): string {
+  return `material-designer-parity-${route.id}-${validateDeterministicParityCaptureRunId(runId)}`;
 }
 
 /**
