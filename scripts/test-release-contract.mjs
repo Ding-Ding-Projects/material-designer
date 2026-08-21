@@ -75,7 +75,7 @@ requireText(release, '-MetadataFile "metadata.json"', "release.yml does not vali
 requireText(release, '-IconFile "material-designer.ico"', "release.yml does not validate the packaged icon with the package set");
 requireText(release, "signer-audit.ready", "release.yml does not wait for the independent signer observer before packaging");
 requireExact(release, '$packagingEvidence = Join-Path $runnerTemp ("squirrel-packaging-evidence-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")', "release.yml does not create one run-scoped packaging evidence directory");
-requireExact(release, 'Write-Host ("[tools-pack] " + [string]$_)', "release.yml does not stream safe tools-pack diagnostics into the job log");
+requireExact(release, 'Write-Host ("[tools-pack] " + $line)', "release.yml does not stream safe tools-pack diagnostics into the job log");
 requireExact(release, '$utf8NoBom = [Text.UTF8Encoding]::new($false)', "release.yml does not define a BOM-free encoding for failure diagnostics");
 requireExact(release, '$buildLogWriter = [IO.StreamWriter]::new($buildLogPath, $false, $utf8NoBom)', "release.yml does not use a PowerShell 5.1-compatible UTF-8 log writer");
 requireExact(release, '$buildLogWriter.WriteLine($line)', "release.yml does not append each streamed tools-pack line to the build log");
