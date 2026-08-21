@@ -33,7 +33,6 @@ to the run but *not* to the release, and what is deliberately absent.
 | `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
-| `material-designer-<version>-win-x64-portable.zip` | The portable archive, attached when the packaging build produced one. |
 | `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
@@ -84,12 +83,10 @@ not. Confusing the two is how somebody ends up linking a download that vanishes.
 
 | Artifact | When | Contents |
 | --- | --- | --- |
-| `material-designer-win-x64` | Always, if the build staged anything | The same staged assets, so a *failed* smoke test still leaves an installer to inspect. |
-| `material-designer-win-smoke-report` | Always | The smoke test's report: its manifest, the packaging build's machine-readable output, the full test log, the result record, the summary and the screenshots. |
-| `material-designer-build-logs` | On failure | Packaging and runtime logs. |
+| `material-designer-release-evidence-<run id>` | Always | Any safely staged Squirrel assets plus generated release notes, line-count output and post-publication download verification. The upload is evidence preservation only and never substitutes for a release asset. |
 
-The first one uploading on *failure* is the deliberate part. When the smoke test
-fails, the installer that failed is the single most useful thing to have.
+The `always()` upload is deliberate: a failed packaging or publication run keeps
+the safe evidence it reached without turning the original failure green.
 
 ## What is deliberately absent
 
@@ -140,9 +137,9 @@ Two mechanisms enforce it in practice:
 1. The staged assets are copied from the path the packaging build **reported**, and
    the workflow fails if that path does not exist — so a packaging failure that
    forgot to set a non-zero exit cannot pass an empty directory forward.
-2. The smoke test asserts the running application reports **the version this run
-   was building**, which catches a cached or leftover artifact installing instead
-   of the fresh one.
+2. The complete-artifact validator binds the setup, package identity/version,
+   `RELEASES`, icon, metadata and immutable build log to the workflow commit.
+   Installed-version proof remains a separate cheap-headless runtime receipt.
 
 ## Failure modes
 
@@ -150,7 +147,6 @@ Two mechanisms enforce it in practice:
 | --- | --- | --- |
 | A release exists with no installer attached | Packaging succeeded, asset upload did not | Treat it as a failed release and delete it. A release without its artifact is worse than none, because it looks complete. |
 | The published hash does not match the download | Corruption in transit, a mirror, or a replaced file | Do not install it. Re-download from the release page and compare again. |
-| The portable archive is missing | The packaging build did not produce one | Expected: the archive is attached only when it exists. The installer is the primary artifact. |
 | A download link stops working after a few weeks | It pointed at a workflow artifact, not a release asset | Link release assets. Workflow artifacts expire. |
 | The reputation screen blocks an installer | It is intentionally unsigned | Documented in the notes. **More info**, then run; the workflow verified `NotSigned` before publication. |
 | The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
@@ -167,9 +163,9 @@ Two mechanisms enforce it in practice:
   corruption, not authenticity against substitution. Publishing it alongside the
   file it describes is standard and still worth doing; describing it as protection
   against tampering would be false.
-- **The smoke report contains a screenshot of the running application.** It is
-  uploaded publicly. Nothing secret should ever be on the application's first
-  screen; if that changes, this artifact publishes it.
+- **Runtime captures are not produced by the release workflow.** Installed UI
+  proof is collected separately through the approved cheap-headless route and
+  must be privacy-reviewed before publication.
 - **The build logs upload only on failure**, which is when they are needed and also
   when they are most likely to contain paths and environment detail. They are
   reviewed as public output.
@@ -181,10 +177,11 @@ Two mechanisms enforce it in practice:
 file and a code-name image, with the notes stating the hash, the smoke-test
 outcome, the commit, the run link and the provenance.
 
-**Pending CI evidence:** a new release run must prove that the Squirrel build
-produces intentionally unsigned `Setup.exe` (`NotSigned`), `RELEASES`, full/delta `.nupkg` packages and
-`metadata.json`, that the packaged smoke/UI-state gates pass, and that the
-published stable feed is readable by the updater.
+**Pending evidence:** a new successful release run must prove that the Squirrel
+build produces intentionally unsigned `Setup.exe` (`NotSigned`), `RELEASES`,
+full/delta `.nupkg` packages, the icon and `metadata.json`, and that the
+published stable feed is downloadable. Installed launch and updater interaction
+remain separate cheap-headless evidence rather than release-workflow Chuts.
 
 ```bash
 # list what a release actually carries

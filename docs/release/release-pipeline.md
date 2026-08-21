@@ -144,7 +144,9 @@ and machine-readable output. Then, in order:
 - `Get-AuthenticodeSignature` verification requiring the exact status `NotSigned`;
 - a signer-process audit plus version-1 build provenance tied to the source commit;
 - validation of every `RELEASES` SHA-1, byte length and package basename, the
-  NuGet identity/version, and the required installed executable entry;
+  NuGet identity/version, the required installed executable entry, the immutable
+  build-log hash, the ICO container, and the updater metadata's version,
+  architecture, HTTPS URLs, installer size and SHA-256;
 - assets staged under names that mean something outside this repository:
   `Setup.exe`, its `.sha256`, `RELEASES`, full/delta `.nupkg` packages,
   `metadata.json`, the icon, provenance and the artifact receipt. A portable
@@ -272,10 +274,10 @@ exact status is `NotSigned`.
 - **No telemetry key is configured**, and the vendored analytics code is a no-op
   without one. Baking one in at packaging time changes what shipped builds do and
   must be disclosed, not done quietly.
-- **Dedicated self-hosted runner contract.** The Windows runner must carry the
-  `self-hosted`, `windows` and `material-designer` labels, be dedicated to this
-  project, and contain no user data. `Release` accepts only default-branch pushes
-  and manual dispatch; no untrusted pull-request trigger may execute on it.
+- **Pinned hosted runner contract.** Release, Verify and Pages use the pinned
+  `windows-2022` image and bootstrap their declared tools. Release accepts branch
+  pushes and manual dispatch; no pull-request trigger can publish from untrusted
+  code.
 
 ## Verification
 
@@ -286,14 +288,16 @@ source, the typecheck and Windows identity specs passed, and the smoke test
 installed, launched, health-checked, screenshotted and uninstalled the built
 application.
 
-**Current failing evidence:** labelled self-hosted Windows Release
-[`31186802259`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802259)
-at `f6549861` passed dependency installation, Typecheck, Squirrel packaging,
-`NotSigned`, self-contained scanning and installer artifact upload. Its packaged
-smoke timed out after `720000ms` before UI capture. `ui-states.json` was absent,
-and code-name selection and publication were skipped. This proves the
-no-publication-on-failure gate; it does not prove the Squirrel application can
-install, start or uninstall successfully.
+**Current failing evidence:** hosted Windows Release
+[`32450842389`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450842389)
+at `a515cd87842e1ad9611768d95daa42364e029879` failed during dependency
+postinstall on daemon TypeScript syntax errors. Packaging, `NotSigned`, artifact
+validation and publication were skipped, so that run makes no package or runtime
+claim. Earlier run
+[`32439482597`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32439482597)
+did prove one unsigned `Setup.exe`, one full package, a valid `RELEASES` row and
+zero observed signer invocations; it did not prove installed launch, updater
+states or removal.
 
 The pipeline is fully proven when one run demonstrates all of:
 
