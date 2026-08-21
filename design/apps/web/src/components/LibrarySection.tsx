@@ -170,12 +170,12 @@ function LibraryFilterCombobox({
     if (!trigger || typeof window === 'undefined') return;
     const rect = trigger.getBoundingClientRect();
     const margin = 12;
-    const width = Math.max(160, Math.min(320, window.innerWidth - margin * 2));
+    const width = Math.max(1, Math.min(320, window.innerWidth - margin * 2));
     const below = window.innerHeight - rect.bottom - margin;
     const above = rect.top - margin;
     const placeAbove = below < 220 && above > below;
     const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
-    const room = Math.max(96, (placeAbove ? above : below) - 6);
+    const room = Math.max(1, (placeAbove ? above : below) - 6);
     setPanelStyle({
       position: 'fixed',
       top: placeAbove ? rect.top - 6 : rect.bottom + 6,
@@ -297,7 +297,12 @@ function LibraryFilterCombobox({
             onKeyDown={(event) => {
               if (event.key === 'ArrowDown') {
                 event.preventDefault();
+                event.stopPropagation();
                 focusOption(1);
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                focusOption(-1);
               }
             }}
           />
