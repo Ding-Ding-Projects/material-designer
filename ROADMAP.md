@@ -17,6 +17,14 @@ records the reason.
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
 
+- [x] **Keep chat context project-wide across tab and file switches.** Commit
+      [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
+      removes implicit primary-file/Design Files preview selection and binds the
+      automatic context to the project. Follow-up
+      [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
+      removes the remaining active-file attachment path; narrower evidence now
+      reaches a send only through an explicit user action.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

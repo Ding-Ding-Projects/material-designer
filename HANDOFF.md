@@ -8,6 +8,10 @@
 > Squirrel.Windows only, and adds deterministic artifact/runtime validators plus
 > a ten-screen design-parity inventory. Source/static checks are recorded in the
 > task; installed-runtime, updater and parity capture rows are not yet verified.
+> Follow-up commit [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
+> also removes the separate folder-project path that attached the currently
+> visible file to every send. Explicit file selection remains available through
+> the file controls and `@` picker.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match

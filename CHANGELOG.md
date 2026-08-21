@@ -44,6 +44,17 @@ version section when a release carries them.
   feed、runtime receipt 同十個畫面嘅 parity inventory 都有 guard 睇實，未有
   installed evidence 嘅 row 就老老實實寫 `unverified`，唔會靠想像變綠。
 
+- **Viewing a file no longer attaches it to project chat.** Commit
+  [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
+  removes the folder-project path that silently prepended the active preview
+  file to every send. Explicit `@file` selection, file opening, sharing,
+  downloading and routed deep links remain available; only the unrequested
+  attachment and file-specific composer mode are gone.
+
+  睇緊個 file 以前會自動變成下一句嘅 attachment，個 preview 好熱心但無人請佢。
+  `d88178c5` 收返呢條暗路；明確 `@file`、開檔、share、download 同 deep link
+  全部照舊，淨係移除未經選擇嘅 attachment 同 file-specific composer mode。
+
 - **The hosted release path now reaches the real packaging gate.** Commit
   [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db)
   fixes the release workflow's temporary-parent calculation: the previous
