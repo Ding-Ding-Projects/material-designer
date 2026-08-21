@@ -28,6 +28,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **Shared shell chrome now has explicit geometry and bounded tab movement.**
+  Commit
+  [`91ec1fd40`](https://github.com/Ding-Ding-Projects/material-designer/commit/91ec1fd400f18cf5e91dd7570e6cabb976c2b192)
+  assigns title, tab, body and status rows explicitly; repairs the malformed
+  navigation-rail and tab CSS blocks; removes the inline rail width and the
+  competing Ctrl/Cmd+K route; keeps one icon plus one sighted label per rail
+  destination; adds a localized build-version segment; and replaces the tab
+  menu's unbounded group list with a bounded field-owned Move… picker and its
+  anchored regex builder. This is source-only evidence; hosted builds,
+  keyboard checks and visual capture remain pending.
+
+  Shared shell chrome 而家有清楚嘅 title、tab、body、status rows，navigation
+  rail 同 tab CSS 唔再互相食位；inline rail width 同競爭性 Ctrl/Cmd+K route
+  已經移除，每個 rail item 只留一粒 icon 同一個 sighted label；status bar
+  加咗 localized build version，tab menu 嘅 group list 就換成 bounded、field-
+  owned 嘅 Move… picker，同埋佢自己 anchored regex builder。今次係
+  source-only evidence；hosted build、keyboard checks 同 visual capture 仲
+  未完成。
+
 - **Library refresh, focus, and upload boundaries now fail closed.** Commit
   [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
   requires continuation offsets to advance exactly by the returned row count,
