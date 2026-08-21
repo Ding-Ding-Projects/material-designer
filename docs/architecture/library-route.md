@@ -134,7 +134,7 @@ upload progress. The final boundary repair adds immutable delete previews,
 targeted SSE abort/generation checks, portal-aware dialog focus, measured filter
 geometry, 48×48 interaction targets, localized upload error codes, and
 post-unmount upload suppression. These changes are source-only until the hosted
-Chut runs.
+checks run.
 
 ## Suggested reading
 
