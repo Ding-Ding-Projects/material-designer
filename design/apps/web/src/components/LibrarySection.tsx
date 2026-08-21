@@ -1251,7 +1251,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   }, [dsMenuOpen]);
 
   const moveDesignSystemMenuFocus = useCallback((delta: number) => {
-    const items = Array.from(dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+    const items = Array.from(dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
     if (!items.length) return;
     const current = items.indexOf(document.activeElement as HTMLButtonElement);
     const next = current < 0 ? (delta > 0 ? 0 : items.length - 1) : (current + delta + items.length) % items.length;
@@ -1851,10 +1851,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                       moveDesignSystemMenuFocus(-1);
                     } else if (event.key === 'Home') {
                       event.preventDefault();
-                      dsMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+                      dsMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
                     } else if (event.key === 'End') {
                       event.preventDefault();
-                      const items = dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+                      const items = dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)');
                       items?.[items.length - 1]?.focus();
                     }
                   }}
