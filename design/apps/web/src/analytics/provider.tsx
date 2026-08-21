@@ -233,7 +233,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       [ANALYTICS_HEADER_SESSION_ID]: identity.sessionId,
       [ANALYTICS_HEADER_CLIENT_TYPE]: identity.clientType,
     };
-    window.fetch = async (input, init) => {
+    const wrappedFetch: typeof fetch = async (input, init) => {
       if (isStudioFixtureCaptureStorageLocked()) return original(input, init);
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (!isSameOriginApiCall(url)) return original(input, init);
@@ -244,8 +244,9 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       };
       return original(input, { ...(init ?? {}), headers: merged });
     };
+    window.fetch = wrappedFetch;
     return () => {
-      window.fetch = original;
+      if (window.fetch === wrappedFetch) window.fetch = original;
     };
   }, [identity, locale, resolvedAnonId]);
 
@@ -309,7 +310,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           // fetch picks up the request_id header.
           window.fetch = wrapped;
           queueMicrotask(() => {
-            window.fetch = baseFetch;
+            if (window.fetch === wrapped) window.fetch = baseFetch;
           });
         } catch {
           // Best-effort header injection.
