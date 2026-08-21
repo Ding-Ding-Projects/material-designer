@@ -33,6 +33,18 @@ separate focus scope for Tab, clamps stale off-screen anchors and restores viewp
 globals in the geometry tests. Its focused source checks are committed; runtime
 evidence remains open.
 
+The project-wide composer follow-up keeps its actual body-level portalled
+surface accessible: the implicit project chip is no longer hidden by the fixed
+layer, while file and browser context remain explicit-only. Each composer uses
+an instance-scoped id prefix for its Lexical combobox, mention listbox,
+category tabs, tabpanel, options and slash list. Mention tabs use roving focus
+with Left/Right/Home/End, toolbox resources expose checkable active state, and
+a dedicated polite live region announces localized context deltas without
+repeating the full chip row. A shared translated workspace-kind helper and the
+localized Current marker preserve user paths and names. These are source-level
+and focused-component contracts; hosted build, screen-reader traversal and
+installed capture evidence remain unverified.
+
 ## The requirement
 
 **Accessibility defects are completion blockers, not polish.** A task that

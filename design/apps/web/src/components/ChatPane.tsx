@@ -51,6 +51,7 @@ import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import { projectRawUrl } from '../providers/registry';
 import { appendResourceQuery } from '../collab/workspace-identity';
 import { useProjectCollabContext } from '../collab/collab-context';
+import { workspaceContextKindLabel } from './workspace-context';
 import { takeComposerSeedFor } from '../state/libraryHandoff';
 import { splitOnQuestionForms } from '../artifacts/question-form';
 import { stripArtifact } from '../artifacts/strip';
@@ -4752,6 +4753,7 @@ function UserMessageImpl({
             <ActiveWorkspaceContextChip
               key={`${item.kind}:${item.id}`}
               item={item}
+              t={t}
               onOpen={onRequestOpenFile}
             />
           ))}
@@ -4956,9 +4958,11 @@ const WORKSPACE_DESIGN_SYSTEM_TAB = '__design_system__';
 
 function ActiveWorkspaceContextChip({
   item,
+  t,
   onOpen,
 }: {
   item: WorkspaceContextItem;
+  t: TranslateFn;
   onOpen?: (name: string) => void;
 }) {
   const target = workspaceContextOpenTarget(item);
@@ -4968,7 +4972,7 @@ function ActiveWorkspaceContextChip({
         <Icon name={workspaceContextIcon(item)} size={12} />
       </span>
       <span className="msg-plugin-chip__label">
-        <span className="msg-plugin-chip__kind">Current</span>
+        <span className="msg-plugin-chip__kind">{t('fileViewer.versions.current')}</span>
         <span className="msg-plugin-chip__title">{item.label}</span>
       </span>
     </>
@@ -4978,7 +4982,7 @@ function ActiveWorkspaceContextChip({
       <div
         className={`msg-plugin-chip msg-plugin-chip--workspace msg-plugin-chip--workspace-${item.kind}`}
         data-testid="msg-workspace-context-chip"
-        title={workspaceContextTitle(item)}
+        title={workspaceContextTitle(item, t)}
       >
         {content}
       </div>
@@ -4989,7 +4993,7 @@ function ActiveWorkspaceContextChip({
       type="button"
       className={`msg-plugin-chip msg-plugin-chip--workspace msg-plugin-chip--workspace-${item.kind} msg-plugin-chip--action`}
       data-testid="msg-workspace-context-chip"
-      title={workspaceContextTitle(item)}
+      title={workspaceContextTitle(item, t)}
       onClick={() => onOpen(target)}
     >
       {content}
@@ -5018,40 +5022,14 @@ function workspaceContextIcon(item: WorkspaceContextItem): IconName {
   return 'file';
 }
 
-function workspaceContextTitle(item: WorkspaceContextItem): string {
+function workspaceContextTitle(item: WorkspaceContextItem, t: TranslateFn): string {
   return [
-    workspaceContextKindLabel(item.kind),
+    workspaceContextKindLabel(item.kind, t),
     item.path ? `path: ${item.path}` : null,
     item.absolutePath ? `absolute: ${item.absolutePath}` : null,
     item.url ? `url: ${item.url}` : null,
     item.title ? `title: ${item.title}` : null,
   ].filter(Boolean).join(' | ');
-}
-
-function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
-  switch (kind) {
-    case 'browser':
-      return 'Browser';
-    case 'design-files':
-      return 'Design files';
-    case 'design-system':
-      return 'Design system';
-    case 'folder':
-      return 'Folder';
-    case 'project':
-      return 'Project';
-    case 'local-code':
-      return 'Local code';
-    case 'terminal':
-      return 'Terminal';
-    case 'side-chat':
-      return 'Side chat';
-    case 'live-artifact':
-      return 'Live artifact';
-    case 'file':
-    default:
-      return 'File';
-  }
 }
 
 function sortChatAttachmentsForDisplay(attachments: ChatAttachment[]): ChatAttachment[] {

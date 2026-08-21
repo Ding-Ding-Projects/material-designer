@@ -58,8 +58,13 @@ with the project's standards.
       regressions are committed. Follow-up source cleanup removes the stale
       `FileWorkspace` active-context callback and obsolete active-file style
       assertions, while preserving the full context collection for explicit
-      `@` selection, quick switching and toolbox actions. Hosted build/runtime
-      interaction evidence remains pending.
+      `@` selection, quick switching and toolbox actions. The accessibility
+      follow-up keeps the project chip visible in the portalled composer,
+      namespaces combobox/listbox/tab/panel ids per composer, adds roving
+      category-tab keyboarding, exposes toolbox resource state as checked,
+      localizes workspace-kind and Current labels, and announces context
+      deltas through a polite live region. Hosted build/runtime interaction,
+      screen-reader traversal and capture evidence remain pending.
 
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an

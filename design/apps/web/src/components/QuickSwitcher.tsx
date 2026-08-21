@@ -9,9 +9,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WorkspaceContextItem } from '@open-design/contracts';
 import { motion } from 'motion/react';
 import { modalOverlay, scaleIn } from '../motion';
-import { useT } from '../i18n';
+import { useT, type Translate } from '../i18n';
 import { pushRecent, readRecents } from '../quickSwitcherRecents';
 import type { ProjectFile } from '../types';
+import { workspaceContextKindLabel } from './workspace-context';
 
 interface Props {
   projectId: string;
@@ -182,11 +183,11 @@ export function QuickSwitcher({
                 onMouseEnter={() => setCursor(i)}
                 onClick={() => open(match)}
               >
-                <span className="qs-name" title={quickSwitcherResultTitle(match)}>
+                <span className="qs-name" title={quickSwitcherResultTitle(match, t)}>
                   {quickSwitcherResultName(match)}
                 </span>
                 <span className="qs-path">{quickSwitcherResultPath(match)}</span>
-                <span className="qs-kind">{quickSwitcherResultKindLabel(match)}</span>
+                <span className="qs-kind">{quickSwitcherResultKindLabel(match, t)}</span>
               </div>
             ))
           )}
@@ -285,10 +286,10 @@ function quickSwitcherResultPath(result: QuickSwitcherResult): string {
     || result.context.id;
 }
 
-function quickSwitcherResultTitle(result: QuickSwitcherResult): string {
+function quickSwitcherResultTitle(result: QuickSwitcherResult, t: Translate): string {
   if (result.kind === 'file') return result.file.name;
   return [
-    workspaceContextKindLabel(result.context.kind),
+    workspaceContextKindLabel(result.context.kind, t),
     result.context.label,
     result.context.url,
     result.context.path,
@@ -296,34 +297,8 @@ function quickSwitcherResultTitle(result: QuickSwitcherResult): string {
   ].filter(Boolean).join(' | ');
 }
 
-function quickSwitcherResultKindLabel(result: QuickSwitcherResult): string {
+function quickSwitcherResultKindLabel(result: QuickSwitcherResult, t: Translate): string {
   return result.kind === 'file'
     ? labelFor(result.file)
-    : workspaceContextKindLabel(result.context.kind).toUpperCase();
-}
-
-function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
-  switch (kind) {
-    case 'browser':
-      return 'Browser';
-    case 'design-files':
-      return 'Design files';
-    case 'design-system':
-      return 'Design system';
-    case 'folder':
-      return 'Folder';
-    case 'project':
-      return 'Project';
-    case 'local-code':
-      return 'Local code';
-    case 'terminal':
-      return 'Terminal';
-    case 'side-chat':
-      return 'Side chat';
-    case 'live-artifact':
-      return 'Live artifact';
-    case 'file':
-    default:
-      return 'File';
-  }
+    : workspaceContextKindLabel(result.context.kind, t).toUpperCase();
 }

@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -97,7 +98,11 @@ import {
   mentionTokenPresent,
   type InlineMentionEntity,
 } from '../utils/inlineMentions';
-import { workspaceContextLinkedDir, workspaceContextLinkedDirs } from './workspace-context';
+import {
+  workspaceContextKindLabel,
+  workspaceContextLinkedDir,
+  workspaceContextLinkedDirs,
+} from './workspace-context';
 import { useProjectCollabContext } from '../collab/collab-context';
 import {
   LexicalComposerInput,
@@ -494,6 +499,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const { locale, t } = useI18n();
     const analytics = useAnalytics();
     const { workspaceContext } = useProjectCollabContext();
+    // Every composer owns its own accessibility namespace. The mention panel
+    // is portalled to document.body, so fixed ids would collide when two
+    // composers are mounted (for example, a chat pane beside Home).
+    const composerA11yId = useId().replace(/:/g, '');
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
@@ -656,6 +665,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [slashIndex, setSlashIndex] = useState(0);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
+    const [contextAnnouncement, setContextAnnouncement] = useState('');
     // External MCP servers configured by the user. Fetched lazily on mount;
     // shown in the slash-command palette so `/mcp <id>` inserts a hint into
     // the prompt that nudges the model to use that server's tools.
@@ -1423,11 +1433,23 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       return orderStart;
     }
 
+    function announceContextDelta(message: string) {
+      // Announce only the delta, never the whole chip row. Repeating every
+      // attached path on one small change is noisy for assistive technology.
+      setContextAnnouncement(message);
+    }
+
     function appendOrderedStagedAttachments(attachments: ChatAttachment[]) {
       if (attachments.length === 0) return;
+      const knownPaths = new Set(staged.map((attachment) => attachment.path));
+      const newAttachments = attachments.filter((attachment) => !knownPaths.has(attachment.path));
+      if (newAttachments.length === 0) return;
+      announceContextDelta(
+        `${t('browserUse.added')}: ${newAttachments.map((attachment) => attachment.name).join(', ')}`,
+      );
       setStaged((current) => {
-        const knownPaths = new Set(current.map((attachment) => attachment.path));
-        const nextAttachments = attachments.filter((attachment) => !knownPaths.has(attachment.path));
+        const currentPaths = new Set(current.map((attachment) => attachment.path));
+        const nextAttachments = attachments.filter((attachment) => !currentPaths.has(attachment.path));
         if (nextAttachments.length === 0) return current;
         const next = sortChatAttachmentsByOrder([...current, ...nextAttachments]);
         nextAttachmentOrderRef.current = Math.max(
@@ -1439,6 +1461,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     }
 
     function appendContextAttachment(filePath: string) {
+      if (staged.some((item) => item.path === filePath)) return;
+      announceContextDelta(`${t('browserUse.added')}: ${filePath.split(/[\\/]/).pop() || filePath}`);
       setStaged((current) => {
         if (current.some((item) => item.path === filePath)) return current;
         const order = Math.max(nextAttachmentOrderRef.current, nextChatAttachmentOrder(current));
@@ -1479,6 +1503,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         token: inlineMentionToken(item.label),
         entity: { id: item.id, kind: 'workspace', label: item.label },
       });
+      announceContextDelta(`${t('browserUse.added')}: ${item.label}`);
       setMention(null);
       setSlash(null);
       setComposerEngaged(true);
@@ -1619,6 +1644,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     async function insertSkillMention(skill: SkillSummary) {
       const applied = await applyProjectSkill(skill);
       if (!applied) return;
+      const alreadyStaged = stagedSkills.some((item) => item.id === skill.id);
       // Stage the skill so it rides this turn's skillIds, then insert an
       // atomic `@<name>` pill carrying the skill's real id. The onChange
       // prune keys on `skill:<id>` being present in the editor text, so the
@@ -1630,10 +1656,14 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         token: inlineMentionToken(skill.name),
         entity: { id: skill.id, kind: 'skill', label: skill.name },
       });
+      if (!alreadyStaged) announceContextDelta(`${t('browserUse.added')}: ${skill.name}`);
       setMention(null);
     }
 
     function stageSkillForCurrentTurn(skill: SkillSummary) {
+      if (!stagedSkills.some((item) => item.id === skill.id)) {
+        announceContextDelta(`${t('browserUse.added')}: ${skill.name}`);
+      }
       setStagedSkills((prev) =>
         prev.some((s) => s.id === skill.id) ? prev : [...prev, skill],
       );
@@ -1734,6 +1764,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         return;
       }
 
+      announceContextDelta(`${t('browserUse.added')}: ${resource.title}`);
+
       const prompt = designToolboxResourcePrompt({
         resource,
         workspaceItem: visibleWorkspaceContext,
@@ -1789,6 +1821,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       trackComposerBar({ element: 'context_remove', resource_kind: 'skill', resource_id: id });
       const skill = stagedSkills.find((s) => s.id === id) ?? null;
       setStagedSkills((prev) => prev.filter((s) => s.id !== id));
+      announceContextDelta(`${t('common.delete')}: ${skill?.name ?? id}`);
       const labels = [id, skill?.name ?? ''];
       replaceEditorDraft(stripInlineMentionLabels(draft, labels));
     }
@@ -1797,6 +1830,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       trackComposerBar({ element: 'context_remove', resource_kind: 'mcp', resource_id: id });
       const server = stagedMcpServers.find((item) => item.id === id) ?? null;
       setStagedMcpServers((prev) => prev.filter((item) => item.id !== id));
+      announceContextDelta(`${t('common.delete')}: ${server?.label || id}`);
       replaceEditorDraft(stripInlineMentionLabels(draft, [
         id,
         server?.label ?? '',
@@ -1807,6 +1841,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       trackComposerBar({ element: 'context_remove', resource_kind: 'connector', resource_id: id });
       const connector = stagedConnectors.find((item) => item.id === id) ?? null;
       setStagedConnectors((prev) => prev.filter((item) => item.id !== id));
+      announceContextDelta(`${t('common.delete')}: ${connector?.name || id}`);
       replaceEditorDraft(stripInlineMentionLabels(draft, [
         id,
         connector?.name ?? '',
@@ -1866,6 +1901,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         });
       }
       if (workspaceItem) {
+        announceContextDelta(`${t('common.delete')}: ${workspaceItem.label}`);
         replaceEditorDraft(stripInlineMentionLabels(draftRef.current, [
           workspaceItem.label,
           workspaceItem.id,
@@ -1910,6 +1946,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               ? `Attached ${uploadedCount} file(s), but ${failedCount} failed${detail}.`
               : `Attachment upload failed for ${failedCount} file(s)${detail}.`,
           );
+          announceContextDelta(
+            uploadedCount > 0
+              ? t('questions.uploadPartialFailed', { uploaded: uploadedCount, failed: failedCount })
+              : t('questions.uploadFailed', { failed: failedCount }),
+          );
           console.warn('Some attachments failed to upload', result.failed);
         }
         trackFileUploadResult(analytics.track, {
@@ -1923,6 +1964,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         setUploadError(`Attachment upload failed (${detail}).`);
+        announceContextDelta(t('chat.annotationUploadFailed'));
         trackFileUploadResult(analytics.track, {
           page_name: 'chat_panel',
           area: 'chat_composer',
@@ -1992,10 +2034,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               ? `Added ${applied.length} item(s), but ${failed} failed.`
               : `Could not add ${failed} item(s) from the library.`,
           );
+          announceContextDelta(
+            applied.length > 0
+              ? t('questions.uploadPartialFailed', { uploaded: applied.length, failed })
+              : t('questions.uploadFailed', { failed }),
+          );
         }
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         setUploadError(`Could not add from library (${detail}).`);
+        announceContextDelta(t('chat.annotationUploadFailed'));
       } finally {
         setUploading(false);
       }
@@ -2578,6 +2626,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     }
 
     function insertMcpMention(server: McpServerConfig) {
+      const alreadyStaged = stagedMcpServers.some((item) => item.id === server.id);
       setStagedMcpServers((current) => (
         current.some((item) => item.id === server.id) ? current : [...current, server]
       ));
@@ -2585,10 +2634,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         token: inlineMentionToken(server.label || server.id),
         entity: { id: server.id, kind: 'mcp', label: server.label || server.id },
       });
+      if (!alreadyStaged) announceContextDelta(`${t('browserUse.added')}: ${server.label || server.id}`);
       setMention(null);
     }
 
     function insertConnectorMention(connector: ConnectorDetail) {
+      const alreadyStaged = stagedConnectors.some((item) => item.id === connector.id);
       setStagedConnectors((current) => (
         current.some((item) => item.id === connector.id) ? current : [...current, connector]
       ));
@@ -2596,10 +2647,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         token: inlineMentionToken(connector.name),
         entity: { id: connector.id, kind: 'connector', label: connector.name },
       });
+      if (!alreadyStaged) announceContextDelta(`${t('browserUse.added')}: ${connector.name}`);
       setMention(null);
     }
 
     function insertWorkspaceMention(item: WorkspaceContextItem) {
+      const alreadyStaged = stagedWorkspaceContexts.some((candidate) => candidate.id === item.id);
       setStagedWorkspaceContexts((current) =>
         current.some((candidate) => candidate.id === item.id)
           ? current
@@ -2609,6 +2662,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         token: inlineMentionToken(item.label),
         entity: { id: item.id, kind: 'workspace', label: item.label },
       });
+      if (!alreadyStaged) announceContextDelta(`${t('browserUse.added')}: ${item.label}`);
       setMention(null);
     }
 
@@ -2622,6 +2676,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     function removeStaged(p: string) {
       trackComposerBar({ element: 'context_remove', resource_kind: 'attachment', resource_id: p });
+      announceContextDelta(`${t('common.delete')}: ${p.split(/[\\/]/).pop() || p}`);
       setStaged((s) => s.filter((a) => a.path !== p));
       setStagedVisualComments((current) => current.filter((attachment) => attachment.screenshotPath !== p));
       // Strip the `@<path>` token from the draft and push the result back into
@@ -3075,9 +3130,17 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               onPasteFiles={handlePasteFiles}
               popoverOpen={Boolean(mention) || Boolean(slash && filteredSlash.length > 0)}
               onPopoverKey={handlePopoverKey}
+              a11yIdPrefix={composerA11yId}
               comboboxAria={{
-                expanded: Boolean(mention),
-                activeId: mention ? `mention-opt-${mentionIndex}` : null,
+                expanded: Boolean(mention) || Boolean(slash && filteredSlash.length > 0),
+                activeId: mention
+                  ? `${composerA11yId}-mention-option-${mentionIndex}`
+                  : slash && filteredSlash.length > 0
+                    ? `${composerA11yId}-slash-option-${slashIndex}`
+                    : null,
+                controlsId: mention
+                  ? `${composerA11yId}-mention-listbox`
+                  : `${composerA11yId}-slash-listbox`,
               }}
             />
             {placeholderScenarios.length > 0 ? (
@@ -3095,6 +3158,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             boundaryRef={composerRootRef}
           >
             <MentionPopover
+              a11yIdPrefix={composerA11yId}
               files={filteredFiles}
               workspaceContexts={filteredWorkspaceContexts}
               plugins={filteredPlugins}
@@ -3123,6 +3187,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             boundaryRef={composerRootRef}
           >
             <SlashPopover
+              a11yIdPrefix={composerA11yId}
               commands={filteredSlash}
               activeIndex={Math.min(slashIndex, filteredSlash.length - 1)}
               onPick={pickSlash}
@@ -3396,6 +3461,15 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             alignment (2026-07-21) over keeping this as the only mid-project
             re-bind entry. Home still picks a working directory for NEW projects. */}
         {uploadError ? <span className="composer-hint">{uploadError}</span> : null}
+        <div
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          data-testid="composer-context-live-region"
+        >
+          {contextAnnouncement}
+        </div>
         {detailsRecord ? (
           <PluginDetailsModal
             record={detailsRecord}
@@ -3699,9 +3773,9 @@ function workspaceContextIcon(item: WorkspaceContextItem): IconName {
   return 'file';
 }
 
-function workspaceContextTitle(item: WorkspaceContextItem): string {
+function workspaceContextTitle(item: WorkspaceContextItem, t: TranslateFn): string {
   return [
-    workspaceContextKindLabel(item.kind),
+    workspaceContextKindLabel(item.kind, t),
     item.path ? `path: ${item.path}` : null,
     item.absolutePath ? `absolute: ${item.absolutePath}` : null,
     item.url ? `url: ${item.url}` : null,
@@ -3743,32 +3817,6 @@ function workspaceContextSearchText(item: WorkspaceContextItem): string {
     item.url ?? '',
     item.title ?? '',
   ].join(' ');
-}
-
-function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
-  switch (kind) {
-    case 'browser':
-      return 'Browser';
-    case 'design-files':
-      return 'Design files';
-    case 'design-system':
-      return 'Design system';
-    case 'folder':
-      return 'Folder';
-    case 'project':
-      return 'Project';
-    case 'local-code':
-      return 'Local code';
-    case 'terminal':
-      return 'Terminal';
-    case 'side-chat':
-      return 'Side chat';
-    case 'live-artifact':
-      return 'Live artifact';
-    case 'file':
-    default:
-      return 'File';
-  }
 }
 
 function StagedRunContexts({
@@ -3870,9 +3918,9 @@ function StagedRunContexts({
       ) : null}
       {workspaceItems.map((workspaceItem) => {
         const kindLabel =
-          workspaceItem.id === currentWorkspaceContextId
-            ? 'Current'
-            : workspaceContextKindLabel(workspaceItem.kind);
+        workspaceItem.id === currentWorkspaceContextId
+            ? t('fileViewer.versions.current')
+            : workspaceContextKindLabel(workspaceItem.kind, t);
         return (
           <div
             key={workspaceItem.id}
@@ -3881,7 +3929,7 @@ function StagedRunContexts({
             <span className="staged-icon" aria-hidden>
               <Icon name={workspaceContextIcon(workspaceItem)} size={12} />
             </span>
-            <span className="staged-name" title={workspaceContextTitle(workspaceItem)}>
+            <span className="staged-name" title={workspaceContextTitle(workspaceItem, t)}>
               <span className="staged-context-kind">{kindLabel}</span>
               {workspaceItem.label}
             </span>
@@ -4618,6 +4666,7 @@ function DesignToolboxPanel({
                 icon={resource.icon}
                 name={resource.title}
                 active={active}
+                checkable
                 onHover={showToolboxDetail}
                 onLeave={scheduleToolboxDetailClose}
                 onPick={() => {
@@ -4693,6 +4742,7 @@ function ToolboxItemRow({
   icon,
   name,
   active,
+  checkable = false,
   detailKey,
   detail,
   onHover,
@@ -4702,6 +4752,7 @@ function ToolboxItemRow({
   icon: IconName;
   name: string;
   active?: boolean;
+  checkable?: boolean;
   detailKey: string;
   detail: ReactNode;
   onHover: (key: string, rect: DOMRect, detail: ReactNode) => void;
@@ -4721,7 +4772,8 @@ function ToolboxItemRow({
     >
       <button
         type="button"
-        role="menuitem"
+        role={checkable ? 'menuitemcheckbox' : 'menuitem'}
+        aria-checked={checkable ? active === true : undefined}
         className={`plus-menu__item${active ? ' is-active' : ''}`}
         onMouseDown={(e) => e.preventDefault()}
         onClick={onPick}
@@ -5595,18 +5647,21 @@ function SlashPopover({
   onPick,
   onHover,
   t,
+  a11yIdPrefix,
 }: {
   commands: SlashCommand[];
   activeIndex: number;
   onPick: (cmd: SlashCommand) => void;
   onHover: (index: number) => void;
   t: TranslateFn;
+  a11yIdPrefix: string;
 }) {
   return (
     <div
       className="slash-popover"
       data-testid="slash-popover"
       role="listbox"
+      id={`${a11yIdPrefix}-slash-listbox`}
       aria-label={t('pet.slashPopoverAria')}
     >
       <div className="slash-popover-head">
@@ -5618,7 +5673,7 @@ function SlashPopover({
         return (
           <button
             key={cmd.id}
-            id={`slash-opt-${idx}`}
+            id={`${a11yIdPrefix}-slash-option-${idx}`}
             type="button"
             role="option"
             aria-selected={active}
@@ -5669,6 +5724,7 @@ function MentionPopover({
   onPickSkill,
   onPickMcp,
   onPickConnector,
+  a11yIdPrefix,
 }: {
   files: ProjectFile[];
   workspaceContexts: WorkspaceContextItem[];
@@ -5687,6 +5743,7 @@ function MentionPopover({
   onPickSkill: (skill: SkillSummary) => void;
   onPickMcp: (server: McpServerConfig) => void;
   onPickConnector: (connector: ConnectorDetail) => void;
+  a11yIdPrefix: string;
 }) {
   const { locale, t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -5715,25 +5772,83 @@ function MentionPopover({
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = 0;
   }, [connectors, files, plugins, skills, mcpServers, tab, workspaceContexts]);
+  const listboxId = `${a11yIdPrefix}-mention-listbox`;
+  const panelId = `${a11yIdPrefix}-mention-panel-${tab}`;
+  const tabListId = `${a11yIdPrefix}-mention-tabs`;
+  const tabButtonId = (id: MentionTab) => `${a11yIdPrefix}-mention-tab-${id}`;
+  const optionId = (index: number) => `${a11yIdPrefix}-mention-option-${index}`;
+  const tabRefs = useRef(new Map<MentionTab, HTMLButtonElement>());
+  const activeTabIndex = tabs.findIndex((item) => item.id === tab);
+  function moveTab(direction: 'previous' | 'next' | 'first' | 'last') {
+    const nextIndex = direction === 'first'
+      ? 0
+      : direction === 'last'
+        ? tabs.length - 1
+        : (activeTabIndex + (direction === 'next' ? 1 : -1) + tabs.length) % tabs.length;
+    const next = tabs[nextIndex];
+    if (!next) return;
+    onTabChange(next.id);
+    tabRefs.current.get(next.id)?.focus();
+  }
   let optionIndex = 0;
   return (
     <div className="mention-popover" data-testid="mention-popover">
-      <div className="mention-tabs" role="tablist" aria-label={t('chat.mentionTabsAria')}>
+      <div
+        className="mention-tabs"
+        id={tabListId}
+        role="tablist"
+        aria-label={t('chat.mentionTabsAria')}
+        aria-orientation="horizontal"
+      >
         {tabs.map((item) => (
           <button
             key={item.id}
+            ref={(node) => {
+              if (node) tabRefs.current.set(item.id, node);
+              else tabRefs.current.delete(item.id);
+            }}
+            id={tabButtonId(item.id)}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
+            aria-controls={panelId}
+            tabIndex={tab === item.id ? 0 : -1}
             className={`mention-tab${tab === item.id ? ' active' : ''}`}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onTabChange(item.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                moveTab('next');
+              } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                moveTab('previous');
+              } else if (event.key === 'Home') {
+                event.preventDefault();
+                moveTab('first');
+              } else if (event.key === 'End') {
+                event.preventDefault();
+                moveTab('last');
+              }
+            }}
           >
             {item.label}
           </button>
         ))}
       </div>
-      <div className="mention-results" ref={ref} role="listbox" id="mention-listbox">
+      <div
+        className="mention-panel"
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={tabButtonId(tab)}
+      >
+      <div
+        className="mention-results"
+        ref={ref}
+        role="listbox"
+        id={listboxId}
+        aria-labelledby={tabButtonId(tab)}
+      >
         {!hasVisibleResults ? (
           <div className="mention-empty">
             {query ? (
@@ -5754,7 +5869,7 @@ function MentionPopover({
               return (
                 <button
                   key={`file-${key}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={active}
                   className={`mention-item${active ? ' is-active' : ''}`}
@@ -5787,14 +5902,14 @@ function MentionPopover({
               return (
                 <button
                   key={`workspace-${item.kind}-${item.id}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={active}
                   className={`mention-item mention-item--workspace${active ? ' is-active' : ''}`}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onPickWorkspaceContext(item)}
-                  title={workspaceContextTitle(item)}
+                  title={workspaceContextTitle(item, t)}
                 >
                   <Icon name={workspaceContextIcon(item)} size={12} />
                   <span className="mention-item-body">
@@ -5803,7 +5918,7 @@ function MentionPopover({
                       {workspaceContextDescription(item)}
                     </span>
                   </span>
-                  <span className="mention-meta mention-item-kind">{workspaceContextKindLabel(item.kind)}</span>
+                  <span className="mention-meta mention-item-kind">{workspaceContextKindLabel(item.kind, t)}</span>
                 </button>
               );
             })}
@@ -5821,7 +5936,7 @@ function MentionPopover({
               return (
                 <button
                   key={`plugin-${p.id}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={active}
                   className={`mention-item mention-item--plugin${active ? ' is-active' : ''}`}
@@ -5854,7 +5969,7 @@ function MentionPopover({
               return (
                 <button
                   key={`skill-${skill.id}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={rowActive}
                   className={`mention-item${rowActive ? ' is-active' : ''}`}
@@ -5886,7 +6001,7 @@ function MentionPopover({
               return (
                 <button
                   key={`mcp-${server.id}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={active}
                   className={`mention-item${active ? ' is-active' : ''}`}
@@ -5918,7 +6033,7 @@ function MentionPopover({
               return (
                 <button
                   key={`connector-${connector.id}`}
-                  id={`mention-opt-${flat}`}
+                  id={optionId(flat)}
                   role="option"
                   aria-selected={active}
                   className={`mention-item${active ? ' is-active' : ''}`}
@@ -5940,6 +6055,7 @@ function MentionPopover({
             })}
           </>
         ) : null}
+      </div>
       </div>
     </div>
   );

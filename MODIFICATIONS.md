@@ -29,6 +29,32 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make project context and portalled composer controls accessible
+
+**Reason:** the portalled composer hid its project context chip, the mention
+categories used fixed ids and mouse-only tab movement, and toolbox resources
+communicated selection only through styling. The repair keeps project context
+visible in the actual fixed layer while file and browser context remain
+explicit-only, gives every composer an instance-owned accessibility namespace,
+adds tabpanel/listbox relationships with roving keyboard tabs, exposes resource
+selection as `menuitemcheckbox`, and announces only localized context deltas in
+a polite live region. A shared workspace-kind helper now localizes the labels
+through existing locale/funny-level paths without altering user paths or names.
+Focused source/component checks cover the negative fixed-id and hardcoded-label
+boundaries, plus the live-region contract. Hosted build, runtime interaction
+and capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/HomeHero.tsx`
+- `apps/web/src/components/QuickSwitcher.tsx`
+- `apps/web/src/components/composer/LexicalComposerInput.tsx`
+- `apps/web/src/components/workspace-context.ts`
+- `apps/web/src/styles/chat.css`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+
 ### 2026-08-21 — Remove stale implicit file-context contracts after reconciliation
 
 **Reason:** source reconciliation left `FileWorkspace` with an obsolete callback

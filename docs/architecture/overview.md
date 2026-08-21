@@ -146,6 +146,32 @@ The boundary is protected by source-level regressions in
 runtime interaction and visual capture evidence remain unverified for this
 development line.
 
+#### Composer accessibility and context disclosure
+
+The chat composer is rendered through a body-level portal when the chat footer
+needs to stay above the transcript. The portalled instance is the real
+accessible owner: its project context chip remains visible in the fixed layer,
+and the empty inline slot is only a layout reservation. File and browser
+context never becomes implicit through the visible tab; those narrower scopes
+still require an explicit mention, toolbox action, upload or attachment.
+
+Every composer receives a `useId()`-derived accessibility prefix. The prefix is
+shared by the Lexical combobox, the portalled mention listbox, its category tabs,
+tabpanel, options and slash-command list so two composers can coexist without
+duplicate ids. Category tabs use roving `tabIndex` plus Left/Right/Home/End;
+the result list retains Up/Down/Enter selection. Toolbox resource rows expose
+their active state as `menuitemcheckbox` with `aria-checked`, rather than
+depending on colour or a check icon alone. A dedicated polite live region
+announces only added, removed or failed context deltas; it does not replay the
+whole attachment/context row. Workspace-kind labels and the Current marker
+come from the shared translator, so locale, bilingual mode and funny-level
+selection remain in the normal i18n path while user paths and names stay
+verbatim.
+
+These guarantees are source/component contracts in the current development
+line. Hosted build, installed interaction, screen-reader traversal and parity
+capture evidence remain pending.
+
 ### Desktop — `@open-design/desktop`
 
 The Electron 41.3.0 main process. It owns the application window and exposes a

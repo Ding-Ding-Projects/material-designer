@@ -25,6 +25,14 @@ const CHAT_COMPOSER_SOURCE = readFileSync(
   new URL('../../src/components/ChatComposer.tsx', import.meta.url),
   'utf8',
 );
+const LEXICAL_COMPOSER_SOURCE = readFileSync(
+  new URL('../../src/components/composer/LexicalComposerInput.tsx', import.meta.url),
+  'utf8',
+);
+const WORKSPACE_CONTEXT_SOURCE = readFileSync(
+  new URL('../../src/components/workspace-context.ts', import.meta.url),
+  'utf8',
+);
 const FILE_WORKSPACE_SOURCE = readFileSync(
   new URL('../../src/components/FileWorkspace.tsx', import.meta.url),
   'utf8',
@@ -347,6 +355,38 @@ describe('ChatComposer context pickers', () => {
     expect(FILE_WORKSPACE_SOURCE).not.toMatch(/onActiveContextChange/);
     expect(FILE_WORKSPACE_SOURCE).not.toContain('composer-active-file');
     expect(CHAT_COMPOSER_SOURCE).toContain('insertWorkspaceMention');
+  });
+
+  it('keeps the portalled composer accessible and instance-scoped', () => {
+    expect(CHAT_COMPOSER_SOURCE).toContain('const composerA11yId = useId()');
+    expect(CHAT_COMPOSER_SOURCE).toContain('a11yIdPrefix={composerA11yId}');
+    expect(CHAT_COMPOSER_SOURCE).not.toContain('id="mention-listbox"');
+    expect(CHAT_COMPOSER_SOURCE).not.toContain('id="home-hero-context-picker"');
+    expect(LEXICAL_COMPOSER_SOURCE).toContain('const generatedA11yId = useId()');
+    expect(LEXICAL_COMPOSER_SOURCE).toContain('aria-controls');
+    expect(LEXICAL_COMPOSER_SOURCE).not.toContain('aria-controls="mention-listbox"');
+    expect(CHAT_COMPOSER_SOURCE).toContain("role={checkable ? 'menuitemcheckbox' : 'menuitem'}");
+    expect(CHAT_COMPOSER_SOURCE).toContain('aria-checked={checkable ? active === true : undefined}');
+    expect(CHAT_COMPOSER_SOURCE).toContain('tabIndex={tab === item.id ? 0 : -1}');
+    expect(CHAT_COMPOSER_SOURCE).toContain("event.key === 'ArrowRight'");
+    expect(CHAT_COMPOSER_SOURCE).toContain("event.key === 'ArrowLeft'");
+    expect(CHAT_COMPOSER_SOURCE).toContain("event.key === 'Home'");
+    expect(CHAT_COMPOSER_SOURCE).toContain("event.key === 'End'");
+    expect(CHAT_COMPOSER_SOURCE).toContain('role="tabpanel"');
+    expect(WORKSPACE_CONTEXT_SOURCE).toContain("t('chat.designToolbox.context.browser')");
+    expect(WORKSPACE_CONTEXT_SOURCE).not.toMatch(/return ['"](?:Browser|Design files|Folder|File)['"]/);
+    expect(CHAT_STYLES_SOURCE).not.toContain('display: none;\n}\n.chat-composer-fixed-layer .staged-context--workspace');
+  });
+
+  it('announces context deltas through a localized polite live region', async () => {
+    renderComposer();
+    await flushMounts();
+    const live = screen.getByTestId('composer-context-live-region');
+    expect(live.getAttribute('role')).toBe('status');
+    expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(live.className).toContain('sr-only');
+    expect(CHAT_COMPOSER_SOURCE).toContain("announceContextDelta(`${t('browserUse.added')}");
+    expect(CHAT_COMPOSER_SOURCE).toContain("announceContextDelta(t('chat.annotationUploadFailed'))");
   });
 
   it('keeps automatic context project-wide when the viewer tab changes', async () => {
