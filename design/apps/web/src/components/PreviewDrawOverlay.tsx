@@ -76,6 +76,11 @@ interface Props {
   toolbarHost?: HTMLElement | null;
 }
 
+// Left-to-right order of the three submit buttons. Send is last so it sits
+// closest to the toolbar's trailing edge — the commit action lands where the
+// hand already is after typing the note.
+const SUBMIT_ORDER: AnnotationAction[] = ['draft', 'queue', 'send'];
+
 const STROKE_COLOR = '#ff3b30';
 const STROKE_WIDTH = 4;
 const TARGET_COLOR = '#1677ff';
@@ -140,7 +145,6 @@ export function PreviewDrawOverlay({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [note, setNote] = useState('');
   const [markTool, setMarkTool] = useState<MarkTool>('box');
-  const [markToolMenuOpen, setMarkToolMenuOpen] = useState(false);
   const markToolMenuRef = useRef<HTMLDivElement | null>(null);
   const strokesRef = useRef<Stroke[]>([]);
   const undoneStrokesRef = useRef<Stroke[]>([]);
@@ -185,12 +189,6 @@ export function PreviewDrawOverlay({
   const [undoCount, setUndoCount] = useState(0);
   const [redoCount, setRedoCount] = useState(0);
   const [pendingAction, setPendingAction] = useState<AnnotationAction | null>(null);
-  // The submit control is one split button: the main half runs the selected
-  // action (default 'send', so nothing changes for existing users) and the
-  // chevron opens a menu to switch to Add-to-input / Queue / Send.
-  const [submitAction, setSubmitAction] = useState<AnnotationAction>('send');
-  const [submitMenuOpen, setSubmitMenuOpen] = useState(false);
-  const submitMenuRef = useRef<HTMLDivElement | null>(null);
   // True only for the brief window while a host compositor capture is in
   // flight: hides this overlay's strokes/toolbar so they don't appear in the
   // screenshot (they're re-painted onto the result by compositeWithBackground).
@@ -634,7 +632,6 @@ export function PreviewDrawOverlay({
   function selectMarkTool(nextTool: MarkTool) {
     onToolbarClick?.(nextTool === 'box' ? 'rect' : nextTool === 'text' ? 'text' : 'pen');
     setMarkTool(nextTool);
-    setMarkToolMenuOpen(false);
   }
 
   // Keep object-URL thumbnails in sync with the attached files; revoke on
@@ -660,50 +657,6 @@ export function PreviewDrawOverlay({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [previewIndex]);
-
-  // Dismiss the submit menu on outside pointer / Escape. Capture phase + stop
-  // lets Escape close the menu first without also closing the whole overlay.
-  useEffect(() => {
-    if (!submitMenuOpen) return;
-    function onPointerDown(e: MouseEvent) {
-      if (submitMenuRef.current && !submitMenuRef.current.contains(e.target as Node)) {
-        setSubmitMenuOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        setSubmitMenuOpen(false);
-      }
-    }
-    window.addEventListener('mousedown', onPointerDown, true);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown, true);
-      window.removeEventListener('keydown', onKey, true);
-    };
-  }, [submitMenuOpen]);
-
-  useEffect(() => {
-    if (!markToolMenuOpen) return;
-    function onPointerDown(e: MouseEvent) {
-      if (markToolMenuRef.current && !markToolMenuRef.current.contains(e.target as Node)) {
-        setMarkToolMenuOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        setMarkToolMenuOpen(false);
-      }
-    }
-    window.addEventListener('mousedown', onPointerDown, true);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('mousedown', onPointerDown, true);
-      window.removeEventListener('keydown', onKey, true);
-    };
-  }, [markToolMenuOpen]);
 
   function undoStroke() {
     if (sending) return;
@@ -1311,8 +1264,13 @@ export function PreviewDrawOverlay({
     { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'check_box_outline_blank' },
     { tool: 'pen', label: t('sketch.toolPen'), icon: 'edit' },
     { tool: 'text', label: t('fileViewer.textTool'), icon: 'title' },
+  // The segmented tool group renders this list in order: box-select, freehand
+  // pen, and drop-a-text-label.
+  const markToolOptions: { tool: MarkTool; label: string; icon: string }[] = [
+    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'checkbox-blank-line' },
+    { tool: 'pen', label: t('sketch.toolPen'), icon: 'pencil-line' },
+    { tool: 'text', label: t('fileViewer.textTool'), icon: 'text' },
   ];
-  const currentMarkTool = markToolOptions.find((item) => item.tool === markTool) ?? markToolOptions[0]!;
 
   return (
     <div
@@ -1571,7 +1529,7 @@ export function PreviewDrawOverlay({
                       padding: 0,
                     }}
                   >
-                    <Icon name="close" size={10} />
+                    <Icon name="close" size={14} />
                   </button>
                 </div>
               ))}
@@ -1644,6 +1602,35 @@ export function PreviewDrawOverlay({
                   })}
                 </div>
               ) : null}
+            {/* Segmented tool group: every mark tool is one click away and the
+                active one is visible without opening anything. A dropdown here
+                cost a click per switch and hid which tool was armed — the two
+                things a drawing toolbar most needs to answer instantly. */}
+            <div
+              ref={markToolMenuRef}
+              role="group"
+              style={subToolGroupStyle}
+              aria-label={t('fileViewer.markTool')}
+            >
+              {markToolOptions.map((item) => {
+                const activeTool = markTool === item.tool;
+                return (
+                  <button
+                    key={item.tool}
+                    type="button"
+                    onClick={() => selectMarkTool(item.tool)}
+                    disabled={sending}
+                    aria-pressed={activeTool}
+                    aria-label={item.label}
+                    title={item.label}
+                    data-tooltip={item.label}
+                    className="preview-draw-subtool-action"
+                    style={subToolButtonStyle(activeTool)}
+                  >
+                    <RemixIcon name={item.icon} size={14} />
+                  </button>
+                );
+              })}
             </div>
             <button
               type="button"
@@ -1795,6 +1782,38 @@ export function PreviewDrawOverlay({
                 </div>
               ) : null}
             </div>
+            {/* Three independent buttons, ordered add-to-input → queue → send.
+                A split button hid two of the three behind a chevron and made
+                the primary action depend on remembered state — the user had to
+                read the icon to find out what clicking would do. Here each
+                destination is its own target and its own disabled state. */}
+            {submitOptions
+              .slice()
+              .sort((a, b) => SUBMIT_ORDER.indexOf(a.action) - SUBMIT_ORDER.indexOf(b.action))
+              .map((opt) => {
+                const pending = pendingAction === opt.action;
+                const label = pending ? opt.pendingLabel : opt.label;
+                const title = pending ? opt.pendingLabel : opt.title;
+                return (
+                  <button
+                    key={opt.action}
+                    type="button"
+                    onClick={() => void send(opt.action)}
+                    disabled={sending || !opt.enabled}
+                    aria-label={label}
+                    title={title}
+                    data-tooltip={title}
+                    className="preview-draw-icon-action"
+                    style={{
+                      ...drawActionButtonStyle(opt.action === 'send'),
+                      opacity: opt.enabled ? 1 : 0.4,
+                      cursor: sending ? 'wait' : (opt.enabled ? 'pointer' : 'not-allowed'),
+                    }}
+                  >
+                    {pending ? <Icon name="spinner" size={14} /> : opt.icon}
+                  </button>
+                );
+              })}
           </div>
           <button
             type="button"
@@ -1865,10 +1884,10 @@ const tooltipStyle = `
     bottom: calc(100% + 8px);
     transform: translateX(-50%) translateY(2px);
     padding: 4px 7px;
-    border-radius: 6px;
+    border-radius: var(--radius-medium, 4px);
     background: rgba(20,20,20,0.94);
     color: #fff;
-    font-size: 11px;
+    font-size: 12px;
     line-height: 1.2;
     opacity: 0;
     pointer-events: none;
@@ -1983,9 +2002,12 @@ const subToolGroupStyle: CSSProperties = {
   position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
-  padding: 0,
+  gap: 4,
+  padding: 3,
   borderRadius: 999,
-  background: 'transparent',
+  // Track behind the segments, so the armed tool's fill reads as a thumb
+  // sliding inside a group rather than a lone highlighted button.
+  background: 'rgba(255,255,255,0.08)',
   border: 'none',
   flex: '0 0 auto',
 };
@@ -2008,25 +2030,24 @@ const drawToolbarNoteActionsStyle: CSSProperties = {
   maxWidth: 420,
 };
 
-const subToolButtonStyle: CSSProperties = {
-  border: '1px solid rgba(255,255,255,0.18)',
-  borderRadius: 999,
-  width: 54,
-  minWidth: 54,
-  height: 30,
-  padding: '0 8px',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 3,
-  flex: '0 0 54px',
-  background: 'rgba(255,255,255,0.05)',
-  color: '#fff',
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
+function subToolButtonStyle(active: boolean): CSSProperties {
+  return {
+    border: 'none',
+    borderRadius: 999,
+    width: 34,
+    height: 30,
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: active ? 'rgba(255,255,255,0.18)' : 'transparent',
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: active ? 600 : 500,
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  };
+}
 
 function drawActionButtonStyle(primary: boolean): CSSProperties {
   return {
@@ -2097,62 +2118,4 @@ const previewDrawDockDockedStyle: CSSProperties = {
   bottom: 16,
   transform: 'translateX(-50%)',
   maxWidth: 'min(760px, calc(100% - 144px))',
-};
-
-const submitSplitStyle: CSSProperties = {
-  position: 'relative',
-  display: 'inline-flex',
-  alignItems: 'center',
-  flex: '0 0 auto',
-};
-
-const submitMenuStyle: CSSProperties = {
-  position: 'absolute',
-  right: 0,
-  bottom: 'calc(100% + 8px)',
-  minWidth: 184,
-  padding: 4,
-  borderRadius: 12,
-  background: 'rgba(20,20,20,0.98)',
-  border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: '0 10px 30px rgba(0,0,0,0.32)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-  zIndex: 12,
-};
-
-const markToolMenuStyle: CSSProperties = {
-  ...submitMenuStyle,
-  left: 0,
-  right: 'auto',
-  minWidth: 144,
-};
-
-function submitMenuItemStyle(active: boolean, enabled: boolean): CSSProperties {
-  return {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    padding: '7px 9px',
-    borderRadius: 8,
-    border: 'none',
-    background: active ? 'rgba(255,255,255,0.14)' : 'transparent',
-    color: '#fff',
-    fontSize: 12.5,
-    lineHeight: 1.2,
-    textAlign: 'left',
-    whiteSpace: 'nowrap',
-    opacity: enabled ? 1 : 0.4,
-    cursor: enabled ? 'pointer' : 'not-allowed',
-  };
-}
-
-const submitMenuItemIconStyle: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 18,
-  flex: '0 0 auto',
 };

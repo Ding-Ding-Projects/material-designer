@@ -8,8 +8,11 @@ import type {
   OpenDesignHostCaptureResult,
   OpenDesignHostFailure,
   OpenDesignHostProjectImportResult,
+  OpenDesignHostProjectImportInit,
   OpenDesignHostProjectReplaceWorkingDirResult,
   OpenDesignHostPickWorkingDirResult,
+  OpenDesignHostPreviewNavigationFailure,
+  OpenDesignHostPreviewNavigationFailureListener,
   OpenDesignHostUpdaterActionOptions,
   OpenDesignHostUpdaterMenuLabels,
   OpenDesignHostUpdaterOpenDialogListener,
@@ -40,6 +43,7 @@ const WINDOW_MAXIMIZED_EVENT = 'od:window:maximized-changed';
 // Duplicated from main/ui-scale.ts for the same reason as the channels above:
 // a sandboxed preload may only require `electron`.
 const UI_SCALE_IPC_CHANNEL = 'od:ui-scale:set';
+const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = 'od:preview-navigation-failed';
 
 // Mirror of the argv prefix used by main's `applyOsLocaleSwitch` and
 // runtime's `additionalArguments`. Duplicated literal on purpose: the
@@ -194,7 +198,7 @@ type DesktopDiagnosticsExportResult =
 
 const project = {
   pickAndImport: (
-    init?: { name?: string; skillId?: string | null; designSystemId?: string | null },
+    init?: OpenDesignHostProjectImportInit,
   ): Promise<OpenDesignHostProjectImportResult> =>
     ipcRenderer.invoke('dialog:pick-and-import', init ?? null)
       .then(normalizeProjectImportResult)
@@ -256,6 +260,46 @@ const capture = {
     } catch (error) {
       return failure(reasonFromError(error));
     }
+  },
+};
+
+let latestPreviewNavigationFailure: OpenDesignHostPreviewNavigationFailure | null = null;
+const previewNavigationFailureListeners = new Set<OpenDesignHostPreviewNavigationFailureListener>();
+
+ipcRenderer.on(PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL, (
+  _event: unknown,
+  failure: OpenDesignHostPreviewNavigationFailure,
+): void => {
+  if (
+    failure == null
+    || typeof failure !== 'object'
+    || !Number.isSafeInteger(failure.eventId)
+    || typeof failure.errorCode !== 'number'
+    || !Number.isFinite(failure.occurredAtMs)
+    || typeof failure.validatedUrl !== 'string'
+    || (failure.frameName !== undefined && typeof failure.frameName !== 'string')
+  ) return;
+  latestPreviewNavigationFailure = failure;
+  for (const listener of previewNavigationFailureListeners) {
+    try {
+      listener(failure);
+    } catch {
+      // A renderer listener must not prevent other active viewers from
+      // receiving the same host-owned failure signal.
+    }
+  }
+});
+
+const preview = {
+  getLatestNavigationFailure: (): OpenDesignHostPreviewNavigationFailure | null =>
+    latestPreviewNavigationFailure,
+  subscribeNavigationFailure: (
+    listener: OpenDesignHostPreviewNavigationFailureListener,
+  ): (() => void) => {
+    previewNavigationFailureListeners.add(listener);
+    return () => {
+      previewNavigationFailureListeners.delete(listener);
+    };
   },
 };
 
@@ -379,9 +423,16 @@ const hostBridge = {
     platform: process.platform,
     ...(osLocale !== undefined ? { osLocale } : {}),
   },
+  appearance: {
+    // Pin the native window appearance (macOS vibrancy glass material) to the
+    // app theme. Fire-and-forget: the main process validates the value.
+    setTheme: (theme: 'light' | 'dark' | 'system'): void =>
+      ipcRenderer.send('od:appearance:set-theme', theme),
+  },
   shell,
   browser,
   capture,
+  preview,
   project,
   pdf: {
     print: async (html: string, nonce?: string, options?: PrintPdfOptions): Promise<OpenDesignHostActionResult> => {

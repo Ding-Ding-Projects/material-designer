@@ -15,7 +15,12 @@ import {
   createSidecarLaunchEnv,
   resolveAppIpcPath,
 } from "@open-design/sidecar";
-import { applyOsLocaleSwitch, createSplashWindow, setSplashStage } from "@open-design/desktop/main";
+import {
+  applyLoopbackConnectionLimitSwitch,
+  applyOsLocaleSwitch,
+  createSplashWindow,
+  setSplashStage,
+} from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
 import { spawn, spawnSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
@@ -41,6 +46,7 @@ import { confirmPackagedLauncherRuntime, resolvePackagedLauncherRuntime } from "
 import {
   applyPackagedElectronPathOverrides,
   claimPackagedSingleInstanceLock,
+  createPackagedSecondInstanceHandoff,
   ensurePackagedNamespacePaths,
   stabilizePackagedWorkingDirectory,
 } from "./launch.js";
@@ -51,7 +57,7 @@ import {
 } from "./logging.js";
 import { resolvePackagedNamespacePaths } from "./paths.js";
 import { createObsoleteInstalledOuterRetirement } from "./obsolete-installed-outer.js";
-import { launchPackagedPayloadDesktop } from "./payload-desktop-launch.js";
+import { findPackagedDeeplinkArg, launchPackagedPayloadDesktop } from "./payload-desktop-launch.js";
 import { packagedEntryUrl, registerOdProtocol } from "./protocol.js";
 import { startPackagedSidecars } from "./sidecars.js";
 import { reportStartupFailure, resolveStartupDistinctId } from "./startup-telemetry.js";
@@ -59,8 +65,7 @@ import { resolvePackagedWindowTitle } from "./window-title.js";
 import { syncWindowsUninstallDisplayVersion } from "./windows-lifecycle.js";
 
 let packagedLogger: PackagedDesktopLogger | null = null;
-let pendingSecondInstanceFocus = false;
-let showExistingDesktop: (() => void) | null = null;
+const secondInstanceHandoff = createPackagedSecondInstanceHandoff();
 
 // Telemetry context for the fatal-exit path. Populated once config + launcher
 // runtime are resolved so the `main().catch` below can report a startup failure
@@ -217,6 +222,14 @@ async function main(): Promise<void> {
   // en-US default. runDesktopMain (called later) calls the same helper
   // again to recover the resolved locale string for the BrowserWindow.
   applyOsLocaleSwitch(app);
+  // Must also land before whenReady — see the helper's docblock for the
+  // connection-pool deadlock it prevents (electron/electron#47097).
+  applyLoopbackConnectionLimitSwitch(app);
+  // Belt-and-braces duplicate of the helper above: the packaged outer
+  // shell can outlive auto-updates that only refresh inner resources, so
+  // the deadlock fix must not depend on which desktop build the shell
+  // happens to bundle. appendSwitch is idempotent for the same key.
+  app.commandLine.appendSwitch("ignore-connections-limit", "127.0.0.1,localhost");
 
   const afterQuit = parseLauncherAfterQuitArgs(process.argv.slice(1));
   const handoffResume = parseLauncherHandoffResumeArgs(process.argv.slice(1));
@@ -230,6 +243,7 @@ async function main(): Promise<void> {
     return;
   }
   const existingDesktop = await inspectExistingDesktopForLauncher(namespace, {
+    deeplinkUrl: findPackagedDeeplinkArg(process.argv),
     incomingVersion: namespaceConfig.appVersion,
     logger: console,
     paths: initialPaths,
@@ -297,12 +311,8 @@ async function main(): Promise<void> {
   });
   applyPackagedElectronPathOverrides(paths);
   applyPackagedUpdaterEnv(activeConfig.updateMetadataUrl);
-  if (!claimPackagedSingleInstanceLock(app, () => {
-    if (showExistingDesktop == null) {
-      pendingSecondInstanceFocus = true;
-      return;
-    }
-    showExistingDesktop();
+  if (!claimPackagedSingleInstanceLock(app, (argv) => {
+    secondInstanceHandoff.handle(findPackagedDeeplinkArg(argv));
   })) {
     return;
   }
@@ -338,6 +348,8 @@ async function main(): Promise<void> {
     telemetryRelayUrl: activeConfig.telemetryRelayUrl,
     posthogKey: activeConfig.posthogKey,
     posthogHost: activeConfig.posthogHost,
+    velaWebUrl: activeConfig.velaWebUrl,
+    velaWebUrls: activeConfig.velaWebUrls,
     // PR #974 round-5 (lefarcen P2): the Electron entry runs desktop
     // main alongside the daemon, so the import-folder gate must be
     // pinned ON from request 0. See `apps/packaged/src/headless-runtime.ts`
@@ -374,7 +386,10 @@ async function main(): Promise<void> {
   // mounting the web bundle (the runtime re-asserts this stage at its reveal
   // gate, which is a no-op when the label is already current).
   setSplashStage(splash.window, "workspace");
-  registerOdProtocol(sidecars.web.url ?? "http://127.0.0.1:0");
+  // Resolve the web sidecar address per request instead of freezing it here.
+  // The restart supervisor may bind a fresh ephemeral port, while a temporary
+  // lack of a target should surface as the protocol layer's structured 503.
+  registerOdProtocol(() => sidecars.currentWebUrl());
 
   const { runDesktopMain } = await import("@open-design/desktop/main");
   await runDesktopMain(runtime, {
@@ -402,6 +417,8 @@ async function main(): Promise<void> {
       return sidecars.daemon.url;
     },
     windowTitle: resolvePackagedWindowTitle(activeConfig),
+    inviteProtocolClientPath:
+      process.platform === "win32" ? launcherRuntime.installedLaunchPath : null,
     async onExternalShow() {
       await retireObsoleteInstalledOuter();
     },
@@ -415,10 +432,10 @@ async function main(): Promise<void> {
       }).catch((error: unknown) => {
         packagedLogger?.warn("failed to sync Windows uninstall registry version", { error });
       });
-      showExistingDesktop = controls.show;
-      if (!pendingSecondInstanceFocus) return;
-      pendingSecondInstanceFocus = false;
-      controls.show();
+      secondInstanceHandoff.attach({
+        dispatchDeeplink: controls.dispatchInviteDeeplink,
+        show: controls.show,
+      });
     },
     preloadPath: join(app.getAppPath(), "preload.cjs"),
     update: {

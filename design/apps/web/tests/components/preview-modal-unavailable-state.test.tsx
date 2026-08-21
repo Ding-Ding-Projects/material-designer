@@ -146,12 +146,17 @@ describe('PreviewModal unavailable state', () => {
     );
     expect(new URL(redditShare.getAttribute('href') ?? '').searchParams.get('title')).toBe(
       'Material Designer template: Landing Template',
+      'OpenDesign template: Landing Template',
+    );
+    expect(new URL(redditShare.getAttribute('href') ?? '').searchParams.get('title')).toBe(
+      'OpenDesign template: Landing Template',
     );
     expect(
       new URL(
         screen.getByRole('menuitem', { name: /Facebook/i }).getAttribute('href') ?? '',
       ).searchParams.get('quote'),
     ).toBe('Material Designer template: Landing Template');
+    ).toBe('OpenDesign template: Landing Template');
     expect(screen.getByRole('menuitem', { name: /Instagram/i }).getAttribute('href')).toBe(
       'https://www.instagram.com/',
     );
@@ -203,6 +208,7 @@ describe('PreviewModal unavailable state', () => {
       await waitFor(() => {
         expect(writeText).toHaveBeenCalledWith(
           'Material Designer template: Landing Template\nhttps://example.test/marketplace/landing',
+          'OpenDesign template: Landing Template\nhttps://example.test/marketplace/landing',
         );
         expect(openedWindow.location.href).toBe('https://www.instagram.com/');
       });
@@ -294,6 +300,7 @@ describe('PreviewModal unavailable state', () => {
       await waitFor(() => {
         expect(writeText).toHaveBeenCalledWith(
           'Material Designer template: Landing Template\nhttps://example.test/marketplace/landing',
+          'OpenDesign template: Landing Template\nhttps://example.test/marketplace/landing',
         );
       });
     } finally {

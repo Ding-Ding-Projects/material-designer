@@ -1,6 +1,17 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Upstream and export checkpoint — 2026-08-21.** The Open Design submodule,
+> mirror, and manifest now target `393af2f991525a6c85cb04ee4aea0cd8967693c8`
+> (v0.20.2), 309 commits beyond the former baseline. `scripts/verify-port.sh
+> --json` reports 12,835 expected files and zero gaps after exact-blob import and
+> declared-path three-way reconciliation. The Download surface adds a complete
+> desktop source scaffold beside the existing website handoff, forwards queued
+> Markdown downloads into the Markdown export menu, and compacts narrow action
+> labels instead of clipping the control cluster. These changes are source-level
+> until the hosted build and cheap-headless installed interaction complete.
+>
+> [!IMPORTANT]
 > **Current implementation checkpoint — 2026-08-20.** Commit
 > [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 > makes project context stable across file/tab switches, removes implicit initial
@@ -29,6 +40,19 @@
 > triggers started Release, Verify and Pages again for the tag. The tag-triggered
 > Release and the superseded branch Release were cancelled; all three workflows
 > now accept branch pushes and manual dispatch while ignoring tag pushes.
+> Live inspection of the installed `0.16.128` Squirrel artifact then found two
+> launch defects: its shipped config embedded the hosted `D:\a\...` runtime root,
+> and its lifecycle created `GitHub, Inc.\Electron.lnk` because unsigned Electron
+> version resources remain unedited. Commit
+> [`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)
+> removes the hosted path from shipped config and synchronously creates explicit
+> Material Designer shortcuts without enabling signing or executable editing.
+> The same commit replaces the daemon's tree-only Windows folder picker with a
+> validated full Explorer-style browser.
+> Release `v0.16.131-r130.1` then published from `c5f08224`, but GNU
+> `sha256sum` rejected the BOM-free checksum because PowerShell wrote CRLF and
+> the filename was read with a trailing `\r`. The current checksum producer uses
+> `File.WriteAllText`, BOM-free UTF-8 and an explicit LF.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match

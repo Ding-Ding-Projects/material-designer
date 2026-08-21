@@ -77,6 +77,46 @@ button:disabled {
 button.primary {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-8, 8px);
+  font: inherit;
+  height: 36px;
+  padding: 0 var(--spacing-16, 16px);
+  font-size: var(--font-size-14, 14px);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--text);
+  background: transparent;
+  border: var(--stroke-thin, 1px) solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
+    border-color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
+    color var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease),
+    transform var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
+    box-shadow var(--duration-ultra-fast, 50ms) var(--curve-easy-ease, ease);
+}
+button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible { outline: var(--stroke-thin, 1px) solid var(--blue); outline-offset: 2px; }
+
+button.primary {
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  border-radius: var(--radius-pill);
+  color: var(--bg);
+}
+button.primary:hover:not(:disabled) {
+  background: #353535;
+  border-color: #353535;
+}
+button.primary:active:not(:disabled) {
+  background: var(--text);
+  border-color: var(--text);
 }
 button.primary:hover:not(:disabled) { box-shadow: var(--md-sys-elevation-1); }
 
@@ -107,21 +147,23 @@ button.ghost {
   color: var(--md-sys-color-on-surface-variant);
   padding: 0 12px;
 }
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text-strong);
+}
+button.primary-ghost:hover:not(:disabled) { background: var(--bg-muted); }
+button.primary-ghost:active:not(:disabled) { background: var(--border-strong); }
 
 button.ghost {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
   background: transparent;
-  border-color: var(--border);
   color: var(--text);
-  line-height: 1.2;
+  border-color: transparent;
 }
-button.ghost:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
+button.ghost:hover:not(:disabled) { background: var(--bg-subtle); border-color: transparent; }
+button.ghost:active:not(:disabled) { background: var(--bg-muted); }
 /*
  * Transient success state for ghost buttons. Used by the Media
- * Providers "Reload from daemon" button after a successful reload —
+ * Providers "Refresh providers" button after a successful refresh —
  * the button briefly turns green with a check icon for ~2s then snaps
  * back to its idle treatment, replacing what used to be a permanent
  * success paragraph under the section header. Reusable on any
@@ -161,12 +203,28 @@ button.ghost.is-success-flash svg {
 button.subtle {
   background: var(--bg-subtle);
   border-color: transparent;
-  color: var(--text);
+  color: var(--text-strong);
 }
 button.subtle:hover:not(:disabled) { background: var(--bg-muted); }
+button.subtle:active:not(:disabled) { background: var(--border-strong); }
 
-button.icon-btn { padding: 6px 10px; font-size: 13px; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.icon-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-medium);
+}
+button.is-selected,
+button[aria-pressed="true"] {
+  border-color: var(--border-selected);
+}
+button:disabled {
+  background: var(--bg-subtle);
+  border-color: transparent;
+  color: var(--text-faint);
+  cursor: not-allowed;
+  transform: none;
+}
 
 .od-tooltip {
   position: relative;
@@ -178,12 +236,16 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   z-index: 4000;
   max-width: min(260px, calc(100vw - 16px));
   padding: 5px 8px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--material-separator);
   border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  /* Thick material: tooltips are small precise text, which per the material
+     spec takes the highest-contrast (most opaque) tier. */
+  background: var(--material-thick);
+  -webkit-backdrop-filter: var(--material-thick-backdrop);
+  backdrop-filter: var(--material-thick-backdrop);
   box-shadow: var(--shadow-sm);
-  color: var(--text-strong);
-  font-size: 11px;
+  color: var(--vibrancy-label);
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.2;
   contain: layout paint style;
@@ -217,6 +279,15 @@ input, textarea, select {
   padding: 8px 16px;
   width: 100%;
   transition: box-shadow var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out);
+  color: var(--text);
+  background: var(--bg-panel);
+  border: var(--stroke-thin, 1px) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-8, 8px) var(--spacing-10, 10px);
+  width: 100%;
+  transition:
+    border-color var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
+    box-shadow var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
 }
 input::placeholder, textarea::placeholder { color: var(--md-sys-color-on-surface-variant); }
 input:focus, textarea:focus, select:focus {
@@ -233,11 +304,15 @@ input:disabled, textarea:disabled, select:disabled {
    ring. Using rgba directly because the Next CSS pipeline collapses
    `color-mix(in srgb, var(--text) 8%, transparent)` to a solid var(--text)
    ring (would render a 3px black band — too loud). */
+  border-color: var(--selected);
+}
+/* Entry sidebar form fields keep a quieter, neutral focus (just a darker
+   border, no outer halo) so the orange "Create" CTA stays the loudest thing
+   in the panel. */
 .entry-side input:focus,
 .entry-side textarea:focus,
 .entry-side select:focus {
   border-color: var(--text);
-  box-shadow: 0 0 0 3px rgba(28, 27, 26, 0.08);
 }
 /* Native <select> on macOS uses its own intrinsic min-height that ends up
    shorter than <input> at the same `padding: 7px 10px` rule above, so any
@@ -307,7 +382,6 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger[aria-expanded='true'] {
   outline: none;
   border-color: var(--selected);
-  box-shadow: 0 0 0 3px var(--selected-soft);
 }
 .od-select-trigger:disabled {
   opacity: 0.55;
@@ -334,8 +408,10 @@ textarea { resize: vertical; font-family: inherit; }
   overflow-x: hidden;
   overscroll-behavior: contain;
   max-width: calc(100vw - 24px);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
+  background: var(--glass-regular);
+  -webkit-backdrop-filter: var(--glass-backdrop);
+  backdrop-filter: var(--glass-backdrop);
+  border: 1px solid var(--material-separator);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
 }
@@ -363,13 +439,13 @@ textarea { resize: vertical; font-family: inherit; }
   border: 0;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
 .od-select-option:hover:not(:disabled),
 .od-select-option.active:not(:disabled) {
-  background: var(--bg-subtle);
+  background: var(--vibrancy-fill-secondary);
 }
 .od-select-option.selected {
   color: var(--text);
@@ -401,7 +477,7 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-group-label {
   padding: 6px 8px 4px;
   color: var(--text-faint);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -415,7 +491,7 @@ code {
 }
 
 /* -------- Brand glyph ------------------------------------------------ */
-/* Monochrome Open Design brand mark. The glyph ships as /brand-icon.svg and
+/* Monochrome OpenDesign brand mark. The glyph ships as /brand-icon.svg and
    is masked with --text-strong so it reads as ink in light mode and cream in
    dark mode. Consumers set their own size and placement. */
 .od-brand-glyph {

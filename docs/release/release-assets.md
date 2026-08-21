@@ -36,6 +36,13 @@ to the run but *not* to the release, and what is deliberately absent.
 | `material-designer-<version>-win-x64-portable.zip` | The portable archive, attached when the packaging build produced one. |
 | `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
 
+Squirrel shortcuts are created by the packaged lifecycle rather than inferred
+from the unsigned executable's unchanged Electron version resource. The visible
+shortcut is `Material Designer.lnk`, targets the stable Squirrel root launcher,
+and is removed on uninstall. The known incorrect `GitHub, Inc.\Electron.lnk`
+and desktop `Electron.lnk` names from older Squirrel builds are removed during
+install/update reconciliation.
+
 ### Why the names are rewritten
 
 The packaging tool produces an installer under a path and name that make sense

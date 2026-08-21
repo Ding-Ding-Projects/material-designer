@@ -18,6 +18,7 @@
 //      <body> with > MIN_VISIBLE_TEXT visible text". This guards
 //      against the loading sentinel
 //      `<div class="od-loading-shell">Loading Material Designer…</div>`
+//      `<div class="od-loading-shell">Loading OpenDesign…</div>`
 //      being mistaken for a mount (codex review on PR #2527).
 //
 // We do not try to discriminate between "still loading" and "white screen

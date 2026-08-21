@@ -30,6 +30,8 @@ function createPackagedConfig(
     ...(config.updateMetadataUrl == null ? {} : { updateMetadataUrl: config.updateMetadataUrl }),
     ...(config.posthogKey == null ? {} : { posthogKey: config.posthogKey }),
     ...(config.posthogHost == null ? {} : { posthogHost: config.posthogHost }),
+    ...(config.velaWebUrl == null ? {} : { velaWebUrl: config.velaWebUrl }),
+    ...(config.velaWebUrls == null ? {} : { velaWebUrls: config.velaWebUrls }),
     webOutputMode: config.webOutputMode,
     // Never bake the packaging host's absolute runtime root into an installed
     // application. A normal Squirrel launch must resolve writable state from

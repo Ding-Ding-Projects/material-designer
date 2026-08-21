@@ -1,5 +1,24 @@
 # The packaged runtime
 
+## Installed Squirrel path and shortcut boundary
+
+An installed package never carries the build machine's absolute
+`namespaceBaseRoot`. Normal launches resolve data, logs, runtime, update and
+session roots from Electron's per-user application-data directory. tools-pack
+lifecycle runs that deliberately own an isolated runtime create a separate
+launch configuration containing their explicit namespace-root override; that
+override is never baked into the shipped `open-design-config.json`.
+
+The unsigned executable intentionally keeps electron-builder's combined
+sign/edit control disabled. Its Windows version resource can therefore retain
+Electron/GitHub metadata, which Squirrel would otherwise use to create
+`GitHub, Inc.\Electron.lnk`. The packaged lifecycle handles
+`--squirrel-install`, `--squirrel-updated` and `--squirrel-uninstall` by creating
+or removing explicit `Material Designer.lnk` shortcuts in the Start menu and
+desktop. Both target Squirrel's stable root launcher and use the installed
+version directory as their working directory. Failure to reconcile shortcuts
+returns a nonzero lifecycle result rather than completing setup silently.
+
 What actually launches when somebody double-clicks the installed application, and
 every way it differs from the stack a developer runs. A packaged build is not the
 development stack with the debugging turned off — it has a different entry point,

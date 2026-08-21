@@ -143,7 +143,11 @@ async function assertWebStandaloneOutput(config: ToolPackConfig): Promise<void> 
   throw new Error("Next.js standalone server output was not produced under apps/web/.next/standalone");
 }
 
-async function writeWebStandaloneHookConfig(config: ToolPackConfig, paths: WinPaths): Promise<string> {
+async function writeWebStandaloneHookConfig(
+  config: ToolPackConfig,
+  paths: WinPaths,
+  hyperframesRuntimeSourceRoot: string,
+): Promise<string> {
   const webRoot = join(config.workspaceRoot, "apps", "web");
   await assertWebStandaloneOutput(config);
 
@@ -153,6 +157,7 @@ async function writeWebStandaloneHookConfig(config: ToolPackConfig, paths: WinPa
     `${JSON.stringify(
       {
         auditReportPath: paths.webStandaloneHookAuditPath,
+        hyperframesRuntimeSourceRoot,
         pruneCopiedSharp: true,
         pruneRootNext: true,
         pruneRootSharp: true,
@@ -208,7 +213,7 @@ async function runElectronBuilderRawWithPaths(
   const packageVersion = electronBuilderVersionForAppVersion(packagedVersion);
   const webStandaloneHookConfigPath = config.webOutputMode === "standalone"
     ? await runSegment("electron-builder-raw:write-web-standalone-hook-config", async () =>
-      writeWebStandaloneHookConfig(config, paths)
+      writeWebStandaloneHookConfig(config, paths, projectDir)
     )
     : null;
   const builderConfig = {

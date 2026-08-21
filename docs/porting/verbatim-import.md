@@ -1,6 +1,6 @@
 # Verbatim import
 
-How the 11,799 files under `design/` were copied from the pinned upstream commit
+How the 12,835 upstream files under `design/` were copied from the pinned upstream commit
 without a single byte, permission bit, or path being altered by the copy.
 
 > [!NOTE]
@@ -16,7 +16,7 @@ The import produced, for every path in the upstream tree:
 
 - the **same bytes** on disk,
 - the **same blob object id** in this repository's index,
-- the **same file mode** (73 of the 11,799 files are `100755`, the rest `100644`),
+- the **same file mode** recorded for every one of the 12,835 upstream files,
 
 and it tracked **two paths that upstream's own `.gitignore` excludes**, because
 those two files are present in the upstream commit and a faithful copy of a
@@ -69,7 +69,7 @@ than fought.
 ### 3. The executable bit does not survive every filesystem
 
 73 files in the upstream tree are mode `100755`. On Windows filesystems there is
-no POSIX permission bit to copy, so a recursive file copy produces 11,799 files
+no POSIX permission bit to copy, so a recursive file copy produces 12,835 files
 that all look like `100644` to Git. Nothing warns about this; the tree simply
 loses its shell scripts' executability and the difference only surfaces when
 somebody tries to run one on a Unix host.
@@ -162,8 +162,8 @@ scripts/verify-port.sh
 ```
 
 The verifier compares the same manifest against both the working tree and the
-index. Its current output is quoted in [verification.md](verification.md): 11,799
-expected, 11,799 tracked, 11,799 present, 0 gaps.
+index. Its current output is reported by [verification.md](verification.md): 12,835
+expected upstream files and 0 gaps.
 
 ## Configuration
 

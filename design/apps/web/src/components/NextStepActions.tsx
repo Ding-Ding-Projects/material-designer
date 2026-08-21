@@ -224,7 +224,7 @@ interface Props {
   skills?: SkillSummary[];
   // Resolved `@skill` names per featured action, shown in the hover detail.
   toolboxSkillNames?: Partial<Record<DesignToolboxActionId, string | null>>;
-  // Contribute the artifact to the Open Design community gallery.
+  // Contribute the artifact to the OpenDesign community gallery.
   onShareToOpenDesign?: () => void;
   shareToOpenDesignBusy?: boolean;
   variant?: NextStepActionsVariant;
@@ -678,8 +678,11 @@ export function NextStepActions({
                   >
                     <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
                     <span className={styles.toolboxRowText}>
+                      {/* Title only. The description is a hover reveal (the
+                          detail panel for brand rows, the native tooltip for
+                          the rest) so the list reads as a scannable menu
+                          instead of a wall of two-line paragraphs. */}
                       <span className={styles.toolboxRowTitle}>{title}</span>
-                      <span className={styles.toolboxRowDescription}>{description}</span>
                     </span>
                     <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
                   </button>
@@ -710,7 +713,10 @@ export function NextStepActions({
                     aria-busy={busy || undefined}
                     aria-label={`${title}. ${description}`}
                     disabled={busy}
-                    title={description}
+                    // No native `title` here: the hover detail panel below
+                    // already reveals this description, and the browser tooltip
+                    // rendered on top of it — two overlapping popups saying the
+                    // same sentence.
                     onClick={() => handleBrandAction(action)}
                     onMouseEnter={(e) => openBrandDetail(action.id, e.currentTarget.getBoundingClientRect())}
                     onMouseLeave={scheduleClose}
@@ -721,8 +727,11 @@ export function NextStepActions({
                       className={busy ? 'icon-spin' : styles.toolboxRowIcon}
                     />
                     <span className={styles.toolboxRowText}>
+                      {/* Title only. The description is a hover reveal (the
+                          detail panel for brand rows, the native tooltip for
+                          the rest) so the list reads as a scannable menu
+                          instead of a wall of two-line paragraphs. */}
                       <span className={styles.toolboxRowTitle}>{title}</span>
-                      <span className={styles.toolboxRowDescription}>{description}</span>
                     </span>
                     <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
                   </button>
@@ -802,7 +811,6 @@ export function NextStepActions({
           ) : null}
         </div>
       ) : null}
-
       {/* Level: featured-row detail card */}
       {detail && typeof document !== 'undefined'
         ? createPortal(

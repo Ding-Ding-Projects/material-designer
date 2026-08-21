@@ -23,7 +23,7 @@ human-readable output, and as a `source` field in the JSON.
 | Source | When it is used | What it is |
 | --- | --- | --- |
 | `submodule` | `vendor/open-design` is checked out | The pinned submodule's own index. |
-| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 11,799 files, with the source URL and commit in header comments. |
+| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 12,835 upstream files, with the source URL and commit in header comments. |
 
 The manifest exists so continuous integration does not have to clone a 1.7 GB
 object store to answer a question about file hashes. It is a shortcut, and the
@@ -435,7 +435,7 @@ whenever both are present.
   upstream. It says nothing about whether upstream builds, runs, or is free of
   defects.
 - **It trusts the pin.** Everything is compared against
-  `517f39acde402c1a7af2189167a8d6957a3dac71`. Re-pointing the submodule changes
+  `393af2f991525a6c85cb04ee4aea0cd8967693c8`. Re-pointing the submodule changes
   what "verbatim" means, and the script will happily verify against the new pin —
   though it will refuse to run until the manifest is regenerated to match, which
   makes re-pinning a visible, two-file change rather than a silent one.

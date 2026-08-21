@@ -4,6 +4,8 @@ import type { DesignSystemSummary } from '../types';
 import type { Dict } from '../i18n/types';
 import { Icon } from './Icon';
 import type { TranslationVars } from '../i18n';
+import { useWorkspaceContext } from '../collab/useWorkspaceContext';
+import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 
 type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
 
@@ -33,10 +35,12 @@ export function DesignSystemSwitchPicker({
   const [loadError, setLoadError] = useState(false);
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null | 'none'>(null);
+  const { context: workspaceContext } = useWorkspaceContext();
+  const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
 
   useEffect(() => {
     let cancelled = false;
-    void fetchDesignSystemsResult().then((result) => {
+    void fetchDesignSystemsResult(workspaceContext).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setItems(result.designSystems);
@@ -52,7 +56,7 @@ export function DesignSystemSwitchPicker({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [workspaceIdentity]);
 
   const groups = useMemo(() => {
     if (!items) return [];
@@ -113,7 +117,7 @@ export function DesignSystemSwitchPicker({
           onClick={onBack}
           aria-label={t('chat.importDesignSystemBack')}
         >
-          <Icon name="arrow-up" size={12} style={{ transform: 'rotate(-90deg)' }} />
+          <Icon name="arrow-up" size={14} style={{ transform: 'rotate(-90deg)' }} />
           <span>{t('chat.importDesignSystemBack')}</span>
         </button>
         <div className="composer-ds-picker-title">{t('chat.importDesignSystemHeader')}</div>

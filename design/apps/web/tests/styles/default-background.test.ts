@@ -22,6 +22,8 @@ describe('default app background colors', () => {
     expect(root).toContain('--bg: var(--md-sys-color-surface);');
     expect(root).toContain('--bg-app: var(--md-sys-color-surface);');
     expect(root).toContain('--md-sys-color-surface: #FFF8F6;');
+    expect(root).toContain('--bg: #fff;');
+    expect(root).toContain('--bg-app: #fff;');
   });
 
   it('flips the background through the role, not a second definition', () => {
@@ -32,6 +34,8 @@ describe('default app background colors', () => {
     // has stopped being the single source of the app background.
     expect(dark).not.toContain('--bg:');
     expect(dark).not.toContain('--bg-app:');
+    expect(dark).toContain('--bg: #202020;');
+    expect(dark).toContain('--bg-app: #202020;');
   });
 
   // This spec was upstream's, named "prefers platform UI fonts over optional
@@ -93,5 +97,9 @@ describe('default app background colors', () => {
     // And it still ends on a generic family, so an exotic script has somewhere
     // to land even when none of the named faces is installed.
     expect(plain?.trim().endsWith('sans-serif')).toBe(true);
+    expect(sans).toBeDefined();
+    expect(sans).toContain('"Albert Sans"');
+    expect(sans).not.toContain("'Inter'");
+    expect(sans).toMatch(/"Albert Sans", "PingFang SC", "Microsoft YaHei"/);
   });
 });

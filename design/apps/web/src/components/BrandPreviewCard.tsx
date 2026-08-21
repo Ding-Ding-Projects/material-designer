@@ -21,6 +21,12 @@ import { confirmedDelete } from '../lib/confirm-delete';
 import { brandSummaryToKit } from '../runtime/design-kit';
 import { DesignKitView } from './DesignKitView';
 import { DestructiveGate } from './destructive/DestructiveGate';
+import { useWorkspaceContext } from '../collab/useWorkspaceContext';
+import {
+  resolveWorkspaceResourceReadIdentity,
+  workspaceProjectHeaders,
+  workspaceResourceReadIdentityKey,
+} from '../collab/workspace-identity';
 import styles from './BrandPreviewCard.module.css';
 
 // Re-exports preserving the previous public surface of this module.
@@ -48,6 +54,11 @@ export function BrandPreviewCard({
 }: BrandPreviewCardProps) {
   const t = useT();
   const analytics = useAnalytics();
+  const workspaceState = useWorkspaceContext();
+  const mutationWorkspaceContext = workspaceState.context;
+  const resourceReadIdentity = resolveWorkspaceResourceReadIdentity(workspaceState);
+  const workspaceContext = resourceReadIdentity?.context ?? null;
+  const workspaceReadGeneration = workspaceResourceReadIdentityKey(resourceReadIdentity);
   const compact = variant === 'compact';
   const { meta, brand } = summary;
   const name = brand?.name?.trim() || (meta.sourceUrl ? new URL(meta.sourceUrl).hostname.replace(/^www\./, '') : 'Brand');
@@ -62,7 +73,7 @@ export function BrandPreviewCard({
   // pointer and that, so the delete goes through the super-confirmation gate.
   const [deleteGateOpen, setDeleteGateOpen] = useState(false);
 
-  const kit = brandSummaryToKit(summary);
+  const kit = brandSummaryToKit(summary, workspaceContext);
 
   useEffect(() => {
     setBackingProjectMissing(false);
@@ -152,6 +163,13 @@ export function BrandPreviewCard({
       return false;
     }
     try {
+      const response = await fetch(`/api/brands/${encodeURIComponent(meta.id)}`, {
+        method: 'DELETE',
+        ...(mutationWorkspaceContext
+          ? { headers: workspaceProjectHeaders(mutationWorkspaceContext) }
+          : {}),
+      });
+      if (!response.ok) throw new Error(`brand delete ${response.status}`);
       navigate({ kind: 'home', view: 'brands' }, { replace: true });
       await onChanged?.();
       return true;
@@ -160,6 +178,17 @@ export function BrandPreviewCard({
       return false;
     }
   }, [busy, meta.id, meta.designSystemId, onChanged, analytics.track, projectId]);
+  }, [
+    busy,
+    meta.id,
+    meta.designSystemId,
+    name,
+    onChanged,
+    t,
+    analytics.track,
+    projectId,
+    mutationWorkspaceContext,
+  ]);
 
   const badgeSlot = extracting ? (
     <span className={`${styles.badge} ${styles.badgeBusy}`} role="status">
@@ -240,5 +269,15 @@ export function BrandPreviewCard({
         />
       ) : null}
     </>
+    <DesignKitView
+      kit={kit}
+      workspaceContext={workspaceContext}
+      workspaceReadGeneration={workspaceReadGeneration}
+      variant={variant}
+      badgeSlot={badgeSlot}
+      actionsSlot={actionsSlot}
+      noticeSlot={noticeSlot}
+      dataTestId="brand-preview-card"
+    />
   );
 }

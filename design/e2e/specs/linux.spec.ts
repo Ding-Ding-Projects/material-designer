@@ -168,6 +168,7 @@ linuxHeadlessDescribe('packaged linux headless runtime smoke', () => {
       }
       expectPathInside(desktopLog.logPath, join(runtimeNamespaceRoot, 'logs', 'desktop'));
       expect(desktopLog.lines.join('\n')).toContain('Material Designer is running');
+      expect(desktopLog.lines.join('\n')).toContain('OpenDesign is running');
 
       const stop = await runToolsPackJson<LinuxStopResult>('stop', ['--headless']);
       started = false;

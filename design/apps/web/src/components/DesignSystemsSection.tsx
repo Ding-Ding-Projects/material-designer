@@ -16,6 +16,8 @@ import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { orderDesignSystemGroups } from './design-system-group-order';
 import { AnimatePresence } from 'motion/react';
+import { useWorkspaceContext } from '../collab/useWorkspaceContext';
+import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 
 // Sibling Settings section that hosts the design-systems registry.
 // Lifted out of the previous LibrarySection so each surface (functional
@@ -77,10 +79,18 @@ export function DesignSystemsSection({
   const [importedDesignSystem, setImportedDesignSystem] = useState<DesignSystemSummary | null>(null);
   const [highlightedDesignSystemId, setHighlightedDesignSystemId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  const { context: workspaceContext } = useWorkspaceContext();
+  const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
 
   useEffect(() => {
-    fetchDesignSystems().then(setDesignSystems);
-  }, []);
+    let cancelled = false;
+    fetchDesignSystems(workspaceContext).then((systems) => {
+      if (!cancelled) setDesignSystems(systems);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceIdentity]);
 
   const disabledDS = useMemo(
     () => new Set(cfg.disabledDesignSystems ?? []),
@@ -185,7 +195,11 @@ export function DesignSystemsSection({
     const targetId = renameTarget.id;
     setRenaming(true);
     setRenameError(null);
-    const updated = await updateDesignSystemDraft(targetId, { title: trimmed });
+    const updated = await updateDesignSystemDraft(
+      targetId,
+      { title: trimmed },
+      workspaceContext,
+    );
     if (updated) {
       // The rename happened server-side, so reflect it in the list even if the
       // user has since moved to another rename session.

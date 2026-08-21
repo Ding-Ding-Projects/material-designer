@@ -163,7 +163,7 @@ describe('readLangfuseConfig', () => {
 });
 
 describe('readTelemetrySinkConfig', () => {
-  it('prefers the Open Design telemetry relay when configured', () => {
+  it('prefers the OpenDesign telemetry relay when configured', () => {
     const cfg = readTelemetrySinkConfig({
       OPEN_DESIGN_TELEMETRY_RELAY_URL: 'https://telemetry.open-design.ai/api/langfuse//',
       LANGFUSE_PUBLIC_KEY: 'pk',
@@ -1006,6 +1006,44 @@ describe('buildTracePayload', () => {
     });
   });
 
+  it('keeps ACP usage on a failed run for post-run diagnostics', () => {
+    const batch = buildTracePayload(
+      makeCtx({
+        run: {
+          runId: 'run-failed-with-usage',
+          status: 'failed',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_004_500,
+          failure: {
+            failure_category: 'timeout',
+            failure_detail: 'timeout',
+            failure_stage: 'first_token_wait',
+            retryable: true,
+            user_action: 'retry',
+          },
+        },
+      }),
+    );
+    const trace = (batch[0] as any).body;
+    const generation = bodyOf(batch, 'generation-create', 'llm');
+
+    expect(trace.metadata.tokens).toMatchObject({
+      input: 1234,
+      output: 567,
+      total: 2051,
+      cacheReadInput: 200,
+      cacheCreationInput: 50,
+    });
+    expect(generation.usage).toMatchObject({
+      input: 1484,
+      output: 567,
+      total: 2051,
+      unit: 'TOKENS',
+    });
+    expect(trace.metadata.failure_category).toBe('timeout');
+    expect(trace.metadata.failure_detail).toBe('timeout');
+  });
+
   it('uses conversationId as sessionId when within length limit', () => {
     const batch = buildTracePayload(makeCtx());
     expect((batch[0] as any).body.sessionId).toBe(
@@ -1318,6 +1356,79 @@ describe('buildTracePayload', () => {
     expect(metadata.time_to_first_token_ms).toBe(40);
     expect(metadata.tool_call_count).toBe(2);
     expect(metadata.total_duration_ms).toBe(100);
+  });
+
+  it('uses the response anchor for model-active on an ACP tool-first run', () => {
+    const batch = buildTracePayload(
+      makeCtx({
+        run: {
+          runId: 'run-model-active-acp',
+          status: 'succeeded',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_030_000,
+          timingMarks: {
+            startChatRunStartedAt: 1_700_000_000_100,
+            stdinWriteEndAt: 1_700_000_000_500,
+            // ACP emits the canonical tool_use when the call is terminal, so
+            // the event arrived at 20s while the tool began at 4s. A tool-only
+            // turn never produces a text token at all.
+            firstModelResponseAt: 1_700_000_004_000,
+            firstModelEventAt: 1_700_000_020_000,
+            finalizeStartAt: 1_700_000_029_000,
+          },
+        },
+      }),
+    );
+
+    const generation = bodyOf(batch, 'generation-create', 'llm');
+    const measured =
+      generation.metadata.performance_diagnostics.semantic_phases.measured;
+
+    // `model_active_duration_ms` anchors on the earliest of the three marks,
+    // which is the response at 4s. Ignoring it here reports 10s against the
+    // analytics value of 26s for the same run -- on the exact runtime shape
+    // this change targets.
+    expect(measured['model-active']).toMatchObject({
+      duration_ms: 26_000,
+      status: 'measured',
+    });
+  });
+
+  it('measures model-active on the same boundaries as the analytics metric', () => {
+    const batch = buildTracePayload(
+      makeCtx({
+        run: {
+          runId: 'run-model-active',
+          status: 'succeeded',
+          startedAt: 1_700_000_000_000,
+          endedAt: 1_700_000_010_000,
+          timingMarks: {
+            startChatRunStartedAt: 1_700_000_000_100,
+            processSpawnedAt: 1_700_000_000_300,
+            stdinWriteEndAt: 1_700_000_000_500,
+            // Text-first: the server stamps first-token before the send() path
+            // records the model-event mark, so the two are not equal and the
+            // earlier one is the true start of the response.
+            firstTokenAt: 1_700_000_001_000,
+            firstModelEventAt: 1_700_000_001_200,
+            finalizeStartAt: 1_700_000_009_000,
+          },
+        },
+      }),
+    );
+
+    const generation = bodyOf(batch, 'generation-create', 'llm');
+    const measured =
+      generation.metadata.performance_diagnostics.semantic_phases.measured;
+
+    // `model_active_duration_ms` takes the earliest of the two marks and runs
+    // to run end. This entry exists to be compared against that number, so a
+    // different window here makes PostHog and Langfuse disagree on the same
+    // run.
+    expect(measured['model-active']).toMatchObject({
+      duration_ms: 9_000,
+      status: 'measured',
+    });
   });
 
   it('adds duration spans for run timing marks', () => {
@@ -1953,6 +2064,76 @@ describe('reportRunCompleted', () => {
     expect(result.langfuse_delivery_status).toBe('accepted');
   });
 
+  it.each([401, 403])(
+    'fails object registration closed when Vela rejects auth with %i',
+    async (status) => {
+      vi.stubEnv(
+        'OPEN_DESIGN_TELEMETRY_RELAY_URL',
+        'https://telemetry.open-design.ai/api/langfuse',
+      );
+      const fetchSpy = vi.fn().mockResolvedValue(new Response('', { status }));
+
+      const result = await reportRunCompleted(
+        makeCtx({
+          prefs: { metrics: true, content: true, artifactManifest: true },
+        }),
+        {
+          config: {
+            kind: 'vela',
+            apiUrl: 'https://vela.example.test',
+            controlKey: 'ck_expired',
+            timeoutMs: 1_000,
+            retries: 0,
+          },
+          deliveryPurpose: 'object-registration',
+          fetchImpl: fetchSpy as any,
+        },
+      );
+
+      expect(fetchSpy.mock.calls.map((call) => call[0])).toEqual([
+        'https://vela.example.test/api/v1/open-design/telemetry',
+      ]);
+      expect(result).toEqual({
+        langfuse_expected: true,
+        langfuse_delivery_status: 'failed',
+        langfuse_drop_reason: `vela_${status}`,
+      });
+    },
+  );
+
+  it('fails object registration closed when the Vela installation identity is missing', async () => {
+    vi.stubEnv(
+      'OPEN_DESIGN_TELEMETRY_RELAY_URL',
+      'https://telemetry.open-design.ai/api/langfuse',
+    );
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+
+    const result = await reportRunCompleted(
+      makeCtx({
+        installationId: null,
+        prefs: { metrics: true, content: true, artifactManifest: true },
+      }),
+      {
+        config: {
+          kind: 'vela',
+          apiUrl: 'https://vela.example.test',
+          controlKey: 'ck_secret',
+          timeoutMs: 1_000,
+          retries: 0,
+        },
+        deliveryPurpose: 'object-registration',
+        fetchImpl: fetchSpy as any,
+      },
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      langfuse_expected: true,
+      langfuse_delivery_status: 'failed',
+      langfuse_drop_reason: 'missing_sink_config',
+    });
+  });
+
   it('does not anonymously overwrite a throttled Vela delivery', async () => {
     vi.stubEnv(
       'OPEN_DESIGN_TELEMETRY_RELAY_URL',
@@ -2145,7 +2326,7 @@ describe('reportRunCompleted', () => {
     expect(JSON.stringify(batch)).not.toContain('sk-raw');
   });
 
-  it('POSTs serialized ingestion batches to the Open Design telemetry relay', async () => {
+  it('POSTs serialized ingestion batches to the OpenDesign telemetry relay', async () => {
     const relayConfig: TelemetrySinkConfig = {
       kind: 'relay',
       relayUrl: 'https://telemetry.open-design.ai/api/langfuse',
@@ -2576,6 +2757,9 @@ describe('reportRunFeedback', () => {
   });
 
   it('posts feedback scores to Vela when completed-run telemetry uses Vela', async () => {
+    // tests/setup.ts defaults OPEN_DESIGN_VELA_TELEMETRY to 'off' so unit
+    // tests never route through a developer's real Vela profile; this test
+    // exercises exactly that sink, so opt back in explicitly.
     vi.stubEnv('OPEN_DESIGN_VELA_TELEMETRY', 'on');
     vi.stubEnv('VELA_CONTROL_KEY', 'ck_secret');
     vi.stubEnv('VELA_API_URL', 'https://vela.example.test');
@@ -2625,6 +2809,7 @@ describe('reportRunFeedback', () => {
   });
 
   it('does not fall back anonymously when Vela rejects feedback auth', async () => {
+    // Same opt-in as above: the setup default keeps the Vela sink off.
     vi.stubEnv('OPEN_DESIGN_VELA_TELEMETRY', 'on');
     vi.stubEnv('VELA_CONTROL_KEY', 'ck_expired');
     vi.stubEnv('VELA_API_URL', 'https://vela.example.test');

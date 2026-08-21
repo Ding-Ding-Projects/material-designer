@@ -11,6 +11,24 @@ multi-select and the full set of its actions in bulk.
 > bulk actions are **not started**. Nothing in this file has been observed
 > running, because the application has not been built here.
 
+### Agent handoff archives
+
+The project Download surface now distinguishes two complete-tree handoffs:
+
+- **Website handoff ZIP** — the existing project archive, containing the project files,
+  `DESIGN-HANDOFF.md`, and `DESIGN-MANIFEST.json`.
+- **Desktop application scaffold ZIP** — the same complete project tree plus a generated
+  `desktop/` source scaffold with a private `package.json`, a sandboxed Electron main process,
+  a narrow preload marker, and `desktop-scaffold.json`.
+
+The desktop scaffold is deliberately not an installer or release. It exposes no filesystem,
+shell, environment, credential, or arbitrary IPC bridge; accepts only a relative entry file
+inside the exported source root; records Squirrel.Windows as the eventual Windows packaging
+target; and records that code signing remains disabled. If a project already owns one of the
+generated `desktop/` paths, export fails instead of overwriting it. Historical single-file
+versions do not offer this complete-project scaffold and never fall back to a misleading
+one-file desktop ZIP.
+
 ## Behaviour
 
 ### Export is a property of every surface, not a feature of one

@@ -28,6 +28,58 @@ version section when a release carries them.
 
 ### Changed
 
+- **The imported Open Design baseline advances by 309 commits to `393af2f99`,
+  and Download now offers explicit agent handoffs.** The Tow Fat, byte manifest,
+  and 12,835-file upstream mirror now point at v0.20.2. Non-declared paths were
+  imported as exact blobs; declared product changes were three-way merged. The
+  project ZIP remains the complete website handoff, while a new desktop scaffold
+  target adds a secure Electron source shell, manifest, and coding guide without
+  claiming to be an installer. Markdown next-step Download requests now open the
+  Markdown export menu, and narrow workspace action rows compact labels instead
+  of clipping the Download control.
+
+  Open Design baseline 一口氣追 309 個 commits 去 `393af2f99`，12,835 個 upstream
+  files 用原裝 blob 搬入嚟，產品自己改過嘅 file 就三方合併，唔係大水沖走晒。
+  Website ZIP 照舊係完整 handoff；新 desktop scaffold 加安全 Electron 外殼同
+  agent wiring guide，但唔會扮 installer。Markdown Download 同窄畫面 clipped
+  button 亦一齊執返正，唔再㩒完扮無事發生。
+
+- **Release checksums now use BOM-free UTF-8 with an explicit LF.** Removing
+  the BOM exposed the next cross-shell boundary in Release
+  [`32442336410`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32442336410):
+  PowerShell's CRLF made GNU `sha256sum` look for a filename ending in `\r`.
+  `File.WriteAllText` now writes exactly one LF-terminated checksum line. The
+  published installer digest already matched; this fixes the verifier input.
+
+  拆走 BOM 之後，`32442336410` 又照到下一粒蕉皮：PowerShell CRLF 令 GNU
+  `sha256sum` 以為 filename 尾有 `\r`。依家 `File.WriteAllText` 明確寫一行 LF；
+  published installer digest 本身一早一致，今次係修正 verifier 食嘅文字格式。
+
+- **Installed Squirrel builds now launch from user-local state and create real
+  Material Designer shortcuts.** Commit
+  [`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)
+  removes the hosted build machine's absolute runtime root from shipped config,
+  leaving tools-pack's explicit launch override intact. The Squirrel lifecycle
+  also creates/removes product-named Start-menu and desktop shortcuts itself,
+  targeting the Squirrel root launcher, and removes only the known wrong
+  Electron-named shortcuts. Signing and executable resource editing remain off.
+
+  Installed Squirrel build 之前帶埋 hosted machine 絕對 runtime path 出街，又因為
+  unsigned executable metadata 整咗 Electron shortcut。`cb03705b` 將普通 launch
+  放返 user-local state，tools-pack 特別 override 照舊；shortcut 亦正式叫 Material
+  Designer。Signing 同 executable resource editing 完全無開，無偷雞。
+
+- **The Windows daemon now opens a full Explorer-style folder browser.** The
+  legacy tree-only `FolderBrowserDialog` is replaced with the shell browser's
+  address bar, breadcrumbs, history, sidebar, search, contents/details views
+  and new-folder controls. A `FileOk` boundary accepts only an existing folder
+  or the exact current-folder sentinel, so choosing a real file cannot silently
+  link its parent directory ([`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)).
+
+  Windows daemon 舊 folder dialog 得棵樹，address bar、search、breadcrumb 全部請假。
+  而家換完整 Explorer browser；`FileOk` 只畀 existing folder 或精確 sentinel
+  過關，揀錯 file 唔會靜靜雞變成 link 佢個 parent。
+
 - **Release-created tag pushes no longer start another release.** Publishing
   `v0.16.128-r127.1` exposed that unrestricted `push:` triggers dispatched
   Release, Verify and Pages again for the new tag. All three workflows now

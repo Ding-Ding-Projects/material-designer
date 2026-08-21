@@ -5,7 +5,20 @@ import path from 'node:path';
 import JSZip from 'jszip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildProjectArchive } from '../src/projects.js';
+import {
+  buildProjectArchive,
+  createBatchArchiveStream,
+  createProjectArchiveStream,
+} from '../src/projects.js';
+
+async function collectStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.once('error', reject);
+    stream.once('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
 
 describe('buildProjectArchive', () => {
   let projectsRoot = '';
@@ -39,6 +52,52 @@ describe('buildProjectArchive', () => {
     expect(fileEntries).toEqual(['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'frames/phone.html', 'index.html', 'src/app.css']);
   });
 
+  it('exposes a consumable stream with the same archive contents', async () => {
+    const { stream, baseName } = await createProjectArchiveStream(
+      projectsRoot,
+      projectId,
+      'ui-design',
+    );
+    expect(baseName).toBe('ui-design');
+    const zip = await JSZip.loadAsync(await collectStream(stream));
+    const fileEntries = Object.values(zip.files)
+      .filter((entry) => !entry.dir)
+      .map((entry) => entry.name)
+      .sort();
+    expect(fileEntries).toEqual([
+      'DESIGN-HANDOFF.md',
+      'DESIGN-MANIFEST.json',
+      'frames/phone.html',
+      'index.html',
+      'src/app.css',
+    ]);
+  });
+
+  it('streams a validated batch without changing its entry names', async () => {
+    const { stream } = await createBatchArchiveStream(
+      projectsRoot,
+      projectId,
+      ['ui-design/index.html', 'ui-design/src/app.css'],
+    );
+    const zip = await JSZip.loadAsync(await collectStream(stream));
+    expect(
+      Object.values(zip.files)
+        .filter((entry) => !entry.dir)
+        .map((entry) => entry.name)
+        .sort(),
+    ).toEqual(['ui-design/index.html', 'ui-design/src/app.css']);
+  });
+
+  it('rejects an invalid batch before returning a download stream', async () => {
+    await expect(
+      createBatchArchiveStream(
+        projectsRoot,
+        projectId,
+        ['ui-design/index.html', 'missing.html'],
+      ),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
   it('zips the whole project when no root is given', async () => {
     const { buffer, baseName } = await buildProjectArchive(projectsRoot, projectId, '');
     expect(baseName).toBe('');
@@ -54,6 +113,54 @@ describe('buildProjectArchive', () => {
     // dotfiles and .artifact.json sidecars are filtered, matching listFiles
     expect(fileEntries.find((n) => n.includes('.hidden'))).toBeUndefined();
     expect(fileEntries.find((n) => n.endsWith('.artifact.json'))).toBeUndefined();
+  });
+
+  it('adds a secure desktop application scaffold without replacing the project tree', async () => {
+    const { buffer } = await buildProjectArchive(
+      projectsRoot,
+      projectId,
+      '',
+      undefined,
+      { target: 'desktop-scaffold' },
+    );
+    const zip = await JSZip.loadAsync(buffer);
+    const generated = [
+      'desktop/README.md',
+      'desktop/package.json',
+      'desktop/desktop-scaffold.json',
+      'desktop/src/main.cjs',
+      'desktop/src/preload.cjs',
+    ];
+    for (const name of generated) expect(zip.file(name)).not.toBeNull();
+    expect(await zip.file('ui-design/index.html')?.async('string')).toBe('<!doctype html>hi');
+    const manifest = JSON.parse(
+      await zip.file('desktop/desktop-scaffold.json')?.async('string') || '{}',
+    );
+    expect(manifest).toMatchObject({
+      schema: 'open-design.desktop-scaffold.v1',
+      mode: 'scaffold-only',
+      entryFile: 'ui-design/index.html',
+      packagingTarget: 'squirrel-windows',
+      codeSigning: 'disabled',
+    });
+    const main = await zip.file('desktop/src/main.cjs')?.async('string') || '';
+    expect(main).toContain('contextIsolation: true');
+    expect(main).toContain('nodeIntegration: false');
+    expect(main).toContain('sandbox: true');
+    expect(main).not.toMatch(/[A-Z]:\\|\/Users\//);
+  });
+
+  it('refuses to overwrite a project-owned desktop scaffold path', async () => {
+    const collision = path.join(projectsRoot, projectId, 'desktop');
+    await mkdir(collision, { recursive: true });
+    await writeFile(path.join(collision, 'package.json'), '{}');
+    await expect(buildProjectArchive(
+      projectsRoot,
+      projectId,
+      '',
+      undefined,
+      { target: 'desktop-scaffold' },
+    )).rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   it('rejects path traversal in root', async () => {

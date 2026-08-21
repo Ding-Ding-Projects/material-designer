@@ -22,6 +22,8 @@ import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import type { FigmaImportResult } from '@open-design/contracts';
 import { Button, VisuallyHidden } from '@open-design/components';
+import type { FigmaImportResult, WorkspaceCollabContext } from '@open-design/contracts';
+import { Button } from '@open-design/components';
 import { Icon } from './Icon';
 import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';
@@ -33,6 +35,9 @@ interface Props {
   /** Resolve the project to import into — an existing id (chat) or a freshly
    *  created one (homepage). Null means it couldn't be resolved. */
   resolveProjectId: () => Promise<string | null>;
+  /** Exact authority of the project being imported into. Project surfaces pass
+   * the persisted project scope; Home passes the context captured by create. */
+  workspaceContext?: WorkspaceCollabContext | null;
   /** Fired after a successful `.fig` import with the snapshot + project id. */
   onImported: (result: FigmaImportResult, projectId: string) => void;
   /** Fired when the user submits a Figma URL instead of a file; omit to hide
@@ -64,6 +69,13 @@ const FILE_INPUT_HELPER_ID = 'figma-import-file-helper';
 
 export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigmaUrl }: Props) {
   const t = useT();
+export function FigmaImportModal({
+  onClose,
+  resolveProjectId,
+  workspaceContext = null,
+  onImported,
+  onFigmaUrl,
+}: Props) {
   const [mode, setMode] = useState<Mode>('file');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -172,7 +184,12 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
       });
       return;
     }
-    const outcome = await importProjectFigma(projectId, file, notes ? { notes } : undefined);
+    const outcome = await importProjectFigma(
+      projectId,
+      file,
+      notes ? { notes } : undefined,
+      workspaceContext,
+    );
     if (!outcome.ok) {
       setStatus('error');
       setError({
@@ -190,6 +207,7 @@ export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigm
     // Hand the snapshot + prompt to the host (prefill composer / navigate).
     onImported(outcome.result, projectId);
   }, [file, notes, resolveProjectId, onClose, onImported, t]);
+  }, [file, notes, onImported, resolveProjectId, workspaceContext]);
 
   const submitUrl = useCallback(async () => {
     const trimmed = url.trim();

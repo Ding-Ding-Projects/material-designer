@@ -1,11 +1,11 @@
 # Modifications to the imported work
 
-`design/` contains a copy of **Open Design** v0.16.1, licensed under the Apache
+`design/` contains a copy of **Open Design** v0.20.2, licensed under the Apache
 License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 
 - Upstream: <https://github.com/nexu-io/open-design>
-- Imported at commit: `517f39acde402c1a7af2189167a8d6957a3dac71`
-- Import date: 2026-08-03
+- Imported at commit: `393af2f991525a6c85cb04ee4aea0cd8967693c8`
+- Import date: 2026-08-21
 
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
 This file is that notice, kept in one place so a reader sees the whole delta
@@ -24,10 +24,27 @@ the **Changed files** heading of an entry.
 
 ## Import
 
-Copied byte-for-byte from the pinned submodule: all 11,799 files match the
+Copied byte-for-byte from the pinned submodule: all 12,835 files match the
 upstream blob ids exactly, file modes included.
 
 ## Changes
+
+### 2026-08-21 — Export a secure desktop application scaffold
+
+**Reason:** Project archives already carried the complete website source, a human-readable
+implementation handoff, and a machine-readable design manifest. They now offer an explicit
+desktop-scaffold target that adds a minimal, sandboxed Electron shell without claiming to be
+an installer or release. The generated main process accepts only the manifest's relative local
+entry file, keeps context isolation and the renderer sandbox enabled, exposes no privileged IPC,
+and records Squirrel.Windows plus the permanent no-signing boundary for the coding agent that
+finishes the application. The HTTP route rejects unknown targets and project-owned scaffold-path
+collisions rather than overwriting user content.
+
+**Changed files:**
+
+- `apps/daemon/src/import-export-routes.ts`
+- `apps/daemon/src/projects.ts`
+- `apps/daemon/tests/project-archive.test.ts`
 
 ### 2026-08-10 — Finish the production Material 3 shell against the checked-in UI contract
 

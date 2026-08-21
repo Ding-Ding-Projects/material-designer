@@ -37,7 +37,7 @@ if [ -e "$sub/.git" ]; then
     sed -E 's/^([0-7]+) ([0-9a-f]+) [0-9]+\t/\1\t\2\t/' |
     LC_ALL=C sort -t"$(printf '\t')" -k3,3 > "$tmp/upstream.tsv"
 
-  if [ -f "$manifest" ]; then
+  if [ -f "$manifest" ] && [ "${1:-}" != "--write-manifest" ]; then
     manifest_commit=$(sed -n 's/^# commit\t//p' "$manifest" | head -1)
     grep -v '^#' "$manifest" > "$tmp/manifest-body.tsv"
     if [ "$manifest_commit" != "$pinned" ]; then

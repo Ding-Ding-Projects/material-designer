@@ -97,7 +97,7 @@ A local-first design workspace, rebuilt on Material Design 3.
 ![Node](https://img.shields.io/badge/Node-24-5FA04E)
 ![pnpm](https://img.shields.io/badge/pnpm-10.33.2-F69220)
 ![Design](https://img.shields.io/badge/Material%20Design-3%20Expressive-6750A4)
-![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.16.1-lightgrey)
+![Upstream](https://img.shields.io/badge/upstream-Open%20Design%20v0.20.2-lightgrey)
 
 ![Material Designer running on Windows — the Material Design 3 home screen, showing the custom title bar, the prompt surface and the template rail](assets/screenshots/home-windows.png)
 
@@ -324,7 +324,7 @@ images and motion pieces — rendered in a sandboxed preview and exportable to H
 PPTX, ZIP, Markdown and MP4, with projects, files and database all staying on local disk.
 
 The application source in [`design/`](design/) is a byte-for-byte port of the Apache-2.0
-upstream release **Open Design v0.16.1**, imported verbatim and kept that way so the copy
+upstream release **Open Design v0.20.2**, imported verbatim and kept that way so the copy
 can be *proved* against its source rather than asserted. The work this repository adds is
 the Material Design 3 redesign of the product's own interface — specified by the mockup in
 [`mockups/`](mockups/) — a minimal rebrand to *Material Designer*, and bringing the product
@@ -348,8 +348,8 @@ but an allowlist a script enforces.
 
 ## Status
 
-**The port verifies, and every rebrand change is declared.** `design/` holds all **11,799**
-files of upstream Open Design v0.16.1. [`scripts/verify-port.sh`](scripts/verify-port.sh)
+**The port verifies, and every rebrand change is declared.** `design/` holds all **12,835**
+files of upstream Open Design v0.20.2. [`scripts/verify-port.sh`](scripts/verify-port.sh)
 reports **0 gaps — exit 0**: 0 missing, 0 differing bytes, 0 mode mismatches, 0 object-id
 mismatches, 0 extra paths, 0 untracked files, 0 stale notices.
 
@@ -385,7 +385,7 @@ self-hosted labels. The labelled workflows have not yet produced a new verdict:
 
 | Check | Where | Outcome |
 | --- | --- | --- |
-| Port integrity on a clean checkout | *Verify*, Linux | ✅ 11,799 files, 0 gaps |
+| Port integrity on the current checkout | Local pure-shell verifier | ✅ 12,835 upstream files, 0 gaps at `393af2f99`; hosted verdict pending |
 | Stylesheet brace balance across every tracked `.css` | *Verify*, Linux | ✅ |
 | Translation keys declared, every locale complete | *Verify*, Linux | ✅ |
 | Workspace guard, craft lint, translation coverage | *Verify*, Linux | ✅ |
@@ -506,7 +506,7 @@ pnpm tools-pack win build --to squirrel
 <summary><b>Repository layout</b> — what each top-level directory holds</summary>
 
 ```
-design/            Open Design v0.16.1, byte-for-byte. 11,799 files. Do not edit
+design/            Open Design v0.20.2, byte-for-byte. 12,835 upstream files. Do not edit
                    without declaring the path in MODIFICATIONS.md — the verifier
                    fails otherwise, by design.
   apps/daemon      Express 5 + SQLite + SSE local daemon; the `od` CLI; MCP server
@@ -866,8 +866,8 @@ forbids. Those gaps are recorded rather than papered over.
 <details>
 <summary><b>Provenance and licence</b> — upstream, the pinned commit, Apache-2.0 and trademarks</summary>
 
-**Upstream.** <https://github.com/nexu-io/open-design> — Open Design **v0.16.1**, pinned at
-commit `517f39acde402c1a7af2189167a8d6957a3dac71`.
+**Upstream.** <https://github.com/nexu-io/open-design> — Open Design **v0.20.2**, pinned at
+commit `393af2f991525a6c85cb04ee4aea0cd8967693c8`.
 
 **Licence.** Apache License 2.0. The full text ships at [`design/LICENSE`](design/LICENSE)
 and applies to everything under `design/`. Work added by this repository is offered under the

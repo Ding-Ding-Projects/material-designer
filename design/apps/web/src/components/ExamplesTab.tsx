@@ -361,7 +361,7 @@ export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
       <div className="examples-toolbar">
         <div className="examples-search">
           <span className="search-icon" aria-hidden>
-            <Icon name="search" size={13} />
+            <Icon name="search" size={14} />
           </span>
           <RegexSearchField
             search={searchRegex}

@@ -53,9 +53,12 @@ requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does no
 requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
 requireText(release, 'dim-sum photo attachment temporarily skipped by current owner direction', "release.yml does not record the temporary owner-authorized photo exception");
 requireText(release, 'status=temporarily-skipped', "release.yml does not expose the temporary photo-exception status");
-requireText(release, 'Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding ascii', "release.yml does not write a BOM-free sha256sum-compatible checksum");
+requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
+requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");
+requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not keep the checksum BOM-free");
 requireText(release, "branches:\n      - '**'", "release.yml still dispatches recursively on release-tag pushes");
 forbid(release, /release publication is blocked: the standing contract requires a downloadable dim-sum photo/, "release.yml still blocks publication on the temporarily skipped photo contract");
+forbid(release, /Set-Content[^\n]*assetName\.sha256/, "release.yml writes the checksum through platform-native line endings");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
 requireText(release, "$env:SQUIRREL_TEMP", "release.yml does not keep Squirrel's extraction temp root short");

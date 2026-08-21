@@ -613,7 +613,7 @@ export function PreviewModal({
                         ? { 'data-testid': `${primaryAction.testId}-menu` }
                         : {})}
                     >
-                      <Icon name="chevron-down" size={12} />
+                      <Icon name="chevron-down" size={14} />
                     </button>
                     {primaryMenuOpen ? (
                       <div
@@ -679,9 +679,9 @@ export function PreviewModal({
                     }}
                     disabled={!canOpenTemplateShareMenu}
                   >
-                    <Icon name="share" size={12} />
+                    <Icon name="share" size={14} />
                     <span>{t('preview.shareMenu')}</span>
-                    <Icon name="chevron-down" size={12} />
+                    <Icon name="chevron-down" size={14} />
                   </button>
                   {templateShareOpen ? (
                     <div className="share-menu-popover template-share-popover" role="menu">

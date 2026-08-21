@@ -3,7 +3,7 @@
 How the upstream design workspace was brought into this repository, and how the
 copy is proved to be faithful.
 
-The short version: `design/` holds **11,799 files** copied byte-for-byte from a
+The short version: `design/` holds **12,835 files** copied byte-for-byte from a
 pinned upstream commit. A committed shell script re-derives that claim from
 `git` alone, and `MODIFICATIONS.md` is both the licence-required change notice
 and the allowlist that script reads. The two cannot drift apart, because a file
@@ -25,9 +25,9 @@ The verifier runs on every push through the root `Verify` workflow — see
 | Fact | Value | Verified |
 | --- | --- | --- |
 | Upstream project | Open Design, Apache-2.0 | Yes — `design/LICENSE` |
-| Pinned upstream commit | `517f39acde402c1a7af2189167a8d6957a3dac71` | Yes — submodule `vendor/open-design` |
-| Upstream version | v0.16.1 | Yes — `design/package.json` |
-| Files under `design/` | 11,799 tracked, 11,799 expected | Yes — `scripts/verify-port.sh` |
+| Pinned upstream commit | `393af2f991525a6c85cb04ee4aea0cd8967693c8` | Yes — submodule `vendor/open-design` |
+| Upstream version | v0.20.2 | Yes — `design/package.json` |
+| Files under `design/` | 13,079 tracked, 12,835 expected upstream | Yes — `scripts/verify-port.sh`; declared product-only additions account for the difference |
 | Files declared as changed | Whatever `MODIFICATIONS.md` currently lists | Read the file; the count moves with every rebrand commit |
 | Verifier invariant | **`gaps` must be `0`** | Run the script, or read the `Verify` job summary |
 

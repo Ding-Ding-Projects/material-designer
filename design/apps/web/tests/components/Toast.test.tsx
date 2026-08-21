@@ -80,6 +80,9 @@ describe('Toast', () => {
     // one would not actually be distinguishing anything.
     expect(
       container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="M109 -120"]'),
+      // The error glyph is the Remix `error-warning-line` circle (inline SVG
+      // icon language from #5517) — distinct from the close-line dismiss glyph.
+      container.querySelector('.od-toast.tone-error .od-toast-icon path[d^="M12 22C6.47715"]'),
     ).not.toBeNull();
   });
 

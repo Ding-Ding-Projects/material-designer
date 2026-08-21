@@ -17,6 +17,31 @@ provenance, target-SHA, asset-hash or publication-verification requirement.
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
 
+- [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
+      submodule and manifest now identify `393af2f99` / v0.20.2, with 12,835
+      upstream files. Exact-byte verification is green after preserving and
+      three-way merging every declared product path touched upstream.
+- [x] **Add explicit website and desktop-application handoff ZIPs.** Website
+      project archives already carry `DESIGN-HANDOFF.md` and
+      `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source
+      scaffold for coding agents without presenting it as an installer.
+- [x] **Repair Download routing and narrow action geometry at source level.** A
+      queued Markdown Download opens its real export menu, and narrow action
+      rows compact labelled controls while retaining accessible names. Hosted
+      interaction and high-scale capture evidence remains pending.
+
+- [x] **Repair installed Squirrel startup identity and runtime roots.** Commit
+      [`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)
+      removes the CI host's absolute namespace root from installed config and
+      creates product-named shortcuts targeting the Squirrel root launcher.
+      Signing remains prohibited and disabled. Hosted package/build verification
+      is still required for the new commit before this becomes release evidence.
+- [x] **Replace the tree-only Windows folder picker with the full Explorer
+      browser.** The daemon fallback now carries address/breadcrumb navigation,
+      search, sidebar locations, folder contents/details and new-folder support,
+      with exact folder-only `FileOk` validation. Built-artifact interaction proof
+      remains pending the hosted package containing `cb03705b`.
+
 - [x] **Keep chat context project-wide across tab and file switches.** Commit
       [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
       removes implicit primary-file/Design Files preview selection and binds the

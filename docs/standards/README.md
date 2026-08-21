@@ -56,6 +56,7 @@ each has its own article because each guards a distinct failure.
 | [external-editor.md](external-editor.md) | Detect installed editors, persist the choice, degrade clearly — and open every export in one action, as a workspace root. |
 | [typography-and-icons.md](typography-and-icons.md) | The three Material Design 3 faces and the icon font: which files ship, from where, under which licence, which variable axes are live, and the CJK fallback the twenty locales depend on. |
 | [design-reference-parity.md](design-reference-parity.md) | The ten-screen reference/application route inventory, identical capture tuples, component audits, comparisons, visual diffs and negative completeness guard. |
+| [full-folder-browser.md](full-folder-browser.md) | The Windows Explorer-style folder-selection surface, exact folder-only validation, path semantics, failure behavior and built-artifact verification. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

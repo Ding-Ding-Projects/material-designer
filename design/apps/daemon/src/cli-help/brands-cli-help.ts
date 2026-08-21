@@ -38,7 +38,7 @@ Output:
   "<id>\\t<status>\\t<projectId>\\t<conversationId>"; finalize prints "<id>\\t<name>".
 
 Common options:
-  --daemon-url <url>   Open Design daemon HTTP base.`;
+  --daemon-url <url>   OpenDesign daemon HTTP base.`;
 
 // `help`, `--help`, and `-h` all route to the usage text above.
 export function isBrandHelpArg(arg: string | undefined): boolean {
