@@ -53,6 +53,10 @@
 > green. No local Node/pnpm/Electron execution, hosted run, installed build,
 > runtime geometry or screen capture is claimed. The branch remains local and
 > unmerged for the integration owner to incorporate.
+> Follow-up commit
+> [`330d300d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/330d300d4ae3393e80ccac2ba51c7d459365fbed)
+> keeps the exact opener outside the portalled surface's outside-click dismissal,
+> so clicking the same trigger reliably toggles the menu.
 
 > [!IMPORTANT]
 > **FileViewer menu accessibility lane — 2026-08-21.** The source-level lane adds

@@ -41,6 +41,12 @@ version section when a release carries them.
   geometry and the dual viewer scopes. This is source-level evidence only: no
   installed build, runtime geometry, or screen capture is claimed.
 
+  Follow-up commit
+  [`330d300d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/330d300d4ae3393e80ccac2ba51c7d459365fbed)
+  keeps the exact opener out of outside-click dismissal, so clicking the same
+  trigger reliably toggles the surface instead of closing on pointerdown and
+  reopening on click.
+
   FileViewer menu ownership 同 focus boundary 而家講清楚晒。`919073e7a`
   將十個 menu 分好：普通 action 放入 nested menu collection，Share/Export/
   Access/Publish 呢啲混合內容就用 named dialog/group，listbox 唔會畀人撈亂；
@@ -49,6 +55,9 @@ version section when a release carries them.
   收返 focus，programmatic open 就明講冇 opener；placement 會量度、避位、
   clamp 同內部 scroll，search/toggle/action hit area 有 48px 底線。呢個係
   source-level evidence，未有 installed build、runtime geometry 或 screen-capture claim。
+
+  Follow-up `330d300d4` 會保護真正開 menu 嗰粒 trigger，撳同一粒掣就
+  可靠咁 toggle，唔會 pointerdown 收咗、click 又偷偷開返。
 
 - **FileViewer menus now search locally, restore focus, and wrap long labels.**
   Commit [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
