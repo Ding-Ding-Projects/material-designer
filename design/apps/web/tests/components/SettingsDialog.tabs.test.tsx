@@ -6,7 +6,7 @@
 // field wired to the command palette's own settings index.
 
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsDialog } from '../../src/components/SettingsDialog';
@@ -42,6 +42,38 @@ const SETTINGS_PAGE_CSS = readFileSync(
   new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
   'utf8',
 );
+const SETTINGS_DIALOG_SOURCE = readFileSync(
+  new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
+  'utf8',
+);
+const APP_SOURCE = readFileSync(
+  new URL('../../src/App.tsx', import.meta.url),
+  'utf8',
+);
+
+// Keep this list hand-written: a source guard that discovers only the
+// sections it already sees cannot notice a section disappearing altogether.
+// The named renderer markers also protect the former General children, whose
+// reachability was the defect that prompted this lane.
+const SETTINGS_RENDER_CONTRACTS: ReadonlyArray<readonly [string, string]> = [
+  ['execution', "activeSection === 'execution'"],
+  ['instructions', "activeSection === 'instructions'"],
+  ['memory', "activeSection === 'memory'"],
+  ['media', "activeSection === 'media'"],
+  ['mcpClient', "activeSection === 'mcpClient'"],
+  ['composio', "activeSection === 'composio'"],
+  ['integrations', "activeSection === 'integrations'"],
+  ['language', "activeSection === 'language'"],
+  ['appearance', '<AppearanceSection cfg={cfg} setCfg={setCfg} />'],
+  ['narrator', "activeSection === 'narrator'"],
+  ['critiqueTheater', '<CritiqueTheaterSection'],
+  ['notifications', '<NotificationsSection cfg={cfg} setCfg={setCfg} />'],
+  ['pet', '<PetSettings cfg={cfg} setCfg={setCfg} />'],
+  ['designSystems', "activeSection === 'designSystems'"],
+  ['projectLocations', '<ProjectLocationsSection cfg={cfg} setCfg={setCfg}'],
+  ['privacy', "activeSection === 'privacy'"],
+  ['about', "activeSection === 'about'"],
+];
 
 const baseConfig: AppConfig = {
   mode: 'api',
@@ -335,6 +367,52 @@ describe('Settings: the tab strip', () => {
 
     window.localStorage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, 'not-a-section');
     expect(readLastSettingsSection()).toBe('execution');
+  });
+});
+
+describe('Settings: Appearance reachability', () => {
+  it('mounts the real Appearance controls when that tab is selected', () => {
+    renderSettings('appearance');
+
+    expect(tab('appearance').getAttribute('aria-selected')).toBe('true');
+    expect(tabPanel().getAttribute('data-od-setting')).toBe('section:appearance');
+    expect(screen.getByTestId('appearance-ui-scale')).toBeTruthy();
+    expect(screen.getByTestId('appearance-reset')).toBeTruthy();
+  });
+
+  it('keeps the System / Light / Dark theme control live on the Appearance tab', () => {
+    renderSettings('appearance');
+
+    // These keys intentionally fall back to their stable key text when a
+    // locale has not supplied the Appearance copy yet; the semantic group and
+    // buttons remain addressable either way.
+    const themeGroup = screen.getByRole('group', { name: 'settings.appearance' });
+    const controls = within(themeGroup).getAllByRole('button');
+    expect(controls).toHaveLength(3);
+
+    fireEvent.click(within(themeGroup).getByRole('button', { name: 'settings.themeDark' }));
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    fireEvent.click(within(themeGroup).getByRole('button', { name: 'settings.themeSystem' }));
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
+  it('keeps one authoritative section state and one Appearance metadata entry', () => {
+    expect(SETTINGS_DIALOG_SOURCE.match(/const \[activeSection/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/^\s*appearance:\s*\{/gm) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/<AppearanceSection\s+cfg=/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain('normalizeSettingsSection');
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain('settings-nav-item');
+    expect(SETTINGS_DIALOG_SOURCE.match(/className="settings-content"/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/<SettingsTabStrip\b/g) ?? []).toHaveLength(1);
+    for (const [section, marker] of SETTINGS_RENDER_CONTRACTS) {
+      expect(SETTINGS_DIALOG_SOURCE, `${section} renderer contract`).toContain(marker);
+    }
+  });
+
+  it('lets the typed direct route choose Appearance before the page mounts', () => {
+    expect(APP_SOURCE).toContain("route.settingsSection");
+    expect(APP_SOURCE).toContain("settingsSection: 'appearance'");
   });
 });
 

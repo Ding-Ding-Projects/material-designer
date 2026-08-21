@@ -22,6 +22,7 @@ import {
 } from '../analytics/amr-attribution';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
+  trackSettingsAppearanceClick,
   trackByokPreflightBlocked,
   trackSettingsByokModelsFetchResult,
   trackSettingsByokTestResult,
@@ -114,6 +115,7 @@ import type {
   ApiProtocol,
   ApiProtocolConfig,
   AppConfig,
+  AppTheme,
   AppVersionInfo,
   ConnectionTestResponse,
   DesignSystemGenerationJob,
@@ -210,6 +212,7 @@ import {
 } from '../collab/useProjectWorkspaceScope';
 import {
   applyAppearanceToDocument,
+  normalizeAccentColor,
   resolveAccentColor,
   type AppearanceTypography,
 } from '../state/appearance';
@@ -256,7 +259,6 @@ import settingsPageStyles from './settings/SettingsPage.module.css';
 import type { TranslationVars } from '../i18n';
 
 export type SettingsSection =
-  | 'general'
   | 'execution'
   | 'workspace'
   | 'instructions'
@@ -283,36 +285,6 @@ export type SettingsSection =
   // navigate() call so openSettings only owns dialog-bound sections.
   | 'library'
   | 'about';
-
-// Maps a requested section token onto the section that actually owns a nav
-// item. Only tokens whose content is *folded into* another section belong
-// here: language / appearance / notifications / pet / projectLocations /
-// critiqueTheater all render inside General, so a deep link to any of them
-// must land on General and highlight the General nav item. `pet` joined that
-// list when #5517's General page absorbed the pet picker — the composer's
-// "pet settings" entry point (App.openPetSettings) has no other destination,
-// so leaving it unmapped would deep-link into a section that renders nothing.
-//
-// Sections that keep their own render block but no longer have a nav item
-// (workspace, mcpClient, composio, designSystems) must NOT be listed: they
-// stay individually addressable through `initialSection`, and folding them
-// here would silently swallow a deep link into the wrong section.
-// `privacy` and `about` must not be listed either — they own nav items, and
-// mapping them to General used to send deep links to the wrong section with
-// the wrong nav item highlighted.
-function normalizeSettingsSection(section: SettingsSection): SettingsSection {
-  switch (section) {
-    case 'language':
-    case 'appearance':
-    case 'notifications':
-    case 'pet':
-    case 'projectLocations':
-    case 'critiqueTheater':
-      return 'general';
-    default:
-      return section;
-  }
-}
 
 interface ByokProviderPreset {
   id: string;
@@ -1564,7 +1536,7 @@ export function SettingsDialog({
   daemonLive,
   appVersionInfo,
   welcome,
-  initialSection = 'general',
+  initialSection = 'execution',
   initialHighlight = null,
   persistedProjectWorkspaceId = null,
   onPersist,
@@ -1617,8 +1589,8 @@ export function SettingsDialog({
     ReadonlySet<string>
   >(() => new Set());
   const previousInitialRef = useRef(initial);
-  // Accent only — the theme is a constant now that the app ships light-only.
   const lastSavedAppearanceRef = useRef({
+    theme: initial.theme ?? 'system',
     accentColor: resolveAccentColor(initial.accentColor),
   });
 
@@ -1634,9 +1606,10 @@ export function SettingsDialog({
 
   useEffect(() => {
     lastSavedAppearanceRef.current = {
+      theme: initial.theme ?? 'system',
       accentColor: resolveAccentColor(initial.accentColor),
     };
-  }, [initial.accentColor]);
+  }, [initial.theme, initial.accentColor]);
 
   useEffect(() => {
     const previousInitial = previousInitialRef.current;
@@ -1704,7 +1677,6 @@ export function SettingsDialog({
       ? { [initial.apiProtocol ?? 'anthropic']: byokProviderKeyForConfig(initial) }
       : {},
   );
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   // The page's own root, so the surfaces it covers can be taken out of the
   // keyboard path while it is open — see the `inert` effect below.
   const settingsPageRef = useRef<HTMLDivElement | null>(null);
@@ -1755,7 +1727,7 @@ export function SettingsDialog({
     // control does not have to exist yet at the moment of the click.
     requestSettingsReveal(hit.entry.id);
   }, []);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(() => normalizeSettingsSection(initialSection));
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   // Workspace region gating (E-frontend, D4.3). One shared read of the workspace
   // context; the Workspace section only renders for a team workspace whose
   // viewer may see workspace settings. Gate on the folded permission bits,
@@ -2151,7 +2123,7 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(normalizeSettingsSection(initialSection));
+    setActiveSection(initialSection);
   }, [initialSection]);
 
   // settings_view — fires whenever the active section changes (and once on
@@ -3469,6 +3441,7 @@ export function SettingsDialog({
             committedClearedByokProviderKeyRef.current = null;
           }
           lastSavedAppearanceRef.current = {
+            theme: persistedSnapshot.theme ?? 'system',
             accentColor: resolveAccentColor(persistedSnapshot.accentColor),
           };
           // If a newer edit landed while the request was in flight,
@@ -4027,7 +4000,6 @@ export function SettingsDialog({
   // BYOK content so "Local CLI" only renders once (in the seg-control tab),
   // not twice (heading + tab).
   const sectionHeader: Record<SettingsSection, { title: string; subtitle: string }> = {
-    general: { title: t('settings.general'), subtitle: t('settings.generalHint') },
     execution: { title: t('settings.title'), subtitle: t('settings.subtitle') },
     workspace: { title: t('settings.workspace'), subtitle: t('settings.workspaceHint') },
     instructions: {
@@ -4046,11 +4018,6 @@ export function SettingsDialog({
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
     appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
     narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
-    // The theme setting is gone (the app ships light-only), so `appearance` has
-    // no copy of its own. It survives only as a legacy deep-link token that
-    // `normalizeSettingsSection` folds into General, so this entry can never be
-    // the active header — it exists to keep the Record exhaustive.
-    appearance: { title: t('settings.general'), subtitle: t('settings.generalHint') },
     critiqueTheater: {
       title: t('critiqueTheater.settingsNav'),
       subtitle: t('critiqueTheater.settingsNavHint'),
@@ -4368,30 +4335,6 @@ export function SettingsDialog({
     );
   };
 
-  return (
-    // Roadmap § 2.4 Wave 6: a page, not a modal. No scrim, no `aria-modal`,
-    // no click-outside-to-close — there is no outside. It fills the shell's
-    // content area and leaves the title bar, the workspace tabs and the
-    // status bar live, because nothing in Settings is a decision the user has
-    // to make before the rest of the application may be used again.
-    <div
-      // Two classes, two jobs. The module class carries the page's own
-      // anatomy. The plain `settings-page` name is the global hook: it is
-      // what `styles/workspace/mention-home.css` names beside `.modal` so the
-      // shared label/hint/heading rhythm still reaches this subtree now that
-      // it is not a modal, and it is what a test or an e2e selector can
-      // write — a hashed module class cannot be.
-      className={`settings-page ${settingsPageStyles.page}`}
-      ref={settingsPageRef}
-      data-testid="settings-page"
-    >
-      <section
-        className={settingsPageStyles.surface}
-        // A named landmark rather than a dialog. `role="dialog"` on a surface
-        // with nothing behind it to return to would announce a modality that
-        // no longer exists.
-        role="region"
-        aria-labelledby="settings-dialog-title"
   const settingsSidebarToggleLabel = settingsSidebarCollapsed
     ? 'Expand settings sidebar'
     : 'Collapse settings sidebar';
@@ -4562,97 +4505,6 @@ export function SettingsDialog({
                 </button>
               </div>
             ) : null}
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
-              onClick={() => setActiveSection('execution')}
-              data-testid="settings-nav-execution"
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('settings.envConfigure')}</strong>
-                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'general' ? ' active' : ''}`}
-              onClick={() => setActiveSection('general')}
-            >
-              <Icon name="settings" size={18} />
-              <span>
-                <strong>{t('settings.general')}</strong>
-                <small>{t('settings.generalHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'instructions' ? ' active' : ''}`}
-              onClick={() => setActiveSection('instructions')}
-            >
-              <Icon name="edit" size={18} />
-              <span>
-                <strong>{t('settings.instructionsTitle')}</strong>
-                <small>{t('settings.instructionsNavSub')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
-              onClick={() => setActiveSection('memory')}
-            >
-              <Icon name="brain" size={18} />
-              <span>
-                <strong>{t('settings.memory')}</strong>
-                <small>{t('settings.memoryHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
-              onClick={() => setActiveSection('media')}
-            >
-              <Icon name="image" size={18} />
-              <span>
-                <strong>{t('settings.mediaProviders')}</strong>
-                <small>Image / video / audio</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('integrations')}
-            >
-              <Icon name="puzzle" size={18} />
-              <span>
-                <strong>{t('settings.mcpServerTitle')}</strong>
-                <small>{t('settings.mcpServerHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
-              onClick={() => setActiveSection('privacy')}
-            >
-              <Icon name="eye" size={18} />
-              <span>
-                <strong>{t('settings.privacy')}</strong>
-                <small>{t('settings.privacyHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
-              onClick={() => setActiveSection('about')}
-            >
-              <Icon name="settings" size={18} />
-              <span>
-                <strong>{t('settings.about')}</strong>
-                <small>{t('settings.aboutHint')}</small>
-              </span>
-            </button>
-          </aside>
-          <div className="settings-content" ref={settingsContentRef}>
           {activeSection === 'execution' ? (
             <>
               {/* Sticky shell: the 本机 CLI / API 提供商 switch stays pinned
@@ -6250,81 +6102,31 @@ export function SettingsDialog({
             </div>
           </section>
           ) : null}
-          {/* General is one scrollable page of `settings-general-block`
-              sections, per #5517. Every token that used to address a piece of
-              it (language / appearance / notifications / pet /
-              projectLocations / critiqueTheater) is folded into 'general' by
-              normalizeSettingsSection, so this single guard covers them all —
-              there is no longer a standalone render block for any of them. */}
-          {activeSection === 'general' ? (
-            <section className="settings-section settings-general-section">
-              <div className="settings-general-block">
-                <div className="settings-general-field">
-                  <span className="settings-general-label">{t('settings.language')}</span>
-                  <label className="settings-general-select">
-                    <select
-                      value={locale}
-                      aria-label={t('settings.language')}
-                      onChange={(event) => {
-                        const next = event.target.value as Locale;
-                        // P1 ui_click area=language — record the locale id
-                        // that was picked, regardless of whether it differs
-                        // from the current one (user clicked = signal).
-                        trackSettingsLanguageClick(analytics.track, {
-                          page_name: 'settings',
-                          area: 'language',
-                          element: next,
-                        });
-                        setLocale(next);
-                      }}
-                    >
-                      {LOCALES.map((code) => (
-                        <option key={code} value={code}>
-                          {LOCALE_LABEL[code]} · {code}
-                        </option>
-                      ))}
-                    </select>
-                    <Icon name="chevron-down" size={14} />
-                  </label>
-                </div>
-              </div>
-
-              <div className="settings-general-block">
-                <div className="settings-general-block-head">
-                  <h3>{t('settings.systemPrefsTitle')}</h3>
-                  <p className="hint">{t('settings.systemPrefsHint')}</p>
-                </div>
-                <NotificationsSection cfg={cfg} setCfg={setCfg} />
-              </div>
+          {activeSection === 'appearance' ? (
+            <AppearanceSection cfg={cfg} setCfg={setCfg} />
+          ) : null}
 
           {activeSection === 'narrator' ? (
             <NarratorSettingsPanel />
           ) : null}
 
           {activeSection === 'critiqueTheater' ? (
-            <CritiqueTheaterSection />
+            <CritiqueTheaterSection
+              callerWorkspaceContext={workspaceContext}
+              persistedProjectWorkspaceId={persistedProjectWorkspaceId}
+            />
           ) : null}
-              <div className="settings-general-block">
-                <div className="settings-general-block-head">
-                  <h3>{t('pet.navTitle')}</h3>
-                </div>
-                <PetSettings cfg={cfg} setCfg={setCfg} />
-              </div>
 
-              <div className="settings-general-block">
-                <div className="settings-general-block-head">
-                  <h3>{t('settings.projectLocations')}</h3>
-                </div>
-                <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
-              </div>
+          {activeSection === 'notifications' ? (
+            <NotificationsSection cfg={cfg} setCfg={setCfg} />
+          ) : null}
 
-              <div className="settings-general-block">
-                <CritiqueTheaterSection
-                  callerWorkspaceContext={workspaceContext}
-                  persistedProjectWorkspaceId={persistedProjectWorkspaceId}
-                />
-              </div>
-            </section>
+          {activeSection === 'pet' ? (
+            <PetSettings cfg={cfg} setCfg={setCfg} />
+          ) : null}
+
+          {activeSection === 'projectLocations' ? (
+            <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
           ) : null}
 
           {activeSection === 'designSystems' ? (
@@ -6617,24 +6419,29 @@ export function SettingsDialog({
           ) : null}
           </div>
         </div>
-      </section>
       </div>
   );
 
   if (pageMode) {
     return (
       <div className="settings-page-shell">
-        {surface}
-        {dshSetup ? (
-          <DeepSeekHarnessSetupDialog
-            busy={dshSetup.busy}
-            error={dshSetup.error}
-            onCancel={() => {
-              if (!dshSetup.busy) setDshSetup(null);
-            }}
-            onConfirm={() => void handleConfirmDshSetup()}
-          />
-        ) : null}
+        <div
+          className={`settings-page ${settingsPageStyles.page}`}
+          ref={settingsPageRef}
+          data-testid="settings-page"
+        >
+          {surface}
+          {dshSetup ? (
+            <DeepSeekHarnessSetupDialog
+              busy={dshSetup.busy}
+              error={dshSetup.error}
+              onCancel={() => {
+                if (!dshSetup.busy) setDshSetup(null);
+              }}
+              onConfirm={() => void handleConfirmDshSetup()}
+            />
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -9239,7 +9046,11 @@ function IntegrationsSection() {
   );
 }
 
-const THEMES: Array<{ value: AppTheme; labelKey: 'settings.themeSystem' | 'settings.themeLight' | 'settings.themeDark'; icon?: 'sun' | 'moon' }> = [
+const THEMES: Array<{
+  value: AppTheme;
+  labelKey: 'settings.themeSystem' | 'settings.themeLight' | 'settings.themeDark';
+  icon?: 'sun' | 'moon';
+}> = [
   { value: 'system', labelKey: 'settings.themeSystem' },
   { value: 'light', labelKey: 'settings.themeLight', icon: 'sun' },
   { value: 'dark', labelKey: 'settings.themeDark', icon: 'moon' },
@@ -9319,12 +9130,10 @@ function AppearanceSection({
   const { preferences, setPreferences } = useAppearancePreferences();
   const [pickerBackground, setPickerBackground] = useState<Rgb>(FALLBACK_PANEL_BACKGROUND);
 
-  // Apply the draft theme immediately so the user sees a live preview
-  // before hitting Save. SettingsDialog's cleanup reverts this on cancel.
-  //
-  // The panel colour is re-read in the same effect, after the write, so the
-  // picker's contrast ratio describes the surface the accent is actually
-  // about to sit on rather than the one it sat on before the theme flipped.
+  // Apply the draft theme and accent immediately so the user sees a live
+  // preview before hitting Save. SettingsDialog's cleanup reverts both on
+  // cancel; the segmented control is therefore a real persisted setting, not
+  // a decorative readout of the current OS palette.
   useLayoutEffect(() => {
     applyAppearanceToDocument({
       theme: current,
@@ -9364,7 +9173,13 @@ function AppearanceSection({
           and typography to the document, so a preset picked below is real
           on screen for as long as this editor is open. */}
       <AppearanceRuntime />
-      <div className="seg-control" role="group" aria-label={t('settings.appearance')} data-od-setting="appearance.theme" style={{ '--seg-cols': THEMES.length } as React.CSSProperties}>
+      <div
+        className="seg-control"
+        role="group"
+        aria-label={t('settings.appearance')}
+        data-od-setting="appearance.theme"
+        style={{ '--seg-cols': THEMES.length } as React.CSSProperties}
+      >
         {THEMES.map(({ value, labelKey, icon }) => (
           <button
             key={value}
@@ -9372,16 +9187,11 @@ function AppearanceSection({
             className={'seg-btn' + (current === value ? ' active' : '')}
             aria-pressed={current === value}
             onClick={() => {
-              // P1 ui_click area=appearance — `system|light|dark` only
-              // emits from the segmented control; accent swatch picks
-              // use `accent_color` with the swatch hex below.
-              if (value === 'system' || value === 'light' || value === 'dark') {
-                trackSettingsAppearanceClick(analytics.track, {
-                  page_name: 'settings',
-                  area: 'appearance',
-                  element: value,
-                });
-              }
+              trackSettingsAppearanceClick(analytics.track, {
+                page_name: 'settings',
+                area: 'appearance',
+                element: value,
+              });
               setCfg((c) => ({ ...c, theme: value }));
             }}
           >
@@ -9591,10 +9401,9 @@ function CritiqueTheaterSectionContent({
           <p className="hint">{t('critiqueTheater.settingsNavHint')}</p>
         </div>
       </div>
-      {/* Renders as the same `toggle-row` switch the rest of General uses, per
-          #5517 — the bare checkbox this replaces floated free of the label
-          because `.settings-general-block` hides the section-head that used to
-          anchor it. The .critique-theater-toggle styles were already shipped. */}
+      {/* Renders as the same `toggle-row` switch used by the other settings
+          sections. The section keeps its own heading and navigation identity,
+          so the control is never hidden inside another section's layout. */}
       <button
         type="button"
         className={`toggle-row critique-theater-toggle${enabled ? ' on' : ''}`}

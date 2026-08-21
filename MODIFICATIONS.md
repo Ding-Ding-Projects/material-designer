@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make the Appearance settings route addressable
+
+**Reason:** The Appearance panel was implemented but its section token was normalized into
+an unlisted General section, so the real controls could not be reached from the tab strip or
+from a direct settings URL. The route now carries a typed `appearance` subsection for
+`/settings/appearance`, while `/settings` keeps its ordinary settings entry behavior. The
+Appearance panel is the sole owner of its real controls, including the persisted System,
+Light and Dark theme selector, and the former General children retain their own reachable
+sections instead of being folded into a duplicate navigation branch.
+
+**Changed files:**
+
+- `apps/web/src/router.ts`
+- `apps/web/src/components/EntrySettingsMenu.tsx`
+- `apps/web/src/state/config.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/tests/router.test.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

@@ -1870,14 +1870,18 @@ function AppInner() {
     agents,
   ]);
 
-  // Stamp the app appearance onto the <html> element so CSS variables pick it
-  // up. The theme itself is a constant (light-only), but the accent still comes
-  // from config, and the stamp must be re-applied whenever that changes.
+  // Stamp the app appearance onto the <html> element so CSS variables and
+  // theme-aware consumers pick it up. System is represented by a missing
+  // data-theme attribute; explicit light/dark choices are stamped before the
+  // browser paints and re-applied whenever the persisted config changes.
   // useLayoutEffect (vs useEffect) fires before the browser paints, so no
   // 1-frame flash. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
-    applyAppearanceToDocument({ accentColor: config.accentColor });
-  }, [config.accentColor]);
+    applyAppearanceToDocument({
+      theme: config.theme,
+      accentColor: config.accentColor,
+    });
+  }, [config.theme, config.accentColor]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
@@ -4726,7 +4730,11 @@ function AppInner() {
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
-    navigate({ kind: 'home', view: 'settings' });
+    navigate(
+      section === 'appearance'
+        ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
+        : { kind: 'home', view: 'settings' },
+    );
   }, [identityScopeKey]);
 
   // Entry point from the failed-run AMR nudge: open Settings on the execution
@@ -5007,7 +5015,11 @@ function AppInner() {
       daemonLive={daemonLive}
       appVersionInfo={appVersionInfo}
       welcome={presentation === 'modal' ? settingsWelcome : false}
-      initialSection={settingsInitialSection}
+      initialSection={
+        route.kind === 'home' && route.view === 'settings' && route.settingsSection
+          ? route.settingsSection
+          : settingsInitialSection
+      }
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'

@@ -4,11 +4,13 @@
 editor anchored beside the element itself, with a continuous colour picker and a
 word-processor-depth typography editor behind every colour and font value.
 
-**Status: not started in the application.** The token substrate this standard
-stands on landed at commit `dea6b0a` — an MD3 token sheet plus a mapping layer —
-but no appearance editor, no continuous colour picker and no preset system
-exists in the application. The documentation site implements a subset of the
-runtime controls; the details and the gaps are in the status table below.
+**Status: source-implemented, runtime-unverified.** The application now has one
+reachable Appearance settings tab that mounts the real System / Light / Dark
+theme control, accent picker, presets, seed, density, scale and typography controls.
+`/settings/appearance` selects
+that tab from the typed route before the settings surface renders; the ordinary
+`/settings` route still opens the normal first tab. The controls' hosted build,
+restart persistence and installed-renderer behavior remain unverified here.
 
 > [!NOTE]
 > This file owns standard 3. [material-design-3.md](material-design-3.md) owns
@@ -23,7 +25,7 @@ runtime controls; the details and the gaps are in the status table below.
 
 | Control | Requirement |
 | --- | --- |
-| Theme | Light and dark. |
+| Theme | System, light and dark, persisted and applied live. |
 | Density | At least three steps, changing gap, padding and row height. |
 | Accent / seed colour | The whole scheme regenerates from it, not one tinted button. |
 | Font | Family chosen from installed **and** bundled faces, size scale, weight, with a live preview and a fallback that keeps Chinese, Japanese and Korean text legible. |
@@ -128,17 +130,17 @@ is bound to.
 | Requirement | Status |
 | --- | --- |
 | MD3 token layer to customize against | **Implemented** at commit `dea6b0a` — `design/apps/web/src/styles/md3-tokens.css` defines the role set and `tokens.css` became a mapping layer onto it. This is the substrate, not the feature. |
-| Theme light/dark in the application | **Partial upstream.** A theme exists; it is not yet a user-facing MD3 appearance control. |
-| Density control | **Not started** in the application. |
-| Seed colour with scheme regeneration | **Not started** in the application. |
-| Full font control | **Not started, and not designed.** |
+| Theme light/dark in the application | **Source implemented.** System, Light and Dark are persisted, rendered by the Appearance section and applied live to the document/native shell. Hosted and installed behavior remain unverified. |
+| Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
+| Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
+| Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
 | Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
-| Infinite colour picker | **Not started, and not designed.** The mockup offers four fixed swatches. |
-| Colour translator | **Not started** in the application. |
-| Word-depth typography editor | **Not started.** The mockup's tab-title card offers bold, italic, underline, one family button, one size button, two alignments and one colour swatch — a small fraction of the requirement. |
-| Named presets, export/import | **Not started, and not designed.** |
-| Per-element and global reset | **Not started.** |
-| Search bar on every appearance control | **Not started** in the application. |
+| Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
+| Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
+| Word-depth typography editor | **Partial source implementation.** The mounted controls cover the shipped supported properties and keep unsupported properties visible with reasons; the full per-element editor remains open. |
+| Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
+| Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
+| Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
 
 ### What the documentation site implements
 
@@ -215,10 +217,10 @@ anywhere.
 
 ## Verification
 
-**Nothing in this standard has been verified.** The application builds, installs,
-launches and passes an automated health check, and its unit suites pass — but no
-interactive audit of any appearance surface has been performed, and the feature
-does not exist to audit.
+**The current lane is source-level only.** The real Appearance section is now
+mounted and its focused source contracts are recorded, but the application has
+not been built or interacted with from an installed artifact in this lane. No
+runtime visual or display-scale verdict is claimed.
 
 Conformance requires all of:
 
