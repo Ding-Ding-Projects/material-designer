@@ -29,6 +29,36 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Converge shared shell geometry and tab controls
+
+**Reason:** The shared shell had duplicate declarations that allowed a legacy
+two-row routine to override the title, tab and status geometry, a malformed
+entry rail stylesheet, and a tab component with duplicated render fragments.
+The repair makes the four shell rows explicit, keeps scale-aware dimensions,
+removes the inline rail width, restores one-icon/one-label rail anatomy, adds a
+localized version segment to the status strip, and replaces the tab context
+menu's unbounded group list with a bounded field-owned searchable picker. The
+source guard records the negative regression for row ownership and CSS balance;
+hosted build and visual evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/AppStatusBar.module.css`
+- `apps/web/src/components/AppStatusBar.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/ProjectSearchModal.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.module.css`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/styles/home/entry-layout.css`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`
+
 ### 2026-08-21 — Complete Library pagination, refresh, filters, and modal behavior
 
 **Reason:** Enabling the production Library exposed several boundaries that were

@@ -1136,9 +1136,8 @@ export function EntryShell({
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
   const [projectSearchOpen, setProjectSearchOpen] = useState(false);
 
-  // ⌘K / Ctrl+K opens the project search palette — same as clicking the rail
-  // search box. ⌘B / Ctrl+B toggles the nav rail — same as the pinned Home
-  // tab's sidebar toggle.
+  // The global Ctrl/Cmd+Shift+F binding is owned by App.tsx. This shell only
+  // keeps the rail toggle shortcut local so there is one palette route.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -1151,11 +1150,6 @@ export function EntryShell({
           )
         )
       ) {
-        return;
-      }
-      if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
-        event.preventDefault();
-        setProjectSearchOpen(true);
         return;
       }
       const primary = isMacPlatform()
@@ -1642,9 +1636,6 @@ export function EntryShell({
     <div className="entry-shell entry-shell--no-header">
       <div
         className={`entry${railOpen ? ' entry--rail-open' : ''}`}
-        // The team/local shell is a labeled Manus-style rail, so widen the rail
-        // track (the base 56px icon-rail clips the labels + team affordances).
-        style={{ ['--entry-rail-width' as string]: '236px' }}
       >
         <EntryNavRail
           view={view}
@@ -1792,13 +1783,7 @@ export function EntryShell({
                 </span>
               </button>
             </div>
-            <UpdaterPopup
-              allowSilentUpdates={config.allowSilentUpdates}
-              silentUpdatePreferenceReady={daemonAppConfigReady}
-              onAllowSilentUpdatesChange={
-                onSilentUpdatePreferenceChange
-                  ?? ((allowSilentUpdates) => onConfigPersist({ ...config, allowSilentUpdates }))
-              }
+          </div>
           {/* #5517: no entry topbar. The rail toggle is the pinned Home tab in
               the workspace tabs bar (entryRailBridge), the updater popup host
               lives in the rail footer, and everything below is fixed-position

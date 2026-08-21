@@ -5597,16 +5597,15 @@ function AppInner() {
           ) : null}
           </AnimatePresence>
         </div>
-        {/* Last row of the shell. It is deliberately not listed in
-            `grid-template-rows`: the shell declares two rows (three with the
-            Windows title bar), and a fourth child lands in an implicit `auto`
-            row that takes the strip's own 28px. Adding it to the template
-            would mean maintaining every combination of that template, in
-            every sheet that re-declares it. */}
+        {/* The shell's fourth explicit row is reserved for this readout. Keeping
+            the status bar in the DOM rather than synthesising it in a sibling
+            overlay means the 28px geometry remains part of the layout contract
+            at every title-bar/platform combination. */}
         <AppStatusBar
           daemonLive={daemonLive}
           config={config}
           designSystems={designSystems}
+          version={appVersionInfo?.version}
         />
       </div>
       {clientType === 'desktop' ? null : (

@@ -82,6 +82,16 @@ with the project's standards.
       geometry, and 48×48 interaction targets. These remain source-only until
       the hosted and installed evidence exists, so this item stays unticked.
 
+- [ ] **Converge the shared shell chrome at source level.** The isolated
+      `codex/app-shell-chrome` lane makes the title bar, 42px tab strip, body
+      and 28px status bar explicit rows; removes the rail's inline 236px
+      override; repairs malformed rail and tab CSS; keeps one icon plus one
+      label per rail destination; removes the competing Ctrl/Cmd+K route; adds
+      the localized status version segment; and gives tab movement one bounded
+      field-owned searchable picker. The source guard and port verifier remain
+      the only lane evidence until hosted builds, keyboard checks and the
+      light/dark narrow/high-scale capture matrix run.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

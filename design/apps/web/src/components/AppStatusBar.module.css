@@ -179,7 +179,8 @@
 }
 
 .daemonItem,
-.spacer {
+.spacer,
+.versionItem {
   max-width: none;
 }
 
@@ -194,7 +195,8 @@
   }
 
   .daemonItem,
-  .spacer {
+  .spacer,
+  .versionItem {
     max-width: none;
   }
 }

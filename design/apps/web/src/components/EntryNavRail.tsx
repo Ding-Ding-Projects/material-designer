@@ -29,7 +29,8 @@ import { EntryHelpMenu } from './EntryHelpMenu';
 //     workspace tabs bar's pinned Home toggle.
 //   • Billing chip — real plan tier + explicitly scoped USD balance when Vela
 //     billing is available, with upgrade linking out to Vela Web.
-//   • Search box (opens the ⌘K project search palette via `onOpenSearch`).
+//   • Search box (opens the project search surface via `onOpenSearch`; the
+//     global palette remains exclusively on Ctrl/Cmd+Shift+F).
 //   • 最近 (Recents) → home, Community → community.
 //   • Team block (only when `context.workspaceType === 'team'`): an inline team
 //     switcher + the team destinations. In-client views: drafts / all projects /
@@ -113,6 +114,8 @@ import {
   workspaceAnalyticsDimensions,
 } from '../analytics/workspace';
 import { WorkbenchCampaignBadge } from './WorkbenchCampaignBadge';
+import { isMacPlatform } from '../utils/platform';
+import { formatShortcut } from './shortcuts/registry';
 
 const REPO_URL = 'https://github.com/nexu-io/open-design';
 const GITHUB_HELP_URL = `${REPO_URL}/issues/new`;
@@ -312,13 +315,9 @@ function NavButton({
       aria-expanded={ariaHasPopup ? Boolean(ariaExpanded) : undefined}
       {...(testId ? { 'data-testid': testId } : {})}
     >
-      {children}
-      {/* Always rendered; the collapsed rail hides it in CSS. Mounting it
-          only when expanded would rebuild the button and drop keyboard
-          focus at exactly the moment a keyboard user widened the rail. The
-          button's `aria-label` above is the accessible name, so this span
-          is never announced twice. */}
-      <span className="entry-nav-rail__label">{ariaLabel}</span>
+      {/* One icon and one sighted label. The button's aria-label is the only
+          accessible name; both visual children are explicitly hidden from the
+          accessibility tree so labels never announce twice. */}
       <span className="entry-nav-rail__btn-icon" aria-hidden>{children}</span>
       <span className="entry-nav-rail__btn-label">{label}</span>
     </button>
@@ -1218,6 +1217,7 @@ export function EntryNavRail({
   updaterSlot,
   footerNotice,
 }: Props) {
+  const paletteShortcut = formatShortcut('commandPalette.open', { mac: isMacPlatform() });
   const { t } = useI18n();
   const analytics = useAnalytics();
   const analyticsPage = entryViewToTracking(view);
@@ -1658,7 +1658,7 @@ export function EntryNavRail({
           >
             <Icon name="search" size={14} />
             <span className="entry-nav-rail__search-placeholder">{t('common.search')}</span>
-            <span className="entry-nav-rail__search-kbd" aria-hidden>⌘K</span>
+            <kbd className="entry-nav-rail__search-kbd" aria-hidden>{paletteShortcut}</kbd>
           </button>
           {/* This used to call `onClose` unconditionally and was always
               labelled "Collapse sidebar" — in a rail that starts collapsed. So

@@ -24,9 +24,6 @@
   --entry-rail-width-expanded: 260px;
 }
 
-  --entry-rail-width: 236px;
-}
-
 /* `.entry-shell` is always mounted inside `.workspace-shell__body`, which
    reserves its own space above for the app's persistent tab-chrome header
    (shell.css: `.workspace-shell` grid rows `44px minmax(0, 1fr)`) and already
@@ -68,7 +65,6 @@
 }
 .entry-shell--no-header .entry.entry--rail-open {
   grid-template-columns: var(--entry-rail-width-expanded, 260px) minmax(0, 1fr);
-  grid-template-columns: 0 minmax(0, 1fr);
   /* Collapse: hold the horizontal squeeze until the rows have cascaded out
      top-to-bottom (see the staggered rail-row fade below), otherwise the
      0-width clip would swallow the lower rows before their turn. */
@@ -76,11 +72,6 @@
   /* Translucent over the app-wash pastel ground (app-wash.css): the frosted
      rail and content cards float on the wash instead of a flat tone. */
   background: var(--veil-page);
-}
-.entry-shell--no-header .entry.entry--rail-open {
-  /* Expand is immediate — no hold — so opening stays snappy. */
-  transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1) 0ms;
-  grid-template-columns: var(--entry-rail-width, 56px) minmax(0, 1fr);
 }
 
 /* Left rail — the docked navigation column. Lives in the grid's first track
@@ -94,9 +85,8 @@
   border-right: 0;
   background: var(--md-sys-color-surface);
   padding: 12px 0 12px;
-  /* Fill the grid track (0 collapsed → rail width expanded) rather than a
-     fixed width, so a 0-wide track truly hides the rail instead of letting a
-     56px rail overflow it. The rail box itself is a transparent container; the
+  /* Fill the grid track (88 collapsed → 260 expanded) rather than carrying a
+     fixed width. The rail box itself is a transparent container; the
      visible surface is the floating `.entry-nav-rail__panel` inside it. */
   width: 100%;
   min-width: 0;
@@ -785,6 +775,7 @@
   font: inherit;
   font-size: 12.5px;
   text-align: start;
+}
 .entry-help-popover__social-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(58px, auto);
@@ -887,21 +878,15 @@
   appearance: none;
   position: relative;
   isolation: isolate;
-  width: 56px;
-  height: 32px;
+  width: 100%;
+  min-width: 0;
+  height: var(--md-ref-shell-nav-row-height, 56px);
+  min-height: var(--md-ref-shell-nav-row-height, 56px);
+  padding: 0 10px;
   border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
-  display: inline-flex;
-.entry-nav-rail__btn {
-  appearance: none;
-  width: 100%;
-  height: 33px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
   /* The workspace console entries (成员/数据大盘/Workspace 设置) render as
      anchors; the UA underline breaks the uniform nav-item look (#5517 rail
      items are plain). */
@@ -910,7 +895,7 @@
      steps up to --text-strong, selection goes near-black on light gray.
      68% lands the blend on the --text-soft step (52% read too faint). */
   color: color-mix(in srgb, var(--text) 68%, transparent);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
   gap: 9px;
@@ -1006,6 +991,7 @@
   .entry-nav-rail.is-open .entry-nav-rail__btn {
     height: 44px;
   }
+}
 /* Unread marker on a rail item's icon — same 6px red dot as the account
    menu's `__menu-item-dot`, pinned to the glyph's top-right corner. */
 .entry-nav-rail__btn-dot {
@@ -1131,7 +1117,7 @@
   color: var(--text-faint);
   font-size: 13px;
 }
-/* ⌘K shortcut hint pinned to the right of the search box. Taller (24px in the
+/* Ctrl/Cmd+Shift+F shortcut hint pinned to the right of the search box. Taller (24px in the
    34px box) so it hugs closer to the top/bottom edges instead of floating. */
 .entry-nav-rail__search-kbd {
   flex: 0 0 auto;

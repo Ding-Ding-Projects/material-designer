@@ -5611,6 +5611,7 @@ export interface Dict {
   'statusBar.densityCompact': string;
   'statusBar.densityDefault': string;
   'statusBar.densityComfortable': string;
+  'statusBar.version': string;
   'manualEdit.sectionImage': string;
   'manualEdit.sectionContent': string;
   'manualEdit.sectionPage': string;

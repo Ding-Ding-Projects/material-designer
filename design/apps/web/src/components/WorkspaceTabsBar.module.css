@@ -387,3 +387,96 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* The tab context menu's Move… surface is a real bounded picker, not an
+   ever-growing submenu. Its field owns its own anchored regex builder. */
+.groupMovePicker {
+  position: fixed;
+  z-index: 2100;
+  width: min(320px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  overflow: hidden;
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-l);
+  box-shadow: var(--md-sys-elevation-3);
+}
+
+.groupMovePickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.contextMenuClose {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: transparent;
+  color: inherit;
+}
+
+.contextMenuClose:hover,
+.contextMenuClose:focus-visible {
+  background: var(--ripple);
+}
+
+.contextMenuClose:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.groupMovePickerSearch {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+}
+
+.groupMovePickerList {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.groupMovePickerList .contextMenuItem {
+  width: 100%;
+  min-height: 48px;
+  justify-content: flex-start;
+}
+
+.groupMovePickerName {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupMovePickerCount {
+  min-width: 24px;
+  padding-inline: 6px;
+  text-align: center;
+  border-radius: var(--md-sys-shape-corner-full);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupMovePicker,
+  .contextMenuClose {
+    transition: none;
+  }
+}
