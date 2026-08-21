@@ -28,6 +28,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **The project-wide composer boundary no longer has a stale file-context hook.**
+  Commit [`5652e6c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/5652e6c88cda2f671abaf6012b876ecdf8af1710)
+  removes `FileWorkspace`'s obsolete active-context callback and active-tab
+  memo/effect, deletes visual tests for the removed active-file chip, and keeps
+  the complete workspace context collection for explicit `@` selection, quick
+  switching and toolbox actions. Hosted build, runtime interaction and capture
+  evidence remain pending.
+
+  Project-wide composer boundary 而家冇殘留 file-context hook。`5652e6c8`
+  清走 `FileWorkspace` 舊 active-context callback 同 active-tab memo/effect，
+  又刪走已經唔存在嘅 active-file chip visual tests；完整 workspace context
+  collection 照樣畀明確 `@` selection、quick switching 同 toolbox actions 用。
+  Hosted build、runtime interaction 同 capture 證據仍然 pending。
+
 - **Project chat context now stays project-wide after source reconciliation.** Commit
   [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
   removes the orphaned active-file symbols and file-mode styling that could return after
