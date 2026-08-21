@@ -42,6 +42,7 @@ export const STUDIO_FIXTURE_TIME = '2026-08-02T21:22:17.000Z';
 export const STUDIO_FIXTURE_TIME_MS = Date.parse(STUDIO_FIXTURE_TIME);
 export const STUDIO_FIXTURE_VERSION_ID = 'fixture-version-1';
 export const STUDIO_FIXTURE_CAPTURE_RUN_ID_PATTERN = /^run-[0-9a-f]{32}$/;
+export const STUDIO_FIXTURE_LIFECYCLE_EVENT = 'material-designer:studio-fixture-lifecycle';
 
 /**
  * The capture route owns appearance and language. These values are deliberately
@@ -188,6 +189,11 @@ function currentStudioFixtureCaptureRunId(): string | null {
   return typeof value === 'string' && STUDIO_FIXTURE_CAPTURE_RUN_ID_PATTERN.test(value)
     ? value
     : null;
+}
+
+function currentStudioFixtureCaptureWitnessValue(): unknown {
+  if (typeof globalThis === 'undefined') return null;
+  return (globalThis as CaptureGlobals).__MATERIAL_DESIGNER_CAPTURE_TUPLE__ ?? null;
 }
 
 const STUDIO_ROUTE_QUERY_KEYS = [
@@ -371,8 +377,7 @@ export function studioFixtureCaptureWitnessMatches(
 }
 
 function currentStudioFixtureCaptureWitness(): unknown {
-  if (typeof globalThis === 'undefined') return null;
-  return (globalThis as CaptureGlobals).__MATERIAL_DESIGNER_CAPTURE_TUPLE__ ?? null;
+  return currentStudioFixtureCaptureWitnessValue();
 }
 
 export function studioFixtureCaptureSessionIsValid(
@@ -385,13 +390,76 @@ export function studioFixtureCaptureSessionIsValid(
     && studioFixtureCaptureWitnessMatches(route, witness);
 }
 
-export function isStudioFixtureCaptureStorageLocked(): boolean {
-  const route = studioFixtureRouteFromCurrentLocation();
-  if (route) return true;
+function captureLocationFromWindow(): URL | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return new URL(window.location.href);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A capture-shaped address is a refusal boundary even when its tuple is bad.
+ * Falling through to the ordinary app or fetch path would make a malformed
+ * capture look like a successful product launch and could expose user state.
+ */
+export function isStudioFixtureCaptureAddress(input?: string | URL | Location): boolean {
+  let url: URL;
+  try {
+    const value = input ?? captureLocationFromWindow();
+    if (value === null) return false;
+    url = value instanceof URL
+      ? value
+      : new URL(typeof value === 'string' ? value : value.href);
+  } catch {
+    return false;
+  }
+  const canonicalAddress = isStudioFixtureRendererEnvelope(url);
+  if (canonicalAddress) return true;
   const session = activeStudioFixtureSession;
   return session !== null
+    && url.protocol === STUDIO_RENDERER_PROTOCOL
+    && url.hostname === STUDIO_RENDERER_HOST
+    && url.port === ''
+    && url.username === ''
+    && url.password === ''
+    && url.hash === ''
+    && url.search === ''
+    && isFixtureProjectPath(url.pathname);
+}
+
+/** True when the current capture-shaped location must fail closed. */
+export function studioFixtureCaptureRefusedForCurrentLocation(): boolean {
+  if (!isStudioFixtureCaptureAddress()) return false;
+  const location = captureLocationFromWindow();
+  if (!location) return true;
+  const session = activeStudioFixtureSession;
+  if (session
+    && isFixtureCaptureLocation(location)
     && currentStudioFixtureCaptureRunId() === session.captureRunId
-    && studioFixtureCaptureWitnessMatches(session.route, currentStudioFixtureCaptureWitness());
+    && studioFixtureCaptureWitnessMatches(session.route, currentStudioFixtureCaptureWitness())) {
+    return false;
+  }
+  const route = parseStudioFixtureRoute(location);
+  return route === null
+    || !studioFixtureCaptureSessionIsValid(
+      route,
+      currentStudioFixtureCaptureRunId(),
+      currentStudioFixtureCaptureWitness(),
+    );
+}
+
+function dispatchStudioFixtureLifecycle(active: boolean): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(STUDIO_FIXTURE_LIFECYCLE_EVENT, {
+    detail: { active },
+  }));
+}
+
+export function isStudioFixtureCaptureStorageLocked(): boolean {
+  if (studioFixtureCaptureAddressActiveForCurrentLocation()) return true;
+  return studioFixtureCaptureRefusedForCurrentLocation();
 }
 
 export function studioFixtureCaptureAppearanceForCurrentLocation(): AppearancePreferences {
@@ -426,6 +494,55 @@ export function studioFixtureRouteFromCurrentLocation(): StudioFixtureRoute | nu
   return route;
 }
 
+/**
+ * Return the accepted route for both the canonical handoff and the queryless
+ * project/file continuation reached after it. The active session is the only
+ * authority once navigation leaves the launch URL; no mount-time ref is used.
+ */
+export function studioFixtureActiveRouteFromCurrentLocation(): StudioFixtureRoute | null {
+  const route = studioFixtureRouteFromCurrentLocation();
+  const session = activeStudioFixtureSession;
+  if (route) {
+    if (session === null) return route;
+    return session.route.cacheKey === route.cacheKey
+      && currentStudioFixtureCaptureRunId() === session.captureRunId
+      && studioFixtureCaptureWitnessMatches(session.route, currentStudioFixtureCaptureWitness())
+      ? session.route
+      : null;
+  }
+  if (session === null) return null;
+  const location = captureLocationFromWindow();
+  if (!location
+    || !isFixtureCaptureLocation(location)
+    || currentStudioFixtureCaptureRunId() !== session.captureRunId
+    || !studioFixtureCaptureWitnessMatches(session.route, currentStudioFixtureCaptureWitness())) {
+    return null;
+  }
+  return session.route;
+}
+
+function studioFixtureCaptureAddressActiveForCurrentLocation(): boolean {
+  const route = studioFixtureRouteFromCurrentLocation();
+  if (route) return true;
+  const session = activeStudioFixtureSession;
+  const location = captureLocationFromWindow();
+  return session !== null
+    && location !== null
+    && isFixtureCaptureLocation(location)
+    && currentStudioFixtureCaptureRunId() === session.captureRunId
+    && studioFixtureCaptureWitnessMatches(session.route, currentStudioFixtureCaptureWitness());
+}
+
+export function studioFixtureCaptureRunIdForCurrentLocation(): string | null {
+  const session = activeStudioFixtureSession;
+  if (session && studioFixtureActiveRouteFromCurrentLocation()) return session.captureRunId;
+  return null;
+}
+
+export function studioFixtureCaptureTimeMsForCurrentLocation(): number | null {
+  return studioFixtureActiveRouteFromCurrentLocation() ? STUDIO_FIXTURE_TIME_MS : null;
+}
+
 export function isStudioFixtureProjectId(projectId: string): boolean {
   return projectId === STUDIO_FIXTURE_PROJECT_ID;
 }
@@ -443,9 +560,7 @@ export function isStudioFixtureCaptureActiveForProjectConversation(
 }
 
 export function isStudioFixtureCaptureActiveForCurrentLocation(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (studioFixtureRouteFromCurrentLocation()) return true;
-  return isFixtureCaptureLocation(window.location);
+  return studioFixtureActiveRouteFromCurrentLocation() !== null;
 }
 
 /** The real project route reached after the canonical capture address is accepted. */
@@ -731,10 +846,17 @@ export function studioFixtureArtifactPreviewUrl(
   projectId: string,
   artifactId: string,
   reloadKey = 0,
+  witness?: { conversationId: unknown; runId: unknown },
 ): string | null {
   if (
     projectId !== STUDIO_FIXTURE_PROJECT_ID
     || artifactId !== STUDIO_FIXTURE_ARTIFACT_ID
+    || witness?.conversationId !== STUDIO_FIXTURE_CONVERSATION_ID
+    || witness?.runId !== STUDIO_FIXTURE_RUN_ID
+    || !isStudioFixtureCaptureActiveForProjectConversation(
+      projectId,
+      STUDIO_FIXTURE_CONVERSATION_ID,
+    )
   ) return null;
   const boundedReloadKey = Number.isSafeInteger(reloadKey) && reloadKey >= 0 && reloadKey <= 100_000
     ? reloadKey
@@ -1347,7 +1469,7 @@ function isExactRendererOrigin(url: URL, current: Location): boolean {
     && currentUrl.hash === '';
 }
 
-function isFixtureCaptureLocation(location: Location): boolean {
+function isFixtureCaptureLocation(location: Pick<Location, 'href'>): boolean {
   let url: URL;
   try {
     url = new URL(location.href);
@@ -1373,28 +1495,39 @@ function isFixtureCaptureLocation(location: Location): boolean {
  * production state outside that route and rejects network escapes rather than
  * silently allowing a capture to depend on a live service.
  */
-export function installStudioFixtureFetch(route: StudioFixtureRoute): () => void {
+export function installStudioFixtureFetch(route: StudioFixtureRoute | null): () => void {
   if (typeof window === 'undefined') return () => {};
   const captureRunId = currentStudioFixtureCaptureRunId();
-  if (!studioFixtureCaptureSessionIsValid(route, captureRunId, currentStudioFixtureCaptureWitness())) {
-    return () => {};
+  const captureAddress = isStudioFixtureCaptureAddress(window.location);
+  if (!captureAddress) return () => {};
+  if (!route || !studioFixtureCaptureSessionIsValid(route, captureRunId, currentStudioFixtureCaptureWitness())) {
+    const originalFetch = window.fetch.bind(window);
+    const refusedFetch: typeof window.fetch = async () => {
+      throw new Error('Studio capture refused: the canonical capture tuple or run witness is invalid.');
+    };
+    window.fetch = refusedFetch;
+    return () => {
+      if (window.fetch === refusedFetch) window.fetch = originalFetch;
+    };
   }
   const originalFetch = window.fetch.bind(window);
   const tabsState = { current: { ...studioFixtureTabs, tabs: [...studioFixtureTabs.tabs] } };
   activeStudioFixtureSession = { route, captureRunId: captureRunId! };
+  dispatchStudioFixtureLifecycle(true);
   const patchedFetch: typeof window.fetch = async (input, init) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const url = new URL(request.url, window.location.href);
-    if (!isFixtureCaptureLocation(window.location)) {
+    const currentLocation = captureLocationFromWindow();
+    if (!currentLocation || !isStudioFixtureCaptureAddress(currentLocation)) {
       return originalFetch(input, init);
+    }
+    if (!isFixtureCaptureLocation(currentLocation)) {
+      throw new Error('Studio capture refused: the active session no longer matches the current route.');
     }
     const sameRendererOrigin = isExactRendererOrigin(url, window.location);
     const localApiOrigin = isLoopbackHttpUrl(url);
     if (!url.pathname.startsWith('/api/')) {
-      if (!sameRendererOrigin) {
-        throw new Error('Studio fixture blocked a non-local request');
-      }
-      return originalFetch(input, init);
+      throw new Error('Studio fixture blocked a non-API request');
     }
     if (!sameRendererOrigin && !localApiOrigin) {
       throw new Error('Studio fixture blocked an external request');
@@ -1422,6 +1555,7 @@ export function installStudioFixtureFetch(route: StudioFixtureRoute): () => void
       && activeSession.route.cacheKey === route.cacheKey
       && activeSession.captureRunId === captureRunId) {
       activeStudioFixtureSession = null;
+      dispatchStudioFixtureLifecycle(false);
     }
   };
 }

@@ -26,6 +26,7 @@ import {
 } from '../../state/appearance';
 import {
   isStudioFixtureCaptureStorageLocked,
+  studioFixtureActiveRouteFromCurrentLocation,
   studioFixtureCaptureAppearanceForCurrentLocation,
 } from '../../capture/studio-fixture';
 
@@ -35,10 +36,14 @@ const listeners = new Set<Listener>();
 let current: AppearancePreferences | null = null;
 
 function ensureLoaded(): AppearancePreferences {
+  if (typeof window !== 'undefined' && isStudioFixtureCaptureStorageLocked()) {
+    current = studioFixtureCaptureAppearanceForCurrentLocation();
+    return current;
+  }
   if (current === null) {
     current = typeof window === 'undefined'
       ? DEFAULT_APPEARANCE_PREFERENCES
-      : isStudioFixtureCaptureStorageLocked()
+      : studioFixtureActiveRouteFromCurrentLocation()
         ? studioFixtureCaptureAppearanceForCurrentLocation()
         : readStoredAppearancePreferences();
   }
@@ -57,8 +62,9 @@ export function getAppearancePreferences(): AppearancePreferences {
  * the same task as the input event, not one React commit later.
  */
 export function setAppearancePreferences(next: AppearancePreferences): void {
+  if (isStudioFixtureCaptureStorageLocked()) return;
   current = next;
-  if (!isStudioFixtureCaptureStorageLocked()) writeStoredAppearancePreferences(next);
+  writeStoredAppearancePreferences(next);
   if (typeof document !== 'undefined') {
     applyAppearancePreferencesToDocument(next);
   }

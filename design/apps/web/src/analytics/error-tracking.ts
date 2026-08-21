@@ -65,11 +65,17 @@ let context: ExceptionTrackingContext | null = null;
 const buffer: BufferedSafetyEvent[] = [];
 let installed = false;
 let captureDisabled = false;
+let captureGeneration = 0;
 
 /** Disable direct safety/error transport for a deterministic capture session. */
 export function setErrorTrackingCaptureDisabled(disabled: boolean): void {
+  captureGeneration += 1;
   captureDisabled = disabled;
   if (disabled) clearExceptionTrackingState();
+}
+
+export function getErrorTrackingCaptureGeneration(): number {
+  return captureGeneration;
 }
 
 /** Clear both the direct transport context and any pre-init buffered events. */
@@ -78,8 +84,11 @@ export function clearExceptionTrackingState(): void {
   buffer.splice(0, buffer.length);
 }
 
-export function setExceptionTrackingContext(next: ExceptionTrackingContext): void {
-  if (captureDisabled) return;
+export function setExceptionTrackingContext(
+  next: ExceptionTrackingContext,
+  expectedGeneration = captureGeneration,
+): void {
+  if (captureDisabled || expectedGeneration !== captureGeneration) return;
   context = next;
   if (buffer.length === 0) return;
   const drain = buffer.splice(0, buffer.length);
@@ -101,7 +110,7 @@ export function clearExceptionTrackingContext(): void {
 // resolves after the initial '0.0.0' placeholder). No-op if context hasn't
 // been set yet.
 export function patchExceptionTrackingAppVersion(version: string): void {
-  if (!context || !version) return;
+  if (captureDisabled || !context || !version) return;
   context = { ...context, appVersion: version };
 }
 

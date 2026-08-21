@@ -36,6 +36,7 @@ let client: PostHog | null = null;
 let initPromise: Promise<PostHog | null> | null = null;
 let exceptionBootstrapPromise: Promise<void> | null = null;
 let captureDisabled = false;
+let captureGeneration = 0;
 let resolvedDeviceId: string | null = null;
 // Latest configure-state triplet. Re-registered on the PostHog client as
 // soon as it changes so every subsequent event inherits the current values.
@@ -66,6 +67,7 @@ let lastRegisterPayload: Record<string, unknown> | null = null;
  * provider initialization must explicitly opt in again.
  */
 export function setAnalyticsCaptureDisabled(disabled: boolean): void {
+  captureGeneration += 1;
   captureDisabled = disabled;
   setErrorTrackingCaptureDisabled(disabled);
   if (!disabled) {
@@ -115,6 +117,7 @@ export function getConfigureGlobals(): AnalyticsConfigureGlobals {
 // PostHog client so every subsequent capture inherits them — no per-event
 // boilerplate needed.
 export function setConfigureGlobals(next: AnalyticsConfigureGlobals): void {
+  if (captureDisabled) return;
   configureGlobals = { ...next };
   // Keep the cached register payload aligned so a future reset/identify
   // flow that calls `restoreSuperProperties()` uses the LATEST configure
@@ -145,6 +148,7 @@ let pendingPersonProperties: Record<string, unknown> | null = null;
 // (boot fetch or a login/logout mid-session). Passing null unregisters the
 // param so events after a logout stop carrying a stale account id.
 export function setAnalyticsUserId(userId: string | null): void {
+  if (captureDisabled) return;
   if (registeredUserId === userId) return;
   registeredUserId = userId;
   if (lastRegisterPayload) {
@@ -170,6 +174,7 @@ export function setAnalyticsUserId(userId: string | null): void {
 export function setAnalyticsPersonProperties(
   properties: Record<string, unknown>,
 ): void {
+  if (captureDisabled) return;
   const compacted = compactPersonProperties(properties);
   if (!compacted) return;
   pendingPersonProperties = {
@@ -180,7 +185,7 @@ export function setAnalyticsPersonProperties(
 }
 
 function flushPersonProperties(): void {
-  if (!client || !pendingPersonProperties) return;
+  if (captureDisabled || !client || !pendingPersonProperties) return;
   try {
     const properties = pendingPersonProperties;
     const posthog = client as unknown as {
@@ -242,9 +247,11 @@ export function bootstrapExceptionTracking(context: AnalyticsContext): Promise<v
     return Promise.resolve();
   }
   if (exceptionBootstrapPromise) return exceptionBootstrapPromise;
+  const generation = captureGeneration;
   exceptionBootstrapPromise = (async () => {
     try {
       const cfg = await fetchAnalyticsConfigShared();
+      if (captureDisabled || generation !== captureGeneration) return;
       if (!cfg) {
         clearExceptionTrackingContext();
         return;
@@ -264,7 +271,7 @@ export function bootstrapExceptionTracking(context: AnalyticsContext): Promise<v
         appVersion: context.appVersion,
         sessionId: context.sessionId,
         telemetryEnv,
-      });
+      }, generation);
     } catch {
       // Network failure / endpoint unavailable — leave the buffer in
       // place so a future retry could still flush, but don't crash boot.
@@ -279,6 +286,7 @@ export async function getAnalyticsClient(
   if (captureDisabled) return null;
   if (client) return client;
   if (initPromise) return initPromise;
+  const generation = captureGeneration;
   // PR #1428 reviewer (Siri-Ray): the first /api/analytics/config response
   // is cached forever if it resolves to null. On first launch before the
   // user accepts the privacy banner the daemon returns enabled=false, this
@@ -289,6 +297,7 @@ export async function getAnalyticsClient(
   const pending = (async () => {
     try {
       const cfg = await fetchAnalyticsConfigShared();
+      if (captureDisabled || generation !== captureGeneration) return null;
       if (!cfg) return null;
       if (!cfg.enabled || !cfg.key || !cfg.host) return null;
       const telemetryEnv = cfg.env || 'unknown';
@@ -297,6 +306,7 @@ export async function getAnalyticsClient(
         context.anonymousId;
       resolvedDeviceId = distinctId;
       const mod = await import('posthog-js');
+      if (captureDisabled || generation !== captureGeneration) return null;
       const posthog = mod.default;
       const cfgKey = cfg.key;
       const cfgHost = cfg.host;
@@ -391,6 +401,15 @@ export async function getAnalyticsClient(
         },
 
         loaded: (instance) => {
+          if (captureDisabled || generation !== captureGeneration) {
+            try {
+              instance.opt_out_capturing();
+              instance.reset();
+            } catch {
+              // Capture was invalidated while the provider was loading.
+            }
+            return;
+          }
           lastRegisterPayload = {
             event_schema_version: EVENT_SCHEMA_VERSION,
             env: telemetryEnv,
@@ -425,9 +444,18 @@ export async function getAnalyticsClient(
             appVersion: context.appVersion,
             sessionId: context.sessionId,
             telemetryEnv,
-          });
+          }, generation);
         },
       });
+      if (captureDisabled || generation !== captureGeneration) {
+        try {
+          posthog.opt_out_capturing();
+          posthog.reset();
+        } catch {
+          // Capture was invalidated immediately after provider initialization.
+        }
+        return null;
+      }
       client = posthog;
       // Pin the first-analytics-session marker only now — init returned without
       // throwing and capture is live. This is the single consent gate every
@@ -449,7 +477,7 @@ export async function getAnalyticsClient(
   initPromise = pending;
   // Clear the cache as soon as the result is null so a later opt-in retries.
   void pending.then((result) => {
-    if (!result) initPromise = null;
+    if (generation === captureGeneration && !result) initPromise = null;
   });
   return pending;
 }
@@ -472,7 +500,7 @@ export async function getAnalyticsClient(
 // posthog-js would still think the user is the old id and stitch the
 // new session to the deleted identity. reset() prevents that.
 export function applyConsent(consentGranted: boolean): void {
-  if (!client) return;
+  if (captureDisabled || !client) return;
   try {
     if (consentGranted) {
       client.opt_in_capturing();
@@ -501,7 +529,7 @@ export function applyConsent(consentGranted: boolean): void {
 // $device_id stored under the OLD installation is wiped — the new
 // session is fully decoupled from the deleted one.
 export function applyIdentity(installationId: string | null): void {
-  if (!client || !installationId) return;
+  if (captureDisabled || !client || !installationId) return;
   if (resolvedDeviceId === installationId) return;
   try {
     client.reset();
@@ -522,7 +550,7 @@ export function applyIdentity(installationId: string | null): void {
 // caller can swap fields (e.g. a rotated device_id) without re-deriving the
 // rest of the payload.
 function restoreSuperProperties(patch?: Record<string, unknown>): void {
-  if (!client || !lastRegisterPayload) return;
+  if (captureDisabled || !client || !lastRegisterPayload) return;
   const next = patch ? { ...lastRegisterPayload, ...patch } : lastRegisterPayload;
   lastRegisterPayload = next;
   try {

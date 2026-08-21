@@ -16,9 +16,9 @@
 > explicit; refreshes and later tab/project changes do not implicitly attach or
 > select another file, while explicit switches among the three known fixture
 > files keep the provider bound to the same project and conversation. Only fixture
-> `/api/` requests are intercepted; bundled
-> same-origin assets retain the normal fetch path, loopback API origins are
-> accepted, and external network requests are rejected while the exact fixture
+> `/api/` requests are intercepted; browser-managed bundled assets stay outside
+> the scripted fetch seam, loopback API origins are accepted, scripted non-API
+> fetches are refused, and external network requests are rejected while the exact fixture
 > is active. The renderer publishes route/provider witnesses for the desktop
 > readiness receipt, direct live-artifact preview navigation uses the fixture
 > transport, refresh returns `{artifact, refresh}`, and normal routes retain the
@@ -34,6 +34,21 @@
 > bounded reload identity and remount key. This is
 > source-only: hosted typecheck, built rendering, and installed capture
 > evidence remain pending; dim-sum photo work remains intentionally deferred.
+
+> **Studio lifecycle follow-up — source-only.** Capture-shaped canonical paths
+> with missing or mismatched tuple/run witnesses now publish an explicit refused /
+> unready state and never fall through to ordinary fetch. A validated per-run
+> session is the only authority for queryless file continuations; leaving it
+> disposes the fixture provider, clears renderer/readiness attributes, restores
+> ordinary config/language/appearance and resumes the ordinary active-context
+> write. Capture-locked setters return before live React, module, DOM, host-scale,
+> analytics, or error-context mutation. Project-tab localStorage and wall-clock
+> timestamps are bypassed in favor of the fixture time and run-scoped request
+> namespace. Direct artifact previews require matching current
+> project/conversation/artifact/run witnesses, so ordinary routes with the same
+> IDs receive no fixture preview. The source changes are committed locally;
+> hosted typecheck, built rendering, installed launch, and parity captures remain
+> unverified.
 >
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).

@@ -49,8 +49,9 @@ import {
 } from './interpolate';
 import {
   isStudioFixtureCaptureStorageLocked,
+  studioFixtureActiveRouteFromCurrentLocation,
   studioFixtureCaptureLanguageState,
-  studioFixtureRouteFromCurrentLocation,
+  STUDIO_FIXTURE_LIFECYCLE_EVENT,
 } from '../capture/studio-fixture';
 
 export { LOCALES, LOCALE_LABEL, LANGUAGE_MODES, FUNNY_LEVELS } from './types';
@@ -209,13 +210,13 @@ function writeStored(key: string, value: string): void {
 }
 
 export function detectInitialLanguageMode(): LanguageMode {
-  const route = studioFixtureRouteFromCurrentLocation();
+  const route = studioFixtureActiveRouteFromCurrentLocation();
   if (route) return studioFixtureCaptureLanguageState(route).languageMode;
   return readStored(LS_LANGUAGE_MODE_KEY) === 'bilingual' ? 'bilingual' : DEFAULT_LANGUAGE_MODE;
 }
 
 export function detectInitialFunnyLevels(): Record<FunnyLanguage, FunnyLevel> {
-  const route = studioFixtureRouteFromCurrentLocation();
+  const route = studioFixtureActiveRouteFromCurrentLocation();
   if (route) return { ...studioFixtureCaptureLanguageState(route).funnyLevels };
   const levels: Record<FunnyLanguage, FunnyLevel> = { ...DEFAULT_FUNNY_LEVELS };
   for (const language of ['en', 'zh-HK'] as const) {
@@ -271,7 +272,7 @@ function readDesktopHostOsLocale(): string | undefined {
 // full I18nProvider.
 export function detectInitialLocale(): Locale {
   if (typeof window === 'undefined') return 'en';
-  if (studioFixtureRouteFromCurrentLocation()) return 'en';
+  if (studioFixtureActiveRouteFromCurrentLocation()) return 'en';
   let storedLocale: string | null = null;
   let storedSource: string | null = null;
   try {
@@ -372,9 +373,32 @@ export function I18nProvider({ initial, children }: ProviderProps) {
     document.documentElement.setAttribute('data-od-language-mode', languageMode);
   }, [languageMode]);
 
+  // The capture tuple owns language while a fixture session is active. The
+  // lifecycle event also rehydrates the ordinary persisted choices when the
+  // user leaves the queryless fixture continuation.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const syncCaptureLanguage = () => {
+      const route = studioFixtureActiveRouteFromCurrentLocation();
+      if (route) {
+        const capture = studioFixtureCaptureLanguageState(route);
+        setLocaleState(capture.locale);
+        setLanguageModeState(capture.languageMode);
+        setFunnyLevelsState({ ...capture.funnyLevels });
+        return;
+      }
+      setLocaleState(detectInitialLocale());
+      setLanguageModeState(detectInitialLanguageMode());
+      setFunnyLevelsState(detectInitialFunnyLevels());
+    };
+    window.addEventListener(STUDIO_FIXTURE_LIFECYCLE_EVENT, syncCaptureLanguage);
+    syncCaptureLanguage();
+    return () => window.removeEventListener(STUDIO_FIXTURE_LIFECYCLE_EVENT, syncCaptureLanguage);
+  }, []);
+
   const setLocale = useCallback((next: Locale) => {
-    setLocaleState(next);
     if (isStudioFixtureCaptureStorageLocked()) return;
+    setLocaleState(next);
     try {
       window.localStorage.setItem(LS_KEY, next);
       // Marker so detectInitialLocale knows this came from a deliberate
@@ -386,24 +410,24 @@ export function I18nProvider({ initial, children }: ProviderProps) {
   }, []);
 
   const setLanguageMode = useCallback((next: LanguageMode) => {
-    setLanguageModeState(next);
     if (isStudioFixtureCaptureStorageLocked()) return;
+    setLanguageModeState(next);
     writeStored(LS_LANGUAGE_MODE_KEY, next);
   }, []);
 
   const setFunnyLevel = useCallback((language: FunnyLanguage, level: FunnyLevel) => {
+    if (isStudioFixtureCaptureStorageLocked()) return;
     setFunnyLevelsState((current) => {
       const next: Record<FunnyLanguage, FunnyLevel> = { ...current };
       next[language] = level;
       return next;
     });
-    if (isStudioFixtureCaptureStorageLocked()) return;
     writeStored(`${LS_FUNNY_LEVEL_PREFIX}${language}`, String(level));
   }, []);
 
   const dismissFunnyDisclosure = useCallback(() => {
-    setFunnyDisclosureSeenState(true);
     if (isStudioFixtureCaptureStorageLocked()) return;
+    setFunnyDisclosureSeenState(true);
     writeStored(LS_FUNNY_DISCLOSURE_KEY, 'seen');
   }, []);
 

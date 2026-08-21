@@ -1,4 +1,5 @@
 import { getOpenDesignHost } from '@open-design/host';
+import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 import type { AppTheme } from '../types';
 
@@ -104,9 +105,12 @@ export function resolveAppTheme(persisted?: AppTheme | null): AppTheme {
 
 export function applyAppearanceToDocument({
   accentColor,
+  allowCapture = false,
 }: {
   accentColor?: string;
+  allowCapture?: boolean;
 }): void {
+  if (!allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
   root.setAttribute('data-theme', FORCED_APP_THEME);
   // Desktop shell: keep the native window appearance (the macOS vibrancy
@@ -581,7 +585,11 @@ function requestHostUiScale(factor: number): boolean {
  * as the default source of `--od-css-zoom` rather than declaring and
  * ignoring.
  */
-export function applyAppearancePreferencesToDocument(prefs: AppearancePreferences): void {
+export function applyAppearancePreferencesToDocument(
+  prefs: AppearancePreferences,
+  options?: { allowCapture?: boolean },
+): void {
+  if (!options?.allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
   const normalized = normalizeAppearancePreferences(prefs);
 

@@ -58,6 +58,11 @@ import type {
 } from '../types';
 import { removeDesignBrowserProjectCache } from '../components/design-browser-storage';
 import { boundedRequestErrorCode } from '../analytics/workspace';
+import {
+  isStudioFixtureCaptureActiveForCurrentLocation,
+  studioFixtureCaptureRunIdForCurrentLocation,
+  studioFixtureCaptureTimeMsForCurrentLocation,
+} from '../capture/studio-fixture';
 
 export type { PluginInstallOutcome } from '@open-design/contracts';
 export type { PluginShareAction } from '@open-design/contracts';
@@ -1644,6 +1649,7 @@ function readCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState | null {
+  if (isStudioFixtureCaptureActiveForCurrentLocation()) return null;
   if (typeof window === 'undefined') return null;
   try {
     return normalizeTabsState(JSON.parse(
@@ -1658,6 +1664,7 @@ function removeCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): void {
+  if (isStudioFixtureCaptureActiveForCurrentLocation()) return;
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(tabsCacheKey(projectId, workspaceContext));
@@ -1671,11 +1678,12 @@ function writeCachedTabs(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState {
+  const fixtureTime = studioFixtureCaptureTimeMsForCurrentLocation();
   const next: OpenTabsState = {
     ...state,
-    updatedAt: Date.now(),
+    updatedAt: fixtureTime ?? Date.now(),
   };
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && fixtureTime === null) {
     try {
       window.localStorage.setItem(
         tabsCacheKey(projectId, workspaceContext),
@@ -1704,7 +1712,7 @@ async function persistTabsToDaemon(
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<void> {
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureRunIdForCurrentLocation() ?? 'ordinary'}`;
   // Thin invalidation: a write makes any burst-shared read stale.
   evictCoalescedGet(requestKey);
   await fetch(`/api/projects/${encodeURIComponent(projectId)}/tabs`, {
@@ -1727,7 +1735,7 @@ export async function loadTabs(
 ): Promise<OpenTabsState> {
   const cached = readCachedTabs(projectId, workspaceContext);
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureRunIdForCurrentLocation() ?? 'ordinary'}`;
   try {
     // Concurrent mounts share one daemon read per burst (Batch A §4.3); the
     // per-caller cache reconciliation below still runs for every caller.

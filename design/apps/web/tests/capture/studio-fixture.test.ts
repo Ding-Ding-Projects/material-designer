@@ -9,6 +9,7 @@ import {
   studioFixtureArtifactPreviewUrl,
   studioFixtureCaptureAppearance,
   studioFixtureCaptureFunnyLevels,
+  isStudioFixtureCaptureAddress,
   studioFixtureCaptureSessionIsValid,
   studioFixtureCaptureWitnessMatches,
   studioFixtureConversation,
@@ -134,6 +135,12 @@ describe('Studio capture fixture contract', () => {
     expect(parseStudioFixtureRoute(STUDIO_RENDERER_URL.replace('od://app', 'od://user:pass@app:4173'))).toBeNull();
   });
 
+  it('treats every canonical-path near miss as a capture refusal boundary', () => {
+    expect(isStudioFixtureCaptureAddress(STUDIO_RENDERER_URL)).toBe(true);
+    expect(isStudioFixtureCaptureAddress(STUDIO_RENDERER_URL.replace('od://app', 'od://app:4173'))).toBe(true);
+    expect(isStudioFixtureCaptureAddress('od://app/projects/ordinary/conversations/ordinary/files/index.html')).toBe(false);
+  });
+
   it('keeps every deterministic tuple field owned by the desktop capture tuple', () => {
     for (const [key, value] of [
       ['locale=en-US', 'locale=fr-FR'],
@@ -224,10 +231,22 @@ describe('Studio capture fixture contract', () => {
   });
 
   it('provides a direct-loadable live-artifact preview transport', () => {
-    const first = studioFixtureArtifactPreviewUrl(STUDIO_FIXTURE_PROJECT_ID, studioFixtureArtifact.id, 0);
-    const second = studioFixtureArtifactPreviewUrl(STUDIO_FIXTURE_PROJECT_ID, studioFixtureArtifact.id, 1);
-    expect(first).toMatch(/^data:text\/html/);
-    expect(first).not.toBe(second);
+    const first = studioFixtureArtifactPreviewUrl(
+      STUDIO_FIXTURE_PROJECT_ID,
+      studioFixtureArtifact.id,
+      0,
+      { conversationId: STUDIO_FIXTURE_CONVERSATION_ID, runId: studioFixtureRun.id },
+    );
+    const second = studioFixtureArtifactPreviewUrl(
+      STUDIO_FIXTURE_PROJECT_ID,
+      studioFixtureArtifact.id,
+      1,
+      { conversationId: STUDIO_FIXTURE_CONVERSATION_ID, runId: studioFixtureRun.id },
+    );
+    // A node-side call has no active capture session. Matching IDs alone must
+    // therefore remain inert rather than manufacturing a preview URL.
+    expect(first).toBeNull();
+    expect(second).toBeNull();
     expect(studioFixtureArtifactPreviewUrl('another-project', studioFixtureArtifact.id)).toBeNull();
   });
 

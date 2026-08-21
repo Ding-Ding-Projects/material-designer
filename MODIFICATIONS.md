@@ -70,6 +70,34 @@ typecheck, built rendering, and installed capture evidence remain pending.
 - `apps/web/src/state/config.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
+### 2026-08-21 — Close the Studio capture lifecycle and stale-state seams
+
+**Reason:** The first fixture route correctly bound the happy path, but a malformed
+canonical address could still fall through to ordinary fetch, a queryless continuation
+could outlive the accepted route, and ordinary tab/configuration/appearance state could
+win over the deterministic tuple. This follow-up makes invalid capture-shaped addresses
+terminal and unready, keeps the validated per-run session as the only continuation
+authority, restores ordinary state on exit, ignores ordinary tab cache and wall-clock
+timestamps during capture, and requires the current project/conversation/run witness for
+direct artifact previews. Analytics and error-tracking generations now discard stale
+async completions before initialization, registration, or context transport. Ordinary
+routes keep their prior persistence, fetch, header, and appearance behavior. Hosted
+typecheck, built rendering, and installed capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/analytics/client.ts`
+- `apps/web/src/analytics/error-tracking.ts`
+- `apps/web/src/analytics/provider.tsx`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/appearance/store.ts`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

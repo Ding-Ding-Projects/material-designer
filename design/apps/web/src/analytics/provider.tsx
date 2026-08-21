@@ -37,6 +37,7 @@ import {
   isFirstSession,
 } from './identity';
 import { randomUUID } from '../utils/uuid';
+import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 interface AnalyticsContextValue {
   // The track helper accepts any event/props pair; per-event safety is
@@ -182,6 +183,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
+      if (isStudioFixtureCaptureStorageLocked()) return;
       patchExceptionTrackingAppVersion(resolvedAppVersion);
       // Bridge the always-on error tracker to /api/analytics/config so any
       // exceptions buffered since module load (see client-app.tsx) can flush
@@ -232,6 +234,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       [ANALYTICS_HEADER_CLIENT_TYPE]: identity.clientType,
     };
     window.fetch = async (input, init) => {
+      if (isStudioFixtureCaptureStorageLocked()) return original(input, init);
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (!isSameOriginApiCall(url)) return original(input, init);
       const merged: HeadersInit = {
@@ -253,6 +256,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     void (async () => {
       const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const client = await getAnalyticsClient({
         anonymousId: identity.anonymousId,
         sessionId: identity.sessionId,
@@ -261,7 +265,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         locale: locale,
         appVersion: resolvedAppVersion,
       });
-      if (cancelled || !client) return;
+      if (cancelled || isStudioFixtureCaptureStorageLocked() || !client) return;
       try {
         client.register({
           locale: locale,
@@ -287,6 +291,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         try {
           const baseFetch = window.fetch;
           const wrapped: typeof fetch = async (input, init) => {
+            if (isStudioFixtureCaptureStorageLocked()) return baseFetch(input, init);
             const url =
               typeof input === 'string'
                 ? input
@@ -312,6 +317,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       }
       void (async () => {
         const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
+        if (isStudioFixtureCaptureStorageLocked()) return;
         const client = await getAnalyticsClient({
           anonymousId: identity.anonymousId,
           sessionId: identity.sessionId,
@@ -320,6 +326,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           locale: locale,
           appVersion: resolvedAppVersion,
         });
+        if (isStudioFixtureCaptureStorageLocked()) return;
         capture(client, {
           event,
           properties: {
@@ -353,6 +360,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           // into the wrapper via setResolvedAnonId below.
           void (async () => {
             const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
+            if (isStudioFixtureCaptureStorageLocked()) return;
             await getAnalyticsClient({
               anonymousId: identity.anonymousId,
               sessionId: identity.sessionId,
@@ -361,6 +369,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
               locale,
               appVersion: resolvedAppVersion,
             });
+            if (isStudioFixtureCaptureStorageLocked()) return;
             const resolved = getResolvedAnonymousId();
             if (resolved) setResolvedAnonId(resolved);
           })();

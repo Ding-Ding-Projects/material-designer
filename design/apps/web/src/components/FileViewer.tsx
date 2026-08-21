@@ -2267,14 +2267,30 @@ export function LiveArtifactViewer({
   }, [projectId, liveArtifact.artifactId, liveArtifact.updatedAt, workspaceContext]);
 
   const previewUrl = useMemo(() => {
-    const fixtureUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId, reloadKey);
+    const fixtureUrl = studioFixtureArtifactPreviewUrl(
+      projectId,
+      liveArtifact.artifactId,
+      reloadKey,
+      {
+        conversationId: liveArtifact.sessionId,
+        runId: liveArtifact.createdByRunId,
+      },
+    );
     if (fixtureUrl) return fixtureUrl;
     return appendResourceQuery(
       liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       `v=${reloadKey}`,
     );
   }, [projectId, liveArtifact.artifactId, reloadKey, workspaceContext]);
-  const directPreviewUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId, reloadKey);
+  const directPreviewUrl = studioFixtureArtifactPreviewUrl(
+    projectId,
+    liveArtifact.artifactId,
+    reloadKey,
+    {
+      conversationId: liveArtifact.sessionId,
+      runId: liveArtifact.createdByRunId,
+    },
+  );
   const previewScale = zoom / 100;
 
   // Instrument the live-artifact iframe so failed loads — usually a

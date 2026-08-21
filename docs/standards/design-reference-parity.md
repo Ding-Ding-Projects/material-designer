@@ -52,9 +52,10 @@ therefore render the fixture. Its declared `orders-dashboard.html` selection
 is applied only during initial route hydration. File refreshes, project
 switches, and later tab changes do not select a file implicitly. The provider
 also rejects external network requests, intercepts only the fixture's `/api/`
-seams, leaves same-origin bundled assets on the normal fetch path, and accepts
-only the exact `od:` renderer origin or a separately validated HTTP loopback API
-origin. The provider stays bound to the fixture project and conversation while
+seams, leaves browser-managed bundled assets outside the scripted fetch seam, and
+accepts only the exact `od:` renderer origin or a separately validated HTTP loopback
+API origin. A scripted fetch from a capture-shaped location is refused rather than
+forwarded to the ordinary network path. The provider stays bound to the fixture project and conversation while
 the user explicitly changes among the three known files. Its live-artifact
 preview uses a direct-loadable fixture transport, and refresh returns the real
 `{ artifact, refresh }` consumer envelope. The renderer publishes
@@ -79,6 +80,22 @@ appearance and language settings are forced from the tuple/fixture presentation
 in per-run storage, config and provider writes are suppressed, and the direct
 artifact data preview carries a bounded reload identity so refreshes cannot
 reuse stale bytes.
+
+The lifecycle is fail-closed in both directions. Any address with the canonical
+fixture path but a missing, malformed, stale, or mismatched tuple/run witness
+publishes an explicit capture-refused/unready state and installs a refusal fetch
+boundary; it never falls through to the ordinary daemon or browser fetch. Once a
+valid session leaves the launch URL, only its validated queryless project,
+conversation, and known-file continuation remains active. Leaving that location
+disposes the fixture provider, clears readiness and renderer data attributes,
+rehydrates ordinary language/configuration/appearance state, and resumes the
+ordinary active-context write. While capture is locked, language, funny-level,
+appearance, config, host-scale, analytics, and error-context setters return before
+mutating live React, module, DOM, or host state. Project-tab localStorage and wall
+clock timestamps are bypassed for the session, with the frozen fixture time and a
+run-scoped request namespace used instead. Direct artifact previews require the
+current session plus the matching project, conversation, artifact, and creating
+run witness; matching IDs on an ordinary route return no preview.
 
 ## Evidence boundary
 

@@ -53,6 +53,14 @@ with the project's standards.
       removes the remaining active-file attachment path; narrower evidence now
       reaches a send only through an explicit user action.
 
+- [~] **Harden the Studio deterministic capture lifecycle.** The source route now
+      refuses malformed canonical addresses, keeps a validated per-run session
+      authoritative across queryless file continuations, restores ordinary
+      configuration and appearance state on exit, bypasses ordinary tab cache
+      and wall-clock timestamps, and requires a project/conversation/artifact/run
+      witness for direct previews. Hosted typecheck, built rendering, and
+      installed parity captures remain pending.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
