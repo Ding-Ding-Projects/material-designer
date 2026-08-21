@@ -22,7 +22,7 @@
 // User-facing copy is routed through the shared locale catalog; provider and
 // metadata identifiers remain exact data.
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
 import {
   applyLibraryAsset,
@@ -773,6 +773,7 @@ const LibraryCard = memo(function LibraryCard({
 
 export function LibrarySection({ active, onOpenProject }: Props) {
   const t = useT();
+  const dsMenuId = useId();
   const { context: workspaceContext } = useWorkspaceContext();
   const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
@@ -1720,6 +1721,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
               }}
               aria-haspopup="menu"
               aria-expanded={dsMenuOpen}
+              aria-controls={dsMenuId}
               aria-label={t('library.useInDesignSystem')}
               disabled={dsBusy}
             >
@@ -1751,6 +1753,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                 />
                 <div
                   ref={dsMenuRef}
+                  id={dsMenuId}
                   className={styles.dsMenuItems}
                   role="menu"
                   aria-label={t('library.useInDesignSystem')}

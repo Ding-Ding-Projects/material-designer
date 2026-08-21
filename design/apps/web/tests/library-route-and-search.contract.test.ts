@@ -201,6 +201,8 @@ describe('Library interaction regression contracts', () => {
     const picker = source('components/LibraryPicker.tsx');
     expect(section).toContain('className={styles.dsMenu}\n                role="group"');
     expect(section).toContain('className={styles.dsMenuItems}\n                  role="menu"');
+    expect(section).toContain('aria-controls={dsMenuId}');
+    expect(section).toContain('id={dsMenuId}');
     expect(section).toContain('className={styles.dsMenuDivider} role="separator"');
     expect(section).toContain('className={styles.dsMenuHeader} role="presentation"');
     expect(section).not.toContain('className={styles.dsMenu}\n                role="menu"');
