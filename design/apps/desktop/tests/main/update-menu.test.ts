@@ -74,7 +74,6 @@ describe("macOS update menu", () => {
         artifact: { type: "payload", url: "https://example.test/payload.zip" },
       }),
     })).toMatchObject({ label: "Restart to Update Material Designer…", enabled: true, action: "open-dialog" });
-    })).toMatchObject({ label: "Restart to Update OpenDesign…", enabled: true, action: "open-dialog" });
     expect(deriveDesktopUpdateMenuItem({
       labels: DEFAULT_DESKTOP_UPDATE_MENU_LABELS,
       platform: "darwin",

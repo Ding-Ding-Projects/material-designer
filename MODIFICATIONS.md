@@ -29,6 +29,26 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
+
+**Reason:** The v0.20.2 source reconciliation left upstream product-name values
+immediately after the existing Material Designer values in four object properties. TypeScript
+rejects duplicate keys before the desktop build can start, and accepting the later values would
+also reverse the fork-owned identity on diagnostics export and update-restart surfaces. The
+reconciliation keeps one Material Designer value at each boundary without changing update states,
+active-run checks, renderer save preparation, deferred-installer authorization, or quit behavior.
+Focused desktop tests pin the diagnostics title, update-menu fallback, and both restart-safety
+messages.
+
+**Changed files:**
+
+- `apps/desktop/src/main/diagnostics.ts`
+- `apps/desktop/src/main/update-menu.ts`
+- `apps/desktop/src/main/update-preflight.ts`
+- `apps/desktop/tests/main/diagnostics-save-dialog.test.ts`
+- `apps/desktop/tests/main/update-menu.test.ts`
+- `apps/desktop/tests/main/update-preflight.test.ts`
+
 ### 2026-08-21 — Make agent handoff downloads complete, bounded, and reliable
 
 **Reason:** The first handoff implementation still let a queued Markdown download be
