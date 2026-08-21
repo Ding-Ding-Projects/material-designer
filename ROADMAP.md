@@ -60,7 +60,8 @@ with the project's standards.
 - [~] **Retain failed Squirrel packaging diagnostics.** Release `32506068934`
       proved the packaging step can fail after `tools-pack` returns code `1`,
       but its nested build log was not retained by the always-uploaded evidence.
-      The bounded source repair streams safe `[tools-pack]` lines, copies an
+      Commit [`e241a1f1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e241a1f1568077d6958f14896e0082b224b6d5f6)
+      is the bounded source repair: it streams safe `[tools-pack]` lines, copies an
       immutable `installer-build.log`, and writes a schema-version-1
       `packaging-failure.json` under a run-scoped `RUNNER_TEMP` directory before
       rethrowing. Hosted behavior and the packer root cause remain unverified

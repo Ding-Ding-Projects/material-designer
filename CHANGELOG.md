@@ -28,6 +28,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **The release workflow now preserves failed Squirrel packaging diagnostics.**
+  Commit [`e241a1f1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e241a1f1568077d6958f14896e0082b224b6d5f6)
+  streams safe `tools-pack` lines, copies an immutable build log, and writes a
+  schema-version-1 failure record under a run-scoped temporary evidence folder
+  before rethrowing. Release `32506068934` is the motivating evidence: it failed
+  after `tools-pack` returned code `1`, but its nested build log was not retained.
+  The packer root cause and the repair's hosted behavior remain unverified until
+  a replacement run; the temporary dim-sum photo omission is unchanged.
+
+  Release workflow 而家會留低 Squirrel packaging 失敗嘅診斷簿。`e241a1f1`
+  令 `tools-pack` 安全逐行出街、immutable build log 有副本，仲會喺
+  rethrow 之前寫一份 schema-version-1 failure record 入 run-scoped temporary
+  evidence folder。`32506068934` 就係今次催生呢招嘅 run：`tools-pack` 回傳
+  code `1` 之後跣低，但 nested build log 無保留。Packer root cause 同 hosted
+  repair 仍然未驗證，要等 replacement run；temporary dim-sum photo skip 原封不動。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)

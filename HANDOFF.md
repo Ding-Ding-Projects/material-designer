@@ -16,7 +16,8 @@
 > build log was not retained by the evidence upload, so the packer root cause is
 > unverified.
 >
-> The bounded source repair now streams safe tools-pack diagnostics and preserves
+> The bounded source repair in [`e241a1f1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e241a1f1568077d6958f14896e0082b224b6d5f6)
+> now streams safe tools-pack diagnostics and preserves
 > a run-scoped immutable build log plus schema-version-1 failure JSON before the
 > packaging step rethrows. That repair is source-only until a replacement hosted
 > run exercises it; it does not claim to fix the packer. The dim-sum photo
