@@ -56,31 +56,6 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
 const PRODUCT_NAME = "Material Designer";
 const DEFAULT_NAMESPACE = "open-design";
 
-const descriptors: Record<ReleaseChannel, ReleaseChannelDescriptor> = {
-  beta: {
-    appId: "io.ding-ding.material-designer.beta",
-    baseVersionField: "baseVersion",
-    channel: "beta",
-    displayLabel: "Beta",
-    githubReleaseEnabled: false,
-    internal: true,
-    productName: `${PRODUCT_NAME} Beta`,
-    counterField: "releaseNumber",
-    releaseVersionField: "releaseVersion",
-    storagePrefix: "beta",
-  },
-  betas: {
-    appId: "io.ding-ding.material-designer.betas",
-    baseVersionField: "baseVersion",
-    channel: "betas",
-    counterField: "releaseNumber",
-    displayLabel: "Betas",
-    githubReleaseEnabled: false,
-    internal: true,
-    productName: `${PRODUCT_NAME} Betas`,
-    releaseVersionField: "releaseVersion",
-    storagePrefix: "betas",
-  },
 const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
   prerelease: {
     appId: "io.ding-ding.material-designer.prerelease",
@@ -93,18 +68,6 @@ const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
     productName: `${PRODUCT_NAME} Prerelease`,
     releaseVersionField: "releaseVersion",
     storagePrefix: "prerelease",
-  },
-  preview: {
-    appId: "io.ding-ding.material-designer.preview",
-    baseVersionField: "baseVersion",
-    channel: "preview",
-    counterField: "releaseNumber",
-    displayLabel: "Preview",
-    githubReleaseEnabled: false,
-    internal: false,
-    productName: `${PRODUCT_NAME} Preview`,
-    releaseVersionField: "releaseVersion",
-    storagePrefix: "preview",
   },
   stable: {
     appId: "io.ding-ding.material-designer",
@@ -133,7 +96,7 @@ export function releaseChannelDescriptor(channel: string): ReleaseChannelDescrip
   if (channel === "stable" || channel === "prerelease") return descriptors[channel];
   const displayLabel = channel[0]!.toUpperCase() + channel.slice(1);
   return {
-    appId: `io.open-design.desktop.${channel}`,
+    appId: `io.ding-ding.material-designer.${channel}`,
     baseVersionField: "baseVersion",
     channel,
     counterField: "releaseNumber",

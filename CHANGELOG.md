@@ -28,6 +28,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **The v0.20.2 release-channel registry now follows upstream's exact-name model
+  without losing Material Designer identity.** Release run
+  [`32449571270`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32449571270)
+  failed during dependency postinstall because the upstream reconciliation had
+  retained both the old enumerated descriptor table and the new dynamic table.
+  The duplicate declaration and obsolete `preview` row are removed; dynamic
+  non-reserved channels now receive the Material Designer application ID.
+
+  v0.20.2 upstream 改用 exact-name channel，合併時舊 descriptor table 同新 table
+  一齊企喺度，esbuild 見到兩個同名 `const` 即刻反枱。依家刪走舊枱同過期
+  `preview` row，dynamic channel 照樣用 Material Designer app ID，唔會換咗名牌。
+
 - **The imported Open Design baseline advances by 309 commits to `393af2f99`,
   and Download now offers explicit agent handoffs.** The Tow Fat, byte manifest,
   and 12,835-file upstream mirror now point at v0.20.2. Non-declared paths were
