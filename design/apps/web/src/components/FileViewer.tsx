@@ -16810,7 +16810,7 @@ function HtmlViewer({
                             name={activeProjectSocialShare ? 'share' : 'cloud_upload'}
                             size={15}
                           />
-                        <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                        </span>
                         <span>
                           {savingTemplate
                             ? t('fileViewer.savingTemplate')
