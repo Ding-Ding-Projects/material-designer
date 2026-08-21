@@ -28,6 +28,37 @@ version section when a release carries them.
 
 ### Changed
 
+- **The desktop now carries a strict, developer-only parity-route foundation.**
+  Commit [`bf8736ac2`](https://github.com/Ding-Ding-Projects/material-designer/commit/bf8736ac2a8ab514e43d5ac7d9f60b43362c3fab)
+  validates the normalized v2 `material-designer://` tuple, rejects missing or
+  duplicate route arguments, maps only six semantically owned rows to the real
+  `od://app` router, forwards capture mode through the packaged outer launcher,
+  and applies frozen time, randomness, motion, locale, viewport and device-scale
+  controls before the renderer's first document. Capture uses an isolated
+  in-memory session, blocks requests outside the exact loopback sidecar origin,
+  rejects external navigation, blocks redirects, suppresses the separate pet
+  window, and exposes a typed terminal readiness record that checks the canonical
+  URL/search, actual pathname/theme/viewport/device scale, bundled fonts,
+  renderer-owned route witness, route component invariant, fixture source and
+  network isolation proof. The fixture/provider and capture-aware sidecar seams
+  are not implemented, so the six rows remain foundation-only and no parity
+  evidence is claimed. Dark presentation and the four semantically unresolved
+  rows remain fail-closed with stable blocker codes.
+
+  Desktop 而家有 strict、只限 developer/capture 嘅 parity route foundation。
+  `bf8736ac2` 會驗證 normalized v2 `material-designer://` tuple，冇 route
+  或重複 route argument 都即刻拒絕，只有六個真係有對應 destination 嘅 row
+  先去真正 `od://app` router，packaged outer launcher 亦會傳埋 capture mode；
+  clock、random、motion、locale、viewport 同 device scale 喺第一個 document
+  前已經鎖定。Capture 用獨立 in-memory session，只准 exact loopback sidecar
+  origin、唔畀 external navigation、唔跟 redirect、唔開 pet window，再用 typed
+  terminal readiness record 對 canonical URL/search、actual pathname/theme、
+  viewport、device scale、bundled fonts、renderer-owned route witness、real
+  component invariant、fixture source 同 network isolation proof 逐樣核對。
+  Fixture/provider 同 capture-aware sidecar seam 仲未有，所以六個 row 仍然只
+  係 foundation，未有 parity evidence 就唔會扮完成。Dark 同四個未有 semantic
+  route 仍然 fail-closed。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
