@@ -2937,8 +2937,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // the splash status line reflect that final phase while we poll for mount.
     setSplashStage(splash, "workspace");
     const deadline = Date.now() + WEB_MOUNT_REVEAL_TIMEOUT_MS;
+    let readiness: { mounted: boolean; failure: boolean } | null = null;
     while (!stopped && !window.isDestroyed() && Date.now() < deadline) {
-      let readiness: { mounted: boolean; failure: boolean } | null = null;
+      readiness = null;
       let evalTimer: ReturnType<typeof setTimeout> | null = null;
       try {
         readiness = await Promise.race([
