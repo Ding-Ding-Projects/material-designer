@@ -36,6 +36,19 @@
 > v0.20.2 merge diagnostics exposed by the active Release. Issue
 > [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7) is the
 > public continuation record.
+
+> [!IMPORTANT]
+> **FileViewer menu accessibility lane — 2026-08-21.** The source-level lane adds
+> independent search and focus handling to the ten FileViewer menus named in
+> `docs/standards/context-menu-shortcuts.md`: Download, Share, Present, Zoom,
+> toolbar More and version actions. Each menu owns its plain-text-first query and
+> anchored regex builder, localized result status, keyboard navigation and trigger
+> focus return. Direct share and toolbar labels now wrap at narrow bilingual
+> widths. The hand-written source contract is
+> `design/apps/web/tests/components/FileViewer.menu-contract.test.ts`.
+> No local Node/pnpm/Electron execution, installed build, runtime geometry or
+> screen capture is claimed for this lane; the exact source commit is recorded
+> in the next handoff update.
 >
 > [!IMPORTANT]
 > **Design-parity infrastructure checkpoint — 2026-08-21.** The version-2

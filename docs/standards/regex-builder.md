@@ -7,7 +7,8 @@ own search field. The settings tab overflow menu now also owns an independent
 anchored builder for its local section filter, committed at
 [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The follow-up
 [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) keeps that portalled builder in its own focus scope while the menu remains open. The remaining search bars and the four tab-discovery surfaces
-still need their own builders, so the application does not yet meet the
+still need their own builders; the FileViewer's ten source-inventoried menus now
+have independent field-owned builders, so the application does not yet meet the
 project-wide standard. No installed build has been rendered for this audit.
 
 ## The requirement

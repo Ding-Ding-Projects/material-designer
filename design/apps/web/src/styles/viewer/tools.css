@@ -787,6 +787,37 @@
   display: flex;
   flex-direction: column;
 }
+/* Every FileViewer menu owns its own plain-text-first search field. The field
+   and its regex affordance stay inside the menu surface, while the result
+   count remains visible to keyboard and screen-reader users. */
+.file-viewer-menu-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border-soft, var(--border));
+}
+.file-viewer-menu-search__field {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.file-viewer-menu-search__input {
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  padding-inline: 8px;
+}
+.file-viewer-menu-search__count {
+  flex: 0 0 auto;
+  max-width: 45%;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
 .share-menu-item {
   display: flex;
   align-items: center;
@@ -803,6 +834,16 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text);
+}
+.share-menu-item > span:not(.share-menu-icon),
+.share-menu-item .share-menu-text,
+.present-menu-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  overflow: visible;
+  text-overflow: clip;
 }
 .share-menu-item:hover:not(:disabled) {
   background: var(--bg-subtle);

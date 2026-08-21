@@ -29,6 +29,27 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make FileViewer menus searchable, focusable, and wrap-safe
+
+**Reason:** FileViewer's Download, Share, Present, Zoom, toolbar and version menus
+were still unsearchable and did not share one explicit keyboard/focus contract. The
+new field-owned menu primitive gives each menu its own plain-text-first search state,
+anchored regex builder, localized result status, focus-on-open, arrow/Home/End/Enter
+navigation, Escape close-and-clear behaviour, and trigger focus restoration. Existing
+menu buttons and handlers remain the action owners; filtering only hides unmatched
+items. Share labels and toolbar labels now opt out of the global nowrap/ellipsis
+defaults so long bilingual labels wrap without clipping. This is source-level only;
+no installed build or runtime geometry has been verified here.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewerMenuSearch.tsx`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/styles/viewer/tools.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

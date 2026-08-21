@@ -7,9 +7,11 @@ menu carries its own search field.
 **Status: partial source-level audit.** The 2026-08-06 audit fixed the context
 menu's concrete clipping and dismissal defects: long bilingual labels wrap, and
 Escape, outside click, scroll, Tab and item selection restore focus to the
-originating control. The full per-menu search and registry-derived shortcut
-labels remain open in `ROADMAP.md` §4.9. No installed build has been rendered
-for this audit.
+originating control. The FileViewer menu inventory now has a field-owned,
+plain-text-first search and anchored regex builder for every listed FileViewer
+menu, with source-level keyboard and focus contracts. Registry-derived shortcut
+labels and all non-FileViewer context menus remain open in `ROADMAP.md` §4.9.
+No installed build has been rendered for this audit.
 
 ## The requirement
 
@@ -66,6 +68,32 @@ Like every other search surface, plain text is the default and the full pattern
 builder is available from an adjacent affordance — see
 [regex-builder.md](regex-builder.md).
 
+### FileViewer menu inventory
+
+The source guard keeps this list hand-written so a menu that disappears cannot
+also disappear from its own check:
+
+| Menu | Source identifier | Focus return |
+| --- | --- | --- |
+| Live artifact Present | `live-artifact-present-menu` | Present trigger wrapper |
+| Live artifact Zoom | `live-artifact-zoom-menu` | Zoom trigger wrapper |
+| Version header Download | `file-version-head-download-menu` | Active version Download trigger |
+| Version footer Download | `file-version-footer-download-menu` | Active version Download trigger |
+| React component Share/Export | `react-component-share-menu` | Share/Export wrapper |
+| HTML viewer Zoom | `html-viewer-zoom-menu` | Zoom trigger wrapper |
+| HTML viewer toolbar More | `html-viewer-toolbar-more-menu` | More trigger |
+| HTML viewer Present | `html-viewer-present-menu` | Present trigger wrapper |
+| HTML viewer Share/Export | `html-viewer-share-menu` | Share/Export wrapper |
+| Markdown Download | `markdown-download-menu` | Download trigger wrapper |
+
+Each row uses its own `RegexSearchField` controller and stable menu/field IDs.
+Unmatched existing menu items are hidden without replacing their handlers, so
+disabled states, error copy and re-entry protection remain owned by the original
+action code. The source contract is
+`apps/web/tests/components/FileViewer.menu-contract.test.ts`; it fails when any
+inventory row or the primitive wiring is removed, and checks the direct-label
+wrapping declarations.
+
 ## Why a menu needs a search
 
 The objection is fair: a context menu is short, and a search field in a short
@@ -92,7 +120,7 @@ on screen.
 | Correct in that context | **Unverifiable today.** There is no binding registry to check a label against. |
 | Announced as a shortcut, not duplicated | **Not started.** |
 | No placeholder for items without one | **Designed correctly** — the mockup shows a blank rather than a dash. |
-| A search field in every context menu | **Not started, and not recorded as designed anywhere.** |
+| A search field in every context menu | **Partial.** The ten FileViewer menus have independent local fields and builders at source level; the broader context-menu inventory remains open. |
 | Search preserving action semantics | **Not started.** |
 | Search wired to the pattern builder | **Not started.** |
 | Long labels visible and focus restored after dismissal | **Partial.** Context-menu labels wrap and the opener regains focus in the audited file-menu path; the full menu inventory remains unverified. |
@@ -151,9 +179,10 @@ observed from the other end.
 
 ## Verification
 
-**No runtime menu matrix has been verified.** The audited context-menu paths
-have focused source tests, but no menu has been rendered from an installed
-build in this repository, and the full binding/search inventory is still open.
+**No runtime menu matrix has been verified.** The FileViewer inventory and
+primitive have focused source contracts, but no menu has been rendered from an
+installed build in this repository. Registry-derived shortcuts and the broader
+context-menu inventory remain open.
 
 Conformance requires all of:
 
@@ -169,6 +198,9 @@ Conformance requires all of:
 - [ ] platform notation correct on every supported operating system
 - [ ] a search field present in every context menu — tab, group, appearance,
       application, overflow — reachable and operable by keyboard
+- [x] the ten FileViewer menus listed above use independent local search state,
+      an anchored regex builder, localized count/no-match status, and trigger
+      focus restoration at source level; installed-build proof remains open
 - [ ] filtering preserving action semantics, hierarchy and ordering
 - [ ] the search offering plain text by default and the full builder on opt-in
 - [ ] the menu usable with the search field present and empty, so the search

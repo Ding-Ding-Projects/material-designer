@@ -126,9 +126,10 @@
 .viewer-toolbar-more-item span {
   min-width: 0;
   flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .viewer-toolbar-more-item:hover:not(:disabled),
 .viewer-toolbar-more-item.active {

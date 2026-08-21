@@ -1552,14 +1552,19 @@ installed build.
 - [~] **4.9 Context-menu search and shortcut labels.** The audit fixed the
       concrete menu defects found in the file-menu path: long labels wrap and
       Escape, outside click, scroll, Tab and item selection restore focus to the
-      originating control. The full requirement remains: every context menu — tab,
-      group, appearance, application and overflow — carries its own
-      keyboard-accessible search field filtering visible items locally without
-      changing action semantics. Every item with a keyboard shortcut displays
-      it, right-aligned in the platform's notation, derived from the same source
-      that registers the binding so the two cannot drift. A shortcut shown that
-      does not work in that context trains the user to press a key that does
-      nothing.
+      originating control. The FileViewer now has a hand-written ten-menu
+      inventory with an independent plain-text-first search, anchored regex
+      builder, localized count/no-match status, keyboard navigation and trigger
+      focus restoration for each Download, Share, Present, Zoom and toolbar menu.
+      The source contract is `apps/web/tests/components/FileViewer.menu-contract.test.ts`;
+      no installed-build geometry or runtime interaction has been verified.
+      The full requirement remains: every context menu — tab, group, appearance,
+      application and overflow — carries its own keyboard-accessible search field
+      filtering visible items locally without changing action semantics. Every item
+      with a keyboard shortcut displays it, right-aligned in the platform's notation,
+      derived from the same source that registers the binding so the two cannot drift.
+      A shortcut shown that does not work in that context trains the user to press a
+      key that does nothing.
 - [ ] **4.10 Infinite colour picker and colour translator.** A continuous
       spectrum or two-dimensional field plus numeric entry, replacing the
       mockup's four fixed swatches, with bidirectional conversion across the

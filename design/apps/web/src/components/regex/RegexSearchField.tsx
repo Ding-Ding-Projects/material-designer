@@ -54,6 +54,8 @@ export interface RegexSearchFieldProps {
   toggleClassName?: string;
   placeholder?: string;
   ariaLabel?: string;
+  /** Stable menu/list id for the owning field's result collection. */
+  ariaControls?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -74,6 +76,7 @@ export function RegexSearchField({
   toggleClassName,
   placeholder,
   ariaLabel,
+  ariaControls,
   testId,
   autoFocus,
   spellCheck = false,
@@ -201,6 +204,7 @@ export function RegexSearchField({
         value={search.query}
         placeholder={placeholder}
         aria-label={ariaLabel}
+        aria-controls={ariaControls}
         aria-describedby={regexOn ? `${popoverId}-mode` : undefined}
         autoFocus={autoFocus}
         spellCheck={spellCheck}
