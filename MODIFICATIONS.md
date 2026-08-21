@@ -46,6 +46,7 @@ no installed build or runtime geometry has been verified here.
 - `apps/web/src/components/FileViewerMenuSearch.tsx`
 - `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/hooks/useDismissOnOutsideInteraction.ts`
 - `apps/web/src/styles/viewer/tools.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/tests/components/FileViewer.menu-contract.test.ts`

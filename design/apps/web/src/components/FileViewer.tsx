@@ -2123,6 +2123,8 @@ export function LiveArtifactViewer({
     const onPointer = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       if (!target) return;
+      if (target.closest('[data-file-viewer-menu-builder]')) return;
+      if (target.closest('[data-file-viewer-menu-builder]')) return;
       if (target.closest('.present-wrap')) return;
       setPresentMenuOpen(false);
     };
@@ -2370,6 +2372,8 @@ export function LiveArtifactViewer({
     if (!zoomMenuOpen) return;
     const onDocClick = (e: MouseEvent) => {
       if (!zoomMenuRef.current) return;
+      if ((e.target as Element | null)?.closest?.('[data-file-viewer-menu-builder]')) return;
+      if ((e.target as Element | null)?.closest?.('[data-file-viewer-menu-builder]')) return;
       if (!zoomMenuRef.current.contains(e.target as Node)) setZoomMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -6811,6 +6815,7 @@ function ReactComponentViewer({
     if (!shareMenuOpen) return;
     const onDocClick = (e: MouseEvent) => {
       if (!shareRef.current) return;
+      if ((e.target as Element | null)?.closest?.('[data-file-viewer-menu-builder]')) return;
       if (!shareRef.current.contains(e.target as Node)) setShareMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -13621,6 +13626,7 @@ function HtmlViewer({
     if (!workspaceActive || !deployMenuOpen) return;
     const onDocClick = (e: MouseEvent) => {
       if (!shareRef.current) return;
+      if ((e.target as Element | null)?.closest?.('[data-file-viewer-menu-builder]')) return;
       if (shareRef.current.contains(e.target as Node)) return;
       setDeployMenuOpen(false);
     };

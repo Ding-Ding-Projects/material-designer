@@ -34,6 +34,10 @@ export function useDismissOnOutsideInteraction(
     const onPointerDown = (event: PointerEvent) => {
       const container = containerRef.current;
       if (!container) return;
+      // FileViewer menu search builders are portalled to document.body. They
+      // are still part of the open menu interaction, so clicking a builder
+      // control must not dismiss the menu that owns its field.
+      if ((event.target as Element | null)?.closest?.('[data-file-viewer-menu-builder]')) return;
       if (!container.contains(event.target as Node)) onDismissRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {

@@ -12,6 +12,10 @@ const regexFieldSource = readFileSync(
   new URL('../../src/components/regex/RegexSearchField.tsx', import.meta.url),
   'utf8',
 );
+const outsideDismissSource = readFileSync(
+  new URL('../../src/hooks/useDismissOnOutsideInteraction.ts', import.meta.url),
+  'utf8',
+);
 const viewerToolsSource = readFileSync(
   new URL('../../src/styles/viewer/tools.css', import.meta.url),
   'utf8',
@@ -69,6 +73,8 @@ describe('FileViewer menu search contract', () => {
   it('keeps the regex field bound to the owning menu collection', () => {
     expect(regexFieldSource).toContain('aria-controls={ariaControls}');
     expect(regexFieldSource).toContain('ariaControls?: string;');
+    expect(regexFieldSource).toContain('data-file-viewer-menu-builder');
+    expect(outsideDismissSource).toContain('data-file-viewer-menu-builder');
     expect(menuPrimitiveSource).toContain('id={`${resolvedMenuId}-search`}');
   });
 
