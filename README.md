@@ -10,6 +10,12 @@
 > file tab. The inventory is structurally complete, but all ten capture rows are
 > still explicitly `unverified` until a hosted build and hidden-desktop capture
 > produce their raw images, comparisons and diff receipts.
+>
+> **Temporary release exception — 2026-08-20.** The repository owner directed
+> the current release to skip its dim-sum photo attachment for now. The workflow
+> records that omission in its warning and release notes and attaches no copied
+> catalog image. Squirrel packaging, unsigned verification, artifact hashes,
+> release targeting and post-publication checks remain mandatory.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
@@ -26,10 +32,10 @@
 > path, moving active workflows to a pinned hosted Windows runner, removing
 > test/lint/typecheck/static checks from Actions, and adding release provenance
 > and artifact evidence. A fresh set of installed-build screenshots is now
-> recorded below for the local portable artifact. The public dim-sum photo rules conflict with the older requirement
-> to attach a downloadable image; until that policy is resolved, publication
-> must fail closed rather than copy a catalogue photo into this repository's
-> release.
+> recorded below for the historical local portable artifact. The current
+> owner-authorized release temporarily skips the contradictory dim-sum photo
+> attachment and records that omission explicitly instead of copying a catalog
+> image into this repository's release.
 
 ## Build and installer scripts
 

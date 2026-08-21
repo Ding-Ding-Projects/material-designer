@@ -367,14 +367,14 @@ jobs:
             printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check dim-sum photo publication contract
+      - name: Record temporary dim-sum photo exception
         id: dim_sum_contract
         if: ${{ steps.pack.outputs.build_json != '' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         run: |
           set -euo pipefail
-          echo "::error::release publication is blocked: the standing contract requires a downloadable dim-sum photo, while the public-source rule forbids copying or attaching catalog photos in this repository; resolve that policy conflict before publishing"
-          exit 1
+          echo "::warning::dim-sum photo attachment temporarily skipped by current owner direction; no catalog image is copied into or attached by this repository"
+          echo "status=temporarily-skipped" >> "$GITHUB_OUTPUT"
 
       - name: Publish the release
         id: publish
@@ -411,6 +411,9 @@ jobs:
               echo ""
               echo "No public catalog code name was resolved for this build; the version remains authoritative."
             fi
+            echo ""
+            echo "> [!NOTE]"
+            echo "> Dim-sum photo attachment was temporarily skipped by the repository owner's current direction. No catalog image was copied into or attached to this release."
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
             echo ""

@@ -174,8 +174,10 @@ because one of its own self-checks tripped, and that reason belongs in the log.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
 the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. Publication is currently held by the contradictory dim-sum photo
-rules recorded above.
+verification. By explicit owner direction, the current release temporarily
+skips the contradictory dim-sum photo attachment. The run warns and the release
+notes state the omission; no catalog image is copied or attached. This temporary
+exception changes no other publication requirement.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.

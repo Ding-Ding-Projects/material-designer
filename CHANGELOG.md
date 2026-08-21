@@ -28,6 +28,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **The current release temporarily skips the contradictory dim-sum photo
+  attachment by explicit owner direction.** The workflow no longer fails at the
+  photo-policy step for this release. It emits a warning, exposes a
+  `temporarily-skipped` status and writes the omission into the release notes;
+  no catalog image is copied into or attached by this repository. Squirrel,
+  unsigned, provenance, target, asset-hash and post-publication verification
+  remain unchanged.
+
+  今次 release 由 owner 明確叫住先 skip dim-sum photo。Workflow 唔再喺兩條
+  photo 規矩打交嗰步自爆，會出 warning、記低 `temporarily-skipped`，release
+  notes 亦寫明無相；repository 唔會偷搬 catalog image。Squirrel、unsigned、
+  provenance、target、asset hash 同 publish 後驗證全部照舊，無放水。
+
 - **The hosted Squirrel build now judges the packer by its exit code instead of
   treating ordinary stderr progress as a fatal PowerShell exception.** Release
   [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)

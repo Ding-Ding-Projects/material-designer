@@ -17,6 +17,10 @@
 > progress was promoted to a terminating `NativeCommandError` before the native
 > exit code could be checked. The next commit scopes `Continue` to that command;
 > no package, unsigned or installed-runtime verdict came from the failed run.
+> The repository owner subsequently directed the current release to skip the
+> contradictory dim-sum photo attachment for now. The next workflow records
+> the exception in its warning and release notes, attaches no copied catalog
+> image, and keeps all Squirrel/provenance/publication verification active.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match
@@ -26,7 +30,7 @@
 > and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
 > are green. Release [`31480515300`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515300)
 > reached Squirrel packaging, passed the unsigned and line-count checks, and then
-> failed closed at the documented dim-sum photo-policy conflict before publication.
+> failed closed at the previously active dim-sum photo-policy conflict before publication.
 > The historical latest release `v0.16.1-r71.1` is stale and lacks the Squirrel feed
 > assets required for a current release.
 >

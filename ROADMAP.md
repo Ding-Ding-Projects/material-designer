@@ -8,11 +8,11 @@
 > built the unsigned Squirrel payload, then failed closed at the explicit dim-sum
 > photo-policy conflict before publication; no new release exists.
 
-The remaining release blocker is explicit: the current standards require a
-downloadable dim-sum image on every release while also forbidding a consumer
-repository from copying catalogue photos. The workflow must not choose a side
-silently; until the policy is resolved, a release stops before publication and
-records the reason.
+The contradictory dim-sum image rules remain unresolved as a durable standard,
+but the repository owner explicitly directed the current release to skip the
+photo for now. The workflow records the temporary omission and attaches no
+copied catalog image; the exception does not relax any package, unsigned,
+provenance, target-SHA, asset-hash or publication-verification requirement.
 
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
@@ -451,6 +451,10 @@ Not by a local build — local builds do not happen here.
       landed in [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77).
       Every row remains `unverified` until the installed Squirrel build and the
       reference are captured at identical tuples and reviewed component by component.
+- [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is
+      a temporary owner-authorized exception, not a resolution of the two
+      conflicting standards. The workflow emits a warning, states the omission
+      in release notes, and does not copy or attach a catalog image.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
