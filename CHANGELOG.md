@@ -28,6 +28,36 @@ version section when a release carries them.
 
 ### Changed
 
+- **Deterministic capture now owns every route boundary and its run evidence.**
+  Commit [`2ba8718da`](https://github.com/Ding-Ding-Projects/material-designer/commit/2ba8718da04fafc941fdab78a1df1528b9764fc6)
+  gives each capture launch a validated per-run namespace, lexical reparse-point
+  checks, an exclusive lease, and serialized evidence-preserving retirement.
+  Capture sidecars receive empty per-run profile roots, refuse external-capable
+  agent/provider launches, force the bundled server configuration, and skip
+  legacy migration, update, telemetry, native-menu, diagnostics, invite,
+  folder, path, PDF, webview, and payload-delegation side effects. Renderer
+  capture, click, evaluation, export, and slide operations now require the
+  ready receipt, revealed window, and stable credential-free loopback origin;
+  bounded operation timeouts invalidate that receipt. Sidecar fetches use
+  manual redirects and reject every redirect or non-loopback final origin. The
+  prelude installs a non-writable run identifier before application code and
+  does not rewrite ordinary profile storage. This commit contains source and
+  static-contract evidence only; no local build, runtime, visual capture, or
+  hosted desktop IPC proof was performed.
+
+  Deterministic capture 而家由每次 launch 自己保管 route boundary 同 evidence。
+  Commit `2ba8718da` 畀每次 capture 有 validated per-run namespace、reparse-point
+  檢查、exclusive lease，同埋會保留 evidence 嘅 serialized retirement。Sidecar
+  用每次 run 嘅空 profile roots，agent/provider launch 一律拒絕，configuration
+  只准 bundled server，legacy migration、update、telemetry、native menu、
+  diagnostics、invite、folder、path、PDF、webview 同 payload delegation 都唔
+  偷渡。Renderer capture、click、eval、export 同 slide 一定要 ready receipt、
+  revealed window 同穩定、無 credential 嘅 loopback origin；timeout 就令 receipt
+  失效。Sidecar fetch 手動處理 redirect，redirect 或非 loopback final origin
+  一律打回頭。Prelude 喺 application code 前裝好 non-writable run id，亦唔會
+  改普通 profile storage。呢個 commit 只有 source 同 static-contract evidence，
+  未做 local build、runtime、visual capture 或 hosted desktop IPC proof。
+
 - **Deterministic capture now keeps storage, networking, and failure state in one
   honest box.** Commit
   [`b612563`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e)
