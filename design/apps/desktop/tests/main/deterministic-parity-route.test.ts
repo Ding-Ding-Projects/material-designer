@@ -7,6 +7,10 @@ import {
   DETERMINISTIC_PARITY_NETWORK,
   DETERMINISTIC_PARITY_RANDOM_SEED,
   DETERMINISTIC_PARITY_TIME,
+  DETERMINISTIC_PARITY_NOT_READY_REASON,
+  isDeterministicParityCaptureReady,
+  isDeterministicParityNavigationAllowed,
+  isDeterministicParityReadinessInspectionExpression,
   parseDeterministicParityRouteArgv,
   resolveDeterministicParityRoute,
 } from "../../src/main/deterministic-parity-route.js";
@@ -155,5 +159,35 @@ describe("deterministic material-designer capture routes", () => {
   it("accepts the declared scale and bilingual presentation variants", () => {
     expect(resolveDeterministicParityRoute(route("home", "default", { scale: "2" })).tuple.scale).toBe(2);
     expect(resolveDeterministicParityRoute(route("home", "default", { width: "720", locale: "bilingual" })).tuple.locale).toBe("bilingual");
+  });
+
+  it("allows only the exact accepted od:// route during capture navigation", () => {
+    const resolved = resolveDeterministicParityRoute(route("home"));
+    expect(isDeterministicParityNavigationAllowed(resolved, resolved.browserUrl)).toBe(true);
+    for (const candidate of [
+      "od://app/",
+      `${resolved.browserUrl}&extra=1`,
+      "file:///tmp/route.html",
+      "data:text/html,route",
+      "ftp://example.test/route",
+      "custom://example.test/route",
+    ]) {
+      expect(isDeterministicParityNavigationAllowed(resolved, candidate)).toBe(false);
+    }
+  });
+
+  it("keeps capture and eval inspection closed until readiness is true", () => {
+    expect(isDeterministicParityCaptureReady(null)).toBe(false);
+    expect(isDeterministicParityCaptureReady({ ready: false })).toBe(false);
+    expect(isDeterministicParityCaptureReady({ ready: true })).toBe(true);
+    expect(DETERMINISTIC_PARITY_NOT_READY_REASON).toBe(
+      "deterministic parity capture readiness is not verified",
+    );
+    expect(isDeterministicParityReadinessInspectionExpression(
+      "globalThis.__MATERIAL_DESIGNER_CAPTURE_READINESS__",
+    )).toBe(true);
+    expect(isDeterministicParityReadinessInspectionExpression(
+      "document.querySelector('button').click()",
+    )).toBe(false);
   });
 });

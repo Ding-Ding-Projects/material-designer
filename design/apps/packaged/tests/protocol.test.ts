@@ -78,6 +78,23 @@ describe('od:// protocol proxy', () => {
     expect(captured[0]?.redirect).toBe('manual');
   });
 
+  it('keeps redirect following for the ordinary non-capture proxy', async () => {
+    const captured: Request[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      captured.push(input as Request);
+      return new Response(null, { status: 302, headers: { location: '/next' } });
+    };
+
+    const response = await handleOdRequest(
+      new Request('od://app/'),
+      'http://127.0.0.1:17579/',
+      fetchImpl,
+    );
+
+    expect(response.status).toBe(302);
+    expect(captured[0]?.redirect).toBe('follow');
+  });
+
   it('blocks a final response whose origin is not the validated sidecar', async () => {
     const responseFromOtherOrigin = new Response('unexpected', { status: 200 });
     Object.defineProperty(responseFromOtherOrigin, 'url', {
@@ -93,6 +110,23 @@ describe('od:// protocol proxy', () => {
 
     expect(response.status).toBe(502);
     expect((await response.json()).error).toBe('OD_PROTOCOL_ORIGIN_MISMATCH');
+  });
+
+  it.each(['', 'not-a-url'])('rejects a final response with an unverified Response.url (%j)', async (url) => {
+    const responseFromUnverifiedOrigin = new Response('unexpected', { status: 200 });
+    Object.defineProperty(responseFromUnverifiedOrigin, 'url', {
+      configurable: true,
+      value: url,
+    });
+    const response = await handleOdRequest(
+      new Request('od://app/'),
+      'http://127.0.0.1:17579/',
+      async () => responseFromUnverifiedOrigin,
+      { redirectPolicy: 'block', requireLoopbackOrigin: true },
+    );
+
+    expect(response.status).toBe(502);
+    expect((await response.json()).error).toBe('OD_PROTOCOL_ORIGIN_UNVERIFIED');
   });
 
   it('returns an idempotent disposer that unhandles the registered scheme once', () => {

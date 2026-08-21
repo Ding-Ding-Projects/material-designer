@@ -246,21 +246,38 @@ async function fetchOdTargetOnce(
       },
     );
   }
-  if (
-    options.requireLoopbackOrigin
-    && upstream.url.length > 0
-    && new URL(upstream.url).origin !== new URL(target).origin
-  ) {
-    return new Response(
-      JSON.stringify({ error: "OD_PROTOCOL_ORIGIN_MISMATCH", target, upstream: upstream.url }),
-      {
-        status: 502,
-        headers: {
-          "content-type": "application/json",
-          "access-control-allow-origin": "*",
+  if (options.requireLoopbackOrigin) {
+    const upstreamValue = typeof upstream.url === "string" ? upstream.url : "";
+    let upstreamUrl: URL | null = null;
+    try {
+      if (upstreamValue.length > 0) upstreamUrl = new URL(upstreamValue);
+    } catch {
+      upstreamUrl = null;
+    }
+    if (upstreamUrl == null || !isValidatedLoopbackSidecarUrl(upstreamUrl.href)) {
+      return new Response(
+        JSON.stringify({ error: "OD_PROTOCOL_ORIGIN_UNVERIFIED", target, upstream: upstreamValue }),
+        {
+          status: 502,
+          headers: {
+            "content-type": "application/json",
+            "access-control-allow-origin": "*",
+          },
         },
-      },
-    );
+      );
+    }
+    if (upstreamUrl.origin !== new URL(target).origin) {
+      return new Response(
+        JSON.stringify({ error: "OD_PROTOCOL_ORIGIN_MISMATCH", target, upstream: upstreamValue }),
+        {
+          status: 502,
+          headers: {
+            "content-type": "application/json",
+            "access-control-allow-origin": "*",
+          },
+        },
+      );
+    }
   }
   if (upstream.body == null) {
     return new Response(null, {

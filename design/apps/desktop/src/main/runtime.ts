@@ -54,6 +54,10 @@ import {
   registerWindowControlHandlers,
 } from "./window-controls.js";
 import {
+  DETERMINISTIC_PARITY_NOT_READY_REASON,
+  isDeterministicParityCaptureReady,
+  isDeterministicParityNavigationAllowed,
+  isDeterministicParityReadinessInspectionExpression,
   deterministicParitySessionPartition,
   type DeterministicParityRoute,
   type DeterministicParityReadiness,
@@ -2286,6 +2290,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const captureRoute = options.captureRoute ?? null;
   const captureNetworkOrigin = options.captureNetworkOrigin ?? (() => null);
   const captureNetworkIsolationReady = options.captureNetworkIsolationReady === true;
+  let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
+  const deterministicCaptureReadinessError = (): string | null => {
+    if (captureRoute == null || isDeterministicParityCaptureReady(deterministicCaptureReadiness)) return null;
+    return DETERMINISTIC_PARITY_NOT_READY_REASON;
+  };
   applyDockIcon();
 
   // ipcMain.handle() registers a handler in an internal map that is *not*
@@ -3045,6 +3054,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (event.sender !== window.webContents) {
       return { ok: false, reason: 'capture sender not allowed' };
     }
+    const readinessError = deterministicCaptureReadinessError();
+    if (readinessError != null) return { ok: false, reason: readinessError };
     try {
       const clip = parseCaptureClip(rawOptions);
       const image = clip
@@ -3069,10 +3080,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
 
   window.webContents.on("will-navigate", (event, url) => {
-    if (
-      captureRoute != null
-      && (isHttpUrl(url) || isFirstPartyMailtoUrl(url))
-    ) {
+    if (captureRoute != null) {
+      if (isDeterministicParityNavigationAllowed(captureRoute, url)) return;
       event.preventDefault();
       return;
     }
@@ -3093,6 +3102,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (currentOrigin === nextOrigin) return;
     event.preventDefault();
     void shell.openExternal(url);
+  });
+
+  window.webContents.on("will-redirect", (event, url) => {
+    if (captureRoute == null) return;
+    if (isDeterministicParityNavigationAllowed(captureRoute, url)) return;
+    event.preventDefault();
   });
 
   if (process.platform === "darwin") {
@@ -3196,7 +3211,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
   let revealing = false;
-  let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
 
   const revealMainWindow = (): void => {
     if (revealed || window.isDestroyed()) return;
@@ -3487,6 +3501,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   return {
     async click(input) {
       if (window.isDestroyed()) return { clicked: false, found: false };
+      if (deterministicCaptureReadinessError() != null) return { clicked: false, found: false };
       const selector = JSON.stringify(input.selector);
       return await window.webContents.executeJavaScript(
         `(() => {
@@ -3525,6 +3540,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     async eval(input) {
       if (window.isDestroyed()) return { error: "desktop window is destroyed", ok: false };
+      if (
+        deterministicCaptureReadinessError() != null
+        && !isDeterministicParityReadinessInspectionExpression(input.expression)
+      ) {
+        return { error: DETERMINISTIC_PARITY_NOT_READY_REASON, ok: false };
+      }
       const startedAt = Date.now();
       console.info("[open-design desktop] eval executeJavaScript start", {
         ...summarizeExpression(input.expression),
@@ -3571,6 +3592,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     async screenshot(input) {
       if (window.isDestroyed()) throw new Error("desktop window is destroyed");
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) throw new Error(readinessError);
       const outputPath = normalizeScreenshotPath(input.path);
       const image = await window.webContents.capturePage();
       await mkdir(dirname(outputPath), { recursive: true });

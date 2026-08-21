@@ -39,13 +39,17 @@ field and query boundary, maps only semantically owned destinations to the
 existing web router, and reports stable blockers for the four rows that still
 need product-owned destinations. The preload-time capture context freezes
 clock/randomness/motion and applies the requested locale before the first
-document. Capture uses an isolated session, rejects external navigation,
-validates the exact loopback sidecar origin, blocks redirects, and records a
-terminal readiness receipt from the canonical URL/search, renderer-owned route
-witness, real component invariant, fixture source and network proof. The
-renderer adds only a witness from its actual router state; it does not receive
-replacement DOM or a second screen implementation. Capture remains unready
-until a real deterministic fixture/provider and capture-aware sidecars exist.
+document. Capture uses an isolated session, allows only the exact accepted
+`od://` route through both main-frame navigation events, rejects external
+navigation, validates the exact loopback sidecar origin, blocks redirects, and
+returns a stable refusal from screenshot/capture RPCs until readiness is true.
+It also keeps eval available only for the minimal readiness receipt inspection
+while an unready capture is visible. The terminal readiness receipt comes from
+the canonical URL/search, renderer-owned route witness, real component
+invariant, fixture source and network proof. The renderer adds only a witness
+from its actual router state; it does not receive replacement DOM or a second
+screen implementation. Capture remains unready until a real deterministic
+fixture/provider and capture-aware sidecars exist.
 
 **Changed files:**
 

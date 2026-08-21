@@ -386,6 +386,36 @@ export function deterministicParitySessionPartition(route: DeterministicParityRo
   return `material-designer-parity-${route.id}`;
 }
 
+/**
+ * Capture navigation is exact-route only. This is intentionally stricter than
+ * the normal desktop URL policy: a capture renderer must never be redirected
+ * to another scheme, path, query, or custom protocol after its tuple is
+ * accepted.
+ */
+export function isDeterministicParityNavigationAllowed(
+  route: DeterministicParityRoute,
+  url: string,
+): boolean {
+  return url === route.browserUrl;
+}
+
+export const DETERMINISTIC_PARITY_NOT_READY_REASON =
+  "deterministic parity capture readiness is not verified";
+
+export function isDeterministicParityCaptureReady(
+  readiness: Pick<DeterministicParityReadiness, "ready"> | null,
+): boolean {
+  return readiness?.ready === true;
+}
+
+export function isDeterministicParityReadinessInspectionExpression(expression: string): boolean {
+  const normalized = expression.trim();
+  return normalized === "globalThis.__MATERIAL_DESIGNER_CAPTURE_READINESS__"
+    || normalized === "window.__MATERIAL_DESIGNER_CAPTURE_READINESS__"
+    || normalized === "document.documentElement.dataset.odParityReady"
+    || normalized === "document.documentElement.dataset.odParityReadinessReasons";
+}
+
 /** Exact ids are exported for source-level contract tests and handoff tools. */
 export function deterministicParityRouteIds(): readonly string[] {
   return EXPECTED_ROUTE_IDS;
