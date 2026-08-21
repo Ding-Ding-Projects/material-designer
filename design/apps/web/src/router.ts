@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { LIBRARY_UI_VISIBLE } from './features/libraryUi';
 import {
   studioFixtureProjectRoute,
+  studioFixtureCaptureRefusedForCurrentLocation,
   studioFixtureRouteFromCurrentLocation,
 } from './capture/studio-fixture';
 
@@ -519,9 +520,11 @@ function getRouteSnapshot(): Route {
     // concrete project/conversation/file route that normal navigation uses.
     // No capture URL gets a parallel DOM tree or a special workspace renderer.
     const studioFixtureRoute = studioFixtureRouteFromCurrentLocation();
-    cachedRoute = studioFixtureRoute
-      ? studioFixtureProjectRoute(studioFixtureRoute)
-      : parseRoute(pathname);
+    cachedRoute = studioFixtureCaptureRefusedForCurrentLocation()
+      ? { kind: 'home', view: 'home' }
+      : studioFixtureRoute
+        ? studioFixtureProjectRoute(studioFixtureRoute)
+        : parseRoute(pathname);
   }
   return cachedRoute;
 }
