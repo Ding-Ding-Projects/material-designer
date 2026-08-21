@@ -97,6 +97,29 @@
 > regressions also reject the callback and active-file selector from returning.
 > No hosted build, runtime interaction or capture evidence was run; those gates
 > remain open.
+
+> **Composer accessibility repair — 2026-08-21, source-only.** Commit
+> [`6bcd27b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6bcd27b8339a54cf1e7b06bbff49811ab17285c)
+> repairs the accepted accessibility findings for the project-wide file-context
+> lane. The body-level portalled composer now keeps the implicit project chip
+> visible; the automatic boundary still admits only `kind === 'project'`, so a
+> visible file or browser tab cannot become implicit context. `useId()` prefixes
+> are threaded through the Lexical combobox, mention tabs/panel/listbox/options
+> and slash list, preventing collisions between two composers. Mention category
+> tabs use roving `tabIndex` and Left/Right/Home/End; the result list keeps
+> Up/Down/Enter. Toolbox file and resource rows expose active state as
+> `menuitemcheckbox` with `aria-checked`. A visually hidden polite live region
+> announces localized added, removed and failed context deltas without replaying
+> the full chip row, and one shared translated workspace-kind helper plus the
+> existing localized Current key covers all call sites while preserving user
+> paths and names.
+>
+> Static evidence: `git diff --check` passed; Git Bash
+> `sh scripts/verify-port.sh` and `sh scripts/verify-port.sh --json` both passed
+> with 12,835 expected upstream files, 13,080 tracked files, 584 declared
+> modifications, and zero gaps. No Node, pnpm, Electron, hosted build, runtime
+> interaction, screen-reader traversal or screenshot capture was run in this
+> lane; those are pending on the supported hosted path.
 >
 > Release [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
 > then exposed a workflow-only PowerShell boundary: ordinary tools-pack stderr
