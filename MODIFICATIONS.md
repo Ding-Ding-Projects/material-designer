@@ -29,6 +29,38 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Expose the production Library route and own its regex search
+
+**Reason:** The real LibrarySection and its provider/API boundary already existed,
+but a release flag hid the destination from `/library` and the normal navigation
+rail. The route is now enabled, the rail and workspace analytics recognize it,
+and focused source contracts cover route recognition, buildPath, rail reachability,
+real component mounting, and the hidden-flag regression. LibrarySection's search
+now owns one `useRegexSearch` controller and adjacent `RegexSearchField`: plain
+text remains the default, regex mode stays local to the loaded asset records,
+bounded matching is shared with the existing regex implementation, and the
+screen-reader status reports the visible result count. No fixture data or catalog
+image was added; deterministic capture-fixture status remains pending until a
+provider/API-backed public-safe record set is available. Existing filter selects
+and the design-system action menu remain functional and are explicitly listed in
+the focused search contract as future touched surfaces requiring their own local
+search and anchored builder.
+
+**Changed files:**
+
+- `apps/web/src/analytics/workspace.ts`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/features/libraryUi.ts`
+- `apps/web/tests/components/EntryNavRail.library.test.tsx`
+- `apps/web/tests/components/LibrarySection.a11y.test.tsx`
+- `apps/web/tests/design-system-asset-dropzone.test.tsx`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `apps/web/tests/router-marketplace.test.ts`
+- `packages/contracts/src/analytics/events/workspace.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

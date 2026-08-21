@@ -64,4 +64,17 @@ describe('LibrarySection accessibility', () => {
     expect(screen.getByRole('combobox', { name: 'Filter by kind' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Filter by source' })).toBeTruthy();
   });
+
+  it('keeps the Library search plain by default and exposes its own anchored builder', async () => {
+    render(<LibrarySection active onOpenProject={() => {}} />);
+
+    await screen.findByText('A photo');
+
+    expect(screen.getByTestId('library-search')).toHaveAttribute('data-regex-mode', 'text');
+    expect(screen.getByTestId('library-search-regex-toggle')).toHaveAttribute(
+      'aria-haspopup',
+      'dialog',
+    );
+    expect(screen.getByTestId('library-search-results')).toHaveTextContent('1');
+  });
 });

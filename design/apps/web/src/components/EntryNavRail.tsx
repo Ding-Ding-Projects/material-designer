@@ -1,8 +1,8 @@
 // Material Design 3 navigation rail for the entry view.
 //
 // The first slot is the brand logo, followed by the primary destinations
-// users expect to keep in reach: New project, home, projects, brand kit,
-// automations, plugins, and integrations. Footer controls are reserved for
+// users expect to keep in reach: New project, home, Library, projects, brand
+// kit, automations, plugins, and integrations. Footer controls are reserved for
 // lower-frequency support affordances such as the help launcher.
 // Language switching and other account-scoped controls live behind the
 // floating settings cog in the top-right corner of the main content.
@@ -1224,6 +1224,7 @@ export function EntryNavRail({
   const analyticsPage = entryViewToTracking(view);
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const communityLabel = t('pluginsHome.title');
+  const libraryLabel = t('library.title');
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).
@@ -1724,6 +1725,15 @@ export function EntryNavRail({
           testId="entry-nav-community"
         >
           <Icon name="globe" size={16} />
+        </NavButton>
+        <NavButton
+          active={view === 'library'}
+          ariaLabel={libraryLabel}
+          label={libraryLabel}
+          onClick={() => selectView('library')}
+          testId="entry-nav-library"
+        >
+          <Icon name="layers-filled" size={16} />
         </NavButton>
 
         {context ? (

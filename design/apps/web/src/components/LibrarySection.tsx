@@ -41,7 +41,7 @@ import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { setComposerSeed, setDesignSystemAssetSeed, setHomeComposerAssetSeed } from '../state/libraryHandoff';
-import { Button } from '@open-design/components';
+import { Button, VisuallyHidden } from '@open-design/components';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
 import {
@@ -60,6 +60,8 @@ import {
 } from './LibraryAssetMeta';
 import { LibraryPreviewModal } from './LibraryPreviewModal';
 import { LibraryUploadModal } from './LibraryUploadModal';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import styles from './LibrarySection.module.css';
 import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
@@ -100,6 +102,40 @@ function sourceFilters(t: Translate): Array<{ value: string; label: string }> {
     { value: 'design-system', label: t('library.sourceDesignSystem') },
     { value: 'generated', label: t('library.sourceGenerated') },
   ];
+}
+
+/**
+ * Text owned by one Library record and searched by the local controller.
+ * Keeping this projection explicit means plain text and regex mode share one
+ * bounded matcher without asking the browser to search rendered DOM or
+ * sending a regex pattern to the daemon's keyword endpoint.
+ */
+export function libraryAssetSearchText(asset: LibraryAsset): string {
+  const sourceText = asset.sources.flatMap((source) => [
+    source.id,
+    source.projectId,
+    source.conversationId,
+    source.runId,
+    source.designSystemId,
+    source.relPath,
+    source.sourceKind,
+  ]);
+  return [
+    assetTitle(asset),
+    asset.id,
+    asset.kind,
+    asset.mime,
+    asset.sourceTitle,
+    asset.sourceDomain,
+    asset.sourceUrl,
+    asset.relPath,
+    asset.caption,
+    asset.ocrText,
+    ...asset.tags,
+    ...sourceText,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join('\n');
 }
 
 /** Local `YYYY-MM-DD` for a Date — matches the daemon's `archivedDate` bucket. */
@@ -577,6 +613,11 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [kind, setKind] = useState('');
   const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
+  // This controller belongs to this field only. RegexSearchField renders the
+  // adjacent builder and returns focus to this input when it closes; no
+  // module-level controller or shared builder state is involved.
+  const librarySearch = useRegexSearch(search, setSearch);
+  const { matches: matchesLibraryAsset, mode: searchMode } = librarySearch;
   // The input updates `search` instantly (responsive typing) but the server
   // query keys off `debouncedSearch`, so a fast typist fires one request, not
   // one per keystroke.
@@ -633,9 +674,13 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     // stored as `image`); narrow to images on the server, then split client-side.
     if (kind) q.kind = kind === 'element' ? 'image' : kind;
     if (source) q.source = source;
-    if (debouncedSearch.trim()) q.q = debouncedSearch.trim();
+    // The daemon endpoint owns plain-text keyword search. Regex mode stays
+    // local so the server never interprets a partially typed pattern as a
+    // keyword query and silently drops records before the bounded matcher sees
+    // them.
+    if (searchMode === 'text' && debouncedSearch.trim()) q.q = debouncedSearch.trim();
     return q;
-  }, [kind, source, debouncedSearch]);
+  }, [kind, source, debouncedSearch, searchMode]);
 
   // Whether any filter narrows the default newest-first feed. Tracked in a ref
   // so the long-lived SSE subscription can read it without resubscribing on
@@ -1202,6 +1247,17 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     [assets],
   );
 
+  // Search locally over the real provider results. `useRegexSearch` supplies
+  // plain-text matching by default and a bounded regex matcher after the
+  // explicit opt-in. Preserve each source index so range selection and box
+  // selection keep their existing semantics when a query narrows the view.
+  const visibleAssetEntries = useMemo(
+    () => assets
+      .map((asset, index) => ({ asset, index }))
+      .filter(({ asset }) => matchesLibraryAsset(libraryAssetSearchText(asset))),
+    [assets, matchesLibraryAsset],
+  );
+  const searchActive = search.trim().length > 0;
   const previewIndex = previewId ? assets.findIndex((a) => a.id === previewId) : -1;
   const previewAsset = previewIndex >= 0 ? assets[previewIndex] : null;
   const selectedCount = selectedIds.size;
@@ -1211,7 +1267,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // both views. Grouping by a Map collapses non-contiguous same-day assets.
   const timelineGroups = useMemo(() => {
     const map = new Map<string, Array<{ asset: LibraryAsset; index: number }>>();
-    assets.forEach((asset, index) => {
+    visibleAssetEntries.forEach(({ asset, index }) => {
       const key = dayKeyOf(asset);
       const bucket = map.get(key);
       if (bucket) bucket.push({ asset, index });
@@ -1220,7 +1276,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     return [...map.entries()]
       .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
       .map(([key, items]) => ({ key, items }));
-  }, [assets]);
+  }, [visibleAssetEntries]);
 
   const kindFilterOptions = useMemo(() => kindFilters(t), [t]);
   const sourceFilterOptions = useMemo(() => sourceFilters(t), [t]);
@@ -1247,6 +1303,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   return (
     <div
       className={`entry-section ${styles.root}`}
+      data-testid="library-section"
       onDragEnter={onSectionDragEnter}
       onDragOver={onSectionDragOver}
       onDragLeave={onSectionDragLeave}
@@ -1272,14 +1329,23 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <Icon name="search" size={15} className={styles.searchIcon} />
-          <input
+          <RegexSearchField
+            search={librarySearch}
+            fieldLabel={t('library.title')}
             className={styles.search}
-            type="search"
+            hostClassName={styles.searchFieldHost}
             placeholder={t('library.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            ariaLabel={t('library.searchPlaceholder')}
+            testId="library-search"
           />
         </div>
+        <VisuallyHidden
+          role="status"
+          aria-live="polite"
+          data-testid="library-search-results"
+        >
+          Library search results: {visibleAssetEntries.length}
+        </VisuallyHidden>
         <select aria-label={t('library.filterByKind')} className={styles.select} value={kind} onChange={(e) => setKind(e.target.value)}>
           {kindFilterOptions.map((f) => (
             <option key={f.value} value={f.value}>
@@ -1441,6 +1507,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             {t('library.emptyHintAfter')}
           </p>
         </div>
+      ) : searchActive && visibleAssetEntries.length === 0 ? (
+        <div className={styles.empty} data-testid="library-search-empty">
+          <p>No matching Library assets.</p>
+        </div>
       ) : viewMode === 'timeline' ? (
         <div
           className={styles.timeline}
@@ -1468,7 +1538,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           onMouseDown={onGridMouseDown}
           data-selecting={selectedCount > 0 ? 'true' : 'false'}
         >
-          {assets.map((asset, index) => renderCard(asset, index))}
+          {visibleAssetEntries.map(({ asset, index }) => renderCard(asset, index))}
         </div>
       )}
 

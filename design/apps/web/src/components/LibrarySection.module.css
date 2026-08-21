@@ -57,6 +57,9 @@
   flex: 1 1 240px;
   min-width: 180px;
 }
+.searchFieldHost {
+  width: 100%;
+}
 .searchIcon {
   position: absolute;
   left: 11px;

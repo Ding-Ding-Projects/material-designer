@@ -239,9 +239,9 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
   }
 
   for (const entry of SETTINGS_INDEX) {
-    // `library` is indexed for coverage but has no settings panel and no
-    // visible surface while `LIBRARY_UI_VISIBLE` is false. Offering a row that
-    // leads nowhere is worse than offering none.
+    // `library` is indexed for coverage alongside the production Library
+    // destination. Keep the flag check so a future staged rollout cannot
+    // leave a command-palette row pointing at an absent surface.
     if (entry.section === 'library' && !LIBRARY_UI_VISIBLE) continue;
     rows.push({
       kind: 'setting',
