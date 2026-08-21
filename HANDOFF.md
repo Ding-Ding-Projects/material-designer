@@ -1,6 +1,32 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Appearance settings reachability checkpoint — 2026-08-21.** Commit
+> [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
+> restores one authoritative SettingsTabStrip owner and one rendered panel
+> for the Appearance section. It removes the obsolete General normalization
+> and duplicate navigation branch, adds the typed `/settings/appearance` route,
+> and leaves `/settings` on its normal first-tab behavior. The real System,
+> Light, and Dark selector now persists through AppConfig and applies live to
+> the document and native appearance runtime. Language, Notifications, Pet,
+> Project Locations, and Critique each retain their own render branch and tab.
+>
+> The same commit adds focused source contracts for route round trips, panel
+> mounting, the System / Light / Dark state transitions, every inventoried tab
+> renderer, duplicate-section rejection, and single-navigation ownership. The
+> pure shell checks are verified at zero gaps: `sh scripts/verify-port.sh` and
+> `sh scripts/verify-port.sh --json` both report 12,835 expected upstream files,
+> 13,080 tracked files, 584 declarations, and zero missing, byte, mode,
+> object-ID, extra, untracked, or stale-notice findings. `git diff --check` is
+> also clean. No local Node, package-manager, Electron, build, typecheck, test,
+> UI, or screenshot command was run in this lane; hosted and installed runtime
+> evidence remains open for the next owner.
+>
+> The linked checkout remains on `codex/settings-appearance` at the commit
+> above and has not been merged, pushed, removed, or cleaned by this lane. The
+> parent integration lane owns the next merge and remote verification.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

@@ -28,6 +28,27 @@ version section when a release carries them.
 
 ### Changed
 
+- **Settings Appearance is now a reachable, addressable surface.** Commit
+  [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
+  removes the obsolete General normalization and duplicate navigation markup,
+  gives `/settings/appearance` a typed route that selects Appearance before the
+  first render, and keeps `/settings` on its normal first tab. The real
+  System, Light, and Dark control remains visible, persisted, accessible, and
+  live through the document and native appearance runtime. Language,
+  Notifications, Pet, Project Locations, and Critique remain separate
+  reachable sections. Focused source contracts cover one section owner, one
+  tab-strip owner, direct routing, and the theme semantics; hosted build and
+  installed-renderer evidence remain unverified.
+
+  Settings Appearance 而家有門牌又有真房間。`fbd4cac8d` 拆走過時嘅
+  General normalization 同 duplicate navigation，`/settings/appearance`
+  會喺第一次 render 前揀中 Appearance，而普通 `/settings` 照行原本第一個
+  tab。System、Light、Dark control 仍然睇到、記得住、用鍵盤搵到，仲會即時
+  更新 document 同 native appearance runtime。Language、Notifications、Pet、
+  Project Locations 同 Critique 都各自有路。Focused source contracts 已經
+  鎖住單一 section owner、單一 tab-strip owner、direct route 同 theme 行為；
+  hosted build 同 installed renderer 證據仍未驗證。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
