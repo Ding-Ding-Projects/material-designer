@@ -54,21 +54,21 @@ version section when a release carries them.
 - **Malformed capture paths stay outside ordinary route resolution.** The router
   now keeps a refused canonical capture address from being interpreted as a
   regular project URL, while valid fixture sessions still resolve through the
-  production project route. Source commit: [`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc5503b2e39c2be46dd6548347631011a65a).
+  production project route. Source commit: [`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc55089b7c91ee078af8957b609891b35fab).
 
   Malformed capture path 而家唔會再扮普通 project URL；router 會留住 refused
   狀態，valid fixture session 就照樣落返 production project route。Source
-  commit：[`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc5503b2e39c2be46dd6548347631011a65a)。
+  commit：[`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc55089b7c91ee078af8957b609891b35fab)。
 
 - **Capture teardown no longer resurrects an old analytics fetch wrapper.**
   Analytics cleanup now restores `window.fetch` only while the wrapper still
   owns it; a single-shot request header follows the same ownership rule. This
   keeps ordinary navigation from inheriting a stale capture hook.
-  Source commit: [`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60aaf15896db5a78732d3a1a4d24b39b4).
+  Source commit: [`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60d10e70be86dc356dac86f4f3462e0da).
 
   Capture teardown 而家唔會復活舊 analytics fetch wrapper：只有 wrapper 仲擁有
   `window.fetch` 先會 restore，single-shot request header 都用同一條規矩，
-  普通 navigation 唔會食返 capture 嘅舊 hook。Source commit：[`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60aaf15896db5a78732d3a1a4d24b39b4)。
+  普通 navigation 唔會食返 capture 嘅舊 hook。Source commit：[`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60d10e70be86dc356dac86f4f3462e0da)。
 
 - **Studio capture isolation now fails closed at the per-run boundary.** The
   fixture requires the desktop-owned capture identity as well as the tuple
