@@ -2350,7 +2350,10 @@ async function deleteProject(
   // `http/confirm-delete.ts` and `docs/standards/super-confirmation.md`), so
   // obtain one and send it in a header — never in the URL, which is logged.
   const confirmUrl = `${url}/confirm-delete`;
-  const confirmResp = await fetch(confirmUrl, { method: 'POST' });
+  const confirmResp = await fetch(
+    confirmUrl,
+    headers ? { method: 'POST', headers } : { method: 'POST' },
+  );
   if (!confirmResp.ok) {
     return errorResult(await formatDaemonError(confirmResp, confirmUrl));
   }
@@ -2361,9 +2364,8 @@ async function deleteProject(
 
   const resp = await fetch(url, {
     method: 'DELETE',
-    headers: { [CONFIRM_DELETE_HEADER]: confirmBody.token },
+    headers: { ...headers, [CONFIRM_DELETE_HEADER]: confirmBody.token },
   });
-  const resp = await fetch(url, headers ? { method: 'DELETE', headers } : { method: 'DELETE' });
   if (!resp.ok) {
     return errorResult(await formatDaemonError(resp, url));
   }
