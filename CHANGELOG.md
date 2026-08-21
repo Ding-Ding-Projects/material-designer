@@ -28,6 +28,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Studio capture lifecycle now fails closed and restores ordinary state.**
+  Canonical-path near misses publish an explicit refused/unready state and never
+  forward scripted fetches to the ordinary network path. A validated per-run
+  session owns queryless file continuation; leaving it disposes the fixture,
+  clears readiness markers, restores ordinary configuration/language/appearance,
+  and resumes the active-context write. Capture-locked setters stop before live
+  React, module, DOM, host-scale, analytics, or error-context mutation. Project
+  tab persistence uses the frozen fixture timestamp and run-scoped request key,
+  while direct artifact previews require the current project/conversation,
+  artifact, and creating-run witness. Hosted typecheck, built rendering,
+  installed launch, and visual parity evidence remain pending.
+  Source commit: [`d50712f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50712f90973214946829b9335c1e06e8f2fc4a4).
+
+  Studio capture lifecycle 而家 fail closed 同埋識得還原普通狀態：canonical path
+  撞到 near miss 就直接話 refused/unready，scripted fetch 唔會偷雞走普通
+  network。Valid per-run session 自己管 queryless file continuation；離開之後
+  fixture dispose、readiness marker 清走、普通 config/language/appearance
+  還原，active context write 再開返。Capture lock 期間，React、module、DOM、
+  host scale、analytics 同 error context 都未郁先收手。Project tabs 用 frozen
+  fixture time 同 run-scoped key，artifact preview 要齊 project/conversation/
+  artifact/creating-run witness。Hosted typecheck、built rendering、installed
+  launch 同 visual parity evidence 仲未驗證。Source commit：[`d50712f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50712f90973214946829b9335c1e06e8f2fc4a4)。
+
 - **Studio capture isolation now fails closed at the per-run boundary.** The
   fixture requires the desktop-owned capture identity as well as the tuple
   witness, keeps queryless file continuation inside that accepted session,
