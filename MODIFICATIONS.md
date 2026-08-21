@@ -96,6 +96,7 @@ typecheck, built rendering, and installed capture evidence remain pending.
 - `apps/web/src/i18n/index.tsx`
 - `apps/web/src/state/appearance.ts`
 - `apps/web/src/state/projects.ts`
+- `apps/web/src/router.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding

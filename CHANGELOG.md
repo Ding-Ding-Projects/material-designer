@@ -51,6 +51,15 @@ version section when a release carries them.
   artifact/creating-run witness。Hosted typecheck、built rendering、installed
   launch 同 visual parity evidence 仲未驗證。Source commit：[`d50712f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50712f90973214946829b9335c1e06e8f2fc4a4)。
 
+- **Malformed capture paths stay outside ordinary route resolution.** The router
+  now keeps a refused canonical capture address from being interpreted as a
+  regular project URL, while valid fixture sessions still resolve through the
+  production project route. Source commit: [`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc5503b2e39c2be46dd6548347631011a65a).
+
+  Malformed capture path 而家唔會再扮普通 project URL；router 會留住 refused
+  狀態，valid fixture session 就照樣落返 production project route。Source
+  commit：[`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc5503b2e39c2be46dd6548347631011a65a)。
+
 - **Studio capture isolation now fails closed at the per-run boundary.** The
   fixture requires the desktop-owned capture identity as well as the tuple
   witness, keeps queryless file continuation inside that accepted session,
