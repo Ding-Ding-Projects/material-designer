@@ -265,17 +265,19 @@ permanently prohibited; the workflow clears signing inputs and discovery before
 packaging, and the next step must verify that Authenticode reports `NotSigned`.
 
 **8 — Build the installer.** Cleanup, then `tools-pack win build` with an
-explicit output directory, cache directory, namespace, `--portable`, the app
-version, `--to all` and `--json`. Then:
+explicit output directory, cache directory, namespace, the app version,
+`--to squirrel` and `--json`. Then:
 
 - `tools-pack win validate-payload` against the expected version;
 - an explicit existence check on the reported Squirrel `Setup.exe`, failing if
   the build reported one that is not there;
 - a SHA-256 computed over the installer;
+- an independent signer-process observation and version-1 provenance record;
+- exact validation of the `RELEASES` rows and every staged NuGet package;
 - assets staged under names that mean something outside this repository —
   `material-designer-<version>-win-x64-setup.exe`, a matching `.sha256` file,
-  `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, the icon and the
-  portable archive when one was produced.
+  `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, the icon,
+  provenance and an artifact receipt. No portable archive is published.
 
 The workflow then verifies `Setup.exe` with `Get-AuthenticodeSignature` and
 requires the exact status `NotSigned`. Any unexpected signature fails the

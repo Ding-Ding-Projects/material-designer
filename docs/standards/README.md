@@ -55,6 +55,7 @@ each has its own article because each guards a distinct failure.
 | [long-operations.md](long-operations.md) | A long operation reports real progress in the surface that started it, guards against re-entry in the handler, and offers its recovery route where the failure appeared. |
 | [external-editor.md](external-editor.md) | Detect installed editors, persist the choice, degrade clearly — and open every export in one action, as a workspace root. |
 | [typography-and-icons.md](typography-and-icons.md) | The three Material Design 3 faces and the icon font: which files ship, from where, under which licence, which variable axes are live, and the CJK fallback the twenty locales depend on. |
+| [design-reference-parity.md](design-reference-parity.md) | The ten-screen reference/application route inventory, identical capture tuples, component audits, comparisons, visual diffs and negative completeness guard. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

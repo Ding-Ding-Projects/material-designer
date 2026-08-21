@@ -1,6 +1,15 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Current implementation checkpoint — 2026-08-20.** Commit
+> [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
+> makes project context stable across file/tab switches, removes implicit initial
+> file and Design Files preview selection, narrows manual and hosted packaging to
+> Squirrel.Windows only, and adds deterministic artifact/runtime validators plus
+> a ten-screen design-parity inventory. Source/static checks are recorded in the
+> task; installed-runtime, updater and parity capture rows are not yet verified.
+
+> [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match
 > [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). There is one primary checkout and no
 > stashes or linked worktrees. Exact-SHA Verify
@@ -953,9 +962,9 @@ pins as imported; none has been exercised here.
 
 - Node major and package manager version are pinned identically across every
   workspace package, the version file and the tool-version file.
-- Desktop shell: Electron 41.3.0; packaging via electron-builder 26.8.1, default
-  Windows target is the Squirrel.Windows installer, with explicit NSIS retained as a
-  legacy target.
+- Desktop shell: Electron 41.3.0; packaging via electron-builder 26.8.1. The
+  supported Material Designer entry points request only Squirrel.Windows. Historical
+  upstream-compatible NSIS/ZIP target code remains inert and unpublished.
 - Daemon: Express 5.2.1, native SQLite binding 12.10.0 ΓÇö note Express 5 wildcard
   route syntax, which differs from Express 4 and matters when reading route files.
 - Web: Next 16.2.6, React 18.3.1, Tailwind 4.3.0.

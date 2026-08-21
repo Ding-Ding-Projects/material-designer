@@ -128,8 +128,8 @@ Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
 is prohibited; the workflow clears signer inputs and keeps electron-builder's
 signing controls false.
 
-**10 — Build and verify the installer.** Cleanup, then a packaging build with an explicit
-output directory, cache directory, namespace, portable flag, application version
+**10 — Build and verify the installer.** Cleanup, then a Squirrel-only packaging build
+with an explicit output directory, cache directory, namespace, application version
 and machine-readable output. Then, in order:
 
 - payload validation against the expected version;
@@ -137,9 +137,13 @@ and machine-readable output. Then, in order:
   build reported one that is not there;
 - a SHA-256 computed over the installer;
 - `Get-AuthenticodeSignature` verification requiring the exact status `NotSigned`;
+- a signer-process audit plus version-1 build provenance tied to the source commit;
+- validation of every `RELEASES` SHA-1, byte length and package basename, the
+  NuGet identity/version, and the required installed executable entry;
 - assets staged under names that mean something outside this repository:
   `Setup.exe`, its `.sha256`, `RELEASES`, full/delta `.nupkg` packages,
-  `metadata.json`, the icon and the portable archive when one is produced.
+  `metadata.json`, the icon, provenance and the artifact receipt. A portable
+  archive is neither requested nor published as an alternate installer.
 
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does

@@ -28,6 +28,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Project chat context no longer follows incidental file/tab selection, and
+  Windows delivery requests only Squirrel.Windows.** Commit
+  [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
+  keeps the automatic composer context project-wide, removes fresh-project and
+  Design Files auto-selection, adds focused regressions, stops staging a
+  portable ZIP, validates the complete Squirrel feed and runtime receipts, and
+  introduces the ten-screen design-parity inventory and direct reference app.
+  The parity rows and installed runtime remain explicitly unverified until the
+  hosted artifact and hidden-desktop evidence land.
+
+  Project chat context 以前會見到邊個 file/tab 就跟住走，無人叫佢都自己帶埋
+  入下一句；而家固定 project-wide，窄啲嘅 context 要用戶親手揀。Windows
+  delivery 亦淨係叫 Squirrel.Windows，portable ZIP 唔再扮第二個 installer；
+  feed、runtime receipt 同十個畫面嘅 parity inventory 都有 guard 睇實，未有
+  installed evidence 嘅 row 就老老實實寫 `unverified`，唔會靠想像變綠。
+
 - **The hosted release path now reaches the real packaging gate.** Commit
   [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db)
   fixes the release workflow's temporary-parent calculation: the previous

@@ -1,6 +1,17 @@
 # Material Designer
 
 > [!IMPORTANT]
+> **Design-parity and Squirrel migration checkpoint — 2026-08-20.** Commit
+> [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
+> adds the direct design-reference application, a hand-written ten-screen parity
+> inventory and negative completeness guard; makes Squirrel.Windows the sole
+> requested Windows package; adds package/runtime receipt validators; and keeps
+> chat context bound to the project instead of silently following the visible
+> file tab. The inventory is structurally complete, but all ten capture rows are
+> still explicitly `unverified` until a hosted build and hidden-desktop capture
+> produce their raw images, comparisons and diff receipts.
+
+> [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
 > [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). The working tree is 🧹 and the
 > pure port verifier has a recorded zero-gap result. Exact-SHA Verify
@@ -32,10 +43,11 @@ build-installer.bat --candidate 1 /s
 
 Both scripts bootstrap or verify the declared Node 24, pnpm 10.33.2, Python
 3.12 and native compiler prerequisites, install the frozen workspace, and use
-the same `tools-pack win build --to all` Squirrel path as the release workflow.
+the same `tools-pack win build --to squirrel` path as the release workflow.
 The installer script refuses signing, requires `NotSigned`, requires
 `Setup.exe`, `RELEASES` and a full `.nupkg`, and writes a commit-bound manifest
-and SHA-256 under `.yum-tong/`. They never tag, publish or create a release. Omit
+artifact manifest, build provenance and SHA-256 under `.yum-tong/`. They never
+tag, publish or create a release. Omit
 `/s` for the final local launch question after a successful build.
 
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
@@ -616,11 +628,12 @@ pnpm tools-pack win install
 pnpm tools-pack win cleanup
 ```
 
-`--to` accepts `all | dir | nsis | squirrel | zip`; `nsis` remains an explicit legacy target,
-`zip` produces a portable archive from the unpacked build, and `all` produces the Squirrel
-installer plus the portable archive. A Squirrel build emits `Setup.exe`, `RELEASES`, and full
-and delta `.nupkg` packages. Other flags include `--app-version`, `--portable`, `--namespace`,
-`--dir`, `--cache-dir` and `--json`. Packaging runs on electron-builder with Electron 41.
+The underlying upstream-compatible packer can still parse historical targets, but this
+repository's supported build and release entry points request only `squirrel`. A Squirrel
+build emits `Setup.exe`, `RELEASES`, and full and generated delta `.nupkg` packages; no
+portable archive is staged or published as an alternate installer. Other flags include
+`--app-version`, `--namespace`, `--dir`, `--cache-dir` and `--json`. Packaging runs on
+electron-builder with Electron 41.
 
 > [!WARNING]
 > An intentionally unsigned installer triggers Windows SmartScreen ("Windows protected your

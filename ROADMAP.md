@@ -418,7 +418,12 @@ Not by a local build — local builds do not happen here.
       *Verified by:* two installers built and attached to their own releases, each
       with an explicit existence check on the reported path and its payload
       validated before the run continued.
-- [~] **Switch Windows packaging and updates to Squirrel.Windows.** The packer,
+- [~] **Switch Windows packaging and updates to Squirrel.Windows.** The product-owned
+      manual and hosted entry points now request only `--to squirrel`; they no
+      longer request the aggregate/portable target or stage a portable ZIP as an
+      alternate installer. Commit [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
+      adds exact `RELEASES` row validation, package identity/entry checks,
+      signer-process provenance and installed-runtime receipt validation. The packer,
       feed, lifecycle switches and explicit restart action are committed. The
       restart path now waits for renderer save preparation before requesting
       quit, and a failed or timed-out preparation blocks even a forced restart.
@@ -433,6 +438,11 @@ Not by a local build — local builds do not happen here.
       [5d66600](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
       fixes that compile blocker, but the Squirrel install/start/uninstall path
       and post-migration feed remain unverified.
+- [ ] **Capture the ten-screen design-parity inventory.** The direct reference
+      application, route registry, explicit rows and red/green completeness guard
+      landed in [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77).
+      Every row remains `unverified` until the installed Squirrel build and the
+      reference are captured at identical tuples and reviewed component by component.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail
