@@ -76,6 +76,12 @@ with the project's standards.
       remains unchecked until hosted source checks and built-runtime evidence
       exist; no photo or release asset was added.
 
+      The final boundary repair adds exact cursor advancement, immutable delete
+      previews, abortable SSE merges, post-unmount upload suppression, stable
+      localized upload error codes, portal-aware dialog focus, measured filter
+      geometry, and 48×48 interaction targets. These remain source-only until
+      the hosted and installed evidence exists, so this item stays unticked.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

@@ -46,8 +46,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--border);
   border-radius: var(--radius-large, 8px);
   background: var(--bg-elevated);

@@ -69,6 +69,7 @@ checks run.
 - `apps/web/src/components/LibrarySection.tsx`
 - `apps/web/src/components/LibraryUploadModal.module.css`
 - `apps/web/src/components/LibraryUploadModal.tsx`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -81,6 +82,7 @@ checks run.
 - `apps/web/tests/components/library-section-perf.test.tsx`
 - `apps/web/tests/library-route-and-search.contract.test.ts`
 - `packages/contracts/src/api/library.ts`
+- `packages/components/src/dialog.tsx`
 
 ### 2026-08-21 — Expose the production Library route and own its regex search
 

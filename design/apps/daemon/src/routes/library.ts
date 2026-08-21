@@ -86,6 +86,14 @@ function bearerToken(req: Request): string | undefined {
   return /^Bearer\s+(.+)$/i.exec(header.trim())?.[1];
 }
 
+/** Parse pagination query values without Number() coercion or truncation. */
+function parseNonNegativeSafeQuery(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 /**
  * Echo an extension Origin back as the CORS allow-origin. MV3 service-worker
  * fetches with host_permissions bypass CORS, but desktop/Firefox paths and
@@ -509,12 +517,13 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     // Keep each response bounded while allowing the web surface to walk the
     // entire result set. A larger fixed LIMIT would merely move the missing
     // asset boundary; continuation makes the boundary explicit instead.
-    const requestedLimit = Number(q.limit);
-    const pageSize = Number.isFinite(requestedLimit)
-      ? Math.max(1, Math.min(Math.floor(requestedLimit), 500))
-      : 500;
-    const requestedOffset = Number(q.offset);
-    const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
+    const requestedLimit = parseNonNegativeSafeQuery(q.limit);
+    const requestedOffset = parseNonNegativeSafeQuery(q.offset);
+    if (requestedLimit === null || requestedOffset === null || requestedLimit === 0) {
+      return sendApiError(res, 400, 'INVALID_PAGINATION', 'limit and offset must be bounded non-negative safe integers; limit must be positive');
+    }
+    const pageSize = Math.min(requestedLimit ?? 500, 500);
+    const offset = requestedOffset ?? 0;
     filter.limit = pageSize + 1;
     filter.offset = offset;
     const page = listLibraryAssets(db, filter);

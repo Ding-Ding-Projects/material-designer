@@ -32,6 +32,8 @@ interface UploadItem {
   status: ItemStatus;
   progress: number;
   message?: string;
+  /** Raw daemon/network detail is retained only for diagnostics, never UI copy. */
+  diagnostic?: string;
 }
 
 interface Props {
@@ -46,6 +48,16 @@ let uploadSeq = 0;
 const nextItemId = () => `upload-${(uploadSeq += 1)}`;
 const maxMb = Math.round(LIBRARY_UPLOAD_MAX_BYTES / 1_000_000);
 
+function localizedUploadError(outcome: LibraryUploadOutcome, t: ReturnType<typeof useT>): string {
+  switch (outcome.code) {
+    case 'PAYLOAD_TOO_LARGE': return t('library.uploadTooLarge', { count: maxMb });
+    case 'UNSUPPORTED_MEDIA_TYPE': return t('library.uploadUnsupported');
+    case 'ABORTED': return t('library.uploadCancelled');
+    case 'NETWORK_ERROR': return t('library.uploadNetworkError');
+    default: return t('library.uploadFailed');
+  }
+}
+
 export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const t = useT();
   const titleId = useId();
@@ -55,27 +67,49 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const inFlight = useRef(0);
   const uploadAbortRef = useRef<AbortController | null>(null);
   const seededRef = useRef<File[] | null>(null);
+  const aliveRef = useRef(true);
+  const batchGenerationRef = useRef(0);
+  const progressTimersRef = useRef(new Map<string, number>());
+  const pendingProgressRef = useRef(new Map<string, number>());
   const [cancelRequested, setCancelRequested] = useState(false);
 
   useEffect(() => () => {
+    aliveRef.current = false;
+    batchGenerationRef.current += 1;
     // The modal normally refuses to close while work is pending, but a parent
     // route can still unmount it. Cancel the exact batch in that case so a
     // late response cannot update a surface that no longer owns the upload.
     uploadAbortRef.current?.abort();
     uploadAbortRef.current = null;
+    for (const timer of progressTimersRef.current.values()) window.clearTimeout(timer);
+    progressTimersRef.current.clear();
+    pendingProgressRef.current.clear();
   }, []);
 
-  const updateProgress = useCallback((id: string, progress: number) => {
-    setItems((prev) => prev.map((item) => (
-      item.id === id && item.status === 'uploading'
-        ? { ...item, progress: Math.max(0, Math.min(100, Math.round(progress))) }
-        : item
-    )));
+  const updateProgress = useCallback((id: string, progress: number, generation: number) => {
+    if (!aliveRef.current || generation !== batchGenerationRef.current) return;
+    pendingProgressRef.current.set(id, Math.max(0, Math.min(100, Math.round(progress))));
+    if (progressTimersRef.current.has(id)) return;
+    const timer = window.setTimeout(() => {
+      progressTimersRef.current.delete(id);
+      const nextProgress = pendingProgressRef.current.get(id);
+      pendingProgressRef.current.delete(id);
+      if (!aliveRef.current || generation !== batchGenerationRef.current || nextProgress === undefined) return;
+      setItems((prev) => prev.map((item) => (
+        item.id === id && item.status === 'uploading'
+          ? { ...item, progress: nextProgress }
+          : item
+      )));
+    }, 100);
+    progressTimersRef.current.set(id, timer);
   }, []);
 
-  const finishItem = useCallback((id: string, outcome: LibraryUploadOutcome) => {
+  const finishItem = useCallback((id: string, outcome: LibraryUploadOutcome, generation: number) => {
+    if (!aliveRef.current || generation !== batchGenerationRef.current) return;
     inFlight.current = Math.max(0, inFlight.current - 1);
     const cancelled = outcome.code === 'ABORTED';
+    const measuredProgress = pendingProgressRef.current.get(id);
+    pendingProgressRef.current.delete(id);
     setItems((prev) =>
       prev.map((it) =>
         it.id === id
@@ -88,14 +122,15 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                 // the last measured byte progress makes the aggregate honest
                 // instead of painting a green-looking 100% row for a request
                 // that stopped halfway through.
-                progress: it.progress,
-                message: outcome.error ?? t('library.uploadFailed'),
+                progress: measuredProgress ?? it.progress,
+                message: localizedUploadError(outcome, t),
+                diagnostic: outcome.error,
               }
           : it,
       ),
     );
     // Refresh the grid once every dispatched upload has settled.
-    if (inFlight.current === 0) {
+    if (inFlight.current === 0 && aliveRef.current && generation === batchGenerationRef.current) {
       uploadAbortRef.current = null;
       setCancelRequested(false);
       onUploaded();
@@ -105,6 +140,8 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const addFiles = useCallback(
     (files: File[]) => {
       if (inFlight.current > 0) return;
+      const generation = batchGenerationRef.current + 1;
+      batchGenerationRef.current = generation;
       const controller = new AbortController();
       uploadAbortRef.current = controller;
       setCancelRequested(false);
@@ -114,10 +151,10 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         inFlight.current += 1;
         void uploadLibraryFile(file, {
           signal: controller.signal,
-          onProgress: (progress) => updateProgress(id, progress),
+          onProgress: (progress) => updateProgress(id, progress, generation),
         })
-          .then((outcome) => finishItem(id, outcome))
-          .catch(() => finishItem(id, { ok: false, error: t('library.uploadFailed') }));
+          .then((outcome) => finishItem(id, outcome, generation))
+          .catch(() => finishItem(id, { ok: false, code: 'NETWORK_ERROR', error: 'Upload failed' }, generation));
       }
     },
     [finishItem, t, updateProgress],
@@ -126,6 +163,8 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const addText = useCallback(
     (text: string) => {
       if (inFlight.current > 0) return;
+      const generation = batchGenerationRef.current + 1;
+      batchGenerationRef.current = generation;
       const controller = new AbortController();
       uploadAbortRef.current = controller;
       setCancelRequested(false);
@@ -135,10 +174,10 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
       inFlight.current += 1;
       void uploadLibraryText(text, {}, {
         signal: controller.signal,
-        onProgress: (progress) => updateProgress(id, progress),
+        onProgress: (progress) => updateProgress(id, progress, generation),
       })
-        .then((outcome) => finishItem(id, outcome))
-        .catch(() => finishItem(id, { ok: false, error: t('library.uploadFailed') }));
+        .then((outcome) => finishItem(id, outcome, generation))
+        .catch(() => finishItem(id, { ok: false, code: 'NETWORK_ERROR', error: 'Upload failed' }, generation));
     },
     [finishItem, t, updateProgress],
   );
@@ -274,7 +313,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         </div>
 
         {items.length > 0 ? (
-          <ul className={styles.list}>
+          <ul className={styles.list} aria-busy={pending} aria-live="polite">
             {items.map((it) => (
               <li key={it.id} className={styles.item} data-status={it.status}>
                 <span className={styles.itemIcon} aria-hidden>
@@ -291,7 +330,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                 <span className={styles.itemName} title={it.name}>
                   {it.name}
                 </span>
-                <span className={styles.itemStatus}>
+                <span className={styles.itemStatus} role="status">
                   {it.status === 'uploading'
                     ? t('library.uploadStatus')
                     : it.status === 'deduped'
@@ -309,6 +348,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                     value={it.progress}
                     max={100}
                     aria-label={t('library.uploadProgress', { progress: it.progress })}
+                    aria-valuetext={t('library.uploadProgress', { progress: it.progress })}
                   />
                 ) : null}
               </li>
@@ -317,7 +357,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         ) : null}
 
         <footer className={styles.foot}>
-          <span className={styles.summary}>
+          <span className={styles.summary} role="status" aria-live="polite" aria-atomic="true">
             {items.length === 0
               ? t('library.uploadNothing')
               : pending

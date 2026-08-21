@@ -85,9 +85,12 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const searchRegex = useRegexSearch(search, setSearch);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const aliveRef = useRef(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const loadGenerationRef = useRef(0);
   const loadAbortRef = useRef<AbortController | null>(null);
+  const focusScopeId = `${titleId}-focus-scope`;
 
   const load = useCallback(async () => {
     const generation = loadGenerationRef.current + 1;
@@ -115,6 +118,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   }, []);
 
   useEffect(() => () => {
+    aliveRef.current = false;
     loadGenerationRef.current += 1;
     loadAbortRef.current?.abort();
     loadAbortRef.current = null;
@@ -172,12 +176,17 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   async function confirm() {
     const visibleIds = new Set(visible.map((asset) => asset.id));
     const picked = assets.filter((asset) => visibleIds.has(asset.id) && selected.has(asset.id));
-    if (picked.length === 0 || busy) return;
+    if (picked.length === 0 || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     try {
       await onConfirm(picked);
     } finally {
-      onClose();
+      busyRef.current = false;
+      if (aliveRef.current) {
+        setBusy(false);
+        onClose();
+      }
     }
   }
 
@@ -193,6 +202,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
       includeChromeClassName={false}
       role="dialog"
       ariaLabelledBy={titleId}
+      focusScopeId={focusScopeId}
       closeOnBackdrop={!busy}
       closeOnEscape={!busy}
       onClose={() => {
@@ -226,6 +236,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
             placeholder={t('libraryPicker.searchPlaceholder')}
             ariaLabel={t('libraryPicker.searchPlaceholder')}
             inputRef={searchInputRef}
+            focusScopeId={focusScopeId}
             autoFocus
             testId="library-picker-search"
           />
@@ -252,14 +263,20 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
           </div>
         </div>
 
-        <div className={styles.body}>
-          {loadError ? (
+        <div className={styles.body} aria-busy={loading}>
+          {loadError && assets.length > 0 ? (
+            <div className={styles.inlineError} role="alert" data-testid="library-picker-refresh-error">
+              <span>{t('library.loadError')}</span>
+              <Button onClick={() => void load()} disabled={busy}>{t('library.retry')}</Button>
+            </div>
+          ) : null}
+          {loadError && assets.length === 0 ? (
             <div className={styles.placeholder} role="alert" data-testid="library-picker-load-error">
               <p>{t('library.loadError')}</p>
               <Button onClick={() => void load()}>{t('library.retry')}</Button>
             </div>
-          ) : loading ? (
-            <div className={styles.placeholder}>{t('libraryPicker.loading')}</div>
+          ) : loading && assets.length === 0 ? (
+            <div className={styles.placeholder} role="status" aria-live="polite">{t('libraryPicker.loading')}</div>
           ) : visible.length === 0 ? (
             <div className={styles.placeholder}>{searchActive ? t('library.noMatches') : t('libraryPicker.empty')}</div>
           ) : (
@@ -386,6 +403,8 @@ function AssetThumb({ asset }: { asset: LibraryAsset }) {
                 muted
                 playsInline
                 preload="metadata"
+                aria-hidden="true"
+                tabIndex={-1}
                 className={styles.thumbImg}
                 data-loaded={flag}
                 onLoadedData={() => setLoaded(true)}

@@ -5751,6 +5751,9 @@ export interface Dict {
   'library.uploadDeduped'?: string;
   'library.uploadDone'?: string;
   'library.uploadFailed'?: string;
+  'library.uploadTooLarge'?: string;
+  'library.uploadUnsupported'?: string;
+  'library.uploadNetworkError'?: string;
   'library.uploadNothing'?: string;
   'library.uploadSummary'?: string;
   'library.uploadProgress'?: string;

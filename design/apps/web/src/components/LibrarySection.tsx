@@ -22,7 +22,7 @@
 // User-facing copy is routed through the shared locale catalog; provider and
 // metadata identifiers remain exact data.
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
 import {
   applyLibraryAsset,
@@ -160,9 +160,31 @@ function LibraryFilterCombobox({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
   const listId = `${testId}-list`;
   const selectedLabel = options.find((option) => option.value === value)?.label ?? options[0]?.label ?? label;
   const visible = options.filter((option) => search.matches(option.label));
+
+  const measurePanel = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger || typeof window === 'undefined') return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.max(160, Math.min(320, window.innerWidth - margin * 2));
+    const below = window.innerHeight - rect.bottom - margin;
+    const above = rect.top - margin;
+    const placeAbove = below < 220 && above > below;
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+    const room = Math.max(96, (placeAbove ? above : below) - 6);
+    setPanelStyle({
+      position: 'fixed',
+      top: placeAbove ? rect.top - 6 : rect.bottom + 6,
+      left,
+      width,
+      maxHeight: Math.min(360, room),
+      transform: placeAbove ? 'translateY(-100%)' : undefined,
+    });
+  }, []);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -173,16 +195,33 @@ function LibraryFilterCombobox({
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
+    measurePanel();
+    const onViewportChange = () => measurePanel();
     const onPointerDown = (event: MouseEvent) => {
       const target = event.target as Node;
       const regexPopover = (event.target as HTMLElement | null)?.closest(
-        `[data-testid="${testId}-regex-popover"]`,
+        `[data-testid="${testId}-search-regex-popover"]`,
       );
       if (!regexPopover && !panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) close();
     };
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      const regexPopover = target?.closest(`[data-testid="${testId}-search-regex-popover"]`);
+      if (!regexPopover && !panelRef.current?.contains(event.target as Node) && !triggerRef.current?.contains(event.target as Node)) {
+        close();
+      }
+    };
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
     document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [close, open, testId]);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [close, measurePanel, open, testId]);
 
   const focusOption = useCallback((delta: number) => {
     const optionsNow = Array.from(panelRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []);
@@ -199,7 +238,7 @@ function LibraryFilterCombobox({
         type="button"
         className={styles.filterComboTrigger}
         role="combobox"
-        aria-label={label}
+        aria-label={`${label}: ${selectedLabel}`}
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => {
@@ -221,9 +260,13 @@ function LibraryFilterCombobox({
         <div
           ref={panelRef}
           className={styles.filterComboPanel}
+          style={panelStyle}
           role="group"
           aria-label={`${label} options`}
           onKeyDown={(event) => {
+            const target = event.target as HTMLElement | null;
+            const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+            if (typing && event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Escape') return;
             if (event.key === 'Escape') {
               event.preventDefault();
               close();
@@ -354,6 +397,8 @@ function MediaThumb({ asset }: { asset: LibraryAsset }) {
           muted
           preload="metadata"
           playsInline
+          aria-hidden="true"
+          tabIndex={-1}
           data-loaded={flag}
           onLoadedData={() => setLoaded(true)}
           onError={() => setLoaded(true)}
@@ -815,6 +860,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [dsMenuOpen, setDsMenuOpen] = useState(false);
   const [dsList, setDsList] = useState<DesignSystemSummary[]>([]);
   const [dsBusy, setDsBusy] = useState(false);
+  const dsBusyRef = useRef(false);
   const dsLoadedRef = useRef(false);
   const dsMenuWrapRef = useRef<HTMLDivElement>(null);
   const dsMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -840,6 +886,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     moved: boolean;
     rects: CardRect[];
   } | null>(null);
+
+  const beginDesignSystemAction = useCallback(() => {
+    if (dsBusyRef.current) return false;
+    dsBusyRef.current = true;
+    setDsBusy(true);
+    return true;
+  }, []);
+
+  const endDesignSystemAction = useCallback(() => {
+    dsBusyRef.current = false;
+    setDsBusy(false);
+  }, []);
 
   // Debounce the search box before it touches the network (250ms trailing).
   useEffect(() => {
@@ -942,37 +1000,53 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     if (!active) return;
     let es: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let alive = true;
+    let flushGeneration = 0;
+    let flushAbort: AbortController | null = null;
     const pendingIngest = new Set<string>();
     const pendingDelete = new Set<string>();
     let pendingFull = false;
 
     const flush = async () => {
       timer = null;
+      const generation = flushGeneration + 1;
+      flushGeneration = generation;
+      flushAbort?.abort();
+      const controller = new AbortController();
+      flushAbort = controller;
+      const current = () => alive && generation === flushGeneration && !controller.signal.aborted;
       // Deletes are free (no fetch); apply them first.
       if (pendingDelete.size) {
         const del = new Set(pendingDelete);
         pendingDelete.clear();
         for (const id of del) pendingIngest.delete(id);
-        setAssets((prev) => prev.filter((a) => !del.has(a.id)));
+        if (current()) {
+          setAssets((prev) => prev.filter((a) => !del.has(a.id)));
+          setLibraryError(null);
+        }
       }
       // A filtered view can't predict membership client-side — one reload.
       if (pendingFull || filtersActiveRef.current) {
         pendingFull = false;
         pendingIngest.clear();
+        if (!current()) return;
         await loadRef.current();
         return;
       }
       if (pendingIngest.size) {
         const ids = [...pendingIngest];
         pendingIngest.clear();
-        const fetched = await Promise.all(ids.map((id) => fetchLibraryAsset(id)));
+        const fetched = await Promise.all(ids.map((id) => fetchLibraryAsset(id, { signal: controller.signal })));
+        if (!current()) return;
         // A missing fetch is ambiguous (filtered out? race?) — reload instead.
         if (fetched.some((a) => a === null)) {
           await loadRef.current();
           return;
         }
         const resolved = fetched.filter((a): a is LibraryAsset => a !== null);
+        if (!current()) return;
         setAssets((prev) => mergeIngestedAssets(prev, resolved));
+        setLibraryError(null);
       }
     };
 
@@ -1008,6 +1082,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       // EventSource unavailable — manual Refresh remains the fallback.
     }
     return () => {
+      alive = false;
+      flushGeneration += 1;
+      flushAbort?.abort();
+      flushAbort = null;
       if (timer) clearTimeout(timer);
       es?.close();
     };
@@ -1074,8 +1152,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     [onOpenProject],
   );
 
-  const deleteSelected = useCallback(async () => {
-    const ids = Array.from(selectedIds);
+  const deleteSelected = useCallback(async (previewedIds: readonly string[]) => {
+    const ids = [...previewedIds];
     if (!ids.length) return false;
     const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
     const deleted = new Set(ids.filter((_, i) => results[i]));
@@ -1086,7 +1164,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     setSelectedIds(new Set());
     setPreviewId((cur) => (cur && deleted.has(cur) ? null : cur));
     return true;
-  }, [selectedIds]);
+  }, []);
 
   // Bulk delete is destructive and very easy to trigger — a button in the
   // selection bar, or Delete/Backspace with a box-selection still live. The
@@ -1097,12 +1175,13 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
     const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
     if (!chosen.length) return;
+    const previewedIds = Object.freeze(chosen.map((asset) => asset.id));
     setDeleteGate({
       action: t('library.deleteAction', { count: chosen.length }),
       target: t('library.deleteTarget', { count: chosen.length }),
       items: describeAssetItems(chosen, t),
       detail: describeDeleteDetail(chosen, t),
-      onConfirm: () => deleteSelected(),
+      onConfirm: () => deleteSelected(previewedIds),
     });
   }, [assets, deleteSelected, selectedIds, t]);
 
@@ -1179,8 +1258,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const createDesignSystemFromSelection = useCallback(async () => {
     const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
     const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
-    if (!chosen.length) return;
-    setDsBusy(true);
+    if (!chosen.length || !beginDesignSystemAction()) return;
     try {
       const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
         (f): f is File => f !== null,
@@ -1191,9 +1269,9 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       setPendingDesignSystemCreateEntry('library');
       navigate({ kind: 'design-system-create' });
     } finally {
-      setDsBusy(false);
+      endDesignSystemAction();
     }
-  }, [assets, closeDsMenu, selectedIds]);
+  }, [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, selectedIds]);
 
   // "Chat to design": fetch the selected assets into File objects, hand them to
   // the Home chat composer, and navigate there. The user lands in the creation
@@ -1203,8 +1281,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const chatToDesignFromSelection = useCallback(async () => {
     const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
     const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
-    if (!chosen.length) return;
-    setDsBusy(true);
+    if (!chosen.length || !beginDesignSystemAction()) return;
     try {
       const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
         (f): f is File => f !== null,
@@ -1215,9 +1292,9 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       setSelectedIds(new Set());
       navigate({ kind: 'home', view: 'home' });
     } finally {
-      setDsBusy(false);
+      endDesignSystemAction();
     }
-  }, [assets, closeDsMenu, selectedIds]);
+  }, [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, selectedIds]);
 
   // Path B: copy the selected assets into an existing design system's project,
   // stage a composer seed (query + the copied assets as attachments), and open
@@ -1226,8 +1303,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     async (ds: DesignSystemSummary) => {
       const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
       const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
-      if (!chosen.length) return;
-      setDsBusy(true);
+      if (!chosen.length || !beginDesignSystemAction()) return;
       try {
         const mutationWorkspaceContext = workspaceContext;
         let projectId = ds.projectId;
@@ -1278,10 +1354,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         setSelectedIds(new Set());
         onOpenProject(projectId);
       } finally {
-        setDsBusy(false);
+        endDesignSystemAction();
       }
     },
-    [assets, closeDsMenu, onOpenProject, selectedIds, t, workspaceIdentity],
+    [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, onOpenProject, selectedIds, t, workspaceIdentity],
   );
 
   const toggleOne = useCallback((id: string, index: number) => {
@@ -1783,6 +1859,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                       type="button"
                       className={styles.dsMenuItem}
                       role="menuitem"
+                      disabled={dsBusy}
+                      aria-busy={dsBusy}
                       onClick={() => void createDesignSystemFromSelection()}
                     >
                       <span className={styles.dsMenuItemTitle}>{t('library.createDesignSystem')}</span>
@@ -1799,6 +1877,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                       type="button"
                       className={styles.dsMenuItem}
                       role="menuitem"
+                      disabled={dsBusy}
+                      aria-busy={dsBusy}
                       onClick={() => void optimizeExistingDesignSystem(ds)}
                     >
                       <span className={styles.dsMenuItemTitle}>{ds.title}</span>

@@ -35,6 +35,16 @@ children, while its search, divider, heading, and no-match status stay in the
 surrounding presentation group. This keeps the outer dialog's focus scope and
 the inner widget ownership contracts separate.
 
+The picker keeps previously loaded rows visible while a refresh is in flight or
+has failed; a retry/error row is shown inline and the full empty/error state is
+used only before the first successful response. Bulk delete previews freeze the
+visible matching id list when the gate opens, so later selection changes cannot
+retarget an already reviewed action. SSE merges carry their own abort and
+generation identity and clear a recovered error only after the current merge is
+accepted. The shared dialog focus trap includes the portalled regex builder by
+scope id, and filter popovers measure their trigger, flip above when needed,
+and stay within the viewport.
+
 Element captures are a badge-level filter, not a storage kind: both image
 screenshots and HTML snapshots carrying `metadata.element` are included. The
 daemon query therefore stays open for `element`, and the renderer applies the
@@ -63,8 +73,11 @@ No menu or dropdown borrows a hidden controller from another surface.
 - A malformed or stalled continuation is a typed provider failure. The UI keeps
   the prior rows and exposes retry instead of claiming a complete list.
 - A continuation is terminal only when `nextOffset` is omitted or `null`.
-  Non-negative safe JSON numbers are the only accepted cursors; strings,
-  booleans, fractional values, non-finite values, and negatives are invalid.
+  Non-negative safe JSON numbers are the only accepted cursors, and a continuing
+  cursor must equal the current offset plus the number of returned rows.
+  Strings, booleans, fractional values, non-finite values, non-advancing values,
+  and negatives are invalid. The daemon and store reject malformed pagination
+  query values rather than coercing them to zero.
 - Page walks carry an `AbortController` and generation identity. A newer search,
   filter, retry, unmount, or SSE refresh cancels the older walk, and neither its
   rows nor its error may overwrite the current view.
@@ -80,7 +93,10 @@ No menu or dropdown borrows a hidden controller from another surface.
 - Manual uploads prevent the browser's default drop/paste action, refuse
   re-entry while a batch is active, expose byte-backed per-file and aggregate
   progress, allow bounded cancellation, and retain done, deduped, failed, and
-  cancelled rows so partial outcomes are visible.
+  cancelled rows so partial outcomes are visible. Progress updates are
+  throttled without inventing progress, late upload callbacks are ignored after
+  unmount or batch replacement, and stable daemon error codes map to localized
+  messages; raw error detail remains diagnostic-only.
 
 ## Security considerations
 
@@ -88,13 +104,16 @@ The search projection stays in the renderer and is evaluated only over records
 the Library provider already returned. Pattern and sample state are not sent to
 the daemon, and the shared regex implementation bounds pattern length and match
 work. Continuation page size and page count are both bounded, with malformed or
-non-advancing offsets rejected. The route does not add a network source, fixture
+non-advancing offsets rejected. The daemon accepts only bounded non-negative safe
+integer `limit`/`offset` values. The route does not add a network source, fixture
 archive, catalog image, or alternate asset store. Existing upload, raw-asset,
 project handoff and destructive-provider boundaries remain the source of truth.
 Upload request progress uses the browser's cancellable XHR upload boundary, and
 the aggregate is weighted by each file's byte size rather than averaging files
 of wildly different sizes. Text uploads are subject to the same byte ceiling as
-file uploads before a request is sent.
+file uploads before a request is sent. Preview media that is decorative in a
+card is hidden from assistive technology, while the full video preview has an
+explicit accessible name; the HTML disclosure exposes a stable labelled region.
 
 ## Verification
 
@@ -111,7 +130,11 @@ provider/API-backed capture fixture remain pending.
 The follow-up source repair also pins strict terminal-cursor parsing, stale-walk
 abort/generation boundaries, element filtering across image and HTML snapshots,
 menu/listbox ARIA ownership, kind-button semantics, and cancellable byte-backed
-upload progress. These changes are source-only until the hosted Chut runs.
+upload progress. The final boundary repair adds immutable delete previews,
+targeted SSE abort/generation checks, portal-aware dialog focus, measured filter
+geometry, 48×48 interaction targets, localized upload error codes, and
+post-unmount upload suppression. These changes are source-only until the hosted
+Chut runs.
 
 ## Suggested reading
 

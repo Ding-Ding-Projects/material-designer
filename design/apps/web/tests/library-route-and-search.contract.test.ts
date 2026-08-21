@@ -96,12 +96,17 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
     expect(provider).toMatch(/fetchAllLibraryAssets/);
     expect(provider).toMatch(/pagination-limit/);
     expect(provider).toMatch(/result\.nextOffset/);
+    expect(provider).toContain('const expectedNextOffset = offset + result.assets.length;');
+    expect(provider).toContain('result.nextOffset !== expectedNextOffset');
     expect(provider).toMatch(/parseLibraryNextOffset\(json\.nextOffset\)/);
     expect(provider).toMatch(/typeof value !== 'number'/);
     expect(provider).not.toMatch(/Number\(json\.nextOffset\)/);
     expect(daemonRoute).toMatch(/nextOffset:/);
     expect(daemonRoute).toMatch(/pageSize \+ 1/);
     expect(store).toMatch(/OFFSET \$\{offset\}/);
+    expect(store).toContain('Number.isSafeInteger(filter.offset)');
+    expect(daemonRoute).toContain('parseNonNegativeSafeQuery');
+    expect(daemonRoute).toContain("'INVALID_PAGINATION'");
     // A fixed one-page cap is the regression this contract prevents.
     expect(provider).not.toMatch(/fetchLibraryAssets\([^)]*\)\s*:\s*Promise<LibraryAsset\[\]>/);
   });
@@ -116,6 +121,8 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
     expect(picker).toMatch(/setLoadError\(result\.error\)/);
     expect(picker).toMatch(/data-testid="library-picker-load-error"/);
     expect(picker).toMatch(/fetchAllLibraryAssets/);
+    expect(picker).toContain('assets.length > 0');
+    expect(picker).toContain('library-picker-refresh-error');
   });
 
   it('broadcasts and consumes reconciliation refreshes', () => {
@@ -149,6 +156,16 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
       expect(text).toContain('if (generation !== loadGenerationRef.current) return;');
       expect(text).toContain('if (generation === loadGenerationRef.current)');
     }
+  });
+
+  it('cancels stale SSE merges and clears a recovered error', () => {
+    const section = source('components/LibrarySection.tsx');
+    expect(section).toContain('let flushGeneration = 0;');
+    expect(section).toContain('let flushAbort: AbortController | null = null;');
+    expect(section).toContain('fetchLibraryAsset(id, { signal: controller.signal })');
+    expect(section).toContain('setLibraryError(null);');
+    expect(section).toContain('flushAbort?.abort();');
+    expect(section).toContain('alive = false;');
   });
 });
 
@@ -211,6 +228,72 @@ describe('Library interaction regression contracts', () => {
     expect(picker).toContain('className={styles.kinds} role="group"');
     expect(picker).toContain('aria-pressed={kind === k}');
     expect(picker).not.toContain('role="tablist"');
+  });
+
+  it('keeps portal, focus, selection and busy boundaries explicit', () => {
+    const section = source('components/LibrarySection.tsx');
+    const picker = source('components/LibraryPicker.tsx');
+    const upload = source('components/LibraryUploadModal.tsx');
+    const preview = source('components/LibraryPreviewModal.tsx');
+    const dialog = readFileSync(
+      new URL('../../../packages/components/src/dialog.tsx', import.meta.url),
+      'utf8',
+    );
+    const regexCss = source('components/regex/RegexSearchField.module.css');
+    expect(section).toContain('const previewedIds = Object.freeze(chosen.map((asset) => asset.id));');
+    expect(section).toContain('onConfirm: () => deleteSelected(previewedIds)');
+    expect(section).toContain('const regexPopover = (event.target as HTMLElement | null)?.closest(\n        `[data-testid="${testId}-search-regex-popover"]`');
+    expect(section).toContain('const typing = target?.tagName === \'INPUT\'');
+    expect(section).toContain('aria-label={`${label}: ${selectedLabel}`}');
+    expect(section).toContain('const beginDesignSystemAction = useCallback');
+    expect(section).toContain('disabled={dsBusy}');
+    expect(picker).toContain('const busyRef = useRef(false);');
+    expect(picker).toContain('const focusScopeId = `${titleId}-focus-scope`;');
+    expect(picker).toContain('focusScopeId={focusScopeId}');
+    expect(upload).toContain('aliveRef.current = false;');
+    expect(upload).toContain('batchGenerationRef.current += 1;');
+    expect(upload).toContain('const timer = window.setTimeout');
+    expect(upload).toContain('aria-live="polite"');
+    expect(upload).toContain('localizedUploadError');
+    expect(preview).toContain('aria-expanded={open}');
+    expect(preview).toContain('aria-controls={htmlRegionId}');
+    expect(preview).toContain('aria-label={title}');
+    expect(dialog).toContain('focusScopeId?: string;');
+    expect(dialog).toContain('isInsideDialogScope');
+    expect(regexCss).toContain('width: 48px;');
+    expect(regexCss).toContain('height: 48px;');
+  });
+
+  it('keeps upload error codes localized and raw details out of visible copy', () => {
+    const upload = source('components/LibraryUploadModal.tsx');
+    const provider = source('providers/registry.ts');
+    const english = source('i18n/locales/en.ts');
+    const traditional = source('i18n/locales/zh-TW.ts');
+    const types = source('i18n/types.ts');
+    for (const key of ['uploadTooLarge', 'uploadUnsupported', 'uploadNetworkError']) {
+      expect(upload).toContain(`library.${key}`);
+      expect(english).toContain(`'library.${key}'`);
+      expect(traditional).toContain(`'library.${key}'`);
+      expect(types).toContain(`'library.${key}'`);
+    }
+    expect(provider).toContain("code: 'NETWORK_ERROR'");
+    expect(upload).toContain('diagnostic: outcome.error');
+    expect(upload).not.toContain('message: outcome.error');
+  });
+
+  it('keeps the Library target and overlay geometry at the shared minimum', () => {
+    const sectionCss = source('components/LibrarySection.module.css');
+    const pickerCss = source('components/LibraryPicker.module.css');
+    const uploadCss = source('components/LibraryUploadModal.module.css');
+    const previewCss = source('components/LibraryPreviewModal.module.css');
+    expect(sectionCss).toContain('min-height: 48px;');
+    expect(sectionCss).toContain('position: fixed');
+    expect(sectionCss).toContain('box-sizing: border-box;');
+    expect(pickerCss).toContain('width: 48px;');
+    expect(pickerCss).toContain('min-height: 48px;');
+    expect(uploadCss).toContain('width: 48px;');
+    expect(previewCss).toContain('width: 48px;');
+    expect(previewCss).toContain('min-height: 48px;');
   });
 
   it('keeps uploads cancellable, bounded, measurable, and partially reportable', () => {

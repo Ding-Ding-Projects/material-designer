@@ -63,11 +63,11 @@ describe('LibrarySection accessibility', () => {
 
     await screen.findByText('A photo');
 
-    expect(screen.getByRole('combobox', { name: 'Filter by kind' })).toBeTruthy();
-    expect(screen.getByRole('combobox', { name: 'Filter by source' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by kind' }));
+    expect(screen.getByRole('combobox', { name: /Filter by kind/ })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: /Filter by source/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole('combobox', { name: /Filter by kind/ }));
     expect(screen.getByTestId('library-kind-filter-search-regex-toggle')).toBeTruthy();
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by source' }));
+    fireEvent.click(screen.getByRole('combobox', { name: /Filter by source/ }));
     expect(screen.getByTestId('library-source-filter-search-regex-toggle')).toBeTruthy();
   });
 

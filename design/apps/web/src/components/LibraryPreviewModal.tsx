@@ -183,7 +183,7 @@ function Stage({ asset }: { asset: LibraryAsset }) {
     case 'image':
       return <img className={styles.stageImage} src={rawUrl} alt={title} />;
     case 'video':
-      return <video className={styles.stageVideo} src={rawUrl} controls autoPlay loop playsInline />;
+      return <video className={styles.stageVideo} src={rawUrl} controls autoPlay loop playsInline aria-label={title} />;
     case 'design-system':
     case 'html':
       // Opaque-origin sandbox: scripts/animations run, daemon stays unreachable.
@@ -214,6 +214,7 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
   const element = elementMetaOf(asset);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const htmlRegionId = useId();
   const { text, loading, error } = useRawText(libraryAssetElementUrl(asset.id), open && Boolean(element?.hasHtml));
   if (!element) return null;
   const dims = element.width && element.height ? `${element.width}×${element.height}` : null;
@@ -247,13 +248,19 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
         </code>
         {dims ? <span style={{ fontSize: 12, color: 'var(--text-muted, #6b7280)' }}>{dims}</span> : null}
         {element.hasHtml ? (
-          <button type="button" style={{ ...chipBtn, marginLeft: 'auto' }} onClick={() => setOpen((o) => !o)}>
+          <button
+            type="button"
+            style={{ ...chipBtn, marginLeft: 'auto' }}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls={htmlRegionId}
+          >
             {open ? t('library.hideHtml') : t('library.showHtml')}
           </button>
         ) : null}
       </div>
-      {open && element.hasHtml ? (
-        loading ? (
+      <div id={htmlRegionId} role="region" aria-label={t('library.showHtml')} hidden={!open || !element.hasHtml}>
+        {loading ? (
           <div className={styles.stageNote}>{t('library.loading')}</div>
         ) : error ? (
           <div className={styles.stageNote}>{t('library.loadElementError')}</div>
@@ -279,8 +286,8 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
               {text}
             </pre>
           </div>
-        )
-      ) : null}
+        )}
+      </div>
     </div>
   );
 }

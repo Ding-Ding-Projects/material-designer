@@ -30,6 +30,12 @@ export interface DialogProps {
   layout?: DialogLayout;
   as?: DialogTag;
   onSubmit?: FormEventHandler<HTMLFormElement>;
+  /**
+   * Optional id shared by portalled controls that belong to this dialog.
+   * Search builders use a body portal so they cannot be descendants of the
+   * dialog surface; naming that scope lets the same Tab trap include them.
+   */
+  focusScopeId?: string;
   [key: `data-${string}`]: string | number | undefined;
 }
 
@@ -50,14 +56,33 @@ const FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-function focusableWithin(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+function focusableWithin(root: HTMLElement, focusScopeId?: string): HTMLElement[] {
+  const roots: HTMLElement[] = [root];
+  if (focusScopeId && typeof document !== 'undefined') {
+    for (const candidate of Array.from(document.querySelectorAll<HTMLElement>('[data-focus-scope]'))) {
+      if (candidate.getAttribute('data-focus-scope') === focusScopeId) roots.push(candidate);
+    }
+  }
+  const seen = new Set<HTMLElement>();
+  const elements = roots.flatMap((scope) => Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE)));
+  return elements.filter((element) => {
+    if (seen.has(element)) return false;
+    seen.add(element);
     // Deliberately an attribute test rather than a layout one. `offsetParent`
     // would be the more thorough check in a browser and is always null under
     // jsdom, where every dialog test runs — so a layout-based filter reports
     // "nothing is focusable" in exactly the environment that asserts this
     // behaviour, and the trap would swallow every Tab in the suite.
-    (element) => !element.closest('[hidden],[aria-hidden="true"]'),
+    return !element.closest('[hidden],[aria-hidden="true"]');
+  });
+}
+
+function isInsideDialogScope(root: HTMLElement, target: EventTarget | null, focusScopeId?: string): boolean {
+  if (!(target instanceof Node)) return false;
+  if (root.contains(target)) return true;
+  if (!focusScopeId || typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-focus-scope]')).some(
+    (scope) => scope.getAttribute('data-focus-scope') === focusScopeId && scope.contains(target),
   );
 }
 
@@ -83,6 +108,7 @@ export function Dialog({
   layout = 'default',
   as = 'div',
   onSubmit,
+  focusScopeId,
   ...dataAttributes
 }: DialogProps) {
   const surfaceRef = useRef<HTMLElement | null>(null);
@@ -125,7 +151,7 @@ export function Dialog({
     if (!surface) return;
 
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const initial = focusableWithin(surface)[0] ?? surface;
+    const initial = focusableWithin(surface, focusScopeId)[0] ?? surface;
     initial.focus();
 
     function handleTab(event: KeyboardEvent) {
@@ -133,7 +159,7 @@ export function Dialog({
       const surfaceNow = surfaceRef.current;
       if (!surfaceNow) return;
 
-      const stops = focusableWithin(surfaceNow);
+      const stops = focusableWithin(surfaceNow, focusScopeId);
       if (stops.length === 0) {
         // Nothing to land on inside, so the only correct destination is the
         // dialog itself; letting Tab escape would break the modal promise.
@@ -148,7 +174,7 @@ export function Dialog({
 
       // Focus outside the dialog entirely means something moved it there —
       // pull it back rather than trying to work out where it came from.
-      if (!(active instanceof HTMLElement) || !surfaceNow.contains(active)) {
+      if (!(active instanceof HTMLElement) || !isInsideDialogScope(surfaceNow, active, focusScopeId)) {
         event.preventDefault();
         (event.shiftKey ? last : first)?.focus();
         return;
@@ -170,7 +196,7 @@ export function Dialog({
       // navigating away — must not have it yanked backwards.
       const active = document.activeElement;
       const stillInside =
-        active instanceof HTMLElement && surface.contains(active);
+        active instanceof HTMLElement && isInsideDialogScope(surface, active, focusScopeId);
       if (opener?.isConnected && (stillInside || active === document.body)) {
         opener.focus();
       }

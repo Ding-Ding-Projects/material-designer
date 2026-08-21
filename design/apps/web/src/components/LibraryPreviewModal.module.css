@@ -65,8 +65,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--border);
   border-radius: var(--radius-large, 8px);
   background: var(--bg-elevated);
@@ -138,8 +138,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-elevated);
@@ -312,7 +312,8 @@
 .removeAction {
   background: none;
   border: none;
-  padding: 6px 10px;
+  min-height: 48px;
+  padding: 10px 12px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

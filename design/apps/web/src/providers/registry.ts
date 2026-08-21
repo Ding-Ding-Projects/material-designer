@@ -3597,7 +3597,12 @@ export async function fetchAllLibraryAssets(
     if (!result.ok) return result;
     assets.push(...result.assets);
     if (result.nextOffset === null) return { ok: true, assets, nextOffset: null };
-    if (result.nextOffset <= offset) {
+    const expectedNextOffset = offset + result.assets.length;
+    if (
+      !Number.isSafeInteger(expectedNextOffset)
+      || result.nextOffset !== expectedNextOffset
+      || result.nextOffset <= offset
+    ) {
       return { ok: false, error: { kind: 'invalid-response' } };
     }
     offset = result.nextOffset;
@@ -3611,9 +3616,12 @@ export async function fetchAllLibraryAssets(
  * incremental SSE merge — on an `ingest` event we hydrate just the one asset
  * instead of refetching the whole list.
  */
-export async function fetchLibraryAsset(id: string): Promise<LibraryAsset | null> {
+export async function fetchLibraryAsset(
+  id: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<LibraryAsset | null> {
   try {
-    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`);
+    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`, { signal: options.signal });
     if (!resp.ok) return null;
     const json = (await resp.json()) as { asset?: LibraryAsset };
     return json.asset ?? null;
@@ -3835,9 +3843,15 @@ async function readLibraryUploadError(resp: Response): Promise<{ error: string; 
     | null;
   const err = payload?.error;
   if (typeof err === 'object' && err) {
-    return { error: err.message ?? `Upload failed (${resp.status})`, ...(err.code ? { code: err.code } : {}) };
+    return {
+      error: err.message ?? `Upload failed (${resp.status})`,
+      code: err.code ?? 'UPLOAD_FAILED',
+    };
   }
-  return { error: typeof err === 'string' && err ? err : `Upload failed (${resp.status})` };
+  return {
+    error: typeof err === 'string' && err ? err : `Upload failed (${resp.status})`,
+    code: 'UPLOAD_FAILED',
+  };
 }
 
 interface LibraryJsonUploadOptions {
@@ -3980,7 +3994,11 @@ export async function uploadLibraryFile(
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
     }
-    return { ok: false, error: err instanceof Error ? err.message : 'Upload failed' };
+    return {
+      ok: false,
+      code: 'NETWORK_ERROR',
+      error: err instanceof Error ? err.message : 'Upload failed',
+    };
   }
 }
 
@@ -4019,7 +4037,11 @@ export async function uploadLibraryText(
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
     }
-    return { ok: false, error: err instanceof Error ? err.message : 'Upload failed' };
+    return {
+      ok: false,
+      code: 'NETWORK_ERROR',
+      error: err instanceof Error ? err.message : 'Upload failed',
+    };
   }
 }
 

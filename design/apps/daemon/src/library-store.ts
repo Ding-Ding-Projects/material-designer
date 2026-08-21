@@ -404,8 +404,16 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
     args.push(filter.designSystemId);
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const limit = Number.isFinite(filter.limit) ? Math.max(1, Math.min(Number(filter.limit), 1000)) : 500;
-  const offset = Number.isFinite(filter.offset) ? Math.max(0, Math.floor(Number(filter.offset))) : 0;
+  const limit = filter.limit === undefined
+    ? 500
+    : Number.isSafeInteger(filter.limit) && filter.limit > 0
+      ? Math.min(filter.limit, 1000)
+      : (() => { throw new RangeError('library limit must be a positive safe integer'); })();
+  const offset = filter.offset === undefined
+    ? 0
+    : Number.isSafeInteger(filter.offset) && filter.offset >= 0
+      ? filter.offset
+      : (() => { throw new RangeError('library offset must be a non-negative safe integer'); })();
   const raws = db
     .prepare(
       // Order by archive date first so the grid/timeline reflect when an
