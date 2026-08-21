@@ -28,6 +28,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Deterministic capture now keeps storage, networking, and failure state in one
+  honest box.** Commit
+  [`b612563`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e)
+  gives each launch a cryptographically unique exclusive lease, suppresses
+  migration and uninstall-registry side effects, disables update feeds and
+  schedulers, and installs loopback-only fetch boundaries in both sidecars.
+  Direct Vela requests are refused during capture. Renderer loss, failed
+  main-frame loads, and HTTP error documents invalidate a previously ready
+  receipt and return to the self-contained failure splash. This is source-level
+  evidence only; no build, runtime, or visual capture was run in this lane.
+
+  Deterministic capture 而家將 storage、network 同 failure state 放入同一個
+  誠實盒仔。Commit `b612563` 為每次 launch 開 cryptographically unique
+  exclusive lease，唔畀 migration 同 uninstall-registry side effect 偷渡，關閉
+  update feed 同 scheduler，兩個 sidecar 只准 loopback fetch；capture 入面嘅
+  direct Vela request 一律拒絕。Renderer o咗、main-frame load 失敗或者 HTTP
+  error document，之前嘅 ready receipt 會失效，再返去 self-contained failure
+  splash。呢個 lane 只有 source-level evidence，未跑 build、runtime 或 visual
+  capture。
+
 - **The desktop now carries a strict, developer-only parity-route foundation.**
   Commit [`bf8736ac2`](https://github.com/Ding-Ding-Projects/material-designer/commit/bf8736ac2a8ab514e43d5ac7d9f60b43362c3fab)
   validates the normalized v2 `material-designer://` tuple, rejects missing or
