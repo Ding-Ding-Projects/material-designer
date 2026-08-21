@@ -25,6 +25,10 @@
 > complete Squirrel asset set and photo-skip disclosure. Its workflow turned red
 > only because the UTF-8 checksum file carried a BOM that GNU `sha256sum` treats
 > as a malformed first token; the next commit writes that ASCII-only file as ASCII.
+> The published tag also exposed an automation loop: unrestricted `push:`
+> triggers started Release, Verify and Pages again for the tag. The tag-triggered
+> Release and the superseded branch Release were cancelled; all three workflows
+> now accept branch pushes and manual dispatch while ignoring tag pushes.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match

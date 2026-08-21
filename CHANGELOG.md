@@ -28,6 +28,16 @@ version section when a release carries them.
 
 ### Changed
 
+- **Release-created tag pushes no longer start another release.** Publishing
+  `v0.16.128-r127.1` exposed that unrestricted `push:` triggers dispatched
+  Release, Verify and Pages again for the new tag. All three workflows now
+  accept branch pushes plus manual dispatch and ignore tag pushes, preventing a
+  release → tag → release loop while preserving the per-branch-push contract.
+
+  Publish `v0.16.128-r127.1` 之後先發現個 tag push 又叫醒 Release、Verify 同
+  Pages，差啲變成 release 生 tag、tag 再生 release 嘅俄羅斯娃娃。三個
+  workflow 而家淨係接 branch push 同 manual dispatch，tag 唔再撳鐘。
+
 - **Released checksum files are now BOM-free and accepted by `sha256sum`.**
   Release [`32441347386`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32441347386)
   successfully published `v0.16.128-r127.1`, but its post-publication verifier

@@ -1,5 +1,10 @@
 # The release pipeline
 
+Release, Verify and Pages trigger on branch pushes and manual dispatch. They do
+not trigger on tag pushes: the Release workflow creates a tag as part of
+publication, and accepting that tag push would recursively launch another
+release lane.
+
 > [!IMPORTANT]
 > **Release-shutdown boundary — 2026-08-11.** The release definition is being reduced
 > to hosted `windows-2022` packaging, unsigned Squirrel artifact collection and
