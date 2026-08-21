@@ -37,16 +37,19 @@ version section when a release carries them.
   expose their attached state as `menuitemcheckbox`/`aria-checked`. A dedicated
   polite live region announces localized added, removed and failed context
   deltas without replaying the whole row. Focused source/component checks are
-  committed; hosted build, screen-reader traversal, installed interaction and
-  capture evidence remain pending.
+  committed; follow-up commit [`0b11bf44`](https://github.com/Ding-Ding-Projects/material-designer/commit/0b11bf440eb585ad4b41261111f7e046233e26cb)
+  routes the final empty design-files and terminal descriptions through the
+  same locale keys. Hosted build, screen-reader traversal, installed
+  interaction and capture evidence remain pending.
 
   Project context 依家喺 portalled composer 入面都照樣 accessible。`6bcd27b8`
   令 implicit project chip 唔再畀 fixed layer 收埋，file 同 browser context
   仍然要明確揀；每個 composer 有自己 `useId()` namespace，category tabs
   支援 Left/Right/Home/End，toolbox resource row 有真實 checked state，
   polite live region 只報告 localized delta。Focused source/component checks
-  已提交，但 hosted build、screen-reader traversal、installed interaction
-  同 capture 證據仍然 pending。
+  已提交；follow-up `0b11bf44` 將最後嘅 design-files 同 terminal empty
+  description 都經同一套 locale keys 處理。Hosted build、screen-reader
+  traversal、installed interaction 同 capture 證據仍然 pending。
 
 - **The project-wide composer boundary no longer has a stale file-context hook.**
   Commit [`5652e6c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/5652e6c88cda2f671abaf6012b876ecdf8af1710)

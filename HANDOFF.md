@@ -112,7 +112,10 @@
 > announces localized added, removed and failed context deltas without replaying
 > the full chip row, and one shared translated workspace-kind helper plus the
 > existing localized Current key covers all call sites while preserving user
-> paths and names.
+> paths and names. Follow-up commit
+> [`0b11bf44`](https://github.com/Ding-Ding-Projects/material-designer/commit/0b11bf440eb585ad4b41261111f7e046233e26cb)
+> also routes empty design-files and terminal descriptions through those same
+> locale keys.
 >
 > Static evidence: `git diff --check` passed; Git Bash
 > `sh scripts/verify-port.sh` and `sh scripts/verify-port.sh --json` both passed
