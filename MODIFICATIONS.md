@@ -29,6 +29,50 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make agent handoff downloads complete, bounded, and reliable
+
+**Reason:** The first handoff implementation still let a queued Markdown download be
+consumed against the previously loaded file, replayed a handled nonce after remount, and
+labelled an active-file subfolder ZIP as the complete website handoff. The website action
+now requests the whole current project and uses explicit localized copy; Markdown requests
+are consumed once per project/file only after the requested bytes load. The generated
+desktop shell blocks network and out-of-root file requests, secondary windows, webviews,
+non-HTML entry points, case-insensitive scaffold collisions, and project-owned canonical
+handoff/manifest collisions. Archive traversal rechecks directory entries before descent,
+and the narrow workspace toolbar collapses labels before native overflow chrome can clip
+the actions. Focused source regressions cover these boundaries; installed-renderer and
+display-scale evidence remains separate.
+
+**Changed files:**
+
+- `apps/daemon/src/projects.ts`
+- `apps/daemon/tests/project-archive.test.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/styles/workspace/drawer.css`
+- `apps/web/tests/components/FileViewer.test.tsx`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+
 ### 2026-08-21 — Export a secure desktop application scaffold
 
 **Reason:** Project archives already carried the complete website source, a human-readable

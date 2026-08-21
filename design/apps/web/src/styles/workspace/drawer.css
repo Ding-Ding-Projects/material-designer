@@ -1592,9 +1592,7 @@
   margin-inline-start: auto;
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
+  overflow: visible;
 }
 .ws-tabs-file-actions-before,
 .ws-tabs-file-actions,
@@ -1674,7 +1672,11 @@
   transform: none;
 }
 
-@container (max-width: 620px) {
+/* Collapse text before the action cluster reaches the edge. 620px was too
+   late for bilingual copy and 125-200% display scale, so the browser exposed
+   a tiny native overflow scroller beside a half-visible Download button. The
+   icon controls keep their accessible names and remain directly operable. */
+@container (max-width: 900px) {
   .ws-tabs-actions {
     gap: 4px;
   }
@@ -1682,6 +1684,17 @@
     display: none;
   }
   .app .ws-tabs-actions .chrome-action-with-label {
+    width: 32px;
+    min-width: 32px;
+    padding-inline: 0;
+    justify-content: center;
+  }
+}
+@container (max-width: 620px) {
+  .ws-tabs-actions .handoff-trigger--solo .handoff-trigger-label {
+    display: none;
+  }
+  .app .ws-tabs-actions .handoff-trigger--solo {
     width: 32px;
     min-width: 32px;
     padding-inline: 0;

@@ -3321,6 +3321,7 @@ export const ja: Dict = {
   'fileViewer.exportPptxHint': 'エージェントにこのデザインを PPTX に変換するようリクエストを送信します。',
   'fileViewer.exportPptxNa': 'ここでは PPTX エクスポートは利用できません。',
   'fileViewer.exportZip': '.zip としてダウンロード',
+  'fileViewer.exportWebsiteHandoff': '完全なウェブサイト引き渡し ZIP をエクスポート',
   'fileViewer.exportDesktopScaffold': 'デスクトップアプリのひな形をエクスポート',
   'fileViewer.exportHtml': 'スタンドアロン HTML としてエクスポート',
   'fileViewer.exportMd': 'Markdown としてエクスポート',

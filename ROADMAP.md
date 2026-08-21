@@ -24,7 +24,10 @@ with the project's standards.
 - [x] **Add explicit website and desktop-application handoff ZIPs.** Website
       project archives already carry `DESIGN-HANDOFF.md` and
       `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source
-      scaffold for coding agents without presenting it as an installer.
+      scaffold for coding agents without presenting it as an installer. The
+      website action now requests the complete project root, while reserved
+      generated paths, non-HTML scaffold inputs, network/out-of-root requests,
+      secondary windows and case-only extraction collisions fail closed.
 - [x] **Repair Download routing and narrow action geometry at source level.** A
       queued Markdown Download opens its real export menu, and narrow action
       rows compact labelled controls while retaining accessible names. Hosted

@@ -29,6 +29,15 @@ generated `desktop/` paths, export fails instead of overwriting it. Historical s
 versions do not offer this complete-project scaffold and never fall back to a misleading
 one-file desktop ZIP.
 
+The visible website-handoff action always requests the complete current project root; it no
+longer derives a subfolder from whichever HTML file happens to be open, and it does not fall
+back to a one-file ZIP while presenting that result as a complete handoff. Canonical
+`DESIGN-HANDOFF.md` and `DESIGN-MANIFEST.json` names are reserved for generated evidence: a
+project-owned collision fails closed instead of silently replacing the generated map. The
+desktop scaffold additionally requires a real HTML entry, blocks network and out-of-root local
+file requests, denies secondary windows and webviews, and treats case-only path collisions as
+collisions for Windows extraction.
+
 ## Behaviour
 
 ### Export is a property of every surface, not a feature of one

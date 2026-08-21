@@ -3327,6 +3327,7 @@ export const ko: Dict = {
   'fileViewer.exportPptxHint': '이 디자인을 PPTX로 변환하도록 에이전트에 요청합니다.',
   'fileViewer.exportPptxNa': '이곳에서는 PPTX 내보내기를 할 수 없습니다.',
   'fileViewer.exportZip': '.zip으로 다운로드',
+  'fileViewer.exportWebsiteHandoff': '전체 웹사이트 전달 ZIP 내보내기',
   'fileViewer.exportDesktopScaffold': '데스크톱 앱 스캐폴드 내보내기',
   'fileViewer.exportHtml': '독립 실행형 HTML로 내보내기',
   'fileViewer.exportMd': 'Markdown으로 내보내기',

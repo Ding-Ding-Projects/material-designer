@@ -59,6 +59,7 @@ export const zhHK: Dict = {
   "common.openInNewTab": "喺新分頁度開",
   "common.exportPdf": "匯出做 PDF",
   "common.exportZip": "下載做 .zip",
+  "fileViewer.exportWebsiteHandoff": "匯出完整網站交接 ZIP",
   "common.exportHtml": "匯出做獨立 HTML",
   "common.exportImage": "匯出做圖",
   "common.exportImageFailed": "截圖唔成功。試多次，或者用瀏覽器自己嘅截圖工具。",

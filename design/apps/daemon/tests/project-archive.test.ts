@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import JSZip from 'jszip';
@@ -147,6 +147,11 @@ describe('buildProjectArchive', () => {
     expect(main).toContain('contextIsolation: true');
     expect(main).toContain('nodeIntegration: false');
     expect(main).toContain('sandbox: true');
+    expect(main).toContain("partition: 'desktop-scaffold'");
+    expect(main).toContain('webRequest.onBeforeRequest');
+    expect(main).toContain('setWindowOpenHandler');
+    expect(main).toContain("parsed.protocol !== 'file:'");
+    expect(main).toContain('pathIsInside(sourceRoot, fileURLToPath(parsed))');
     expect(main).not.toMatch(/[A-Z]:\\|\/Users\//);
   });
 
@@ -161,6 +166,47 @@ describe('buildProjectArchive', () => {
       undefined,
       { target: 'desktop-scaffold' },
     )).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('refuses case-insensitive desktop scaffold collisions on Windows extraction', async () => {
+    const collision = path.join(projectsRoot, projectId, 'Desktop');
+    await mkdir(collision, { recursive: true });
+    await writeFile(path.join(collision, 'PACKAGE.JSON'), '{}');
+    await expect(buildProjectArchive(
+      projectsRoot,
+      projectId,
+      '',
+      undefined,
+      { target: 'desktop-scaffold' },
+    )).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('refuses a desktop scaffold when the project has no loadable HTML entry', async () => {
+    const dir = path.join(projectsRoot, projectId, 'source-only');
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'app.tsx'), 'export const App = () => null;');
+    await expect(buildProjectArchive(
+      projectsRoot,
+      projectId,
+      'source-only',
+      undefined,
+      { target: 'desktop-scaffold' },
+    )).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('does not follow directory symlinks outside the project tree', async () => {
+    const outside = path.join(projectsRoot, 'outside-archive-data');
+    await mkdir(outside, { recursive: true });
+    await writeFile(path.join(outside, 'private.txt'), 'must-not-leave-the-project');
+    await symlink(
+      outside,
+      path.join(projectsRoot, projectId, 'linked-outside'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+
+    const { buffer } = await buildProjectArchive(projectsRoot, projectId, '');
+    const zip = await JSZip.loadAsync(buffer);
+    expect(Object.keys(zip.files).some((name) => name.includes('private.txt'))).toBe(false);
   });
 
   it('rejects path traversal in root', async () => {
@@ -269,15 +315,22 @@ describe('buildProjectArchive', () => {
     expect(manifest.screens.map((screen: { file: string }) => screen.file)).toEqual(['index.html']);
   });
 
-  it('does not overwrite an existing design handoff file', async () => {
+  it('fails closed rather than trusting a project-owned canonical handoff', async () => {
     const dir = path.join(projectsRoot, projectId, 'custom-handoff');
     await mkdir(dir, { recursive: true });
     await writeFile(path.join(dir, 'index.html'), '<!doctype html>hi');
     await writeFile(path.join(dir, 'DESIGN-HANDOFF.md'), '# custom handoff');
-    const { buffer } = await buildProjectArchive(projectsRoot, projectId, 'custom-handoff');
-    const zip = await JSZip.loadAsync(buffer);
-    const handoff = await zip.file('DESIGN-HANDOFF.md')?.async('string');
-    expect(handoff).toBe('# custom handoff');
+    await expect(buildProjectArchive(projectsRoot, projectId, 'custom-handoff'))
+      .rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
+  it('fails closed rather than trusting a project-owned canonical manifest', async () => {
+    const dir = path.join(projectsRoot, projectId, 'custom-manifest');
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html>hi');
+    await writeFile(path.join(dir, 'design-manifest.json'), '{"stale":true}');
+    await expect(buildProjectArchive(projectsRoot, projectId, 'custom-manifest'))
+      .rejects.toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   it('keeps phone.html and iphone-upgrade.html as real screens when outside frames/ directory', async () => {

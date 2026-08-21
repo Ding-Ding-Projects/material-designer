@@ -5694,7 +5694,7 @@ describe('FileViewer SVG artifacts', () => {
     const downloadItems = screen.getAllByRole('menuitem').map(menuItemText);
     expect(downloadItems).toContain('Export as PDF');
     expect(downloadItems).toContain('Export as image');
-    expect(downloadItems).toContain('Download as .zip');
+    expect(downloadItems).toContain('Export complete website handoff ZIP');
     expect(downloadItems).toContain('Export desktop app scaffold');
     expect(downloadItems).toContain('Export as standalone HTML');
     expect(downloadItems).not.toContain('Copy share link');
@@ -5703,6 +5703,68 @@ describe('FileViewer SVG artifacts', () => {
     expect(downloadItems).not.toContain('Export as PPTX (images)');
     expect(downloadItems).not.toContain('Export as PPTX (editable)');
     expect(downloadItems).not.toContain('Export as Markdown');
+  });
+
+  it('downloads the complete project tree for the website handoff action', async () => {
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:website-handoff'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/projects/project-1/archive') {
+        return new Response('complete-project-zip', {
+          status: 200,
+          headers: {
+            'content-type': 'application/zip',
+            'content-disposition': 'attachment; filename="website-handoff.zip"',
+          },
+        });
+      }
+      return new Response(JSON.stringify({ deployments: [] }), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const file = baseFile({
+      name: 'pages/landing.html',
+      path: 'pages/landing.html',
+      mime: 'text/html',
+      kind: 'html',
+    });
+
+    try {
+      render(
+        <FileViewer
+          projectId="project-1"
+          projectKind="prototype"
+          file={file}
+          liveHtml="<html><body><h1>Landing</h1></body></html>"
+        />,
+      );
+
+      await openUnifiedExportTab();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Export complete website handoff ZIP' }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/archive'));
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes('root=pages'))).toBe(false);
+    } finally {
+      if (originalCreateObjectUrl) {
+        Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: originalCreateObjectUrl });
+      } else {
+        Reflect.deleteProperty(URL, 'createObjectURL');
+      }
+      if (originalRevokeObjectUrl) {
+        Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectUrl });
+      } else {
+        Reflect.deleteProperty(URL, 'revokeObjectURL');
+      }
+    }
   });
 
   // The per-file "Publish" entry point (a single file → a backend link) is
@@ -6949,6 +7011,101 @@ describe('FileViewer SVG artifacts', () => {
 
     expect(await screen.findByRole('menuitem', { name: /Export as Markdown/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^download$/i }).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('waits for the requested markdown file before consuming its download nonce', async () => {
+    const originalCreateObjectUrl = URL.createObjectURL;
+    const originalRevokeObjectUrl = URL.revokeObjectURL;
+    let resolveSecond!: (response: Response) => void;
+    const secondResponse = new Promise<Response>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith('/raw/first.md')) return new Response('# First');
+      if (url.endsWith('/raw/second.md')) return secondResponse;
+      return new Response('', { status: 404 });
+    }));
+    let capturedBlob: Blob | null = null;
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn((blob: Blob) => {
+        capturedBlob = blob;
+        return 'blob:markdown-switch';
+      }),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const first = baseFile({ name: 'first.md', path: 'first.md', mime: 'text/markdown', kind: 'text' });
+    const second = baseFile({ name: 'second.md', path: 'second.md', mime: 'text/markdown', kind: 'text' });
+    const { rerender } = render(
+      <FileViewer projectId="markdown-switch-download" projectKind="prototype" file={first} />,
+    );
+    await screen.findByDisplayValue('# First');
+
+    rerender(
+      <FileViewer
+        projectId="markdown-switch-download"
+        projectKind="prototype"
+        file={second}
+        downloadRequest={{ nonce: 41 }}
+      />,
+    );
+    expect(screen.queryByRole('menuitem', { name: /Export as Markdown/i })).toBeNull();
+
+    resolveSecond(new Response('# Second'));
+    expect(await screen.findByRole('menuitem', { name: /Export as Markdown/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: /Export as Markdown/i }));
+    await waitFor(() => expect(capturedBlob).not.toBeNull());
+    expect(await capturedBlob!.text()).toBe('# Second');
+    if (originalCreateObjectUrl) {
+      Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: originalCreateObjectUrl });
+    } else {
+      Reflect.deleteProperty(URL, 'createObjectURL');
+    }
+    if (originalRevokeObjectUrl) {
+      Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: originalRevokeObjectUrl });
+    } else {
+      Reflect.deleteProperty(URL, 'revokeObjectURL');
+    }
+  });
+
+  it('does not replay a handled markdown download nonce after remount', async () => {
+    const file = baseFile({ name: 'stable.md', path: 'stable.md', mime: 'text/markdown', kind: 'text' });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('# Stable')));
+    const first = render(
+      <FileViewer
+        projectId="markdown-remount-download"
+        projectKind="prototype"
+        file={file}
+        downloadRequest={{ nonce: 77 }}
+      />,
+    );
+    expect(await screen.findByRole('menuitem', { name: /Export as Markdown/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+    expect(screen.queryByRole('menuitem', { name: /Export as Markdown/i })).toBeNull();
+    first.unmount();
+
+    const second = render(
+      <FileViewer
+        projectId="markdown-remount-download"
+        projectKind="prototype"
+        file={file}
+        downloadRequest={{ nonce: 77 }}
+      />,
+    );
+    await screen.findByDisplayValue('# Stable');
+    expect(screen.queryByRole('menuitem', { name: /Export as Markdown/i })).toBeNull();
+
+    second.rerender(
+      <FileViewer
+        projectId="markdown-remount-download"
+        projectKind="prototype"
+        file={file}
+        downloadRequest={{ nonce: 78 }}
+      />,
+    );
+    expect(await screen.findByRole('menuitem', { name: /Export as Markdown/i })).toBeTruthy();
   });
 
   it('coalesces markdown split-pane scroll sync to one animation frame', async () => {
