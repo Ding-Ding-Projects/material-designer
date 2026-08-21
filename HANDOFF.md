@@ -52,7 +52,7 @@
 > carries the source changes; follow-up commit
 > [`6473425c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/6473425c5d4ae72ecb8a7b3a7dbdc71f9c6529d4)
 > keeps clicks inside the portalled builder from dismissing its owning menu.
-> The jer remains local and unmerged.
+> The branch remains local and unmerged.
 >
 > [!IMPORTANT]
 > **Design-parity infrastructure checkpoint — 2026-08-21.** The version-2
