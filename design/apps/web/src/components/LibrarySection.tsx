@@ -37,6 +37,7 @@ import {
   syncLibrary,
   type LibraryAssetQuery,
   type LibraryAssetFetchError,
+  type LibraryDeleteOutcome,
 } from '../providers/registry';
 import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
@@ -588,6 +589,52 @@ export interface Band {
   h: number;
 }
 
+export const LIBRARY_MAX_CONCURRENCY = 4;
+
+export interface LibraryPoolResult<T, R> {
+  item: T;
+  ok: boolean;
+  value?: R;
+  error?: unknown;
+}
+
+/** Run Library work through a small, abort-aware worker pool. */
+export async function runLibraryPool<T, R>(
+  items: readonly T[],
+  worker: (item: T, signal: AbortSignal) => Promise<R>,
+  options: { concurrency?: number; signal?: AbortSignal } = {},
+): Promise<LibraryPoolResult<T, R>[]> {
+  const concurrency = Math.max(
+    1,
+    Math.min(Math.floor(options.concurrency ?? LIBRARY_MAX_CONCURRENCY), LIBRARY_MAX_CONCURRENCY),
+  );
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onAbort, { once: true });
+  const out: Array<LibraryPoolResult<T, R> | undefined> = new Array(items.length);
+  let next = 0;
+  const workerLoop = async () => {
+    while (!controller.signal.aborted) {
+      const index = next;
+      next += 1;
+      if (index >= items.length) return;
+      const item = items[index];
+      try {
+        out[index] = { item, ok: true, value: await worker(item, controller.signal) };
+      } catch (error) {
+        out[index] = { item, ok: false, error };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => workerLoop()));
+  options.signal?.removeEventListener('abort', onAbort);
+  return out.filter((entry): entry is LibraryPoolResult<T, R> => Boolean(entry));
+}
+
+function deleteOutcomeSucceeded(value: LibraryDeleteOutcome | boolean): boolean {
+  return typeof value === 'boolean' ? value : value.status === 'deleted';
+}
+
 /** How many assets the gate names one line each before it starts counting. */
 export const MAX_GATE_ITEMS = 12;
 
@@ -767,6 +814,7 @@ const LibraryCard = memo(function LibraryCard({
           type="button"
           className={styles.title}
           title={asset.sourceTitle ?? asset.sourceUrl ?? asset.id}
+          aria-label={t('library.previewAsset', { title })}
           onClick={() => onPreview(asset.id)}
         >
           {title}
@@ -829,6 +877,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
   const [kind, setKind] = useState('');
   const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
@@ -858,8 +907,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     detail: string;
     onConfirm: () => Promise<boolean>;
   } | null>(null);
+  const [deleteOutcome, setDeleteOutcome] = useState<{
+    deleted: LibraryAsset[];
+    failed: LibraryAsset[];
+    skipped: LibraryAsset[];
+    residue: string[];
+  } | null>(null);
   // Asset currently being turned into an editable OD page (spinner gate).
   const [editingId, setEditingId] = useState<string | null>(null);
+  const editingIdsRef = useRef(new Set<string>());
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   // "Use in design system" menu state (multi-select → design system).
   const [dsMenuOpen, setDsMenuOpen] = useState(false);
@@ -869,14 +925,19 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const dsLoadedRef = useRef(false);
   const dsMenuWrapRef = useRef<HTMLDivElement>(null);
   const dsMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const dsMenuPanelRef = useRef<HTMLDivElement>(null);
   const dsMenuRef = useRef<HTMLDivElement>(null);
   const dsMenuSearchInputRef = useRef<HTMLInputElement>(null);
   const [dsMenuQuery, setDsMenuQuery] = useState('');
+  const [dsMenuStyle, setDsMenuStyle] = useState<CSSProperties | undefined>(undefined);
   const dsMenuSearch = useRegexSearch(dsMenuQuery, setDsMenuQuery);
   const [fileDragActive, setFileDragActive] = useState(false);
   const fileDragDepth = useRef(0);
   const loadedOnce = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Full page walks and targeted SSE merges share one generation/abort domain.
+  // A newer operation therefore cancels both kinds of stale work rather than
+  // letting a late targeted response overwrite a newer full projection.
   const loadGenerationRef = useRef(0);
   const loadAbortRef = useRef<AbortController | null>(null);
   // Updated from the rendered result set below so keyboard and shift-range
@@ -931,14 +992,20 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     filtersActiveRef.current = filtersActive;
   }, [filtersActive]);
 
-  const load = useCallback(async () => {
+  const beginRefresh = useCallback(() => {
     const generation = loadGenerationRef.current + 1;
     loadGenerationRef.current = generation;
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
+    return { generation, controller };
+  }, []);
+
+  const load = useCallback(async () => {
+    const { generation, controller } = beginRefresh();
+    const hadLoadedRows = loadedOnce.current;
     setLoading(true);
-    setLibraryError(null);
+    if (!hadLoadedRows) setLibraryError(null);
     try {
       // Fetch every bounded page before applying either plain text or regex
       // locally. The daemon's first-page default is never a hidden search cap,
@@ -952,14 +1019,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       }
       // Final filtering is badge-aware (shared with the picker) so `image` excludes
       // element captures and `element` keeps only them; other kinds pass through.
+      loadedOnce.current = true;
       setAssets(result.assets.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
     } finally {
-      if (generation === loadGenerationRef.current) {
+      if (generation === loadGenerationRef.current && loadAbortRef.current === controller) {
         loadAbortRef.current = null;
         setLoading(false);
       }
     }
-  }, [debouncedSearch, kind, query]);
+  }, [beginRefresh, debouncedSearch, kind, query]);
 
   useEffect(() => () => {
     loadGenerationRef.current += 1;
@@ -971,11 +1039,14 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // rows), then reload so the freshly-indexed assets appear. The throttle lives
   // on the daemon; this is the explicit "pull everything in now" action.
   const runSync = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       await syncLibrary();
       await load();
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
   }, [load]);
@@ -983,7 +1054,6 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // Fetch when the tab becomes active or filters change.
   useEffect(() => {
     if (!active) return;
-    loadedOnce.current = true;
     void load();
   }, [active, load]);
 
@@ -1006,20 +1076,14 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     let es: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let alive = true;
-    let flushGeneration = 0;
-    let flushAbort: AbortController | null = null;
     const pendingIngest = new Set<string>();
     const pendingDelete = new Set<string>();
     let pendingFull = false;
 
     const flush = async () => {
       timer = null;
-      const generation = flushGeneration + 1;
-      flushGeneration = generation;
-      flushAbort?.abort();
-      const controller = new AbortController();
-      flushAbort = controller;
-      const current = () => alive && generation === flushGeneration && !controller.signal.aborted;
+      const { generation, controller } = beginRefresh();
+      const current = () => alive && generation === loadGenerationRef.current && !controller.signal.aborted;
       // Deletes are free (no fetch); apply them first.
       if (pendingDelete.size) {
         const del = new Set(pendingDelete);
@@ -1041,14 +1105,20 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       if (pendingIngest.size) {
         const ids = [...pendingIngest];
         pendingIngest.clear();
-        const fetched = await Promise.all(ids.map((id) => fetchLibraryAsset(id, { signal: controller.signal })));
+        const fetched = await runLibraryPool(
+          ids,
+          (id, signal) => fetchLibraryAsset(id, { signal }),
+          { signal: controller.signal },
+        );
         if (!current()) return;
         // A missing fetch is ambiguous (filtered out? race?) — reload instead.
-        if (fetched.some((a) => a === null)) {
+        if (fetched.some((entry) => !entry.ok || entry.value === null)) {
           await loadRef.current();
           return;
         }
-        const resolved = fetched.filter((a): a is LibraryAsset => a !== null);
+        const resolved = fetched
+          .map((entry) => entry.value)
+          .filter((a): a is LibraryAsset => a !== null && a !== undefined);
         if (!current()) return;
         setAssets((prev) => mergeIngestedAssets(prev, resolved));
         setLibraryError(null);
@@ -1088,13 +1158,12 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     }
     return () => {
       alive = false;
-      flushGeneration += 1;
-      flushAbort?.abort();
-      flushAbort = null;
+      loadGenerationRef.current += 1;
+      loadAbortRef.current?.abort();
       if (timer) clearTimeout(timer);
       es?.close();
     };
-  }, [active]);
+  }, [active, beginRefresh]);
 
   // Drop selected ids that no longer exist after a reload / delete. Membership
   // is a single Set lookup so a large grid + large selection stays O(n).
@@ -1111,11 +1180,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // that refused leaves the gate open saying so instead of closing on a
   // removal that did not happen.
   const onDelete = useCallback(async (id: string) => {
-    const ok = await deleteLibraryAsset(id);
-    if (!ok) return false;
+    const asset = assets.find((candidate) => candidate.id === id);
+    const result = await deleteLibraryAsset(id);
+    if (!deleteOutcomeSucceeded(result)) {
+      if (asset) setDeleteOutcome({ deleted: [], failed: [asset], skipped: [], residue: [] });
+      return false;
+    }
+    if (asset && typeof result !== 'boolean' && result.residue?.length) {
+      setDeleteOutcome({ deleted: [asset], failed: [], skipped: [], residue: result.residue });
+    }
     setAssets((prev) => prev.filter((a) => a.id !== id));
     return true;
-  }, []);
+  }, [assets]);
 
   // Removing one asset had no confirmation at all: a single click on a small
   // button inside a hover-revealed row, and the bytes were gone. It now names
@@ -1125,6 +1201,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     (id: string) => {
       const asset = assets.find((a) => a.id === id);
       if (!asset) return;
+      setDeleteOutcome(null);
       setDeleteGate({
         action: t('library.deleteAction', { count: 1 }),
         // The asset's own title, so the user can check the gate against the
@@ -1143,6 +1220,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // just gate a spinner and navigate on success.
   const handleEditAsPage = useCallback(
     async (assetId: string) => {
+      if (editingIdsRef.current.has(assetId)) return;
+      editingIdsRef.current.add(assetId);
       setEditingId(assetId);
       try {
         const result = await editLibraryAssetAsPage(assetId);
@@ -1151,25 +1230,63 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           onOpenProject(result.projectId, result.relPath);
         }
       } finally {
+        editingIdsRef.current.delete(assetId);
         setEditingId(null);
       }
     },
     [onOpenProject],
   );
 
+  const deleteSelectedRef = useRef<(previewedIds: readonly string[]) => Promise<boolean>>(async () => false);
   const deleteSelected = useCallback(async (previewedIds: readonly string[]) => {
     const ids = [...previewedIds];
     if (!ids.length) return false;
-    const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
-    const deleted = new Set(ids.filter((_, i) => results[i]));
-    // Nothing landed — reported as a failure so the gate says so rather than
-    // closing over a selection that is still entirely there.
-    if (!deleted.size) return false;
-    setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
-    setSelectedIds(new Set());
-    setPreviewId((cur) => (cur && deleted.has(cur) ? null : cur));
-    return true;
-  }, []);
+    const results = await runLibraryPool(
+      ids,
+      async (id) => deleteLibraryAsset(id),
+      { concurrency: LIBRARY_MAX_CONCURRENCY },
+    );
+    const resultById = new Map(results.map((entry) => [entry.item, entry]));
+    const deletedIds = new Set(
+      ids.filter((id) => {
+        const result = resultById.get(id);
+        return Boolean(result?.ok && result.value && deleteOutcomeSucceeded(result.value));
+      }),
+    );
+    const failedIds = new Set(ids.filter((id) => !deletedIds.has(id)));
+    const deletedAssets = assets.filter((asset) => deletedIds.has(asset.id));
+    const failedAssets = assets.filter((asset) => failedIds.has(asset.id));
+    // The ledger is itemized and survives a partial attempt. Failed rows stay
+    // selected and the gate returns false, so DestructiveGate shows its failed
+    // phase instead of playing the completion animation over half a delete.
+    const residue = results.flatMap((entry) => (
+      entry.ok && entry.value && typeof entry.value !== 'boolean' ? entry.value.residue ?? [] : []
+    ));
+    setDeleteOutcome({ deleted: deletedAssets, failed: failedAssets, skipped: [], residue });
+    if (deletedIds.size) {
+      setAssets((prev) => prev.filter((a) => !deletedIds.has(a.id)));
+      setPreviewId((cur) => (cur && deletedIds.has(cur) ? null : cur));
+    }
+    setSelectedIds(new Set(failedIds));
+    if (failedIds.size) {
+      setDeleteGate((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          action: t('library.deleteAction', { count: failedAssets.length }),
+          target: t('library.deleteTarget', { count: failedAssets.length }),
+          items: describeAssetItems(failedAssets, t),
+          detail: describeDeleteDetail(failedAssets, t),
+          onConfirm: () => deleteSelectedRef.current([...failedIds]),
+        };
+      });
+      return false;
+    }
+    return deletedIds.size > 0;
+  }, [assets, t]);
+  useEffect(() => {
+    deleteSelectedRef.current = deleteSelected;
+  }, [deleteSelected]);
 
   // Bulk delete is destructive and very easy to trigger — a button in the
   // selection bar, or Delete/Backspace with a box-selection still live. The
@@ -1180,6 +1297,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
     const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
     if (!chosen.length) return;
+    setDeleteOutcome(null);
     const previewedIds = Object.freeze(chosen.map((asset) => asset.id));
     setDeleteGate({
       action: t('library.deleteAction', { count: chosen.length }),
@@ -1216,10 +1334,51 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     window.setTimeout(() => dsMenuButtonRef.current?.focus(), 0);
   }, []);
 
+  const closeDsMenuWithoutFocus = useCallback(() => {
+    setDsMenuOpen(false);
+    setDsMenuQuery('');
+  }, []);
+
   const visibleDesignSystemMenuItems = useMemo(
     () => dsList.filter((ds) => dsMenuSearch.matches(`${ds.title}\n${t('library.addAssetsAndRefine')}`)),
     [dsList, dsMenuSearch.matches, t],
   );
+
+  const positionDsMenu = useCallback(() => {
+    const trigger = dsMenuButtonRef.current;
+    const panel = dsMenuPanelRef.current;
+    if (!trigger || !panel || typeof window === 'undefined') return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 12;
+    const gap = 6;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 320;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 320;
+    const width = Math.min(320, Math.max(200, viewportWidth - margin * 2));
+    const measuredHeight = Math.max(1, panel.scrollHeight);
+    const below = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+    const above = Math.max(0, rect.top - margin - gap);
+    const placeAbove = below < Math.min(measuredHeight, 220) && above > below;
+    const maxHeight = Math.max(120, Math.min(measuredHeight, placeAbove ? above : below));
+    const left = Math.max(margin, Math.min(rect.right - width, viewportWidth - width - margin));
+    if (placeAbove) {
+      setDsMenuStyle({ position: 'fixed', left, bottom: Math.max(margin, viewportHeight - rect.top + gap), width, maxHeight });
+    } else {
+      setDsMenuStyle({ position: 'fixed', left, top: Math.max(margin, rect.bottom + gap), width, maxHeight });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dsMenuOpen) return;
+    const frame = window.requestAnimationFrame(positionDsMenu);
+    const onViewportChange = () => positionDsMenu();
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [dsMenuOpen, positionDsMenu, visibleDesignSystemMenuItems.length, dsMenuQuery]);
 
   // Dismiss the menu on outside click / Escape. Deliberately NOT a full-screen
   // backdrop element: a stray bare overlay can paint opaque (e.g. UA button
@@ -1229,7 +1388,12 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const onPointerDown = (e: MouseEvent) => {
       const target = e.target as HTMLElement | null;
       const regexPopover = target?.closest('[data-testid="library-design-system-menu-search-regex-popover"]');
-      if (!regexPopover && !dsMenuWrapRef.current?.contains(e.target as Node)) closeDsMenu();
+      if (!regexPopover && !dsMenuWrapRef.current?.contains(e.target as Node)) closeDsMenuWithoutFocus();
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as Node | null;
+      const regexPopover = (target as HTMLElement | null)?.closest('[data-testid="library-design-system-menu-search-regex-popover"]');
+      if (!regexPopover && !dsMenuWrapRef.current?.contains(target)) closeDsMenuWithoutFocus();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -1238,12 +1402,14 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       }
     };
     document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('keydown', onKey);
     };
-  }, [closeDsMenu, dsMenuOpen]);
+  }, [closeDsMenu, closeDsMenuWithoutFocus, dsMenuOpen]);
 
   useEffect(() => {
     if (!dsMenuOpen) return;
@@ -1593,8 +1759,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     });
   }, [visibleAssetEntries]);
   const searchActive = search.trim().length > 0 || kind !== '' || source !== '';
-  const previewIndex = previewId ? assets.findIndex((a) => a.id === previewId) : -1;
-  const previewAsset = previewIndex >= 0 ? assets[previewIndex] : null;
+  // Preview navigation follows the same visible projection as the grid. A
+  // hidden filtered row must never become the next/previous destination.
+  const previewIndex = previewId
+    ? visibleAssetEntries.findIndex(({ asset }) => asset.id === previewId)
+    : -1;
+  const previewAsset = previewIndex >= 0 ? visibleAssetEntries[previewIndex]?.asset ?? null : null;
+  useEffect(() => {
+    if (previewId && previewIndex < 0) setPreviewId(null);
+  }, [previewId, previewIndex]);
   const selectedCount = selectedIds.size;
 
   // Day-bucketed groups for the timeline view (newest day first). Items keep
@@ -1764,6 +1937,25 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         </div>
       ) : null}
 
+      {deleteOutcome && (deleteOutcome.failed.length > 0 || deleteOutcome.residue.length > 0) ? (
+        <div className={styles.loadError} role="alert" data-testid="library-delete-outcome">
+          <div>
+            <div>{t('library.uploadSummary', {
+              added: deleteOutcome.deleted.length,
+              failed: deleteOutcome.failed.length + deleteOutcome.skipped.length + deleteOutcome.residue.length,
+            })}</div>
+            <ul className={styles.outcomeItems}>
+              {deleteOutcome.failed.map((asset) => <li key={asset.id}>{assetTitle(asset)}</li>)}
+              {deleteOutcome.skipped.map((asset) => <li key={asset.id}>{assetTitle(asset)}</li>)}
+              {deleteOutcome.residue.length > 0 ? <li>{deleteOutcome.residue.join(', ')}</li> : null}
+            </ul>
+          </div>
+          <button type="button" className={styles.selectionLink} onClick={requestDeleteSelected}>
+            {t('library.retry')}
+          </button>
+        </div>
+      ) : null}
+
       {selectedCount > 0 && !dragging ? (
         <div className={styles.selectionBar}>
           <span className={styles.selectionCount}>
@@ -1814,6 +2006,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             {dsMenuOpen ? (
               <div
                 className={styles.dsMenu}
+                ref={dsMenuPanelRef}
+                style={dsMenuStyle}
                 role="group"
                 aria-label={t('library.useInDesignSystem')}
               >
@@ -1829,6 +2023,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                     if (event.key === 'ArrowDown') {
                       event.preventDefault();
                       moveDesignSystemMenuFocus(1);
+                    } else if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      const items = dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)');
+                      items?.[items.length - 1]?.focus();
                     }
                   }}
                 />
@@ -1874,8 +2072,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                       </span>
                     </button>
                   ) : null}
-                  <div className={styles.dsMenuDivider} role="separator" />
-                  <div className={styles.dsMenuHeader} role="presentation">{t('library.refineExisting')}</div>
+                  {dsList.length > 0 ? <div className={styles.dsMenuDivider} role="separator" /> : null}
+                  {dsList.length > 0 ? <div className={styles.dsMenuHeader} role="presentation">{t('library.refineExisting')}</div> : null}
                   {visibleDesignSystemMenuItems.map((ds) => (
                     <button
                       key={ds.id}
@@ -1891,7 +2089,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                     </button>
                   ))}
                 </div>
-                {visibleDesignSystemMenuItems.length === 0 ? (
+                {visibleDesignSystemMenuItems.length === 0 && !dsMenuSearch.matches(t('library.createDesignSystem')) ? (
                   <div className={styles.dsMenuEmpty} role="status">{t('library.noMatches')}</div>
                 ) : null}
               </div>
@@ -1998,13 +2196,13 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         <LibraryPreviewModal
           asset={previewAsset}
           hasPrev={previewIndex > 0}
-          hasNext={previewIndex >= 0 && previewIndex < assets.length - 1}
+          hasNext={previewIndex >= 0 && previewIndex < visibleAssetEntries.length - 1}
           onPrev={() => {
-            const prev = assets[previewIndex - 1];
+            const prev = visibleAssetEntries[previewIndex - 1]?.asset;
             if (prev) setPreviewId(prev.id);
           }}
           onNext={() => {
-            const next = assets[previewIndex + 1];
+            const next = visibleAssetEntries[previewIndex + 1]?.asset;
             if (next) setPreviewId(next.id);
           }}
           onClose={() => setPreviewId(null)}

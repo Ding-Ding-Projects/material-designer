@@ -58,6 +58,7 @@ export interface RegexSearchFieldProps {
   autoFocus?: boolean;
   spellCheck?: boolean;
   autoComplete?: string;
+  disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
@@ -78,6 +79,7 @@ export function RegexSearchField({
   autoFocus,
   spellCheck = false,
   autoComplete = 'off',
+  disabled = false,
   focusScopeId,
   inputRef,
   onFocus,
@@ -205,6 +207,7 @@ export function RegexSearchField({
         autoFocus={autoFocus}
         spellCheck={spellCheck}
         autoComplete={autoComplete}
+        disabled={disabled}
         data-testid={testId}
         data-regex-mode={search.mode}
         onFocus={onFocus}
@@ -234,7 +237,12 @@ export function RegexSearchField({
           regexOn ? t('regexSearch.toggleTitleRegex') : t('regexSearch.toggleTitleText')
         }
         data-testid={testId ? `${testId}-regex-toggle` : undefined}
-        onClick={() => (open ? close(true) : setOpen(true))}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          if (open) close(true);
+          else setOpen(true);
+        }}
       >
         <span className={styles.toggleGlyph} aria-hidden>
           .*

@@ -99,7 +99,7 @@ import { workspaceContextDetailLine, workspaceContextKindLabel } from './workspa
 import { FigmaHelpModal } from './FigmaHelpModal';
 import { TemplatePicker } from './home-hero/TemplatePicker';
 import { TypePillRow } from './home-hero/TypePillRow';
-import { LibraryPicker } from './LibraryPicker';
+import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
 import { ComposerModePicker } from './ComposerModePicker';
 import { assetTitle } from './LibraryAssetMeta';
 import { libraryAssetRawUrl } from '../providers/registry';
@@ -1184,13 +1184,20 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // "Import from library": the home composer has no project yet, so we fetch
   // each picked asset's bytes and stage them as regular files. They ride the
   // existing upload-on-submit path into the new project's design files.
-  async function importLibraryAssets(assets: LibraryAsset[]) {
+  async function importLibraryAssets(assets: LibraryAsset[]): Promise<LibraryPickerConfirmResult> {
     const files: File[] = [];
+    const failed: LibraryPickerConfirmResult['failed'] = [];
     for (const asset of assets) {
       const file = await fileFromLibraryAsset(asset);
       if (file) files.push(file);
+      else failed.push({ assetId: asset.id });
     }
     handleFiles(files);
+    return {
+      applied: assets.filter((asset) => !failed.some((item) => item.assetId === asset.id)).map((asset) => asset.id),
+      failed,
+      skipped: [],
+    };
   }
 
   function removeFileChip(index: number, file: File) {

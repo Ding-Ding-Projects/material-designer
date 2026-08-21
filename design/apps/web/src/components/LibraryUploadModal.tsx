@@ -27,6 +27,7 @@ type ItemStatus = 'uploading' | 'done' | 'deduped' | 'error' | 'cancelled';
 
 interface UploadItem {
   id: string;
+  batchId: string;
   name: string;
   size: number;
   status: ItemStatus;
@@ -45,7 +46,9 @@ interface Props {
 }
 
 let uploadSeq = 0;
+let uploadBatchSeq = 0;
 const nextItemId = () => `upload-${(uploadSeq += 1)}`;
+const nextBatchId = () => `batch-${(uploadBatchSeq += 1)}`;
 const maxMb = Math.round(LIBRARY_UPLOAD_MAX_BYTES / 1_000_000);
 
 function localizedUploadError(outcome: LibraryUploadOutcome, t: ReturnType<typeof useT>): string {
@@ -72,6 +75,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const progressTimersRef = useRef(new Map<string, number>());
   const pendingProgressRef = useRef(new Map<string, number>());
   const [cancelRequested, setCancelRequested] = useState(false);
+  const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
 
   useEffect(() => () => {
     aliveRef.current = false;
@@ -142,12 +146,14 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
       if (inFlight.current > 0) return;
       const generation = batchGenerationRef.current + 1;
       batchGenerationRef.current = generation;
+      const batchId = nextBatchId();
+      setCurrentBatchId(batchId);
       const controller = new AbortController();
       uploadAbortRef.current = controller;
       setCancelRequested(false);
       for (const file of files) {
         const id = nextItemId();
-        setItems((prev) => [{ id, name: file.name, size: file.size, status: 'uploading', progress: 0 }, ...prev]);
+        setItems((prev) => [{ batchId, id, name: file.name, size: file.size, status: 'uploading', progress: 0 }, ...prev]);
         inFlight.current += 1;
         void uploadLibraryFile(file, {
           signal: controller.signal,
@@ -165,12 +171,14 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
       if (inFlight.current > 0) return;
       const generation = batchGenerationRef.current + 1;
       batchGenerationRef.current = generation;
+      const batchId = nextBatchId();
+      setCurrentBatchId(batchId);
       const controller = new AbortController();
       uploadAbortRef.current = controller;
       setCancelRequested(false);
       const id = nextItemId();
       const size = new Blob([text]).size;
-      setItems((prev) => [{ id, name: t('library.pastedText', { count: text.length }), size, status: 'uploading', progress: 0 }, ...prev]);
+      setItems((prev) => [{ batchId, id, name: t('library.pastedText', { count: text.length }), size, status: 'uploading', progress: 0 }, ...prev]);
       inFlight.current += 1;
       void uploadLibraryText(text, {}, {
         signal: controller.signal,
@@ -236,13 +244,14 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
     if (files.length) addFiles(files);
   };
 
-  const pending = items.some((it) => it.status === 'uploading');
-  const okCount = items.filter((it) => it.status === 'done' || it.status === 'deduped').length;
-  const errCount = items.filter((it) => it.status === 'error').length;
-  const cancelledCount = items.filter((it) => it.status === 'cancelled').length;
-  const totalBytes = items.reduce((total, item) => total + item.size, 0);
+  const currentItems = items.filter((item) => item.batchId === currentBatchId);
+  const pending = currentItems.some((it) => it.status === 'uploading');
+  const okCount = currentItems.filter((it) => it.status === 'done' || it.status === 'deduped').length;
+  const errCount = currentItems.filter((it) => it.status === 'error').length;
+  const cancelledCount = currentItems.filter((it) => it.status === 'cancelled').length;
+  const totalBytes = currentItems.reduce((total, item) => total + item.size, 0);
   const overallProgress = totalBytes > 0
-    ? Math.round(items.reduce((total, item) => total + item.size * item.progress, 0) / totalBytes)
+    ? Math.round(currentItems.reduce((total, item) => total + item.size * item.progress, 0) / totalBytes)
     : 0;
   const cancelUpload = useCallback(() => {
     if (!pending || cancelRequested) return;
@@ -358,7 +367,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
 
         <footer className={styles.foot}>
           <span className={styles.summary} role="status" aria-live="polite" aria-atomic="true">
-            {items.length === 0
+            {currentItems.length === 0
               ? t('library.uploadNothing')
               : pending
                 ? (cancelRequested

@@ -48,6 +48,8 @@ export interface ConfirmedDeleteOptions {
   headers?: HeadersInit;
   /** Throw a phase-aware error instead of resolving `false` on failure. */
   throwOnFailure?: boolean;
+  /** Inspect a successful response without changing the boolean contract. */
+  onSuccess?: (response: Response) => void | Promise<void>;
 }
 
 interface DeleteConfirmationAttempt {
@@ -165,6 +167,7 @@ export async function confirmedDelete(
     if (!resp.ok && options.throwOnFailure) {
       throw new ConfirmedDeleteError('delete', resp);
     }
+    if (resp.ok) await options.onSuccess?.(resp.clone());
     return resp.ok;
   } catch (error) {
     if (error instanceof ConfirmedDeleteError) throw error;

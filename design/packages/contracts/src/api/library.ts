@@ -240,13 +240,21 @@ export interface LibraryAssetFilter {
   projectId?: string;
   designSystemId?: string;
   limit?: number;
-  /** Zero-based continuation offset for bounded list pages. */
+  /** Legacy zero-based window used by the CLI/data-export surfaces. */
   offset?: number;
+  /** Point-in-time keyset snapshot used by the Library HTTP list route. */
+  snapshotAt?: number;
+  /** Last tuple returned by the keyset cursor, ordered newest first. */
+  afterArchivedDate?: string;
+  afterCreatedAt?: number;
+  afterId?: string;
 }
 
 export interface LibraryAssetListResponse {
   assets: LibraryAsset[];
-  /** The next offset, or null when this page is the complete result. */
+  /** Opaque point-in-time keyset cursor, or null when this snapshot is complete. */
+  nextCursor?: string | null;
+  /** @deprecated Kept for older CLI adapters; HTTP Library clients use nextCursor. */
   nextOffset?: number | null;
 }
 

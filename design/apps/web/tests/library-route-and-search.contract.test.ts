@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { LIBRARY_UI_VISIBLE } from '../src/features/libraryUi';
 import { buildPath, parseRoute } from '../src/router';
-import { parseLibraryNextOffset } from '../src/providers/registry';
+import { parseLibraryNextCursor, parseLibraryNextOffset } from '../src/providers/registry';
 
 function source(relative: string): string {
   return readFileSync(new URL(`../src/${relative}`, import.meta.url), 'utf8');
@@ -81,6 +81,15 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
     }
   });
 
+  it('accepts only bounded opaque snapshot cursors for the HTTP walk', () => {
+    expect(parseLibraryNextCursor(undefined)).toEqual({ ok: true, nextCursor: null });
+    expect(parseLibraryNextCursor(null)).toEqual({ ok: true, nextCursor: null });
+    expect(parseLibraryNextCursor('snapshot-token')).toEqual({ ok: true, nextCursor: 'snapshot-token' });
+    expect(parseLibraryNextCursor('')).toEqual({ ok: false });
+    expect(parseLibraryNextCursor('x'.repeat(4097))).toEqual({ ok: false });
+    expect(parseLibraryNextCursor(500)).toEqual({ ok: false });
+  });
+
   it('uses a typed page result and exhaustive bounded continuation', () => {
     const provider = source('providers/registry.ts');
     const daemonRoute = readFileSync(
@@ -95,16 +104,16 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
     expect(provider).toMatch(/ok: false/);
     expect(provider).toMatch(/fetchAllLibraryAssets/);
     expect(provider).toMatch(/pagination-limit/);
-    expect(provider).toMatch(/result\.nextOffset/);
-    expect(provider).toContain('const expectedNextOffset = offset + result.assets.length;');
-    expect(provider).toContain('result.nextOffset !== expectedNextOffset');
-    expect(provider).toMatch(/parseLibraryNextOffset\(json\.nextOffset\)/);
-    expect(provider).toMatch(/typeof value !== 'number'/);
+    expect(provider).toMatch(/result\.nextCursor/);
+    expect(provider).toContain('const seenCursors = new Set<string>();');
+    expect(provider).toContain('seenCursors.has(nextCursor)');
+    expect(provider).toMatch(/parseLibraryNextCursor\(json\.nextCursor\)/);
     expect(provider).not.toMatch(/Number\(json\.nextOffset\)/);
-    expect(daemonRoute).toMatch(/nextOffset:/);
+    expect(daemonRoute).toMatch(/nextCursor:/);
     expect(daemonRoute).toMatch(/pageSize \+ 1/);
-    expect(store).toMatch(/OFFSET \$\{offset\}/);
-    expect(store).toContain('Number.isSafeInteger(filter.offset)');
+    expect(store).toContain('a.created_at <= ?');
+    expect(store).toContain('afterArchivedDate');
+    expect(store).toContain('a.id < ?');
     expect(daemonRoute).toContain('parseNonNegativeSafeQuery');
     expect(daemonRoute).toContain("'INVALID_PAGINATION'");
     // A fixed one-page cap is the regression this contract prevents.
@@ -121,7 +130,7 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
     expect(picker).toMatch(/setLoadError\(result\.error\)/);
     expect(picker).toMatch(/data-testid="library-picker-load-error"/);
     expect(picker).toMatch(/fetchAllLibraryAssets/);
-    expect(picker).toContain('assets.length > 0');
+    expect(picker).toContain('loadedOnceRef.current');
     expect(picker).toContain('library-picker-refresh-error');
   });
 
@@ -160,12 +169,72 @@ describe('Library provider, continuation, and live-refresh contracts', () => {
 
   it('cancels stale SSE merges and clears a recovered error', () => {
     const section = source('components/LibrarySection.tsx');
-    expect(section).toContain('let flushGeneration = 0;');
-    expect(section).toContain('let flushAbort: AbortController | null = null;');
-    expect(section).toContain('fetchLibraryAsset(id, { signal: controller.signal })');
+    expect(section).toContain('const { generation, controller } = beginRefresh();');
+    expect(section).toContain('runLibraryPool(');
+    expect(section).toContain('fetchLibraryAsset(id, { signal })');
     expect(section).toContain('setLibraryError(null);');
-    expect(section).toContain('flushAbort?.abort();');
+    expect(section).toContain('loadAbortRef.current?.abort();');
     expect(section).toContain('alive = false;');
+  });
+
+  it('keeps partial deletion itemized, bounded, selected, and retryable', () => {
+    const section = source('components/LibrarySection.tsx');
+    const provider = source('providers/registry.ts');
+    expect(section).toContain('LIBRARY_MAX_CONCURRENCY = 4');
+    expect(section).toContain('setDeleteOutcome({ deleted: deletedAssets, failed: failedAssets, skipped: [], residue });');
+    expect(section).toContain('setSelectedIds(new Set(failedIds));');
+    expect(section).toContain('data-testid="library-delete-outcome"');
+    expect(provider).toContain("status: 'deleted'");
+    expect(provider).toContain("status: 'failed'");
+  });
+
+  it('keeps the picker busy boundary and structured callback outcomes explicit', () => {
+    const picker = source('components/LibraryPicker.tsx');
+    expect(picker).toContain('LibraryPickerConfirmResult');
+    expect(picker).toContain('disabled={busy}');
+    expect(picker).toContain('reviewedIds');
+    expect(picker).toContain('failedIds.has(id)');
+    expect(picker).toContain('data-testid="library-picker-confirm-result"');
+    expect(picker).toContain('role="status" aria-live="polite"');
+  });
+
+  it('scopes upload progress and counts to the current batch while retaining history', () => {
+    const upload = source('components/LibraryUploadModal.tsx');
+    expect(upload).toContain('batchId: string;');
+    expect(upload).toContain('const currentItems = items.filter((item) => item.batchId === currentBatchId);');
+    expect(upload).toContain('currentItems.reduce');
+    expect(upload).toContain('currentItems.filter');
+  });
+
+  it('keeps visible preview navigation and measured menu geometry explicit', () => {
+    const section = source('components/LibrarySection.tsx');
+    const preview = source('components/LibraryPreviewModal.tsx');
+    const sectionCss = source('components/LibrarySection.module.css');
+    const pickerCss = source('components/LibraryPicker.module.css');
+    expect(section).toContain('visibleAssetEntries.findIndex(({ asset }) => asset.id === previewId)');
+    expect(section).toContain("event.key === 'ArrowUp'");
+    expect(section).toContain('getBoundingClientRect()');
+    expect(section).toContain('setDsMenuStyle');
+    expect(sectionCss).toContain('position: fixed;');
+    expect(sectionCss).toContain('max-height: min(320px, calc(100vh - 24px));');
+    expect(pickerCss).not.toContain('height: 220px;');
+    expect(preview).toContain("aria-label={`${t('library.showHtml')}: ${element.selector || element.tag}`}");
+  });
+
+  it('keeps daemon-owned delete rows on primary unlink failure and cleans sidecars', () => {
+    const route = readFileSync(
+      new URL('../../../apps/daemon/src/routes/library.ts', import.meta.url),
+      'utf8',
+    );
+    expect(route).toContain('LIBRARY_UNLINK_ATTEMPTS = 4');
+    expect(route).toContain("code === 'EPERM'");
+    expect(route).toContain("code === 'EACCES'");
+    expect(route).toContain("code === 'EBUSY'");
+    expect(route).toContain("'LIBRARY_DELETE_FILE_FAILED'");
+    expect(route).toContain('resolveAssetFigmaSidecarPath(asset, LIBRARY_DIR)');
+    expect(route).toContain('resolveAssetElementSidecarPath(asset, LIBRARY_DIR)');
+    expect(route).toContain('residue');
+    expect(route).toContain('deleteLibraryAsset(db, asset.id);');
   });
 });
 

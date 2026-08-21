@@ -65,13 +65,25 @@ interface Props {
   onClose: () => void;
   /**
    * Invoked with the chosen assets when the user confirms. May be async — the
-   * picker keeps a busy state until it resolves, then closes itself.
+   * picker keeps a busy state until it resolves. A complete result closes the
+   * picker; a partial/failed result remains open with failed ids selected.
    */
-  onConfirm: (assets: LibraryAsset[]) => void | Promise<void>;
+  onConfirm: (assets: LibraryAsset[]) => LibraryPickerConfirmResult | void | Promise<LibraryPickerConfirmResult | void>;
   /** Heading override; defaults to the shared "Select from library" copy. */
   title?: string;
   /** Confirm-button label override; defaults to "Add". */
   confirmLabel?: string;
+}
+
+export interface LibraryPickerFailure {
+  assetId: string;
+  reason?: string;
+}
+
+export interface LibraryPickerConfirmResult {
+  applied: string[];
+  failed: LibraryPickerFailure[];
+  skipped: LibraryPickerFailure[];
 }
 
 export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props) {
@@ -90,6 +102,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const searchInputRef = useRef<HTMLInputElement>(null);
   const loadGenerationRef = useRef(0);
   const loadAbortRef = useRef<AbortController | null>(null);
+  const loadedOnceRef = useRef(false);
   const focusScopeId = `${titleId}-focus-scope`;
 
   const load = useCallback(async () => {
@@ -108,6 +121,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
         setLoadError(result.error);
         return;
       }
+      loadedOnceRef.current = true;
       setAssets(result.assets);
     } finally {
       if (generation === loadGenerationRef.current) {
@@ -153,13 +167,17 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
     });
   }, [assets, kind, searchRegex.matches]);
 
+  const visibleSelectedCount = visible.filter((asset) => selected.has(asset.id)).length;
+  const [confirmResult, setConfirmResult] = useState<LibraryPickerConfirmResult | null>(null);
+
   useEffect(() => {
+    if (busyRef.current) return;
     const visibleIds = new Set(visible.map((asset) => asset.id));
     setSelected((prev) => {
       const next = new Set([...prev].filter((id) => visibleIds.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [visible]);
+  }, [visible, busy]);
 
   // Stable so the memoized PickerCard's shallow-prop compare holds: a selection
   // toggle then only re-renders the one card whose `selected` flipped, not every
@@ -179,19 +197,49 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
     if (picked.length === 0 || busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    const reviewedIds = new Set(picked.map((asset) => asset.id));
     try {
-      await onConfirm(picked);
+      const result = await onConfirm(picked);
+      const normalizedBase: LibraryPickerConfirmResult = result ?? {
+        applied: picked.map((asset) => asset.id),
+        failed: [],
+        skipped: [],
+      };
+      const accounted = new Set([
+        ...normalizedBase.applied,
+        ...normalizedBase.failed.map((item) => item.assetId),
+        ...normalizedBase.skipped.map((item) => item.assetId),
+      ]);
+      const normalized: LibraryPickerConfirmResult = accounted.size === reviewedIds.size
+        ? normalizedBase
+        : {
+          ...normalizedBase,
+          skipped: [
+            ...normalizedBase.skipped,
+            ...picked
+              .filter((asset) => !accounted.has(asset.id))
+              .map((asset) => ({ assetId: asset.id, reason: 'not-reported' })),
+          ],
+        };
+      const failedIds = new Set([
+        ...normalized.failed.map((item) => item.assetId),
+        ...normalized.skipped.map((item) => item.assetId),
+      ]);
+      setConfirmResult(normalized);
+      setSelected((current) => new Set([...current].filter((id) => failedIds.has(id))));
+      if (failedIds.size > 0 || normalized.applied.length < reviewedIds.size) return;
+      onClose();
     } finally {
       busyRef.current = false;
       if (aliveRef.current) {
         setBusy(false);
-        onClose();
       }
     }
   }
 
-  const count = visible.filter((asset) => selected.has(asset.id)).length;
+  const count = visibleSelectedCount;
   const searchActive = search.trim().length > 0 || kind !== '';
+  const resultFailedCount = (confirmResult?.failed.length ?? 0) + (confirmResult?.skipped.length ?? 0);
 
   if (typeof document === 'undefined') return null;
 
@@ -238,6 +286,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
             inputRef={searchInputRef}
             focusScopeId={focusScopeId}
             autoFocus
+            disabled={busy}
             testId="library-picker-search"
           />
           <div className={styles.kinds} role="group" aria-label={t('libraryPicker.kindFilter')}>
@@ -245,7 +294,8 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
               type="button"
               aria-pressed={kind === ''}
               className={`${styles.chip}${kind === '' ? ` ${styles.chipActive}` : ''}`}
-              onClick={() => setKind('')}
+                onClick={() => setKind('')}
+                disabled={busy}
             >
               {t('libraryPicker.allKinds')}
             </button>
@@ -256,6 +306,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
                 aria-pressed={kind === k}
                 className={`${styles.chip}${kind === k ? ` ${styles.chipActive}` : ''}`}
                 onClick={() => setKind((prev) => (prev === k ? '' : k))}
+                disabled={busy}
               >
                 {localizedKindLabel(k, t)}
               </button>
@@ -263,14 +314,14 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
           </div>
         </div>
 
-        <div className={styles.body} aria-busy={loading}>
-          {loadError && assets.length > 0 ? (
+        <div className={styles.body} aria-busy={loading || busy} aria-disabled={busy}>
+          {loadError && loadedOnceRef.current ? (
             <div className={styles.inlineError} role="alert" data-testid="library-picker-refresh-error">
               <span>{t('library.loadError')}</span>
               <Button onClick={() => void load()} disabled={busy}>{t('library.retry')}</Button>
             </div>
           ) : null}
-          {loadError && assets.length === 0 ? (
+          {loadError && !loadedOnceRef.current ? (
             <div className={styles.placeholder} role="alert" data-testid="library-picker-load-error">
               <p>{t('library.loadError')}</p>
               <Button onClick={() => void load()}>{t('library.retry')}</Button>
@@ -287,10 +338,31 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
                   asset={asset}
                   selected={selected.has(asset.id)}
                   onToggle={toggle}
+                  disabled={busy}
                 />
               ))}
             </ul>
           )}
+          <span className={styles.liveCount} role="status" aria-live="polite" aria-atomic="true">
+            {searchActive && visible.length === 0
+              ? t('library.noMatches')
+              : t('library.scopeVisible', { count: visible.length })}
+            {` · ${t('library.selectedCount', { count: visibleSelectedCount })}`}
+            {` · ${t('library.uploadSummary', { added: assets.length, failed: resultFailedCount })}`}
+          </span>
+          {confirmResult && resultFailedCount > 0 ? (
+            <div className={styles.inlineError} role="alert" data-testid="library-picker-confirm-result">
+              <div>
+                <div>{t('library.uploadSummary', { added: confirmResult.applied.length, failed: resultFailedCount })}</div>
+                <ul className={styles.resultItems}>
+                  {[...confirmResult.failed, ...confirmResult.skipped].map((item) => (
+                    <li key={item.assetId}>{assetTitle(assets.find((asset) => asset.id === item.assetId) ?? ({ id: item.assetId } as LibraryAsset))}</li>
+                  ))}
+                </ul>
+              </div>
+              <Button onClick={() => void confirm()} disabled={busy || count === 0}>{t('library.retry')}</Button>
+            </div>
+          ) : null}
         </div>
 
         <footer className={styles.footer}>
@@ -316,20 +388,24 @@ interface PickerCardProps {
   asset: LibraryAsset;
   selected: boolean;
   onToggle: (id: string) => void;
+  disabled: boolean;
 }
 
 // One picker grid cell. Memoized so toggling one asset's selection re-renders
 // only that card, not every visible card — the whole-grid re-render was the
 // picker's biggest cost on a large Library. `onToggle` is a stable useCallback,
 // so the shallow-prop compare holds until this card's `selected` flips.
-const PickerCard = memo(function PickerCard({ asset, selected, onToggle }: PickerCardProps) {
+const PickerCard = memo(function PickerCard({ asset, selected, onToggle, disabled }: PickerCardProps) {
   const t = useT();
   return (
     <li>
       <button
         type="button"
         className={`${styles.card}${selected ? ` ${styles.cardSelected}` : ''}`}
-        onClick={() => onToggle(asset.id)}
+        onClick={() => {
+          if (!disabled) onToggle(asset.id);
+        }}
+        disabled={disabled}
         aria-pressed={selected}
         title={assetTitle(asset)}
       >

@@ -3503,7 +3503,8 @@ export interface LibraryAssetQuery {
   date?: string;
   tag?: string;
   limit?: number;
-  offset?: number;
+  /** Opaque point-in-time keyset cursor returned by the daemon. */
+  cursor?: string;
 }
 
 export type LibraryAssetFetchErrorKind =
@@ -3519,26 +3520,35 @@ export interface LibraryAssetFetchError {
 }
 
 export type LibraryAssetFetchResult =
-  | { ok: true; assets: LibraryAsset[]; nextOffset: number | null }
+  | { ok: true; assets: LibraryAsset[]; nextCursor: string | null }
   | { ok: false; error: LibraryAssetFetchError };
 
 /**
- * Parse the untrusted continuation field from one daemon page.
+ * Parse the untrusted opaque continuation field from one daemon page.
  *
  * The wire contract is deliberately narrower than JavaScript's coercion rules:
- * `null` and an omitted field end the walk, while only a JSON number that is a
- * non-negative safe integer can continue it. A string such as `"500"`, a
- * boolean, `NaN`, or a fractional value is malformed rather than a convenient
- * cursor. Keeping this boundary in one pure helper makes the runtime parser
+ * `null` and an omitted field end the walk, while only a bounded non-empty
+ * string can continue the point-in-time keyset snapshot. Numbers, booleans,
+ * empty strings, and oversized values are malformed rather than convenient
+ * cursors. Keeping this boundary in one pure helper makes the runtime parser
  * and its source-level contract agree on the same valid and invalid cases.
  */
+export function parseLibraryNextCursor(
+  value: unknown,
+): { ok: true; nextCursor: string | null } | { ok: false } {
+  if (value === null || value === undefined) return { ok: true, nextCursor: null };
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) {
+    return { ok: false };
+  }
+  return { ok: true, nextCursor: value };
+}
+
+/** @deprecated Use parseLibraryNextCursor for the point-in-time HTTP route. */
 export function parseLibraryNextOffset(
   value: unknown,
 ): { ok: true; nextOffset: number | null } | { ok: false } {
   if (value === null || value === undefined) return { ok: true, nextOffset: null };
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
-    return { ok: false };
-  }
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return { ok: false };
   return { ok: true, nextOffset: value };
 }
 
@@ -3561,11 +3571,11 @@ export async function fetchLibraryAssets(
     if (!Array.isArray(json.assets)) {
       return { ok: false, error: { kind: 'invalid-response' } };
     }
-    const next = parseLibraryNextOffset(json.nextOffset);
+    const next = parseLibraryNextCursor(json.nextCursor);
     if (!next.ok) {
       return { ok: false, error: { kind: 'invalid-response' } };
     }
-    return { ok: true, assets: json.assets, nextOffset: next.nextOffset };
+    return { ok: true, assets: json.assets, nextCursor: next.nextCursor };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       return { ok: false, error: { kind: 'aborted' } };
@@ -3588,24 +3598,27 @@ export async function fetchAllLibraryAssets(
   const pageSize = Math.max(1, Math.min(Math.floor(options.pageSize ?? 500), 500));
   const maxPages = Math.max(1, Math.min(Math.floor(options.maxPages ?? 1000), 1000));
   const assets: LibraryAsset[] = [];
-  let offset = 0;
+  let cursor: string | undefined;
+  const seenCursors = new Set<string>();
   for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
     const result = await fetchLibraryAssets(
-      { ...query, limit: pageSize, offset },
+      { ...query, limit: pageSize, ...(cursor ? { cursor } : {}) },
       { signal: options.signal },
     );
     if (!result.ok) return result;
     assets.push(...result.assets);
-    if (result.nextOffset === null) return { ok: true, assets, nextOffset: null };
-    const expectedNextOffset = offset + result.assets.length;
-    if (
-      !Number.isSafeInteger(expectedNextOffset)
-      || result.nextOffset !== expectedNextOffset
-      || result.nextOffset <= offset
-    ) {
+    // A few older test/integration adapters still return the terminal
+    // `nextOffset: null` shape. Accept that terminal only; numeric offsets are
+    // deliberately not converted because they cannot preserve a snapshot.
+    const legacyNextOffset = (result as { nextOffset?: number | null }).nextOffset;
+    const nextCursor = result.nextCursor
+      ?? (legacyNextOffset === null ? null : undefined);
+    if (nextCursor === null) return { ok: true, assets, nextCursor: null };
+    if (typeof nextCursor !== 'string' || seenCursors.has(nextCursor)) {
       return { ok: false, error: { kind: 'invalid-response' } };
     }
-    offset = result.nextOffset;
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
   }
   return { ok: false, error: { kind: 'pagination-limit' } };
 }
@@ -3759,8 +3772,34 @@ export async function fetchLibraryAssetAsFile(asset: LibraryAsset): Promise<File
  * gets its own token. That is the intended shape — one authorization
  * authorizes one deletion, never a batch.
  */
-export async function deleteLibraryAsset(id: string): Promise<boolean> {
-  return confirmedDelete(`/api/library/assets/${encodeURIComponent(id)}`);
+export interface LibraryDeleteOutcome {
+  id: string;
+  status: 'deleted' | 'failed';
+  /** Stable daemon code, safe for the UI to map to localized copy. */
+  code?: string;
+  /** Sidecars that could not be removed after the row was deleted. */
+  residue?: string[];
+}
+
+export async function deleteLibraryAsset(id: string): Promise<LibraryDeleteOutcome> {
+  let residue: string[] | undefined;
+  const ok = await confirmedDelete(`/api/library/assets/${encodeURIComponent(id)}`, undefined, {
+    onSuccess: async (response) => {
+      try {
+        const body = (await response.json()) as { residue?: unknown };
+        if (Array.isArray(body.residue)) {
+          const labels = body.residue.filter((value): value is string => typeof value === 'string');
+          if (labels.length) residue = labels;
+        }
+      } catch {
+        // A successful delete remains a successful delete; residue is only an
+        // optional diagnostic ledger from the daemon.
+      }
+    },
+  });
+  return ok
+    ? { id, status: 'deleted', ...(residue ? { residue } : {}) }
+    : { id, status: 'failed', code: 'DELETE_FAILED' };
 }
 
 /**

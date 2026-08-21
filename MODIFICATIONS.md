@@ -29,6 +29,41 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Close Library partial-delete, snapshot, picker, and accessibility gaps
+
+**Reason:** The production Library route still had several source-level gaps at
+the seams between the browser and daemon: mutable offset pages could repeat or
+skip rows while ingest changed the collection; owned-byte deletion removed the
+database row after a failed unlink; full loads and targeted SSE work had separate
+freshness domains; picker callbacks had no structured partial result; and busy,
+preview, menu, batch-progress, focus, geometry, and 48px boundaries were not
+enforced consistently. This repair adds the point-in-time keyset cursor,
+bounded/abort-aware worker pool, structured ledgers and retry-preserving UI,
+bounded unlink retries with sidecar residue reporting, frozen picker controls,
+visible projection navigation, measured menu placement, current-batch progress,
+and focused negative source contracts. No build, package-manager, app runtime,
+or local test command was run; hosted verification remains pending.
+
+**Changed files:**
+
+- `apps/daemon/src/library-store.ts`
+- `apps/daemon/src/routes/library.ts`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/HomeHero.tsx`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibraryPreviewModal.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/LibraryUploadModal.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/lib/confirm-delete.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `packages/contracts/src/api/library.ts`
+
 ### 2026-08-21 — Complete Library pagination, refresh, filters, and modal behavior
 
 **Reason:** Enabling the production Library exposed several boundaries that were

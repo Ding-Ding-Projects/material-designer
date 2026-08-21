@@ -37,13 +37,16 @@ the inner widget ownership contracts separate.
 
 The picker keeps previously loaded rows visible while a refresh is in flight or
 has failed; a retry/error row is shown inline and the full empty/error state is
-used only before the first successful response. Bulk delete previews freeze the
-visible matching id list when the gate opens, so later selection changes cannot
-retarget an already reviewed action. SSE merges carry their own abort and
-generation identity and clear a recovered error only after the current merge is
-accepted. The shared dialog focus trap includes the portalled regex builder by
-scope id, and filter popovers measure their trigger, flip above when needed,
-and stay within the viewport.
+used only before the first successful response. While a picker confirmation is
+busy, its search, kind chips, cards, and close routes are disabled and the
+reviewed selection is frozen. A partial callback result keeps failed/skipped
+ids selected, lists each item, and offers retry without closing the picker.
+Bulk delete previews freeze the visible matching id list when the gate opens, so
+later selection changes cannot retarget an already reviewed action. SSE merges
+and full loads share one generation/abort domain and a bounded worker pool;
+stale work cannot overwrite the accepted projection. The shared dialog focus
+trap includes the portalled regex builder by scope id, and filter popovers
+measure their trigger, flip above when needed, and stay within the viewport.
 
 Element captures are a badge-level filter, not a storage kind: both image
 screenshots and HTML snapshots carrying `metadata.element` are included. The
@@ -69,25 +72,32 @@ No menu or dropdown borrows a hidden controller from another surface.
 
 - A daemon/API failure leaves already loaded assets in place, clears loading in
   `finally`, and shows a localized non-blocking retry action; the route does not
-  fabricate sample assets.
+  fabricate sample assets. Initial-load and retained-row refresh errors are
+  distinct states.
 - A malformed or stalled continuation is a typed provider failure. The UI keeps
   the prior rows and exposes retry instead of claiming a complete list.
-- A continuation is terminal only when `nextOffset` is omitted or `null`.
-  Non-negative safe JSON numbers are the only accepted cursors, and a continuing
-  cursor must equal the current offset plus the number of returned rows.
-  Strings, booleans, fractional values, non-finite values, non-advancing values,
-  and negatives are invalid. The daemon and store reject malformed pagination
-  query values rather than coercing them to zero.
+- A continuation is terminal only when `nextCursor` is omitted or `null`.
+  The cursor is an opaque, bounded keyset token containing a point-in-time
+  snapshot cutoff and the final `(archivedDate, createdAt, id)` tuple. The
+  daemon rejects malformed, oversized, non-advancing, or incomplete cursor
+  values rather than coercing them. New ingests after the first page are outside
+  that snapshot, and deletes cannot shift a later page into a duplicate.
 - Page walks carry an `AbortController` and generation identity. A newer search,
   filter, retry, unmount, or SSE refresh cancels the older walk, and neither its
-  rows nor its error may overwrite the current view.
+  rows nor its error may overwrite the current view. Targeted hydration and
+  bulk deletion use a four-worker bounded pool with a per-item ledger.
 - An invalid or partially typed regex is handled by the shared bounded matcher;
   the last valid pattern is retained where the shared controller supports it,
   and the UI never sends the raw pattern to the daemon keyword query.
 - A query with no visible matches produces an explicit no-match state and a
   screen-reader result-count update rather than a blank loading surface.
 - Destructive actions remain behind the existing two-key confirmation and are
-  not made easier by the route or search changes.
+  not made easier by the route or search changes. A partial delete removes only
+  successful rows, keeps failed rows selected, holds the gate in its failed
+state, and exposes itemized retry.
+- A daemon-owned delete retries transient file locks, keeps the database row on
+  primary-byte failure, removes verified `.element.html` and `.od-figma.json`
+  sidecars, and returns bounded residue labels when a sidecar remains.
 - Destructive action, target, item, blast-radius, and recovery copy comes from
   the locale catalog; no upstream product name is embedded in the Library gate.
 - Manual uploads prevent the browser's default drop/paste action, refuse
@@ -104,8 +114,9 @@ The search projection stays in the renderer and is evaluated only over records
 the Library provider already returned. Pattern and sample state are not sent to
 the daemon, and the shared regex implementation bounds pattern length and match
 work. Continuation page size and page count are both bounded, with malformed or
-non-advancing offsets rejected. The daemon accepts only bounded non-negative safe
-integer `limit`/`offset` values. The route does not add a network source, fixture
+non-advancing snapshot cursors rejected. The daemon accepts only bounded `limit`
+values on the HTTP route and uses a point-in-time keyset cursor. The route does
+not add a network source, fixture
 archive, catalog image, or alternate asset store. Existing upload, raw-asset,
 project handoff and destructive-provider boundaries remain the source of truth.
 Upload request progress uses the browser's cancellable XHR upload boundary, and

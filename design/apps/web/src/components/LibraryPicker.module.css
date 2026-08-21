@@ -96,7 +96,7 @@
 
 .body {
   flex: 1 1 auto;
-  min-height: 220px;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px 18px 14px;
 }
@@ -105,7 +105,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 220px;
+  min-height: 160px;
+  padding: 32px 8px;
+  text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -125,6 +127,18 @@
 .inlineError button {
   margin-left: auto;
 }
+.liveCount {
+  display: block;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.resultItems {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  max-height: 120px;
+  overflow: auto;
+}
 
 .grid {
   list-style: none;
@@ -140,6 +154,7 @@
   flex-direction: column;
   gap: 6px;
   width: 100%;
+  min-height: 48px;
   padding: 0;
   border: none;
   background: transparent;
@@ -150,6 +165,10 @@
      height once a card has rendered. */
   content-visibility: auto;
   contain-intrinsic-size: auto 150px;
+}
+.card:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .thumb {

@@ -74,6 +74,40 @@ export interface RegisterLibraryRoutesDeps
 }
 
 const MAX_REMOTE_BYTES = 25 * 1024 * 1024;
+const LIBRARY_UNLINK_ATTEMPTS = 4;
+const LIBRARY_UNLINK_RETRY_MS = 30;
+
+type UnlinkResult = { ok: true; missing?: boolean } | { ok: false; code: string };
+
+function isInsideLibraryRoot(libraryRoot: string, candidate: string): boolean {
+  const root = path.resolve(libraryRoot);
+  const relative = path.relative(root, path.resolve(candidate));
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+/**
+ * Windows scanners and indexers can hold a just-written object briefly. Retry
+ * only those transient lock errors, keep the retry count bounded, and treat an
+ * already-missing object as satisfied. Any other failure is returned to the
+ * route so the database row remains the user's honest recovery handle.
+ */
+async function unlinkLibraryObject(candidate: string): Promise<UnlinkResult> {
+  for (let attempt = 0; attempt < LIBRARY_UNLINK_ATTEMPTS; attempt += 1) {
+    try {
+      await unlink(candidate);
+      return { ok: true };
+    } catch (error) {
+      const code = typeof error === 'object' && error && 'code' in error
+        ? String((error as { code?: unknown }).code ?? '')
+        : '';
+      if (code === 'ENOENT') return { ok: true, missing: true };
+      const transient = code === 'EPERM' || code === 'EACCES' || code === 'EBUSY';
+      if (!transient || attempt === LIBRARY_UNLINK_ATTEMPTS - 1) return { ok: false, code: code || 'UNLINK_FAILED' };
+      await new Promise<void>((resolve) => setTimeout(resolve, LIBRARY_UNLINK_RETRY_MS * (attempt + 1)));
+    }
+  }
+  return { ok: false, code: 'UNLINK_FAILED' };
+}
 
 /** Strip the internal absolute `filePath` before returning an asset to a client. */
 function toPublicAsset(record: LibraryAssetRecord): LibraryAsset {
@@ -92,6 +126,48 @@ function parseNonNegativeSafeQuery(value: unknown): number | null | undefined {
   if (typeof value !== 'string' || !/^(0|[1-9][0-9]*)$/.test(value)) return null;
   const parsed = Number(value);
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+interface LibraryListCursor {
+  snapshotAt: number;
+  archivedDate: string;
+  createdAt: number;
+  id: string;
+}
+
+const LIBRARY_CURSOR_MAX_BYTES = 4096;
+
+function encodeLibraryCursor(cursor: LibraryListCursor): string {
+  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+}
+
+function decodeLibraryCursor(value: unknown): LibraryListCursor | null | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || value.length === 0 || value.length > LIBRARY_CURSOR_MAX_BYTES) return null;
+  try {
+    const raw = Buffer.from(value, 'base64url');
+    if (raw.toString('base64url') !== value) return null;
+    const parsed = JSON.parse(raw.toString('utf8')) as Partial<LibraryListCursor>;
+    if (
+      !Number.isSafeInteger(parsed.snapshotAt)
+      || parsed.snapshotAt < 0
+      || typeof parsed.archivedDate !== 'string'
+      || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.archivedDate)
+      || !Number.isSafeInteger(parsed.createdAt)
+      || parsed.createdAt < 0
+      || typeof parsed.id !== 'string'
+      || parsed.id.length === 0
+      || parsed.id.length > 256
+    ) return null;
+    return {
+      snapshotAt: parsed.snapshotAt,
+      archivedDate: parsed.archivedDate,
+      createdAt: parsed.createdAt,
+      id: parsed.id,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -514,22 +590,43 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     if (str(q.source)) filter.source = str(q.source) as LibrarySourceKind;
     if (str(q.projectId)) filter.projectId = str(q.projectId)!;
     if (str(q.designSystemId)) filter.designSystemId = str(q.designSystemId)!;
-    // Keep each response bounded while allowing the web surface to walk the
-    // entire result set. A larger fixed LIMIT would merely move the missing
-    // asset boundary; continuation makes the boundary explicit instead.
+    // Keep each response bounded while allowing the web surface to walk a
+    // stable point-in-time projection. Offset pagination is mutable: an ingest
+    // or delete between requests can shift a row across the boundary. The
+    // cursor carries the snapshot cutoff and the last (archivedDate, createdAt,
+    // id) tuple, so each row is emitted at most once for that walk.
     const requestedLimit = parseNonNegativeSafeQuery(q.limit);
-    const requestedOffset = parseNonNegativeSafeQuery(q.offset);
-    if (requestedLimit === null || requestedOffset === null || requestedLimit === 0) {
-      return sendApiError(res, 400, 'INVALID_PAGINATION', 'limit and offset must be bounded non-negative safe integers; limit must be positive');
+    const cursor = decodeLibraryCursor(q.cursor);
+    if (requestedLimit === null || cursor === null || requestedLimit === 0) {
+      return sendApiError(res, 400, 'INVALID_PAGINATION', 'limit and cursor must be valid; limit must be positive');
     }
     const pageSize = Math.min(requestedLimit ?? 500, 500);
-    const offset = requestedOffset ?? 0;
     filter.limit = pageSize + 1;
-    filter.offset = offset;
+    const snapshot = cursor ?? {
+      snapshotAt: Date.now(),
+      archivedDate: '',
+      createdAt: 0,
+      id: '',
+    };
+    filter.snapshotAt = snapshot.snapshotAt;
+    if (cursor) {
+      filter.afterArchivedDate = cursor.archivedDate;
+      filter.afterCreatedAt = cursor.createdAt;
+      filter.afterId = cursor.id;
+    }
     const page = listLibraryAssets(db, filter);
     const hasMore = page.length > pageSize;
     const assets = (hasMore ? page.slice(0, pageSize) : page).map(toPublicAsset);
-    res.json({ assets, nextOffset: hasMore ? offset + pageSize : null });
+    const last = assets[assets.length - 1];
+    const nextCursor = hasMore && last
+      ? encodeLibraryCursor({
+          snapshotAt: snapshot.snapshotAt,
+          archivedDate: last.archivedDate,
+          createdAt: last.createdAt,
+          id: last.id,
+        })
+      : null;
+    res.json({ assets, nextCursor });
   });
 
   // Force a full reconcile pass (the web "Sync" button + `od library sync`).
@@ -593,16 +690,35 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     // needs it.
     const asset = getLibraryAsset(db, String(req.params.id ?? ''));
     if (!asset) return sendApiError(res, 404, 'NOT_FOUND', 'asset not found');
-    // Only unlink bytes we own and that live under LIBRARY_DIR.
-    if (asset.storage === 'owned' && asset.filePath) {
+    // Only unlink bytes we own and that live under LIBRARY_DIR. A primary
+    // unlink failure keeps the row so the user can retry; deleting the row
+    // first would turn a transient Windows lock into silent data loss.
+    const residue: string[] = [];
+    if (asset.storage === 'owned') {
+      if (!asset.filePath) {
+        return sendApiError(res, 500, 'LIBRARY_DELETE_FILE_FAILED', 'owned asset bytes are not addressable; retry the delete');
+      }
       const abs = path.resolve(asset.filePath);
-      if (abs.startsWith(path.resolve(LIBRARY_DIR))) {
-        await unlink(abs).catch(() => {});
+      if (!isInsideLibraryRoot(LIBRARY_DIR, abs)) {
+        return sendApiError(res, 500, 'LIBRARY_DELETE_FILE_FAILED', 'owned asset path is outside the Library store');
+      }
+      const primary = await unlinkLibraryObject(abs);
+      if (!primary.ok) {
+        return sendApiError(res, 503, 'LIBRARY_DELETE_FILE_FAILED', 'asset bytes could not be removed; retry the delete');
+      }
+      const sidecars = [
+        { label: 'figma-capture', path: resolveAssetFigmaSidecarPath(asset, LIBRARY_DIR) },
+        { label: 'element-html', path: resolveAssetElementSidecarPath(asset, LIBRARY_DIR) },
+      ];
+      for (const sidecar of sidecars) {
+        if (!sidecar.path || !isInsideLibraryRoot(LIBRARY_DIR, sidecar.path)) continue;
+        const result = await unlinkLibraryObject(sidecar.path);
+        if (!result.ok) residue.push(sidecar.label);
       }
     }
     deleteLibraryAsset(db, asset.id);
     emit('delete', { assetId: asset.id });
-    res.json({ ok: true });
+    res.json({ ok: true, ...(residue.length ? { residue } : {}) });
   });
 
   app.get('/api/library/assets/:id/raw', async (req, res) => {

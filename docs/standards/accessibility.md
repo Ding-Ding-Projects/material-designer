@@ -1,5 +1,13 @@
 # Accessibility and sizing
 
+The Library route's current source repair keeps search, kind chips, cards, and
+close controls disabled while a picker confirmation is busy; exposes visible,
+selected, total, and no-match status; gives the design-system menu measured
+viewport-clamped placement with keyboard ArrowUp/ArrowDown handling; keeps
+preview navigation on the visible projection; and raises Library title/search/
+menu/card action hit areas to the 48px floor. Runtime scale and screen-reader
+matrix evidence remains pending until hosted verification.
+
 **Status: partial, source-level audit only.** The design mockup states the intent,
 the final six-finding Figma import repair is committed at [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe),
 and the residual drop/input repair is committed at [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd).

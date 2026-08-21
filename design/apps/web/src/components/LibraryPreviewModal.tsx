@@ -18,7 +18,7 @@
 //
 // Primary modal copy is localized through the shared Library catalog.
 
-import { type CSSProperties, useCallback, useEffect, useId, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { LibraryAsset } from '@open-design/contracts';
 import { Button, Dialog } from '@open-design/components';
@@ -259,7 +259,12 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
           </button>
         ) : null}
       </div>
-      <div id={htmlRegionId} role="region" aria-label={t('library.showHtml')} hidden={!open || !element.hasHtml}>
+      <div
+        id={htmlRegionId}
+        role="region"
+        aria-label={`${t('library.showHtml')}: ${element.selector || element.tag}`}
+        hidden={!open || !element.hasHtml}
+      >
         {loading ? (
           <div className={styles.stageNote}>{t('library.loading')}</div>
         ) : error ? (
@@ -306,12 +311,15 @@ export function LibraryPreviewModal({
   const t = useT();
   const titleId = useId();
   const [editing, setEditing] = useState(false);
+  const editingRef = useRef(false);
   const editAsPage = useCallback(async () => {
-    if (!onEditAsPage) return;
+    if (!onEditAsPage || editingRef.current) return;
+    editingRef.current = true;
     setEditing(true);
     try {
       await onEditAsPage(asset.id);
     } finally {
+      editingRef.current = false;
       setEditing(false);
     }
   }, [onEditAsPage, asset.id]);

@@ -64,7 +64,7 @@ import type {
 import { buildVisualAnnotationAttachment, commentTargetDisplayName } from '../comments';
 import { Icon, type IconName } from "./Icon";
 import { ComposerPlusMenu, PLUS_SUBMENU_RESOURCE_KIND, type PlusMenuSubmenu } from './ComposerPlusMenu';
-import { LibraryPicker } from './LibraryPicker';
+import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
 import { FigmaImportModal } from './FigmaImportModal';
 import { FigmaHelpModal } from './FigmaHelpModal';
 import {
@@ -1940,20 +1940,25 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // file picker materializes uploads into the project on attach. The apply
     // call records a provenance back-link so the registry knows the asset was
     // consumed.
-    async function addAssetsFromLibrary(assets: LibraryAsset[]) {
-      if (assets.length === 0) return;
+    async function addAssetsFromLibrary(assets: LibraryAsset[]): Promise<LibraryPickerConfirmResult> {
+      if (assets.length === 0) return { applied: [], failed: [], skipped: [] };
       const id = await ensureProject();
-      if (!id) return;
+      if (!id) return {
+        applied: [],
+        failed: [],
+        skipped: assets.map((asset) => ({ assetId: asset.id, reason: 'project-unavailable' })),
+      };
       setUploading(true);
       setUploadError(null);
       const orderStart = reserveAttachmentOrders(assets.length);
       try {
         const applied: ChatAttachment[] = [];
+        const appliedIds: string[] = [];
         // Element-pick captures carry their picked node's markup; collect it so
         // we can drop the HTML straight into the composer input (the image still
         // attaches as a normal reference).
         const elementBlocks: string[] = [];
-        let failed = 0;
+        const failed: LibraryPickerConfirmResult['failed'] = [];
         for (const asset of assets) {
           const res = await applyLibraryAsset(
             asset.id,
@@ -1963,7 +1968,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             workspaceContext,
           );
           if (!res?.relPath) {
-            failed += 1;
+            failed.push({ assetId: asset.id });
             continue;
           }
           applied.push({
@@ -1971,6 +1976,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             name: assetTitle(asset),
             kind: asset.kind === 'image' ? 'image' : 'file',
           });
+          appliedIds.push(asset.id);
           const element = elementMetaOf(asset);
           if (element?.hasHtml) {
             const html = await fetchLibraryAssetElementHtml(asset.id);
@@ -1985,16 +1991,26 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
           editorRef.current?.insertText((existing.trim() ? '\n\n' : '') + elementBlocks.join('\n\n'));
           editorRef.current?.focus();
         }
-        if (failed > 0) {
+        if (failed.length > 0) {
           setUploadError(
             applied.length > 0
-              ? `Added ${applied.length} item(s), but ${failed} failed.`
-              : `Could not add ${failed} item(s) from the library.`,
+              ? `Added ${applied.length} item(s), but ${failed.length} failed.`
+              : `Could not add ${failed.length} item(s) from the library.`,
           );
         }
+        return {
+          applied: appliedIds,
+          failed,
+          skipped: [],
+        };
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         setUploadError(`Could not add from library (${detail}).`);
+        return {
+          applied: [],
+          failed: assets.map((asset) => ({ assetId: asset.id })),
+          skipped: [],
+        };
       } finally {
         setUploading(false);
       }
