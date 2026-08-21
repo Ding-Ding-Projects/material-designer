@@ -2892,7 +2892,6 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
   });
-  });
 
   app.post('/api/project-locations/scan', async (req, res) => {
     try {

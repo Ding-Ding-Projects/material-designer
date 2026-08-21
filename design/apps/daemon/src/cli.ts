@@ -2812,6 +2812,8 @@ async function confirmedDeleteRequest(base, resourcePath, fallbackCode = 'daemon
     surfaceFetchError(err, base);
     process.exit(3);
   }
+}
+
 function repeatableFlagValues(argv, name) {
   const values = [];
   const prefix = `--${name}=`;
