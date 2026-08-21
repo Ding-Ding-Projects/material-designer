@@ -38,6 +38,21 @@
 > public continuation record.
 >
 > [!IMPORTANT]
+> **Design-parity infrastructure checkpoint — 2026-08-21.** The version-2
+> reference registry now owns the exact ten screen/state routes and the reference
+> application consumes it directly. The reference hash and support/asset hashes
+> match the migrated files; the renderer freezes clock, random input and motion,
+> binds committed local fonts, blocks unrelated network requests, uses Chromium
+> device scaling, and verifies the measured viewport, device-pixel ratio and font
+> readiness before reporting ready. The inventory no longer presents repeated
+> page-level audit summaries or path-only records as evidence: it names pending
+> per-control audit and raw/receipt/comparison/diff targets. The default verifier
+> deliberately remains red because the installed application has no normalized
+> `material-designer://` tuple resolver, all ten audits are pending, zero raw
+> captures or receipts exist, and the required display/theme/layout/language
+> matrix is unverified. Do not convert those missing artifacts into placeholders.
+>
+> [!IMPORTANT]
 > **Upstream and export checkpoint — 2026-08-21.** The Open Design submodule,
 > mirror, and manifest now target `393af2f991525a6c85cb04ee4aea0cd8967693c8`
 > (v0.20.2), 309 commits beyond the former baseline. `scripts/verify-port.sh

@@ -474,8 +474,14 @@ Not by a local build — local builds do not happen here.
 - [ ] **Capture the ten-screen design-parity inventory.** The direct reference
       application, route registry, explicit rows and red/green completeness guard
       landed in [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77).
-      Every row remains `unverified` until the installed Squirrel build and the
-      reference are captured at identical tuples and reviewed component by component.
+      The v0.20.2 migration found the reference hash stale, the Studio selector
+      unreachable, renderer zoom incorrectly standing in for device scale, and
+      time/random/motion/font/network inputs outside tuple equality. The version-2
+      registry and inventory correct those static boundaries and now fail closed on
+      the missing installed-application route. Every row remains pending until that
+      route exists and both sides are captured at identical tuples, including the
+      light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
+      receipts, labelled comparisons, visual diffs and per-control reviews.
 - [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is
       a temporary owner-authorized exception, not a resolution of the two
       conflicting standards. The workflow emits a warning, states the omission

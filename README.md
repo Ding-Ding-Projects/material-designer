@@ -1,15 +1,19 @@
 # Material Designer
 
 > [!IMPORTANT]
-> **Design-parity and Squirrel migration checkpoint — 2026-08-20.** Commit
+> **Design-parity and Squirrel migration checkpoint — 2026-08-21.** Commit
 > [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
 > adds the direct design-reference application, a hand-written ten-screen parity
 > inventory and negative completeness guard; makes Squirrel.Windows the sole
 > requested Windows package; adds package/runtime receipt validators; and keeps
 > chat context bound to the project instead of silently following the visible
-> file tab. The inventory is structurally complete, but all ten capture rows are
-> still explicitly `unverified` until a hosted build and hidden-desktop capture
-> produce their raw images, comparisons and diff receipts.
+> file tab. The version-2 route/inventory contract now pins the reference file
+> and asset hashes plus the complete time/random/motion/font/network tuple. The
+> reference tool consumes that registry, measures its viewport/device scale and
+> uses bundled fonts. All ten capture rows remain explicitly `pending`: the real
+> installed application has no normalized deterministic route yet, no raw
+> captures or receipts exist, and no per-control audit or required matrix row is
+> verified.
 >
 > **Temporary release exception — 2026-08-20.** The repository owner directed
 > the current release to skip its dim-sum photo attachment for now. The workflow
