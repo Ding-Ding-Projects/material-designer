@@ -1154,7 +1154,9 @@ labels are longest — and when no legacy design element remains in them.
       cancelling the dialog reverts to the last saved appearance. The optional
       desktop bridge now acknowledges the native theme before startup reveals
       the window; a bounded rejection or timeout stays an explicit recovery
-      state rather than becoming a false mounted verdict.
+      state rather than becoming a false mounted verdict. The follow-up
+      [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
+      keeps the readiness receipt in scope through the polling deadline.
 - [~] **Typed Appearance route lifecycle and section ownership** — switching
       away from `/settings/appearance` normalizes to `/settings`, the labelled
       Settings region owns initial focus, and Workspace is explicitly recorded

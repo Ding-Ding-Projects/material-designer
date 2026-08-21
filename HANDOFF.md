@@ -16,8 +16,12 @@
 > fields, copy actions, Settings tabs, regex controls, overflow and page-back
 > controls all carry a 48px hit-area floor; search-result hints wrap instead of
 > disappearing behind a tooltip.
+> Follow-up commit
+> [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
+> keeps the readiness receipt outside the bounded polling loop so a final
+> timeout cannot read an out-of-scope value.
 >
-> Static evidence at `62e07481d`: `git diff --check` is clean; the Git Bash
+> Static evidence at `07a8d44c2`: `git diff --check` is clean; the Git Bash
 > verifier reports 12,835 expected upstream files, 13,084 tracked files, 591
 > declarations, and zero missing, byte, mode, object-ID, extra, untracked or
 > stale-notice findings in both human and JSON modes. The focused source tests,

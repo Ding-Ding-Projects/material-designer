@@ -39,6 +39,11 @@ version section when a release carries them.
   and gives Appearance, Settings, regex and navigation controls 48px hit areas.
   Hosted builds, installed interaction and visual captures remain unverified.
 
+  Follow-up [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
+  keeps the bounded readiness receipt in scope across the polling loop, so a
+  deadline cannot accidentally read a missing status and silently reveal the
+  wrong surface.
+
   Appearance 而家要等 native theme 真係答到先開窗，唔再未收工就自己報到。`62e07481d`
   將 fire-and-forget message 換成有 acknowledgement 同 bounded timeout 嘅 IPC；
   optional host 掉線都唔會阻住本地 DOM theme，reject 或 timeout 就老實入 recovery
