@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { Button } from '@open-design/components';
 import { useAnalytics } from './analytics/provider';
+import { setAnalyticsCaptureDisabled } from './analytics/client';
 import {
   trackExperienceSurveyDismissed,
   trackExperienceSurveySent,
@@ -203,6 +204,15 @@ import {
   type AmrAuthRetryContinuation,
 } from './runtime/amr-auth-retry-continuation';
 import { installFontRecovery } from './runtime/font-recovery';
+import {
+  installStudioFixtureFetch,
+  STUDIO_FIXTURE_RENDERER_STATE,
+  STUDIO_FIXTURE_SOURCE,
+  createStudioFixtureSafeConfig,
+  studioFixtureProjectPath,
+  isStudioFixtureCaptureActiveForCurrentLocation,
+  studioFixtureRouteFromCurrentLocation,
+} from './capture/studio-fixture';
 import {
   bootstrapFirstOpenTeamProjectRoute,
   bootstrapProjectRoute,
@@ -860,6 +870,49 @@ export async function hydrateReadyTeamProject(
 }
 
 export function App() {
+  // Install the capture-only provider before child passive effects begin. The
+  // existing project/conversation/file components then consume the same
+  // provider seams they use in normal operation; no replacement DOM is
+  // rendered, and every non-fixture route keeps the original fetch function.
+  const studioFixtureRoute = studioFixtureRouteFromCurrentLocation();
+  const studioFixtureCaptureActive =
+    studioFixtureRoute !== null || isStudioFixtureCaptureActiveForCurrentLocation();
+  const studioFixtureCaptureKey = studioFixtureCaptureActive ? 'studio-fixture' : null;
+  useLayoutEffect(() => {
+    if (!studioFixtureCaptureKey || !studioFixtureRoute) return undefined;
+    setAnalyticsCaptureDisabled(true);
+    const disposeFixture = installStudioFixtureFetch(studioFixtureRoute);
+    return () => {
+      disposeFixture();
+      setAnalyticsCaptureDisabled(false);
+    };
+    // The key intentionally stays stable while the user switches known
+    // fixture files; re-running here would tear down the project-scoped seam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioFixtureCaptureKey]);
+  // The desktop capture readiness receipt reads this renderer-owned witness.
+  // It is written only after the exact fixture route was accepted and names
+  // the concrete project path consumed by ProjectView.
+  useLayoutEffect(() => {
+    if (!studioFixtureCaptureKey || !studioFixtureRoute || typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const rendererPath = studioFixtureProjectPath(studioFixtureRoute);
+    root.dataset.odRendererRoutePath = rendererPath;
+    root.dataset.odRendererRouteState = STUDIO_FIXTURE_RENDERER_STATE;
+    root.dataset.odFixtureSource = STUDIO_FIXTURE_SOURCE;
+    root.dataset.odFixtureRevision = studioFixtureRoute.fixtureRevision;
+    return () => {
+      if (root.dataset.odRendererRoutePath === rendererPath) {
+        delete root.dataset.odRendererRoutePath;
+        delete root.dataset.odRendererRouteState;
+        delete root.dataset.odFixtureSource;
+        delete root.dataset.odFixtureRevision;
+      }
+    };
+    // The key intentionally stays stable while the user switches known
+    // fixture files; the initial canonical witness remains authoritative.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioFixtureCaptureKey]);
   // `reducedMotion="user"` makes every motion/react component honor the OS
   // `prefers-reduced-motion` setting: transform/layout animations are zeroed
   // out while opacity-only changes are kept. The CSS `@media (prefers-reduced-
@@ -967,7 +1020,11 @@ function AppInner() {
       root.classList.remove('is-window-blurred');
     };
   }, [clientType, hostPlatform]);
-  const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+  const [config, setConfig] = useState<AppConfig>(() => {
+    return studioFixtureRouteFromCurrentLocation()
+      ? createStudioFixtureSafeConfig()
+      : loadConfig();
+  });
   const configRef = useRef(config);
   configRef.current = config;
   const latestPersistedConfigRef = useRef(config);

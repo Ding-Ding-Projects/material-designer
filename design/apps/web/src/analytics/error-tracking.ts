@@ -64,8 +64,22 @@ const FRAME_PLATFORM = 'web:javascript';
 let context: ExceptionTrackingContext | null = null;
 const buffer: BufferedSafetyEvent[] = [];
 let installed = false;
+let captureDisabled = false;
+
+/** Disable direct safety/error transport for a deterministic capture session. */
+export function setErrorTrackingCaptureDisabled(disabled: boolean): void {
+  captureDisabled = disabled;
+  if (disabled) clearExceptionTrackingState();
+}
+
+/** Clear both the direct transport context and any pre-init buffered events. */
+export function clearExceptionTrackingState(): void {
+  context = null;
+  buffer.splice(0, buffer.length);
+}
 
 export function setExceptionTrackingContext(next: ExceptionTrackingContext): void {
+  if (captureDisabled) return;
   context = next;
   if (buffer.length === 0) return;
   const drain = buffer.splice(0, buffer.length);
@@ -181,6 +195,7 @@ function captureException(
   fallbackMessage: string,
   metadata: CaptureMetadata = {},
 ): void {
+  if (captureDisabled) return;
   const list = buildExceptionList(error, fallbackMessage, metadata);
   if (isIgnorableNoise(list)) return;
   const scrubbed = scrubExceptionList(list);
@@ -209,6 +224,7 @@ export function reportSafetyEvent(
   eventName: string,
   properties: Record<string, unknown> = {},
 ): void {
+  if (captureDisabled) return;
   const merged: Record<string, unknown> = {
     ...properties,
     $current_url: scrubUrl(typeof window !== 'undefined' ? window.location.href : ''),
@@ -219,6 +235,7 @@ export function reportSafetyEvent(
 }
 
 function enqueue(eventName: string, properties: Record<string, unknown>): void {
+  if (captureDisabled) return;
   const timestamp = new Date().toISOString();
   const item: BufferedSafetyEvent = {
     eventName,
@@ -234,7 +251,7 @@ function enqueue(eventName: string, properties: Record<string, unknown>): void {
 }
 
 function dispatch(item: BufferedSafetyEvent): void {
-  if (context == null) return;
+  if (captureDisabled || context == null) return;
   const payload = {
     api_key: context.apiKey,
     event: item.eventName,

@@ -140,6 +140,7 @@ import {
   writeProjectTextFileDetailed,
 } from '../providers/registry';
 import type { ProjectFilePreview } from '../providers/registry';
+import { studioFixtureArtifactPreviewUrl } from '../capture/studio-fixture';
 import {
   downloadImageDataUrl,
   downloadDesktopScaffold,
@@ -2265,13 +2266,15 @@ export function LiveArtifactViewer({
     };
   }, [projectId, liveArtifact.artifactId, liveArtifact.updatedAt, workspaceContext]);
 
-  const previewUrl = useMemo(
-    () => appendResourceQuery(
+  const previewUrl = useMemo(() => {
+    const fixtureUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId);
+    if (fixtureUrl) return fixtureUrl;
+    return appendResourceQuery(
       liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       `v=${reloadKey}`,
-    ),
-    [projectId, liveArtifact.artifactId, reloadKey, workspaceContext],
-  );
+    );
+  }, [projectId, liveArtifact.artifactId, reloadKey, workspaceContext]);
+  const directPreviewUrl = studioFixtureArtifactPreviewUrl(projectId, liveArtifact.artifactId);
   const previewScale = zoom / 100;
 
   // Instrument the live-artifact iframe so failed loads — usually a
@@ -2351,7 +2354,8 @@ export function LiveArtifactViewer({
     setPresentMenuOpen(false);
     if (typeof window === 'undefined') return;
     window.open(
-      liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
+      directPreviewUrl
+        ?? liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       '_blank',
       'noopener,noreferrer',
     );
@@ -2507,7 +2511,7 @@ export function LiveArtifactViewer({
             <span className="viewer-divider" aria-hidden />
             <a
               className="ghost-link"
-              href={liveArtifactPreviewUrl(
+              href={directPreviewUrl ?? liveArtifactPreviewUrl(
                 projectId,
                 liveArtifact.artifactId,
                 'rendered',

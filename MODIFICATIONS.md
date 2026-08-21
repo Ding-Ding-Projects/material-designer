@@ -29,6 +29,39 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Add a real deterministic Studio capture fixture
+
+**Reason:** The checked-in parity inventory names a Studio screen, but the
+production application had no safe way to resolve its deterministic
+`material-designer://studio` address. This source-only lane adds a strict,
+public-safe fixture provider that feeds the existing project, conversation,
+message, run, project-file, tab, and live-artifact API seams. The desktop owns
+the launch envelope and the renderer accepts only the canonical `od://`
+project/conversation/file route, so the existing `ProjectView`, `ChatPane`,
+`FileWorkspace`, and `FileViewer` components render the state. The fixture
+provider is active only for the exact frozen tuple and the desktop-owned
+capture witness, intercepts only declared fixture `/api/` requests, leaves
+same-origin bundled assets on the normal fetch path, accepts validated loopback
+API origins, blocks external network requests, and keeps the declared file
+selection one-shot while binding the provider to the fixture project and
+conversation across known file switches. It publishes route/provider witnesses
+for the desktop readiness receipt, supplies a direct-loadable live-artifact
+preview, and disables analytics/error buffers for the capture lifetime.
+Ordinary routes retain their existing provider and selection behavior. Hosted
+typecheck, built rendering, and installed capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/app/layout.tsx`
+- `apps/web/src/analytics/client.ts`
+- `apps/web/src/analytics/error-tracking.ts`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/router.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

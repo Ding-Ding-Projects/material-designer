@@ -38,13 +38,43 @@ network requests, uses Chromium device scaling instead of renderer zoom, and
 checks the measured viewport, device-pixel ratio and loaded fonts before it
 reports readiness.
 
+The production application now has the first capture-only application route:
+the desktop foundation owns the raw `material-designer://studio` launch
+address and translates it to the exact canonical
+`od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+renderer handoff. The renderer accepts only that canonical path, the exact
+tuple query, and the desktop-owned frozen tuple witness. The accepted route activates a
+public-safe fixture provider and resolves to the ordinary concrete project,
+conversation, and file route. The provider feeds the existing project,
+conversation, message, run, project-file, tab, and live-artifact request seams;
+the production `ProjectView`, `ChatPane`, `FileWorkspace`, and `FileViewer`
+therefore render the fixture. Its declared `orders-dashboard.html` selection
+is applied only during initial route hydration. File refreshes, project
+switches, and later tab changes do not select a file implicitly. The provider
+also rejects external network requests, intercepts only the fixture's `/api/`
+seams, leaves same-origin bundled assets on the normal fetch path, and accepts
+only the exact `od:` renderer origin or a separately validated HTTP loopback API
+origin. The provider stays bound to the fixture project and conversation while
+the user explicitly changes among the three known files. Its live-artifact
+preview uses a direct-loadable fixture transport, and refresh returns the real
+`{ artifact, refresh }` consumer envelope. The renderer publishes
+`data-od-renderer-route-path`, `data-od-renderer-route-state`,
+`data-od-fixture-source`, and `data-od-fixture-revision` witnesses for the
+desktop readiness receipt. The fixture config is explicit and contains no local
+credentials, account identity, customization, or telemetry consent; analytics
+and direct error buffers are disabled for the capture lifetime. The provider is
+inactive for ordinary routes. This is source-level route readiness only: no
+hosted build, installed capture, or provider reachability is claimed here.
+
 ## Evidence boundary
 
 The inventory is structurally complete and all ten rows are currently marked
 `pending`. That is deliberate: source code and route strings do not prove
-visual parity. The installed application does not yet implement the declared
-`material-designer://` tuple resolver, so the default verifier stops at that
-route boundary before accepting capture evidence.
+visual parity. The Studio row now has a source-level application route and
+fixture provider, but the installed application has not yet been built and
+captured at the declared tuple. The default verifier therefore still stops at
+the remaining built-artifact/evidence boundary before accepting capture
+evidence.
 
 A row becomes verified only after the checked-in reference and real installed
 Squirrel application are launched through the approved hidden-desktop route at

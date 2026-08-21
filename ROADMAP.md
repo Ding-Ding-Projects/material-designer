@@ -481,8 +481,18 @@ Not by a local build — local builds do not happen here.
       unreachable, renderer zoom incorrectly standing in for device scale, and
       time/random/motion/font/network inputs outside tuple equality. The version-2
       registry and inventory correct those static boundaries and now fail closed on
-      the missing installed-application route. Every row remains pending until that
-      route exists and both sides are captured at identical tuples, including the
+      missing built-artifact evidence. The desktop foundation owns the raw
+      `material-designer://studio` launch address and translates it to the canonical
+      `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+      renderer handoff, which the renderer accepts only with the exact tuple and
+      desktop-owned witness, resolves through the real project/conversation/file
+      components via a network-disabled public-safe fixture provider. The provider
+      stays bound to the fixture project/conversation across known file switches,
+      serves a direct-loadable live-artifact preview, returns the exact refresh
+      envelope, and isolates config/analytics state. The renderer exposes route and
+      provider witnesses for the desktop readiness receipt; the source-level
+      route is ready, but every row remains pending until the installed build is captured at
+      identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
       receipts, labelled comparisons, visual diffs and per-control reviews.
 - [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is

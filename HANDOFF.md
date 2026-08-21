@@ -1,6 +1,32 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Studio fixture source checkpoint — 2026-08-21.** The desktop foundation owns
+> the raw `material-designer://studio` launch address and translates it to the canonical
+> `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+> renderer handoff is the only renderer activation path and resolves to the
+> ordinary project/conversation/file route through a capture-only provider. The
+> canonical renderer path additionally requires the desktop-owned frozen tuple
+> witness, so an ordinary `od://` page cannot activate the fixture. The
+> provider feeds the existing production `ProjectView`, `ChatPane`,
+> `FileWorkspace`, and `FileViewer` seams with one public-safe fixture
+> revision (`material-designer-m3-v2`), one project, one conversation, a real
+> completed run with tool/progress events, `orders-dashboard.html`, `DESIGN.md`,
+> `data.json`, and one live-artifact preview. The initial active file is
+> explicit; refreshes and later tab/project changes do not implicitly attach or
+> select another file, while explicit switches among the three known fixture
+> files keep the provider bound to the same project and conversation. Only fixture
+> `/api/` requests are intercepted; bundled
+> same-origin assets retain the normal fetch path, loopback API origins are
+> accepted, and external network requests are rejected while the exact fixture
+> is active. The renderer publishes route/provider witnesses for the desktop
+> readiness receipt, direct live-artifact preview navigation uses the fixture
+> transport, refresh returns `{artifact, refresh}`, and normal routes retain the
+> original provider. Fixture config is explicit and analytics/error buffers are
+> disabled for the capture lifetime. This is
+> source-only: hosted typecheck, built rendering, and installed capture
+> evidence remain pending; dim-sum photo work remains intentionally deferred.
+>
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

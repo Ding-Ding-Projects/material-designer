@@ -105,6 +105,10 @@ import {
   peekOnboardingSessionId,
 } from '../analytics/onboarding-session';
 import { navigate } from '../router';
+import {
+  isStudioFixtureCaptureActiveForProjectConversation,
+  isStudioFixtureProjectId,
+} from '../capture/studio-fixture';
 import { agentDisplayName, agentModelDisplayName } from '../utils/agentLabels';
 import { isMacPlatform } from '../utils/platform';
 import {
@@ -4036,7 +4040,8 @@ export function ProjectView({
   // after the daemon settles them as unbound. A missing local workspaceId is
   // not sufficient: that project row can lag a hidden daemon-side Team mirror.
   const projectEventsEnabled =
-    daemonLive
+    !isStudioFixtureProjectId(project.id)
+    && daemonLive
     && projectWorkspaceScopeReady(projectWorkspaceScopeState.scope);
   useProjectFileEvents(project.id, projectEventsEnabled, handleProjectEvent, {
     onConnectedChange: setProjectEventsSseConnected,
@@ -4090,10 +4095,24 @@ export function ProjectView({
   // When the URL points at a specific file, fire an open request so the
   // FileWorkspace promotes it to an active tab. We watch routeFileName
   // (the parsed segment) so back/forward navigation triggers the same path.
+  const fixtureInitialSelectionProjectRef = useRef<string | null>(null);
   useEffect(() => {
     if (!routeFileName) return;
+    // The deterministic Studio provider is allowed one explicit initial
+    // selection. Once the concrete route has been committed, later file/tab
+    // changes are already represented by persisted tabs and must not be
+    // reinterpreted as an implicit attachment.
+    if (
+      isStudioFixtureCaptureActiveForProjectConversation(
+        project.id,
+        routeConversationId ?? activeConversationId ?? '',
+      )
+    ) {
+      if (fixtureInitialSelectionProjectRef.current === project.id) return;
+      fixtureInitialSelectionProjectRef.current = project.id;
+    }
     requestOpenFile(routeFileName);
-  }, [routeFileName, requestOpenFile]);
+  }, [project.id, routeFileName, requestOpenFile]);
 
   // Sync the URL when the active tab changes, so reload + share-link both
   // land back on the same view. Replace (not push) on tab activation so the
@@ -4125,6 +4144,21 @@ export function ProjectView({
     if (nextKey === lastSyncedRouteKeyRef.current) return;
     lastSyncedRouteKeyRef.current = nextKey;
     lastSyncedConversationIdRef.current = effectiveConversationId;
+    // The desktop foundation's canonical `od://` URL carries the validated
+    // capture tuple. Preserve that envelope through the initial hydration so
+    // readiness can measure the exact handoff; an explicit file/tab change
+    // still differs from routeFileName and takes the normal navigation path.
+    if (
+      isStudioFixtureCaptureActiveForProjectConversation(
+        project.id,
+        effectiveConversationId ?? '',
+      )
+      && typeof window !== 'undefined'
+      && window.location.protocol === 'od:'
+      && window.location.search !== ''
+      && effectiveConversationId === routeConversationId
+      && (target === null || target === routeFileName)
+    ) return;
     // PerishCode + Codex P1 on PR #1508: the prior version of this
     // sync stripped any `/conversations/:cid` segment from the URL as
     // soon as a tab became active, which regressed the deep-link
@@ -4148,6 +4182,7 @@ export function ProjectView({
     project.id,
     activeConversationId,
     routeConversationId,
+    routeFileName,
   ]);
 
   const handleEnsureProject = useCallback(async (): Promise<string | null> => {
@@ -11013,6 +11048,7 @@ export function ProjectView({
   // hand-off. Owning the shell here would make each view mount its own
   // element and replay the `.app` entrance animation, which reads as the
   // project frame flashing twice on the way in from Home.
+  const studioFixtureProject = isStudioFixtureProjectId(project.id);
   return (
     <CollabProvider value={collabValue}>
       <CritiqueTheaterMount
@@ -11030,6 +11066,9 @@ export function ProjectView({
           resizingChatPanel && !workspaceFocused ? 'is-resizing-chat' : '',
         ].filter(Boolean).join(' ')}
         style={projectSplitStyle(workspaceFocused, splitLeftPanelWidth, workspacePanelTrack)}
+        {...(studioFixtureProject
+          ? { 'data-testid': 'entry-view-studio', 'data-active': 'true' }
+          : {})}
       >
         <div
           className={[

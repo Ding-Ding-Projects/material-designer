@@ -13,6 +13,8 @@ import {
 import { scrubBeforeSend } from './scrub';
 import {
   clearExceptionTrackingContext,
+  clearExceptionTrackingState,
+  setErrorTrackingCaptureDisabled,
   setExceptionTrackingContext,
 } from './error-tracking';
 import { pinFirstSessionForCapture } from './identity';
@@ -32,6 +34,8 @@ interface AnalyticsContext {
 
 let client: PostHog | null = null;
 let initPromise: Promise<PostHog | null> | null = null;
+let exceptionBootstrapPromise: Promise<void> | null = null;
+let captureDisabled = false;
 let resolvedDeviceId: string | null = null;
 // Latest configure-state triplet. Re-registered on the PostHog client as
 // soon as it changes so every subsequent event inherits the current values.
@@ -53,6 +57,36 @@ let configureGlobals: AnalyticsConfigureGlobals = {
 // after every reset()/identify() so every subsequent event keeps the
 // current schema contract.
 let lastRegisterPayload: Record<string, unknown> | null = null;
+
+/**
+ * Deterministic capture owns a privacy boundary stronger than the user's
+ * normal telemetry preference. Disable every analytics path, clear direct
+ * error context/buffers, and discard an already-created client for the
+ * session. Re-enabling only removes the capture lock; normal consent and
+ * provider initialization must explicitly opt in again.
+ */
+export function setAnalyticsCaptureDisabled(disabled: boolean): void {
+  captureDisabled = disabled;
+  setErrorTrackingCaptureDisabled(disabled);
+  if (!disabled) {
+    exceptionBootstrapPromise = null;
+    return;
+  }
+  try {
+    client?.opt_out_capturing();
+    client?.reset();
+  } catch {
+    // Best-effort teardown; the local lock below still prevents transport.
+  }
+  client = null;
+  initPromise = null;
+  resolvedDeviceId = null;
+  lastRegisterPayload = null;
+  registeredUserId = null;
+  pendingPersonProperties = null;
+  exceptionBootstrapPromise = null;
+  clearExceptionTrackingState();
+}
 
 // Returns the installationId the daemon stamped on /api/analytics/config
 // after the user opted in via Privacy → "Share". The provider
@@ -202,8 +236,11 @@ function fetchAnalyticsConfigShared(): Promise<AnalyticsConfigResponse | null> {
   );
 }
 
-let exceptionBootstrapPromise: Promise<void> | null = null;
 export function bootstrapExceptionTracking(context: AnalyticsContext): Promise<void> {
+  if (captureDisabled) {
+    clearExceptionTrackingState();
+    return Promise.resolve();
+  }
   if (exceptionBootstrapPromise) return exceptionBootstrapPromise;
   exceptionBootstrapPromise = (async () => {
     try {
@@ -239,6 +276,7 @@ export function bootstrapExceptionTracking(context: AnalyticsContext): Promise<v
 export async function getAnalyticsClient(
   context: AnalyticsContext,
 ): Promise<PostHog | null> {
+  if (captureDisabled) return null;
   if (client) return client;
   if (initPromise) return initPromise;
   // PR #1428 reviewer (Siri-Ray): the first /api/analytics/config response
@@ -529,7 +567,7 @@ export function capture(
     requestId?: string | null;
   },
 ): void {
-  if (!client) return;
+  if (captureDisabled || !client) return;
   try {
     client.capture(args.event, {
       ...args.properties,
