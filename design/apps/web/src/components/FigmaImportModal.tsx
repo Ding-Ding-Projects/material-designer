@@ -65,8 +65,6 @@ const FILE_INPUT_ID = 'figma-import-file';
 const FILE_INPUT_LABEL_ID = 'figma-import-file-label';
 const FILE_INPUT_HELPER_ID = 'figma-import-file-helper';
 
-export function FigmaImportModal({ onClose, resolveProjectId, onImported, onFigmaUrl }: Props) {
-  const t = useT();
 export function FigmaImportModal({
   onClose,
   resolveProjectId,
@@ -74,6 +72,7 @@ export function FigmaImportModal({
   onImported,
   onFigmaUrl,
 }: Props) {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('file');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -204,8 +203,7 @@ export function FigmaImportModal({
     onClose();
     // Hand the snapshot + prompt to the host (prefill composer / navigate).
     onImported(outcome.result, projectId);
-  }, [file, notes, resolveProjectId, onClose, onImported, t]);
-  }, [file, notes, onImported, resolveProjectId, workspaceContext]);
+  }, [file, notes, onClose, onImported, resolveProjectId, t, workspaceContext]);
 
   const submitUrl = useCallback(async () => {
     const trimmed = url.trim();

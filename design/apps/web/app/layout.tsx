@@ -20,30 +20,16 @@ export const viewport: Viewport = {
 };
 
 /**
- * Inline script that runs before React hydrates to apply the saved theme
- * preference without a flash of unstyled content. It reads the same
- * localStorage key used by `state/config.ts` and sets `data-theme` on
- * `<html>` immediately — before any CSS or React paint.
- * Keep the accent variable mix ratios AND the no-accent-chosen fallback in
- * sync with `accentVars()` and `DEFAULT_ACCENT_COLOR` in
  * Inline script that runs before React hydrates so the first paint already
- * carries the app's appearance — no flash of unstyled content.
+ * carries the saved theme and accent — no flash of unstyled content.
  *
- * `data-theme` is pinned to `light` unconditionally, and deliberately OUTSIDE
- * the try/catch: OpenDesign ships light-only (product removed the theme
- * setting), and a stored `dark` / `system` from the old picker must never reach
- * the document. Every dark CSS rule is gated on the attribute being absent, so
- * a storage read that throws must still leave the attribute stamped.
- * Keep the accent variable mix ratios in sync with `accentVars()` in
+ * A valid persisted light/dark choice is applied before paint. The accent
+ * migration still retires the two obsolete upstream defaults, but falls back
+ * to the Material Design 3 `primary` role rather than pinning a literal colour
+ * above the theme tokens. Keep these mix ratios in sync with `accentVars()` in
  * `src/state/appearance.ts`; this script cannot import application modules.
- * That fallback is the Material Design 3 `primary` role rather than a hex
- * on purpose: what this script writes is inline style on `<html>`, which no
- * stylesheet can outrank, so a colour here would pin one accent on every
- * install that never picked one. As the role it resolves per theme and per
- * seed, exactly as `src/styles/tokens.css` declares it.
  */
-const themeInitScript = `(function(){try{var c=JSON.parse(localStorage.getItem('open-design:config')||'{}');var t=c.theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);var a=typeof c.accentColor==='string'&&/^#[0-9a-fA-F]{6}$/.test(c.accentColor.trim())?c.accentColor.trim().toLowerCase():'var(--md-sys-color-primary)';var s=document.documentElement.style;s.setProperty('--accent',a);s.setProperty('--accent-strong','color-mix(in srgb, '+a+' 86%, var(--text-strong))');s.setProperty('--accent-soft','color-mix(in srgb, '+a+' 22%, var(--bg-panel))');s.setProperty('--accent-tint','color-mix(in srgb, '+a+' 12%, var(--bg-panel))');s.setProperty('--accent-hover','color-mix(in srgb, '+a+' 90%, var(--text-strong))');}catch(e){}})();`;
-const themeInitScript = `(function(){document.documentElement.setAttribute('data-theme','light');try{var c=JSON.parse(localStorage.getItem('open-design:config')||'{}');var a=typeof c.accentColor==='string'&&/^#[0-9a-fA-F]{6}$/.test(c.accentColor.trim())?c.accentColor.trim().toLowerCase():'#353535';if(c.configMigrationVersion!==3&&(a==='#87ea5c'||a==='#c96442'))a='#353535';var s=document.documentElement.style;s.setProperty('--accent',a);s.setProperty('--accent-strong','color-mix(in srgb, '+a+' 82%, var(--text-strong))');s.setProperty('--accent-soft','color-mix(in srgb, '+a+' 12%, var(--bg-subtle))');s.setProperty('--accent-tint','color-mix(in srgb, '+a+' 6%, var(--bg-panel))');s.setProperty('--accent-hover','color-mix(in srgb, '+a+' 86%, var(--text-strong))');}catch(e){}})();`;
+const themeInitScript = `(function(){try{var c=JSON.parse(localStorage.getItem('open-design:config')||'{}');var t=c.theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(t==='system')document.documentElement.removeAttribute('data-theme');var a=typeof c.accentColor==='string'&&/^#[0-9a-fA-F]{6}$/.test(c.accentColor.trim())?c.accentColor.trim().toLowerCase():'var(--md-sys-color-primary)';if(c.configMigrationVersion!==3&&(a==='#87ea5c'||a==='#c96442'))a='var(--md-sys-color-primary)';var s=document.documentElement.style;s.setProperty('--accent',a);s.setProperty('--accent-strong','color-mix(in srgb, '+a+' 82%, var(--text-strong))');s.setProperty('--accent-soft','color-mix(in srgb, '+a+' 12%, var(--bg-subtle))');s.setProperty('--accent-tint','color-mix(in srgb, '+a+' 6%, var(--bg-panel))');s.setProperty('--accent-hover','color-mix(in srgb, '+a+' 86%, var(--text-strong))');}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

@@ -83,7 +83,7 @@ import type {
 } from '../types';
 import type { ArtifactManifest } from '../artifacts/types';
 import { GENERIC_DEPLOY_ENVELOPE_CODES } from '../analytics/deploy-error-code';
-import { confirmedDelete } from '../lib/confirm-delete';
+import { confirmedDelete, ConfirmedDeleteError } from '../lib/confirm-delete';
 import {
   isOpenDesignHostAvailable,
   openHostExternalUrl,
@@ -932,22 +932,6 @@ export async function updateDesignSystemDraft(
   }
 }
 
-/**
- * Delete a user-authored, editable design system (`user:<id>`).
- *
- * The daemon now refuses this without a confirmation token: the system's whole
- * directory is removed and `history/domains.ts` covers none of it, so nothing
- * in the product puts it back. `DesignSystemsTab` already puts the two-key gate
- * in front of the button; this is the half that holds for every other caller.
- *
- * A non-`user:` id lands on the marketplace uninstall in
- * `routes/static-resource.ts` instead, which is ungated on purpose — see
- * `uninstallDesignSystem` below. Passing one here still works: the mint 404s,
- * this returns `false`, and the caller sees the same "not an editable system"
- * outcome it saw before.
- */
-export async function deleteDesignSystemDraft(id: string): Promise<boolean> {
-  return confirmedDelete(`/api/design-systems/${encodeURIComponent(id)}`);
 // Signal-only trigger for the daemon-side asset sync (spec 04 §9.3,
 // recvqb1t4FrckM): fires when the design-system chat's agent writes real
 // files under `assets/` in the workspace project, so the canonical
@@ -988,29 +972,35 @@ export class DesignSystemDeleteError extends Error {
   }
 }
 
+/**
+ * Delete a user-authored, editable design system (`user:<id>`).
+ *
+ * Both legs of the daemon's single-use confirmation handshake carry the
+ * captured Workspace identity. That keeps the confirmation scoped to the same
+ * authority as the DELETE and lets the daemon preserve its detailed 403 code.
+ * Non-user ids still resolve to `false`: their confirmation mint is absent
+ * because marketplace uninstall remains a separate, intentionally ungated
+ * operation in {@link uninstallDesignSystem}.
+ */
 export async function deleteDesignSystemDraft(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<boolean> {
+  const resourcePath = `/api/design-systems/${encodeURIComponent(id)}`;
   try {
-    const resp = await fetch(
-      `/api/design-systems/${encodeURIComponent(id)}`,
-      {
-        method: 'DELETE',
-        ...(workspaceContext
-          ? { headers: workspaceProjectHeaders(workspaceContext) }
-          : {}),
-      },
-    );
-    if (!resp.ok && resp.status === 403) {
-      const errorBody = await readApiErrorBody(resp);
+    return await confirmedDelete(resourcePath, undefined, {
+      ...(workspaceContext
+        ? { headers: workspaceProjectHeaders(workspaceContext) }
+        : {}),
+      throwOnFailure: true,
+    });
+  } catch (error) {
+    if (error instanceof ConfirmedDeleteError && error.response?.status === 403) {
+      const errorBody = await readApiErrorBody(error.response);
       const code = errorBody.code
         ?? (/^[A-Z][A-Z0-9_]+$/.test(errorBody.message) ? errorBody.message : undefined);
-      throw new DesignSystemDeleteError(errorBody.message, resp.status, code);
+      throw new DesignSystemDeleteError(errorBody.message, error.response.status, code);
     }
-    return resp.ok;
-  } catch (error) {
-    if (error instanceof DesignSystemDeleteError) throw error;
     return false;
   }
 }

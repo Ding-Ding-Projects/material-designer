@@ -26,6 +26,8 @@ interface Call {
   method: string;
   body: string | undefined;
   token: string | undefined;
+  workspaceId: string | undefined;
+  workspaceMemberId: string | undefined;
 }
 
 /** A daemon that mints one token and accepts the DELETE, recording both legs. */
@@ -33,12 +35,14 @@ function stubConfirmingDaemon(deleteStatus = 200) {
   const calls: Call[] = [];
   const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
     const url = String(input);
-    const headers = (init?.headers ?? {}) as Record<string, string>;
+    const headers = new Headers(init?.headers);
     calls.push({
       url,
       method: init?.method ?? 'GET',
       body: typeof init?.body === 'string' ? init.body : undefined,
-      token: headers['x-od-confirm-token'],
+      token: headers.get('x-od-confirm-token') ?? undefined,
+      workspaceId: headers.get('x-od-workspace-id') ?? undefined,
+      workspaceMemberId: headers.get('x-od-workspace-member-id') ?? undefined,
     });
     if (url.endsWith('/confirm-delete')) {
       return new Response(
@@ -98,6 +102,28 @@ describe('confirmedDelete', () => {
     expect(calls[1]?.token).toBe('tok-1');
   });
 
+  it('carries workspace identity on both legs and keeps the minted token authoritative', async () => {
+    const calls = stubConfirmingDaemon();
+
+    await expect(confirmedDelete('/api/projects/p1', undefined, {
+      headers: {
+        'x-od-workspace-id': 'workspace-a',
+        'x-od-workspace-member-id': 'member-a',
+        // A caller must never be able to replace the freshly minted token.
+        'x-od-confirm-token': 'caller-value',
+      },
+      throwOnFailure: true,
+    })).resolves.toBe(true);
+
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      expect(call.workspaceId).toBe('workspace-a');
+      expect(call.workspaceMemberId).toBe('member-a');
+    }
+    expect(calls[0]?.token).toBeUndefined();
+    expect(calls[1]?.token).toBe('tok-1');
+  });
+
   it('reports failure without attempting the delete when no token is issued', async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 428 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -116,6 +142,18 @@ describe('confirmedDelete', () => {
     await expect(
       confirmedDelete('/api/projects/p1/folders', { path: 'drafts' }),
     ).resolves.toBe(false);
+  });
+
+  it('exposes the failed phase and response only when detailed errors are requested', async () => {
+    stubConfirmingDaemon(403);
+
+    await expect(confirmedDelete('/api/projects/p1', undefined, {
+      throwOnFailure: true,
+    })).rejects.toMatchObject({
+      name: 'ConfirmedDeleteError',
+      phase: 'delete',
+      response: expect.objectContaining({ status: 403 }),
+    });
   });
 });
 

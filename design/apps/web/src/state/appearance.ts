@@ -36,6 +36,15 @@ export const CUSTOM_ACCENT_FALLBACK = '#c96442';
 export const ACCENT_SWATCHES = [
   DEFAULT_ACCENT_COLOR,
   CUSTOM_ACCENT_FALLBACK,
+  '#353535',
+  '#202020',
+  '#848484',
+  '#87ea5c',
+  '#0d5400',
+  '#1a74ff',
+  '#ffba12',
+  '#ff7528',
+  '#f04142',
   '#2563eb',
   '#7c3aed',
   '#059669',
@@ -43,17 +52,6 @@ export const ACCENT_SWATCHES = [
   '#d97706',
   '#0891b2',
   '#db2777',
-export const DEFAULT_ACCENT_COLOR = '#353535';
-export const ACCENT_SWATCHES = [
-  DEFAULT_ACCENT_COLOR,
-  '#202020',
-  '#848484',
-  '#87ea5c',
-  '#0d5400',
-  '#1A74FF',
-  '#FFBA12',
-  '#FF7528',
-  '#F04142',
 ] as const;
 
 export function normalizeAccentColor(value: unknown): string | null {

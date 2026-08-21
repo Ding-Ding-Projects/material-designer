@@ -5,9 +5,8 @@
 // every install that ever touched it still has `theme: 'dark'` (or `'system'`,
 // which resolves dark on a dark OS) sitting in localStorage, and a stored
 // value does not change just because the default did. These specs pin the
-// coerce-on-read invariant at all three places a persisted theme can reach
-// the document: the config parser, the runtime appearance applier, and the
-// pre-hydration inline script that paints before React mounts.
+// upstream coerce-on-read/runtime behavior and the product override at the
+// pre-hydration boundary, where a saved explicit theme must paint as saved.
 
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -128,7 +127,7 @@ describe('forced light theme — document', () => {
   });
 });
 
-describe('forced light theme — pre-hydration script', () => {
+describe('saved theme and Material accent — pre-hydration script', () => {
   const layoutPath = resolve(
     dirname(fileURLToPath(import.meta.url)),
     '../../app/layout.tsx',
@@ -144,23 +143,34 @@ describe('forced light theme — pre-hydration script', () => {
 
   afterEach(() => {
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.style.removeProperty('--accent');
     store.clear();
   });
 
-  it('paints light before hydration even when the stored theme is dark', () => {
+  it('paints a saved dark theme before hydration', () => {
     persist({ theme: 'dark' });
 
     runThemeInitScript();
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 
-  it('paints light before hydration for a legacy system theme on a dark OS', () => {
+  it('leaves system theme selection to the operating system before hydration', () => {
     stubSystemPrefersDark();
+    document.documentElement.setAttribute('data-theme', 'light');
     persist({ theme: 'system' });
 
     runThemeInitScript();
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
+  it('migrates retired literal accents back to the Material primary role', () => {
+    persist({ accentColor: '#87ea5c', configMigrationVersion: 2 });
+
+    runThemeInitScript();
+
+    expect(document.documentElement.style.getPropertyValue('--accent'))
+      .toBe('var(--md-sys-color-primary)');
   });
 });
