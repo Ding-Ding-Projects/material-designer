@@ -59,6 +59,27 @@ version section when a release carries them.
   係 foundation，未有 parity evidence 就唔會扮完成。Dark 同四個未有 semantic
   route 仍然 fail-closed。
 
+- **Deterministic capture now closes the remaining navigation and evidence
+  escape hatches.** Commit
+  [`b1d8affc9`](https://github.com/Ding-Ding-Projects/material-designer/commit/b1d8affc9517e652b494e734e75dd7eaf19ed900)
+  allows only the exact accepted `od://` route through both main-frame
+  navigation events, rejects every other scheme and redirect, refuses
+  screenshot/capture RPCs until readiness is true, blocks click interaction
+  while unready, and limits eval to four exact readiness-receipt inspection
+  expressions. Capture proxy validation now rejects empty or malformed
+  `Response.url` values and preserves ordinary redirect-following behavior.
+  These are source-level contracts only; no built-artifact or visual parity
+  evidence is claimed.
+
+  Deterministic capture 而家封埋最後幾個 navigation 同 evidence 逃生門。
+  Commit `b1d8affc9` 令兩個 main-frame navigation event 都只准 exact accepted
+  `od://` route，其他 scheme 同 redirect 一律拒絕；readiness 未真係 ready
+  之前，screenshot/capture RPC 唔會出圖，click 唔會郁，eval 只准四種 exact
+  readiness-receipt inspection expression。Capture proxy 見到空或者爛嘅
+  `Response.url` 都會拒絕，普通 redirect-following 行為就保持不變。呢啲係
+  source-level contract，未有 built artifact 或 visual parity evidence，唔會扮
+  verify 完成。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
