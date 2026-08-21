@@ -216,6 +216,10 @@ export type DesktopMainOptions = {
    * `material-designer://` capture argument.
    */
   captureRoute?: DeterministicParityRoute | null;
+  /** Exact current web-sidecar origin allowed by the capture session. */
+  captureNetworkOrigin?: () => string | null;
+  /** True only after the sidecars prove capture-aware fixture/network isolation. */
+  captureNetworkIsolationReady?: boolean;
   preloadPath?: string;
   windowTitle?: string;
   onDesktopReady?: (controls: {
@@ -1049,6 +1053,8 @@ export async function runDesktopMain(
     splashWindow: options.splashWindow,
     splashStartedAt: options.splashStartedAt,
     captureRoute,
+    captureNetworkOrigin: options.captureNetworkOrigin,
+    captureNetworkIsolationReady: options.captureNetworkIsolationReady,
     updater,
     windowTitle: options.windowTitle,
   });

@@ -1686,6 +1686,34 @@ function AppInner() {
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
+  // A deterministic capture may not settle until daemon configuration,
+  // onboarding, and cloud-identity decisions have all completed. This witness
+  // is renderer-owned and is intentionally absent while any decision is still
+  // pending; the desktop capture receipt requires it to remain stable while
+  // it rechecks the route.
+  const captureSettled = daemonLive
+    && daemonConfigLoaded
+    && daemonAppConfigReady
+    && config.onboardingCompleted === true
+    && amrLoginStatus !== null;
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    if (!captureSettled) {
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+      return undefined;
+    }
+    root.setAttribute('data-od-capture-settled', '1');
+    root.setAttribute('data-od-capture-settled-route', buildPath(route));
+    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
+    return () => {
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+    };
+  }, [captureSettled, route]);
   // Inline AMR auth can invalidate the caller identity and intentionally tear
   // down ProjectView before the login poll reports success. Keep only the
   // exact failed-turn continuation above that authorization lifetime; the

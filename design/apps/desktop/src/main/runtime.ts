@@ -319,6 +319,18 @@ const WEB_MOUNT_POLL_MS = 80;
 const WEB_MOUNT_REVEAL_TIMEOUT_MS = 15000;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const CAPTURE_READINESS_EVALUATION_TIMEOUT_MS = 2_500;
+const CAPTURE_SETTLED_STABILITY_INTERVAL_MS = 250;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer != null) clearTimeout(timer);
+  });
+}
 const summarizeExpression = (expression: string): Record<string, unknown> => ({
   expressionLength: expression.length,
   expressionPreview: expression.length > 120 ? `${expression.slice(0, 120)}...` : expression,
@@ -619,7 +631,7 @@ async function measureDeterministicCaptureReadiness(
   networkIsolationReady: boolean,
 ): Promise<DeterministicParityReadiness> {
   const invariantSelector = DETERMINISTIC_ROUTE_INVARIANTS[route.tuple.screen] ?? "";
-  const actual = await window.webContents.executeJavaScript(`(async () => {
+  const readinessExpression = `(async () => {
     await document.fonts.ready;
     const root = document.documentElement;
     const currentUrl = new URL(window.location.href);
@@ -643,6 +655,11 @@ async function measureDeterministicCaptureReadiness(
         fixtureSource: root.getAttribute("data-od-fixture-source"),
         fixtureRevision: root.getAttribute("data-od-fixture-revision"),
       },
+      captureSettledWitness: {
+        settled: root.getAttribute("data-od-capture-settled") === "1",
+        routePath: root.getAttribute("data-od-capture-settled-route"),
+        revision: root.getAttribute("data-od-capture-settled-revision"),
+      },
       routeInvariant: {
         selector: invariant,
         present: Boolean(invariantElement)
@@ -650,8 +667,24 @@ async function measureDeterministicCaptureReadiness(
       },
       appMounted: root.getAttribute("data-od-app-mounted") === "1",
     };
-  })()`, true) as DeterministicParityReadiness["actual"];
+  })()`;
+  const readActual = (): Promise<DeterministicParityReadiness["actual"]> =>
+    withTimeout(
+      window.webContents.executeJavaScript(readinessExpression, true) as Promise<DeterministicParityReadiness["actual"]>,
+      CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+      "capture.readiness_evaluation_timeout",
+    );
+  const first = await readActual();
+  await delay(CAPTURE_SETTLED_STABILITY_INTERVAL_MS);
+  const actual = await readActual();
   const reasons: string[] = [];
+  const stabilityChanged = first.href !== actual.href
+    || first.search !== actual.search
+    || first.theme !== actual.theme
+    || JSON.stringify(first.rendererWitness) !== JSON.stringify(actual.rendererWitness)
+    || JSON.stringify(first.captureSettledWitness) !== JSON.stringify(actual.captureSettledWitness)
+    || JSON.stringify(first.routeInvariant) !== JSON.stringify(actual.routeInvariant);
+  if (stabilityChanged) reasons.push("capture.settled_unstable");
   const expectedUrl = new URL(route.browserUrl);
   let actualUrl: URL | null = null;
   try {
@@ -694,6 +727,13 @@ async function measureDeterministicCaptureReadiness(
     actual.rendererWitness.fixtureSource !== "capture-provider"
     || actual.rendererWitness.fixtureRevision !== route.tuple.fixtureRevision
   ) reasons.push("fixture.provider_unresolved");
+  if (!actual.captureSettledWitness.settled) reasons.push("capture.settled_witness_unresolved");
+  if (actual.captureSettledWitness.routePath !== route.browserPath) {
+    reasons.push("capture.settled_route_mismatch");
+  }
+  if (actual.captureSettledWitness.revision !== "capture-settled-v1") {
+    reasons.push("capture.settled_revision_mismatch");
+  }
   if (!actual.routeInvariant.present) reasons.push("route.component_invariant_mismatch");
   actual.networkPolicy = networkIsolationReady ? route.tuple.network : null;
   actual.networkOrigin = networkOrigin;
@@ -1634,7 +1674,8 @@ export type SplashBootStage =
   | "interface"
   | "interfaceReady"
   | "workspace"
-  | "finishing";
+  | "finishing"
+  | "captureFailed";
 
 /**
  * Canonical boot order. The index in this array drives the "N/total" step
@@ -1651,6 +1692,7 @@ const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
   "interfaceReady",
   "workspace",
   "finishing",
+  "captureFailed",
 ];
 
 const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
@@ -1661,6 +1703,7 @@ const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
   interfaceReady: "Interface ready",
   workspace: "Opening your workspace",
   finishing: "Almost ready",
+  captureFailed: "Capture failed; no application content shown",
 };
 
 const SPLASH_STAGE_TOTAL = SPLASH_STAGE_SEQUENCE.length;
@@ -2291,6 +2334,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const captureNetworkOrigin = options.captureNetworkOrigin ?? (() => null);
   const captureNetworkIsolationReady = options.captureNetworkIsolationReady === true;
   let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
+  let captureFailureSurfacePending = false;
+  let presentCaptureFailureSurface: (() => void) | null = null;
   const deterministicCaptureReadinessError = (): string | null => {
     if (captureRoute == null || isDeterministicParityCaptureReady(deterministicCaptureReadiness)) return null;
     return DETERMINISTIC_PARITY_NOT_READY_REASON;
@@ -2591,6 +2636,55 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     blockedCaptureNetworkRequests += 1;
     callback({ cancel: true });
   };
+  const createCaptureFailureReadiness = (reason: string): DeterministicParityReadiness => {
+    let currentUrl = "";
+    try {
+      if (!window.webContents.isDestroyed()) currentUrl = window.webContents.getURL();
+    } catch {
+      currentUrl = "";
+    }
+    return {
+      version: 2,
+      ready: false,
+      routeId: captureRoute!.id,
+      requestedTuple: captureRoute!.tuple,
+      actual: {
+        href: currentUrl,
+        search: "",
+        pathname: "",
+        theme: null,
+        viewport: { width: 0, height: 0 },
+        devicePixelRatio: 0,
+        fonts: {
+          robotoFlex: false,
+          robotoMono: false,
+          materialSymbolsRounded: false,
+        },
+        semanticState: { screen: null, state: null, browserPath: null },
+        rendererWitness: {
+          routePath: null,
+          routeState: null,
+          fixtureSource: null,
+          fixtureRevision: null,
+        },
+        captureSettledWitness: {
+          settled: false,
+          routePath: null,
+          revision: null,
+        },
+        routeInvariant: {
+          selector: DETERMINISTIC_ROUTE_INVARIANTS[captureRoute!.tuple.screen] ?? "",
+          present: false,
+        },
+        networkPolicy: null,
+        networkOrigin: captureNetworkOrigin(),
+        networkIsolationReady: false,
+        appMounted: false,
+        blockedNetworkRequests: blockedCaptureNetworkRequests,
+      },
+      reasons: [reason],
+    };
+  };
   let detachCaptureDebugger: (() => void) | null = null;
   if (captureRoute) {
     detachCaptureDebugger = await installDeterministicCapturePrelude(window, captureRoute);
@@ -2732,6 +2826,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // crash-loop bookkeeping, telemetry, and recovery (mirrors the getURL guard
     // above — a clean teardown must not look like a crash).
     if (gone) return;
+    if (
+      captureRoute != null
+      && !revealed
+      && deterministicCaptureReadiness == null
+    ) {
+      deterministicCaptureReadiness = createCaptureFailureReadiness("capture.renderer_process_gone");
+      captureFailureSurfacePending = true;
+      presentCaptureFailureSurface?.();
+      console.error("[open-design desktop] deterministic parity capture failed before readiness", {
+        reason: "capture.renderer_process_gone",
+        routeId: captureRoute.id,
+      });
+      return;
+    }
     // A clean-exit is intentional teardown; only a crash / OOM / OS kill feeds
     // the crash-loop breaker and triggers recovery.
     const isCrash = details.reason !== "clean-exit";
@@ -3207,6 +3315,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     splash = created.window;
     splashStartedAt = created.startedAt;
   }
+  presentCaptureFailureSurface = () => {
+    if (captureRoute == null || splash == null || splash.isDestroyed()) return;
+    setSplashStage(splash, "captureFailed");
+    splash.show();
+    splash.focus();
+  };
+  if (captureFailureSurfacePending) presentCaptureFailureSurface();
 
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
@@ -3226,7 +3341,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (splash != null && !splash.isDestroyed()) splash.close();
     if (captureRoute && deterministicCaptureReadiness != null) {
       const readinessJson = JSON.stringify(deterministicCaptureReadiness);
-      void window.webContents.executeJavaScript(`(() => {
+      void withTimeout(
+        window.webContents.executeJavaScript(`(() => {
         const root = document.documentElement;
         root.dataset.odParityReady = ${deterministicCaptureReadiness.ready ? '"1"' : '"0"'};
         root.dataset.odParityActualPath = window.location.pathname;
@@ -3240,7 +3356,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           writable: false,
         });
         return true;
-      })()`, true).then(() => {
+      })()`, true),
+        CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+        "capture.readiness_receipt_timeout",
+      ).then(() => {
         console.info("[open-design desktop] deterministic parity route ready", {
           blockedNetworkRequests: blockedCaptureNetworkRequests,
           routeId: captureRoute.id,
@@ -3274,14 +3393,28 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // signal never arrives.
   const revealWhenReady = async (): Promise<void> => {
     if (revealing || revealed) return;
+    if (captureRoute != null && deterministicCaptureReadiness?.ready === false) {
+      captureFailureSurfacePending = true;
+      presentCaptureFailureSurface?.();
+      return;
+    }
     revealing = true;
     // The web bundle is loading in the hidden main window from here on; let
     // the splash status line reflect that final phase while we poll for mount.
     setSplashStage(splash, "workspace");
     const deadline = Date.now() + WEB_MOUNT_REVEAL_TIMEOUT_MS;
     while (!stopped && !window.isDestroyed() && Date.now() < deadline) {
-      const mounted = await window.webContents
-        .executeJavaScript(`document.documentElement.getAttribute("data-od-app-mounted") === "1"`, true)
+      const mountedEvaluation = window.webContents.executeJavaScript(
+        `document.documentElement.getAttribute("data-od-app-mounted") === "1"`,
+        true,
+      );
+      const mounted = await (captureRoute == null
+        ? mountedEvaluation
+        : withTimeout(
+            mountedEvaluation,
+            CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+            "capture.mount_evaluation_timeout",
+          ))
         .catch(() => false);
       if (mounted === true) break;
       await delay(WEB_MOUNT_POLL_MS);
@@ -3300,46 +3433,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           error: error instanceof Error ? error.message : String(error),
           routeId: captureRoute.id,
         });
-        deterministicCaptureReadiness = {
-          version: 2,
-          ready: false,
-          routeId: captureRoute.id,
-          requestedTuple: captureRoute.tuple,
-          actual: {
-            href: window.webContents.getURL(),
-            search: "",
-            pathname: "",
-            theme: null,
-            viewport: { width: 0, height: 0 },
-            devicePixelRatio: 0,
-            fonts: {
-              robotoFlex: false,
-              robotoMono: false,
-              materialSymbolsRounded: false,
-            },
-            semanticState: { screen: null, state: null, browserPath: null },
-            rendererWitness: {
-              routePath: null,
-              routeState: null,
-              fixtureSource: null,
-              fixtureRevision: null,
-            },
-            routeInvariant: {
-              selector: DETERMINISTIC_ROUTE_INVARIANTS[captureRoute.tuple.screen] ?? "",
-              present: false,
-            },
-            networkPolicy: null,
-            networkOrigin: captureNetworkOrigin(),
-            networkIsolationReady: false,
-            appMounted: false,
-            blockedNetworkRequests: blockedCaptureNetworkRequests,
-          },
-          reasons: ["capture.readiness_measurement_failed"],
-        };
-        setSplashStage(splash, "finishing");
-        const remaining = MIN_SPLASH_MS - (Date.now() - splashStartedAt);
-        if (remaining > 0) await delay(remaining);
-        revealMainWindow();
+        deterministicCaptureReadiness = createCaptureFailureReadiness(
+          error instanceof Error && error.message === "capture.readiness_evaluation_timeout"
+            ? "capture.readiness_evaluation_timeout"
+            : "capture.readiness_measurement_failed",
+        );
+        captureFailureSurfacePending = true;
+        presentCaptureFailureSurface?.();
         return;
       }
       if (!deterministicCaptureReadiness.ready) {
@@ -3347,6 +3447,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           readiness: deterministicCaptureReadiness,
           routeId: captureRoute.id,
         });
+        captureFailureSurfacePending = true;
+        presentCaptureFailureSurface?.();
+        return;
       }
     }
     // The real UI has mounted behind the splash; the only thing left is the

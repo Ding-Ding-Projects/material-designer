@@ -42,15 +42,18 @@ yet been captured.
   external network requests in an isolated capture session, suppresses the
   separate pet window, allows only the exact accepted `od://` route through
   both main-frame navigation events, rejects capture-mode external navigation,
-  and records a typed readiness receipt only after the canonical route
+  uses a separate capture user-data namespace without ordinary existing-window
+  handoff, and records a typed readiness receipt only after the canonical route
   URL/search, actual theme, viewport, device scale, bundled fonts,
-  renderer-owned route witness, route-specific component invariant, mount state
-  and capture network proof agree. Screenshot/capture RPCs refuse before that
-  receipt is ready; eval is limited to the readiness receipt inspection. The
-  fixture/provider and sidecar-isolation proof are intentionally absent today,
-  so the receipt remains `ready: false` until those product seams exist; an
-  unready capture is surfaced as a terminal state rather than held behind the
-  splash.
+  renderer-owned route witness, capture-settled witness, route-specific
+  component invariant, mount state and capture network proof agree across a
+  bounded stability interval and final route recheck. Every readiness
+  evaluation has a main-process timeout. Screenshot/capture RPCs refuse before
+  that receipt is ready; eval is limited to the readiness receipt inspection.
+  Pre-readiness renderer loss and any other unready result keep live content
+  hidden and show a self-contained capture-failure splash. The fixture/provider
+  and sidecar-isolation proof are intentionally absent today, so the receipt
+  remains `ready: false` until those product seams exist.
 - `design/apps/packaged/src/protocol.ts`, which registers the packaged `od://`
   proxy on that same capture session, validates the exact loopback sidecar
   origin, blocks redirects in capture mode, preserves normal launch redirect

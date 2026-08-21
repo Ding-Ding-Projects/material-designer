@@ -40,10 +40,15 @@ with the project's standards.
       router, applies frozen clock/random/motion and locale controls before
       first render, isolates capture protocol handling, allows only the exact
       accepted `od://` route through main-frame navigation and redirects,
-      blocks external navigation, and records a terminal readiness receipt
-      against the canonical URL/search, renderer-owned route witness, route
-      component invariant and fixture/network proof. Screenshot/capture RPCs
-      refuse before readiness and eval is limited to receipt inspection. The six mapped rows remain
+      blocks external navigation, uses a separate capture user-data namespace
+      without ordinary existing-window/single-instance handoff, and records a
+      terminal readiness receipt against the canonical URL/search,
+      renderer-owned route witness, capture-settled witness, route component
+      invariant and fixture/network proof. Readiness evaluations are
+      main-process time-bounded and recheck the route across a bounded stability
+      interval. Screenshot/capture RPCs refuse before readiness, eval is limited
+      to receipt inspection, and unready capture keeps live content hidden behind
+      a self-contained failure splash. The six mapped rows remain
       foundation-only because the renderer still reports ordinary daemon data
       and no capture provider or capture-aware sidecar isolation exists. Studio,
       Library, Settings Appearance and standalone Handoff remain explicit

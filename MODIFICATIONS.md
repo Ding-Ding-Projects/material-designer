@@ -44,18 +44,25 @@ document. Capture uses an isolated session, allows only the exact accepted
 navigation, validates the exact loopback sidecar origin, blocks redirects, and
 returns a stable refusal from screenshot/capture RPCs until readiness is true.
 It also keeps eval available only for the minimal readiness receipt inspection
-while an unready capture is visible. The terminal readiness receipt comes from
-the canonical URL/search, renderer-owned route witness, real component
-invariant, fixture source and network proof. The renderer adds only a witness
-from its actual router state; it does not receive replacement DOM or a second
-screen implementation. Capture remains unready until a real deterministic
-fixture/provider and capture-aware sidecars exist.
+while an unready capture is visible. Readiness evaluations have bounded
+main-process timeouts, require a renderer-owned capture-settled witness after
+daemon/config/onboarding/cloud-identity decisions, recheck the route across a
+stability interval, and keep live content hidden behind a self-contained
+capture-failure splash when they fail. Capture startup uses a separate
+user-data namespace and bypasses ordinary existing-window/single-instance
+handoff. The terminal readiness receipt comes from the canonical URL/search,
+renderer-owned route witness, real component invariant, fixture source and
+network proof. The renderer adds only witnesses from its actual router state;
+it does not receive replacement DOM or a second screen implementation. Capture
+remains unready until a real deterministic fixture/provider and capture-aware
+sidecars exist.
 
 **Changed files:**
 
 - `apps/desktop/src/main/deterministic-parity-route.ts`
 - `apps/desktop/src/main/index.ts`
 - `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
 - `apps/desktop/tests/main/deterministic-parity-route.test.ts`
 - `apps/packaged/tests/protocol.test.ts`
 - `apps/packaged/src/index.ts`

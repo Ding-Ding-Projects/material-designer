@@ -212,19 +212,29 @@ async function main(): Promise<void> {
   // `app.whenReady()`; no-op on other platforms.
   app.setAppUserModelId("io.ding-ding.material-designer");
 
-  const config = await readPackagedConfig();
   const headlessRequest = parsePackagedHeadlessRequest(process.argv.slice(1));
+  // A normalized parity route is accepted only in the explicit developer /
+  // capture mode. Unknown, malformed, or semantically unresolved rows fail
+  // before sidecars or a renderer can start; normal launches have no route.
+  const deterministicParityRoute: DeterministicParityRoute | null =
+    headlessRequest.headless
+      ? null
+      : parseDeterministicParityRouteArgv(process.argv, process.env);
+  if (deterministicParityRoute != null) {
+    // Capture has its own user-data namespace so an ordinary instance cannot
+    // reuse its profile, protocol state, or single-instance handoff. This is
+    // set before config/path resolution and before app.whenReady().
+    app.setPath(
+      "userData",
+      join(app.getPath("userData"), "design-parity", deterministicParityRoute.id),
+    );
+  }
+  const config = await readPackagedConfig();
   if (headlessRequest.headless) {
     const { runPackagedHeadless } = await import("./headless-runtime.js");
     await runPackagedHeadless(config, headlessRequest);
     return;
   }
-
-  // A normalized parity route is accepted only in the explicit developer /
-  // capture mode. Unknown, malformed, or semantically unresolved rows fail
-  // before sidecars or a renderer can start; normal launches have no route.
-  const deterministicParityRoute: DeterministicParityRoute | null =
-    parseDeterministicParityRouteArgv(process.argv, process.env);
 
   // Must run BEFORE `app.whenReady()` below, because Chromium consumes
   // `--lang` at session bootstrap. Doing it here lets the packaged
@@ -263,13 +273,18 @@ async function main(): Promise<void> {
     app.exit(1);
     return;
   }
-  const existingDesktop = await inspectExistingDesktopForLauncher(namespace, {
-    deeplinkUrl: findPackagedDeeplinkArg(process.argv),
-    incomingVersion: namespaceConfig.appVersion,
-    logger: console,
-    paths: initialPaths,
-  });
-  if (exitPackagedLauncherForExistingDesktop(existingDesktop, (code) => app.exit(code))) {
+  const existingDesktop = deterministicParityRoute == null
+    ? await inspectExistingDesktopForLauncher(namespace, {
+        deeplinkUrl: findPackagedDeeplinkArg(process.argv),
+        incomingVersion: namespaceConfig.appVersion,
+        logger: console,
+        paths: initialPaths,
+      })
+    : null;
+  if (
+    deterministicParityRoute == null
+    && exitPackagedLauncherForExistingDesktop(existingDesktop, (code) => app.exit(code))
+  ) {
     return;
   }
   const stamp = argvStamp ?? createPackagedDesktopStamp(namespace);
@@ -332,10 +347,12 @@ async function main(): Promise<void> {
   });
   applyPackagedElectronPathOverrides(paths);
   applyPackagedUpdaterEnv(activeConfig.updateMetadataUrl);
-  if (!claimPackagedSingleInstanceLock(app, (argv) => {
-    secondInstanceHandoff.handle(findPackagedDeeplinkArg(argv));
-  })) {
-    return;
+  if (deterministicParityRoute == null) {
+    if (!claimPackagedSingleInstanceLock(app, (argv) => {
+      secondInstanceHandoff.handle(findPackagedDeeplinkArg(argv));
+    })) {
+      return;
+    }
   }
   const identity = await writePackagedDesktopIdentity({ paths, stamp });
   await app.whenReady();
@@ -469,10 +486,12 @@ async function main(): Promise<void> {
       }).catch((error: unknown) => {
         packagedLogger?.warn("failed to sync Windows uninstall registry version", { error });
       });
-      secondInstanceHandoff.attach({
-        dispatchDeeplink: controls.dispatchInviteDeeplink,
-        show: controls.show,
-      });
+      if (deterministicParityRoute == null) {
+        secondInstanceHandoff.attach({
+          dispatchDeeplink: controls.dispatchInviteDeeplink,
+          show: controls.show,
+        });
+      }
     },
     preloadPath: join(app.getAppPath(), "preload.cjs"),
     update: {

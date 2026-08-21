@@ -11,13 +11,19 @@
 > document. Capture uses an isolated in-memory renderer session with the local
 > `od://` proxy, suppresses the separate pet window, allows only the exact
 > accepted `od://` route through both main-frame navigation events, rejects
-> capture-mode external navigation, blocks requests outside the exact current
-> loopback sidecar origin, and returns an idempotent protocol disposer.
+> capture-mode external navigation, uses a separate capture user-data namespace
+> without ordinary existing-window or single-instance handoff, blocks requests
+> outside the exact current loopback sidecar origin, and returns an idempotent
+> protocol disposer.
 > Readiness now compares the canonical URL and full query, actual
 > theme/viewport/device scale/fonts, a renderer-owned route witness,
-> route-specific component/ARIA invariant, and fixture/network isolation
-> proofs. Screenshot/capture RPCs refuse before readiness; eval is limited to
-> the readiness receipt inspection. Because the capture provider and
+> route-specific component/ARIA invariant, renderer-owned capture-settled
+> witness and fixture/network isolation proofs. Every readiness evaluation is
+> main-process time-bounded, and the route is rechecked across a bounded
+> stability interval. Screenshot/capture RPCs refuse before readiness; eval is
+> limited to the readiness receipt inspection. Pre-readiness renderer loss and
+> every other unready result keep the live window hidden and show a
+> self-contained capture-failure splash. Because the capture provider and
 > capture-aware sidecars are not implemented, the six reachable rows remain
 > foundation-only with a terminal `ready: false` receipt; ordinary daemon data
 > is explicitly detected rather than accepted as fixture data.

@@ -117,6 +117,11 @@ export type DeterministicParityReadiness = {
       fixtureSource: string | null;
       fixtureRevision: string | null;
     };
+    captureSettledWitness: {
+      settled: boolean;
+      routePath: string | null;
+      revision: string | null;
+    };
     routeInvariant: { selector: string; present: boolean };
     networkPolicy: string | null;
     networkOrigin: string | null;
