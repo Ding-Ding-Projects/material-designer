@@ -30,12 +30,25 @@ describe('native folder dialog helpers', () => {
     expect(script).toContain("$owner.StartPosition = 'CenterScreen';");
   });
 
-  it('passes the owner form into the Windows folder picker', () => {
+  it('uses the full Explorer-style Windows folder browser', () => {
     const script = buildWindowsFolderDialogCommand().args[3] ?? '';
 
-    expect(script).toContain('$dialog = New-Object System.Windows.Forms.FolderBrowserDialog;');
-    expect(script).toContain('$dialog.ShowNewFolderButton = $true;');
+    expect(script).toContain('$dialog = New-Object System.Windows.Forms.OpenFileDialog;');
+    expect(script).not.toContain('FolderBrowserDialog');
+    expect(script).toContain('$dialog.AutoUpgradeEnabled = $true;');
+    expect(script).toContain('$dialog.CheckFileExists = $false;');
+    expect(script).toContain('$dialog.CheckPathExists = $true;');
+    expect(script).toContain('$dialog.ValidateNames = $false;');
+    expect(script).toContain("$dialog.InitialDirectory = [Environment]::GetFolderPath('UserProfile');");
+    expect(script).toContain('$dialog.add_FileOk({');
+    expect(script).toContain('[IO.Directory]::Exists($raw)');
+    expect(script).toContain('[IO.Path]::GetFileName($raw)');
+    expect(script).toContain('[StringComparison]::OrdinalIgnoreCase');
+    expect(script).toContain('$eventArgs.Cancel = $true;');
     expect(script).toContain('$dialog.ShowDialog($owner)');
+    expect(script).toContain('[IO.Path]::GetDirectoryName($raw)');
+    expect(script).toContain('[IO.Path]::GetFullPath($parent)');
+    expect(script).toContain('$dialog.Dispose();');
     expect(script).toContain('$owner.Dispose();');
   });
 

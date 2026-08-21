@@ -17,7 +17,7 @@ import {
 } from "@open-design/sidecar";
 import { applyOsLocaleSwitch, createSplashWindow, setSplashStage } from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { app, dialog } from "electron";
 
@@ -124,6 +124,54 @@ const SQUIRREL_STARTUP_EVENTS = new Set<SquirrelStartupEvent>([
   "--squirrel-obsolete",
 ]);
 
+const SQUIRREL_SHORTCUT_SCRIPT = [
+  "$ErrorActionPreference = 'Stop'",
+  "$shell = New-Object -ComObject WScript.Shell",
+  "$programs = [Environment]::GetFolderPath('Programs')",
+  "$desktop = [Environment]::GetFolderPath('Desktop')",
+  "$startMenuShortcut = Join-Path $programs 'Material Designer.lnk'",
+  "$desktopShortcut = Join-Path $desktop 'Material Designer.lnk'",
+  "$wrongStartMenuShortcut = Join-Path $programs 'GitHub, Inc.\\Electron.lnk'",
+  "$wrongDesktopShortcut = Join-Path $desktop 'Electron.lnk'",
+  "if ($env:OD_SQUIRREL_EVENT -eq '--squirrel-uninstall') {",
+  "  Remove-Item -LiteralPath $startMenuShortcut, $desktopShortcut, $wrongStartMenuShortcut, $wrongDesktopShortcut -Force -ErrorAction SilentlyContinue",
+  "} else {",
+  "  foreach ($path in @($startMenuShortcut, $desktopShortcut)) {",
+  "    $shortcut = $shell.CreateShortcut($path)",
+  "    $shortcut.TargetPath = $env:OD_SQUIRREL_ROOT_LAUNCHER",
+  "    $shortcut.WorkingDirectory = $env:OD_SQUIRREL_WORKING_DIRECTORY",
+  "    $shortcut.IconLocation = $env:OD_SQUIRREL_ICON_LOCATION",
+  "    $shortcut.Description = 'Material Designer'",
+  "    $shortcut.Save()",
+  "  }",
+  "  Remove-Item -LiteralPath $wrongStartMenuShortcut, $wrongDesktopShortcut -Force -ErrorAction SilentlyContinue",
+  "}",
+].join("; ");
+
+export function reconcileSquirrelShortcuts(event: SquirrelStartupEvent): boolean {
+  if (event === "--squirrel-obsolete") return true;
+  const executableName = basename(process.execPath);
+  const versionDirectory = dirname(process.execPath);
+  const rootLauncher = join(versionDirectory, "..", executableName);
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-Sta", "-Command", SQUIRREL_SHORTCUT_SCRIPT],
+    {
+      env: {
+        ...process.env,
+        OD_SQUIRREL_EVENT: event,
+        OD_SQUIRREL_ICON_LOCATION: `${process.execPath},0`,
+        OD_SQUIRREL_ROOT_LAUNCHER: rootLauncher,
+        OD_SQUIRREL_WORKING_DIRECTORY: versionDirectory,
+      },
+      stdio: "ignore",
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  return result.status === 0 && result.error == null;
+}
+
 /**
  * Squirrel.Windows starts the packaged executable with a lifecycle switch
  * before it starts the normal application. Handle those switches before
@@ -136,44 +184,14 @@ export function handleSquirrelStartupEvent(): boolean {
   );
   if (event == null) return false;
 
-  if (event === "--squirrel-obsolete") {
-    app.exit(0);
-    return true;
-  }
-
-  const updateExe = join(dirname(process.execPath), "..", "Update.exe");
-  const executableName = basename(process.execPath);
-  const updateArguments = event === "--squirrel-uninstall"
-    ? ["--removeShortcut", executableName]
-    : ["--createShortcut", executableName];
-  let quitRequested = false;
-  const quit = () => {
-    if (quitRequested) return;
-    quitRequested = true;
-    // Electron's quit path is asynchronous and can wait on unrelated imported
-    // handlers. Squirrel needs this lifecycle process to exit immediately so
-    // Setup.exe can finish its transaction.
-    app.exit(0);
-  };
-
-  try {
-    const updater = spawn(updateExe, updateArguments, {
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
-    });
-    // Squirrel waits for this lifecycle process to exit before Setup.exe can
-    // finish. The helper owns the shortcut operation, so keep it detached and
-    // let the packaged process quit immediately instead of waiting for the
-    // helper's close event.
-    updater.once("error", () => undefined);
-    updater.unref();
-    quit();
-  } catch {
-    // A missing or unusable Update.exe must not fall through into normal app
-    // startup with a Squirrel lifecycle switch still on the command line.
-    quit();
-  }
+  // The executable deliberately keeps electron-builder's combined
+  // signAndEditExecutable switch disabled under the permanent no-signing
+  // policy, so its version resource remains Electron/GitHub, Inc. Delegating
+  // shortcut creation to Update.exe therefore creates Electron.lnk in a
+  // GitHub, Inc. folder. Create the product-owned shortcuts explicitly and
+  // fail the lifecycle event if that cannot be completed.
+  const shortcutsReady = reconcileSquirrelShortcuts(event);
+  app.exit(shortcutsReady ? 0 : 1);
   return true;
 }
 

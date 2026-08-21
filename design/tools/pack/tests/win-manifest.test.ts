@@ -131,15 +131,13 @@ describe("writePackagedConfigFile", () => {
     }
   });
 
-  it("includes namespaceBaseRoot for non-portable builds", async () => {
+  it("omits the packaging-host namespaceBaseRoot from installed builds", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-config-"));
     try {
       const filePath = join(root, "config", "open-design-config.json");
       await writePackagedConfigFile(filePath, makeConfig({ portable: false }), "1.2.3");
       const written = JSON.parse(await readFile(filePath, "utf8"));
-      expect(written.namespaceBaseRoot).toBe(
-        "C:/users/test/AppData/Local/open-design/runtime/win/namespaces",
-      );
+      expect(written).not.toHaveProperty("namespaceBaseRoot");
     } finally {
       await rm(root, { force: true, recursive: true });
     }

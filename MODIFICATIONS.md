@@ -4451,6 +4451,35 @@ requires an explicit file/context choice before attaching narrower evidence.
 
 - `apps/web/tests/components/ProjectView.tabs-navigation.test.tsx`
 
+### 2026-08-20 — Keep installed Squirrel runtime paths user-local
+
+**Reason:** the non-portable manifest embedded the hosted build machine's
+absolute runtime namespace root into the shipped Squirrel package. A normal
+user launch then tried to create data, logs, sessions and update state under a
+CI checkout path and could exit before opening a window. Installed packages now
+omit that machine path and fall back to Electron's per-user data directory;
+tools-pack lifecycle launches retain their explicit isolated override through
+their separate launch configuration.
+
+**Changed files:**
+
+- `tools/pack/src/win/manifest.ts`
+- `tools/pack/tests/win-manifest.test.ts`
+
+### 2026-08-20 — Full Explorer folder browser on Windows
+
+**Reason:** the daemon fallback used WinForms `FolderBrowserDialog`, which is a
+tree-only legacy surface with no address bar, breadcrumb navigation, search or
+full folder contents. It now uses the Explorer-style common dialog with exact
+folder-only validation: only an existing directory or the current directory's
+private sentinel is accepted, and selecting a real file cannot silently return
+its parent.
+
+**Changed files:**
+
+- `apps/daemon/src/native-folder-dialog.ts`
+- `apps/daemon/tests/native-folder-dialog.test.ts`
+
 <!--
 Format for entries, newest first:
 
