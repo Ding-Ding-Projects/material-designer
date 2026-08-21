@@ -234,6 +234,7 @@ export function FileViewerMenuSearch({
     searchInputRef.current?.focus();
     const onPointerDown = (event: PointerEvent) => {
       if (surfaceRef.current?.contains(event.target as Node)) return;
+      if (triggerRef?.current?.contains(event.target as Node)) return;
       if (isOwnedRegexBuilder(event.target, menuId)) return;
       closeMenu();
     };

@@ -87,6 +87,7 @@ describe('FileViewer menu search contract', () => {
     expect(menuPrimitiveSource).toContain("event.key === 'Escape'");
     expect(menuPrimitiveSource).toContain('setQuery(\'\')');
     expect(menuPrimitiveSource).toContain('return () => focusMenuTrigger(triggerRef)');
+    expect(menuPrimitiveSource).toContain('triggerRef?.current?.contains(event.target as Node)');
     expect(menuPrimitiveSource).toContain('kind === \'mixed\'');
     expect(menuPrimitiveSource).toContain('focusableElements(surfaceRef.current, menuId)');
     expect(menuPrimitiveSource).toContain("t('homeHero.noResults'");
