@@ -229,7 +229,13 @@ async function main(): Promise<void> {
       join(app.getPath("userData"), "design-parity", deterministicParityRoute.id),
     );
   }
-  const config = await readPackagedConfig();
+  const loadedConfig = await readPackagedConfig();
+  const config = deterministicParityRoute == null
+    ? loadedConfig
+    : {
+        ...loadedConfig,
+        namespaceBaseRoot: join(app.getPath("userData"), "namespaces"),
+      };
   if (headlessRequest.headless) {
     const { runPackagedHeadless } = await import("./headless-runtime.js");
     await runPackagedHeadless(config, headlessRequest);
@@ -268,7 +274,10 @@ async function main(): Promise<void> {
   const argvStamp = readProcessStamp(process.argv.slice(1), OPEN_DESIGN_SIDECAR_CONTRACT);
   const namespace = argvStamp?.namespace ?? config.namespace;
   const namespaceConfig = namespace === config.namespace ? config : { ...config, namespace };
-  const initialPaths = resolvePackagedNamespacePaths(namespaceConfig, namespace, process.env);
+  const namespaceEnvironment = deterministicParityRoute == null
+    ? process.env
+    : { ...process.env, OD_DATA_DIR: undefined };
+  const initialPaths = resolvePackagedNamespacePaths(namespaceConfig, namespace, namespaceEnvironment);
   if (!await waitForLauncherAfterQuit(afterQuit, initialPaths)) {
     app.exit(1);
     return;

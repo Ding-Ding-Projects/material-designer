@@ -23,6 +23,9 @@ describe("deterministic capture boundary source contracts", () => {
     expect(runtime).toContain("deterministicCaptureReadinessError()");
     expect(runtime).toContain('window.webContents.on("will-redirect"');
     expect(runtime).toContain("CAPTURE_SETTLED_STABILITY_INTERVAL_MS");
+    expect(runtime.indexOf("capture.renderer_process_gone")).toBeLessThan(
+      runtime.indexOf("if (gone) return;"),
+    );
   });
 
   it("gives capture its own launcher namespace and skips ordinary handoff", () => {
@@ -31,6 +34,8 @@ describe("deterministic capture boundary source contracts", () => {
       "utf8",
     );
     expect(packaged).toContain('app.setPath(\n      "userData"');
+    expect(packaged).toContain('namespaceBaseRoot: join(app.getPath("userData"), "namespaces")');
+    expect(packaged).toContain("OD_DATA_DIR: undefined");
     expect(packaged).toContain("deterministicParityRoute == null");
     expect(packaged).toContain("claimPackagedSingleInstanceLock");
     expect(packaged).toContain("inspectExistingDesktopForLauncher");

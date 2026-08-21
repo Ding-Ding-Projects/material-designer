@@ -2822,12 +2822,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       reason: details.reason,
       url: gone ? null : window.webContents.getURL(),
     });
-    // During app quit / teardown the window is already destroyed; skip all
-    // crash-loop bookkeeping, telemetry, and recovery (mirrors the getURL guard
-    // above — a clean teardown must not look like a crash).
-    if (gone) return;
     if (
       captureRoute != null
+      && !stopped
       && !revealed
       && deterministicCaptureReadiness == null
     ) {
@@ -2840,6 +2837,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       });
       return;
     }
+    // During app quit / teardown the window is already destroyed; skip all
+    // crash-loop bookkeeping, telemetry, and recovery (mirrors the getURL guard
+    // above — a clean teardown must not look like a crash).
+    if (gone) return;
     // A clean-exit is intentional teardown; only a crash / OOM / OS kill feeds
     // the crash-loop breaker and triggers recovery.
     const isCrash = details.reason !== "clean-exit";
