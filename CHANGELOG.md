@@ -28,6 +28,43 @@ version section when a release carries them.
 
 ### Changed
 
+- **The Studio parity route now drives the real project workspace components.**
+  The desktop foundation owns the frozen `material-designer://studio` launch
+  address and translates it to the canonical
+  `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+  renderer handoff. The renderer accepts only that canonical path, exact tuple
+  query, and desktop-owned tuple witness. It resolves to the ordinary
+  project/conversation/file route and keeps the initial file choice explicit;
+  later file refreshes and tab/project changes do not auto-select an unrelated
+  file, while explicit switches among the three known files keep the provider
+  bound to the same project and conversation. Capture mode synthesizes only
+  declared fixture `/api/` responses, leaves same-origin bundled assets on the
+  normal fetch path, validates loopback API origins separately, and rejects
+  external network requests. The fixture config contains no local credentials,
+  account state, customization, or telemetry consent; analytics and direct
+  error buffers are disabled for the capture lifetime. The live-artifact iframe
+  uses a direct-loadable fixture transport, and refresh returns the exact
+  `{artifact, refresh}` consumer envelope. Unknown paths return 404 and wrong
+  methods return 405. This is source-level route readiness only; hosted
+  typecheck, built rendering, and installed capture evidence remain pending.
+  Source commit: [`59c5faca5`](https://github.com/Ding-Ding-Projects/material-designer/commit/59c5faca5a7cbea9f31f650a1f0694ba9bee9d97).
+
+  Studio parity route 而家真係行 production workspace components，唔係另起一
+  個假畫面。Desktop foundation 收住 frozen `material-designer://studio` launch
+  address，再轉做 canonical `od://app/.../files/orders-dashboard.html`
+  renderer handoff。Renderer 只接受 exact path、tuple query 同 desktop-owned
+  tuple witness。佢會落返普通 project/conversation/file route，初次指定 file
+  先會揀；之後 refresh、換 tab、換 project 都唔會亂自動揀第二個 file，明確
+  換三個已知 files 就繼續綁住同一個 project 同 conversation。Capture mode
+  只 synthesize 宣布過嘅 fixture `/api/`，bundled asset 照走原本 fetch，
+  loopback API 分開 validation，外部 network 一律拒絕。Fixture config 冇
+  local credential、account state、customization 或 telemetry consent，analytics
+  同 direct error buffer 會喺 capture lifetime 停低；live-artifact iframe 有
+  direct-loadable transport，refresh 會返 exact `{artifact, refresh}` envelope。
+  Unknown path 返 404，錯 method 返 405。今次只係 source-level route readiness；
+  hosted typecheck、built rendering 同 installed capture evidence 仍然 pending。
+  Source commit 係 [`59c5faca5`](https://github.com/Ding-Ding-Projects/material-designer/commit/59c5faca5a7cbea9f31f650a1f0694ba9bee9d97)。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
