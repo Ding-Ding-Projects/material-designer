@@ -102,6 +102,21 @@ version section when a release carries them.
   user-data namespace，唔會畀普通 existing-window 或 single-instance handoff
   搶走。依然只係 source-level evidence。
 
+- **Capture failure receipts survive renderer teardown and configured data roots
+  cannot collapse the isolation boundary.** Commit
+  [`82cbc4e9`](https://github.com/Ding-Ding-Projects/material-designer/commit/82cbc4e936ec0788f8c3f2c15c0b957d6eb1ab15)
+  records `capture.renderer_process_gone` even when the renderer's web contents
+  are already destroyed, while intentional shutdown stays quiet. Capture also
+  overrides configured namespace and `OD_DATA_DIR` roots with its own
+  user-data namespace. The ordinary launcher path is unchanged; this remains
+  source-level evidence only.
+
+  Capture failure receipt 而家就算 renderer web contents 已經收埋都保得住，
+  configured data root 亦唔可以打穿 isolation boundary。`82cbc4e9` 會記低
+  `capture.renderer_process_gone`，正常 shutdown 就保持安靜；capture 仲會
+  override namespace 同 `OD_DATA_DIR`，用自己嘅 user-data namespace。普通
+  launcher 路徑冇改，依然只係 source-level evidence。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
