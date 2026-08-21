@@ -742,13 +742,15 @@ function addExportManifest(zip, entries, omissions: ExportOmission[], projectLab
     err.code = 'BAD_REQUEST';
     throw err;
   }
+  const projectRedaction = redactExportText(projectLabel || 'project', 'project');
+  omissions.push(...projectRedaction.omissions);
   const files = entries
     .map((entry) => ({ path: entry.relPath, bytes: entry.size, sha256: entry.sha256 }))
     .sort((left, right) => compareExportPaths(left.path, right.path));
   const body = JSON.stringify({
     schema: 'open-design.project-export-manifest.v1',
     policyVersion: 1,
-    project: projectLabel || 'project',
+    project: projectRedaction.value,
     sourceCommit: process.env.OD_SOURCE_COMMIT || process.env.GIT_COMMIT || null,
     buildId: process.env.OD_BUILD_ID || process.env.BUILD_ID || null,
     encoding: 'utf-8 for text entries; binary bytes preserved',
@@ -794,9 +796,10 @@ function projectFileMap(entries) {
 function buildDesignManifest(entries, projectLabel) {
   const { files, htmlFiles, screenHtmlFiles, cssFiles, jsFiles, assetFiles, entryFile } = projectFileMap(entries);
   const screenFiles = screenHtmlFiles.length > 0 ? screenHtmlFiles : [entryFile];
+  const safeProjectLabel = redactExportText(projectLabel || 'OpenDesign project', 'project').value;
   return JSON.stringify({
     schema: 'open-design.design-manifest.v1',
-    title: projectLabel || 'OpenDesign project',
+    title: safeProjectLabel,
     entryFile,
     sourceFiles: {
       all: files,
@@ -883,9 +886,10 @@ function buildDesignHandoff(entries, projectLabel) {
     htmlFiles.length > 0 ||
     cssFiles.length > 0 ||
     files.some((name) => /(screens?|pages?|components?|app|src)\//i.test(name));
+  const safeProjectLabel = redactExportText(projectLabel || 'OpenDesign project', 'project').value;
   const list = (items) => items.length > 0 ? items.map((name) => `- ${markdownInlineCode(markdownListItem(name))}`).join('\n') : '- None detected';
 
-  return `${markdownHeading(`${projectLabel || 'OpenDesign project'} implementation handoff`)}
+  return `${markdownHeading(`${safeProjectLabel} implementation handoff`)}
 
 This archive is the source of truth for turning the design into production code. Start from ${markdownInlineCode(entryFile)}, then preserve the visual system, responsive behavior, and interactions found in the exported files.
 
