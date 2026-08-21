@@ -59,6 +59,10 @@ version section when a release carries them.
   filter's own search field, while Home and End remain caret keys. This remains
   source-only evidence.
 
+  Follow-up commit [`bca9fbc89`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca9fbc89fb3090eaa7bdaf15e5a85ad2244e00f)
+  keeps disabled design-system actions out of roving keyboard focus while a
+  handoff is busy. This remains source-only evidence.
+
 - **Library pagination and uploads now tell the truth at the wire boundary.**
   Commit
   [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)

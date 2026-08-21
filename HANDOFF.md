@@ -34,6 +34,11 @@
 > tightens the viewport edge calculation and prevents Arrow navigation from
 > bubbling twice out of the filter's own search field; Home and End remain
 > available to the search caret. This follow-up is also source-only.
+
+> Follow-up commit [`bca9fbc89`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca9fbc89fb3090eaa7bdaf15e5a85ad2244e00f)
+> removes disabled design-system actions from the menu's roving-focus list, so
+> keyboard traversal cannot park on an unavailable action while a handoff is
+> busy. Source-only evidence remains unchanged.
 > **Library route follow-up — source-only, 2026-08-21.** Commit
 > [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
 > closes the remaining source boundaries from the prior Library repair pass.
