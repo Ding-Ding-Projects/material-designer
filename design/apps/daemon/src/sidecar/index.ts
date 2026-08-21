@@ -15,27 +15,33 @@ async function main(): Promise<void> {
 
   // Capture runs are local evidence sessions. Install the egress boundary
   // before startup work or route registration can issue a provider request.
+  const captureMode = process.env.OD_DESIGN_PARITY_CAPTURE === "1";
   installCaptureNetworkPolicy();
 
   const runtime = bootstrapSidecarRuntime(stamp, process.env, {
     app: APP_KEYS.DAEMON,
     contract: OPEN_DESIGN_SIDECAR_CONTRACT,
   });
-  const desktopHandoff = await prepareLegacyPayloadDesktopHandoff({
-    namespace: runtime.namespace,
-    runtimeRoot: runtime.base,
-    source: runtime.source,
-  }).catch((error: unknown) => {
-    console.warn("[packaged desktop handoff] prepare failed", error);
-    return null;
-  });
+  // Capture never detects, prepares, or launches the legacy payload desktop.
+  // That child can consult external agent/provider state and would make the
+  // supposedly local fixture route non-deterministic.
+  const desktopHandoff = captureMode
+    ? null
+    : await prepareLegacyPayloadDesktopHandoff({
+        namespace: runtime.namespace,
+        runtimeRoot: runtime.base,
+        source: runtime.source,
+      }).catch((error: unknown) => {
+        console.warn("[packaged desktop handoff] prepare failed", error);
+        return null;
+      });
   const server = await startDaemonSidecar(runtime);
 
   process.stdout.write(`${JSON.stringify(await server.status(), null, 2)}\n`);
-  if (desktopHandoff?.kind === "none") {
+  if (!captureMode && desktopHandoff?.kind === "none") {
     console.info("[packaged desktop handoff] skipped", { reason: desktopHandoff.reason });
   }
-  if (desktopHandoff?.kind === "prepared") {
+  if (!captureMode && desktopHandoff?.kind === "prepared") {
     void executeLegacyPayloadDesktopHandoff(desktopHandoff)
       .then((result) => {
         console.info("[packaged desktop handoff]", result);

@@ -42,15 +42,22 @@ with the project's standards.
       accepted `od://` route through main-frame navigation and redirects,
       blocks external navigation, uses a forced capture root with a unique
       per-launch run lease and no ordinary existing-window/single-instance
-      handoff, and records a terminal readiness receipt against the canonical URL/search,
+      handoff, embeds the run id in sidecar namespaces/stamps/IPC paths, and
+      records a terminal readiness receipt against the canonical URL/search,
       renderer-owned route witness, capture-settled witness, route component
       invariant and fixture/network proof. Readiness evaluations are
       main-process time-bounded and recheck the route across a bounded stability
-      interval. Screenshot/capture RPCs refuse before readiness, eval is limited
-      to receipt inspection, and unready capture keeps live content hidden behind
-      a self-contained failure splash. Capture sidecars clear telemetry,
-      provider, update, and proxy egress inputs; both sidecars enforce
-      loopback-only fetches and direct Vela requests refuse external traffic.
+      interval. Screenshot/click/eval/capture-page/export RPCs refuse before a
+      ready+receipt-installed+revealed predicate, and renderer operations have
+      bounded timeouts that invalidate the receipt. The prelude exposes a
+      non-writable run id without mutating ordinary localStorage. Capture
+      sidecars clear telemetry, provider, update, and proxy egress inputs;
+      both sidecars force manual redirects and credential-free loopback final
+      origins. A hand-written capture process/handler/env inventory serves
+      fixture status and refuses agent, run/chat, Vela, connector, MCP,
+      terminal and browser-session launches; native menus, diagnostics,
+      invite/path/PDF/update side effects, legacy handoff and standalone Next
+      are disabled.
       Readiness remains false until that audit is proven, and renderer loss,
       failed main-frame load or an HTTP error document invalidates a previously
       ready receipt and returns to the failure splash. A retired run keeps its

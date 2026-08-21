@@ -106,6 +106,7 @@ export {
   deterministicParityChromiumLocale,
   createDeterministicParityCaptureRunId,
   deterministicParityCaptureRunNamespace,
+  deterministicParityCaptureSidecarNamespace,
   deterministicParityRouteIds,
   deterministicParitySessionPartition,
   isDeterministicParityCaptureReady,
@@ -1038,17 +1039,22 @@ export async function runDesktopMain(
   });
   console.info("[open-design desktop] desktop IPC server listening", { ipc: runtime.ipc });
 
-  const menuController = installDesktopMenu(runtime, {
-    ...options,
-    onOpenUpdateDialog: () => {
-      if (desktop == null) {
-        pendingUpdateDialogRequest = true;
-        return;
-      }
-      desktop.openUpdateDialog({ source: "mac-app-menu" });
-    },
-    updater,
-  });
+  const menuController: DesktopMenuController = captureRoute == null
+    ? installDesktopMenu(runtime, {
+        ...options,
+        onOpenUpdateDialog: () => {
+          if (desktop == null) {
+            pendingUpdateDialogRequest = true;
+            return;
+          }
+          desktop.openUpdateDialog({ source: "mac-app-menu" });
+        },
+        updater,
+      })
+    : {
+        dispose: () => undefined,
+        setUpdateLabels: () => undefined,
+      };
   disposeMenu = menuController.dispose;
 
   console.info("[open-design desktop] creating desktop runtime");
@@ -1113,22 +1119,26 @@ export async function runDesktopMain(
   // GPU / utility child-process crashes: the window keeps running but degraded
   // (a GPU-process crash is a common cause of a window that then goes blank or
   // vanishes), and the child can't report itself. `clean-exit` is normal teardown.
-  attachDesktopChildProcessCrashReporter(
-    app,
-    (event, properties) => reportDesktopObservabilityEvent(discoverDaemonBaseUrl, event, properties),
-  );
-  removeDiagnosticsIpc = registerDesktopDiagnosticsIpc({
-    discoverDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
-  });
-  // Route opendesign:// team-invite deeplinks to the daemon (desktop wake-up).
-  registerInviteDeeplink({
-    resolveDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
-    focus: () => focusDesktopForDeeplink(desktop),
-    onCompleted: (outcome) => {
-      console.info("[open-design desktop] invite deeplink continuation completed", outcome);
-    },
-    protocolClientPath: options.inviteProtocolClientPath,
-  });
+  if (captureRoute == null) {
+    attachDesktopChildProcessCrashReporter(
+      app,
+      (event, properties) => reportDesktopObservabilityEvent(discoverDaemonBaseUrl, event, properties),
+    );
+    removeDiagnosticsIpc = registerDesktopDiagnosticsIpc({
+      discoverDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
+    });
+    // Route opendesign:// team-invite deeplinks to the daemon (desktop wake-up).
+    registerInviteDeeplink({
+      resolveDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
+      focus: () => focusDesktopForDeeplink(desktop),
+      onCompleted: (outcome) => {
+        console.info("[open-design desktop] invite deeplink continuation completed", outcome);
+      },
+      protocolClientPath: options.inviteProtocolClientPath,
+    });
+  } else {
+    removeDiagnosticsIpc = () => undefined;
+  }
   const discoverUpdaterAppConfigBaseUrl = resolveDaemonBaseUrl(runtime, options);
   if (captureRoute == null) {
     updateScheduler = createDesktopUpdaterScheduler(updater, {
@@ -1148,7 +1158,7 @@ export async function runDesktopMain(
     if (updater.shouldAutoCheck()) updateScheduler.start();
   }
 
-  attachParentMonitor(shutdown);
+  if (captureRoute == null) attachParentMonitor(shutdown);
 
   app.on("before-quit", (event) => {
     if (shuttingDown) return;

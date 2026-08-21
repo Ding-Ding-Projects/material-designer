@@ -1,5 +1,5 @@
-import { open, mkdir, writeFile } from "node:fs/promises";
-import { join, relative, resolve, sep } from "node:path";
+import { lstat, open, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join, parse, relative, resolve, sep } from "node:path";
 
 import {
   validateDeterministicParityCaptureRunId,
@@ -29,6 +29,32 @@ function isWithinRoot(root: string, candidate: string): boolean {
     && !relativePath.startsWith("../");
 }
 
+/**
+ * Capture roots are security-sensitive evidence namespaces. Normalize paths
+ * lexically, then inspect every existing component before creating anything;
+ * realpath() is deliberately not used because resolving first would hide a
+ * symlink/reparse component from the check.
+ */
+async function assertNoReparseComponents(path: string): Promise<void> {
+  const absolute = resolve(path);
+  const parsed = parse(absolute);
+  const root = parsed.root;
+  const remainder = absolute.slice(root.length).split(/[\\/]+/).filter(Boolean);
+  let current = root;
+  for (const component of remainder) {
+    current = join(current, component);
+    try {
+      const stats = await lstat(current);
+      if (stats.isSymbolicLink()) {
+        throw new Error(`capture.run_reparse_component: refusing symlink component ${current}`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+      throw error;
+    }
+  }
+}
+
 export async function acquireDeterministicParityCaptureRun(input: {
   captureRoot: string;
   routeId: string;
@@ -42,7 +68,17 @@ export async function acquireDeterministicParityCaptureRun(input: {
   if (!isWithinRoot(captureRoot, root)) {
     throw new Error("capture.run_namespace_invalid: run namespace escaped the capture root");
   }
-  await mkdir(captureRoot, { recursive: true });
+  await assertNoReparseComponents(captureRoot);
+  await assertNoReparseComponents(dirname(captureRoot));
+  await mkdir(dirname(captureRoot), { recursive: true });
+  await assertNoReparseComponents(dirname(captureRoot));
+  try {
+    await mkdir(captureRoot);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  await assertNoReparseComponents(captureRoot);
+  await assertNoReparseComponents(root);
   try {
     await mkdir(root);
   } catch (error) {
@@ -51,6 +87,7 @@ export async function acquireDeterministicParityCaptureRun(input: {
     }
     throw error;
   }
+  await assertNoReparseComponents(root);
 
   const lockPath = join(root, "active.lock");
   const lock = await open(lockPath, "wx");
@@ -62,25 +99,34 @@ export async function acquireDeterministicParityCaptureRun(input: {
     startedAt: now(),
   }), "utf8");
   let retired = false;
+  let retireTask: Promise<void> | null = null;
   return {
     lockPath,
     root,
     routeId: input.routeId,
     runId,
     async retire() {
+      if (retireTask != null) return await retireTask;
       if (retired) return;
       retired = true;
-      await lock.close();
-      await writeFile(
-        join(root, "retired.json"),
-        JSON.stringify({
-          policy: CAPTURE_RUN_RETENTION_POLICY,
-          retiredAt: now(),
-          routeId: input.routeId,
-          runId,
-        }),
-        { encoding: "utf8", flag: "wx" },
-      );
+      retireTask = (async () => {
+        await lock.close();
+        try {
+          await writeFile(
+            join(root, "retired.json"),
+            JSON.stringify({
+              policy: CAPTURE_RUN_RETENTION_POLICY,
+              retiredAt: now(),
+              routeId: input.routeId,
+              runId,
+            }),
+            { encoding: "utf8", flag: "wx" },
+          );
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        }
+      })();
+      return await retireTask;
     },
   };
 }

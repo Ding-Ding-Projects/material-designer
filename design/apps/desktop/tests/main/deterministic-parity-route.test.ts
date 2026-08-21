@@ -10,6 +10,7 @@ import {
   DETERMINISTIC_PARITY_NOT_READY_REASON,
   createDeterministicParityCaptureRunId,
   deterministicParityCaptureRunNamespace,
+  deterministicParityCaptureSidecarNamespace,
   deterministicParitySessionPartition,
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
@@ -204,6 +205,10 @@ describe("deterministic material-designer capture routes", () => {
     );
     expect(deterministicParitySessionPartition(resolved, firstRun)).not.toBe(
       deterministicParitySessionPartition(resolved, secondRun),
+    );
+    expect(deterministicParityCaptureSidecarNamespace(resolved, firstRun)).toContain(firstRun);
+    expect(deterministicParityCaptureSidecarNamespace(resolved, firstRun)).not.toBe(
+      deterministicParityCaptureSidecarNamespace(resolved, secondRun),
     );
     expect(() => deterministicParityCaptureRunNamespace("run-not-valid")).toThrow(
       /^capture\.run_id_invalid:/,

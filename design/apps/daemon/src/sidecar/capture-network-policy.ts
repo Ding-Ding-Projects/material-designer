@@ -10,7 +10,11 @@
 function isLoopbackHttpUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+    ) return false;
     return parsed.hostname === "localhost"
       || parsed.hostname === "127.0.0.1"
       || parsed.hostname === "::1"
@@ -34,6 +38,14 @@ export function installCaptureNetworkPolicy(
     if (!isLoopbackHttpUrl(rawUrl)) {
       throw new Error("capture.network_blocked_external");
     }
-    return await originalFetch(input, init);
+    const request = new Request(input, { ...init, redirect: "manual" });
+    const response = await originalFetch(request);
+    if ((response.status >= 300 && response.status < 400) || response.headers.has("location")) {
+      throw new Error("capture.network_redirect_blocked");
+    }
+    if (!response.url || !isLoopbackHttpUrl(response.url)) {
+      throw new Error("capture.network_final_origin_blocked");
+    }
+    return response;
   }) as typeof fetch;
 }

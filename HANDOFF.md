@@ -15,26 +15,32 @@
 > validated per-launch run identity and exclusive lease, bypasses ordinary
 > existing-window or single-instance handoff, blocks requests outside the exact
 > current loopback sidecar origin, and returns an idempotent protocol disposer.
-> The route id remains tuple identity only; the exact run is retired with a
-> retention marker while evidence bytes remain available for review, and a
-> same-run collision is rejected.
+> The route id remains tuple identity only; the exact run id is embedded in
+> sidecar namespaces, stamps, IPC paths and the renderer partition. Lexical
+> no-follow checks inspect existing components, retirement is serialized and
+> idempotent, and a same-run collision is rejected.
 > Readiness now compares the canonical URL and full query, actual
 > theme/viewport/device scale/fonts, a renderer-owned route witness,
 > route-specific component/ARIA invariant, renderer-owned capture-settled
 > witness and fixture/network isolation proofs. Every readiness evaluation is
 > main-process time-bounded, and the route is rechecked across a bounded
-> stability interval. Screenshot/capture RPCs refuse before readiness; eval is
-> limited to the readiness receipt inspection. Pre-readiness renderer loss and
-> every other unready result keep the live window hidden and show a
+> stability interval. Screenshot, click, eval, capture-page and export RPCs
+> share a ready+receipt-installed+revealed predicate and bounded renderer
+> timeouts; pre-readiness operations refuse and a timeout invalidates the
+> receipt. The prelude exposes a non-writable run id and does not mutate
+> ordinary localStorage. Pre-readiness renderer loss and every other unready result keep the live window hidden and show a
 > self-contained capture-failure splash. Because the capture provider/fixture
 > is not implemented and the network boundary has no hosted runtime proof, the
 > six reachable rows remain foundation-only with a terminal `ready: false`
 > receipt; ordinary daemon data
 > is explicitly detected rather than accepted as fixture data. Capture startup
 > clears startup telemetry, provider, update and proxy egress inputs; both
-> sidecars install a loopback-only fetch boundary and the Vela direct-request
-> routes refuse external capture traffic. Readiness remains false until that
-> network audit is proven. A ready capture also invalidates its receipt and
+> sidecars force manual redirects and reject credentialed/non-loopback final
+> origins. A hand-written handler/process/env inventory serves fixture agent
+> and provider status, refuses detection/run/chat/Vela/connector/MCP/terminal
+> launches, and disables native menus, diagnostics, invite/path/PDF/update
+> side effects, legacy handoff and standalone Next. Readiness remains false
+> until that network audit is proven. A ready capture also invalidates its receipt and
 > returns to the failure splash on renderer loss, failed main-frame load or an
 > HTTP error document.
 >

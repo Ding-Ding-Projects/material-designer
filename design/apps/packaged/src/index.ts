@@ -21,6 +21,7 @@ import {
   createDeterministicParityCaptureRunId,
   createSplashWindow,
   deterministicParityChromiumLocale,
+  deterministicParityCaptureSidecarNamespace,
   DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT,
   deterministicParitySessionPartition,
   parseDeterministicParityRouteArgv,
@@ -30,7 +31,7 @@ import {
 import { readProcessStamp } from "@open-design/platform";
 import { spawn, spawnSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
-import { app, dialog } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 
 import { readPackagedConfig } from "./config.js";
 import {
@@ -69,7 +70,8 @@ import { resolvePackagedNamespacePaths } from "./paths.js";
 import { createObsoleteInstalledOuterRetirement } from "./obsolete-installed-outer.js";
 import { findPackagedDeeplinkArg, launchPackagedPayloadDesktop } from "./payload-desktop-launch.js";
 import { packagedEntryUrl, registerOdProtocol } from "./protocol.js";
-import { startPackagedSidecars } from "./sidecars.js";
+import { startPackagedSidecars, type PackagedSidecarHandle } from "./sidecars.js";
+import type { PackagedDesktopIdentityHandle } from "./identity.js";
 import { reportStartupFailure, resolveStartupDistinctId } from "./startup-telemetry.js";
 import { resolvePackagedWindowTitle } from "./window-title.js";
 import { syncWindowsUninstallDisplayVersion } from "./windows-lifecycle.js";
@@ -77,6 +79,36 @@ import { syncWindowsUninstallDisplayVersion } from "./windows-lifecycle.js";
 let packagedLogger: PackagedDesktopLogger | null = null;
 const secondInstanceHandoff = createPackagedSecondInstanceHandoff();
 let activeCaptureRunLease: DeterministicParityCaptureRunLease | null = null;
+let activeCaptureMode = false;
+let activeCaptureSidecars: PackagedSidecarHandle | null = null;
+let activeCaptureIdentity: PackagedDesktopIdentityHandle | null = null;
+let activeCaptureProtocolDisposer: (() => void) | null = null;
+let activeCaptureSplash: BrowserWindow | null = null;
+let captureCleanupTask: Promise<void> | null = null;
+
+/** Idempotent outer cleanup for both normal shutdown and startup failures. */
+async function cleanupCaptureResources(): Promise<void> {
+  if (captureCleanupTask != null) return await captureCleanupTask;
+  captureCleanupTask = (async () => {
+    activeCaptureProtocolDisposer?.();
+    activeCaptureProtocolDisposer = null;
+    if (activeCaptureSidecars != null) {
+      await activeCaptureSidecars.close().catch(() => undefined);
+    }
+    activeCaptureSidecars = null;
+    if (activeCaptureIdentity != null) {
+      await activeCaptureIdentity.close().catch(() => undefined);
+    }
+    activeCaptureIdentity = null;
+    if (activeCaptureSplash != null && !activeCaptureSplash.isDestroyed()) {
+      activeCaptureSplash.close();
+    }
+    activeCaptureSplash = null;
+    await activeCaptureRunLease?.retire().catch(() => undefined);
+    activeCaptureRunLease = null;
+  })();
+  return await captureCleanupTask;
+}
 
 // Telemetry context for the fatal-exit path. Populated once config + launcher
 // runtime are resolved so the `main().catch` below can report a startup failure
@@ -227,6 +259,7 @@ async function main(): Promise<void> {
     headlessRequest.headless
       ? null
       : parseDeterministicParityRouteArgv(process.argv, process.env);
+  activeCaptureMode = deterministicParityRoute != null;
   const captureRunId = deterministicParityRoute == null
     ? null
     : createDeterministicParityCaptureRunId();
@@ -245,7 +278,7 @@ async function main(): Promise<void> {
       activeCaptureRunLease.root,
     );
   }
-  const loadedConfig = await readPackagedConfig();
+  const loadedConfig = await readPackagedConfig({ captureMode: deterministicParityRoute != null });
   const config = deterministicParityRoute == null
     ? loadedConfig
     : {
@@ -288,7 +321,9 @@ async function main(): Promise<void> {
   const handoffResume = parseLauncherHandoffResumeArgs(process.argv.slice(1));
   const delegated = parseLauncherDelegatedArgs(process.argv.slice(1));
   const argvStamp = readProcessStamp(process.argv.slice(1), OPEN_DESIGN_SIDECAR_CONTRACT);
-  const namespace = argvStamp?.namespace ?? config.namespace;
+  const namespace = deterministicParityRoute != null
+    ? deterministicParityCaptureSidecarNamespace(deterministicParityRoute, captureRunId!)
+    : argvStamp?.namespace ?? config.namespace;
   const namespaceConfig = namespace === config.namespace ? config : { ...config, namespace };
   const namespaceEnvironment = deterministicParityRoute == null
     ? process.env
@@ -317,6 +352,9 @@ async function main(): Promise<void> {
     delegated,
     resume: handoffResume,
   });
+  if (deterministicParityRoute != null && launcherRuntime.source === "payload" && !launcherRuntime.payloadDesktopProcess) {
+    throw new Error("capture.payload_delegation_blocked: capture must not delegate to a second payload desktop");
+  }
   if (await launchPackagedPayloadDesktop(launcherRuntime, stamp)) {
     app.exit(0);
     return;
@@ -364,15 +402,17 @@ async function main(): Promise<void> {
   });
   packagedLogger = createPackagedDesktopLogger(paths);
   attachPackagedDesktopProcessLogging({ logger: packagedLogger, paths, stamp });
-  const retireObsoleteInstalledOuter = createObsoleteInstalledOuterRetirement({
-    currentExecutablePath: process.execPath,
-    currentPid: process.pid,
-    installedLaunchPath: launcherRuntime.installedLaunchPath,
-    logger: packagedLogger,
-    payloadDesktopProcess: launcherRuntime.payloadDesktopProcess,
-    payloadExecutablePath: launcherRuntime.desktopExecutablePath,
-    platform: process.platform,
-  });
+  const retireObsoleteInstalledOuter = deterministicParityRoute != null
+    ? async () => undefined
+    : createObsoleteInstalledOuterRetirement({
+        currentExecutablePath: process.execPath,
+        currentPid: process.pid,
+        installedLaunchPath: launcherRuntime.installedLaunchPath,
+        logger: packagedLogger,
+        payloadDesktopProcess: launcherRuntime.payloadDesktopProcess,
+        payloadExecutablePath: launcherRuntime.desktopExecutablePath,
+        platform: process.platform,
+      });
   applyPackagedElectronPathOverrides(paths);
   if (deterministicParityRoute == null) applyPackagedUpdaterEnv(activeConfig.updateMetadataUrl);
   if (deterministicParityRoute == null) {
@@ -383,6 +423,7 @@ async function main(): Promise<void> {
     }
   }
   const identity = await writePackagedDesktopIdentity({ paths, stamp });
+  if (deterministicParityRoute != null) activeCaptureIdentity = identity;
   await app.whenReady();
 
   // Show the brand splash IMMEDIATELY, before we await the daemon/web sidecars
@@ -393,6 +434,7 @@ async function main(): Promise<void> {
   // creation timestamp so the runtime's minimum-hold timer counts from here —
   // BEFORE the sidecar boot below — rather than re-adding the delay afterwards.
   const splash = createSplashWindow();
+  if (deterministicParityRoute != null) activeCaptureSplash = splash.window;
 
   applyLaunchEnv(paths.runtimeRoot, stamp);
 
@@ -425,6 +467,7 @@ async function main(): Promise<void> {
     webStandaloneRoot: activeConfig.webStandaloneRoot,
     webOutputMode: activeConfig.webOutputMode,
     captureMode: deterministicParityRoute != null,
+    captureRunRoot: deterministicParityRoute == null ? null : activeCaptureRunLease?.root ?? null,
     // Surface each sidecar boot phase on the splash status line so a slow
     // cold start (Defender scans, native module loads) never reads as a hang.
     // Both the "spawning" and "ready" edges are mapped so the step counter
@@ -441,7 +484,8 @@ async function main(): Promise<void> {
       setSplashStage(splash.window, stage);
     },
   });
-  if (sidecars.daemon.url) {
+  if (deterministicParityRoute != null) activeCaptureSidecars = sidecars;
+  if (sidecars.daemon.url && deterministicParityRoute == null) {
     void claimPackagedDownloadAttribution({
       attribution: downloadAttribution,
       daemonUrl: sidecars.daemon.url,
@@ -466,16 +510,21 @@ async function main(): Promise<void> {
       requireLoopbackOrigin: deterministicParityRoute != null,
     },
   );
+  if (deterministicParityRoute != null) activeCaptureProtocolDisposer = disposeOdProtocol;
 
   const { runDesktopMain } = await import("@open-design/desktop/main");
   await runDesktopMain(runtime, {
     captureRoute: deterministicParityRoute,
     captureNetworkOrigin: () => sidecars.currentWebUrl(),
-    captureNetworkIsolationReady: false,
+    captureNetworkIsolationReady: sidecars.captureNetworkIsolationReady,
     captureRunId,
     splashWindow: splash.window,
     splashStartedAt: splash.startedAt,
     async beforeShutdown() {
+      if (deterministicParityRoute != null) {
+        await cleanupCaptureResources();
+        return;
+      }
       try {
         await retireObsoleteInstalledOuter();
       } finally {
@@ -550,7 +599,7 @@ async function main(): Promise<void> {
 
 async function handleMainError(error: unknown): Promise<void> {
   const isPathAccess = error instanceof PackagedPathAccessError;
-  if (isPathAccess) {
+  if (isPathAccess && !activeCaptureMode) {
     try {
       dialog.showErrorBox(error.title, error.message);
     } catch {
@@ -559,7 +608,9 @@ async function handleMainError(error: unknown): Promise<void> {
   }
   packagedLogger?.error("packaged runtime failed", { error });
   console.error("packaged runtime failed", error);
-  if (activeCaptureRunLease != null) {
+  if (activeCaptureMode) {
+    await cleanupCaptureResources();
+  } else if (activeCaptureRunLease != null) {
     try {
       await activeCaptureRunLease.retire();
     } catch (retireError) {

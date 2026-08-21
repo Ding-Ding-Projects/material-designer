@@ -406,6 +406,19 @@ export function deterministicParityCaptureRunNamespace(runId: string): string {
   return `${DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT}/${validateDeterministicParityCaptureRunId(runId)}`;
 }
 
+/**
+ * Capture-only sidecar namespace. The run id is part of the namespace itself,
+ * not merely a user-data directory suffix, so IPC paths, process stamps,
+ * identity records, and endpoint retirement are unambiguously lease-scoped.
+ */
+export function deterministicParityCaptureSidecarNamespace(
+  route: Pick<DeterministicParityRoute, "id">,
+  runId: string,
+): string {
+  const validatedRunId = validateDeterministicParityCaptureRunId(runId);
+  return `capture-${route.id}-${validatedRunId}`;
+}
+
 export function deterministicParitySessionPartition(
   route: DeterministicParityRoute,
   runId: string,

@@ -19,6 +19,14 @@ export const PACKAGED_WEB_OUTPUT_MODE_OVERRIDE_ENV = "OD_PACKAGED_ALLOW_WEB_OUTP
 export const PACKAGED_WEB_STANDALONE_ROOT_ENV = "OD_WEB_STANDALONE_ROOT";
 export const PACKAGED_WEB_OUTPUT_MODE_ENV = "OD_WEB_OUTPUT_MODE";
 
+const CAPTURE_CONFIG_OVERRIDE_ENV_KEYS = [
+  PACKAGED_CONFIG_PATH_ENV,
+  PACKAGED_NAMESPACE_BASE_ROOT_ENV,
+  PACKAGED_WEB_OUTPUT_MODE_OVERRIDE_ENV,
+  PACKAGED_WEB_STANDALONE_ROOT_ENV,
+  PACKAGED_WEB_OUTPUT_MODE_ENV,
+] as const;
+
 export type PackagedWebOutputMode = "server" | "standalone";
 export type PackagedAmrProfile = "prod" | "test" | "feature-test" | "local";
 export type PackagedVelaWebUrls = Partial<Record<PackagedAmrProfile, string>>;
@@ -95,8 +103,21 @@ function resolveDefaultConfigPath(): string {
   return join(process.resourcesPath, "open-design-config.json");
 }
 
-async function readRawPackagedConfig(): Promise<RawPackagedConfig> {
-  const explicit = process.env[PACKAGED_CONFIG_PATH_ENV];
+function rejectCaptureConfigOverrides(env: NodeJS.ProcessEnv): void {
+  const present = CAPTURE_CONFIG_OVERRIDE_ENV_KEYS.filter((key) => {
+    const value = env[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+  if (present.length > 0) {
+    throw new Error(
+      `capture.config_override_blocked: packaged capture accepts only the bundled reviewed config; rejected ${present.join(", ")}`,
+    );
+  }
+}
+
+async function readRawPackagedConfig(captureMode = false): Promise<RawPackagedConfig> {
+  if (captureMode) rejectCaptureConfigOverrides(process.env);
+  const explicit = captureMode ? undefined : process.env[PACKAGED_CONFIG_PATH_ENV];
   if (explicit != null && explicit.length > 0) {
     const config = await readJsonIfExists(resolve(explicit));
     if (config == null) throw new Error(`packaged config not found at ${explicit}`);
@@ -183,8 +204,9 @@ async function resolvePackagedRelativeEntry(value: string | undefined): Promise<
   return entry;
 }
 
-export async function readPackagedConfig(): Promise<PackagedConfig> {
-  const raw = await readRawPackagedConfig();
+export async function readPackagedConfig(options: { captureMode?: boolean } = {}): Promise<PackagedConfig> {
+  const captureMode = options.captureMode === true;
+  const raw = await readRawPackagedConfig(captureMode);
   const namespace = normalizeNamespace(
     process.env[PACKAGED_NAMESPACE_ENV] ?? raw.namespace ?? SIDECAR_DEFAULTS.namespace,
   );
@@ -192,23 +214,30 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
   const namespaceBaseRoot = resolvePackagedNamespaceBaseRoot(
     raw.namespaceBaseRoot,
     electronApp.getPath("userData"),
+    captureMode ? {} : process.env,
   );
-  const resourceRoot = resolveOptionalPath(raw.resourceRoot) ?? join(process.resourcesPath, "open-design");
+  const resourceRoot = captureMode
+    ? join(process.resourcesPath, "open-design")
+    : resolveOptionalPath(raw.resourceRoot) ?? join(process.resourcesPath, "open-design");
   const relativeNodeCommand =
     raw.nodeCommandRelative == null || raw.nodeCommandRelative.length === 0
       ? join("open-design", "bin", "node")
       : raw.nodeCommandRelative;
   const nodeCommandCandidate = join(process.resourcesPath, relativeNodeCommand);
   const nodeCommand = (await pathExists(nodeCommandCandidate)) ? nodeCommandCandidate : null;
-  const allowWebOutputModeOverride = isTruthyEnv(process.env[PACKAGED_WEB_OUTPUT_MODE_OVERRIDE_ENV]);
+  const allowWebOutputModeOverride = !captureMode && isTruthyEnv(process.env[PACKAGED_WEB_OUTPUT_MODE_OVERRIDE_ENV]);
   const webOutputMode = resolvePackagedWebOutputMode(
-    allowWebOutputModeOverride
+    captureMode
+      ? "server"
+      : allowWebOutputModeOverride
       ? process.env[PACKAGED_WEB_OUTPUT_MODE_ENV] ?? raw.webOutputMode
       : raw.webOutputMode,
   );
   const webStandaloneRoot = resolvePackagedWebStandaloneRoot(
     webOutputMode,
-    allowWebOutputModeOverride
+    captureMode
+      ? undefined
+      : allowWebOutputModeOverride
       ? process.env[PACKAGED_WEB_STANDALONE_ROOT_ENV] ?? raw.webStandaloneRoot
       : raw.webStandaloneRoot,
   );

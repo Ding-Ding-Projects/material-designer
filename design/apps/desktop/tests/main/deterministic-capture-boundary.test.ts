@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runInNewContext } from "node:vm";
+
+import { deterministicCapturePrelude } from "../../src/main/deterministic-capture-prelude.js";
+import { resolveDeterministicParityRoute } from "../../src/main/deterministic-parity-route.js";
 
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const source = (relativePath: string): string =>
@@ -26,6 +30,15 @@ describe("deterministic capture boundary source contracts", () => {
     expect(runtime.indexOf("capture.renderer_process_gone")).toBeLessThan(
       runtime.indexOf("if (gone) return;"),
     );
+    expect(runtime).toContain("captureReceiptInstalled");
+    expect(runtime).toContain("CAPTURE_RENDERER_OPERATION_TIMEOUT_MS");
+    expect(runtime).toContain("runRendererOperation(\"capture_page\"");
+    expect(runtime).toContain("runRendererOperation(\"screenshot\"");
+    expect(runtime).toContain("runRendererOperation(\"eval\"");
+    expect(runtime).toContain("runRendererOperation(\"click\"");
+    expect(runtime).toContain("runRendererOperation(\"export_artifact\"");
+    expect(runtime).toContain("runRendererOperation(\"export_pdf\"");
+    expect(runtime).toContain("runRendererOperation(\"render_slides\"");
   });
 
   it("gives capture its own launcher namespace and skips ordinary handoff", () => {
@@ -54,12 +67,16 @@ describe("deterministic capture boundary source contracts", () => {
     expect(packaged).toContain("startupTelemetryContext = null");
     expect(packaged).toContain("if (deterministicParityRoute == null) applyPackagedUpdaterEnv");
     expect(packaged).toContain("captureMode: deterministicParityRoute != null");
+    expect(packaged).toContain("captureNetworkIsolationReady: sidecars.captureNetworkIsolationReady");
     expect(sidecars).toContain("captureSafeChildSourceEnv");
     expect(sidecars).toContain("options.captureMode ? {} : resolveSystemProxyEnv()");
     expect(sidecars).toContain("options.captureMode ? {} : options.desktopHandoffEnv");
     expect(sidecars).toContain("options.captureMode || options.posthogKey");
     expect(sidecars).toContain("options.captureMode || options.telemetryRelayUrl");
     expect(runtime).toContain('reasons.push("capture.network_audit_unresolved")');
+    expect(runtime).toContain("capture.network_origin_changed");
+    expect(runtime).toContain("capture.network_blocked_after_ready");
+    expect(runtime).toContain("capture.network_origin_unverified");
   });
 
   it("does not forward migration state, update feeds, or uninstall writes into capture", () => {
@@ -78,6 +95,8 @@ describe("deterministic capture boundary source contracts", () => {
     expect(packaged).toContain("syncWindowsUninstallDisplayVersion");
     expect(desktop).toContain("OD_UPDATE_ENABLED: \"0\"");
     expect(desktop).toContain("if (captureRoute == null) {");
+    expect(sidecars).toContain("resolveDaemonStatusTimeoutMs(process.env, process.platform, options.captureMode === true)");
+    expect(sidecars).toContain("OD_DESIGN_PARITY_CAPTURE");
   });
 
   it("invalidates a ready capture on renderer and HTTP load failure", () => {
@@ -92,23 +111,23 @@ describe("deterministic capture boundary source contracts", () => {
 
   it("arms both packaged sidecars with the capture-only egress policy", () => {
     const daemon = readFileSync(
-      join(desktopRoot, "../../daemon/src/sidecar/index.ts"),
+      join(desktopRoot, "../daemon/src/sidecar/index.ts"),
       "utf8",
     );
     const web = readFileSync(
-      join(desktopRoot, "../../web/sidecar/index.ts"),
+      join(desktopRoot, "../web/sidecar/index.ts"),
       "utf8",
     );
     const vela = readFileSync(
-      join(desktopRoot, "../../daemon/src/routes/vela.ts"),
+      join(desktopRoot, "../daemon/src/routes/vela.ts"),
       "utf8",
     );
     const daemonPolicy = readFileSync(
-      join(desktopRoot, "../../daemon/src/sidecar/capture-network-policy.ts"),
+      join(desktopRoot, "../daemon/src/sidecar/capture-network-policy.ts"),
       "utf8",
     );
     const webPolicy = readFileSync(
-      join(desktopRoot, "../../web/sidecar/capture-network-policy.ts"),
+      join(desktopRoot, "../web/sidecar/capture-network-policy.ts"),
       "utf8",
     );
     expect(daemon).toContain("installCaptureNetworkPolicy");
@@ -131,6 +150,87 @@ describe("deterministic capture boundary source contracts", () => {
     expect(captureRun).toContain("CAPTURE_RUN_RETENTION_POLICY");
     expect(captureRun).toContain('join(root, "retired.json")');
     expect(captureRun).not.toContain("rm(");
+    expect(captureRun).toContain("lstat");
+    expect(captureRun).toContain("retireTask");
+  });
+
+  it("does not mutate ordinary user storage from the capture prelude", () => {
+    const runtime = source("src/main/runtime.ts");
+    const preludeSource = source("src/main/deterministic-capture-prelude.ts");
+    expect(runtime).toContain("__MATERIAL_DESIGNER_CAPTURE_RUN_ID__");
+    expect(runtime).toContain("deterministicCapturePrelude(route, runId)");
+    expect(preludeSource).toContain("Object.defineProperty(globalThis, \"__MATERIAL_DESIGNER_CAPTURE_RUN_ID__\"");
+    for (const key of [
+      "open-design:config",
+      "open-design:language-mode",
+      "open-design:locale",
+      "open-design:locale-source",
+      "od.settings.lastSection",
+    ]) {
+      expect(preludeSource).not.toContain(`localStorage.setItem(\"${key}\"`);
+    }
+  });
+
+  it("preserves ordinary storage bytes and installs an exact non-writable run id", () => {
+    const route = resolveDeterministicParityRoute(
+      "material-designer://app/?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v2&time=2026-08-02T21%3A22%3A17.000Z&motion=frozen&random=3003&fonts=bundled-roboto-v1&network=disabled",
+      { captureEnabled: true },
+    );
+    const runId = "run-0123456789abcdef0123456789abcdef";
+    const ordinaryBytes = Buffer.from('{"onboardingCompleted":false,"theme":"dark"}', "utf8");
+    const storage = {
+      bytes: Buffer.from(ordinaryBytes),
+      setItem: () => { throw new Error("ordinary storage mutation"); },
+      getItem: () => ordinaryBytes.toString("utf8"),
+    };
+    const root = {
+      dataset: {} as Record<string, string>,
+      appendChild: () => undefined,
+    };
+    const document = {
+      documentElement: root,
+      createElement: () => ({ dataset: {} as Record<string, string>, textContent: "" }),
+      addEventListener: () => undefined,
+    };
+    const context = { document, localStorage: storage } as Record<string, unknown>;
+    runInNewContext(deterministicCapturePrelude(route, runId), context);
+    expect(storage.bytes.equals(ordinaryBytes)).toBe(true);
+    expect(context.__MATERIAL_DESIGNER_CAPTURE_RUN_ID__).toBe(runId);
+    expect(Object.getOwnPropertyDescriptor(context, "__MATERIAL_DESIGNER_CAPTURE_RUN_ID__"))
+      .toMatchObject({ configurable: false, writable: false, value: runId });
+  });
+
+  it("keeps capture handlers, processes, and env roots hand-written and explicit", () => {
+    const boundary = readFileSync(
+      join(desktopRoot, "../daemon/src/capture-boundary.ts"),
+      "utf8",
+    );
+    for (const required of [
+      "CAPTURE_HANDLER_INVENTORY",
+      "CAPTURE_PROCESS_INVENTORY",
+      "CAPTURE_ENV_INVENTORY",
+      "capture.external_runtime_blocked",
+      "capture-fixture-agent",
+    ]) expect(boundary).toContain(required);
+    expect(boundary).toContain("createCaptureBoundaryMiddleware");
+  });
+
+  it("refuses capture payload delegation and native side effects", () => {
+    const packaged = readFileSync(
+      join(desktopRoot, "../packaged/src/index.ts"),
+      "utf8",
+    );
+    const payload = readFileSync(
+      join(desktopRoot, "../packaged/src/payload-desktop-launch.ts"),
+      "utf8",
+    );
+    const index = source("src/main/index.ts");
+    const runtime = source("src/main/runtime.ts");
+    expect(packaged).toContain("capture.payload_delegation_blocked");
+    expect(payload).toContain("isParityCaptureArg");
+    expect(index).toContain("captureRoute == null");
+    expect(runtime).toContain("capture.side_effect_blocked");
+    expect(runtime).toContain("webviewTag: captureRoute == null");
   });
 
   it("publishes a renderer-owned settled witness after startup decisions", () => {

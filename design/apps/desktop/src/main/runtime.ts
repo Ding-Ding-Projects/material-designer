@@ -58,11 +58,11 @@ import {
   DETERMINISTIC_PARITY_NOT_READY_REASON,
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
-  isDeterministicParityReadinessInspectionExpression,
   deterministicParitySessionPartition,
   type DeterministicParityRoute,
   type DeterministicParityReadiness,
 } from "./deterministic-parity-route.js";
+import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -321,6 +321,7 @@ const WEB_MOUNT_REVEAL_TIMEOUT_MS = 15000;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const CAPTURE_READINESS_EVALUATION_TIMEOUT_MS = 2_500;
+const CAPTURE_RENDERER_OPERATION_TIMEOUT_MS = 10_000;
 const CAPTURE_SETTLED_STABILITY_INTERVAL_MS = 250;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
@@ -331,6 +332,26 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
   return Promise.race([promise, timeout]).finally(() => {
     if (timer != null) clearTimeout(timer);
   });
+}
+
+function validatedCaptureLoopbackOrigin(value: string | null): string | null {
+  if (value == null || value.length === 0) return null;
+  try {
+    const parsed = new URL(value);
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+      || parsed.hostname !== "127.0.0.1"
+        && parsed.hostname !== "localhost"
+        && parsed.hostname !== "::1"
+        && parsed.hostname !== "[::1]"
+      || parsed.port.length === 0
+    ) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
 }
 const summarizeExpression = (expression: string): Record<string, unknown> => ({
   expressionLength: expression.length,
@@ -522,61 +543,15 @@ export type DesktopRuntimeOptions = {
 const DESKTOP_IMPORT_TOKEN_HEADER = "x-od-desktop-import-token";
 const DESKTOP_IMPORT_TOKEN_TTL_MS = 60_000;
 
-function deterministicCapturePrelude(route: DeterministicParityRoute): string {
-  const tuple = JSON.stringify(route.tuple);
-  const settingsSection = route.tuple.screen === "settings" ? "appearance" : "execution";
-  return `(() => {
-    const tuple = Object.freeze(${tuple});
-    const epoch = Date.parse(tuple.time);
-    const NativeDate = Date;
-    class FrozenDate extends NativeDate {
-      constructor(...args) { super(...(args.length ? args : [epoch])); }
-      static now() { return epoch; }
-    }
-    Object.defineProperty(globalThis, "Date", { value: FrozenDate, configurable: false, writable: false });
-    let randomState = tuple.randomSeed >>> 0;
-    const seededRandom = () => {
-      randomState = (randomState * 1664525 + 1013904223) >>> 0;
-      return randomState / 4294967296;
-    };
-    Object.defineProperty(Math, "random", { value: seededRandom, configurable: false, writable: false });
-    Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_TUPLE__", {
-      value: tuple,
-      configurable: false,
-      writable: false,
-    });
-    const root = document.documentElement;
-    const mark = () => {
-      if (!document.documentElement) return;
-      document.documentElement.dataset.odParityRouteId = ${JSON.stringify(route.id)};
-      const style = document.createElement("style");
-      style.id = "material-designer-deterministic-motion";
-      style.textContent = "*,*::before,*::after{animation-delay:-99999s!important;animation-duration:.001s!important;animation-iteration-count:1!important;animation-fill-mode:both!important;transition-duration:0s!important;scroll-behavior:auto!important}";
-      document.documentElement.appendChild(style);
-    };
-    if (root) mark(); else document.addEventListener("DOMContentLoaded", mark, { once: true });
-    try {
-      const current = JSON.parse(localStorage.getItem("open-design:config") || "{}");
-      localStorage.setItem("open-design:config", JSON.stringify({ ...current, onboardingCompleted: true, theme: tuple.theme }));
-      localStorage.setItem("open-design:language-mode", tuple.locale === "bilingual" ? "bilingual" : "single");
-      localStorage.setItem("open-design:locale", "en");
-      localStorage.setItem("open-design:locale-source", "manual");
-      localStorage.setItem("od.settings.lastSection", ${JSON.stringify(settingsSection)});
-    } catch (_) {
-      // The route remains valid without storage; the readiness record still
-      // reports the requested tuple and the actual web-router path.
-    }
-  })();`;
-}
-
 async function installDeterministicCapturePrelude(
   window: BrowserWindow,
   route: DeterministicParityRoute,
+  runId: string,
 ): Promise<() => void> {
   window.webContents.debugger.attach("1.3");
   try {
     await window.webContents.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
-      source: deterministicCapturePrelude(route),
+      source: deterministicCapturePrelude(route, runId),
     });
   } catch (error) {
     try {
@@ -741,6 +716,8 @@ async function measureDeterministicCaptureReadiness(
   actual.networkPolicy = networkIsolationReady ? route.tuple.network : null;
   actual.networkOrigin = networkOrigin;
   actual.networkIsolationReady = networkIsolationReady;
+  const validatedNetworkOrigin = validatedCaptureLoopbackOrigin(networkOrigin);
+  if (validatedNetworkOrigin == null) reasons.push("capture.network_origin_unverified");
   if (!networkIsolationReady) {
     reasons.push("capture.network_isolation_unresolved");
     reasons.push("capture.network_audit_unresolved");
@@ -2343,11 +2320,31 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const captureNetworkOrigin = options.captureNetworkOrigin ?? (() => null);
   const captureNetworkIsolationReady = options.captureNetworkIsolationReady === true;
   let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
+  let captureReceiptInstalled = false;
+  let invalidateCaptureReadinessRef: ((reason: string) => void) | null = null;
+  let captureNetworkOriginObserved: string | null = null;
   let captureFailureSurfacePending = false;
   let presentCaptureFailureSurface: (() => void) | null = null;
+  let revealed = false;
+  let revealing = false;
   const deterministicCaptureReadinessError = (): string | null => {
-    if (captureRoute == null || isDeterministicParityCaptureReady(deterministicCaptureReadiness)) return null;
-    return DETERMINISTIC_PARITY_NOT_READY_REASON;
+    if (captureRoute == null) return null;
+    const currentOrigin = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
+    if (currentOrigin == null) {
+      if (deterministicCaptureReadiness?.ready === true) {
+        invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+      }
+      return "deterministic parity capture network origin is not verified";
+    }
+    if (captureNetworkOriginObserved != null && captureNetworkOriginObserved !== currentOrigin) {
+      invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+      return "deterministic parity capture network origin changed";
+    }
+    if (captureNetworkOriginObserved == null) captureNetworkOriginObserved = currentOrigin;
+    if (!isDeterministicParityCaptureReady(deterministicCaptureReadiness)
+      || !captureReceiptInstalled
+      || !revealed) return DETERMINISTIC_PARITY_NOT_READY_REASON;
+    return null;
   };
   applyDockIcon();
 
@@ -2396,6 +2393,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
+      if (captureRoute != null) {
+        return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
+      }
       // Defensive failsafe for non-production runtimes (test harnesses
       // that construct createDesktopRuntime without a secret). Round-5
       // production wiring in runDesktopMain ALWAYS passes the per-process
@@ -2448,6 +2448,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string }) => {
+      if (captureRoute != null) {
+        return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
+      }
       if (options.desktopAuthSecret == null) {
         return { ok: false, reason: "desktop auth secret not registered" };
       }
@@ -2485,6 +2488,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // exists. Main remains the single source of filesystem paths crossing into
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event) => {
+    if (captureRoute != null) {
+      return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
+    }
     if (options.desktopAuthSecret == null) {
       return { ok: false, reason: "desktop auth secret not registered" };
     }
@@ -2523,6 +2529,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // openPath(projectId) for projects whose resolvedDir came from that
   // trusted flow."
   ipcMain.handle("shell:open-path", async (_event, projectId: string) => {
+    if (captureRoute != null) return "capture.side_effect_blocked: opening a filesystem path is unavailable";
     // Round-7 (lefarcen P2): same packaged od:// → daemon URL pivot as
     // the dialog:pick-and-import handler above.
     const apiBaseUrl =
@@ -2575,8 +2582,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let rendererRecoveryAttempts = 0;
 
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
-  let revealed = false;
-  let revealing = false;
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   // The floating pet is a separate BrowserWindow on the default session. It
@@ -2616,7 +2621,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute, captureRunId!) } : {}),
       preload: preloadPath,
       sandbox: true,
-      webviewTag: true,
+      // The design-browser webview is a real network/profile surface. It is
+      // deliberately unavailable during deterministic capture; the capture
+      // renderer must remain a single nonpersistent guest with one policy.
+      webviewTag: captureRoute == null,
     },
     width: captureRoute?.tuple.viewport.width ?? 1280,
   });
@@ -2628,18 +2636,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     callback: (response: { cancel?: boolean }) => void,
   ): void => {
     let allowCurrentSidecar = false;
+    const configuredOrigin = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
     try {
       const parsed = new URL(details.url);
-      const configuredOrigin = captureNetworkOrigin();
       if (configuredOrigin != null) {
-        const allowed = new URL(configuredOrigin);
-        const loopback = allowed.hostname === "127.0.0.1"
-          || allowed.hostname === "localhost"
-          || allowed.hostname === "[::1]"
-          || allowed.hostname === "::1";
-        allowCurrentSidecar = loopback && parsed.origin === allowed.origin;
+        if (captureNetworkOriginObserved != null && captureNetworkOriginObserved !== configuredOrigin) {
+          invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+        }
+        captureNetworkOriginObserved ??= configuredOrigin;
+        allowCurrentSidecar = parsed.origin === configuredOrigin;
+      } else {
+        invalidateCaptureReadinessRef?.("capture.network_origin_unverified");
       }
     } catch {
+      invalidateCaptureReadinessRef?.("capture.network_request_url_invalid");
       allowCurrentSidecar = false;
     }
     if (allowCurrentSidecar) {
@@ -2647,6 +2657,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       return;
     }
     blockedCaptureNetworkRequests += 1;
+    if (deterministicCaptureReadiness?.ready === true) {
+      invalidateCaptureReadinessRef?.("capture.network_blocked_after_ready");
+    }
     callback({ cancel: true });
   };
   const createCaptureFailureReadiness = (reason: string): DeterministicParityReadiness => {
@@ -2700,7 +2713,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   };
   let detachCaptureDebugger: (() => void) | null = null;
   if (captureRoute) {
-    detachCaptureDebugger = await installDeterministicCapturePrelude(window, captureRoute);
+    detachCaptureDebugger = await installDeterministicCapturePrelude(window, captureRoute, captureRunId!);
     // The packaged renderer normally talks to its local web sidecar through
     // `od://`. In capture mode, deny every direct request except the exact
     // current loopback sidecar origin supplied by the packaged launcher. The
@@ -2977,6 +2990,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     return request;
   };
   window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
+    if (captureRoute != null) {
+      event.preventDefault();
+      return;
+    }
     const src = typeof params.src === "string" ? params.src : "";
     const partition = typeof params.partition === "string" ? params.partition : "";
     if (!isAllowedEmbeddedBrowserUrl(src) || partition !== DESIGN_BROWSER_PARTITION) {
@@ -2995,6 +3012,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // `loadURL("file:///etc/passwd")` after the first http(s) load and exfiltrate
   // its pixels through the host capture bridge.
   window.webContents.on("did-attach-webview", (_event, guestWebContents) => {
+    if (captureRoute != null) return;
     const blockDisallowed = (navEvent: Electron.Event, url: string): void => {
       if (!isAllowedEmbeddedBrowserUrl(url)) {
         navEvent.preventDefault();
@@ -3006,6 +3024,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("browser:clear-data", async (event, rawOptions: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) {
+      return { ok: false, reason: "capture.side_effect_blocked: browser profile clearing is unavailable" };
+    }
     const optionsRecord = rawOptions != null && typeof rawOptions === "object"
       ? rawOptions as { cookies?: unknown; storage?: unknown }
       : {};
@@ -3038,30 +3059,35 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:status", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.status() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:check", async (event, updaterOptions: unknown) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.checkForUpdates(checkOptionsFromHost(updaterOptions)) ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:clear-cache", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.clearCache() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:download", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.downloadUpdate() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:install", async (event, updaterOptions: unknown) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const blocked = await guardedUpdaterStatus(updaterOptions);
     if (blocked != null) {
       // Preflight denials travel only on the IPC response. The updater store
@@ -3076,6 +3102,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:prepare-quit:response", async (event, rawResponse: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: update quit preparation is unavailable" };
     const response = parseUpdateRendererSavePreparationResponse(rawResponse);
     if (response == null) return { ok: false, reason: "invalid renderer save preparation response" };
     const pending = pendingRendererSavePreparations.get(response.requestId);
@@ -3087,6 +3114,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:quit", async (event, updaterOptions: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: update quit is unavailable" };
     const blocked = await guardedUpdaterStatus(updaterOptions);
     if (blocked?.error != null) {
       return { details: blocked.error.details, ok: false, reason: blocked.error.code };
@@ -3111,6 +3139,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:set-menu-labels", async (event, rawLabels: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: native menu labels are unavailable" };
     const labels = parseDesktopUpdateMenuLabels(rawLabels);
     if (labels == null) return { ok: false, reason: "invalid updater menu labels" };
     options.onUpdateMenuLabels?.(labels);
@@ -3150,6 +3179,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   ipcMain.removeHandler('od:print-pdf');
   ipcMain.handle('od:print-pdf', async (_event, html: unknown, nonce: unknown, options: unknown): Promise<void> => {
+    if (captureRoute != null) {
+      throw new Error("capture.side_effect_blocked: PDF dialog/export is unavailable during parity capture");
+    }
     if (typeof html !== 'string') {
       throw new Error('Invalid print payload: expected HTML string');
     }
@@ -3178,13 +3210,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (event.sender !== window.webContents) {
       return { ok: false, reason: 'capture sender not allowed' };
     }
-    const readinessError = deterministicCaptureReadinessError();
-    if (readinessError != null) return { ok: false, reason: readinessError };
     try {
       const clip = parseCaptureClip(rawOptions);
-      const image = clip
-        ? await window.webContents.capturePage(clip)
-        : await window.webContents.capturePage();
+      const image = await runRendererOperation("capture_page", () =>
+        clip ? window.webContents.capturePage(clip) : window.webContents.capturePage(),
+      );
       const size = image.getSize();
       return { ok: true, dataUrl: image.toDataURL(), w: size.width, h: size.height };
     } catch (error) {
@@ -3365,6 +3395,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
         "capture.readiness_receipt_timeout",
       );
+      captureReceiptInstalled = true;
       return true;
     } catch (error) {
       console.error("[open-design desktop] deterministic parity readiness receipt installation failed", {
@@ -3377,6 +3408,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   const invalidateCaptureReadiness = (reason: string): void => {
     if (captureRoute == null || stopped) return;
+    captureReceiptInstalled = false;
     deterministicCaptureReadiness = createCaptureFailureReadiness(reason);
     captureFailureSurfacePending = true;
     revealing = false;
@@ -3384,6 +3416,33 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (!window.isDestroyed()) window.hide();
     presentCaptureFailureSurface?.();
     void installCaptureReadinessReceipt();
+  };
+  invalidateCaptureReadinessRef = invalidateCaptureReadiness;
+
+  const runRendererOperation = async <T>(
+    name: string,
+    operation: () => Promise<T>,
+  ): Promise<T> => {
+    const readinessError = deterministicCaptureReadinessError();
+    if (readinessError != null) throw new Error(readinessError);
+    try {
+      return captureRoute == null
+        ? await operation()
+        : await withTimeout(
+            operation(),
+            CAPTURE_RENDERER_OPERATION_TIMEOUT_MS,
+            `capture.${name}_timeout`,
+          );
+    } catch (error) {
+      if (
+        captureRoute != null
+        && error instanceof Error
+        && error.message === `capture.${name}_timeout`
+      ) {
+        invalidateCaptureReadiness(`capture.${name}_timeout`);
+      }
+      throw error;
+    }
   };
 
   const revealMainWindow = async (): Promise<void> => {
@@ -3467,6 +3526,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           captureNetworkOrigin(),
           captureNetworkIsolationReady,
         );
+        captureNetworkOriginObserved = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
       } catch (error) {
         console.error("[open-design desktop] deterministic parity readiness measurement failed", {
           error: error instanceof Error ? error.message : String(error),
@@ -3643,17 +3703,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   return {
     async click(input) {
       if (window.isDestroyed()) return { clicked: false, found: false };
-      if (deterministicCaptureReadinessError() != null) return { clicked: false, found: false };
       const selector = JSON.stringify(input.selector);
-      return await window.webContents.executeJavaScript(
-        `(() => {
-          const element = document.querySelector(${selector});
-          if (!element) return { found: false, clicked: false };
-          if (typeof element.click === "function") element.click();
-          return { found: true, clicked: true };
-        })()`,
-        true,
-      );
+      try {
+        return await runRendererOperation("click", () => window.webContents.executeJavaScript(
+          `(() => {
+            const element = document.querySelector(${selector});
+            if (!element) return { found: false, clicked: false };
+            if (typeof element.click === "function") element.click();
+            return { found: true, clicked: true };
+          })()`,
+          true,
+        ));
+      } catch {
+        return { clicked: false, found: false };
+      }
     },
     async close() {
       stopped = true;
@@ -3682,12 +3745,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     async eval(input) {
       if (window.isDestroyed()) return { error: "desktop window is destroyed", ok: false };
-      if (
-        deterministicCaptureReadinessError() != null
-        && !isDeterministicParityReadinessInspectionExpression(input.expression)
-      ) {
-        return { error: DETERMINISTIC_PARITY_NOT_READY_REASON, ok: false };
-      }
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return { error: readinessError, ok: false };
       const startedAt = Date.now();
       console.info("[open-design desktop] eval executeJavaScript start", {
         ...summarizeExpression(input.expression),
@@ -3695,7 +3754,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         webContentsUrl: window.webContents.getURL(),
       });
       try {
-        const value = await window.webContents.executeJavaScript(input.expression, true);
+        const value = await runRendererOperation("eval", () =>
+          window.webContents.executeJavaScript(input.expression, true),
+        );
         console.info("[open-design desktop] eval executeJavaScript success", {
           durationMs: Date.now() - startedAt,
           statusUrl: resolveDesktopStatusUrl(currentUrl, pendingUrl),
@@ -3714,10 +3775,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
     exportArtifact(input) {
-      return exportArtifactFromHtml(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("export_artifact", () => exportArtifactFromHtml(input));
     },
     exportPdf(input) {
-      return exportPdfFromHtml(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("export_pdf", () => exportPdfFromHtml(input));
     },
     openUpdateDialog(request) {
       if (window.isDestroyed()) return;
@@ -3730,14 +3795,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       window.focus();
     },
     renderSlides(input) {
-      return renderDeckSlides(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("render_slides", () => renderDeckSlides(input));
     },
     async screenshot(input) {
       if (window.isDestroyed()) throw new Error("desktop window is destroyed");
-      const readinessError = deterministicCaptureReadinessError();
-      if (readinessError != null) throw new Error(readinessError);
       const outputPath = normalizeScreenshotPath(input.path);
-      const image = await window.webContents.capturePage();
+      const image = await runRendererOperation("screenshot", () => window.webContents.capturePage());
       await mkdir(dirname(outputPath), { recursive: true });
       await writeFile(outputPath, image.toPNG());
       return { path: outputPath };
@@ -3763,9 +3828,16 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       ensureWindowVisible(window);
     },
     status() {
+      const captureOperational = captureRoute == null
+        || (
+          deterministicCaptureReadiness?.ready === true
+          && captureReceiptInstalled
+          && revealed
+          && deterministicCaptureReadinessError() == null
+        );
       return {
         pid: process.pid,
-        state: window.isDestroyed() || (captureRoute != null && deterministicCaptureReadiness?.ready === false)
+        state: window.isDestroyed() || !captureOperational
           ? "unknown"
           : "running",
         title: window.isDestroyed() ? null : window.getTitle(),

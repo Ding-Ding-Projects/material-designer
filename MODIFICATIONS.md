@@ -43,18 +43,21 @@ document. Capture uses an isolated session, allows only the exact accepted
 `od://` route through both main-frame navigation events, rejects external
 navigation, validates the exact loopback sidecar origin, blocks redirects, and
 returns a stable refusal from screenshot/capture RPCs until readiness is true.
-It also keeps eval available only for the minimal readiness receipt inspection
-while an unready capture is visible. Readiness evaluations have bounded
+All capture operations share one readiness/receipt/revealed predicate, and
+renderer operations have bounded timeouts that invalidate the receipt. Readiness evaluations have bounded
 main-process timeouts, require a renderer-owned capture-settled witness after
 daemon/config/onboarding/cloud-identity decisions, recheck the route across a
 stability interval, and keep live content hidden behind a self-contained
 capture-failure splash when they fail. Capture startup uses a separate
 user-data namespace and bypasses ordinary existing-window/single-instance
 handoff. Each launch receives a validated unique run identity, an exact
-exclusive lease, and an evidence-retention retirement marker; the route id
-remains separate from storage identity. Capture sidecars clear telemetry,
-provider, update, and proxy egress environment, and readiness remains false
-until that audit is explicitly proven. The terminal readiness receipt comes from the canonical URL/search,
+exclusive lease, and an evidence-retention retirement marker; the run id is
+also embedded in the sidecar namespace, stamps, IPC paths, and session
+partition. Lexical containment checks lstat every existing component and
+retirement is serialized and idempotent. Capture sidecars clear telemetry,
+provider, update, and proxy egress environment, force manual redirects and
+credential-free loopback final origins, and readiness remains false until that
+audit is explicitly proven. The terminal readiness receipt comes from the canonical URL/search,
 renderer-owned route witness, real component invariant, fixture source and
 network proof. The renderer adds only witnesses from its actual router state;
 it does not receive replacement DOM or a second screen implementation. Capture
@@ -64,15 +67,21 @@ sidecars exist.
 **Changed files:**
 
 - `apps/desktop/src/main/deterministic-parity-route.ts`
+- `apps/desktop/src/main/deterministic-capture-prelude.ts`
 - `apps/desktop/src/main/index.ts`
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/deterministic-capture-boundary.test.ts`
 - `apps/desktop/tests/main/deterministic-parity-route.test.ts`
 - `apps/daemon/src/routes/vela.ts`
+- `apps/daemon/src/capture-boundary.ts`
+- `apps/daemon/src/server.ts`
+- `apps/daemon/tests/capture-boundary.test.ts`
+- `apps/daemon/tests/capture-network-policy.test.ts`
 - `apps/daemon/src/sidecar/capture-network-policy.ts`
 - `apps/daemon/src/sidecar/index.ts`
 - `apps/packaged/tests/protocol.test.ts`
 - `apps/packaged/src/capture-run.ts`
+- `apps/packaged/src/config.ts`
 - `apps/packaged/src/index.ts`
 - `apps/packaged/src/protocol.ts`
 - `apps/packaged/src/sidecars.ts`
