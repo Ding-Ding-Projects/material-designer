@@ -10,8 +10,12 @@ design-system source folders because they all share `POST /api/dialog/open-folde
 The browser provides the standard address and breadcrumb navigation, back,
 forward and up history, sidebar locations, search, folder contents in the
 shell's available views, keyboard navigation and inline new-folder controls.
-The title states `Select a code folder to link`; a topmost one-pixel owner keeps
-the dialog attached to the initiating surface without replacing the shell UI.
+The title comes from the typed `workingDirPicker.title` locale key (with
+`Select a code folder to link` as the English fallback); the desktop path is
+parented to the initiating Electron window and the daemon fallback uses a
+topmost one-pixel owner without replacing the shell UI. After the dialog
+settles, the desktop parent and the originating renderer trigger are focused
+again where those owners are available.
 
 The implementation uses `OpenFileDialog` as an Explorer-shell adapter with an
 exact private sentinel filename. Its `FileOk` handler accepts only:
@@ -23,6 +27,9 @@ A real file, malformed path, unavailable share or missing directory cancels the
 close and leaves the browser open. Returned paths pass through
 `Path.GetFullPath`; drive and UNC roots are not trimmed, and Unicode, spaces and
 apostrophes remain intact. Cancel returns `null` through the existing API.
+Renderer failure and cancellation copy comes from the typed locale dictionary;
+English and Hong Kong Cantonese funny-level overrides change only its voice,
+not the path, failure, or recovery facts.
 
 ## Security and failure behavior
 
@@ -39,7 +46,11 @@ apostrophes remain intact. Cancel returns `null` through the existing API.
 
 Focused source tests pin STA mode, the owner relationship, Explorer dialog
 properties, the sentinel, `FileOk`, directory existence, file rejection, full
-path normalization and disposal. A complete Windows artifact verdict also
+path normalization, localized title escaping, Unicode/space/apostrophe paths,
+empty and nonempty folder fixtures, cancellation, failure, and disposal. A
+desktop source Chut also pins the Electron parent, Explorer properties, parent
+focus restoration, cancellation separation, and the absence of the legacy
+tree-only dialog identifier. A complete Windows artifact verdict also
 opens the real dialog through the approved hidden-desktop route, confirms the
 Explorer surface, selects a Unicode test directory using the keyboard, checks
 the exact returned path, and exercises Escape cancellation. Source-string tests

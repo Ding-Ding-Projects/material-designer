@@ -72,6 +72,7 @@ export type OpenDesignHostWorkspaceContext = {
 
 export type OpenDesignHostProjectImportInit = {
   designSystemId?: string | null;
+  folderDialogTitle?: string;
   name?: string;
   skillId?: string | null;
   workspaceContext?: OpenDesignHostWorkspaceContext | null;
@@ -467,10 +468,10 @@ export type OpenDesignHostBridge = {
   };
   project: {
     pickAndImport(init?: OpenDesignHostProjectImportInit): Promise<OpenDesignHostProjectImportResult>;
-    pickAndReplaceWorkingDir(projectId: string): Promise<OpenDesignHostProjectReplaceWorkingDirResult>;
+    pickAndReplaceWorkingDir(projectId: string, folderDialogTitle?: string): Promise<OpenDesignHostProjectReplaceWorkingDirResult>;
     // Optional so older host builds still satisfy the bridge shape; callers
     // must feature-detect before invoking.
-    pickWorkingDir?(): Promise<OpenDesignHostPickWorkingDirResult>;
+    pickWorkingDir?(folderDialogTitle?: string): Promise<OpenDesignHostPickWorkingDirResult>;
   };
   shell: {
     openExternal(url: string): Promise<OpenDesignHostActionResult>;

@@ -2045,6 +2045,7 @@ async function reportRendererCrash(
  */
 async function showDirectoryPickerForSender(
   sender: Electron.WebContents,
+  folderDialogTitle?: string,
 ): Promise<Electron.OpenDialogReturnValue> {
   const parent =
     BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow();
@@ -2054,10 +2055,17 @@ async function showDirectoryPickerForSender(
     // location, this trims the shell work that stalls the native picker on
     // OneDrive-backed folders (see AppHangB1 note in diagnostics.ts).
     properties: ["openDirectory", "createDirectory", "dontAddToRecent"],
+    ...(typeof folderDialogTitle === "string" && folderDialogTitle.trim().length > 0
+      ? { title: folderDialogTitle.trim().slice(0, 200) }
+      : {}),
   };
-  return parent
-    ? dialog.showOpenDialog(parent, pickerOptions)
-    : dialog.showOpenDialog(pickerOptions);
+  try {
+    return await (parent
+      ? dialog.showOpenDialog(parent, pickerOptions)
+      : dialog.showOpenDialog(pickerOptions));
+  } finally {
+    if (parent && !parent.isDestroyed()) parent.focus();
+  }
 }
 
 export async function createDesktopRuntime(options: DesktopRuntimeOptions): Promise<DesktopRuntime> {
@@ -2130,7 +2138,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
-      const result = await showDirectoryPickerForSender(event.sender);
+      const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2159,7 +2167,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // POST are a single main-process transaction.
   ipcMain.handle(
     "dialog:pick-and-replace-working-dir",
-    async (event, init?: { projectId?: string }) => {
+    async (event, init?: { projectId?: string; folderDialogTitle?: string }) => {
       if (options.desktopAuthSecret == null) {
         return { ok: false, reason: "desktop auth secret not registered" };
       }
@@ -2173,7 +2181,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
-      const result = await showDirectoryPickerForSender(event.sender);
+      const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
@@ -2196,11 +2204,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // spends the token on POST /api/projects/:id/working-dir once the project
   // exists. Main remains the single source of filesystem paths crossing into
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
-  ipcMain.handle("dialog:pick-working-dir", async (event) => {
+  ipcMain.handle("dialog:pick-working-dir", async (event, init?: { folderDialogTitle?: string }) => {
     if (options.desktopAuthSecret == null) {
       return { ok: false, reason: "desktop auth secret not registered" };
     }
-    const result = await showDirectoryPickerForSender(event.sender);
+    const result = await showDirectoryPickerForSender(event.sender, init?.folderDialogTitle);
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }

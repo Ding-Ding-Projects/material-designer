@@ -1026,7 +1026,7 @@ export const esES: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Carpeta',
+  'workingDirPicker.title': 'Seleccionar una carpeta de código para vincular',
   'workingDirPicker.homeTitle': 'Guardado en el almacenamiento local: haz clic para elegir una carpeta',
   'workingDirPicker.processing': 'Procesando…',
   'workingDirPicker.select': 'Almacenamiento local',

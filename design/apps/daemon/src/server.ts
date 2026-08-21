@@ -288,6 +288,7 @@ import { validateLinkedDirs } from './linked-dirs.js';
 import { installFromTarget, uninstallById, sanitizeRepoName } from './library-install.js';
 import {
   buildWindowsFolderDialogCommand,
+  DEFAULT_FOLDER_DIALOG_TITLE,
   parseFolderDialogStdout,
   parseLinuxFolderDialogResult,
 } from './native-folder-dialog.js';
@@ -2204,7 +2205,7 @@ function parseProjectPreviewAssetPath(pathname) {
   }
 }
 
-function openNativeFolderDialog() {
+function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
   return new Promise((resolve, reject) => {
     const platform = process.platform;
     if (platform === 'darwin') {
@@ -2216,7 +2217,7 @@ function openNativeFolderDialog() {
       // inline without any extra wiring.
       execFile(
         'osascript',
-        ['-e', 'POSIX path of (choose folder with prompt "Select a code folder to link")'],
+        ['-e', `POSIX path of (choose folder with prompt ${JSON.stringify(title)})`],
         { timeout: 120_000 },
         (err, stdout) => {
           if (err) return resolve(null);
@@ -2227,7 +2228,7 @@ function openNativeFolderDialog() {
     } else if (platform === 'linux') {
       execFile(
         'zenity',
-        ['--file-selection', '--directory', '--title=Select a code folder to link'],
+        ['--file-selection', '--directory', `--title=${title}`],
         { timeout: 120_000 },
         (err, stdout, stderr) => {
           try {
@@ -2238,7 +2239,7 @@ function openNativeFolderDialog() {
         },
       );
     } else if (platform === 'win32') {
-      const command = buildWindowsFolderDialogCommand();
+      const command = buildWindowsFolderDialogCommand(title);
       execFile(command.command, command.args, { timeout: 120_000 }, (err, stdout) => {
         resolve(parseFolderDialogStdout(err, stdout));
       });

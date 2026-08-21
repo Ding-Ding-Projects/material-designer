@@ -28,6 +28,18 @@ export const EN_FUNNY: FunnyOverrides = {
   'common.notInstalled': { 3: 'not installed', 5: 'nowhere to be found' },
   'common.offline': { 3: 'not running', 5: 'having a nap' },
   'common.untitled': { 3: 'Untitled', 5: 'The Nameless One' },
+  'workingDirPicker.title': {
+    3: 'Select a code folder to link',
+    5: 'Select a code folder to link — the Explorer is ready for its close-up',
+  },
+  'workingDirPicker.unavailable': {
+    3: 'The folder picker is unavailable. Open the desktop app and try again.',
+    5: 'The folder picker is unavailable. Open the desktop app and let Explorer do the heavy lifting.',
+  },
+  'chat.linkedFolderPickError': {
+    3: 'Could not open the folder picker. Try again.',
+    5: 'The folder picker refused to open. Try again; it is being dramatic.',
+  },
   'common.justNow': { 3: 'a moment ago', 5: 'basically now' },
   'common.exportImageFailed': {
     2: "Image capture didn't work. Try again, or use your browser's screenshot tool.",

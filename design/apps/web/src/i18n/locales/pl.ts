@@ -1026,7 +1026,7 @@ export const pl: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Folder',
+  'workingDirPicker.title': 'Wybierz folder kodu do połączenia',
   'workingDirPicker.homeTitle': 'Zapisywane w pamięci lokalnej — kliknij, aby wybrać folder',
   'workingDirPicker.processing': 'Przetwarzanie…',
   'workingDirPicker.select': 'Pamięć lokalna',

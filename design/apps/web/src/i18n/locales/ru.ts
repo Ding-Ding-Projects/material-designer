@@ -1026,7 +1026,7 @@ export const ru: Dict = {
   'homeWorkingDir.hint': 'Разрешите агенту читать эту локальную папку (она не импортируется в Design Files)',
   'homeWorkingDir.missing': 'Эта рабочая папка больше не существует — выберите другую',
   'homeWorkingDir.applyFailed': 'Не удалось задать рабочую папку — возможно, она больше не существует',
-  'workingDirPicker.title': 'Папка',
+  'workingDirPicker.title': 'Выберите папку с кодом для связывания',
   'workingDirPicker.homeTitle': 'Сохраняется в локальном хранилище — нажмите, чтобы выбрать папку',
   'workingDirPicker.processing': 'Обработка…',
   'workingDirPicker.select': 'Локальное хранилище',

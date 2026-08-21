@@ -1571,7 +1571,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     }
 
     async function handleLinkLocalCodeContext() {
-      const selected = await openFolderDialog();
+      const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
       if (!selected) {
         trackContextLinkResult(analytics.track, {
           page_name: 'chat_panel',
@@ -2302,7 +2302,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
     async function handleLinkFolder() {
       if (!projectId) return;
-      const selected = await openFolderDialog();
+      const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
       if (!selected) return;
       await addLinkedDir(selected);
     }
@@ -2356,7 +2356,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       void rememberRecentDir(dir);
     }
     async function handlePickWorkingDir() {
-      const selected = await openFolderDialog();
+      const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
       if (selected) await setWorkingDirFolder(selected);
     }
     async function clearWorkingDir() {

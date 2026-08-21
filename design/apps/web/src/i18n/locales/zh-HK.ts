@@ -32,6 +32,7 @@ export const zhHK: Dict = {
   ...zhTW,
 
   // Common
+  "workingDirPicker.title": "揀一個要連結嘅程式碼資料夾",
   "common.cancel": "算數",
   "common.save": "儲存",
   "common.close": "閂咗佢",

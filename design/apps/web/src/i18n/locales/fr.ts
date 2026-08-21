@@ -1026,7 +1026,7 @@ export const fr: Dict = {
   'homeWorkingDir.hint': 'Autoriser l’agent à lire ce dossier local (sans l’importer dans les fichiers de design)',
   'homeWorkingDir.missing': 'Ce dossier de travail n’existe plus — choisissez-en un autre',
   'homeWorkingDir.applyFailed': 'Impossible de définir le dossier de travail — le dossier n’existe peut-être plus',
-  'workingDirPicker.title': 'Dossier',
+  'workingDirPicker.title': 'Sélectionner un dossier de code à lier',
   'workingDirPicker.homeTitle': 'Enregistré dans le stockage local — cliquez pour choisir un dossier',
   'workingDirPicker.processing': 'Traitement…',
   'workingDirPicker.select': 'Stockage local',

@@ -17,6 +17,18 @@ import type { FunnyOverrides } from '../types';
  */
 export const ZH_HK_FUNNY: FunnyOverrides = {
   // 常用
+  'workingDirPicker.title': {
+    3: '揀一個要連結嘅程式碼資料夾',
+    5: '揀一個要連結嘅程式碼資料夾，Explorer 已經擺好茶等你喇',
+  },
+  'workingDirPicker.unavailable': {
+    3: '資料夾選擇器而家用唔到，請開桌面版再試。',
+    5: '資料夾選擇器扭晒計，請開桌面版再試，等 Explorer 出手救場。',
+  },
+  'chat.linkedFolderPickError': {
+    3: '開唔到資料夾選擇器，請再試一次。',
+    5: '資料夾選擇器唔肯開，請再試一次，佢今日有啲戲。',
+  },
   'common.cancel': { 3: '唔好啦', 5: '當我冇講過' },
   'common.loading': { 3: '整緊喇…', 5: '蒸緊…等陣' },
   'common.none': { 3: '一個都冇', 5: '乾乾淨淨，一個都冇' },
