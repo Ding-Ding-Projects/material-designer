@@ -60,6 +60,10 @@
   gap: 10px;
   padding: 0 18px 12px;
 }
+.searchFieldHost {
+  display: block;
+  width: 100%;
+}
 
 .kinds {
   display: flex;
@@ -284,4 +288,21 @@
   gap: 8px;
   padding: 12px 18px 16px;
   border-top: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .panel {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  .header,
+  .toolbar,
+  .body,
+  .footer {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .footer {
+    flex-wrap: wrap;
+  }
 }

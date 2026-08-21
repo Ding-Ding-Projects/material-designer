@@ -29,6 +29,48 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Complete Library pagination, refresh, filters, and modal behavior
+
+**Reason:** Enabling the production Library exposed several boundaries that were
+previously unreachable: the first page could hide assets from explicit regex
+search, failed refreshes erased a loaded view, reconciliation did not tell other
+open views to refresh, and the native filters, handoff menu, picker, and modal
+surfaces lacked their own searchable or shared focus behavior. The repair adds
+bounded continuation with a typed provider failure result, preserves loaded rows
+on errors with a localized retry surface, broadcasts reconciliation SSE, gives
+kind/source/design-system/picker searches independent anchored builders, limits
+bulk selection to visible matching ids, keeps the collapsed rail operable, and
+uses the shared dialog focus scope while upload work is pending. No fixture cards,
+catalog photos, or release assets were added; hosted/runtime verification remains
+pending.
+
+**Changed files:**
+
+- `apps/daemon/src/library-store.ts`
+- `apps/daemon/src/routes/library.ts`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/LibraryAssetMeta.tsx`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibraryPreviewModal.module.css`
+- `apps/web/src/components/LibraryPreviewModal.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/LibraryUploadModal.module.css`
+- `apps/web/src/components/LibraryUploadModal.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/LibrarySection.a11y.test.tsx`
+- `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
+- `apps/web/tests/components/library-picker-perf.test.tsx`
+- `apps/web/tests/components/library-section-perf.test.tsx`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `packages/contracts/src/api/library.ts`
+
 ### 2026-08-21 — Expose the production Library route and own its regex search
 
 **Reason:** The real LibrarySection and its provider/API boundary already existed,
@@ -41,10 +83,10 @@ text remains the default, regex mode stays local to the loaded asset records,
 bounded matching is shared with the existing regex implementation, and the
 screen-reader status reports the visible result count. No fixture data or catalog
 image was added; deterministic capture-fixture status remains pending until a
-provider/API-backed public-safe record set is available. Existing filter selects
-and the design-system action menu remain functional and are explicitly listed in
-the focused search contract as future touched surfaces requiring their own local
-search and anchored builder.
+  provider/API-backed public-safe record set is available. The kind/source filters
+  and design-system action menu now have their own local search and anchored builder,
+  and the focused contract keeps those surfaces from regressing to native controls
+  or shared hidden state.
 
 **Changed files:**
 

@@ -23,6 +23,8 @@ const fetchLibraryAssets = vi.fn(async (): Promise<LibraryAsset[]> => []);
 const fetchLibraryAsset = vi.fn(async (): Promise<LibraryAsset | null> => null);
 vi.mock('../../src/providers/registry', () => ({
   fetchLibraryAssets: (...args: unknown[]) => fetchLibraryAssets(...(args as [])),
+  fetchAllLibraryAssets: (...args: unknown[]) =>
+    fetchLibraryAssets(...(args as [])).then((assets) => ({ ok: true, assets, nextOffset: null })),
   fetchLibraryAsset: (...args: unknown[]) => fetchLibraryAsset(...(args as [])),
   libraryAssetRawUrl: (id: string) => `/raw/${id}`,
   applyLibraryAsset: vi.fn(),

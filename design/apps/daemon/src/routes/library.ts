@@ -503,9 +503,21 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
     if (str(q.source)) filter.source = str(q.source) as LibrarySourceKind;
     if (str(q.projectId)) filter.projectId = str(q.projectId)!;
     if (str(q.designSystemId)) filter.designSystemId = str(q.designSystemId)!;
-    if (q.limit) filter.limit = Number(q.limit);
-    const assets = listLibraryAssets(db, filter).map(toPublicAsset);
-    res.json({ assets });
+    // Keep each response bounded while allowing the web surface to walk the
+    // entire result set. A larger fixed LIMIT would merely move the missing
+    // asset boundary; continuation makes the boundary explicit instead.
+    const requestedLimit = Number(q.limit);
+    const pageSize = Number.isFinite(requestedLimit)
+      ? Math.max(1, Math.min(Math.floor(requestedLimit), 500))
+      : 500;
+    const requestedOffset = Number(q.offset);
+    const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
+    filter.limit = pageSize + 1;
+    filter.offset = offset;
+    const page = listLibraryAssets(db, filter);
+    const hasMore = page.length > pageSize;
+    const assets = (hasMore ? page.slice(0, pageSize) : page).map(toPublicAsset);
+    res.json({ assets, nextOffset: hasMore ? offset + pageSize : null });
   });
 
   // Force a full reconcile pass (the web "Sync" button + `od library sync`).
@@ -514,6 +526,10 @@ export function registerLibraryRoutes(app: Express, ctx: RegisterLibraryRoutesDe
   app.post('/api/library/sync', requireLocalDaemonRequest, async (_req, res) => {
     try {
       const summary = await runReconcile(true);
+      // Reconcile can add or update rows without an ingest event. Broadcast a
+      // distinct event so every open Library view refreshes from its own real
+      // provider boundary instead of one view remaining stale.
+      emit('reconcile', summary);
       res.json(summary);
     } catch (err) {
       return sendApiError(res, 500, 'LIBRARY_SYNC_FAILED', err instanceof Error ? err.message : String(err));

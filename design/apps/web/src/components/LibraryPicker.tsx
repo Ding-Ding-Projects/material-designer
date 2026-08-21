@@ -8,14 +8,12 @@
 // which copies the bytes into the project AND records a provenance back-link so
 // the registry knows the asset was consumed.
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
 import type { LibraryAsset } from '@open-design/contracts';
-import { Button, Input } from '@open-design/components';
+import { Button, Dialog } from '@open-design/components';
 import { useT } from '../i18n';
-import { modalOverlay, modalContent } from '../motion';
-import { fetchLibraryAssets, libraryAssetRawUrl } from '../providers/registry';
+import { fetchAllLibraryAssets, libraryAssetRawUrl, type LibraryAssetFetchError } from '../providers/registry';
 import {
   KindIcon,
   assetTitle,
@@ -23,11 +21,14 @@ import {
   colorOf,
   kindLabel,
   kindTint,
+  libraryAssetSearchText,
   matchesKindFilter,
 } from './LibraryAssetMeta';
 import type { BadgeKind } from './LibraryAssetMeta';
 import { Icon } from './Icon';
 import { useInView } from './plugins-home/useInView';
+import { useRegexSearch } from './regex/useRegexSearch';
+import { RegexSearchField } from './regex/RegexSearchField';
 import styles from './LibraryPicker.module.css';
 
 // Mirrors the Library grid's chips. `element` is a badge-only identity (an image
@@ -45,6 +46,21 @@ const KIND_FILTERS: BadgeKind[] = [
   'url',
 ];
 
+function localizedKindLabel(kind: BadgeKind, t: ReturnType<typeof useT>): string {
+  switch (kind) {
+    case 'image': return t('library.kindImages');
+    case 'element': return t('library.kindElements');
+    case 'design-system': return t('library.kindDesignSystems');
+    case 'video': return t('library.kindVideo');
+    case 'font': return t('library.kindFonts');
+    case 'color': return t('library.kindColors');
+    case 'text': return t('library.kindText');
+    case 'url': return t('library.kindLinks');
+    case 'html': return 'HTML';
+    default: return kindLabel(kind);
+  }
+}
+
 interface Props {
   onClose: () => void;
   /**
@@ -60,54 +76,68 @@ interface Props {
 
 export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props) {
   const t = useT();
+  const titleId = useId();
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<LibraryAssetFetchError | null>(null);
   const [kind, setKind] = useState<BadgeKind | ''>('');
   const [search, setSearch] = useState('');
-  // Debounced mirror of `search` so the (potentially large) filter pass runs
-  // once per typing pause, not on every keystroke. The input stays bound to
-  // `search` for instant feedback.
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchRegex = useRegexSearch(search, setSearch);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(async () => {
     setLoading(true);
-    void fetchLibraryAssets().then((next) => {
-      if (cancelled) return;
-      setAssets(next);
+    setLoadError(null);
+    try {
+      const result = await fetchAllLibraryAssets();
+      if (!result.ok) {
+        setLoadError(result.error);
+        return;
+      }
+      setAssets(result.assets);
+    } finally {
       setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    }
   }, []);
 
   useEffect(() => {
-    function onKey(ev: KeyboardEvent) {
-      if (ev.key === 'Escape' && !busy) onClose();
+    void load();
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/library/events');
+      const refresh = () => void load();
+      es.addEventListener('ingest', refresh);
+      es.addEventListener('delete', refresh);
+      es.addEventListener('reconcile', refresh);
+    } catch {
+      // The retry action remains available when EventSource is unavailable.
     }
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [busy, onClose]);
+    return () => {
+      es?.close();
+    };
+  }, [load]);
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 250);
-    return () => clearTimeout(t);
-  }, [search]);
+    const frame = window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(frame);
+  }, []);
 
   const visible = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
     return assets.filter((asset) => {
       if (!matchesKindFilter(asset, kind)) return false;
-      if (!q) return true;
-      const hay = `${assetTitle(asset)} ${asset.tags?.join(' ') ?? ''} ${asset.caption ?? ''} ${
-        asset.sourceDomain ?? ''
-      } ${asset.ocrText ?? ''}`.toLowerCase();
-      return hay.includes(q);
+      return searchRegex.matches(libraryAssetSearchText(asset));
     });
-  }, [assets, kind, debouncedSearch]);
+  }, [assets, kind, searchRegex.matches]);
+
+  useEffect(() => {
+    const visibleIds = new Set(visible.map((asset) => asset.id));
+    setSelected((prev) => {
+      const next = new Set([...prev].filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visible]);
 
   // Stable so the memoized PickerCard's shallow-prop compare holds: a selection
   // toggle then only re-renders the one card whose `selected` flipped, not every
@@ -122,7 +152,8 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   }, []);
 
   async function confirm() {
-    const picked = assets.filter((asset) => selected.has(asset.id));
+    const visibleIds = new Set(visible.map((asset) => asset.id));
+    const picked = assets.filter((asset) => visibleIds.has(asset.id) && selected.has(asset.id));
     if (picked.length === 0 || busy) return;
     setBusy(true);
     try {
@@ -132,41 +163,36 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
     }
   }
 
-  const count = selected.size;
+  const count = visible.filter((asset) => selected.has(asset.id)).length;
+  const searchActive = search.trim().length > 0 || kind !== '';
 
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <motion.div
-      className="modal-backdrop"
-      onClick={() => {
+    <Dialog
+      className={styles.panel}
+      backdropClassName="modal-backdrop"
+      includeChromeClassName={false}
+      role="dialog"
+      ariaLabelledBy={titleId}
+      closeOnBackdrop={!busy}
+      closeOnEscape={!busy}
+      onClose={() => {
         if (!busy) onClose();
       }}
-      variants={modalOverlay}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
+      data-testid="library-picker"
     >
-      <motion.div
-        className={styles.panel}
-        onClick={(e) => e.stopPropagation()}
-        variants={modalContent}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        role="dialog"
-        aria-modal="true"
-        data-testid="library-picker"
-      >
         <header className={styles.header}>
           <div className={styles.heading}>
             <Icon name="layers-filled" size={16} />
-            <h2>{title ?? t('libraryPicker.title')}</h2>
+            <h2 id={titleId}>{title ?? t('libraryPicker.title')}</h2>
           </div>
           <button
             type="button"
             className={styles.close}
-            onClick={onClose}
+            onClick={() => {
+              if (!busy) onClose();
+            }}
             disabled={busy}
             aria-label={t('common.cancel')}
           >
@@ -175,12 +201,15 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
         </header>
 
         <div className={styles.toolbar}>
-          <Input
-            type="search"
-            value={search}
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('libraryPicker.title')}
+            hostClassName={styles.searchFieldHost}
             placeholder={t('libraryPicker.searchPlaceholder')}
-            onChange={(e) => setSearch(e.target.value)}
-            data-testid="library-picker-search"
+            ariaLabel={t('libraryPicker.searchPlaceholder')}
+            inputRef={searchInputRef}
+            autoFocus
+            testId="library-picker-search"
           />
           <div className={styles.kinds} role="tablist">
             <button
@@ -201,17 +230,22 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
                 className={`${styles.chip}${kind === k ? ` ${styles.chipActive}` : ''}`}
                 onClick={() => setKind((prev) => (prev === k ? '' : k))}
               >
-                {kindLabel(k)}
+                {localizedKindLabel(k, t)}
               </button>
             ))}
           </div>
         </div>
 
         <div className={styles.body}>
-          {loading ? (
+          {loadError ? (
+            <div className={styles.placeholder} role="alert" data-testid="library-picker-load-error">
+              <p>{t('library.loadError')}</p>
+              <Button onClick={() => void load()}>{t('library.retry')}</Button>
+            </div>
+          ) : loading ? (
             <div className={styles.placeholder}>{t('libraryPicker.loading')}</div>
           ) : visible.length === 0 ? (
-            <div className={styles.placeholder}>{t('libraryPicker.empty')}</div>
+            <div className={styles.placeholder}>{searchActive ? t('library.noMatches') : t('libraryPicker.empty')}</div>
           ) : (
             <ul className={styles.grid}>
               {visible.map((asset) => (
@@ -240,8 +274,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
             {count > 0 && !busy ? ` (${count})` : ''}
           </Button>
         </footer>
-      </motion.div>
-    </motion.div>,
+    </Dialog>,
     document.body,
   );
 }
@@ -257,6 +290,7 @@ interface PickerCardProps {
 // picker's biggest cost on a large Library. `onToggle` is a stable useCallback,
 // so the shallow-prop compare holds until this card's `selected` flips.
 const PickerCard = memo(function PickerCard({ asset, selected, onToggle }: PickerCardProps) {
+  const t = useT();
   return (
     <li>
       <button
@@ -273,7 +307,7 @@ const PickerCard = memo(function PickerCard({ asset, selected, onToggle }: Picke
             style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}
           >
             <KindIcon kind={badgeKind(asset)} size={11} />
-            {kindLabel(badgeKind(asset))}
+            {localizedKindLabel(badgeKind(asset), t)}
           </span>
           {selected ? (
             <span className={styles.check} aria-hidden>

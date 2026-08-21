@@ -424,16 +424,6 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     control: 'privacy.metrics',
   },
   {
-    // The one section token with no dialog panel: `library` is opened through
-    // the entry shell's own route (see the comment on `SettingsSection`). It is
-    // indexed anyway, because a user typing "library" is asking for the surface,
-    // not for the implementation detail of which component renders it.
-    id: sectionAnchorFor('library'),
-    section: 'library',
-    titleKey: 'commandPalette.destinationLibrary',
-    keywords: ['library', 'assets', 'images'],
-  },
-  {
     id: sectionAnchorFor('about'),
     section: 'about',
     titleKey: 'settings.about',

@@ -1,6 +1,25 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Library route repair pass — source-only, 2026-08-21.** The follow-up changes in
+> this source lane extend the route seam with daemon continuation (`nextOffset`),
+> a discriminated provider failure result that preserves loaded rows, reconciliation
+> SSE refresh, independently searchable kind/source comboboxes, a searchable
+> design-system handoff menu, and an independent `LibraryPicker` builder. Visible
+> matching ids now define shift/select-all/bulk scope. The collapsed rail stays
+> reachable, upload/preview/picker use the shared dialog focus scope, and upload
+> re-entry/close is refused while work is in flight with explicit busy state.
+> New modal/picker/result copy is localized through the shared catalog. No fixture
+> cards, photos, or release assets were added.
+>
+> This repair pass has not run Node, package-manager commands, builds, type checks,
+> tests, UI actions or captures locally, by lane boundary. The permitted port
+> verifier and static diff checks remain the evidence to record after the final
+> commit. Hosted tests, built-app interaction, runtime captures, and the public-safe
+> provider/API fixture remain pending; package evidence is separate from runtime/UI
+> proof.
+
+> [!IMPORTANT]
 > **Library route and search lane — 2026-08-21.** Commit
 > [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
 > exposes the existing provider-backed `LibrarySection` at `/library`, adds

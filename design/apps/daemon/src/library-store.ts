@@ -405,6 +405,7 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const limit = Number.isFinite(filter.limit) ? Math.max(1, Math.min(Number(filter.limit), 1000)) : 500;
+  const offset = Number.isFinite(filter.offset) ? Math.max(0, Math.floor(Number(filter.offset))) : 0;
   const raws = db
     .prepare(
       // Order by archive date first so the grid/timeline reflect when an
@@ -414,7 +415,7 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
       `SELECT ${ASSET_COLS} FROM library_assets a
        ${whereSql}
        ORDER BY a.archived_date DESC, a.created_at DESC
-       LIMIT ${limit}`,
+       LIMIT ${limit} OFFSET ${offset}`,
     )
     .all(...args) as RawAssetRow[];
   if (raws.length === 0) return [];

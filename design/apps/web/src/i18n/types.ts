@@ -144,6 +144,7 @@ export interface Dict {
   'common.share': string;
   'common.search': string;
   'common.searchEllipsis': string;
+  'common.download'?: string;
   'common.loading': string;
   'common.all': string;
   'common.none': string;
@@ -5735,6 +5736,31 @@ export interface Dict {
   'library.editAsPage': string;
   'library.viewSource': string;
   'library.remove': string;
+  /** Library route/picker additions use optional keys so older locale files
+   * fall back through the normal English dictionary until translated. */
+  'library.noMatches'?: string;
+  'library.loadError'?: string;
+  'library.retry'?: string;
+  'library.resultsCount'?: string;
+  'library.scopeVisible'?: string;
+  'library.previousAsset'?: string;
+  'library.nextAsset'?: string;
+  'library.downloadFigma'?: string;
+  'library.uploadStatus'?: string;
+  'library.uploadDeduped'?: string;
+  'library.uploadDone'?: string;
+  'library.uploadFailed'?: string;
+  'library.uploadNothing'?: string;
+  'library.uploadSummary'?: string;
+  'library.uploadMaxHint'?: string;
+  'library.noColor'?: string;
+  'library.noLink'?: string;
+  'library.loadTextError'?: string;
+  'library.loadElementError'?: string;
+  'library.showHtml'?: string;
+  'library.hideHtml'?: string;
+  'library.copy'?: string;
+  'library.copied'?: string;
   'mcp.aboutTemplate': string;
   'mcp.approvedRefresh': string;
   'mcp.approveInBrowserHint': string;

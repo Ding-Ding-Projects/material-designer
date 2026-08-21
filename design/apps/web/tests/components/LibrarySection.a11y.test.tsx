@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LibraryAsset } from '@open-design/contracts';
 
@@ -12,6 +12,8 @@ const fetchLibraryAssets = vi.fn(async (): Promise<LibraryAsset[]> => []);
 const fetchLibraryAsset = vi.fn(async (): Promise<LibraryAsset | null> => null);
 vi.mock('../../src/providers/registry', () => ({
   fetchLibraryAssets: (...args: unknown[]) => fetchLibraryAssets(...(args as [])),
+  fetchAllLibraryAssets: (...args: unknown[]) =>
+    fetchLibraryAssets(...(args as [])).then((assets) => ({ ok: true, assets, nextOffset: null })),
   fetchLibraryAsset: (...args: unknown[]) => fetchLibraryAsset(...(args as [])),
   libraryAssetRawUrl: (id: string) => `/raw/${id}`,
   applyLibraryAsset: vi.fn(),
@@ -56,13 +58,17 @@ describe('LibrarySection accessibility', () => {
     cleanup();
   });
 
-  it('gives the library filter selects accessible names', async () => {
+  it('gives the library filter comboboxes accessible names and own builders', async () => {
     render(<LibrarySection active onOpenProject={() => {}} />);
 
     await screen.findByText('A photo');
 
     expect(screen.getByRole('combobox', { name: 'Filter by kind' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Filter by source' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by kind' }));
+    expect(screen.getByTestId('library-kind-filter-search-regex-toggle')).toBeTruthy();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by source' }));
+    expect(screen.getByTestId('library-source-filter-search-regex-toggle')).toBeTruthy();
   });
 
   it('keeps the Library search plain by default and exposes its own anchored builder', async () => {

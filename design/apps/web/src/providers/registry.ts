@@ -3502,22 +3502,77 @@ export interface LibraryAssetQuery {
   q?: string;
   date?: string;
   tag?: string;
+  limit?: number;
+  offset?: number;
 }
 
-export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise<LibraryAsset[]> {
+export type LibraryAssetFetchErrorKind = 'network' | 'http' | 'invalid-response' | 'pagination-limit';
+
+export interface LibraryAssetFetchError {
+  kind: LibraryAssetFetchErrorKind;
+  status?: number;
+}
+
+export type LibraryAssetFetchResult =
+  | { ok: true; assets: LibraryAsset[]; nextOffset: number | null }
+  | { ok: false; error: LibraryAssetFetchError };
+
+/** One bounded page from the real daemon Library endpoint. */
+export async function fetchLibraryAssets(
+  query: LibraryAssetQuery = {},
+): Promise<LibraryAssetFetchResult> {
   try {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
-      if (value) params.set(key, value);
+      if (value !== undefined && value !== '') params.set(key, String(value));
     }
     const qs = params.toString();
     const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`);
-    if (!resp.ok) return [];
-    const json = (await resp.json()) as LibraryAssetListResponse;
-    return json.assets ?? [];
+    if (!resp.ok) return { ok: false, error: { kind: 'http', status: resp.status } };
+    const json = (await resp.json()) as Partial<LibraryAssetListResponse>;
+    if (!Array.isArray(json.assets)) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    const nextOffset = json.nextOffset === null || json.nextOffset === undefined
+      ? null
+      : Number(json.nextOffset);
+    if (nextOffset !== null || json.nextOffset !== undefined) {
+      if (!Number.isSafeInteger(nextOffset) || nextOffset < 0) {
+        return { ok: false, error: { kind: 'invalid-response' } };
+      }
+    }
+    return { ok: true, assets: json.assets, nextOffset };
   } catch {
-    return [];
+    return { ok: false, error: { kind: 'network' } };
   }
+}
+
+/**
+ * Walk every bounded page for a Library view. The page count is bounded as a
+ * safety limit, but it never truncates silently: a continuation that would
+ * exceed it becomes a typed failure and leaves the caller's existing rows
+ * intact. This is deliberately used for both plain text and regex searches so
+ * neither mode inherits the daemon's first-page default.
+ */
+export async function fetchAllLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options: { pageSize?: number; maxPages?: number } = {},
+): Promise<LibraryAssetFetchResult> {
+  const pageSize = Math.max(1, Math.min(Math.floor(options.pageSize ?? 500), 500));
+  const maxPages = Math.max(1, Math.min(Math.floor(options.maxPages ?? 1000), 1000));
+  const assets: LibraryAsset[] = [];
+  let offset = 0;
+  for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
+    const result = await fetchLibraryAssets({ ...query, limit: pageSize, offset });
+    if (!result.ok) return result;
+    assets.push(...result.assets);
+    if (result.nextOffset === null) return { ok: true, assets, nextOffset: null };
+    if (result.nextOffset <= offset) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    offset = result.nextOffset;
+  }
+  return { ok: false, error: { kind: 'pagination-limit' } };
 }
 
 /**

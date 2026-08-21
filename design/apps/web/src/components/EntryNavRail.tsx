@@ -1448,19 +1448,6 @@ export function EntryNavRail({
   // landmark, and hiding a visible control from assistive technology while
   // sighted users can click it is exactly the defect those attributes exist
   // to prevent elsewhere.
-  // While collapsed the rail is visually hidden but its controls stay mounted;
-  // mark it `inert` so they leave the tab order and pointer flow entirely.
-  const railRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const node = railRef.current;
-    if (!node) return;
-    if (open) {
-      node.removeAttribute('inert');
-    } else {
-      node.setAttribute('inert', '');
-    }
-  }, [open]);
-
   useEffect(() => {
     if (!teamOpen) return;
     void loadWorkspaceDirectory();
@@ -1509,10 +1496,8 @@ export function EntryNavRail({
   return (
     <nav
       className={`entry-nav-rail${open ? ' is-open' : ''}`}
-      aria-label={t('entry.navLandmark')}
       data-rail-expanded={open ? 'true' : 'false'}
       aria-label={t('entry.primaryNavAria')}
-      aria-hidden={open ? undefined : true}
     >
       <div className="entry-nav-rail__panel">
       <div className="entry-nav-rail__group">

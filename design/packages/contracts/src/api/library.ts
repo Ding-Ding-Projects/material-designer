@@ -240,10 +240,14 @@ export interface LibraryAssetFilter {
   projectId?: string;
   designSystemId?: string;
   limit?: number;
+  /** Zero-based continuation offset for bounded list pages. */
+  offset?: number;
 }
 
 export interface LibraryAssetListResponse {
   assets: LibraryAsset[];
+  /** The next offset, or null when this page is the complete result. */
+  nextOffset?: number | null;
 }
 
 export interface LibraryAssetDetailResponse {

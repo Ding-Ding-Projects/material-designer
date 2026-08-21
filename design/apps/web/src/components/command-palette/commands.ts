@@ -239,10 +239,10 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
   }
 
   for (const entry of SETTINGS_INDEX) {
-    // `library` is indexed for coverage alongside the production Library
-    // destination. Keep the flag check so a future staged rollout cannot
-    // leave a command-palette row pointing at an absent surface.
-    if (entry.section === 'library' && !LIBRARY_UI_VISIBLE) continue;
+    // Library has one production destination result above. Do not add the
+    // stale settings anchor as a second visible result; every Library result
+    // must navigate through the real `/library` route.
+    if (entry.section === 'library') continue;
     rows.push({
       kind: 'setting',
       id: `setting:${entry.id}`,
