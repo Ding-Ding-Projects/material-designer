@@ -57,11 +57,12 @@ Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
 
-**2026-08-21 Appearance source follow-up.** The next source repair keeps the
-native theme acknowledgement capability explicit, distinguishes legacy
-fire-and-forget hosts from the current bridge, resets renderer reveal state
-before every recovery reload, and gives Workspace, Orbit and Routines real
-SettingsDialog tab ownership while permission-filtering Workspace from the
+**2026-08-21 Appearance source follow-up.** Commit
+[`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
+keeps the native theme acknowledgement capability explicit, distinguishes
+legacy fire-and-forget hosts from the current bridge, resets renderer reveal
+state before every recovery reload, and gives Workspace, Orbit and Routines
+real SettingsDialog tab ownership while permission-filtering Workspace from the
 palette. The selected tab stays focused during local switching; stable hint and
 no-match descriptions, 2D colour values, 48px wrappers, and narrow/bilingual
 wrapping are source-covered. Hosted build, installed interaction, display-scale

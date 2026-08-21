@@ -2,6 +2,9 @@
 
 > [!IMPORTANT]
 > **Appearance compatibility, recovery, and ownership follow-up — 2026-08-21.**
+> Implementation commit
+> [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
+> carries this source repair.
 > The source lane now marks the acknowledged native theme capability explicitly
 > and treats a legacy fire-and-forget host as incompatible for startup readiness
 > rather than claiming native success. Renderer crash recovery clears its

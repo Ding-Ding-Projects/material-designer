@@ -28,6 +28,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Appearance readiness now distinguishes compatible hosts and re-arms after renderer recovery.** Commit
+  [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
+  adds an explicit acknowledged-theme capability marker, reports legacy
+  fire-and-forget hosts as incompatible for native startup readiness, and
+  requires every reload to earn the acknowledgement again before the window is
+  shown. Settings now gives Workspace, Orbit and Routines real tab ownership,
+  filters unauthorized Workspace discovery, preserves selected-tab contrast,
+  exposes stable hint/no-match descriptions and live two-dimensional colour
+  values, keeps settings wrappers at 48px, and stacks long unsupported or
+  translated rows at narrow widths. Hosted build, installed interaction,
+  display-scale and visual-capture evidence remain unverified.
+
+  Appearance readiness 而家分得清邊個 host 真係識答，renderer recovery reload
+  亦要重新交 acknowledgement 先可以見窗。`31d1683c7` 加 capability marker，
+  舊 fire-and-forget host 唔再扮 native startup ready；Settings 就畀 Workspace、
+  Orbit 同 Routines 真 tab owner，冇權限嘅 Workspace 唔入 discovery，selected
+  tab 唔會變暗，hint/no-match 有穩定描述，2D 顏色有讀數，48px 落腳位同窄位
+  長字換行都補返。Hosted build、installed interaction、display-scale 同 visual
+  captures 仍未驗證。
+
 - **Appearance startup now waits for the native theme to answer before it
   reveals the window.** Commit
   [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
