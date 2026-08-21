@@ -28,6 +28,23 @@ version section when a release carries them.
 
 ### Changed
 
+- **Library pagination and uploads now tell the truth at the wire boundary.**
+  Commit
+  [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+  rejects coercible continuation cursors, cancels stale page walks before they
+  can overwrite newer rows or errors, keeps element filters inclusive of both
+  image and HTML captures, separates search fields from menu/listbox ownership,
+  and reports byte-backed per-file and aggregate upload progress with explicit
+  cancellation and partial outcomes. This is source-only evidence; hosted and
+  built-runtime verification remains pending. No photo or release asset was added.
+
+  Library pagination 同 upload 而家喺 wire boundary 講真話：`30bc9566c` 拒絕
+  會偷偷轉型嘅 continuation cursor，舊 page walk 會先取消，唔會反過來蓋走
+  新 rows 或 errors；element filter 連 image 同 HTML capture 都照收，search
+  field 同 menu/listbox ownership 分清楚，upload progress 就按真 bytes 報數，
+  取消同 partial outcome 都有名有姓。今次仍然係 source-only evidence，hosted
+  同 built-runtime verification 未完成，亦無加 photo 或 release asset。
+
 - **The upload modal also localizes pasted-text status rows.** Commit
   [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
   routes the last inline label through the shared Library locale catalog. This

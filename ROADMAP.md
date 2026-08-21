@@ -68,6 +68,14 @@ with the project's standards.
       backed public-safe fixture remain unverified. Photo/release work is
       intentionally outside this lane.
 
+      Follow-up source commit [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+      tightens terminal cursor parsing, aborts stale page walks, keeps image and
+      HTML element captures together, corrects nested menu/listbox ownership,
+      changes picker kind chips to an `aria-pressed` group, and reports real,
+      byte-weighted cancellable upload progress with partial outcomes. This
+      remains unchecked until hosted source checks and built-runtime evidence
+      exist; no photo or release asset was added.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

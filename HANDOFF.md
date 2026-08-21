@@ -1,6 +1,28 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Library route follow-up — source-only, 2026-08-21.** Commit
+> [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+> closes the remaining source boundaries from the prior Library repair pass.
+> `nextOffset` now accepts only an omitted/`null` terminal value or a
+> non-negative safe JSON number, with explicit valid and invalid contract cases.
+> Library page walks carry an `AbortController` and generation identity so stale
+> rows and errors cannot overwrite a newer search, filter, retry, or refresh.
+> Element filtering includes both image screenshots and HTML snapshots carrying
+> `metadata.element`. Picker kind controls are an `aria-pressed` group, and
+> search controls sit outside the owned listbox/menu roles. Manual uploads now
+> use cancellable XHR request progress, byte-weighted aggregate progress, the
+> shared byte limit for pasted text, and visible done/deduped/failed/cancelled
+> partial outcomes.
+>
+> The allowed local evidence for this commit is source-only: `git diff --check`,
+> `sh scripts/verify-port.sh`, and `sh scripts/verify-port.sh --json` run through
+> Git Bash. No Node, package-manager command, build, type check, test, UI action,
+> runtime, or capture was run locally. Hosted verification, built-app interaction,
+> and deterministic provider/API-backed public-safe capture evidence remain open.
+> Squirrel/release/photo work is deliberately parked outside this app-only lane.
+
+> [!IMPORTANT]
 > **Library route repair pass — source-only, 2026-08-21.** Commit
 > [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
 > extends the route seam with daemon continuation (`nextOffset`),
