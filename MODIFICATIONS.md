@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Remove stale implicit file-context contracts after reconciliation
+
+**Reason:** source reconciliation left `FileWorkspace` with an obsolete callback
+that rebuilt the composer's implicit context from the active file or tab, while
+its visual regression tests still expected a removed active-file chip and CSS
+rule. The workspace now keeps the complete context collection for explicit `@`
+selection, quick switching and toolbox actions, while `ProjectView` remains the
+sole owner of the stable project context. Exact source assertions protect both
+the callback and selector removal. This is source-level work; hosted build,
+runtime interaction and capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+- `apps/web/tests/components/FileWorkspace.test.tsx`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+
 ### 2026-08-21 — Keep automatic composer context project-only after source reconciliation
 
 **Reason:** a later source reconciliation reintroduced an orphaned active-file name and

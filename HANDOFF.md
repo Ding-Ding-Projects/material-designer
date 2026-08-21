@@ -87,6 +87,17 @@
 > file selection, folder-imported mounting and stable project context across
 > viewer-tab changes; an exact source check protects the removal. Hosted
 > build/runtime/capture verification remains pending in this local handoff.
+> **Final file-context boundary cleanup — 2026-08-21, source-only.** The
+> follow-up source review found that `FileWorkspace` still carried an obsolete
+> active-context callback and that workspace visual tests still described the
+> removed active-file chip. The callback, its active-tab memo/effect and the two
+> callback-based tests are removed. The complete `workspaceContexts` collection
+> remains published for explicit `@` selection, quick switching and toolbox
+> actions; `ProjectView` remains the stable project-context owner. Exact source
+> regressions also reject the callback and active-file selector from returning.
+> No hosted build, runtime interaction or capture evidence was run; those gates
+> remain open.
+>
 > Release [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
 > then exposed a workflow-only PowerShell boundary: ordinary tools-pack stderr
 > progress was promoted to a terminating `NativeCommandError` before the native

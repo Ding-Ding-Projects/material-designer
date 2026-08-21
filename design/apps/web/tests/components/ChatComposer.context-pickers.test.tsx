@@ -25,6 +25,10 @@ const CHAT_COMPOSER_SOURCE = readFileSync(
   new URL('../../src/components/ChatComposer.tsx', import.meta.url),
   'utf8',
 );
+const FILE_WORKSPACE_SOURCE = readFileSync(
+  new URL('../../src/components/FileWorkspace.tsx', import.meta.url),
+  'utf8',
+);
 const CHAT_STYLES_SOURCE = readFileSync(
   new URL('../../src/styles/chat.css', import.meta.url),
   'utf8',
@@ -340,6 +344,9 @@ describe('ChatComposer context pickers', () => {
     expect(CHAT_STYLES_SOURCE).not.toContain('composer-active-file-mode');
     expect(ROUTINES_STYLES_SOURCE).not.toContain('composer-active-file-mode');
     expect(CHAT_COMPOSER_SOURCE).toContain("activeWorkspaceContext?.kind === 'project'");
+    expect(FILE_WORKSPACE_SOURCE).not.toMatch(/onActiveContextChange/);
+    expect(FILE_WORKSPACE_SOURCE).not.toContain('composer-active-file');
+    expect(CHAT_COMPOSER_SOURCE).toContain('insertWorkspaceMention');
   });
 
   it('keeps automatic context project-wide when the viewer tab changes', async () => {

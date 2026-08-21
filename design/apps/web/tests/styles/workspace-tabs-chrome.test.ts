@@ -176,10 +176,6 @@ describe('workspace tabs chrome styles', () => {
       routinesCss,
       'body.od-quick-switcher-open .chat-composer-fixed-layer .staged-chip .staged-remove',
     );
-    const fixedActiveFile = cssDeclarations(
-      routinesCss,
-      'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file',
-    );
     const fixedToolbarMode = cssDeclarations(
       routinesCss,
       'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .session-mode-toggle__trigger',
@@ -242,7 +238,6 @@ describe('workspace tabs chrome styles', () => {
       fixedStagedPreviewTrigger,
       fixedStagedContextOpen,
       fixedStagedCommentButton,
-      fixedActiveFile,
       fixedToolbarIcon,
       fixedToolbarMode,
       fixedToolbarAvatar,

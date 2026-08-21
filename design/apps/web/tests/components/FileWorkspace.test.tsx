@@ -387,7 +387,6 @@ function installComposerIsolationCss() {
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .staged-context .staged-icon', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .staged-chip .staged-icon', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .staged-chip .staged-remove', routinesCss],
-    ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .icon-btn', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .session-mode-toggle__trigger', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .avatar-agent-trigger', routinesCss],
@@ -523,10 +522,6 @@ describe('FileWorkspace quick switcher visual isolation', () => {
               <button class="staged-remove" type="button">x</button>
             </div>
           </div>
-          <div class="composer-active-file">
-            <span class="composer-active-file__label">Current</span>
-            <span class="composer-active-file__name">manual-edit.html</span>
-          </div>
           <div class="composer-input-wrap">
             <div class="composer-input-editor">
               <div class="composer-editable" contenteditable="true" tabindex="0">Mock focused composer control</div>
@@ -565,7 +560,6 @@ describe('FileWorkspace quick switcher visual isolation', () => {
     const stagedCommentButton = composerLayer.querySelector<HTMLElement>('.staged-comment button');
     const stagedCommentStrong = composerLayer.querySelector<HTMLElement>('.staged-comment .staged-name strong');
     const stagedCommentSpan = composerLayer.querySelector<HTMLElement>('.staged-comment .staged-name span');
-    const activeFileChip = composerLayer.querySelector<HTMLElement>('.composer-active-file');
     const toolbarIcon = composerLayer.querySelector<HTMLElement>('.icon-btn');
     const toolbarAvatar = composerLayer.querySelector<HTMLElement>('.avatar-agent-trigger');
     const toolbarAvatarButton = composerLayer.querySelector<HTMLElement>('.avatar-btn');
@@ -590,7 +584,6 @@ describe('FileWorkspace quick switcher visual isolation', () => {
     if (!stagedCommentButton) throw new Error('Missing mock staged comment button');
     if (!stagedCommentStrong) throw new Error('Missing mock staged comment strong text');
     if (!stagedCommentSpan) throw new Error('Missing mock staged comment span text');
-    if (!activeFileChip) throw new Error('Missing mock active file chip');
     if (!toolbarIcon) throw new Error('Missing mock toolbar icon');
     if (!toolbarAvatar) throw new Error('Missing mock toolbar avatar');
     if (!toolbarAvatarButton) throw new Error('Missing mock toolbar avatar button');
@@ -651,7 +644,6 @@ describe('FileWorkspace quick switcher visual isolation', () => {
       stagedFileRemove,
       stagedComment,
       stagedCommentButton,
-      activeFileChip,
       toolbarIcon,
       toolbarAvatar,
       toolbarAvatarButton,
@@ -2431,60 +2423,6 @@ describe('FileWorkspace launcher tab creation', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('retained-file-viewer').map((viewer) => viewer.getAttribute('data-file-name')))
         .toEqual(['alpha.html', 'gamma.html', 'delta.html']);
-    });
-  });
-
-  it('does not report a Design Files context for an empty project', async () => {
-    // A brand-new project has no files, live artifacts, or folders. The
-    // composer must not auto-stage a "Design files" chip that points at
-    // nothing, so the active workspace context stays null.
-    const onActiveContextChange = vi.fn();
-    render(
-      <FileWorkspace
-        projectId="project-1"
-        projectKind="prototype"
-        resolvedDir="/tmp/open-design/project-1"
-        files={[]}
-        liveArtifacts={[]}
-        onRefreshFiles={vi.fn()}
-        isDeck={false}
-        tabsState={{ tabs: [], active: null }}
-        onTabsStateChange={vi.fn()}
-        onActiveContextChange={onActiveContextChange}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(onActiveContextChange).toHaveBeenCalled();
-    });
-    expect(onActiveContextChange).toHaveBeenLastCalledWith(null);
-  });
-
-  it('reports the active Design Files tab as workspace context once files exist', async () => {
-    const onActiveContextChange = vi.fn();
-    render(
-      <FileWorkspace
-        projectId="project-1"
-        projectKind="prototype"
-        resolvedDir="/tmp/open-design/project-1"
-        files={[workspaceFile('cover.html')]}
-        liveArtifacts={[]}
-        onRefreshFiles={vi.fn()}
-        isDeck={false}
-        tabsState={{ tabs: [], active: null }}
-        onTabsStateChange={vi.fn()}
-        onActiveContextChange={onActiveContextChange}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(onActiveContextChange).toHaveBeenLastCalledWith({
-        id: 'workspace:design-files',
-        kind: 'design-files',
-        label: 'Design Files',
-        tabId: '__design_files__',
-        absolutePath: '/tmp/open-design/project-1',
-      });
     });
   });
 

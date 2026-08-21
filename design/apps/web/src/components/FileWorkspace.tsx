@@ -338,7 +338,6 @@ interface Props {
   onConversationSessionModeChange?: (id: string, mode: ChatSessionMode) => void;
   onNewConversation?: () => void;
   activeConversationChat?: ActiveConversationChatState;
-  onActiveContextChange?: (context: WorkspaceContextItem | null) => void;
   onWorkspaceContextsChange?: (contexts: WorkspaceContextItem[]) => void;
   messages?: ChatMessage[];
   artifactHtml?: string | null;
@@ -1361,7 +1360,6 @@ export function FileWorkspace({
   onConversationSessionModeChange,
   onNewConversation,
   activeConversationChat,
-  onActiveContextChange,
   onWorkspaceContextsChange,
   messages = [],
   conversationId,
@@ -3571,101 +3569,6 @@ export function FileWorkspace({
       }
     />
   );
-
-  const activeWorkspaceContext = useMemo<WorkspaceContextItem | null>(() => {
-    if (activeTab === DESIGN_SYSTEM_TAB && designSystemProject) {
-      return {
-        id: 'workspace:design-system',
-        kind: 'design-system',
-        label: t('dsManager.tabDesignSystem'),
-        tabId: activeTab,
-      };
-    }
-    if (designFilesTabActive) {
-      // Nothing to reference yet — don't auto-stage an empty "Design files" chip.
-      if (designFilesTabIsEmpty) return null;
-      const trimmedDir = uploadDir.trim();
-      const label = trimmedDir.split('/').filter(Boolean).pop() || t('workspace.designFiles');
-      return {
-        id: trimmedDir ? `folder:${trimmedDir}` : 'workspace:design-files',
-        kind: trimmedDir ? 'folder' : 'design-files',
-        label,
-        tabId: DESIGN_FILES_TAB,
-        ...(trimmedDir ? { path: trimmedDir } : {}),
-        ...(resolvedDir ? { absolutePath: joinDisplayPath(resolvedDir, trimmedDir) } : {}),
-      };
-    }
-    if (isBrowserTabId(activeTab)) {
-      const tab = browserTabs.find((candidate) => candidate.id === activeTab);
-      if (!tab) return null;
-      const url = tab.url?.trim() ?? '';
-      const label = url ? tab.title?.trim() || labelFromUrl(url) : tab.label;
-      return {
-        id: `browser:${tab.id}`,
-        kind: 'browser',
-        label,
-        tabId: tab.id,
-        ...(tab.title ? { title: tab.title } : {}),
-        ...(url ? { url } : {}),
-      };
-    }
-    if (isTerminalTabId(activeTab)) {
-      const terminalId = terminalIdFromTabId(activeTab);
-      return {
-        id: `terminal:${terminalId}`,
-        kind: 'terminal',
-        label: t('workspace.newTerminal'),
-        tabId: activeTab,
-      };
-    }
-    if (isSideChatTabId(activeTab)) {
-      const conversationId = conversationIdFromSideChatTabId(activeTab);
-      const conversation = conversations.find((item) => item.id === conversationId);
-      return {
-        id: `side-chat:${conversationId}`,
-        kind: 'side-chat',
-        label: conversation?.title?.trim() || t('workspace.sideChatDefaultTitle'),
-        tabId: activeTab,
-      };
-    }
-    if (activeLiveArtifact) {
-      return {
-        id: `live-artifact:${activeLiveArtifact.artifactId}`,
-        kind: 'live-artifact',
-        label: activeLiveArtifact.title,
-        tabId: activeLiveArtifact.tabId,
-        path: activeLiveArtifact.slug,
-      };
-    }
-    if (activeFile) {
-      const filePath = activeFile.path ?? activeFile.name;
-      return {
-        id: `file:${filePath}`,
-        kind: 'file',
-        label: filePath.split('/').filter(Boolean).pop() || filePath,
-        tabId: activeTab,
-        path: filePath,
-        ...(resolvedDir ? { absolutePath: joinDisplayPath(resolvedDir, filePath) } : {}),
-      };
-    }
-    return null;
-  }, [
-    activeFile,
-    activeLiveArtifact,
-    activeTab,
-    browserTabs,
-    conversations,
-    designFilesTabIsEmpty,
-    designFilesTabActive,
-    designSystemProject,
-    resolvedDir,
-    t,
-    uploadDir,
-  ]);
-
-  useEffect(() => {
-    onActiveContextChange?.(activeWorkspaceContext);
-  }, [activeWorkspaceContext, onActiveContextChange]);
 
   // Tabs rendered are persisted tabs plus any pending (un-saved) sketches.
   const tabNames = useMemo(() => {

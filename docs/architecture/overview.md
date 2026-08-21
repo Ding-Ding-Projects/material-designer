@@ -128,6 +128,24 @@ development tool.
 Cantonese (`zh-HK`) is **not** among them — see
 [../standards/language-modes.md](../standards/language-modes.md).
 
+#### Composer context ownership
+
+The prompt composer is project-scoped by default. `ProjectView` supplies one
+stable project context, so changing the visible file, browser tab or workspace
+surface cannot silently change the next project-wide send. `FileWorkspace`
+publishes the complete `workspaceContexts` collection for explicit `@`
+selection, quick switching and toolbox actions, but it does not emit an
+active-context callback derived from the currently visible tab. This keeps
+narrow file and browser evidence available without turning incidental viewing
+into an attachment.
+
+The boundary is protected by source-level regressions in
+`apps/web/tests/components/ChatComposer.context-pickers.test.tsx`,
+`apps/web/tests/components/FileWorkspace.test.tsx` and
+`apps/web/tests/styles/workspace-tabs-chrome.test.ts`. Hosted build, installed
+runtime interaction and visual capture evidence remain unverified for this
+development line.
+
 ### Desktop — `@open-design/desktop`
 
 The Electron 41.3.0 main process. It owns the application window and exposes a
