@@ -48,7 +48,7 @@ Focused source tests pin STA mode, the owner relationship, Explorer dialog
 properties, the sentinel, `FileOk`, directory existence, file rejection, full
 path normalization, localized title escaping, Unicode/space/apostrophe paths,
 empty and nonempty folder fixtures, cancellation, failure, and disposal. A
-desktop source Chut also pins the Electron parent, Explorer properties, parent
+desktop source check also pins the Electron parent, Explorer properties, parent
 focus restoration, cancellation separation, and the absence of the legacy
 tree-only dialog identifier. A complete Windows artifact verdict also
 opens the real dialog through the approved hidden-desktop route, confirms the

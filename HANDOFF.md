@@ -1,6 +1,25 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Folder-browser repair handoff — 2026-08-21.** Commit
+> [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
+> is complete on `codex/folder-browser-final-repair` and is not yet merged or
+> pushed. It removes the two folder-picker compiler blockers, routes the picker
+> title and failure copy through typed locale dictionaries, adds English and
+> Hong Kong Cantonese funny-level overrides, restores the owning window and
+> originating trigger focus, and strengthens source checks for the Explorer
+> dialog, sentinel, path-character, empty/nonempty-folder, file, missing-folder,
+> cancellation, and failure contracts.
+>
+> `git diff --check`, `sh scripts/verify-port.sh`, and
+> `sh scripts/verify-port.sh --json` all returned exit `0`. No Node, pnpm,
+> Electron, build, or test command ran locally. Hosted typecheck, packaged
+> interaction, installed runtime proof, and screen-capture evidence remain open. The
+> next owner must build the repaired commit, exercise the native Explorer
+> surface through the approved hidden-desktop route, verify Escape/focus return,
+> and record the real hosted verdict before merging or publishing.
+>
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

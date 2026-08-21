@@ -4614,7 +4614,7 @@ arguments to a one-argument state setter, and the native title/error copy was
 not routed through the typed locale dictionaries. The desktop picker now
 passes the localized title through the host/preload/main/daemon boundary,
 restores the owning window and renderer trigger focus after success, cancel or
-failure, and has source Chuts for the exact dialog, path, and result contracts.
+failure, and has source checks for the exact dialog, path, and result contracts.
 
 **Changed files:**
 
