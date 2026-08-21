@@ -28,6 +28,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **The production Library destination is reachable, and its search now owns
+  an anchored regex builder.** Commit
+  [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+  enables the existing provider-backed `LibrarySection` at `/library`, adds the
+  normal navigation-rail and analytics route, preserves the real upload,
+  preview, selection, handoff and destructive-action paths, and gives its
+  toolbar search independent plain-text/regex state with bounded local matching
+  and an accessible result count. Focused source contracts and the pure port
+  verifier are recorded; hosted tests, built-app interaction, runtime captures,
+  and a provider/API-backed deterministic public-safe fixture remain pending.
+  No photo or release asset was added by this lane.
+
+  Production Library route 而家唔再收埋喺暗門後面：`e4fcbfab1` 令現有
+  provider-backed `LibrarySection` 真係由 `/library` 同正常 navigation rail
+  入場，upload、preview、selection、handoff 同 destructive-action 路線照舊。
+  Toolbar search 由自己嘅 field controller 管 plain text / regex，bounded
+  local matching 同 result count 都有；hosted tests、built app、runtime
+  captures 同 deterministic provider/API fixture 仍然 pending。今個 lane
+  無加 photo 或 release asset。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)

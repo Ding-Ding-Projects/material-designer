@@ -53,6 +53,16 @@ with the project's standards.
       removes the remaining active-file attachment path; narrower evidence now
       reaches a send only through an explicit user action.
 
+- [ ] **Expose the production Library destination and field-owned search.**
+      Source commit [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+      enables `/library` through the real `LibrarySection`, adds the persistent
+      rail destination and analytics route, and gives the Library search its own
+      anchored bounded regex builder with an accessible result count. Focused
+      source contracts and the pure port verifier are in the commit; hosted
+      tests, built-app interaction, runtime captures, and a deterministic
+      provider/API-backed public-safe fixture remain unverified. Photo/release
+      work is intentionally outside this lane.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

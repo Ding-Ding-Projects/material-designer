@@ -1,6 +1,25 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Library route and search lane — 2026-08-21.** Commit
+> [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+> exposes the existing provider-backed `LibrarySection` at `/library`, adds
+> its persistent navigation-rail destination and analytics page identity, and
+> changes only the Library toolbar search to a field-owned anchored regex
+> builder. Plain text remains the default; explicit regex mode stays local and
+> bounded, with a screen-reader result count and no shared builder state.
+>
+> The source lane added focused route/buildPath, rail, real component render,
+> hidden-flag, builder-ownership and accessibility contracts. It did not run
+> Node, package-manager commands, builds, type checks, tests, UI actions or
+> captures locally. `scripts/verify-port.sh` and `scripts/verify-port.sh --json`
+> both reported zero gaps. The deterministic capture fixture remains pending:
+> it must use public-safe `LibraryAsset` records through the real provider/API
+> boundary, not replacement DOM. Existing upload, sync, select, preview,
+> project/design-system handoff and destructive confirmation paths remain in
+> place. Photo/release work is explicitly deferred to the owning lane.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

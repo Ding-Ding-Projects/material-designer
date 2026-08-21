@@ -4,7 +4,9 @@
 with plain-text default, explicit regex mode, flags, syntax feedback, bounded
 matching and capture-aware results. Its builder is anchored to the palette's
 own search field. The settings tab overflow menu now also owns an independent
-anchored builder for its local section filter, committed at
+anchored builder for its local section filter, and the production LibrarySection
+search now owns the same field-local controller and anchored builder, committed
+at
 [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The follow-up
 [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) keeps that portalled builder in its own focus scope while the menu remains open. The remaining search bars and the four tab-discovery surfaces
 still need their own builders, so the application does not yet meet the
@@ -78,10 +80,10 @@ from catastrophic backtracking.
 | Requirement | Status |
 | --- | --- |
 | A builder exists anywhere in the product | **Partial.** The command palette has the full builder; other required fields do not. |
-| Reachable from every search bar | **Partial.** The command palette is wired; the remaining search inventory is not. |
-| Anchored per field | **Partial.** The command palette builder is anchored to its field; the remaining fields are not wired. |
-| Plain text default, regex opt-in | **Implemented for the command palette** through its own `useRegexSearch` controller; the remaining search inventory is still open. |
-| Bidirectional synchronisation | **Implemented for the command palette** — the field, raw pattern editor, guided parts, flags and matcher share one controller; the remaining fields are still open. |
+| Reachable from every search bar | **Partial.** The command palette, settings overflow menu and LibrarySection are wired; the remaining search inventory is not. |
+| Anchored per field | **Partial.** The command palette, settings overflow menu and LibrarySection builder are anchored to their own fields; the remaining fields are not wired. |
+| Plain text default, regex opt-in | **Implemented for the command palette, settings overflow menu and LibrarySection** through independent `useRegexSearch` controllers; the remaining search inventory is still open. |
+| Bidirectional synchronisation | **Implemented for the command palette, settings overflow menu and LibrarySection** — each field, raw pattern editor, guided parts, flags and matcher share one controller; the remaining fields are still open. |
 | Search on every settings surface | **Partial in design.** The mockup gives the settings sidebar its own search; individual settings tabs and panels do not have one. |
 | Cross-tab match reporting | **Not designed.** |
 | Engine and dialect identified in the interface | **Not designed.** |
