@@ -37,7 +37,10 @@ version section when a release carries them.
   its trigger. Existing action handlers and disabled/error/re-entry semantics
   remain the owners of behaviour. Direct Share and toolbar labels now wrap at
   narrow bilingual widths. This is source-level evidence only; no installed
-  build or runtime geometry is claimed.
+  build or runtime geometry is claimed. Follow-up commit
+  [`6473425c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/6473425c5d4ae72ecb8a7b3a7dbdc71f9c6529d4)
+  keeps clicks inside the portalled regex builder from dismissing its owning
+  menu while preserving ordinary outside-click dismissal.
 
   FileViewer 嘅 menu 而家可以就地搵嘢、收 menu 還 focus，同埋長 label 自己
   換行。`bca23732d` 畀十個 Download、Share、Present、Zoom、toolbar 同 version
@@ -45,7 +48,8 @@ version section when a release carries them.
   search，Arrow/Home/End/Enter/Escape 都有路，收返仲識搵返開門粒掣。原本
   action handler、disabled/error/re-entry 行為照舊，窄雙語畫面唔再將 label
   斬到一半。呢度係 source-level evidence，未有 installed build 或 runtime
-  geometry claim。
+  geometry claim。Follow-up commit `6473425c5` 令 portalled regex builder 入面
+  嘅 click 唔會誤收自己個 menu，普通撳出面照樣收。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
