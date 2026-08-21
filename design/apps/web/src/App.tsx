@@ -1355,6 +1355,26 @@ function AppInner() {
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
+  const settingsOpenerRef = useRef<HTMLElement | null>(null);
+  const captureSettingsOpener = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    settingsOpenerRef.current = active instanceof HTMLElement
+      && !active.closest('.settings-page, .modal-settings')
+      ? active
+      : null;
+  }, []);
+  const restoreSettingsOpenerFocus = useCallback(() => {
+    const opener = settingsOpenerRef.current;
+    settingsOpenerRef.current = null;
+    if (!opener) return;
+    const restore = () => {
+      if (!opener.isConnected || opener.hasAttribute('disabled')) return;
+      opener.focus({ preventScroll: true });
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
+    else restore();
+  }, []);
   const workspaceProjectView = workspaceProjectListViewForRoute(route);
   // Read-only mirror for the boot effect. The boot pass needs to know which
   // project list to seed, but it must NOT restart when that answer changes:
@@ -4706,18 +4726,7 @@ function AppInner() {
     section: SettingsSection = readLastSettingsSection(),
     opts?: { highlight?: SettingsHighlight },
   ) => {
-    if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
-      settingsReturnTargetRef.current = null;
-      setIntegrationInitialTab(
-        section === 'composio'
-          ? 'connectors'
-          : section === 'mcpClient'
-            ? 'mcp'
-            : 'use-everywhere',
-      );
-      navigate({ kind: 'home', view: 'integrations' });
-      return;
-    }
+    captureSettingsOpener();
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4735,7 +4744,7 @@ function AppInner() {
         ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
         : { kind: 'home', view: 'settings' },
     );
-  }, [identityScopeKey]);
+  }, [captureSettingsOpener, identityScopeKey]);
 
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
@@ -4745,6 +4754,7 @@ function AppInner() {
   }, [openSettings]);
 
   const openPetSettings = useCallback(() => {
+    captureSettingsOpener();
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4758,7 +4768,7 @@ function AppInner() {
     setSettingsInitialSection('pet');
     setSettingsHighlight(null);
     navigate({ kind: 'home', view: 'settings' });
-  }, [identityScopeKey]);
+  }, [captureSettingsOpener, identityScopeKey]);
 
   const openMcpSettings = useCallback(() => {
     setIntegrationInitialTab('mcp');
@@ -4980,6 +4990,7 @@ function AppInner() {
           : { kind: 'home', view: 'home' },
       );
     }
+    restoreSettingsOpenerFocus();
   };
 
   const handleResetOnboarding = useCallback((next: AppConfig) => {
@@ -5592,6 +5603,7 @@ function AppInner() {
               setSettingsOpen(false);
               settingsDraftConfigRef.current = null;
               setSettingsHighlight(null);
+              restoreSettingsOpenerFocus();
             }}
             onRefreshAgents={refreshAgents}
             onAmrLoginStatusChange={handleAmrLoginStatusChange}

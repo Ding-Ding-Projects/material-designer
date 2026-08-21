@@ -42,6 +42,14 @@ const SETTINGS_PAGE_CSS = readFileSync(
   new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
   'utf8',
 );
+const SETTINGS_GLOBAL_CSS = readFileSync(
+  new URL('../../src/styles/workspace/mention-home.css', import.meta.url),
+  'utf8',
+);
+const REGEX_SEARCH_CSS = readFileSync(
+  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
+  'utf8',
+);
 const SETTINGS_DIALOG_SOURCE = readFileSync(
   new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
   'utf8',
@@ -260,6 +268,16 @@ describe('Settings: the tab strip', () => {
     expect(menu.style.maxHeight).toBe('76px');
   });
 
+  it('keeps active Material roles and adequate targets owned by the current components', () => {
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('.settings-page-shell .settings-nav-item.active');
+    expect(SETTINGS_TABS_CSS).toContain('color: var(--md-sys-color-primary);');
+    expect(SETTINGS_TABS_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_TABS_CSS).toContain('min-width: 48px;');
+    expect(SETTINGS_TABS_CSS).toContain('white-space: normal;');
+    expect(REGEX_SEARCH_CSS).toContain('min-width: 40px;');
+    expect(REGEX_SEARCH_CSS).toContain('min-height: 40px;');
+  });
+
   it('keeps a portalled overflow surface above the opaque settings page', () => {
     const menuZ = Number(SETTINGS_TABS_CSS.match(/\.menu\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]);
     const pageZ = Number(SETTINGS_PAGE_CSS.match(/\.page\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]);
@@ -358,12 +376,9 @@ describe('Settings: the tab strip', () => {
     expect(readLastSettingsSection()).toBe('privacy');
   });
 
-  it('falls back to the first tab when storage holds a section it must not restore', () => {
-    // Connectors / External MCP / MCP server are tabs here but are rerouted to
-    // the Integrations surface by `openSettings`, so restoring one of them
-    // would send a user who pressed "Settings" somewhere that is not settings.
+  it('restores every visible settings tab, including integration sections', () => {
     window.localStorage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, 'composio');
-    expect(readLastSettingsSection()).toBe('execution');
+    expect(readLastSettingsSection()).toBe('composio');
 
     window.localStorage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, 'not-a-section');
     expect(readLastSettingsSection()).toBe('execution');
@@ -383,17 +398,14 @@ describe('Settings: Appearance reachability', () => {
   it('keeps the System / Light / Dark theme control live on the Appearance tab', () => {
     renderSettings('appearance');
 
-    // These keys intentionally fall back to their stable key text when a
-    // locale has not supplied the Appearance copy yet; the semantic group and
-    // buttons remain addressable either way.
-    const themeGroup = screen.getByRole('group', { name: 'settings.appearance' });
+    const themeGroup = screen.getByRole('group', { name: en['settings.appearance'] });
     const controls = within(themeGroup).getAllByRole('button');
     expect(controls).toHaveLength(3);
 
-    fireEvent.click(within(themeGroup).getByRole('button', { name: 'settings.themeDark' }));
+    fireEvent.click(within(themeGroup).getByRole('button', { name: en['settings.themeDark'] }));
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
 
-    fireEvent.click(within(themeGroup).getByRole('button', { name: 'settings.themeSystem' }));
+    fireEvent.click(within(themeGroup).getByRole('button', { name: en['settings.themeSystem'] }));
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
   });
 
@@ -413,6 +425,25 @@ describe('Settings: Appearance reachability', () => {
   it('lets the typed direct route choose Appearance before the page mounts', () => {
     expect(APP_SOURCE).toContain("route.settingsSection");
     expect(APP_SOURCE).toContain("settingsSection: 'appearance'");
+  });
+
+  it('gives the direct page route a visible landmark name, initial focus, and opener restore', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain("id=\"settings-page-title\"");
+    expect(SETTINGS_DIALOG_SOURCE).toContain(
+      "aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}",
+    );
+    expect(SETTINGS_DIALOG_SOURCE).toContain('settingsPageRef.current?.focus({ preventScroll: true });');
+    expect(APP_SOURCE).toContain('captureSettingsOpener');
+    expect(APP_SOURCE).toContain('restoreSettingsOpenerFocus');
+  });
+
+  it('keeps integration sections visible and truthful in tab persistence', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'composio'");
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'mcpClient'");
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'integrations'");
+    expect(APP_SOURCE).not.toContain(
+      "section === 'composio' || section === 'mcpClient' || section === 'integrations'",
+    );
   });
 });
 

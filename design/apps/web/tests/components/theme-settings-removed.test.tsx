@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
 //
-// Product removed the theme setting outright: the workspace surfaces have no
-// dark tokens, so offering dark mode only produced a broken-looking app. Two
-// surfaces used to write `config.theme` — the Settings → General appearance
-// segmented control and the onboarding welcome page's sun/moon toggle. These
-// specs pin both as gone, so a later refactor cannot quietly reintroduce a
-// path back into dark mode.
+// Theme belongs to the authoritative Settings → Appearance tab. These tests
+// keep the three localized choices reachable and ensure onboarding does not
+// grow a second theme owner.
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EntryShell } from '../../src/components/EntryShell';
 import { SettingsDialog } from '../../src/components/SettingsDialog';
 import { I18nProvider } from '../../src/i18n';
+import { en } from '../../src/i18n/locales/en';
 import { DEFAULT_CONFIG } from '../../src/state/config';
 import type { AgentInfo, AppConfig } from '../../src/types';
 
@@ -39,7 +37,11 @@ const AGENTS: AgentInfo[] = [
   { id: 'codex', name: 'Codex', bin: 'codex', available: true },
 ];
 
-const THEME_CONTROL_LABELS = ['System', 'Light', 'Dark'];
+const THEME_CONTROL_LABELS = [
+  en['settings.themeSystem'],
+  en['settings.themeLight'],
+  en['settings.themeDark'],
+];
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -60,8 +62,8 @@ beforeEach(() => {
   analyticsMocks.track.mockReset();
 });
 
-describe('Settings → General (theme setting removed)', () => {
-  function renderGeneralSettings() {
+describe('Settings → Appearance (theme setting)', () => {
+  function renderAppearanceSettings() {
     return render(
       <I18nProvider initial="en">
         <SettingsDialog
@@ -70,7 +72,7 @@ describe('Settings → General (theme setting removed)', () => {
           agents={AGENTS}
           daemonLive
           appVersionInfo={null}
-          initialSection="general"
+          initialSection="appearance"
           onPersist={vi.fn()}
           onPersistComposioKey={vi.fn()}
           onClose={vi.fn()}
@@ -80,31 +82,29 @@ describe('Settings → General (theme setting removed)', () => {
     );
   }
 
-  it('renders no appearance group', () => {
-    renderGeneralSettings();
+  it('renders the localized Appearance group', () => {
+    renderAppearanceSettings();
 
-    expect(screen.queryByRole('group', { name: 'Appearance' })).toBeNull();
+    expect(screen.getByRole('group', { name: en['settings.appearance'] })).toBeTruthy();
   });
 
-  it('renders no System / Light / Dark theme buttons', () => {
-    renderGeneralSettings();
+  it('renders System / Light / Dark theme buttons in the authoritative tab', () => {
+    renderAppearanceSettings();
 
     for (const label of THEME_CONTROL_LABELS) {
-      expect(screen.queryByRole('button', { name: label })).toBeNull();
+      expect(screen.getByRole('button', { name: label })).toBeTruthy();
     }
   });
 
-  it('keeps the neighbouring General settings intact', () => {
-    renderGeneralSettings();
+  it('applies an explicit theme without creating a second navigation owner', () => {
+    renderAppearanceSettings();
 
-    // The language select and the system-preferences block share the General
-    // page with the removed appearance control; deleting the theme picker must
-    // not take them along.
-    expect(screen.getByRole('combobox', { name: 'Language' })).toBeTruthy();
+    screen.getByRole('button', { name: en['settings.themeDark'] }).click();
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 });
 
-describe('Onboarding welcome (theme toggle removed)', () => {
+describe('Onboarding welcome keeps theme ownership in Settings', () => {
   function baseConfig(overrides: Partial<AppConfig> = {}): AppConfig {
     return {
       mode: 'daemon',
@@ -159,14 +159,14 @@ describe('Onboarding welcome (theme toggle removed)', () => {
     );
   }
 
-  it('renders no sun/moon theme toggle on the welcome pane', () => {
+  it('does not duplicate the Settings theme control on the welcome pane', () => {
     const { container } = renderOnboarding();
 
     expect(container.querySelector('.onboarding-cloud__pane')).not.toBeNull();
     expect(container.querySelector('.onboarding-cloud__theme')).toBeNull();
   });
 
-  it('exposes no theme control by accessible name', () => {
+  it('keeps all theme labels available from the Settings surface instead', () => {
     renderOnboarding();
 
     for (const label of THEME_CONTROL_LABELS) {

@@ -37,6 +37,7 @@ import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
+import { parseDesktopAppearanceTheme } from "./appearance-theme.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
 import type { DesktopUpdater } from "./updater.js";
@@ -1532,23 +1533,7 @@ export type SplashWindowHandle = {
 };
 
 /**
- * Pin Electron's native appearance to light.
- *
- * The app has one theme now, so `themeSource` is not a preference to sync — it
- * is a constant. Leaving it at Electron's `system` default lets a dark-mode OS
- * colour everything the web layer does not own: the macOS vibrancy glass
- * (`vibrancy: "under-window"`), native menus and dialogs, and the renderer's
- * own `prefers-color-scheme` before `data-theme` is stamped.
- *
- * Idempotent, so both the splash path and the `od:appearance:set-theme` handler
- * can call it.
- */
-export function pinNativeAppearanceToLight(): void {
-  nativeTheme.themeSource = "light";
-}
-
-/**
- * Create and immediately show the light brand-splash window. The packaged entry
+ * Create and immediately show the neutral brand-splash window. The packaged entry
  * calls this BEFORE awaiting the daemon/web sidecars so the animation masks the
  * whole cold boot (no black no-window gap); the desktop runtime then adopts it
  * via `DesktopRuntimeOptions.splashWindow` + `splashStartedAt` and closes it
@@ -1556,12 +1541,12 @@ export function pinNativeAppearanceToLight(): void {
  * + matching size so the reveal swap reads as a single window, never a flash.
  */
 export function createSplashWindow(): SplashWindowHandle {
-  // Material Designer ships light-only (the theme setting was removed), so pin the
-  // native appearance before the first window exists. Electron defaults
-  // `themeSource` to `system`, which paints the macOS vibrancy glass and the
-  // native chrome dark on a dark-mode Mac — visible on the splash and again in
-  // the gap before the renderer's `od:appearance:set-theme` lands.
-  pinNativeAppearanceToLight();
+  // Keep the splash on Electron's neutral `system` source until the renderer
+  // has loaded the persisted theme and forwarded it through the validated IPC
+  // handler. The main window stays hidden until that renderer mount/reveal
+  // handshake completes, so an explicit Light or Dark choice never flashes
+  // after a hard-coded native Light startup value.
+  nativeTheme.themeSource = "system";
   // Stamp creation time at the instant the window appears (see SplashWindowHandle).
   const startedAt = Date.now();
   const splash = new BrowserWindow({
@@ -2730,15 +2715,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeAllListeners("od:appearance:set-theme");
   ipcMain.on("od:appearance:set-theme", (event, theme: unknown) => {
     if (window.isDestroyed() || event.sender !== window.webContents) return;
-    if (theme !== "light" && theme !== "dark" && theme !== "system") return;
-    // Pin the native appearance to the app theme. The macOS frosted window
-    // (vibrancy: under-window) draws its glass in the SYSTEM appearance by
-    // default, so a light app over a dark OS sat on dark glass and read as a
-    // muddy gray (#94); forcing the native theme keeps the glass material in
-    // step with the app's tokens. The host protocol still carries all three
-    // values as generic infrastructure, but the app ships light-only, so this
-    // is the same value `pinNativeAppearanceToLight` already set at startup.
-    nativeTheme.themeSource = theme;
+    const parsedTheme = parseDesktopAppearanceTheme(theme);
+    if (parsedTheme == null) return;
+    // The renderer owns persisted config and forwards its resolved value after
+    // its pre-hydration document stamp. Native menus, dialogs, and glass now
+    // follow the same System / Light / Dark value without a startup override.
+    nativeTheme.themeSource = parsedTheme;
   });
 
   ipcMain.removeHandler('od:print-pdf');
@@ -2894,7 +2876,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     void persistRendererEntry(entry);
   });
 
-  // The splash window carries the light brand animation. In packaged builds the
+  // The splash window carries the neutral brand animation. In packaged builds the
   // entry hands us one it created BEFORE the sidecars booted (so it overlaps the
   // whole cold start); otherwise we create our own. The main window above stays
   // hidden behind it until the real app has mounted.

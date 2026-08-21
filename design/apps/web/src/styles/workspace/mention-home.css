@@ -1398,7 +1398,7 @@
   align-items: center;
   gap: 8px;
   width: max-content;
-  min-height: 28px;
+  min-height: 40px;
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
@@ -1406,6 +1406,20 @@
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
+}
+.settings-page-nav-head h1 {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-headline-small-size, 24px);
+  line-height: var(--md-sys-typescale-headline-small-line-height, 32px);
+  font-weight: 600;
+}
+.settings-page-subtitle {
+  margin: -4px 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 .settings-page-back:hover {
   color: var(--text);
@@ -1485,113 +1499,12 @@
     transform: translate(-50%, -50%) !important;
   }
 }
-/* Sidebar items follow the ChatGPT-style settings rhythm: single line,
-   icon + label only, gray pill fill on active. The `<small>` description
-   that ships in the JSX is hidden — the label alone is the navigation
-   handle; the section's own subtitle in the content area carries any
-   intro copy. */
-/* display:grid below beats the UA `[hidden]{display:none}`, so search-filtered
-   items need this to actually hide. */
-.settings-nav-item[hidden] {
-  display: none;
-}
-.settings-nav-item {
-  position: relative;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 7px 10px;
-  text-align: left;
-  cursor: pointer;
-}
-.settings-nav-item:hover:not(:disabled) {
-  /* Same fill as .active; the :not(:disabled) bumps specificity above the
-     generic `button:hover:not(:disabled)` in primitives.css, which was
-     leaking its bg-subtle fill and border ring onto these pills. */
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  border-color: transparent;
-}
-.settings-page-shell .settings-nav-item {
-  border-radius: var(--radius-large, 8px);
-  /* Selected board breathes a uniform 10px on all four sides. */
-  padding: 10px;
-}
-/* Match the home nav rail (.entry-nav-rail__btn) exactly: unselected label +
-   icon use a muted 52% tone, hover adds a 5% wash, and the selected item is a
-   light-grey card (--bg-subtle) carrying the near-black --selected label/icon. */
-.settings-page-shell .settings-nav-item {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
-}
-.settings-page-shell .settings-nav-item svg,
-.settings-page-shell .settings-nav-item .od-icon {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
-  opacity: 1;
-}
-.settings-page-shell .settings-nav-item:not(.active):hover {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-}
-.settings-page-shell .settings-nav-item.active,
-.settings-page-shell .settings-nav-item.active:hover {
-  background: var(--bg-subtle);
-  color: var(--selected);
-  border-color: transparent;
-}
-.settings-page-shell .settings-nav-item.active strong {
-  color: var(--selected);
-}
-.settings-page-shell .settings-nav-item.active svg,
-.settings-page-shell .settings-nav-item.active .od-icon {
-  color: var(--selected);
-  opacity: 1;
-}
-.settings-nav-item.active,
-.settings-nav-item.active:hover {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  border-color: transparent;
-  color: var(--text);
-  box-shadow: none;
-}
-.settings-nav-item svg {
-  justify-self: center;
-  opacity: 0.75;
-}
-/* Custom inline-SVG nav glyphs carry .od-icon so they track the font icons:
-   full opacity by default (not the 0.75 above), text-strong when active. */
-.settings-nav-item svg.od-icon {
-  opacity: 1;
-}
-/* Selected item: the filled Remix glyph uses the spec's strongest
-   text/icon tone (#202020 light / #fafafa dark via --text-strong) at full
-   opacity. */
-.settings-nav-item.active .od-icon {
-  opacity: 1;
-  color: var(--text-strong);
-}
-.settings-nav-item span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.settings-nav-item strong {
-  color: currentColor;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-.settings-nav-item.active strong {
-  font-weight: 600;
-}
-.settings-nav-item small {
-  display: none;
-}
+/* SettingsTabStrip owns tab anatomy and active-state colors in
+   `components/settings/SettingsTabs.module.css`. The old global
+   `.settings-nav-item.active` selectors were stronger than the tab module and
+   forced a single-palette surface over the Material roles in dark mode. The class
+   remains a compatibility hook for existing locators; it intentionally owns
+   no visual rules here. */
 .settings-content {
   position: relative;
   z-index: 1;
@@ -1731,9 +1644,6 @@
     padding: 10px 12px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
-  }
-  .settings-nav-item {
-    min-width: 150px;
   }
 }
 /* Segmented control */

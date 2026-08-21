@@ -130,7 +130,10 @@ is bound to.
 | Requirement | Status |
 | --- | --- |
 | MD3 token layer to customize against | **Implemented** at commit `dea6b0a` — `design/apps/web/src/styles/md3-tokens.css` defines the role set and `tokens.css` became a mapping layer onto it. This is the substrate, not the feature. |
-| Theme light/dark in the application | **Source implemented.** System, Light and Dark are persisted, rendered by the Appearance section and applied live to the document/native shell. Hosted and installed behavior remain unverified. |
+| Theme System / Light / Dark in the application | **Source implemented.** System, Light and Dark are persisted, rendered by the Appearance section and applied live to the document/native shell. The native startup path begins in System and waits for the renderer's validated persisted-theme handoff before revealing the main window. Hosted and installed behavior remain unverified. |
+| Localized theme labels | **Source implemented.** `settings.appearance`, its hint, and the System / Light / Dark labels are typed and present in every supported locale, with explicit translated or safe fallback values. |
+| Roving appearance choices | **Source implemented.** Seed, density, font family, and accent use one shared radio-group primitive with one tab stop and Arrow / Home / End selection and focus behavior. |
+| Direct-page landmark and focus | **Source implemented.** `/settings/appearance` exposes a visible page heading, focuses the `tabIndex=-1` page root on entry, and restores the opener when the page closes. Hosted and installed behavior remain unverified. |
 | Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
 | Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
 | Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |

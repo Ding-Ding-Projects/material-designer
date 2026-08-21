@@ -1411,6 +1411,20 @@ describe('loadConfig', () => {
     expect(config.accentColor).toBe('#4f46e5');
   });
 
+  it('canonicalizes a malformed current-version theme back to system', () => {
+    store.set(
+      'open-design:config',
+      JSON.stringify({
+        theme: 'sepia',
+        configMigrationVersion: DEFAULT_CONFIG.configMigrationVersion,
+      }),
+    );
+
+    expect(loadConfig().theme).toBe('system');
+    const persisted = JSON.parse(store.get('open-design:config') ?? '{}') as Partial<AppConfig>;
+    expect(persisted.theme).toBe('system');
+  });
+
   it('falls back to the default accent color for malformed saved colors', () => {
     const savedConfig: Partial<AppConfig> = {
       accentColor: 'blue',

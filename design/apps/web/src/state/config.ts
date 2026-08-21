@@ -698,7 +698,12 @@ export function loadConfig(): AppConfig {
       notifications: normalizeNotifications(parsed.notifications),
       orbit: normalizeOrbit(parsed.orbit),
     };
-    let migratedConfig = false;
+    // A malformed theme in a current-version payload still needs one write
+    // back. Returning `system` only in memory would make the same bad value
+    // reappear on every launch and leave the persisted source of truth
+    // non-canonical.
+    let migratedConfig = Object.prototype.hasOwnProperty.call(parsed, 'theme')
+      && parsed.theme !== merged.theme;
     const parsedMigrationVersion =
       typeof parsed.configMigrationVersion === 'number'
         ? parsed.configMigrationVersion

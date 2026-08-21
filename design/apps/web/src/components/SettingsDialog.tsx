@@ -219,6 +219,7 @@ import {
 import { AppearanceControls } from './appearance/AppearanceControls';
 import { AppearanceRuntime } from './appearance/AppearanceRuntime';
 import { InfiniteColorPicker } from './appearance/InfiniteColorPicker';
+import { RovingRadioGroup } from './appearance/RovingRadioGroup';
 import { formatHex, parseColor, type Rgb, type Rgba } from './appearance/color';
 import { CSS_COLOR_NAMES } from './appearance/colorNames';
 import { BUILT_IN_PRESETS } from './appearance/presets';
@@ -1559,6 +1560,7 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
+  const pageMode = presentation === 'page';
   const {
     t,
     locale,
@@ -3570,6 +3572,15 @@ export function SettingsDialog({
     };
   }, []);
 
+  // A direct settings URL is a real page navigation, not a modal open. Give
+  // the page root the first focus stop so keyboard and screen-reader users
+  // land on the named surface before the tab strip, and refocus it when a
+  // caller changes the explicit deep-link section in place.
+  useLayoutEffect(() => {
+    if (!pageMode) return;
+    settingsPageRef.current?.focus({ preventScroll: true });
+  }, [initialSection, pageMode]);
+
   const protocolProviders = useMemo(
     () => KNOWN_PROVIDERS.filter((p) => p.protocol === apiProtocol),
     [apiProtocol],
@@ -4341,8 +4352,6 @@ export function SettingsDialog({
   const settingsFullscreenLabel = settingsFullscreen
     ? t('common.exitFullscreen')
     : t('common.fullscreen');
-  const pageMode = presentation === 'page';
-
   const surface = (
       <div
         className={
@@ -4353,7 +4362,7 @@ export function SettingsDialog({
         }
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
-        aria-labelledby="settings-dialog-title"
+        aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
         {/* Top-right chrome strip — anchored to the column's corner so the
@@ -4503,6 +4512,8 @@ export function SettingsDialog({
                   <Icon name="arrow-left" size={15} />
                   <span>{t('settings.pageBackToHome')}</span>
                 </button>
+                <h1 id="settings-page-title">{activeHeader.title}</h1>
+                <p className="settings-page-subtitle">{activeHeader.subtitle}</p>
               </div>
             ) : null}
           {activeSection === 'execution' ? (
@@ -6429,6 +6440,7 @@ export function SettingsDialog({
           className={`settings-page ${settingsPageStyles.page}`}
           ref={settingsPageRef}
           data-testid="settings-page"
+          tabIndex={-1}
         >
           {surface}
           {dshSetup ? (
@@ -9202,31 +9214,29 @@ function AppearanceSection({
       </div>
       <div className="field">
         <span className="field-label">{accentLabel}</span>
-        <div className="pet-swatches" role="radiogroup" aria-label={accentLabel} data-od-setting="appearance.accent">
-          {ACCENT_SWATCHES.map((color) => {
-            const active = currentAccent === color;
-            return (
-              <button
-                key={color}
-                type="button"
-                className={`pet-swatch${active ? ' active' : ''}`}
-                style={{ background: color }}
-                aria-label={color === DEFAULT_ACCENT_COLOR ? defaultAccentLabel : color}
-                aria-checked={active}
-                role="radio"
-                onClick={() => {
-                  trackSettingsAppearanceClick(analytics.track, {
-                    page_name: 'settings',
-                    area: 'appearance',
-                    element: 'accent_color',
-                    color,
-                  });
-                  setAccentColor(color);
-                }}
-              />
-            );
+        <RovingRadioGroup
+          value={currentAccent}
+          options={ACCENT_SWATCHES}
+          onChange={(color) => {
+            trackSettingsAppearanceClick(analytics.track, {
+              page_name: 'settings',
+              area: 'appearance',
+              element: 'accent_color',
+              color,
+            });
+            setAccentColor(color);
+          }}
+          ariaLabel={accentLabel}
+          className="pet-swatches"
+          groupProps={{ 'data-od-setting': 'appearance.accent' }}
+          optionProps={(color, active) => ({
+            className: `pet-swatch${active ? ' active' : ''}`,
+            style: { background: color },
+            'aria-label': color === DEFAULT_ACCENT_COLOR ? defaultAccentLabel : color,
           })}
-        </div>
+        >
+          {() => null}
+        </RovingRadioGroup>
         {/* The swatches above are shortcuts; this is the whole of sRGB.
             It replaces the old `<input type="color">`, which reached the
             same space through the operating system's picker but could not

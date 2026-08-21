@@ -198,14 +198,11 @@ export function isTabbedSettingsSection(value: unknown): value is SettingsSectio
   return typeof value === 'string' && (SETTINGS_TAB_ORDER as readonly string[]).includes(value);
 }
 
-// `App.openSettings` reroutes these three to the Integrations route rather than
-// opening the dialog on them. Restoring one of them would therefore send a user
-// who just pressed "Settings" somewhere that is not settings, so they are held
-// out of persistence in both directions.
-const NOT_RESTORABLE: readonly string[] = ['composio', 'mcpClient', 'integrations'];
-
 export function isRestorableSettingsSection(value: unknown): value is SettingsSection {
-  return isTabbedSettingsSection(value) && !NOT_RESTORABLE.includes(value);
+  // Every visible tab is owned by SettingsDialog, including the three
+  // integration sections. Explicit callers select a section directly; a bare
+  // Settings open restores whichever visible tab the user last chose.
+  return isTabbedSettingsSection(value);
 }
 
 export const SETTINGS_LAST_SECTION_STORAGE_KEY = 'od.settings.lastSection';

@@ -47,6 +47,25 @@ sections instead of being folded into a duplicate navigation branch.
 - `apps/web/src/state/appearance.ts`
 - `apps/web/tests/router.test.ts`
 
+### 2026-08-21 — Complete Appearance accessibility and theme ownership
+
+**Reason:** The reachable Appearance surface still carried stale light-only
+assumptions in its tests and native startup path. This repair gives every
+supported locale explicit Appearance and System / Light / Dark labels, makes
+the direct page name and focus behavior valid, removes the retired global tab
+selector cascade, shares one roving radio-group behavior across appearance
+choices, keeps every visible settings tab restorable, canonicalizes malformed
+current-version themes, and validates the renderer-to-native theme bridge.
+
+**Changed files:**
+
+- `apps/desktop/src/main/appearance-theme.ts`
+- `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
+- `apps/web/src/components/appearance/RovingRadioGroup.tsx`
+- `apps/web/tests/components/appearance/RovingRadioGroup.test.tsx`
+- `apps/web/tests/components/SettingsDialog.search-removed.test.tsx`
+- `apps/web/tests/components/theme-settings-removed.test.tsx`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

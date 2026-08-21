@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 //
-// Acceptance #156 — the settings page's left rail no longer carries a
-// "Search settings..." box. Product removed it: eight nav entries do not
-// need a filter, and the box kept reading as broken. The back-to-home
-// affordance above the nav stays, and every section stays visible.
+// The Settings page owns one searchable tab strip. Search remains plain text
+// by default, with the same field's adjacent regex builder available as an
+// explicit opt-in; the tab strip remains the single navigation owner.
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsDialog } from '../../src/components/SettingsDialog';
+import { SETTINGS_TAB_ORDER } from '../../src/components/settings/settingsTabs';
 import { DEFAULT_CONFIG } from '../../src/state/config';
 import type { AgentInfo } from '../../src/types';
 
@@ -22,7 +22,7 @@ function renderSettingsPage() {
       agents={AGENTS}
       daemonLive
       appVersionInfo={null}
-      initialSection="general"
+      initialSection="execution"
       onPersist={vi.fn()}
       onPersistComposioKey={vi.fn()}
       onClose={vi.fn()}
@@ -31,27 +31,33 @@ function renderSettingsPage() {
   );
 }
 
-describe('SettingsDialog settings-nav (search box removed)', () => {
+describe('SettingsDialog settings-tab search', () => {
   afterEach(cleanup);
 
-  it('renders no search input in the sidebar', () => {
-    const { container } = renderSettingsPage();
+  it('renders the settings search field with its own regex builder', () => {
+    renderSettingsPage();
 
-    expect(container.querySelector('.settings-page-search')).toBeNull();
-    expect(container.querySelector('input[type="search"]')).toBeNull();
-    expect(screen.queryByTestId('settings-nav-search-empty')).toBeNull();
+    const search = screen.getByTestId('settings-search');
+    expect(search.getAttribute('data-regex-mode')).toBe('text');
+    expect(screen.getByTestId('settings-search-regex-toggle')).toBeTruthy();
   });
 
-  it('keeps the back-to-home affordance and shows every nav section', () => {
+  it('keeps the back-to-home affordance and every visible settings tab reachable', () => {
     const { container } = renderSettingsPage();
 
     expect(container.querySelector('.settings-page-back')).not.toBeNull();
+    expect(screen.getAllByRole('tab')).toHaveLength(SETTINGS_TAB_ORDER.length);
+  });
 
-    // With the filter gone, no nav item may ship `hidden`.
-    const navItems = Array.from(container.querySelectorAll('.settings-nav-item'));
-    expect(navItems.length).toBeGreaterThan(0);
-    for (const item of navItems) {
-      expect(item.hasAttribute('hidden')).toBe(false);
-    }
+  it('searches and teleports to the Appearance tab without raw identifiers', () => {
+    renderSettingsPage();
+
+    fireEvent.change(screen.getByTestId('settings-search'), { target: { value: 'appearance' } });
+    const result = screen.getByTestId('settings-search-results');
+    const row = result.querySelector<HTMLButtonElement>('[data-anchor="appearance.theme"]');
+    expect(row).toBeTruthy();
+    fireEvent.click(row as HTMLButtonElement);
+
+    expect(screen.getByRole('tab', { name: 'Appearance' }).getAttribute('aria-selected')).toBe('true');
   });
 });
