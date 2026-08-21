@@ -1,37 +1,45 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **Desktop project-creation lane — source handoff, 2026-08-21.** Commit
+> **Desktop project-creation lane — source handoff, 2026-08-21.** Commits
 > [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)
-> adds an explicit `desktop-app` project intent, a shared versioned scaffold
-> generator for in-place creation and ZIP export, project-specific package/
-> main/preload/renderer files, and an optional typed prompt for the currently
-> selected agent through the existing first-run run path. The generated shell
-> preserves context isolation and sandboxing, disables Node integration and
-> webviews, blocks network and out-of-root local-file requests, denies secondary
-> windows, and exposes only a narrow preload marker. PlatformPicker now owns a
-> plain-text-first regex search with localized no-match output and roving
-> keyboard focus.
+> and [`1e68b5090`](https://github.com/Ding-Ding-Projects/material-designer/commit/1e68b50909da8734c765d354d4e086c0bdd1ccfb)
+> add an explicit `desktop-app` project intent, a shared versioned scaffold
+> generator for in-place creation and ZIP export, project-id-stable package
+> identity, and an optional bounded prompt for the currently selected and
+> available local agent through the existing first-run run path. Creation now
+> claims only a newly empty directory with a nonce marker, validates all nine
+> generated roles and their bytes before database visibility, and reconciles
+> abandoned owned claims at daemon startup. The generated shell canonicalizes
+> source, entry, renderer, and local request paths while rejecting symlink/
+> reparse and non-regular paths. Desktop selection is Windows-only and
+> exclusive; the package target is Squirrel.Windows with code signing disabled.
+> The picker now has app-wide selected-agent search, localized live result and
+> no-match status, focus return, viewport-bound portalled overlays, funny-level
+> copy, and 48px interaction wrappers.
 >
 > `git diff --check`, `sh scripts/verify-port.sh`, and
 > `sh scripts/verify-port.sh --json` ran through Git Bash and are green: 12,835
-> expected files, 13,080 tracked files, 591 declared modifications, and zero
+> expected files, 13,082 tracked files, 591 declared modifications, and zero
 > gaps. The focused source tests were deliberately not run on this local lane;
 > hosted source-test/build evidence, installed-runtime interaction, and visual
 > captures remain open. No installer, package, release, or public handoff was
 > produced from this lane. The next owner should run the hosted checks, exercise
-> desktop creation from the built application, inspect the generated file roles,
-> and confirm the existing run transitions through its real lifecycle.
+> desktop creation from the built application, inspect the generated nine-role
+> state and recovery marker, verify the selected agent and prompt witness, and
+> confirm the existing run transitions through its real lifecycle.
 >
 > [!NOTE]
-> **廣東話 handoff 摘要。** `be3d96c1e` 將 desktop-app 由一個 label 變成真正
-> 會落盤嘅 versioned scaffold，in-place creation 同 ZIP export 共用同一個
-> generator；揀咗 agent 就沿用 existing first-run run path 發出 typed prompt，
-> 唔會自創第二套 protocol。Shell 保留 isolation、sandbox、no Node、no
-> webview、封 network / 越界 local file、拒絕 secondary window，同埋窄
-> preload marker。PlatformPicker 有 plain-text-first regex search、localized
-> no-match 同 keyboard roving focus。Port verifier 人讀同 JSON 都係 0 gaps；
-> hosted source tests、build、installed runtime 同 visual captures 仍然未證實。
+> **廣東話 handoff 摘要。** `be3d96c1e` 加 `1e68b5090` 將 desktop-app 由一個
+> label 變成真正會落盤嘅 versioned scaffold；而家只准新嘅空 folder，nonce
+> marker 睇住九種 generated role，逐粒 byte 驗完先畀 database 見到，startup
+> 仲會清理返自己遺留嘅 claim。Package identity 跟 project id，display name
+> 分開，Windows-only 同 Squirrel.Windows / signing-disabled 講清楚。揀 agent
+> 唔再偷偷 fallback：server 會對 runtime registry、availability 同 app config
+> witness，brief 亦要同 pendingPrompt 完全一致。Picker 有 agent search、live
+> result、no-match、focus return、viewport-bound portalled overlay、funny copy
+> 同 48px target。Port verifier 人讀同 JSON 都係 0 gaps；hosted source tests、
+> build、installed runtime 同 visual captures 仍然未證實。
 
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
