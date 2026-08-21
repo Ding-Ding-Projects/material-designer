@@ -8,6 +8,8 @@ param(
   [Parameter(Mandatory = $true)][string]$ExpectedVersion,
   [Parameter(Mandatory = $true)][ValidateSet('x64', 'arm64')][string]$ExpectedArchitecture,
   [Parameter(Mandatory = $true)][string]$RequiredPackageEntry,
+  [Parameter(Mandatory = $true)][string]$MetadataFile,
+  [Parameter(Mandatory = $true)][string]$IconFile,
   [Parameter(Mandatory = $true)][string]$OutputPath,
   [switch]$RequireDelta
 )
@@ -26,6 +28,11 @@ $provenance = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
 if ($provenance.version -ne 1) { throw 'Build provenance version must be 1' }
 if ($provenance.sourceCommit -ne $ExpectedCommit.ToLowerInvariant()) { throw 'Build provenance source commit does not match the requested commit' }
 if ($provenance.cleanOutput -ne $true) { throw 'Build provenance does not assert a clean output directory' }
+if ([string]::IsNullOrWhiteSpace($provenance.packagingCommand)) { throw 'Build provenance packaging command is missing' }
+$builtAt = [DateTimeOffset]::MinValue
+if (-not [DateTimeOffset]::TryParse([string]$provenance.builtAt, [ref]$builtAt)) { throw 'Build provenance timestamp is invalid' }
+if ([string]::IsNullOrWhiteSpace($provenance.buildLog.path) -or -not (Test-Path -LiteralPath $provenance.buildLog.path -PathType Leaf)) { throw 'Build provenance log is missing' }
+if ($provenance.buildLog.sha256 -ne (Get-LowerHash $provenance.buildLog.path 'SHA256')) { throw 'Build provenance log hash does not match' }
 if ($provenance.package.id -ne $ExpectedPackageId -or $provenance.package.version -ne $ExpectedVersion -or $provenance.package.architecture -ne $ExpectedArchitecture) {
   throw 'Build provenance package identity does not match the requested package'
 }
@@ -39,12 +46,16 @@ foreach ($control in @('forceCodeSigning', 'signExecutable', 'signAndEditExecuta
   if ($provenance.signing.controls.$control -ne $false) { throw "Signing control '$control' must be false" }
 }
 
-$setupPath = Join-Path $root $SetupFile
+$setupName = [IO.Path]::GetFileName($SetupFile)
+if ($setupName -cne $SetupFile -or $SetupFile.Contains('..')) { throw "Unsafe setup filename: $SetupFile" }
+$setupPath = Join-Path $root $setupName
 $releasesPath = Join-Path $root 'RELEASES'
 if (-not (Test-Path -LiteralPath $setupPath -PathType Leaf)) { throw "Setup executable is missing: $SetupFile" }
 if (-not (Test-Path -LiteralPath $releasesPath -PathType Leaf)) { throw 'Squirrel RELEASES is missing' }
 $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
 if ($signature.Status -ne 'NotSigned') { throw "Setup Authenticode status was $($signature.Status), expected NotSigned" }
+$setupFiles = @(Get-ChildItem -LiteralPath $root -File -Filter '*.exe')
+if ($setupFiles.Count -ne 1 -or $setupFiles[0].Name -cne $setupName) { throw 'Artifact directory must contain exactly one intended setup executable' }
 
 $packageFiles = @(Get-ChildItem -LiteralPath $root -File -Filter '*.nupkg')
 $fullPackages = @($packageFiles | Where-Object Name -Like '*-full.nupkg')
@@ -61,6 +72,8 @@ foreach ($line in Get-Content -LiteralPath $releasesPath) {
   $name = $Matches[2]
   $bytes = [int64]$Matches[3]
   if ([IO.Path]::GetFileName($name) -cne $name -or $name.Contains('..')) { throw "Unsafe package path in RELEASES: $name" }
+  if (-not $name.EndsWith('.nupkg', [StringComparison]::OrdinalIgnoreCase)) { throw "RELEASES row is not a NuGet package: $name" }
+  if ($bytes -le 0) { throw "RELEASES row has a non-positive byte length: $name" }
   if (-not $indexed.Add($name)) { throw "Duplicate package row in RELEASES: $name" }
   $packagePath = Join-Path $root $name
   if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw "Indexed package is missing: $name" }
@@ -87,15 +100,37 @@ foreach ($package in $fullPackages) {
   } finally { $archive.Dispose() }
 }
 
+$metadataName = [IO.Path]::GetFileName($MetadataFile)
+$iconName = [IO.Path]::GetFileName($IconFile)
+if ($metadataName -cne $MetadataFile -or $MetadataFile.Contains('..')) { throw "Unsafe metadata filename: $MetadataFile" }
+if ($iconName -cne $IconFile -or $IconFile.Contains('..')) { throw "Unsafe icon filename: $IconFile" }
+$metadataPath = Join-Path $root $metadataName
+$iconPath = Join-Path $root $iconName
+if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) { throw "Update metadata is missing: $metadataName" }
+if (-not (Test-Path -LiteralPath $iconPath -PathType Leaf)) { throw "Packaged icon is missing: $iconName" }
+$metadata = Get-Content -Raw -LiteralPath $metadataPath | ConvertFrom-Json
+$installerMetadata = $metadata.platforms.win.artifacts.installer
+if ($metadata.schemaVersion -ne 1 -or $metadata.channel -ne 'stable' -or $metadata.releaseVersion -ne $ExpectedVersion -or $metadata.signed -ne $false) { throw 'Update metadata identity does not match the candidate' }
+if ($metadata.platforms.win.enabled -ne $true -or $metadata.platforms.win.arch -ne $ExpectedArchitecture) { throw 'Update metadata platform does not match the candidate' }
+if ($installerMetadata.type -ne 'installer' -or $installerMetadata.name -ne 'Setup.exe') { throw 'Update metadata does not identify the Squirrel installer' }
+if ([int64]$installerMetadata.size -ne (Get-Item -LiteralPath $setupPath).Length -or $installerMetadata.sha256 -ne (Get-LowerHash $setupPath 'SHA256')) { throw 'Update metadata installer bytes or SHA-256 do not match Setup.exe' }
+foreach ($url in @($metadata.releaseNotesUrl, $installerMetadata.url, $installerMetadata.sha256Url)) {
+  if ([string]::IsNullOrWhiteSpace($url) -or $url -notmatch '^https://') { throw 'Update metadata URLs must be non-empty HTTPS URLs' }
+}
+$iconBytes = [IO.File]::ReadAllBytes($iconPath)
+if ($iconBytes.Length -lt 6 -or $iconBytes[0] -ne 0 -or $iconBytes[1] -ne 0 -or $iconBytes[2] -ne 1 -or $iconBytes[3] -ne 0) { throw 'Packaged icon is not a valid ICO container' }
+
 $receipt = [ordered]@{
   version = 1
   sourceCommit = $ExpectedCommit.ToLowerInvariant()
-  artifactDirectory = $root
+  artifactDirectory = '.'
   provenanceSha256 = Get-LowerHash $provenanceFile 'SHA256'
   setup = [ordered]@{ name = $SetupFile; sha256 = Get-LowerHash $setupPath 'SHA256'; bytes = (Get-Item -LiteralPath $setupPath).Length; signatureStatus = 'NotSigned' }
   releases = [ordered]@{ sha256 = Get-LowerHash $releasesPath 'SHA256'; rows = $releaseRows }
   fullPackages = @($fullPackages | ForEach-Object { [ordered]@{ name = $_.Name; sha256 = Get-LowerHash $_.FullName 'SHA256'; bytes = $_.Length } })
   deltaPackages = @($deltaPackages | ForEach-Object { [ordered]@{ name = $_.Name; sha256 = Get-LowerHash $_.FullName 'SHA256'; bytes = $_.Length } })
+  metadata = [ordered]@{ name = $metadataName; sha256 = Get-LowerHash $metadataPath 'SHA256'; bytes = (Get-Item -LiteralPath $metadataPath).Length }
+  icon = [ordered]@{ name = $iconName; sha256 = Get-LowerHash $iconPath 'SHA256'; bytes = (Get-Item -LiteralPath $iconPath).Length }
   package = [ordered]@{ id = $ExpectedPackageId; version = $ExpectedVersion; architecture = $ExpectedArchitecture; requiredEntry = $RequiredPackageEntry }
 }
 $outputFullPath = [IO.Path]::GetFullPath($OutputPath)

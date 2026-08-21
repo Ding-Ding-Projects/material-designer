@@ -24,20 +24,13 @@ for (const [path, source] of workflows) {
   const runOnLines = source.match(/^\s+runs-on:\s*.+$/gm) ?? [];
   if (runOnLines.length === 0) failures.push(`${path} has no explicit runner label`);
   for (const line of runOnLines) {
-    if (!line.includes("self-hosted") || !line.includes("material-designer")) {
-      failures.push(`${path} has a job without self-hosted material-designer labels: ${line.trim()}`);
-    }
-    if (/(ubuntu|windows|macos)-latest/.test(line)) {
-      failures.push(`${path} uses a GitHub-hosted runner label: ${line.trim()}`);
-    }
+    if (!line.includes("windows-2022")) failures.push(`${path} is not pinned to the supported hosted Windows image: ${line.trim()}`);
   }
-  requireText(source, "bootstrap-ci-tools", `${path} does not bootstrap its self-hosted dependencies`);
+  requireText(source, "bootstrap-ci-tools", `${path} does not bootstrap its hosted dependencies`);
 }
 
 const release = await text(".github/workflows/release.yml");
-const verify = await text(".github/workflows/verify.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
-const inventory = await text("docs/build/self-hosted-dependencies.md");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
@@ -60,20 +53,23 @@ requireText(release, "branches:\n      - '**'", "release.yml still dispatches re
 forbid(release, /release publication is blocked: the standing contract requires a downloadable dim-sum photo/, "release.yml still blocks publication on the temporarily skipped photo contract");
 forbid(release, /Set-Content[^\n]*assetName\.sha256/, "release.yml writes the checksum through platform-native line endings");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
-requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
+requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the hosted runner");
 requireText(release, "$env:SQUIRREL_TEMP", "release.yml does not keep Squirrel's extraction temp root short");
-forbid(release, /\bpwsh\b/, "release.yml invokes pwsh, which is not guaranteed on the self-hosted Windows runner");
+forbid(release, /\bpwsh\b/, "release.yml invokes pwsh instead of its declared Windows PowerShell host");
 requireText(release, "CSC_IDENTITY_AUTO_DISCOVERY=false", "release.yml does not disable certificate discovery");
 requireText(release, "$signature.Status -ne 'NotSigned'", "release.yml does not verify an unsigned Setup.exe");
 requireText(release, "signed = $false", "release metadata does not declare unsigned artifacts");
 requireText(release, "WORKFLOW_STARTED_AT", "release notes do not receive the workflow start timestamp");
 requireText(release, "Workflow duration", "release notes do not publish workflow timing");
 requireText(release, "gh release edit", "release notes are not finalized after publication");
-requireText(release, '${{ steps.smoke.outcome }}', "release.yml does not classify missing UI states against the smoke outcome");
-requireText(release, "packaged smoke failed before UI capture completed", "release.yml does not report a failed smoke truthfully before capture");
-requireText(release, "ui-states.json is absent after a successful packaged smoke run", "release.yml does not fail closed when a successful smoke omits UI states");
-requireText(verify, "actions/setup-python@v5", "verify.yml test job does not install Python 3.12 automatically");
-requireText(inventory, "Fresh-environment bootstrap proof", "dependency inventory lacks a fresh-environment proof");
+requireText(release, "id: unsigned", "release.yml does not expose the unsigned-output verdict to publication");
+requireText(release, "id: artifact_contract", "release.yml does not expose the complete-artifact verdict to publication");
+requireText(release, "steps.unsigned.outcome == 'success'", "release.yml can publish without a successful unsigned-output check");
+requireText(release, "steps.artifact_contract.outcome == 'success'", "release.yml can publish without a successful complete-artifact check");
+requireText(release, '-MetadataFile "metadata.json"', "release.yml does not validate the updater metadata with the package set");
+requireText(release, '-IconFile "material-designer.ico"', "release.yml does not validate the packaged icon with the package set");
+requireText(release, "signer-audit.ready", "release.yml does not wait for the independent signer observer before packaging");
+forbid(release, /^\s+(?:pnpm(?:\.cmd)?\s+.*\b(?:test|lint|typecheck)|npm\s+.*\btest)\b/gm, "release.yml runs a prohibited test, lint, or type-check command");
 
 forbid(release, /^\s+--signed\b/m, "release.yml still requests a signed package");
 forbid(release, /\$\{\{\s*secrets\.(?:WIN_SIGN|OD_WIN_SIGN)/, "release.yml still reads signing secrets");
@@ -91,4 +87,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, and self-hosted bootstrap coverage verified.`);
+console.log(`Release contract passed: ${workflowPaths.length} workflows, unsigned Windows packaging, and hosted bootstrap coverage verified.`);

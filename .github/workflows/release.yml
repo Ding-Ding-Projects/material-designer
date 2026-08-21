@@ -153,14 +153,16 @@ jobs:
           $buildJsonPath = Join-Path $shortRoot "build.json"
           $buildLogPath = Join-Path $shortRoot "installer-build.log"
           $signerStopPath = Join-Path $shortRoot "signer-audit.stop"
+          $signerReadyPath = Join-Path $shortRoot "signer-audit.ready"
           "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
           if ($LASTEXITCODE -ne 0) { throw "tools-pack win cleanup exited with code $LASTEXITCODE" }
 
-          $signerAuditJob = Start-Job -ArgumentList $signerStopPath -ScriptBlock {
-            param($stopPath)
+          $signerAuditJob = Start-Job -ArgumentList $signerStopPath, $signerReadyPath -ScriptBlock {
+            param($stopPath, $readyPath)
+            New-Item -ItemType File -Path $readyPath -Force | Out-Null
             while (-not (Test-Path -LiteralPath $stopPath)) {
               Get-Process -ErrorAction SilentlyContinue | Where-Object {
                 $_.ProcessName -in @('signtool', 'AzureSignTool', 'osslsigncode')
@@ -169,6 +171,12 @@ jobs:
             }
           }
           try {
+            $auditReadyDeadline = [DateTime]::UtcNow.AddSeconds(10)
+            while (-not (Test-Path -LiteralPath $signerReadyPath)) {
+              if ($signerAuditJob.State -in @('Failed', 'Stopped', 'Completed')) { throw "the signer-process observer stopped before becoming ready" }
+              if ([DateTime]::UtcNow -ge $auditReadyDeadline) { throw "the signer-process observer did not become ready within 10 seconds" }
+              Start-Sleep -Milliseconds 50
+            }
             $previousErrorActionPreference = $ErrorActionPreference
             try {
               # tools-pack writes normal phase diagnostics to stderr. Windows
@@ -314,6 +322,7 @@ jobs:
           Write-Host "Squirrel feed: RELEASES plus $($fullPackagePaths.Count) full package(s), $($deltaPackagePaths.Count) delta package(s), and metadata.json"
 
       - name: Confirm unsigned Squirrel output
+        id: unsigned
         if: ${{ steps.pack.outputs.build_json != '' }}
         working-directory: design
         run: |
@@ -327,6 +336,7 @@ jobs:
           Write-Host "Squirrel Setup.exe verified unsigned (NotSigned)"
 
       - name: Validate the complete Squirrel artifact set
+        id: artifact_contract
         if: ${{ steps.pack.outputs.staged_dir != '' }}
         run: |
           $ErrorActionPreference = "Stop"
@@ -340,6 +350,8 @@ jobs:
             -ExpectedVersion "${{ steps.version.outputs.app_version }}" `
             -ExpectedArchitecture x64 `
             -RequiredPackageEntry "lib/net45/Material Designer.exe" `
+            -MetadataFile "metadata.json" `
+            -IconFile "material-designer.ico" `
             -OutputPath $receipt
 
       - name: Count lines for release notes
@@ -387,7 +399,7 @@ jobs:
 
       - name: Publish the release
         id: publish
-        if: ${{ always() && steps.pack.outputs.build_json != '' && steps.dim_sum_contract.outcome == 'success' }}
+        if: ${{ always() && steps.pack.outcome == 'success' && steps.unsigned.outcome == 'success' && steps.artifact_contract.outcome == 'success' && steps.lines.outcome == 'success' && steps.dim_sum_contract.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
@@ -442,7 +454,7 @@ jobs:
             echo ""
             if [ -f "$LINE_COUNT_PATH" ]; then cat "$LINE_COUNT_PATH"; else echo "_The line count was unavailable for this build._"; fi
             echo ""
-            echo "Contains Open Design v0.16.1 (\`517f39acde402c1a7af2189167a8d6957a3dac71\`), Apache-2.0."
+            echo "Contains Open Design v0.20.2 (\`393af2f991525a6c85cb04ee4aea0cd8967693c8\`), Apache-2.0."
             echo "Changes to the imported work are listed in \`MODIFICATIONS.md\`."
             echo "This build is not produced by, endorsed by, or affiliated with that project."
           } > "$notes"
@@ -499,9 +511,10 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
+          jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
           jq -e '[.assets[] | select(.name | endswith("-full.nupkg"))] | length > 0' <<< "$release_json" >/dev/null
 
           verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
