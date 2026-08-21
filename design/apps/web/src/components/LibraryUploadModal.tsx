@@ -87,7 +87,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
     (text: string) => {
       if (inFlight.current > 0) return;
       const id = nextItemId();
-      setItems((prev) => [{ id, name: `Pasted text · ${text.length} chars`, status: 'uploading' }, ...prev]);
+      setItems((prev) => [{ id, name: t('library.pastedText', { count: text.length }), status: 'uploading' }, ...prev]);
       inFlight.current += 1;
       void uploadLibraryText(text)
         .then((outcome) => finishItem(id, outcome))

@@ -5928,6 +5928,7 @@ export const zhTW: Dict = {
   'library.uploadNothing': '尚未上傳任何內容',
   'library.uploadSummary': '已加入 {added} 項 · {failed} 項失敗',
   'library.uploadMaxHint': '每個檔案上限 {count} MB',
+  'library.pastedText': '已貼上文字 · {count} 個字元',
   'library.noColor': '沒有可用的色彩值。',
   'library.noLink': '沒有可用的連結。',
   'library.loadTextError': '無法載入文字。',

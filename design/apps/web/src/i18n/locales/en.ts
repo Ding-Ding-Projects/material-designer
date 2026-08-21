@@ -5486,6 +5486,7 @@ export const en: Dict = {
   'library.uploadNothing': 'Nothing uploaded yet',
   'library.uploadSummary': '{added} added · {failed} failed',
   'library.uploadMaxHint': '{count} MB maximum per file',
+  'library.pastedText': 'Pasted text · {count} chars',
   'library.noColor': 'No color value available.',
   'library.noLink': 'No link available.',
   'library.loadTextError': 'Could not load text.',

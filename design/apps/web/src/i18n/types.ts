@@ -5753,6 +5753,7 @@ export interface Dict {
   'library.uploadNothing'?: string;
   'library.uploadSummary'?: string;
   'library.uploadMaxHint'?: string;
+  'library.pastedText'?: string;
   'library.noColor'?: string;
   'library.noLink'?: string;
   'library.loadTextError'?: string;
