@@ -128,7 +128,6 @@ import {
   requireDeleteConfirmation,
 } from '../../http/confirm-delete.js';
 
-export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'history' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation'> {}
 export function rewriteOutsideExecutableHtmlRanges(
   html: string,
   rewriteChunk: (chunk: string) => string,
@@ -240,7 +239,7 @@ function sameLocalCatalogScopes(left: unknown, right: unknown): boolean {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
-export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation' | 'collabSync'> {
+export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | 'history' | 'http' | 'paths' | 'projectStore' | 'projectFiles' | 'conversations' | 'templates' | 'status' | 'events' | 'ids' | 'telemetry' | 'appConfig' | 'agents' | 'validation' | 'collabSync'> {
   pluginScope?: {
     loadRegistry: (options: {
       workspaceId?: string | null;
@@ -1853,7 +1852,6 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   function recordTemplateChange(label: string): void {
     ctx.history?.recordMutation({ domainId: 'templates', label });
   }
-  async function loadPluginRegistryView() {
   const { collabSync, teamProjectCatalog, workspaceTypes } = ctx;
   const learnAssertedWorkspaceType = (context: WorkspaceResourceContext | null) => {
     if (!context?.workspaceTypeAsserted) return;
@@ -2893,6 +2891,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     } catch (err: any) {
       sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
+  });
   });
 
   app.post('/api/project-locations/scan', async (req, res) => {

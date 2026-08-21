@@ -159,6 +159,8 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
    */
   function recordRoutineChange(label: string): void {
     ctx.history?.recordMutation({ domainId: 'routines', label });
+  }
+
   function authorizeRoutineWorkspaceContext(
     req: any,
     context: ReturnType<typeof normalizeRoutineContext>,
@@ -504,7 +506,6 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
       // The new name when this call renamed it, the stored one otherwise, so
       // the revision reads as what the user sees rather than as a stale label.
       recordRoutineChange(`Updated the automation ${patch.name ?? existing.name}`);
-      res.json({ routine: routineFromDb(req.params.id) });
       res.json({
         routine: exposeRoutineWorkspaceScope(
           routineFromDb(req.params.id)!,
@@ -516,15 +517,6 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
     }
   });
 
-  app.delete('/api/routines/:id', (req, res) => {
-    // Read the name before the row goes, so the revision says which automation
-    // was deleted rather than only that one was.
-    const doomed = getRoutine(db, req.params.id);
-    routineService?.unschedule(req.params.id);
-    const removed = dbDeleteRoutine(db, req.params.id);
-    if (!removed) return res.status(404).json({ error: 'routine not found' });
-    recordRoutineChange(`Deleted the automation ${doomed?.name ?? req.params.id}`);
-    res.status(204).end();
   app.delete('/api/routines/:id', async (req, res) => {
     try {
       const existing = getRoutine(db, req.params.id);
@@ -532,6 +524,7 @@ export function registerRoutineRoutes(app: Express, ctx: RegisterRoutineRoutesDe
       await authorizeRoutineRecord(req, existing);
       routineService?.unschedule(req.params.id);
       dbDeleteRoutine(db, req.params.id);
+      recordRoutineChange(`Deleted the automation ${existing.name}`);
       res.status(204).end();
     } catch (err: any) {
       sendRoutineError(res, err, 400);

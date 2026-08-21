@@ -18,8 +18,6 @@ import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
 import { CONFIRM_DELETE_HEADER, EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, EXTERNAL_EDITOR_IDS } from '@open-design/contracts';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS } from '@open-design/contracts';
-import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
 import { exportRoutePath } from './export-cli-routing.js';
 import {
@@ -460,7 +458,6 @@ const SUBCOMMAND_MAP = {
   diagnostics: runDiagnostics,
   export: runExport,
   editor: runEditor,
-  lint: runLint,
   status: runStatus,
   version: runVersion,
   history: runHistory,
@@ -871,45 +868,6 @@ async function runExportData(args) {
   let flags;
   try {
     flags = parseFlags(rest, { string: DATA_EXPORT_STRING_FLAGS, boolean: DATA_EXPORT_BOOLEAN_FLAGS });
-const LINT_STRING_FLAGS = new Set(['daemon-url', 'file', 'html-file', 'fail-on']);
-const LINT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'agent-message']);
-const LINT_FAIL_ON_VALUES = ['p0', 'p1', 'p2', 'none'];
-
-function printLintHelp() {
-  console.log(`Usage:
-  od lint <file.html|-> [options]
-
-Run the daemon's anti-slop artifact linter (the same checks applied on
-artifact save) against an HTML file, or stdin when the file is \`-\`.
-Runs without model/agent calls; works against a headless daemon.
-
-Exit codes: 0 clean at threshold · 1 findings at/above --fail-on ·
-2 usage · 3 daemon unreachable.
-
-Options:
-  --file, --html-file <p>  Input path (alternative to the positional; \`-\` = stdin)
-  --fail-on <sev>          p0 | p1 | p2 | none — exit 1 threshold (default p0)
-  --agent-message          Also print the <artifact-lint> block for agent splicing
-  --json                   Print a machine-readable result envelope
-  --daemon-url <url>       Override daemon URL
-
-Examples:
-  od lint artifact.html
-  od lint - < artifact.html --json
-  od lint report.html --fail-on p1 --agent-message`);
-}
-
-// CLI half of POST /api/artifacts/lint. The endpoint has been live since the
-// linter landed, but without a subcommand it was unreachable from external
-// agents — the exact gap the dual-track rule in AGENTS.md exists to prevent.
-async function runLint(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    printLintHelp();
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  let flags;
-  try {
-    flags = parseFlags(args, { string: LINT_STRING_FLAGS, boolean: LINT_BOOLEAN_FLAGS });
   } catch (err) {
     console.error(err.message);
     process.exit(2);
@@ -1286,42 +1244,6 @@ async function runEditorOpen(base, flags) {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
-  const pos = positionalArgs(args, LINT_STRING_FLAGS);
-  const file = flags.file || flags['html-file'] || pos[0];
-  if (!file) {
-    printLintHelp();
-    process.exit(2);
-  }
-  const failOn = (flags['fail-on'] || 'p0') as LintFailOn;
-  if (!LINT_FAIL_ON_VALUES.includes(failOn)) {
-    console.error(`invalid --fail-on: ${failOn} (expected ${LINT_FAIL_ON_VALUES.join(' | ')})`);
-    process.exit(2);
-  }
-  let html;
-  try {
-    if (file === '-') {
-      const chunks = [];
-      for await (const chunk of process.stdin) chunks.push(chunk);
-      html = Buffer.concat(chunks).toString('utf8');
-    } else {
-      const { readFile } = await import('node:fs/promises');
-      html = await readFile(file, 'utf8');
-    }
-  } catch (err) {
-    console.error(`cannot read ${file}: ${err instanceof Error ? err.message : String(err)}`);
-    process.exit(2);
-  }
-  if (html.length === 0) {
-    console.error(`empty input: ${file}`);
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/artifacts/lint`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ html }),
     });
   } catch (err) {
     surfaceFetchError(err, base);
@@ -1407,35 +1329,6 @@ async function writeEditorChoice(base, value) {
   if (!resp.ok) return structuredHttpFailure(resp);
   const data = await resp.json();
   return data?.config ?? {};
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const { findings, agentMessage } = (await resp.json()) as LintArtifactResponse;
-  const counts = { p0: 0, p1: 0, p2: 0 };
-  for (const f of findings) {
-    if (f.severity === 'P0') counts.p0 += 1;
-    else if (f.severity === 'P1') counts.p1 += 1;
-    else counts.p2 += 1;
-  }
-  const failed =
-    failOn === 'p0' ? counts.p0 > 0
-    : failOn === 'p1' ? counts.p0 + counts.p1 > 0
-    : failOn === 'p2' ? findings.length > 0
-    : false;
-  if (flags.json) {
-    const envelope: LintArtifactCliResultEnvelope = {
-      ok: !failed, file, failOn, counts, findings, agentMessage,
-    };
-    process.stdout.write(JSON.stringify(envelope, null, 2) + '\n');
-  } else {
-    for (const f of findings as ArtifactLintFinding[]) {
-      console.log(`[${f.severity}] ${f.id} — ${f.message}`);
-      if (f.snippet) console.log(`      ${f.snippet}`);
-      console.log(`      fix: ${f.fix}`);
-    }
-    const summary = `${findings.length} finding${findings.length === 1 ? '' : 's'} (P0 ${counts.p0} · P1 ${counts.p1} · P2 ${counts.p2})`;
-    console.log(findings.length ? summary : `clean — ${summary}`);
-    if (flags['agent-message'] && agentMessage) console.log(`\n${agentMessage}`);
-  }
-  if (failed) process.exitCode = 1;
 }
 
 if (argv[0] === 'mcp' && argv[1] === 'live-artifacts') {
@@ -12310,7 +12203,6 @@ Output:
 Common options:
   --daemon-url <url>   Open Design daemon HTTP base.
   --confirm            Authorize a destructive delete. Required by every delete subcommand.`);
-  --daemon-url <url>   OpenDesign daemon HTTP base.`);
 }
 
 async function runAutomation(args) {

@@ -959,6 +959,11 @@ export function registerDesignSystemRoutes(
           reversible: false,
         }),
       );
+    } catch (err) {
+      res.status(500).json({ error: String(err) });
+    }
+  });
+
   // Asset sync (spec 04 §9.3, recvqb1t4FrckM): a signal-only endpoint — the
   // browser never uploads file bytes here. The daemon locates the design
   // system's workspace project itself (same lookup
@@ -999,17 +1004,6 @@ export function registerDesignSystemRoutes(
     }
   });
 
-  app.delete('/api/design-systems/:id', requireDeleteConfirmation({
-    kind: 'design-system',
-    resourceId: (req) => String(req.params.id ?? ''),
-    resourcePath: (_req, id) => `/api/design-systems/${encodeURIComponent(id)}`,
-  }), async (req, res) => {
-    // Narrowed once, up front: composing the confirmation middleware onto this
-    // route widens Express's inferred `params` to `string | string[] |
-    // undefined`.
-    const id = String(req.params.id ?? '');
-    try {
-      const ok = await deleteUserDesignSystem(USER_DESIGN_SYSTEMS_DIR, id);
   async function deleteDesignSystemForRequest(
     req: Request,
     res: Response,
@@ -1053,8 +1047,13 @@ export function registerDesignSystemRoutes(
     }
   }
 
-  app.delete('/api/design-systems/:id', async (req, res) => {
-    if (!(await deleteDesignSystemForRequest(req, res, req.params.id))) return;
+  app.delete('/api/design-systems/:id', requireDeleteConfirmation({
+    kind: 'design-system',
+    resourceId: (req) => String(req.params.id ?? ''),
+    resourcePath: (_req, id) => `/api/design-systems/${encodeURIComponent(id)}`,
+  }), async (req, res) => {
+    const id = String(req.params.id ?? '');
+    if (!(await deleteDesignSystemForRequest(req, res, id))) return;
     res.status(204).end();
   });
 
