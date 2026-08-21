@@ -1,6 +1,37 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Appearance accessibility and theme-ownership checkpoint — 2026-08-21.**
+> Commit
+> [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)
+> completes the accepted source repair in the Appearance implementation lane. All
+> five Appearance/theme labels are typed and present in all 20 supported locale
+> dictionaries. The direct `/settings/appearance` page now has a visible
+> `h1` landmark, a `tabIndex=-1` root focus stop, and opener restoration where
+> an opener remains connected. The old global `.settings-nav-item.active`
+> cascade is gone; active dark-mode tab styling comes from the SettingsTabs
+> Material roles. Tabs, the overflow action, and each regex affordance meet the
+> minimum target contract, and localized labels wrap in the tab and overflow
+> surfaces.
+>
+> Seed, density, font-family, and accent controls now use one shared roving
+> radio-group primitive with one tab stop and Arrow / Home / End movement.
+> Composio, external MCP, and Integrations remain visible Settings tabs and are
+> now valid persistence targets rather than being silently rerouted by
+> `openSettings`. Current-version malformed themes are written back as
+> `system`. The desktop bridge accepts only `system`, `light`, or `dark`; the
+> startup splash begins in `system`, and the main window remains hidden until
+> the renderer mount/reveal handshake has forwarded the persisted theme.
+>
+> Pure shell evidence at `3eebe4332`: `sh scripts/verify-port.sh` and
+> `sh scripts/verify-port.sh --json` both pass with 12,835 expected upstream
+> files, 13,084 tracked files, 590 declarations, and zero missing, byte, mode,
+> object-ID, extra, untracked, or stale-notice findings. `git diff --check` is
+> clean. The new focused source tests and bridge contracts were added but were
+> not run locally because this lane is restricted to pure-shell/static checks;
+> hosted tests, builds, installed interaction, and visual captures remain open.
+
+> [!IMPORTANT]
 > **Appearance settings reachability checkpoint — 2026-08-21.** Commit
 > [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
 > restores one authoritative SettingsTabStrip owner and one rendered panel

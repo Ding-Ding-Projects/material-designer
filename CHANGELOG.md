@@ -28,6 +28,32 @@ version section when a release carries them.
 
 ### Changed
 
+- **Appearance now keeps its full theme and accessibility contract across the
+  application.** Commit
+  [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)
+  adds typed Appearance and System / Light / Dark labels to every supported
+  locale, gives `/settings/appearance` a visible named landmark with initial
+  focus and opener restoration, and replaces the retired global active-tab
+  cascade with component-owned Material roles. Seed, density, font family,
+  and accent choices now share one roving radio-group behavior with arrow,
+  Home, and End navigation; tab and regex targets are touch-sized and long
+  labels wrap instead of hiding. Integration settings tabs are now owned and
+  restored by the Settings surface, malformed current-version themes are
+  persisted back as System, and the native bridge validates all three theme
+  values without a light-only startup override. Hosted builds, installed
+  interaction, and visual captures remain unverified.
+
+  Appearance 而家由頭到尾守住 theme 同 accessibility contract。`3eebe4332`
+  幫所有 locale 加返 typed Appearance 同 System / Light / Dark labels，
+  `/settings/appearance` 有清楚 landmark、入場 focus 同 opener restore，
+  舊 global active-tab cascade 亦交返俾 component 自己用 Material roles。
+  Seed、density、font family 同 accent 共用一套 roving radio 行為，Arrow、
+  Home、End 都行得通；tab 同 regex targets 夠大，長 label 會自動換行，唔再
+  收埋。Integration settings tabs 而家由 Settings surface 自己擁有同 restore，
+  current-version 壞 theme 會寫返 System，native bridge 會驗晒三個 theme
+  value，唔再由 startup light override 搞局。Hosted build、installed
+  interaction 同 visual captures 仍未驗證。
+
 - **Settings Appearance is now a reachable, addressable surface.** Commit
   [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
   removes the obsolete General normalization and duplicate navigation markup,
