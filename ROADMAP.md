@@ -65,8 +65,10 @@ state before every recovery reload, and gives Workspace, Orbit and Routines
 real SettingsDialog tab ownership while permission-filtering Workspace from the
 palette. The selected tab stays focused during local switching; stable hint and
 no-match descriptions, 2D colour values, 48px wrappers, and narrow/bilingual
-wrapping are source-covered. Hosted build, installed interaction, display-scale
-and visual-capture evidence remains open.
+wrapping are source-covered. Follow-up
+[`00c5be1c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/00c5be1c74b54e62a9b6b651887a7a2dc09f7e92)
+removes the final stale settings grid coordinates. Hosted build, installed
+interaction, display-scale and visual-capture evidence remains open.
 
 > [!IMPORTANT]
 > **Read this before the checkboxes below — several of them are behind the

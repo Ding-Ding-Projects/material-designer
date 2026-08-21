@@ -5,6 +5,9 @@
 > Implementation commit
 > [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
 > carries this source repair.
+> Follow-up [`00c5be1c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/00c5be1c74b54e62a9b6b651887a7a2dc09f7e92)
+> removes the remaining stale settings grid coordinates from the page wrapper,
+> sidebar/content selectors and narrow-media rule.
 > The source lane now marks the acknowledged native theme capability explicitly
 > and treats a legacy fire-and-forget host as incompatible for startup readiness
 > rather than claiming native success. Renderer crash recovery clears its

@@ -28,6 +28,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **The last obsolete settings grid fallback is gone.** Commit
+  [`00c5be1c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/00c5be1c74b54e62a9b6b651887a7a2dc09f7e92)
+  removes the stale wrapper, sidebar, content and narrow-media grid
+  coordinates so the page, tabs, search and content keep one honest flex flow.
+  Hosted build, installed interaction, display-scale and visual-capture
+  evidence remain unverified.
+
+  Settings 仲有一層舊 grid fallback 藏喺 wrapper 同窄位 rule 入面，`00c5be1c7`
+  清走晒啲死 coordinates，page、tabs、search 同 content 而家由同一條 flex 路
+  帶住。Hosted build、installed interaction、display-scale 同 visual captures
+  仍未驗證。
+
 - **Appearance readiness now distinguishes compatible hosts and re-arms after renderer recovery.** Commit
   [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
   adds an explicit acknowledged-theme capability marker, reports legacy
