@@ -133,7 +133,7 @@ version section when a release carries them.
   `preview` row，dynamic channel 照樣用 Material Designer app ID，唔會換咗名牌。
 
 - **The imported Open Design baseline advances by 309 commits to `393af2f99`,
-  and Download now offers explicit agent handoffs.** The Tow Fat, byte manifest,
+  and Download now offers explicit agent handoffs.** The nested repository, byte manifest,
   and 12,835-file upstream mirror now point at v0.20.2. Non-declared paths were
   imported as exact blobs; declared product changes were three-way merged. The
   project ZIP remains the complete website handoff, while a new desktop scaffold
