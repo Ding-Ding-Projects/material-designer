@@ -28,6 +28,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **The reachable Library route now keeps its complete, searchable result set
+  intact.** Commit
+  [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+  adds bounded `nextOffset` continuation, typed provider failures that preserve
+  loaded rows with a localized retry action, reconciliation SSE refresh, and
+  independent anchored regex builders for the kind/source filters, design-system
+  handoff menu, and Library picker. Bulk selection is visibly scoped to matching
+  rows; the collapsed rail remains keyboard-reachable; shared dialogs trap and
+  restore focus; upload work blocks re-entry and close while pending; narrow
+  headers and actions wrap instead of clipping. Hosted verification, built-app
+  interaction, runtime captures, and a deterministic public-safe fixture remain
+  pending. No photo or release asset was added.
+
+  Reachable Library route 而家唔會偷偷漏結果：`06e45980d` 加咗 bounded
+  `nextOffset` continuation，provider 出錯會保留已載入 rows，同埋有 localized
+  retry；reconcile SSE、kind/source filter、design-system handoff 同 picker
+  都各自有 anchored regex builder。Bulk selection 清楚講明只計符合嘅 rows，
+  收窄 rail 照樣 keyboard reachable，shared dialog 會 trap 同 restore focus，
+  upload 未完就唔畀重入或者閂門，窄 header/action 會換行唔會剪走。Hosted
+  verification、built app、runtime captures 同 deterministic public-safe
+  fixture 仍然 pending；今次無加 photo 或 release asset。
+
 - **The production Library destination is reachable, and its search now owns
   an anchored regex builder.** Commit
   [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)

@@ -58,7 +58,8 @@ with the project's standards.
       enables `/library` through the real `LibrarySection`, adds the persistent
       rail destination and analytics route, and gives the Library search its own
       anchored bounded regex builder with an accessible result count. The same
-      route's repair now adds complete bounded continuation, typed retryable
+      route's repair in [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+      now adds complete bounded continuation, typed retryable
       provider failures, reconciliation SSE, independent filter/menu/picker
       builders, visible-only bulk selection, collapsed-rail reachability, shared
       modal focus scopes, pending-upload protection, and localized copy. Source

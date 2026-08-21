@@ -1,8 +1,9 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **Library route repair pass — source-only, 2026-08-21.** The follow-up changes in
-> this source lane extend the route seam with daemon continuation (`nextOffset`),
+> **Library route repair pass — source-only, 2026-08-21.** Commit
+> [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+> extends the route seam with daemon continuation (`nextOffset`),
 > a discriminated provider failure result that preserves loaded rows, reconciliation
 > SSE refresh, independently searchable kind/source comboboxes, a searchable
 > design-system handoff menu, and an independent `LibraryPicker` builder. Visible

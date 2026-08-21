@@ -71,8 +71,9 @@ project handoff and destructive-provider boundaries remain the source of truth.
 ## Verification
 
 Commit [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
-adds the initial route and search seam. The follow-up repair commit is recorded
-in the handoff and changelog with focused continuation, failure, SSE, combobox,
+adds the initial route and search seam. Repair commit
+[`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+adds focused continuation, failure, SSE, combobox,
 selection, modal, and localization contracts. `scripts/verify-port.sh` and its
 JSON form remain the permitted source-only checks; this lane deliberately did
 not run Node, package-manager commands, builds, type checks, tests, UI actions or
