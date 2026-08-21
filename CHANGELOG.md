@@ -28,6 +28,33 @@ version section when a release carries them.
 
 ### Changed
 
+- **Library partial-operation boundaries now stay honest.** Commit
+  [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+  replaces mutable HTTP offsets with a point-in-time keyset snapshot, shares
+  one generation/abort domain between full loads and SSE hydration, bounds
+  targeted work and bulk deletion to four workers, and keeps failed delete rows
+  selected with an itemized retry ledger. Owned-byte deletion preserves the row
+  when the primary unlink fails, retries transient file locks, removes verified
+  `.element.html`/`.od-figma.json` sidecars, and reports residue labels. The
+  picker now returns structured applied/failed/skipped outcomes, freezes all
+  actionable controls while busy, and exposes visible/selected/total/no-match
+  status; preview projection, menu geometry, current-batch progress, focus
+  leave, HTML-region naming, and 48px hit areas are aligned. This is source-only
+  evidence: `git diff --check` and both Git Bash port-verifier forms are green;
+  no Node, package-manager, build, type-check, test, or runtime command was run.
+
+  素材庫 partial operation 而家唔再扮乜都成功：`a881a525f` 用 point-in-time
+  keyset snapshot 取代會郁位嘅 HTTP offset，full load 同 SSE hydration 共用
+  一套 generation/abort，targeted work 同 bulk delete 限四隻 worker，失敗
+  delete row 留返選取狀態同逐項 retry ledger。Owned bytes 主 unlink 失手就
+  保留 record，短暫 file lock 會 bounded retry，`.element.html` 同
+  `.od-figma.json` sidecar 會清理，剩餘 residue 亦報返出嚟。Picker 回傳
+  applied/failed/skipped 結構化結果，忙緊時鎖晒 controls，仲有 visible、
+  selected、total、no-match status；preview、menu 量位、current batch、
+  focus leave、HTML region 名同 48px hit area 都對齊。今次係 source-only
+  evidence：`git diff --check` 同 Git Bash port verifier 兩種格式都綠，冇
+  行 Node、package-manager、build、type-check、test 或 runtime command。
+
 - **Library refresh, focus, and upload boundaries now fail closed.** Commit
   [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
   requires continuation offsets to advance exactly by the returned row count,

@@ -1,7 +1,38 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
-> **Library boundary repair — source-only, 2026-08-21.** Commit
+> **Library completion repair — source-only, 2026-08-21.** Commit
+> [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+> closes the accepted N1–N10 and A1–A10 Library findings while leaving the
+> shell-owned navigation rail unchanged. The daemon list route now returns a
+> bounded point-in-time keyset cursor over `(archivedDate, createdAt, id)`, so a
+> complete walk is stable across concurrent ingest/delete. Full loads and
+> targeted SSE hydration share generation and abort state and use a four-worker
+> pool. Bulk delete records each item, removes only successes, keeps failures
+> selected, keeps the confirmation gate failed until retry succeeds, and shows
+> an itemized ledger. Owned-byte deletion retries transient file locks, keeps
+> the row on primary unlink failure, removes verified `.element.html` and
+> `.od-figma.json` sidecars, and returns bounded residue labels.
+>
+> `LibraryPicker` callbacks now return structured `applied`, `failed`, and
+> `skipped` outcomes consistently from HomeHero, DesignSystemFlow, ChatComposer,
+> and FileWorkspace. During a callback, search, kind chips, cards, and close
+> controls are disabled and the reviewed selection is frozen; partial results
+> leave failed/skipped items selected with itemized retry. Upload progress and
+> counts are scoped to the current batch while prior rows remain visible. The
+> visible preview projection drives previous/next navigation, the design-system
+> menu measures and flips within the viewport and returns the trigger focus only
+> for Escape/explicit selection, and the remaining title/search/card/HTML-region
+> accessibility and 48px hit-area boundaries are explicit.
+>
+> Evidence for this commit is source-only: `git diff --check` passed; Git Bash
+> `sh scripts/verify-port.sh` and `sh scripts/verify-port.sh --json` both report
+> zero gaps (`bytesDiffer: 0`, `staleNotice: 0`). No Node, package-manager,
+> build, type-check, test, UI action, runtime, or capture command was run
+> locally. Hosted checks, built-app interaction, runtime captures, and CI remain
+> pending. The shell-owned rail and release/photo work remain outside this lane.
+
+> **Previous Library boundary repair — source-only, 2026-08-21.** Commit
 > [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
 > repairs the final accepted Library boundaries without touching the shell-owned
 > rail path. Refreshes keep previously loaded picker rows visible and show an

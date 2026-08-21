@@ -82,6 +82,16 @@ with the project's standards.
       geometry, and 48×48 interaction targets. These remain source-only until
       the hosted and installed evidence exists, so this item stays unticked.
 
+      Follow-up source commit [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+      closes the remaining accepted Library gaps: point-in-time keyset snapshots,
+      bounded refresh/hydration/delete workers, primary-unlink preservation and
+      sidecar residue reporting, structured picker outcomes with retry-preserved
+      selection, visible-projection preview navigation, current-batch upload
+      counts, measured handoff-menu placement, focus-leave behavior, and the
+      remaining 48px/busy/live-status boundaries. The source verifier is green;
+      hosted tests, built-app interaction, runtime captures, and CI evidence are
+      still pending, so the roadmap item remains unticked.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
