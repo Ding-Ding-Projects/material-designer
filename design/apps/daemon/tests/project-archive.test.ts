@@ -324,6 +324,13 @@ describe('buildProjectArchive', () => {
     expect(manifest.files).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: 'README.md', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
     ]));
+    expect(manifest.generated).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'DESIGN-HANDOFF.md', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: 'DESIGN-MANIFEST.json', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    ]));
+    expect(manifest.excludedEntries).toEqual([
+      { path: 'EXPORT-MANIFEST.json', reason: 'self-referential archive manifest hash' },
+    ]);
     expect(manifest.omissions).toEqual(expect.arrayContaining([
       expect.objectContaining({ path: '.env' }),
       expect.objectContaining({ path: 'PERSONAL_VOCABULARY.json' }),

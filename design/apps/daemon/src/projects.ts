@@ -419,7 +419,7 @@ export async function validateProjectArchiveBuffer(buffer: Buffer): Promise<void
   if (!manifest || manifest.schema !== 'open-design.project-export-manifest.v1' || !Array.isArray(manifest.files)) {
     throw new Error('project archive manifest is malformed');
   }
-  for (const entry of manifest.files) {
+  for (const entry of [...manifest.files, ...(Array.isArray(manifest.generated) ? manifest.generated : [])]) {
     if (!entry || typeof entry.path !== 'string' || !Number.isInteger(entry.bytes) || !/^[a-f0-9]{64}$/i.test(entry.sha256)) {
       throw new Error('project archive manifest has an invalid file record');
     }
@@ -747,6 +747,17 @@ function addExportManifest(zip, entries, omissions: ExportOmission[], projectLab
   const files = entries
     .map((entry) => ({ path: entry.relPath, bytes: entry.size, sha256: entry.sha256 }))
     .sort((left, right) => compareExportPaths(left.path, right.path));
+  const generated = [
+    { path: DESIGN_HANDOFF_FILENAME, content: buildDesignHandoff(entries, projectLabel || 'project') },
+    { path: DESIGN_MANIFEST_FILENAME, content: buildDesignManifest(entries, projectLabel || 'project') },
+  ].map(({ path: generatedPath, content }) => {
+    const bytes = Buffer.byteLength(content, 'utf8');
+    return {
+      path: generatedPath,
+      bytes,
+      sha256: createHash('sha256').update(content, 'utf8').digest('hex'),
+    };
+  });
   const body = JSON.stringify({
     schema: 'open-design.project-export-manifest.v1',
     policyVersion: 1,
@@ -759,6 +770,8 @@ function addExportManifest(zip, entries, omissions: ExportOmission[], projectLab
       digestScope: 'complete ZIP byte stream, including this manifest, excluding no bytes',
     },
     files,
+    generated,
+    excludedEntries: [{ path: EXPORT_MANIFEST_FILENAME, reason: 'self-referential archive manifest hash' }],
     omissions: [...omissions].sort((left, right) =>
       compareExportPaths(`${left.path}\u0000${left.field ?? ''}\u0000${left.reason}`, `${right.path}\u0000${right.field ?? ''}\u0000${right.reason}`),
     ),
