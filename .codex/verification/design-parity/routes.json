@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "reference": "mockups/open-design-m3/Open Design M3.dc.html",
+  "fixtureRevision": "material-designer-m3-v1",
+  "screens": [
+    "home",
+    "projects",
+    "design-systems",
+    "automations",
+    "plugins",
+    "integrations",
+    "studio",
+    "library",
+    "settings",
+    "handoff"
+  ]
+}

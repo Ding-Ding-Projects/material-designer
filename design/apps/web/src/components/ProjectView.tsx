@@ -1706,13 +1706,21 @@ export function ProjectView({
   }, [openTabsState.active, projectFiles, project.id]);
   const routeFileNameRef = useRef(routeFileName);
   routeFileNameRef.current = routeFileName;
-  const [activeWorkspaceContext, setActiveWorkspaceContext] =
-    useState<WorkspaceContextItem | null>(null);
+  // The composer operates on the project, not on whichever preview/file tab
+  // happens to be visible. Keep its automatic context stable across tab and
+  // file switches; narrower contexts remain available through the explicit
+  // @-picker and are never silently attached to the next turn.
+  const projectWorkspaceContext = useMemo<WorkspaceContextItem>(() => ({
+    id: `project:${project.id}`,
+    kind: 'project',
+    label: project.name,
+    title: project.name,
+    ...(project.metadata?.baseDir ? { absolutePath: project.metadata.baseDir } : {}),
+  }), [project.id, project.metadata?.baseDir, project.name]);
   const [workspaceContexts, setWorkspaceContexts] = useState<WorkspaceContextItem[]>([]);
   const tabsLoadedRef = useRef(false);
   const tabsHydratedFromSavedStateRef = useRef(false);
   const [tabsHydrationVersion, setTabsHydrationVersion] = useState(0);
-  const hasAppliedInitialPrimaryOpenRef = useRef(false);
   // Routed to FileWorkspace — bumped whenever the user clicks "open" on a
   // tool card, an attachment chip, or a produced-file chip in chat. We
   // include a nonce so re-clicking the same name after the user closed the
@@ -2174,7 +2182,6 @@ export function ProjectView({
     let cancelled = false;
     tabsLoadedRef.current = false;
     tabsHydratedFromSavedStateRef.current = false;
-    hasAppliedInitialPrimaryOpenRef.current = false;
     setOpenTabsState({ tabs: [], active: null });
     (async () => {
       const state = await loadTabs(project.id);
@@ -2244,12 +2251,6 @@ export function ProjectView({
   // Flush any pending tab write when the project changes or the view unmounts,
   // so a fast project switch / close doesn't leave the daemon a debounce behind.
   useEffect(() => flushTabsDaemonSave, [flushTabsDaemonSave]);
-
-  const handleActiveWorkspaceContextChange = useCallback((next: WorkspaceContextItem | null) => {
-    setActiveWorkspaceContext((current) =>
-      workspaceContextItemEqual(current, next) ? current : next,
-    );
-  }, []);
 
   const handleWorkspaceContextsChange = useCallback((next: WorkspaceContextItem[]) => {
     // This runs in a post-commit effect inside FileWorkspace: on any tab
@@ -2335,24 +2336,6 @@ export function ProjectView({
     effectiveBrandExtractionStatus,
     refreshWorkspaceItems,
   ]);
-
-  useEffect(() => {
-    if (!tabsLoadedRef.current) return;
-    if (hasAppliedInitialPrimaryOpenRef.current) return;
-    if (routeFileName) return;
-    if (openTabsState.active || openTabsState.tabs.length > 0) {
-      hasAppliedInitialPrimaryOpenRef.current = true;
-      return;
-    }
-    if (tabsHydratedFromSavedStateRef.current) {
-      hasAppliedInitialPrimaryOpenRef.current = true;
-      return;
-    }
-    const primaryFile = selectPrimaryProjectFile(projectFiles);
-    if (!primaryFile) return;
-    hasAppliedInitialPrimaryOpenRef.current = true;
-    persistTabsState({ tabs: [primaryFile.name], active: primaryFile.name });
-  }, [openTabsState.active, openTabsState.tabs.length, persistTabsState, projectFiles, routeFileName]);
 
   const requestOpenFile = useCallback((name: string) => {
     if (!name) return;
@@ -8653,7 +8636,7 @@ export function ProjectView({
               onChangeByokSpeechVoice={setByokSpeechVoiceOverride}
               projectMetadata={currentProject.metadata}
               onProjectMetadataChange={onProjectChange}
-              activeWorkspaceContext={activeWorkspaceContext}
+              activeWorkspaceContext={projectWorkspaceContext}
               initialWorkspaceContexts={initialWorkspaceContexts}
               workspaceContexts={workspaceContexts}
               currentSkillId={project.skillId}
@@ -8769,8 +8752,6 @@ export function ProjectView({
           onRequestBrowserUsePrompt={handleBrowserUsePrompt}
           onPluginFolderAgentAction={handlePluginFolderAgentAction}
           activePluginActionPaths={activePluginActionPaths}
-          preferredPreviewFile={currentProject.metadata?.entryFile ?? null}
-          autoPreviewDesignArtifacts={currentProject.metadata?.importedFrom === 'folder'}
           focusMode={workspaceFocused}
           onFocusModeChange={setWorkspaceFocused}
           designSystemProject={designSystemProject}
@@ -8806,7 +8787,6 @@ export function ProjectView({
           onConversationSessionModeChange={handleConversationSessionModeChange}
           onNewConversation={handleNewConversation}
           activeConversationChat={activeConversationChatState}
-          onActiveContextChange={handleActiveWorkspaceContextChange}
           onWorkspaceContextsChange={handleWorkspaceContextsChange}
           messages={messages}
           artifactHtml={artifact?.html}

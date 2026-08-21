@@ -48,6 +48,8 @@ requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extrac
 requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
+requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
+forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");
 requireText(release, "$env:SQUIRREL_TEMP", "release.yml does not keep Squirrel's extraction temp root short");
 forbid(release, /\bpwsh\b/, "release.yml invokes pwsh, which is not guaranteed on the self-hosted Windows runner");

@@ -64,6 +64,7 @@ $appVersion = "{0}.{1}.{2}" -f $base.Major, $base.Minor, ($base.Build + $Candida
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
+$buildLogPath = Join-Path $runRoot 'installer-build.log'
 New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
 
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
@@ -74,13 +75,18 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
     # without turning a healthy pack into a false failure; the exit code remains
     # the deciding result.
     $ErrorActionPreference = 'Continue'
-    $output = & pnpm.cmd --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --portable --app-version $appVersion --to all --json 2>&1
+    $output = & pnpm.cmd --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --app-version $appVersion --to squirrel --json 2>&1
     $exitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction
   }
   if ($exitCode -ne 0) { throw "tools-pack Windows packaging failed with exit code $exitCode`n$($output -join [Environment]::NewLine)" }
-  $output | Set-Content -LiteralPath $jsonPath -Encoding utf8
+  $output | Set-Content -LiteralPath $buildLogPath -Encoding utf8
+  $jsonText = Get-Content -Raw -LiteralPath $buildLogPath
+  $jsonStart = $jsonText.LastIndexOf("`n{")
+  if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
+  if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
+  $jsonText.Substring($jsonStart + 1).Trim() | Set-Content -LiteralPath $jsonPath -Encoding utf8
 } else {
   Write-Host "Reusing the existing tools-pack result at $jsonPath"
 }
@@ -111,9 +117,6 @@ if (-not $releases) { throw 'the Squirrel RELEASES index was not produced' }
 $full = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-full.nupkg')
 if ($full.Count -eq 0) { throw 'the Squirrel full .nupkg package was not produced' }
 $delta = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-delta.nupkg')
-$portable = $null
-if ($json.portableZipPath -and (Test-Path -LiteralPath $json.portableZipPath)) { $portable = Get-Item -LiteralPath $json.portableZipPath }
-
 $assetDir = Join-Path $runRoot 'assets'
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 $setupName = "material-designer-$appVersion-win-x64-setup.exe"
@@ -122,11 +125,29 @@ Copy-Item -LiteralPath $releases.FullName -Destination (Join-Path $assetDir 'REL
 foreach ($item in @($full + $delta)) { Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $assetDir $item.Name) -Force }
 $icon = Join-Path $design 'tools/pack/resources/win/icon.ico'
 if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force }
-if ($portable) { Copy-Item -LiteralPath $portable.FullName -Destination (Join-Path $assetDir "material-designer-$appVersion-win-x64-portable.zip") -Force }
 $hash = Get-Sha256 (Join-Path $assetDir $setupName)
 "$hash  $setupName" | Set-Content -LiteralPath (Join-Path $assetDir "$setupName.sha256") -Encoding ascii
 
 $sha = (& git -C $repo rev-parse HEAD).Trim()
+$provenancePath = Join-Path $runRoot 'build-provenance.json'
+$provenance = [ordered]@{
+  version = 1
+  sourceCommit = $sha
+  builtAt = (Get-Date).ToUniversalTime().ToString('o')
+  packagingCommand = 'build-installer.bat --candidate <ordinal> /s'
+  cleanOutput = $true
+  package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
+  buildLog = [ordered]@{ path = $buildLogPath; sha256 = Get-Sha256 $buildLogPath }
+  signing = [ordered]@{
+    inputsCleared = $true
+    certificateAutoDiscoveryDisabled = $true
+    processAuditComplete = $false
+    signerInvocationCount = 0
+    observedSignerInvocations = @()
+    controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
+  }
+}
+$provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
 $manifest = [ordered]@{
   schemaVersion = 1
   commit = $sha
@@ -140,10 +161,12 @@ $manifest = [ordered]@{
   releases = 'RELEASES'
   fullPackages = @($full | ForEach-Object Name)
   deltaPackages = @($delta | ForEach-Object Name)
-  portable = if ($portable) { "material-designer-$appVersion-win-x64-portable.zip" } else { $null }
+  installerFormat = 'squirrel'
   generatedAt = (Get-Date).ToUniversalTime().ToString('o')
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
 Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $setupName)))"
 Write-Host "SHA-256: $hash"
 Write-Host "Manifest: $([IO.Path]::GetFullPath((Join-Path $runRoot 'installer-manifest.json')))"
+Write-Host "Provenance: $([IO.Path]::GetFullPath($provenancePath))"
+Write-Warning 'The manual build recorded package and signing controls, but signer-process observation is incomplete; run the hosted artifact validator before publication.'

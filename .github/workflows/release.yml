@@ -149,23 +149,48 @@ jobs:
           $toolsPackDir = Join-Path $shortRoot "pack"
           $cacheDir = Join-Path $shortRoot "cache"
           $buildJsonPath = Join-Path $shortRoot "build.json"
+          $buildLogPath = Join-Path $shortRoot "installer-build.log"
+          $signerStopPath = Join-Path $shortRoot "signer-audit.stop"
           "tools_pack_dir=$toolsPackDir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "short_root=$shortRoot" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
           if ($LASTEXITCODE -ne 0) { throw "tools-pack win cleanup exited with code $LASTEXITCODE" }
 
-          $buildOutput = pnpm.cmd exec tools-pack win build `
-            --dir $toolsPackDir `
-            --cache-dir $cacheDir `
-            --namespace "$env:PACK_NAMESPACE" `
-            --portable `
-            --app-version "${{ steps.version.outputs.app_version }}" `
-            --to all `
-            --json
-          if ($LASTEXITCODE -ne 0) { throw "tools-pack win build exited with code $LASTEXITCODE" }
-          $buildOutput | Set-Content -Path $buildJsonPath
-          $build = $buildOutput | ConvertFrom-Json
+          $signerAuditJob = Start-Job -ArgumentList $signerStopPath -ScriptBlock {
+            param($stopPath)
+            while (-not (Test-Path -LiteralPath $stopPath)) {
+              Get-Process -ErrorAction SilentlyContinue | Where-Object {
+                $_.ProcessName -in @('signtool', 'AzureSignTool', 'osslsigncode')
+              } | ForEach-Object { "{0}|{1}|{2}" -f $_.ProcessName, $_.Id, $_.StartTime.ToUniversalTime().ToString('o') }
+              Start-Sleep -Milliseconds 50
+            }
+          }
+          try {
+            $buildOutput = pnpm.cmd exec tools-pack win build `
+              --dir $toolsPackDir `
+              --cache-dir $cacheDir `
+              --namespace "$env:PACK_NAMESPACE" `
+              --app-version "${{ steps.version.outputs.app_version }}" `
+              --to squirrel `
+              --json 2>&1
+            $packExitCode = $LASTEXITCODE
+            $buildOutput | Set-Content -LiteralPath $buildLogPath -Encoding utf8
+          } finally {
+            New-Item -ItemType File -Path $signerStopPath -Force | Out-Null
+            Wait-Job -Job $signerAuditJob -Timeout 10 | Out-Null
+            $observedSigners = @(Receive-Job -Job $signerAuditJob -ErrorAction SilentlyContinue | Sort-Object -Unique)
+            Remove-Job -Job $signerAuditJob -Force -ErrorAction SilentlyContinue
+          }
+          if ($packExitCode -ne 0) { throw "tools-pack win build exited with code $packExitCode" }
+          if ($observedSigners.Count -ne 0) { throw "A prohibited signer process was observed: $($observedSigners -join ', ')" }
+          $buildText = Get-Content -Raw -LiteralPath $buildLogPath
+          $jsonStart = $buildText.LastIndexOf("`n{")
+          if ($jsonStart -lt 0) { $jsonStart = $buildText.IndexOf('{') - 1 }
+          if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
+          $buildJson = $buildText.Substring($jsonStart + 1).Trim()
+          $build = $buildJson | ConvertFrom-Json
+          $buildJson | Set-Content -LiteralPath $buildJsonPath -Encoding utf8
 
           if (-not [string]::IsNullOrWhiteSpace($build.payloadPath)) {
             pnpm.cmd exec tools-pack win validate-payload `
@@ -224,8 +249,6 @@ jobs:
             platforms = [ordered]@{ win = [ordered]@{ enabled = $true; arch = "x64"; artifacts = [ordered]@{ installer = [ordered]@{ type = "installer"; name = "Setup.exe"; url = "$downloadRoot/$assetName"; size = [int64]$installer.Length; sha256 = $hash; sha256Url = "$downloadRoot/$assetName.sha256" } } } }
           }
           $metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $staged "metadata.json") -Encoding utf8
-          if (-not [string]::IsNullOrWhiteSpace($build.portableZipPath) -and (Test-Path -LiteralPath $build.portableZipPath)) { Copy-Item -LiteralPath $build.portableZipPath -Destination (Join-Path $staged "material-designer-${{ steps.version.outputs.app_version }}-win-x64-portable.zip") -Force }
-
           $evidence = [ordered]@{
             commit = "${{ github.sha }}"
             runId = "${{ github.run_id }}"
@@ -238,8 +261,28 @@ jobs:
             signed = $false
           }
           $evidence | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $staged "build-evidence.json") -Encoding utf8
+          $provenance = [ordered]@{
+            version = 1
+            sourceCommit = "${{ github.sha }}"
+            builtAt = (Get-Date).ToUniversalTime().ToString('o')
+            packagingCommand = "pnpm.cmd exec tools-pack win build --to squirrel"
+            cleanOutput = $true
+            package = [ordered]@{ id = "open-design-packaged-app"; version = "${{ steps.version.outputs.app_version }}"; architecture = "x64" }
+            buildLog = [ordered]@{ path = $buildLogPath; sha256 = (Get-FileHash -LiteralPath $buildLogPath -Algorithm SHA256).Hash.ToLowerInvariant() }
+            signing = [ordered]@{
+              inputsCleared = $true
+              certificateAutoDiscoveryDisabled = $true
+              processAuditComplete = $true
+              signerInvocationCount = $observedSigners.Count
+              observedSignerInvocations = $observedSigners
+              controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
+            }
+          }
+          $provenancePath = Join-Path $staged "build-provenance.json"
+          $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
 
           "build_json=$buildJsonPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "provenance_path=$provenancePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "staged_dir=$staged" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "asset_name=$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "installer_sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
@@ -263,6 +306,22 @@ jobs:
           $signature = Get-AuthenticodeSignature -LiteralPath $setupPath
           if ($signature.Status -ne 'NotSigned') { throw "Squirrel Setup.exe Authenticode status was $($signature.Status), expected NotSigned" }
           Write-Host "Squirrel Setup.exe verified unsigned (NotSigned)"
+
+      - name: Validate the complete Squirrel artifact set
+        if: ${{ steps.pack.outputs.staged_dir != '' }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $receipt = Join-Path "${{ steps.pack.outputs.staged_dir }}" "artifact-receipt.json"
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-squirrel-artifacts.ps1 `
+            -ArtifactDirectory "${{ steps.pack.outputs.staged_dir }}" `
+            -ProvenancePath "${{ steps.pack.outputs.provenance_path }}" `
+            -ExpectedCommit "${{ github.sha }}" `
+            -SetupFile "${{ steps.pack.outputs.asset_name }}" `
+            -ExpectedPackageId "open-design-packaged-app" `
+            -ExpectedVersion "${{ steps.version.outputs.app_version }}" `
+            -ExpectedArchitecture x64 `
+            -RequiredPackageEntry "lib/net45/Material Designer.exe" `
+            -OutputPath $receipt
 
       - name: Count lines for release notes
         id: lines

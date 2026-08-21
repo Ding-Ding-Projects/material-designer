@@ -4438,6 +4438,19 @@ screen reader rather than talking over it.
 - `apps/web/tests/components/destructive/gateMachine.test.ts`
 - `apps/web/tests/components/notifications/notificationStore.test.ts`
 
+### 2026-08-20 — Keep composer context project-wide
+
+**Reason:** Opening a project used to select its primary file without a user
+action, the Design Files surface could silently preview an entry file when it
+remounted, and the composer automatically replaced its context with whichever
+file or workspace tab happened to be visible. The application now starts at
+project scope, keeps the automatic composer context bound to the project, and
+requires an explicit file/context choice before attaching narrower evidence.
+
+**Changed files:**
+
+- `apps/web/tests/components/ProjectView.tabs-navigation.test.tsx`
+
 <!--
 Format for entries, newest first:
 

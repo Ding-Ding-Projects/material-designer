@@ -325,6 +325,19 @@ describe("DesignFilesPanel selection", () => {
     expect(onOpenFile).not.toHaveBeenCalled();
   });
 
+  it("keeps the project-wide file surface unpreviewed until the user chooses a file", async () => {
+    const { container, onOpenFile } = renderPanel([
+      file({ name: "index.html", kind: "html" }),
+      file({ name: "other.html", kind: "html" }),
+    ]);
+
+    await waitFor(() => {
+      expect(container.querySelector(".df-file-row.active")).toBeNull();
+      expect(container.querySelector('[data-testid="design-file-preview"]')).toBeNull();
+    });
+    expect(onOpenFile).not.toHaveBeenCalled();
+  });
+
   it("returns focus to the row menu after its context menu closes", () => {
     const { container } = renderPanel([file({ name: "alpha.html" })]);
     const opener = container.querySelector<HTMLElement>(".df-row-menu");

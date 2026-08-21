@@ -138,7 +138,9 @@ vi.mock('../../src/components/Loading', () => ({
 }));
 
 vi.mock('../../src/components/ChatPane', () => ({
-  ChatPane: () => <div data-testid="chat-pane" />,
+  ChatPane: ({ activeWorkspaceContext }: { activeWorkspaceContext?: { id: string; kind: string; label: string } | null }) => (
+    <div data-testid="chat-pane-context">{JSON.stringify(activeWorkspaceContext ?? null)}</div>
+  ),
 }));
 
 const mockedListConversations = vi.mocked(listConversations);
@@ -389,7 +391,7 @@ describe('ProjectView tab URL hydration', () => {
     });
   });
 
-  it('does not reopen the primary file after the user closes the last tab', async () => {
+  it('keeps a fresh project at project scope until the user explicitly chooses a file', async () => {
     mockedLoadTabs.mockResolvedValue({ tabs: [], active: null });
     mockedFetchProjectFiles.mockResolvedValue([
       {
@@ -414,21 +416,15 @@ describe('ProjectView tab URL hydration', () => {
 
     renderProjectView();
 
-    await waitFor(() => expect(screen.getByTestId('workspace-active-tab').textContent).toBe('index.html'));
-    // Tab state persists synchronously through cacheTabsLocally (the daemon PUT
-    // is debounced via persistTabsToDaemonNow); assert on the synchronous cache
-    // write so the test stays deterministic without driving the debounce timer.
-    expect(mockedCacheTabsLocally).toHaveBeenCalledWith(project.id, { tabs: ['index.html'], active: 'index.html' });
-
-    fireEvent.click(screen.getByTestId('close-all-tabs'));
-
     await waitFor(() => expect(screen.getByTestId('workspace-active-tab').textContent).toBe(''));
-    await waitFor(() => {
-      expect(mockedCacheTabsLocally.mock.calls.at(-1)).toEqual([project.id, { tabs: [], active: null }]);
-    });
-    // Exactly two writes — the initial primary open and the close-all — proving
-    // the primary file is not silently reopened after the last tab closes.
-    expect(mockedCacheTabsLocally).toHaveBeenCalledTimes(2);
+    expect(mockedCacheTabsLocally).not.toHaveBeenCalled();
+    expect(mockedNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ fileName: 'index.html' }),
+      expect.anything(),
+    );
+    expect(screen.getByTestId('chat-pane-context').textContent).toContain('"id":"project:project-1"');
+    expect(screen.getByTestId('chat-pane-context').textContent).toContain('"kind":"project"');
+    expect(screen.getByTestId('chat-pane-context').textContent).not.toContain('index.html');
   });
 
   it('does not auto-open the primary file when saved tabs were explicitly empty', async () => {

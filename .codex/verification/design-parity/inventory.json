@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "reference": {
+    "path": "mockups/open-design-m3/Open Design M3.dc.html",
+    "sha256": "b98d3d02f7f428676df09e9d7ec0b834eb06d28d4ea40501708197dc5d415ff7",
+    "authoritativeArchiveSha256": "84580032c91b43d20ea2d8e17fe2bb3cb8a966d41a86a9bd7daa6f7cea62be15",
+    "sanitization": "Public-safe fixture identifiers replace private sample account, organization, repository, endpoint, and internal-tool names."
+  },
+  "defaults": {
+    "state": "default",
+    "theme": "light",
+    "viewport": { "width": 1440, "height": 900 },
+    "scale": 1,
+    "locale": "en-US",
+    "fixtureRevision": "material-designer-m3-v1",
+    "time": "2026-08-02T21:22:17.000Z",
+    "motion": "frozen",
+    "randomSeed": 3003,
+    "fonts": "bundled-only",
+    "network": "disabled"
+  },
+  "rows": [
+    {
+      "id": "home-default-light", "screen": "home", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "applicationRoute": "material-designer://home?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" },
+      "evidence": { "referenceRaw": ".codex/verification/evidence/home-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/home-default-light/application.png", "comparison": ".codex/verification/evidence/home-default-light/comparison.png", "diff": ".codex/verification/evidence/home-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "projects-default-light", "screen": "projects", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://projects?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/projects-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/projects-default-light/application.png", "comparison": ".codex/verification/evidence/projects-default-light/comparison.png", "diff": ".codex/verification/evidence/projects-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "design-systems-default-light", "screen": "design-systems", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://design-systems?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/design-systems-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/design-systems-default-light/application.png", "comparison": ".codex/verification/evidence/design-systems-default-light/comparison.png", "diff": ".codex/verification/evidence/design-systems-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "automations-default-light", "screen": "automations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://automations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/automations-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/automations-default-light/application.png", "comparison": ".codex/verification/evidence/automations-default-light/comparison.png", "diff": ".codex/verification/evidence/automations-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "plugins-default-light", "screen": "plugins", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://plugins?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/plugins-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/plugins-default-light/application.png", "comparison": ".codex/verification/evidence/plugins-default-light/comparison.png", "diff": ".codex/verification/evidence/plugins-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "integrations-default-light", "screen": "integrations", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://integrations?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/integrations-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/integrations-default-light/application.png", "comparison": ".codex/verification/evidence/integrations-default-light/comparison.png", "diff": ".codex/verification/evidence/integrations-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "studio-default-light", "screen": "studio", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://studio?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/studio-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/studio-default-light/application.png", "comparison": ".codex/verification/evidence/studio-default-light/comparison.png", "diff": ".codex/verification/evidence/studio-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "library-default-light", "screen": "library", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://library?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/library-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/library-default-light/application.png", "comparison": ".codex/verification/evidence/library-default-light/comparison.png", "diff": ".codex/verification/evidence/library-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "settings-appearance-light", "screen": "settings", "state": "appearance", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://settings?state=appearance&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/settings-appearance-light/reference.png", "applicationRaw": ".codex/verification/evidence/settings-appearance-light/application.png", "comparison": ".codex/verification/evidence/settings-appearance-light/comparison.png", "diff": ".codex/verification/evidence/settings-appearance-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null, "deviations": []
+    },
+    {
+      "id": "handoff-default-light", "screen": "handoff", "state": "default", "theme": "light", "viewport": { "width": 1440, "height": 900 }, "scale": 1, "locale": "en-US",
+      "referenceRoute": "design-reference://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1", "applicationRoute": "material-designer://handoff?state=default&theme=light&width=1440&height=900&scale=1&locale=en-US&fixture=material-designer-m3-v1",
+      "audit": { "navigation": "defect", "topAppBar": "defect", "content": "defect", "statusBar": "conforming", "typography": "defect", "colorRoles": "conforming", "shape": "defect", "elevation": "defect", "stateLayers": "defect", "focus": "defect", "motion": "defect" }, "evidence": { "referenceRaw": ".codex/verification/evidence/handoff-default-light/reference.png", "applicationRaw": ".codex/verification/evidence/handoff-default-light/application.png", "comparison": ".codex/verification/evidence/handoff-default-light/comparison.png", "diff": ".codex/verification/evidence/handoff-default-light/diff.json" }, "captureStatus": "unverified", "sourceCommit": null,
+      "deviations": [{ "id": "sanitized-public-fixtures", "reason": "The public reference and product use fictional sample account, organization, repository, endpoint, and tool names instead of the private values in the user-supplied archive.", "approved": true }]
+    }
+  ]
+}
