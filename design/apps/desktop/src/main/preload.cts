@@ -425,9 +425,16 @@ const hostBridge = {
   },
   appearance: {
     // Pin the native window appearance (macOS vibrancy glass material) to the
-    // app theme. Fire-and-forget: the main process validates the value.
-    setTheme: (theme: 'light' | 'dark' | 'system'): void =>
-      ipcRenderer.send('od:appearance:set-theme', theme),
+    // app theme. The acknowledged invoke is part of the startup witness: the
+    // renderer does not report a mounted app until the native shell confirms
+    // that it accepted the value.
+    setTheme: async (theme: 'light' | 'dark' | 'system'): Promise<OpenDesignHostActionResult> => {
+      try {
+        return await ipcRenderer.invoke('od:appearance:set-theme', theme);
+      } catch (error) {
+        return actionFailure(reasonFromError(error));
+      }
+    },
   },
   shell,
   browser,

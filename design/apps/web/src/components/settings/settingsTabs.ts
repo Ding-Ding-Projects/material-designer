@@ -39,7 +39,11 @@ export interface SettingsTabDef {
 /**
  * Every `SettingsSection`, exhaustively, mapped to its tab or to `null`.
  *
- * The three `null`s are not oversights:
+ * The four `null`s are not oversights:
+ *   - `workspace` has a real deep-linked panel, but the current product
+ *     deliberately keeps it out of the persistent strip; the Workspace entry
+ *     rail owns discovery and the Settings route remains available to
+ *     authorized callers.
  *   - `orbit` and `routines` have panels in the dialog but are reached from
  *     their own surfaces, not from settings navigation.
  *   - `library` has no panel at all; the entry shell owns that route.
@@ -147,6 +151,7 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.about',
     hintKey: 'settings.aboutHint',
   },
+  workspace: null,
   orbit: null,
   routines: null,
   library: null,

@@ -109,6 +109,14 @@
   max-width: none;
 }
 
+/* The focused element is the labelled `region` itself, not an invisible
+   wrapper around it. Keep the focus ring visible on the page landmark even
+   though it has no visual border in its idle state. */
+.page :global(.settings-page-surface:focus-visible) {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: -3px;
+}
+
 /* Tab strip, search results and the section body. `overflow: hidden` here is
    what makes `.settings-content` the scroller rather than this box. */
 .page :global(.modal-body) {

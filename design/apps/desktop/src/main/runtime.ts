@@ -309,6 +309,7 @@ const MIN_SPLASH_MS = 2000;
 // strand the user on the splash forever.
 const WEB_MOUNT_POLL_MS = 80;
 const WEB_MOUNT_REVEAL_TIMEOUT_MS = 15000;
+const WEB_MOUNT_EVAL_TIMEOUT_MS = 500;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const summarizeExpression = (expression: string): Record<string, unknown> => ({
@@ -2712,15 +2713,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     else petWindow.hide();
   });
 
-  ipcMain.removeAllListeners("od:appearance:set-theme");
-  ipcMain.on("od:appearance:set-theme", (event, theme: unknown) => {
-    if (window.isDestroyed() || event.sender !== window.webContents) return;
+  ipcMain.removeHandler("od:appearance:set-theme");
+  ipcMain.handle("od:appearance:set-theme", async (event, theme: unknown) => {
+    if (window.isDestroyed() || event.sender !== window.webContents) {
+      return { ok: false, reason: "appearance theme request came from an unexpected renderer" };
+    }
     const parsedTheme = parseDesktopAppearanceTheme(theme);
-    if (parsedTheme == null) return;
+    if (parsedTheme == null) {
+      return { ok: false, reason: "appearance theme is not System, Light, or Dark" };
+    }
     // The renderer owns persisted config and forwards its resolved value after
     // its pre-hydration document stamp. Native menus, dialogs, and glass now
     // follow the same System / Light / Dark value without a startup override.
     nativeTheme.themeSource = parsedTheme;
+    return { ok: true };
   });
 
   ipcMain.removeHandler('od:print-pdf');
@@ -2932,11 +2938,48 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     setSplashStage(splash, "workspace");
     const deadline = Date.now() + WEB_MOUNT_REVEAL_TIMEOUT_MS;
     while (!stopped && !window.isDestroyed() && Date.now() < deadline) {
-      const mounted = await window.webContents
-        .executeJavaScript(`document.documentElement.getAttribute("data-od-app-mounted") === "1"`, true)
-        .catch(() => false);
-      if (mounted === true) break;
+      let readiness: { mounted: boolean; failure: boolean } | null = null;
+      let evalTimer: ReturnType<typeof setTimeout> | null = null;
+      try {
+        readiness = await Promise.race([
+          window.webContents
+            .executeJavaScript(
+              `(() => ({
+                mounted: document.documentElement.getAttribute("data-od-app-mounted") === "1",
+                failure: document.documentElement.getAttribute("data-od-app-mount-failure") === "1",
+              }))()`,
+              true,
+            )
+            .then((value) => (value && typeof value === "object"
+              ? {
+                  mounted: (value as { mounted?: unknown }).mounted === true,
+                  failure: (value as { failure?: unknown }).failure === true,
+                }
+              : null))
+            .catch(() => null),
+          new Promise<null>((resolve) => {
+            evalTimer = setTimeout(() => resolve(null), WEB_MOUNT_EVAL_TIMEOUT_MS);
+          }),
+        ]);
+      } finally {
+        if (evalTimer != null) clearTimeout(evalTimer);
+      }
+      if (readiness?.failure === true) {
+        showRendererCrashScreen({
+          reason: "the renderer could not obtain native appearance acknowledgement",
+          exitCode: null,
+        });
+        return;
+      }
+      if (readiness?.mounted === true) break;
       await delay(WEB_MOUNT_POLL_MS);
+    }
+    if (!readiness?.mounted) {
+      showRendererCrashScreen({
+        reason: "the renderer did not report a mounted and theme-ready surface before the startup deadline",
+        exitCode: null,
+      });
+      return;
     }
     // The real UI has mounted behind the splash; the only thing left is the
     // minimum-hold so the brand clip plays through. Advance the counter to its
@@ -3111,7 +3154,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       disposeWindowControls();
       disposeUiScale();
       ipcMain.removeAllListeners("desktop-pet:set-visible");
-      ipcMain.removeAllListeners("od:appearance:set-theme");
+      ipcMain.removeHandler("od:appearance:set-theme");
       for (const channel of UPDATER_IPC_CHANNELS) {
         ipcMain.removeHandler(channel);
       }

@@ -20,11 +20,16 @@ describe("desktop appearance theme bridge", () => {
   });
 
   test("forwards the validated renderer value to nativeTheme without a startup override", () => {
-    expect(preloadSource).toContain("ipcRenderer.send('od:appearance:set-theme', theme)");
+    expect(preloadSource).toContain("ipcRenderer.invoke('od:appearance:set-theme', theme)");
+    expect(preloadSource).toContain("Promise<OpenDesignHostActionResult>");
     expect(runtimeSource).toContain("parseDesktopAppearanceTheme(theme)");
     expect(runtimeSource).toContain("nativeTheme.themeSource = parsedTheme;");
+    expect(runtimeSource).toContain('ipcMain.handle("od:appearance:set-theme"');
+    expect(runtimeSource).toContain('return { ok: true };');
+    expect(runtimeSource).toContain('return { ok: false, reason: "appearance theme is not System, Light, or Dark" };');
     expect(runtimeSource).toContain('nativeTheme.themeSource = "system";');
     expect(runtimeSource).not.toContain("pinNativeAppearanceToLight");
     expect(runtimeSource).toContain("main window stays hidden until that renderer mount/reveal");
+    expect(runtimeSource).toContain("native appearance acknowledgement");
   });
 });

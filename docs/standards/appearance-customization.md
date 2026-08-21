@@ -12,6 +12,17 @@ that tab from the typed route before the settings surface renders; the ordinary
 `/settings` route still opens the normal first tab. The controls' hosted build,
 restart persistence and installed-renderer behavior remain unverified here.
 
+The current Appearance lane also makes the native theme handoff acknowledged:
+desktop IPC returns a bounded success/failure result, and the hidden startup
+window reports its mounted witness only after the optional host accepts the
+resolved theme. A browser-only build and older host without that optional
+capability keep applying the local DOM theme; a throwing, rejected or timed-out
+host produces an explicit startup failure instead of a false readiness claim.
+The settings page focuses its labelled region, normalizes `/settings/appearance`
+back to `/settings` when another tab is selected, and records Workspace as an
+explicit non-tab panel decision. Appearance hit areas are source-sized to at
+least 48px even when compact density keeps the visual glyph or track smaller.
+
 > [!NOTE]
 > This file owns standard 3. [material-design-3.md](material-design-3.md) owns
 > standard 2 — conformance itself — and describes the token layer, the colour
@@ -144,6 +155,9 @@ is bound to.
 | Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
 | Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
 | Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
+| Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
+| Settings route and Workspace ownership | **Source implemented.** Appearance is the only typed settings sub-route; tab changes normalize the URL, and Workspace is explicitly recorded as a null strip owner while its guarded panel remains reachable to authorized callers. |
+| Appearance/settings hit areas | **Source implemented.** Appearance rows, seed/font choices, picker controls, copy actions, settings tabs, regex toggles, overflow and page-back controls carry 48px hit-area floors. Hosted display-scale measurements remain unverified. |
 
 ### What the documentation site implements
 

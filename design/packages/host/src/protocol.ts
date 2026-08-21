@@ -443,7 +443,12 @@ export type OpenDesignHostBridge = {
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
   appearance?: {
-    setTheme(theme: OpenDesignHostAppearanceTheme): void;
+    /**
+     * Apply the renderer's validated theme to the native shell and acknowledge
+     * the result. A promise is intentional: the renderer must not claim its
+     * startup witness until the native side has accepted the value.
+     */
+    setTheme(theme: OpenDesignHostAppearanceTheme): Promise<OpenDesignHostActionResult>;
   };
   browser: {
     clearData(options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult>;

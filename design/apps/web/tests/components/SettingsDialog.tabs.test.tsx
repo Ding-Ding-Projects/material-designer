@@ -11,7 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsDialog } from '../../src/components/SettingsDialog';
 import {
+  SETTINGS_SECTION_TOKENS,
+} from '../../src/components/command-palette/settingsIndex';
+import {
   SETTINGS_LAST_SECTION_STORAGE_KEY,
+  SETTINGS_TAB_DEFS,
   SETTINGS_TAB_ORDER,
   readLastSettingsSection,
 } from '../../src/components/settings/settingsTabs';
@@ -50,6 +54,14 @@ const REGEX_SEARCH_CSS = readFileSync(
   new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
   'utf8',
 );
+const APPEARANCE_CONTROLS_CSS = readFileSync(
+  new URL('../../src/components/appearance/AppearanceControls.module.css', import.meta.url),
+  'utf8',
+);
+const APPEARANCE_PICKER_CSS = readFileSync(
+  new URL('../../src/components/appearance/InfiniteColorPicker.module.css', import.meta.url),
+  'utf8',
+);
 const SETTINGS_DIALOG_SOURCE = readFileSync(
   new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
   'utf8',
@@ -65,6 +77,7 @@ const APP_SOURCE = readFileSync(
 // reachability was the defect that prompted this lane.
 const SETTINGS_RENDER_CONTRACTS: ReadonlyArray<readonly [string, string]> = [
   ['execution', "activeSection === 'execution'"],
+  ['workspace', '<SettingsWorkspaceSection context={workspaceContext} />'],
   ['instructions', "activeSection === 'instructions'"],
   ['memory', "activeSection === 'memory'"],
   ['media', "activeSection === 'media'"],
@@ -156,6 +169,14 @@ describe('Settings: the tab strip', () => {
     expect(Array.from(tabs, (node) => node.getAttribute('data-section'))).toEqual([
       ...SETTINGS_TAB_ORDER,
     ]);
+  });
+
+  it('records an explicit tab or null ownership decision for every section token', () => {
+    expect(Object.keys(SETTINGS_TAB_DEFS).sort()).toEqual(Object.keys(SETTINGS_SECTION_TOKENS).sort());
+    expect(SETTINGS_TAB_DEFS.workspace).toBeNull();
+    expect(SETTINGS_TAB_DEFS.orbit).toBeNull();
+    expect(SETTINGS_TAB_DEFS.routines).toBeNull();
+    expect(SETTINGS_TAB_DEFS.library).toBeNull();
   });
 
   it('wires the selected tab to the one panel every tab controls', () => {
@@ -274,8 +295,11 @@ describe('Settings: the tab strip', () => {
     expect(SETTINGS_TABS_CSS).toContain('min-height: 48px;');
     expect(SETTINGS_TABS_CSS).toContain('min-width: 48px;');
     expect(SETTINGS_TABS_CSS).toContain('white-space: normal;');
-    expect(REGEX_SEARCH_CSS).toContain('min-width: 40px;');
-    expect(REGEX_SEARCH_CSS).toContain('min-height: 40px;');
+    expect(REGEX_SEARCH_CSS).toContain('min-width: 48px;');
+    expect(REGEX_SEARCH_CSS).toContain('min-height: 48px;');
+    expect(APPEARANCE_CONTROLS_CSS).toContain('min-height: 48px;');
+    expect(APPEARANCE_PICKER_CSS).toContain('min-width: 48px;');
+    expect(APPEARANCE_PICKER_CSS).toContain('min-height: 48px;');
   });
 
   it('keeps a portalled overflow surface above the opaque settings page', () => {
@@ -433,6 +457,8 @@ describe('Settings: Appearance reachability', () => {
       "aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}",
     );
     expect(SETTINGS_DIALOG_SOURCE).toContain('settingsPageRef.current?.focus({ preventScroll: true });');
+    expect(SETTINGS_DIALOG_SOURCE).toContain('ref={pageMode ? settingsPageRef : undefined}');
+    expect(SETTINGS_PAGE_CSS).toContain('.settings-page-surface:focus-visible');
     expect(APP_SOURCE).toContain('captureSettingsOpener');
     expect(APP_SOURCE).toContain('restoreSettingsOpenerFocus');
   });

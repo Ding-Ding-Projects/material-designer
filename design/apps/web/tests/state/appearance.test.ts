@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ACCENT_SWATCHES,
   CUSTOM_ACCENT_FALLBACK,
@@ -9,8 +9,37 @@ import {
   normalizeAccentColor,
   resolveAccentColor,
   resolveAppTheme,
+  syncAppearanceThemeWithHost,
   uiScaleApplication,
 } from '../../src/state/appearance';
+
+function hostWithThemeSetter(setTheme: (theme: 'light' | 'dark' | 'system') => Promise<unknown> | unknown) {
+  return {
+    version: 2,
+    client: { type: 'desktop', platform: 'win32' },
+    appearance: { setTheme },
+    shell: { openExternal: vi.fn(), openPath: vi.fn() },
+    browser: { clearData: vi.fn() },
+    capture: { page: vi.fn() },
+    project: {
+      pickAndImport: vi.fn(),
+      pickAndReplaceWorkingDir: vi.fn(),
+    },
+    pdf: { print: vi.fn() },
+    pet: { setVisible: vi.fn() },
+    updater: {
+      check: vi.fn(),
+      'clear-cache': vi.fn(),
+      download: vi.fn(),
+      install: vi.fn(),
+      quit: vi.fn(),
+      setMenuLabels: vi.fn(),
+      status: vi.fn(),
+      subscribe: vi.fn(),
+      subscribeOpenDialog: vi.fn(),
+    },
+  };
+}
 
 describe('accent swatch union', () => {
   it('keeps the Material role default and every distinct product/upstream swatch', () => {
@@ -68,6 +97,7 @@ describe('applyAppearanceToDocument', () => {
     document.documentElement.style.removeProperty('--accent-soft');
     document.documentElement.style.removeProperty('--accent-tint');
     document.documentElement.style.removeProperty('--accent-hover');
+    vi.unstubAllGlobals();
   });
 
   it('applies the explicit light theme and accent variables to the root element', () => {
@@ -129,6 +159,21 @@ describe('applyAppearanceToDocument', () => {
     expect(resolveAppTheme('light')).toBe('light');
     expect(resolveAppTheme('dark')).toBe('dark');
     expect(resolveAppTheme('invalid' as never)).toBe('system');
+  });
+
+  it('keeps local DOM styling when an optional host throws or rejects', async () => {
+    vi.stubGlobal('__od__', hostWithThemeSetter(() => {
+      throw new Error('host unavailable');
+    }));
+
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#10B981' });
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#10b981');
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toMatchObject({
+      ok: false,
+      host: 'desktop',
+    });
   });
 });
 

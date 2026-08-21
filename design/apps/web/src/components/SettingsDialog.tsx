@@ -1561,6 +1561,7 @@ export function SettingsDialog({
   onDraftChange,
 }: Props) {
   const pageMode = presentation === 'page';
+  const route = useRoute();
   const {
     t,
     locale,
@@ -1723,13 +1724,32 @@ export function SettingsDialog({
     () => settingsHitsElsewhere(settingsSearchHits, activeSection),
     [settingsSearchHits, activeSection],
   );
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  // The only typed settings sub-route is `/settings/appearance`. Keep it
+  // truthful while the user moves through the same page's tab strip: entering
+  // Appearance advertises the deep link, while every other visible section
+  // normalizes back to the generic `/settings` page. Modal settings opened
+  // over a project never owns the browser URL, so its existing route remains
+  // untouched.
+  const selectSettingsSection = useCallback((section: SettingsSection) => {
+    setActiveSection(section);
+    if (
+      !pageMode
+      || route.kind !== 'home'
+      || route.view !== 'settings'
+    ) return;
+    navigateRoute(
+      section === 'appearance'
+        ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
+        : { kind: 'home', view: 'settings' },
+    );
+  }, [pageMode, route.kind, route.view]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
-    setActiveSection(hit.section);
+    selectSettingsSection(hit.section);
     // The dialog already listens for this and polls for the anchor, so the
     // control does not have to exist yet at the moment of the click.
     requestSettingsReveal(hit.entry.id);
-  }, []);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  }, [selectSettingsSection]);
   // Workspace region gating (E-frontend, D4.3). One shared read of the workspace
   // context; the Workspace section only renders for a team workspace whose
   // viewer may see workspace settings. Gate on the folded permission bits,
@@ -4363,6 +4383,8 @@ export function SettingsDialog({
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
         aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
+        ref={pageMode ? settingsPageRef : undefined}
+        tabIndex={pageMode ? -1 : undefined}
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
         {/* Top-right chrome strip — anchored to the column's corner so the
@@ -4460,7 +4482,7 @@ export function SettingsDialog({
               is the one `tabpanel` every tab controls. */}
           <SettingsTabStrip
             activeSection={activeSection}
-            onSelect={setActiveSection}
+            onSelect={selectSettingsSection}
             matchCounts={settingsSearchCounts}
             searchField={
               <RegexSearchField
@@ -5958,7 +5980,7 @@ export function SettingsDialog({
               daemonMediaProviders={daemonMediaProviders}
               daemonMediaProvidersFetchState={daemonMediaProvidersFetchState}
               workspaceContext={workspaceContext}
-              onOpenComposioSection={() => setActiveSection('composio')}
+              onOpenComposioSection={() => selectSettingsSection('composio')}
               onLeaveForOrbitProject={(runConfig) => {
                 // Persist any in-flight Orbit edits (toggle / time) before
                 // navigating away so they aren't silently lost. The autosave
@@ -6180,7 +6202,7 @@ export function SettingsDialog({
 
           {activeSection === 'memory' ? (
             <MemorySection
-              onOpenConnectors={() => setActiveSection('composio')}
+              onOpenConnectors={() => selectSettingsSection('composio')}
               chatAgentId={cfg.mode === 'daemon' ? cfg.agentId ?? null : null}
               chatModel={selectedMemoryChatModel}
             />
@@ -6438,9 +6460,7 @@ export function SettingsDialog({
       <div className="settings-page-shell">
         <div
           className={`settings-page ${settingsPageStyles.page}`}
-          ref={settingsPageRef}
           data-testid="settings-page"
-          tabIndex={-1}
         >
           {surface}
           {dshSetup ? (

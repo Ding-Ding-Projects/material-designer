@@ -37,6 +37,14 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   if (client.platform != null && typeof client.platform !== "string") return false;
   if (client.osLocale != null && typeof client.osLocale !== "string") return false;
 
+  const appearance = value.appearance;
+  if (
+    appearance != null
+    && (!isRecord(appearance) || !hasFunction(appearance, "setTheme"))
+  ) {
+    return false;
+  }
+
   const shell = value.shell;
   if (!isRecord(shell) || !hasFunction(shell, "openExternal") || !hasFunction(shell, "openPath")) return false;
 

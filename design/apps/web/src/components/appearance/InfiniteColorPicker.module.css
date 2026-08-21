@@ -72,6 +72,7 @@
 .slider {
   width: 100%;
   min-width: 0;
+  min-height: 48px;
   accent-color: var(--accent);
 }
 
@@ -134,6 +135,7 @@
   padding: 6px 8px;
   font-size: var(--md-sys-typescale-body-small-size);
   min-width: 0;
+  min-height: 48px;
 }
 
 .entryInput {
@@ -181,8 +183,10 @@
 }
 
 .swatch {
-  width: 22px;
-  height: 22px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--md-sys-shape-corner-s);
   border: 1px solid var(--border);
@@ -284,8 +288,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-s);

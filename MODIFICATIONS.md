@@ -29,6 +29,21 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Acknowledge native Appearance theme application
+
+**Reason:** The native theme bridge previously accepted a fire-and-forget message, so
+the renderer could report a mounted application before the desktop shell had accepted
+the persisted theme. The bridge now returns a bounded action result, the desktop
+startup witness waits for that acknowledgement, and a timeout or rejection becomes an
+honest self-contained startup failure. Browser-only and older hosts keep the local DOM
+theme path. The Appearance settings page also keeps an explicit Workspace ownership
+decision, normalizes its typed route when switching tabs, wraps full search context,
+focuses the labelled page landmark, and keeps all interactive hit areas at 48px.
+
+**Changed files:**
+
+- `packages/host/src/detection.ts`
+
 ### 2026-08-21 — Make the Appearance settings route addressable
 
 **Reason:** The Appearance panel was implemented but its section token was normalized into
