@@ -137,6 +137,8 @@ signing controls false.
 with an explicit output directory, cache directory, namespace, application version
 and machine-readable output. Then, in order:
 
+- tools-pack output is streamed to the job log with a `[tools-pack]` prefix while
+  the same UTF-8 log is retained for inspection;
 - payload validation against the expected version;
 - an **explicit existence check** on the reported installer path, failing if the
   build reported one that is not there;
@@ -152,13 +154,23 @@ and machine-readable output. Then, in order:
   `metadata.json`, the icon, provenance and the artifact receipt. A portable
   archive is neither requested nor published as an alternate installer.
 
+If any packaging phase fails, the step copies the build log into the run-scoped
+`RUNNER_TEMP` evidence directory before rethrowing. It also writes a small
+schema-version-1 `packaging-failure.json` containing the source commit, run
+identity, phase, safe error message, native exit code when available, and the
+copied log's byte length and SHA-256. This preserves the diagnostic boundary
+without claiming that the packer itself succeeded or identifying a root cause
+that the failed run did not prove.
+
 The namespace and channel are literals in the workflow environment, because
 upstream derives them from a metadata job wired to infrastructure this fork does
 not have, and an empty namespace or version fails the packer outright.
 
-**11 — Upload the installer as a workflow artifact**, with `always()`,
-`if-no-files-found: warn`, `continue-on-error: true` and bounded retention so a
-packaging failure still leaves safe evidence without masking the root failure.
+**11 — Upload the installer and packaging evidence as workflow artifacts**, with
+`always()`, `if-no-files-found: warn`, `continue-on-error: true` and bounded
+retention. A failed packaging step therefore still uploads its immutable build
+log and versioned failure JSON without masking the original failure. Successful
+runs upload the same run-scoped directory alongside the staged Squirrel assets.
 
 **12 — Do not smoke-test in Actions.** The packaged application is captured and
 smoke-tested locally when the task requires it; a missing local result is reported
@@ -170,8 +182,11 @@ as unverified rather than silently turning into a workflow gate.
 > compares equal to false — so a naive condition would silently skip the step that
 > proves the application runs, on exactly the trigger that publishes.
 
-**13 — Reports and logs.** The smoke report always uploads; build logs upload on
-failure.
+**13 — Reports and logs.** The smoke report always uploads. The packaging log is
+streamed into the job log and copied, together with `packaging-failure.json`, to
+the exact run-scoped evidence directory before a packaging exception is rethrown.
+The upload and final cleanup both address that exact directory; no broad runner
+path is used.
 
 **14 — Count lines.** See [line-count.md](line-count.md). The step keeps standard
 error rather than discarding it, because when the counter exits non-zero it is
@@ -250,6 +265,7 @@ exact status is `NotSigned`.
 | A step passes despite a failed command inside it | Missing per-command exit-code guards | Every command needs its own check. This is how a pipeline goes green while testing nothing. |
 | Typecheck fails in packages nobody touched | The daemon and desktop builds were skipped | They run first for exactly this reason. |
 | The packer exits immediately | Empty namespace or application version | Both are set explicitly; check the version parse step. |
+| The Squirrel packaging step fails before staging assets | The packer returned a non-zero result or another packaging phase threw | Read the `[tools-pack]` lines in the job log and download the run-scoped `installer-build.log` plus schema-version-1 `packaging-failure.json`; this evidence records the failure but does not by itself establish the packer root cause. |
 | The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
 | Re-running a published run dies at the publish step | The tag already exists | The attempt number in the tag prevents this. If it recurs, the tag scheme was changed. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
@@ -289,11 +305,14 @@ installed, launched, health-checked, screenshotted and uninstalled the built
 application.
 
 **Current failing evidence:** hosted Windows Release
-[`32450842389`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450842389)
-at `a515cd87842e1ad9611768d95daa42364e029879` failed during dependency
-postinstall on daemon TypeScript syntax errors. Packaging, `NotSigned`, artifact
-validation and publication were skipped, so that run makes no package or runtime
-claim. Earlier run
+[`32506068934`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32506068934)
+at `4eb5ad2dff3c7bb13b21d2e3f8f0ccc8167fc5e7` failed in **Build the Windows
+Squirrel installer** after `tools-pack` exited with code `1`. It produced no
+validated package, `NotSigned` verdict, artifact receipt or publication. That run
+did not retain the build log before the step threw, so its packer root cause is
+unverified. This lane adds streamed diagnostics and run-scoped failure evidence;
+the repair itself remains unverified until a replacement hosted run exercises the
+failure path. Earlier run
 [`32439482597`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32439482597)
 did prove one unsigned `Setup.exe`, one full package, a valid `RELEASES` row and
 zero observed signer invocations; it did not prove installed launch, updater
@@ -307,6 +326,8 @@ The pipeline is fully proven when one run demonstrates all of:
 - [x] typecheck and the identity suites passing
 - [x] a Squirrel installer produced, its reported path present, and `NotSigned`
 - [ ] the Squirrel smoke installing, launching, health-checking, capturing UI states and uninstalling
+- [ ] a failed Squirrel packaging attempt retaining streamed diagnostics plus a
+      schema-version-1 failure record with an immutable log hash
 - [x] historical non-draft releases under fresh tags with their installer/checksum assets
 - [x] the line-count table present in historical release notes
 - [x] later historical releases selecting different code names

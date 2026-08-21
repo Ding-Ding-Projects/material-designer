@@ -15,6 +15,11 @@ function requireText(source, needle, message) {
   if (!source.includes(needle)) failures.push(message);
 }
 
+function requireExact(source, needle, message) {
+  const occurrences = source.split(needle).length - 1;
+  if (occurrences !== 1) failures.push(`${message} (expected exactly once, found ${occurrences})`);
+}
+
 function forbid(source, pattern, message) {
   if (pattern.test(source)) failures.push(message);
 }
@@ -69,6 +74,22 @@ requireText(release, "steps.artifact_contract.outcome == 'success'", "release.ym
 requireText(release, '-MetadataFile "metadata.json"', "release.yml does not validate the updater metadata with the package set");
 requireText(release, '-IconFile "material-designer.ico"', "release.yml does not validate the packaged icon with the package set");
 requireText(release, "signer-audit.ready", "release.yml does not wait for the independent signer observer before packaging");
+requireExact(release, '$packagingEvidence = Join-Path $runnerTemp ("squirrel-packaging-evidence-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")', "release.yml does not create one run-scoped packaging evidence directory");
+requireExact(release, 'Write-Host ("[tools-pack] " + [string]$_)', "release.yml does not stream safe tools-pack diagnostics into the job log");
+requireExact(release, '$utf8NoBom = [Text.UTF8Encoding]::new($false)', "release.yml does not define a BOM-free encoding for failure diagnostics");
+requireExact(release, '$buildLogWriter = [IO.StreamWriter]::new($buildLogPath, $false, $utf8NoBom)', "release.yml does not use a PowerShell 5.1-compatible UTF-8 log writer");
+requireExact(release, '$buildLogWriter.WriteLine($line)', "release.yml does not append each streamed tools-pack line to the build log");
+requireExact(release, '$buildLogWriter.Flush()', "release.yml does not flush each streamed tools-pack line before a failure can throw");
+requireExact(release, '$buildLogWriter.Dispose()', "release.yml does not close the build log before copying failure evidence");
+requireExact(release, 'Copy-Item -LiteralPath $buildLogPath -Destination $stableBuildLogPath -Force', "release.yml does not copy the immutable build log before reporting a packaging failure");
+requireExact(release, 'phase = "squirrel-packaging"', "release.yml failure evidence does not identify the packaging phase");
+requireText(release, "schemaVersion = 1", "release.yml failure evidence has no versioned schema");
+requireText(release, "error = $ErrorMessage", "release.yml failure evidence does not preserve the safe failure message");
+requireText(release, "buildLog = [ordered]@{", "release.yml failure evidence does not bind the log hash and byte length");
+requireText(release, "Save-PackagingFailureEvidence -ErrorMessage", "release.yml does not preserve evidence before rethrowing the packaging failure");
+requireText(release, "squirrel-packaging-evidence-${{ github.run_id }}-${{ github.run_attempt }}", "release.yml evidence upload does not include the deterministic runner-temp evidence path");
+requireText(release, "(Join-Path $env:RUNNER_TEMP \"squirrel-packaging-evidence-${{ github.run_id }}-${{ github.run_attempt }}\")", "release.yml cleanup does not include the exact run-scoped packaging evidence directory");
+forbid(release, /steps\.pack\.outputs\.packaging_evidence/, "release.yml duplicates the deterministic packaging evidence path through an uncertain step output");
 forbid(release, /^\s+(?:pnpm(?:\.cmd)?\s+.*\b(?:test|lint|typecheck)|npm\s+.*\btest)\b/gm, "release.yml runs a prohibited test, lint, or type-check command");
 
 forbid(release, /^\s+--signed\b/m, "release.yml still requests a signed package");

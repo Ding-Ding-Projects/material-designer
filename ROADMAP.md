@@ -1,12 +1,16 @@
 # Roadmap
 
 > [!IMPORTANT]
-> **Release-shutdown status — 2026-08-11.** The local `main` and `origin/main` now match
-> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db).
-> The pure port verifier has a recorded zero-gap result. Exact-SHA Verify
-> (`31480515255`) and Pages (`31480515281`) are green. Release (`31480515300`)
-> built the unsigned Squirrel payload, then failed closed at the explicit dim-sum
-> photo-policy conflict before publication; no new release exists.
+> **Release-shutdown status — 2026-08-21.** The integrated `main` and `origin/main`
+> match [`4eb5ad2d`](https://github.com/Ding-Ding-Projects/material-designer/commit/4eb5ad2dff3c7bb13b21d2e3f8f0ccc8167fc5e7).
+> Verify (`32506068594`) and Pages (`32506068716`) are green. Release
+> (`32506068934`) failed in the Windows Squirrel packaging step after
+> `tools-pack` exited with code `1`; no package, unsigned verdict, artifact
+> receipt or publication was produced, and the failed run did not retain its
+> nested build log. The current bounded repair preserves streamed diagnostics
+> and a versioned failure record for the next run; it does not claim to fix or
+> identify the packer root cause. Installed launch, updater, removal and parity
+> evidence remain open.
 
 The contradictory dim-sum image rules remain unresolved as a durable standard,
 but the repository owner explicitly directed the current release to skip the
@@ -52,6 +56,15 @@ with the project's standards.
       [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
       removes the remaining active-file attachment path; narrower evidence now
       reaches a send only through an explicit user action.
+
+- [~] **Retain failed Squirrel packaging diagnostics.** Release `32506068934`
+      proved the packaging step can fail after `tools-pack` returns code `1`,
+      but its nested build log was not retained by the always-uploaded evidence.
+      The bounded source repair streams safe `[tools-pack]` lines, copies an
+      immutable `installer-build.log`, and writes a schema-version-1
+      `packaging-failure.json` under a run-scoped `RUNNER_TEMP` directory before
+      rethrowing. Hosted behavior and the packer root cause remain unverified
+      until a replacement run exercises the path.
 
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
