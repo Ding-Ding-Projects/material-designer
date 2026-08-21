@@ -7,10 +7,12 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ButtonHTMLAttributes,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import { useT } from '../i18n';
 import { RegexSearchField } from './regex/RegexSearchField';
@@ -23,16 +25,26 @@ interface MenuSearchContextValue {
 
 const MenuSearchContext = createContext<MenuSearchContextValue | null>(null);
 type TriggerRef = { readonly current: HTMLElement | null };
+type SurfaceKind = 'menu' | 'mixed';
+
+interface MenuAction {
+  id: string;
+  label: string;
+  section: string;
+  element: HTMLElement;
+}
 
 export interface FileViewerMenuSearchProps {
-  /** Stable route-local identifier; the component adds a stable React suffix. */
+  /** Stable route-local identifier used by the field-owned registry and builder. */
   menuId: string;
-  /** Visible menu name used by the field, status text and accessibility tree. */
+  /** Visible surface name used by the search field and accessibility tree. */
   menuLabel: string;
   open: boolean;
   onClose: () => void;
-  /** The opener, or a wrapper containing the opener, to receive focus on close. */
+  /** The exact opener, or a wrapper containing the opener, to receive focus on close. */
   triggerRef?: TriggerRef;
+  /** `mixed` is used for Share/Export/Access/Publish surfaces with nested widgets. */
+  kind?: SurfaceKind;
   className: string;
   children: ReactNode;
 }
@@ -47,32 +59,48 @@ function focusMenuTrigger(triggerRef?: TriggerRef) {
   trigger.querySelector<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])')?.focus();
 }
 
-function readableMenuItemText(element: HTMLElement): string {
+function readableActionLabel(element: HTMLElement): string {
   const explicit = element.dataset.menuSearchText;
   if (explicit) return explicit;
+  const accessible = element.getAttribute('aria-label');
+  if (accessible) return accessible;
   const copy = element.cloneNode(true) as HTMLElement;
   copy.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove());
   return copy.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
-function visibleMenuItems(menu: HTMLElement | null): HTMLElement[] {
-  if (!menu) return [];
-  return Array.from(menu.querySelectorAll<HTMLElement>(
-    '[role="menuitem"]:not([hidden]):not([aria-hidden="true"]):not([disabled]):not([aria-disabled="true"])',
+function focusableElements(surface: HTMLElement | null, menuId: string): HTMLElement[] {
+  if (!surface) return [];
+  const own = Array.from(surface.querySelectorAll<HTMLElement>(
+    'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
   ));
+  const builder = document.querySelector<HTMLElement>(
+    `[data-file-viewer-menu-builder="${CSS.escape(menuId)}"]`,
+  );
+  const nested = builder
+    ? Array.from(builder.querySelectorAll<HTMLElement>(
+        'input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ))
+    : [];
+  return [...own, ...nested]
+    .filter((element) => !element.hidden && element.getAttribute('aria-hidden') !== 'true')
+    .filter((element, index, all) => all.indexOf(element) === index);
 }
 
-function focusRelativeMenuItem(menu: HTMLElement | null, current: EventTarget | null, delta: number) {
-  const items = visibleMenuItems(menu);
-  if (items.length === 0) return;
-  const index = Math.max(0, items.indexOf(current as HTMLElement));
-  const next = items[(index + delta + items.length) % items.length] ?? items[0];
-  next.focus();
+function isOwnedRegexBuilder(target: EventTarget | null, menuId: string): boolean {
+  return target instanceof Element
+    && Boolean(target.closest(`[data-file-viewer-menu-builder="${CSS.escape(menuId)}"]`));
 }
 
-function focusBoundaryMenuItem(menu: HTMLElement | null, last: boolean) {
-  const items = visibleMenuItems(menu);
-  (last ? items.at(-1) : items[0])?.focus();
+function focusRelativeMenuItem(actions: MenuAction[], current: EventTarget | null, delta: number) {
+  if (actions.length === 0) return;
+  const index = Math.max(0, actions.findIndex((action) => action.element === current));
+  const next = actions[(index + delta + actions.length) % actions.length] ?? actions[0];
+  next.element.focus();
+}
+
+function focusBoundaryMenuItem(actions: MenuAction[], last: boolean) {
+  (last ? actions.at(-1) : actions[0])?.element.focus();
 }
 
 export function FileViewerMenuSearch({
@@ -81,17 +109,25 @@ export function FileViewerMenuSearch({
   open,
   onClose,
   triggerRef,
+  kind = 'menu',
   className,
   children,
 }: FileViewerMenuSearchProps) {
   const t = useT();
   const instanceId = useId().replace(/:/g, '');
-  const resolvedMenuId = `${menuId}-${instanceId}`;
+  const resolvedSurfaceId = `${menuId}-${instanceId}`;
+  const resolvedActionsId = `${resolvedSurfaceId}-actions`;
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const actionCollectionRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
-  const [visibleCount, setVisibleCount] = useState(0);
+  const [registry, setRegistry] = useState<MenuAction[]>([]);
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+  const [surfaceStyle, setSurfaceStyle] = useState<CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden',
+  });
 
   const registerItem = useCallback((_id: string, _element: HTMLElement) => () => {}, []);
 
@@ -100,57 +136,169 @@ export function FileViewerMenuSearch({
     onClose();
   }, [onClose]);
 
+  const rebuildRegistry = useCallback(() => {
+    const collection = actionCollectionRef.current;
+    if (!collection) return;
+    const candidates = Array.from(collection.querySelectorAll<HTMLElement>(
+      'button:not([type="hidden"]), a[href], [role="menuitem"]',
+    ));
+    const next = candidates
+      .filter((element) => {
+        // Nested listboxes and other widgets own their options and keyboard
+        // model. Their controls are never stolen by the outer action registry.
+        if (element.closest('[role="listbox"], [role="tree"], [role="tablist"]')) return false;
+        if (element.closest('[data-file-viewer-menu-search-control]')) return false;
+        return readableActionLabel(element).length > 0;
+      })
+      .map((element, index) => {
+        if (kind === 'menu') element.setAttribute('role', 'menuitem');
+        else if (element.getAttribute('role') === 'menuitem') element.removeAttribute('role');
+        return {
+          id: `${menuId}-action-${index}`,
+          label: readableActionLabel(element),
+          section: element.closest<HTMLElement>('[data-menu-search-section]')?.dataset.menuSearchSection
+            ?? menuLabel,
+          element,
+        };
+      });
+    setRegistry(next);
+  }, [kind, menuId, menuLabel]);
+
+  useLayoutEffect(() => {
+    rebuildRegistry();
+  }, [children, rebuildRegistry]);
+
+  useLayoutEffect(() => {
+    const nextVisible = new Set<string>();
+    registry.forEach((action) => {
+      const visible = search.matches(action.label);
+      action.element.hidden = !visible;
+      if (visible) {
+        action.element.removeAttribute('aria-hidden');
+        nextVisible.add(action.id);
+      } else {
+        action.element.setAttribute('aria-hidden', 'true');
+      }
+    });
+    setVisibleIds(nextVisible);
+  }, [registry, search.flags, search.mode, search.matches, search.query]);
+
+  const measureSurface = useCallback(() => {
+    const trigger = triggerRef?.current;
+    const surface = surfaceRef.current;
+    if (!trigger || !surface || typeof window === 'undefined') return;
+    const margin = 12;
+    const triggerRect = trigger.getBoundingClientRect();
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const maxWidth = Math.max(220, viewportWidth - margin * 2);
+    const measuredWidth = Math.max(280, surface.scrollWidth || 280);
+    const width = Math.min(maxWidth, measuredWidth);
+    const roomBelow = viewportHeight - triggerRect.bottom - margin;
+    const roomAbove = triggerRect.top - margin;
+    const above = roomBelow < 300 && roomAbove > roomBelow;
+    const maxHeight = Math.max(128, (above ? roomAbove : roomBelow) - 8);
+    const left = Math.max(
+      margin,
+      Math.min(triggerRect.right - width, viewportWidth - width - margin),
+    );
+    const top = above ? triggerRect.top - 6 : triggerRect.bottom + 6;
+    setSurfaceStyle({
+      position: 'fixed',
+      left,
+      top,
+      width,
+      maxWidth,
+      maxHeight,
+      overflowY: 'auto',
+      boxSizing: 'border-box',
+      transform: above ? 'translateY(-100%)' : undefined,
+      visibility: 'visible',
+    });
+  }, [triggerRef]);
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    measureSurface();
+    const onViewportChange = () => measureSurface();
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [measureSurface, open, registry.length]);
+
   useEffect(() => {
     if (!open) return undefined;
     searchInputRef.current?.focus();
+    const onPointerDown = (event: PointerEvent) => {
+      if (surfaceRef.current?.contains(event.target as Node)) return;
+      if (isOwnedRegexBuilder(event.target, menuId)) return;
+      closeMenu();
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      if (surfaceRef.current?.contains(event.target as Node)) return;
+      if (isOwnedRegexBuilder(event.target, menuId)) return;
+      if (kind === 'menu') closeMenu();
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
     // The parent normally removes this component immediately when it closes,
-    // so focus restoration belongs in the cleanup, not only in an `open=false`
-    // render that never occurs for a conditionally-mounted menu.
-    return () => focusMenuTrigger(triggerRef);
-  }, [open, triggerRef]);
+    // so restoration lives in cleanup and uses the actual opener ref.
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
+      focusMenuTrigger(triggerRef);
+    };
+  }, [closeMenu, kind, menuId, open, triggerRef]);
 
-  // `hidden` is applied to the existing React menu items, never by replacing
-  // their DOM or changing their handlers. This keeps action semantics and
-  // disabled/error state owned by the menu's existing source.
-  useLayoutEffect(() => {
-    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>(
-      '[role="menuitem"]',
-    ) ?? []);
-    let nextVisibleCount = 0;
-    items.forEach((element) => {
-      const visible = search.matches(readableMenuItemText(element));
-      element.hidden = !visible;
-      if (visible) element.removeAttribute('aria-hidden');
-      else element.setAttribute('aria-hidden', 'true');
-      if (visible) nextVisibleCount += 1;
-    });
-    setVisibleCount(nextVisibleCount);
-  }, [children, search.flags, search.mode, search.query]);
+  const visibleActions = registry.filter((action) => visibleIds.has(action.id));
 
   const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.target === searchInputRef.current) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu();
+      return;
+    }
+    if (event.key === 'Tab') {
+      if (kind === 'menu') {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+      const focusables = focusableElements(surfaceRef.current, menuId);
+      if (focusables.length === 0) return;
+      event.preventDefault();
+      const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? (currentIndex <= 0 ? focusables.length - 1 : currentIndex - 1)
+        : (currentIndex + 1) % focusables.length;
+      focusables[nextIndex]?.focus();
+      return;
+    }
+    // Mixed Share/Export/Access/Publish surfaces contain their own tablist,
+    // listbox, text, and button keyboard models. The outer owner handles only
+    // Escape and focus containment; it never steals their arrow/Enter keys.
+    if (kind === 'mixed') return;
+    const action = visibleActions.find((candidate) => candidate.element === event.target);
+    if (!action) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      focusRelativeMenuItem(menuRef.current, event.target, 1);
+      focusRelativeMenuItem(visibleActions, event.target, 1);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      focusRelativeMenuItem(menuRef.current, event.target, -1);
+      focusRelativeMenuItem(visibleActions, event.target, -1);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      focusBoundaryMenuItem(menuRef.current, false);
+      focusBoundaryMenuItem(visibleActions, false);
     } else if (event.key === 'End') {
       event.preventDefault();
-      focusBoundaryMenuItem(menuRef.current, true);
-    } else if (
-      event.key === 'Enter' &&
-      event.target instanceof HTMLElement &&
-      event.target.getAttribute('role') === 'menuitem'
-    ) {
+      focusBoundaryMenuItem(visibleActions, true);
+    } else if (event.key === 'Enter') {
       event.preventDefault();
-      event.target.click();
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      closeMenu();
+      action.element.click();
     }
   };
 
@@ -161,62 +309,79 @@ export function FileViewerMenuSearch({
       closeMenu();
       return;
     }
+    if (kind === 'mixed') return;
     if (event.key === 'ArrowDown' || event.key === 'Enter') {
       event.preventDefault();
-      const first = visibleMenuItems(menuRef.current)[0];
+      const first = visibleActions[0];
       if (first) {
-        if (event.key === 'Enter') first.click();
-        else first.focus();
+        if (event.key === 'Enter') first.element.click();
+        else first.element.focus();
       }
       return;
     }
     if (event.key === 'ArrowUp' || event.key === 'Home') {
       event.preventDefault();
-      focusBoundaryMenuItem(menuRef.current, false);
+      focusBoundaryMenuItem(visibleActions, false);
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
-      focusBoundaryMenuItem(menuRef.current, true);
+      focusBoundaryMenuItem(visibleActions, true);
     }
   };
 
   if (!open) return null;
 
-  return (
-    <MenuSearchContext.Provider value={{ search, registerItem }}>
+  const surface = (
+    <div
+      id={resolvedSurfaceId}
+      ref={surfaceRef}
+      className={className}
+      role={kind === 'mixed' ? 'dialog' : 'group'}
+      aria-label={menuLabel}
+      data-file-viewer-menu-surface={menuId}
+      style={surfaceStyle}
+      onKeyDown={onMenuKeyDown}
+    >
+      <div className="file-viewer-menu-search" role="search" data-file-viewer-menu-search-control>
+        <RegexSearchField
+          search={search}
+          fieldLabel={menuLabel}
+          id={`${resolvedSurfaceId}-search`}
+          inputRef={searchInputRef}
+          ariaControls={resolvedActionsId}
+          ariaLabel={t('common.searchEllipsis')}
+          placeholder={t('common.searchEllipsis')}
+          autoFocus
+          className="file-viewer-menu-search__input"
+          hostClassName="file-viewer-menu-search__field"
+          focusScopeId={menuId}
+          onKeyDown={onSearchKeyDown}
+        />
+        <span className="file-viewer-menu-search__count" role="status" aria-live="polite">
+          {query.trim() && visibleActions.length === 0
+            ? t('homeHero.noResults', { query: query.trim() })
+            : t('promptTemplates.countLabel', { n: visibleActions.length })}
+        </span>
+      </div>
       <div
-        id={resolvedMenuId}
-        ref={menuRef}
-        className={className}
-        role="menu"
-        aria-label={menuLabel}
-        onKeyDown={onMenuKeyDown}
+        ref={actionCollectionRef}
+        id={resolvedActionsId}
+        role={kind === 'menu' ? 'menu' : 'group'}
+        aria-label={kind === 'menu' ? menuLabel : `${menuLabel} actions`}
+        data-file-viewer-menu-actions={menuId}
       >
-        <div className="file-viewer-menu-search" role="search">
-          <RegexSearchField
-            search={search}
-            fieldLabel={menuLabel}
-            id={`${resolvedMenuId}-search`}
-            inputRef={searchInputRef}
-            ariaControls={resolvedMenuId}
-            ariaLabel={t('common.searchEllipsis')}
-            placeholder={t('common.searchEllipsis')}
-            autoFocus
-            className="file-viewer-menu-search__input"
-            hostClassName="file-viewer-menu-search__field"
-            focusScopeId={resolvedMenuId}
-            onKeyDown={onSearchKeyDown}
-          />
-          <span className="file-viewer-menu-search__count" role="status" aria-live="polite">
-            {query.trim() && visibleCount === 0
-              ? t('homeHero.noResults', { query: query.trim() })
-              : t('promptTemplates.countLabel', { n: visibleCount })}
-          </span>
-        </div>
         {children}
       </div>
-    </MenuSearchContext.Provider>
+    </div>
+  );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(
+    <MenuSearchContext.Provider value={{ search, registerItem }}>
+      {surface}
+    </MenuSearchContext.Provider>,
+    document.body,
   );
 }
 

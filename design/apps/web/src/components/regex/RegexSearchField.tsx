@@ -261,7 +261,7 @@ export function RegexSearchField({
               className={styles.popover}
               style={popoverStyle}
               data-focus-scope={focusScopeId}
-              data-file-viewer-menu-builder={focusScopeId ? 'true' : undefined}
+              data-file-viewer-menu-builder={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;

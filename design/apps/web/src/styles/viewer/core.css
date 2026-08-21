@@ -131,6 +131,10 @@
   white-space: normal;
   overflow-wrap: anywhere;
 }
+.viewer-toolbar-more-item {
+  min-height: 48px;
+  min-width: 48px;
+}
 .viewer-toolbar-more-item:hover:not(:disabled),
 .viewer-toolbar-more-item.active {
   border-color: color-mix(in srgb, var(--accent) 26%, var(--border));

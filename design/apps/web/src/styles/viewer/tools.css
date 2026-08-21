@@ -659,6 +659,7 @@
   justify-content: flex-start;
   gap: 10px;
   width: 100%;
+  min-height: 48px;
   color: var(--text);
   white-space: normal;
   overflow-wrap: anywhere;
@@ -798,6 +799,7 @@
   padding: 4px 6px 6px;
   margin-bottom: 2px;
   border-bottom: 1px solid var(--border-soft, var(--border));
+  min-height: 48px;
 }
 .file-viewer-menu-search__field {
   min-width: 0;
@@ -806,8 +808,28 @@
 .file-viewer-menu-search__input {
   min-width: 0;
   width: 100%;
-  min-height: 32px;
+  min-height: 48px;
   padding-inline: 8px;
+}
+.file-viewer-menu-search__field > button {
+  min-width: 48px;
+  min-height: 48px;
+}
+.file-viewer-menu-search__count {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+}
+[data-file-viewer-menu-actions] button,
+[data-file-viewer-menu-actions] a {
+  min-width: 48px;
+  min-height: 48px;
+}
+.file-viewer-menu-search[role="search"] {
+  flex: 0 0 auto;
+}
+[data-file-viewer-menu-surface] {
+  overscroll-behavior: contain;
 }
 .file-viewer-menu-search__count {
   flex: 0 0 auto;
@@ -834,6 +856,7 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text);
+  min-height: 48px;
 }
 .share-menu-item > span:not(.share-menu-icon),
 .share-menu-item .share-menu-text,

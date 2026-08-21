@@ -1554,10 +1554,14 @@ installed build.
       Escape, outside click, scroll, Tab and item selection restore focus to the
       originating control. The FileViewer now has a hand-written ten-menu
       inventory with an independent plain-text-first search, anchored regex
-      builder, localized count/no-match status, keyboard navigation and trigger
-      focus restoration for each Download, Share, Present, Zoom and toolbar menu.
-      The source contract is `apps/web/tests/components/FileViewer.menu-contract.test.ts`;
-      no installed-build geometry or runtime interaction has been verified.
+      builder, exact owner token, owner-local action registry, localized
+      count/no-match status, measured viewport placement, keyboard navigation and
+      exact trigger focus restoration for each Download, Share, Present, Zoom and
+      toolbar menu. Simple menus use a nested `role="menu"`; mixed
+      Share/Export/Access/Publish surfaces use named dialog/group containers that
+      preserve their listbox and tab widgets. The source contract is
+      `apps/web/tests/components/FileViewer.menu-contract.test.ts`; no
+      installed-build geometry or runtime interaction has been verified.
       The full requirement remains: every context menu — tab, group, appearance,
       application and overflow — carries its own keyboard-accessible search field
       filtering visible items locally without changing action semantics. Every item
