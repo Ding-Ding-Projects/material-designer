@@ -716,7 +716,7 @@ describe('ChatComposer /search command', () => {
     expect(composerText()).toContain('keep this draft');
   });
 
-  it('shows the active imported-folder file and sends it as edit context', async () => {
+  it('does not attach a project file until the user explicitly chooses it', async () => {
     const onSend = vi.fn();
 
     render(
@@ -733,7 +733,6 @@ describe('ChatComposer /search command', () => {
             mtime: 1,
           },
         ]}
-        activeProjectFileName="site/index.html"
         streaming={false}
         projectMetadata={{ kind: 'prototype', importedFrom: 'folder' }}
         onEnsureProject={async () => 'project-1'}
@@ -742,19 +741,15 @@ describe('ChatComposer /search command', () => {
       />,
     );
 
-    const activeFileStrip = screen.getByTestId('composer-active-file');
-    expect(activeFileStrip.textContent).toContain('Editing');
-    expect(activeFileStrip.textContent).toContain('site/index.html');
-    expect(screen.getByTestId('chat-composer').className).toContain('composer-active-file-mode');
-
-    expect(screen.getAllByText('Ask Material Designer to change index.html...').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('composer-active-file')).toBeNull();
+    expect(screen.getByTestId('chat-composer').className).not.toContain('composer-active-file-mode');
     await typeAndSettle('Make the hero clearer');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
     expect(onSend).toHaveBeenCalledWith(
       'Make the hero clearer',
-      [{ path: 'site/index.html', name: 'index.html', kind: 'file' }],
+      [],
       [],
       undefined,
     );

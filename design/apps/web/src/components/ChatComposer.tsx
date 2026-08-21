@@ -213,7 +213,6 @@ export type ChatSendOutcome = void | 'restore-draft';
 interface Props {
   projectId: string | null;
   projectFiles: ProjectFile[];
-  activeProjectFileName?: string | null;
   streaming: boolean;
   sessionMode?: ChatSessionMode;
   onSessionModeChange?: (mode: ChatSessionMode) => void;
@@ -397,7 +396,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     {
       projectId,
       projectFiles,
-      activeProjectFileName = null,
       streaming,
       sessionMode = 'design',
       onSessionModeChange,
@@ -446,11 +444,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
   ) {
     const { locale, t } = useI18n();
     const analytics = useAnalytics();
-    const activeFileContext =
-      projectMetadata?.importedFrom === 'folder' && activeProjectFileName
-        ? activeProjectFileName
-        : null;
-    const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
@@ -1224,17 +1217,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     ): boolean {
       setStreamingAnnotationSendPending(false);
       if (!prompt && attachments.length === 0 && nextCommentAttachments.length === 0) return false;
-      const nextAttachments =
-        activeFileContext && !attachments.some((attachment) => attachment.path === activeFileContext)
-          ? [
-              {
-                path: activeFileContext,
-                name: activeFileDisplayName ?? activeFileContext,
-                kind: 'file' as const,
-              },
-              ...attachments,
-            ]
-          : attachments;
+      const nextAttachments = attachments;
       // Apply pending Next-step metadata if the caller didn't set its own
       // fields, then clear it so it only colors the immediate next send.
       const pendingEntryFrom = pendingEntryFromRef.current;
@@ -2586,7 +2569,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const placeholderCarouselActive =
       !streaming
       && !sendDisabled
-      && !activeFileContext
       && placeholderScenarios.length > 0
       && draft.trim().length === 0
       && staged.length === 0
@@ -2619,7 +2601,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         className={[
           'composer',
           dragActive ? 'drag-active' : '',
-          activeFileContext ? 'composer-active-file-mode' : '',
         ].filter(Boolean).join(' ')}
         data-testid="chat-composer"
         ref={composerRootRef}
@@ -2716,16 +2697,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               t={t}
             />
           ) : null}
-          {activeFileContext ? (
-            <div
-              className="composer-active-file"
-              data-testid="composer-active-file"
-              title={activeFileContext}
-            >
-              <span className="composer-active-file__label">{t('chat.activeFileEditingLabel')}</span>
-              <span className="composer-active-file__name">{activeFileContext}</span>
-            </div>
-          ) : null}
           {currentCommentAttachments().length > 0 ? (
             <StagedCommentAttachments
               attachments={currentCommentAttachments()}
@@ -2748,13 +2719,11 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
               ref={editorRef}
               draft={draft}
               placeholder={
-                activeFileDisplayName
-                  ? t('chat.activeFilePlaceholder', { file: activeFileDisplayName })
-                  : placeholderCarouselActive
+                placeholderCarouselActive
                     ? ''
                     : composerPlaceholder ?? t('chat.composerPlaceholder')
               }
-              title={activeFileDisplayName ?? composerPlaceholder ?? t('chat.composerPlaceholder')}
+              title={composerPlaceholder ?? t('chat.composerPlaceholder')}
               knownEntities={composerMentionEntities}
               onChange={handleEditorChange}
               onTrigger={handleEditorTrigger}

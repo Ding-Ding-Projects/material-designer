@@ -1715,8 +1715,7 @@ export function ProjectView({
     kind: 'project',
     label: project.name,
     title: project.name,
-    ...(project.metadata?.baseDir ? { absolutePath: project.metadata.baseDir } : {}),
-  }), [project.id, project.metadata?.baseDir, project.name]);
+  }), [project.id, project.name]);
   const [workspaceContexts, setWorkspaceContexts] = useState<WorkspaceContextItem[]>([]);
   const tabsLoadedRef = useRef(false);
   const tabsHydratedFromSavedStateRef = useRef(false);
@@ -2531,14 +2530,6 @@ export function ProjectView({
     firstLoopViewedRef.current = true;
     recordFirstLoopStep(analytics.track, 'artifact_viewed', project.id);
   }, [hasPreviewableArtifact, analytics.track, project.id]);
-  const activeProjectFileName = useMemo(
-    () => (
-      openTabsState.active && projectFileNames.has(openTabsState.active)
-        ? openTabsState.active
-        : null
-    ),
-    [openTabsState.active, projectFileNames],
-  );
   const agentsById = useMemo(
     () => new Map(agents.map((agent) => [agent.id, agent])),
     [agents],
@@ -8521,7 +8512,6 @@ export function ProjectView({
               onSessionModeChange={handleActiveConversationSessionModeChange}
               projectKindForTracking={projectKindFromMetadataToTracking(currentProject.metadata)}
               projectFiles={projectFiles}
-              activeProjectFileName={activeProjectFileName}
               hasActiveDesignSystem={!!projectDesignSystemId}
               activeDesignSystem={chatDesignSystemSummary}
               projectFileNames={projectFileNames}

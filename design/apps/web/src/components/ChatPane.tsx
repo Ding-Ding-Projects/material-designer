@@ -478,7 +478,6 @@ interface Props {
   // without project context.
   projectKindForTracking?: TrackingProjectKind | null;
   projectFiles: ProjectFile[];
-  activeProjectFileName?: string | null;
   hasActiveDesignSystem?: boolean;
   activeDesignSystem?: DesignSystemSummary | null;
   sendDisabled?: boolean;
@@ -804,7 +803,6 @@ export function ChatPane({
   onSessionModeChange,
   projectKindForTracking = null,
   projectFiles,
-  activeProjectFileName = null,
   hasActiveDesignSystem = false,
   activeDesignSystem = null,
   projectFileNames,
@@ -2048,7 +2046,6 @@ export function ChatPane({
       designSystemPicker={designSystemPicker}
       projectId={projectId}
       projectFiles={projectFiles}
-      activeProjectFileName={activeProjectFileName}
       sessionMode={sessionMode}
       onSessionModeChange={onSessionModeChange}
       skills={skills}
