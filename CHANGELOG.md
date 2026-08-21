@@ -28,6 +28,32 @@ version section when a release carries them.
 
 ### Changed
 
+- **Desktop application creation now materializes a real editable scaffold and
+  an optional selected-agent handoff.** Commit
+  [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)
+  turns the desktop target into an explicit project intent, records versioned
+  scaffold state and file roles, writes project-specific starter and Electron
+  source files, and reuses the existing first-run run path for the typed
+  wire-up prompt. The generated shell keeps context isolation and sandboxing,
+  disables Node integration and webviews, blocks network and out-of-root local
+  files, denies secondary windows, and exposes only a narrow preload marker.
+  The platform picker now has its own plain-text-first regex builder, localized
+  no-match copy, and roving keyboard focus. `git diff --check` and both
+  `scripts/verify-port.sh` forms are green; the focused source tests were not
+  run locally, and hosted test, build, installed-runtime, and visual proof are
+  still pending. No installer or release was created by this change.
+
+  Desktop project creation 而家唔再只係貼住一張 platform label。`be3d96c1e`
+  會真真正正寫出 versioned editable scaffold、project-specific starter 同
+  Electron source files；如果用家揀咗 agent，typed wire-up prompt 就沿用
+  existing first-run run path，唔會另起一條古怪 protocol。Generated shell
+  繼續保留 context isolation、sandbox、no Node、no webview、local-only
+  request 同 narrow preload marker；platform picker 亦有自己 plain-text-first
+  regex builder、localized no-match 同 keyboard focus。`git diff --check` 同
+  兩個 `scripts/verify-port.sh` 版本都係 green；focused source tests 未喺
+  本機執行，hosted test、build、installed runtime 同 visual proof 仍然
+  pending，今次亦冇整 installer 或 release。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)

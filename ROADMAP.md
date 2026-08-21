@@ -28,6 +28,13 @@ with the project's standards.
       website action now requests the complete project root, while reserved
       generated paths, non-HTML scaffold inputs, network/out-of-root requests,
       secondary windows and case-only extraction collisions fail closed.
+- [ ] **Create desktop application projects in place and offer selected-agent
+      wire-up.** Source commit
+      [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)
+      adds a versioned project scaffold, project-specific package/main/preload/
+      renderer files, the existing first-run handoff prompt, and a searchable
+      keyboard-safe platform picker. Source checks and port verification are
+      green; hosted source tests and installed-runtime proof remain pending.
 - [x] **Repair Download routing and narrow action geometry at source level.** A
       queued Markdown Download opens its real export menu, and narrow action
       rows compact labelled controls while retaining accessible names. Hosted
