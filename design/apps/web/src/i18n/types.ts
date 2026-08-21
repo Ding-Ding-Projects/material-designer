@@ -4131,6 +4131,7 @@ export interface Dict {
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
   'fileViewer.exportZip': string;
+  'fileViewer.exportWebsiteHandoff': string;
   'fileViewer.exportDesktopScaffold': string;
   'fileViewer.exportHtml': string;
   'fileViewer.exportMd': string;

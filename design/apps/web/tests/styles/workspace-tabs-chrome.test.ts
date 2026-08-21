@@ -5,6 +5,7 @@ const shellCss = readFileSync(new URL('../../src/styles/shell.css', import.meta.
 const routinesCss = readFileSync(new URL('../../src/styles/viewer/routines.css', import.meta.url), 'utf8');
 const composioCss = readFileSync(new URL('../../src/styles/viewer/composio.css', import.meta.url), 'utf8');
 const entryLayoutCss = readFileSync(new URL('../../src/styles/home/entry-layout.css', import.meta.url), 'utf8');
+const drawerCss = readFileSync(new URL('../../src/styles/workspace/drawer.css', import.meta.url), 'utf8');
 
 function cssDeclarations(css: string, selector: string): string {
   const blocks: string[] = [];
@@ -27,6 +28,14 @@ function ruleValue(block: string, property: string): string {
 }
 
 describe('workspace tabs chrome styles', () => {
+  it('keeps file actions visible without a clipped native overflow scroller', () => {
+    const actions = cssDeclarations(drawerCss, '.ws-tabs-actions');
+    expect(ruleValue(actions, 'overflow')).toBe('visible');
+    expect(drawerCss).toContain('@container (max-width: 900px)');
+    expect(drawerCss).toContain('.ws-tabs-actions .chrome-action-with-label > span:last-child');
+    expect(drawerCss).toContain('.ws-tabs-actions .handoff-trigger--solo .handoff-trigger-label');
+  });
+
   it('keeps only a small intentional inset before the first tab', () => {
     const chrome = cssDeclarations(shellCss, '.workspace-tabs-chrome.app-chrome-header');
     const traffic = cssDeclarations(shellCss, '.workspace-tabs-chrome .workspace-tabs-traffic');

@@ -3321,6 +3321,7 @@ export const esES: Dict = {
   'fileViewer.exportPptxHint': 'Envía una solicitud al agente para convertir este diseño a PPTX.',
   'fileViewer.exportPptxNa': 'La exportación a PPTX no está disponible aquí.',
   'fileViewer.exportZip': 'Descargar como .zip',
+  'fileViewer.exportWebsiteHandoff': 'Exportar ZIP completo para entregar el sitio web',
   'fileViewer.exportDesktopScaffold': 'Exportar plantilla de aplicación de escritorio',
   'fileViewer.exportHtml': 'Exportar como HTML independiente',
   'fileViewer.exportMd': 'Exportar como Markdown',

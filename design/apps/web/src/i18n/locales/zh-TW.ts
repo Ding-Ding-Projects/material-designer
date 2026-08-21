@@ -3514,6 +3514,7 @@ export const zhTW: Dict = {
   "fileViewer.exportPptxHint": "請求代理將此設計轉換為 PPTX。",
   "fileViewer.exportPptxNa": "此處暫不支援匯出 PPTX。",
   "fileViewer.exportZip": "下載為 .zip",
+  "fileViewer.exportWebsiteHandoff": "匯出完整網站交接 ZIP",
   "fileViewer.exportDesktopScaffold": "匯出桌面應用程式骨架",
   "fileViewer.exportHtml": "匯出為獨立 HTML",
   "fileViewer.exportMd": "匯出為 Markdown",

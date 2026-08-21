@@ -86,7 +86,6 @@ import {
   measurePreviewBlockOffsets,
 } from './markdown-scroll-sync';
 import { tv, useT, useI18n, type TranslationVars } from '../i18n';
-import { useT, useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
 import {
   notifyTeamProjectsChanged,
@@ -144,6 +143,7 @@ import type { ProjectFilePreview } from '../providers/registry';
 import {
   downloadImageDataUrl,
   downloadDesktopScaffold,
+  downloadProjectArchive,
   exportAsHtml,
   exportAsJsx,
   exportAsMd,
@@ -7144,63 +7144,6 @@ function ReactComponentViewer({
           {source !== null ? (
             <>
               <span className="viewer-divider" aria-hidden />
-              <div className="share-menu" ref={shareRef}>
-                <button
-                  type="button"
-                  className="viewer-action primary viewer-action-export od-tooltip"
-                  aria-haspopup="menu"
-                  aria-expanded={shareMenuOpen}
-                  title={t('fileViewer.shareLabel')}
-                  data-tooltip={t('fileViewer.shareLabel')}
-                  data-tooltip-placement="bottom"
-                  onClick={() => setShareMenuOpen((v) => !v)}
-                >
-                  <span className="export-action-spacer" aria-hidden />
-                  <span>{t('fileViewer.shareLabel')}</span>
-                  <MaterialSymbol name="keyboard_arrow_down" size={14} />
-                </button>
-                {shareMenuOpen ? (
-                  <div className="share-menu-popover" role="menu">
-                    <div className="share-menu-section-label" role="presentation">
-                      {t('common.share')}
-                    </div>
-                    <button
-                      type="button"
-                      className="share-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        exportAsJsx(source, exportTitle, sourceExtension);
-                      }}
-                    >
-                      <span className="share-menu-icon"><MaterialSymbol name="code_blocks" size={15} /></span>
-                      <span>{t('fileViewer.exportJsx')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="share-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        exportReactComponentAsHtml(source, exportTitle);
-                      }}
-                    >
-                      <span className="share-menu-icon"><MaterialSymbol name="description" size={15} /></span>
-                      <span>{t('fileViewer.exportReactHtml')}</span>
-                    </button>
-                    <div className="share-menu-divider" />
-                    <button
-                      type="button"
-                      className="share-menu-item"
-                      role="menuitem"
-                      onClick={() => {
-                        setShareMenuOpen(false);
-                        exportReactComponentAsZip(source, exportTitle, sourceExtension);
-                      }}
-                    >
-                      <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
-                      <span>{t('fileViewer.exportZip')}</span>
-                    </button>
               <div className="share-menu chrome-share-menu chrome-share-menu--unified" ref={shareRef}>
                 {/* Share and Export are separate toolbar intents again (the
                     0.18.0 unified tabs buried Export one level deep); they
@@ -14655,6 +14598,17 @@ function HtmlViewer({
   }
 
   function triggerZipExport(context?: HtmlVersionExportContext) {
+    if (!context?.versionId) {
+      fireShareExport('zip', async () => {
+        const downloaded = await downloadProjectArchive({
+          projectId,
+          fallbackTitle: exportTitle,
+          workspaceContext,
+        });
+        if (!downloaded) throw new Error(t('fileViewer.exportFailed'));
+      });
+      return;
+    }
     fireShareExport('zip', () => exportProjectAsZip({
       projectId,
       filePath: file.name,
@@ -14672,7 +14626,7 @@ function HtmlViewer({
         fallbackTitle: exportTitle,
         workspaceContext,
       });
-      if (!downloaded) throw new Error('desktop scaffold export failed');
+      if (!downloaded) throw new Error(t('fileViewer.exportFailed'));
     });
   }
 
@@ -14721,13 +14675,11 @@ function HtmlViewer({
   // Parallel to shareRequest, but opens the Download / Export menu instead — the
   // assistant "next step" card's Download row routes here so it surfaces the same
   // PDF / image / zip / standalone-HTML / template options the toolbar exposes.
-  const consumedDownloadNonceRef = useRef<number | null>(null);
   useEffect(() => {
     const nonce = downloadRequest?.nonce;
     if (nonce == null) return;
-    if (consumedDownloadNonceRef.current === nonce) return;
     if (!canDownload) return;
-    consumedDownloadNonceRef.current = nonce;
+    if (!consumeDownloadNonceOnce(`${projectId}\n${file.name}`, nonce)) return;
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
     setUnifiedActionTab('export');
@@ -16921,17 +16873,11 @@ function HtmlViewer({
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     onClick={() => {
                       setDeployMenuOpen(false);
-                      fireShareExport('zip', () => exportProjectAsZip({
-                        projectId,
-                        filePath: file.name,
-                        fallbackHtml: source ?? '',
-                        fallbackTitle: exportTitle,
-                        workspaceContext,
-                      }));
+                      triggerZipExport();
                     }}
                   >
                     <span className="share-menu-icon"><MaterialSymbol name="folder_zip" size={15} /></span>
-                    <span>{t('fileViewer.exportZip')}</span>
+                    <span>{t('fileViewer.exportWebsiteHandoff')}</span>
                   </button>
                   <button
                     type="button"
@@ -18895,6 +18841,18 @@ type MarkdownSaveOptions = {
   showSaving?: boolean;
 };
 
+const consumedDownloadNonceByArtifact = new Map<string, number>();
+
+function consumeDownloadNonceOnce(artifactKey: string, nonce: number): boolean {
+  if (consumedDownloadNonceByArtifact.get(artifactKey) === nonce) return false;
+  consumedDownloadNonceByArtifact.set(artifactKey, nonce);
+  if (consumedDownloadNonceByArtifact.size > 256) {
+    const oldestKey = consumedDownloadNonceByArtifact.keys().next().value;
+    if (typeof oldestKey === 'string') consumedDownloadNonceByArtifact.delete(oldestKey);
+  }
+  return true;
+}
+
 function markdownScrollRange(element: HTMLElement): number {
   return Math.max(0, element.scrollHeight - element.clientHeight);
 }
@@ -18938,7 +18896,6 @@ function MarkdownViewer({
   const [text, setText] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
-  const consumedDownloadNonceRef = useRef<number | null>(null);
   const downloadMenuRef = useRef<HTMLDivElement | null>(null);
   useDismissOnOutsideInteraction(downloadMenuOpen, downloadMenuRef, () => setDownloadMenuOpen(false));
   const [mode, setMode] = useState<MarkdownViewerMode>(viewerOnly ? 'preview' : 'split');
@@ -18982,10 +18939,10 @@ function MarkdownViewer({
   useEffect(() => {
     const nonce = downloadRequest?.nonce;
     if (nonce == null || text === null || viewerOnly) return;
-    if (consumedDownloadNonceRef.current === nonce) return;
-    consumedDownloadNonceRef.current = nonce;
+    if (loadedFileKeyRef.current !== markdownFileKey) return;
+    if (!consumeDownloadNonceOnce(markdownFileKey, nonce)) return;
     setDownloadMenuOpen(true);
-  }, [downloadRequest?.nonce, text, viewerOnly]);
+  }, [downloadRequest?.nonce, markdownFileKey, text, viewerOnly]);
 
   useEffect(() => {
     const sameLoadedFile = loadedFileKeyRef.current === markdownFileKey;
@@ -19061,8 +19018,7 @@ function MarkdownViewer({
 
   const saveMarkdownText = useCallback(
     (value: string, options: MarkdownSaveOptions = {}): Promise<void> => {
-    (value: string, options: MarkdownSaveOptions = {}) => {
-      if (viewerOnly) return;
+      if (viewerOnly) return Promise.resolve();
       const run = async (nextValue: string, saveOptions: MarkdownSaveOptions): Promise<void> => {
         if (lastSavedTextRef.current === nextValue) {
           const showSaving = saveOptions.showSaving !== false;
@@ -19129,12 +19085,11 @@ function MarkdownViewer({
       );
       return promise;
     },
-    [file.name, onFileSaved, projectId, viewerOnly],
+    [file.name, onFileSaved, projectId, viewerOnly, workspaceContext],
   );
 
   const flushPendingMarkdownSave = useCallback(async (): Promise<OpenDesignHostUpdaterSavePreparation> => {
-  const flushPendingMarkdownSave = useCallback(() => {
-    if (viewerOnly) return;
+    if (viewerOnly) return { state: 'clean' };
     if (saveTimerRef.current) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
@@ -19148,7 +19103,6 @@ function MarkdownViewer({
     }
     if (markdownSavePromiseRef.current) await markdownSavePromiseRef.current;
     return { state: 'clean' };
-  }, [saveMarkdownText]);
   }, [saveMarkdownText, viewerOnly]);
 
   useEffect(() => {

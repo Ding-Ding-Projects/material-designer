@@ -3318,6 +3318,7 @@ export const de: Dict = {
   'fileViewer.exportPptxHint': 'Senden Sie eine Anfrage an den Agent, um dieses Design in PPTX umzuwandeln.',
   'fileViewer.exportPptxNa': 'PPTX-Export ist hier nicht verfügbar.',
   'fileViewer.exportZip': 'Als .zip herunterladen',
+  'fileViewer.exportWebsiteHandoff': 'Vollständiges Website-Übergabe-ZIP exportieren',
   'fileViewer.exportDesktopScaffold': 'Desktop-App-Grundgerüst exportieren',
   'fileViewer.exportHtml': 'Als eigenständiges HTML exportieren',
   'fileViewer.exportMd': 'Als Markdown exportieren',
