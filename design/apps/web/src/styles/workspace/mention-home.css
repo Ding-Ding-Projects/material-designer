@@ -806,9 +806,8 @@
   max-width: none;
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -1362,8 +1361,6 @@
   overscroll-behavior: contain;
 }
 .settings-page-shell .settings-sidebar {
-  grid-column: 1;
-  grid-row: 1;
   gap: 3px;
   /* No right padding: nav items (and search) extend flush to the rail's right
      edge, dropping the 10px gap on the content-facing side. Left keeps 10px so
@@ -1548,15 +1545,11 @@
   display: none;
 }
 .settings-page-shell .settings-content {
-  grid-column: 2;
-  grid-row: 1;
   /* Fixed 12px gutter on both sides that stays 12px at any window width —
      no max-width cap, so stretching the window widens the card, not the gaps.
      `justify-self: center` splits the 24px evenly into 12 + 12. */
   width: calc(100% - 24px);
   max-width: none;
-  justify-self: center;
-  align-self: start;
   /* 12px top + 12px bottom outer margin; height leaves exactly that 24px
      total so the card fills the shell without overflow. */
   margin: 12px 0 12px;
@@ -1630,7 +1623,8 @@
     height: calc(100vh - 12px);
   }
   .modal-settings .modal-body {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
   .settings-page-shell .modal-body {
     display: flex;
