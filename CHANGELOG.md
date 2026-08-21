@@ -28,6 +28,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Website and desktop-agent handoff downloads now fail closed instead of
+  quietly exporting the wrong thing.** Commit
+  [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
+  makes the visible website action request the complete current project, keeps
+  queued Markdown downloads attached to the requested loaded file across
+  remounts, localizes the explicit handoff label across every locale, and
+  removes the narrow-toolbar overflow scroller. The generated desktop source
+  scaffold blocks network and out-of-root file requests, webviews and secondary
+  windows; rejects non-HTML inputs and case-only extraction collisions; and
+  refuses project-owned canonical handoff/manifest paths rather than presenting
+  them as generated evidence. Focused source regressions are committed; hosted
+  test, built-renderer, narrow/high-scale and installed-artifact proof remain
+  pending.
+
+  Website 同 desktop-agent handoff 而家唔會靜靜雞匯出錯嘢。`252bb5cc2`
+  令 website action 真係拎成個 current project，Markdown queued Download
+  跨 remount 都只跟載好嘅正確 file，所有 locale 有清楚 handoff label，窄
+  toolbar 亦唔再伸條 scrollbar 出嚟扮鬍鬚。Desktop source scaffold 封住
+  network、越界 local file、webview 同新 window；非 HTML input、淨係大小寫
+  唔同嘅 extraction collision、同 project 自己霸咗 canonical handoff/manifest
+  路徑都會明確 fail。Focused source regression 已落地；hosted test、built UI、
+  narrow/high-scale 同 installed artifact 證據仍然 pending。
+
 - **The v0.20.2 release-channel registry now follows upstream's exact-name model
   without losing Material Designer identity.** Release run
   [`32449571270`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32449571270)
