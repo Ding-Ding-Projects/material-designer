@@ -10,30 +10,51 @@ visual licence to redesign the reference.
 ## Implementation
 
 Commit [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
-adds:
+introduced the first structural scaffold. The v0.20.2 migration exposed several
+places where that scaffold had become stale or described stronger proof than it
+actually supplied. The current version corrects the reference hash, records the
+reference dependency hashes, and separates targets from evidence that has not
+yet been captured.
 
 - `tools/design-reference-app/main.mjs`, a developer-only Electron entry that
   renders the checked-in reference directly, resolves its React runtime from
   installed local packages and refuses unrelated network requests;
 - `.codex/verification/design-parity/routes.json`, the hand-written list of ten
-  required screens;
+  required screen/state routes and the exact reference-control steps used to
+  reach them;
 - `.codex/verification/design-parity/inventory.json`, one explicit row per
-  screen with matching reference/application tuples, per-component Material
-  Design 3 audit states, evidence paths and reviewed deviations;
-- `scripts/verify-design-parity.mjs`, which fails on a missing screen, route,
-  tuple field, audit, evidence path or unapproved deviation and has an in-memory
-  negative mode that proves each structural boundary red then green.
+  screen with matching reference/application tuples, complete deterministic
+  inputs, per-control audit targets, raw/receipt/comparison/diff targets and
+  reviewed deviations;
+- `scripts/verify-design-parity.mjs`, which pins the exact ten route IDs,
+  validates route protocols and query keys, checks immutable reference assets,
+  rejects reused or escaping evidence targets, and uses stable failure codes in
+  its structural negative mode.
+
+The reference application now consumes that registry directly. It freezes the
+clock, randomness and motion before page scripts execute, uses committed local
+Roboto Flex, Roboto Mono and Material Symbols Rounded files, blocks unrelated
+network requests, uses Chromium device scaling instead of renderer zoom, and
+checks the measured viewport, device-pixel ratio and loaded fonts before it
+reports readiness.
 
 ## Evidence boundary
 
 The inventory is structurally complete and all ten rows are currently marked
-`unverified`. That is deliberate: source code, a route string and a non-empty
-PNG do not prove visual parity. A row becomes verified only after the checked-in
-reference and the real installed Squirrel application are launched through the
-approved hidden-desktop route at the same screen, state, theme, 1440×900 CSS
-viewport, display scale, locale and fixture revision. Both raw captures must be
-retained and hashed; a labelled comparison and machine-readable visual diff
-must bind to those hashes; and the component audit must be reviewed.
+`pending`. That is deliberate: source code and route strings do not prove
+visual parity. The installed application does not yet implement the declared
+`material-designer://` tuple resolver, so the default verifier stops at that
+route boundary before accepting capture evidence.
+
+A row becomes verified only after the checked-in reference and real installed
+Squirrel application are launched through the approved hidden-desktop route at
+the exact same normalized tuple. Both raw captures and versioned receipts must
+be retained and hashed; the receipts must record the exact route, measured
+dimensions, device scale, semantic-state check, nonblank check, privacy check
+and capture-tool provenance. A labelled comparison and machine-readable visual
+diff must bind to the raw hashes, and a hand-reviewed audit must enumerate the
+visible controls individually. The required matrix also covers light and dark,
+normal and narrow layouts, 100/125/150/200% display scale, and bilingual copy.
 
 Run the structural and negative checks with:
 
@@ -42,8 +63,15 @@ node scripts/verify-design-parity.mjs --structure
 node scripts/verify-design-parity.mjs --negative
 ```
 
-After evidence exists, omit `--structure`; the default mode requires every raw
-capture, comparison, diff receipt, source commit and verified row status.
+The structural negative mode proves missing rows, registry routes, protocols,
+query keys, every tuple field, both route-side tuple mismatches, audit/evidence
+targets and deviation approval red then restored green with stable failure
+codes. It does not claim that missing runtime artifacts have been captured.
+
+After the production route, audits and evidence exist, omit `--structure`; the
+default mode requires route implementation, every per-control audit, both raw
+capture receipts, every artifact hash, source commit, matrix status, diff
+metrics/provenance/review and verified row status.
 
 ## Failure modes
 

@@ -1,17 +1,24 @@
 {
-  "version": 1,
+  "version": 2,
   "reference": "mockups/open-design-m3/Open Design M3.dc.html",
-  "fixtureRevision": "material-designer-m3-v1",
-  "screens": [
-    "home",
-    "projects",
-    "design-systems",
-    "automations",
-    "plugins",
-    "integrations",
-    "studio",
-    "library",
-    "settings",
-    "handoff"
+  "referenceImplementation": {
+    "status": "implemented",
+    "entry": "tools/design-reference-app/main.mjs"
+  },
+  "applicationImplementation": {
+    "status": "unimplemented",
+    "reason": "The installed desktop application does not yet resolve the normalized material-designer:// capture routes without replacement DOM injection."
+  },
+  "routes": [
+    { "id": "home-default-light", "screen": "home", "state": "default", "referenceSteps": [] },
+    { "id": "projects-default-light", "screen": "projects", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Projects" }] },
+    { "id": "design-systems-default-light", "screen": "design-systems", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Design systems" }] },
+    { "id": "automations-default-light", "screen": "automations", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Automations" }] },
+    { "id": "plugins-default-light", "screen": "plugins", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Plugins" }] },
+    { "id": "integrations-default-light", "screen": "integrations", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Integrations" }] },
+    { "id": "studio-default-light", "screen": "studio", "state": "default", "referenceSteps": [{ "match": "aria-label-exact", "value": "Run" }] },
+    { "id": "library-default-light", "screen": "library", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "Library" }] },
+    { "id": "settings-appearance-light", "screen": "settings", "state": "appearance", "referenceSteps": [{ "match": "text-exact", "value": "settings" }] },
+    { "id": "handoff-default-light", "screen": "handoff", "state": "default", "referenceSteps": [{ "match": "text-exact", "value": "settings" }, { "match": "text-exact", "value": "Handoff & tokens" }] }
   ]
 }
