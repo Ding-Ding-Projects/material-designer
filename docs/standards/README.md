@@ -57,7 +57,7 @@ each has its own article because each guards a distinct failure.
 | [typography-and-icons.md](typography-and-icons.md) | The three Material Design 3 faces and the icon font: which files ship, from where, under which licence, which variable axes are live, and the CJK fallback the twenty locales depend on. |
 | [design-reference-parity.md](design-reference-parity.md) | The ten-screen reference/application route inventory, identical capture tuples, component audits, comparisons, visual diffs and negative completeness guard. |
 | [full-folder-browser.md](full-folder-browser.md) | The Windows Explorer-style folder-selection surface, exact folder-only validation, path semantics, failure behavior and built-artifact verification. |
-| [desktop-project-creation.md](desktop-project-creation.md) | Explicit desktop application creation, versioned source scaffolds, selected-agent wire-up, and the shared security boundary used by in-place and ZIP creation. |
+| [desktop-project-creation.md](desktop-project-creation.md) | Exclusive Windows desktop application creation, nonce-claimed versioned source scaffolds, selected-agent wire-up, prompt parity, and the shared canonical-path security boundary used by in-place and ZIP creation. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

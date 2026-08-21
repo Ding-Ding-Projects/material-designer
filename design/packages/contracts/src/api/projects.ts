@@ -30,6 +30,13 @@ export type ProjectPlatform =
   | 'tablet'
   | 'desktop-app';
 
+/** One authoritative first-run brief for the desktop scaffold wire-up. */
+export function desktopWireupPrompt(projectName: string): string {
+  const label = String(projectName ?? '').trim().replace(/[\r\n\u0000]/g, ' ').slice(0, 120)
+    || 'this project';
+  return `Wire up the desktop application scaffold for "${label}" using the selected local agent. Preserve the generated desktop security boundary, then build the real application in the project files.`;
+}
+
 export type AudioKind = 'music' | 'speech' | 'sfx';
 
 export type ProjectDisplayStatus =
@@ -252,7 +259,7 @@ export interface ProjectMetadata {
 
 export interface DesktopWireupState {
   enabled: boolean;
-  status: 'not_started' | 'running' | 'completed' | 'cancelled' | 'failed';
+  status: 'not_started' | 'queued' | 'running' | 'completed' | 'cancelled' | 'failed';
   agentId?: string;
   prompt?: string;
 }
@@ -267,6 +274,9 @@ export interface DesktopScaffoldState {
   entryFile: string;
   rendererFile: string;
   files: {
+    entry: string;
+    styles: string;
+    script: string;
     package: string;
     main: string;
     preload: string;

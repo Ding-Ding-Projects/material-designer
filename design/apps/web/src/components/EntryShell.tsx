@@ -2168,6 +2168,7 @@ export function EntryShell({
         connectorsLoading={connectorsLoading}
         agents={agents}
         selectedAgentId={config.agentId}
+        onAgentChange={onAgentChange}
         loading={skillsLoading}
         onCreate={handleCreate}
         onImportClaudeDesign={onImportClaudeDesign}

@@ -289,7 +289,8 @@ describe('NewProjectPanel design system defaults', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Responsive web/i }));
     fireEvent.click(screen.getByRole('option', { name: /Desktop app/i }));
-    fireEvent.change(screen.getByRole('textbox', { name: /macOS\/Windows/i }), {
+    fireEvent.click(screen.getByRole('checkbox', { name: /Wire up after creation/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /Wire-up brief/i }), {
       target: { value: 'Wire the orders workflow and preserve the local security boundary.' },
     });
     fireEvent.click(screen.getByTestId('create-project'));
@@ -309,6 +310,35 @@ describe('NewProjectPanel design system defaults', () => {
         }),
       }),
     }));
+  });
+
+  it('keeps desktop application selection exclusive and does not silently select an agent', () => {
+    const onCreate = vi.fn();
+    const otherAgent = {
+      id: 'other-agent',
+      name: 'Other Agent',
+      bin: 'other-agent',
+      available: true,
+    } satisfies AgentInfo;
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId={null}
+        templates={[]}
+        promptTemplates={[]}
+        onCreate={onCreate}
+        agents={[otherAgent]}
+        selectedAgentId="missing-agent"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Responsive web/i }));
+    fireEvent.click(screen.getByRole('option', { name: /Desktop app/i }));
+    expect(screen.getByRole('button', { name: /Other Agent/i })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Wire up after creation/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Desktop application/i }));
+    expect(screen.getByRole('option', { name: /Responsive web/i })).toBeDisabled();
   });
 
   it('clears design system metadata when freeform is selected in multi mode', () => {

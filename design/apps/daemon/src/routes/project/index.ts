@@ -10,6 +10,7 @@ import {
 } from '@open-design/contracts/runtime/preview-observability';
 import {
   defaultScenarioPluginIdForProjectMetadata,
+  desktopWireupPrompt,
   type ChatSessionMode,
   type LocalCatalogScope,
   type PluginManifest,
@@ -124,9 +125,11 @@ import { localPluginRegistryScope } from '../../plugins/local-source.js';
 import type { WorkspaceDirectoryFetchResult } from '../../collab/vela-workspace-context.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
 import {
-  createDesktopScaffoldFiles,
-  createDesktopStarterFiles,
+  claimDesktopProjectDirectory,
   desktopScaffoldState,
+  markDesktopScaffoldPublished,
+  materializeDesktopScaffoldProject,
+  removeDesktopScaffoldClaim,
 } from '../../desktop-scaffold.js';
 import {
   issueDeleteConfirmation,
@@ -1817,7 +1820,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   const { db, design } = ctx;
   const projectTelemetry = ctx.telemetry;
   const { sendApiError, createSseResponse } = ctx.http;
-  const { DESIGN_SYSTEMS_DIR, PROJECTS_DIR, SKILLS_DIR, BRANDS_DIR, USER_DESIGN_SYSTEMS_DIR } = ctx.paths;
+  const { DESIGN_SYSTEMS_DIR, PROJECTS_DIR, SKILLS_DIR, BRANDS_DIR, USER_DESIGN_SYSTEMS_DIR, RUNTIME_DATA_DIR } = ctx.paths;
   const { readAppConfig, writeAppConfig } = ctx.appConfig;
   const {
     insertProject,
@@ -1843,6 +1846,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   const { subscribeFileEvents, activeProjectEventSinks } = ctx.events;
   const { randomId } = ctx.ids;
   const { validateProjectDesignSystemId, validateProjectSkillId } = ctx.validation;
+  const { detectAgents, getAgentDef } = ctx.agents ?? {};
 
   /**
    * Tell local version history what just happened to a project template.
@@ -3513,7 +3517,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         context: localProjectWorkspaceAttribution(req),
       };
       learnAssertedWorkspaceType(createWorkspace.context);
-      const { id, name, projectLocationId, skillId, designSystemId, pendingPrompt, metadata, customInstructions, skipDiscoveryBrief } =
+      let { id, name, projectLocationId, skillId, designSystemId, pendingPrompt, metadata, customInstructions, skipDiscoveryBrief } =
         req.body || {};
       if (typeof id !== 'string' || !isSafeId(id)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'invalid project id');
@@ -3736,23 +3740,93 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         projectMetadataBase &&
         typeof projectMetadataBase === 'object' &&
         projectMetadataBase.intent === 'desktop-app';
+      const failDesktopCreate = async (status: number, code: string, message: string) => {
+        if (externalProjectDir) {
+          await rm(externalProjectDir, { recursive: true, force: true }).catch(() => {});
+          externalProjectDir = null;
+        }
+        return sendApiError(res, status, code, message);
+      };
+      if (desktopApplicationSelected) {
+        const targets = (projectMetadataBase as { platformTargets?: unknown }).platformTargets;
+        if (!Array.isArray(targets) || targets.length !== 1 || targets[0] !== 'desktop-app') {
+          return failDesktopCreate(
+            400,
+            'DESKTOP_TARGET_EXCLUSIVE',
+            'desktop application creation is exclusive; select Desktop application as the only target',
+          );
+        }
+      }
       const requestedDesktopWireup =
         metadata && typeof metadata === 'object' &&
         metadata.desktopWireup && typeof metadata.desktopWireup === 'object'
           ? metadata.desktopWireup as Record<string, unknown>
           : null;
-      const desktopWireup = desktopApplicationSelected
-        ? {
-            enabled: requestedDesktopWireup?.enabled === true,
-            status: 'not_started' as const,
-            ...(typeof requestedDesktopWireup?.agentId === 'string' && requestedDesktopWireup.agentId.trim()
-              ? { agentId: requestedDesktopWireup.agentId.trim().slice(0, 120) }
-              : {}),
-            ...(typeof requestedDesktopWireup?.prompt === 'string' && requestedDesktopWireup.prompt.trim()
-              ? { prompt: requestedDesktopWireup.prompt.trim().slice(0, 4000) }
-              : {}),
+      let desktopWireup: Record<string, unknown> | undefined;
+      if (desktopApplicationSelected) {
+        if (requestedDesktopWireup) {
+          const allowedWireupKeys = new Set(['enabled', 'agentId', 'prompt']);
+          const unknownWireupKey = Object.keys(requestedDesktopWireup).find((key) => !allowedWireupKeys.has(key));
+          if (unknownWireupKey) {
+            return failDesktopCreate(400, 'BAD_REQUEST', `unknown desktopWireup field: ${unknownWireupKey}`);
           }
-        : undefined;
+        }
+        if (requestedDesktopWireup && typeof requestedDesktopWireup.enabled !== 'boolean') {
+          return failDesktopCreate(400, 'BAD_REQUEST', 'desktopWireup.enabled must be a boolean');
+        }
+        const enabled = requestedDesktopWireup?.enabled === true;
+        if (!enabled) {
+          if (typeof requestedDesktopWireup?.agentId === 'string' && requestedDesktopWireup.agentId.trim()) {
+            return failDesktopCreate(400, 'BAD_REQUEST', 'desktopWireup.agentId requires wire-up to be enabled');
+          }
+          if (typeof requestedDesktopWireup?.prompt === 'string' && requestedDesktopWireup.prompt.trim()) {
+            return failDesktopCreate(400, 'BAD_REQUEST', 'desktopWireup.prompt requires wire-up to be enabled');
+          }
+          if (typeof pendingPrompt === 'string' && pendingPrompt.trim()) {
+            return failDesktopCreate(400, 'BAD_REQUEST', 'desktop wire-up prompt requires wire-up to be enabled');
+          }
+          desktopWireup = { enabled: false, status: 'not_started' as const };
+          pendingPrompt = null;
+        } else {
+          const config = await readAppConfig(RUNTIME_DATA_DIR);
+          const configuredAgentId = typeof config.agentId === 'string' ? config.agentId.trim() : '';
+          const requestedAgentId = typeof requestedDesktopWireup?.agentId === 'string'
+            ? requestedDesktopWireup.agentId.trim()
+            : '';
+          if (!configuredAgentId || requestedAgentId !== configuredAgentId) {
+            return failDesktopCreate(409, 'DESKTOP_AGENT_MISMATCH', 'desktop wire-up must use the currently selected local agent');
+          }
+          if (typeof getAgentDef !== 'function' || !getAgentDef(configuredAgentId)) {
+            return failDesktopCreate(409, 'DESKTOP_AGENT_UNKNOWN', 'selected local agent is not in the runtime registry');
+          }
+          if (typeof detectAgents !== 'function') {
+            return failDesktopCreate(503, 'DESKTOP_AGENT_UNAVAILABLE', 'local agent registry is not ready');
+          }
+          const detectedAgents = await detectAgents(config.agentCliEnv ?? {});
+          const detected = Array.isArray(detectedAgents)
+            ? detectedAgents.find((agent) => agent?.id === configuredAgentId)
+            : null;
+          if (!detected || detected.available !== true) {
+            return failDesktopCreate(409, 'DESKTOP_AGENT_UNAVAILABLE', 'selected local agent is not available');
+          }
+          const prompt = typeof requestedDesktopWireup?.prompt === 'string'
+            ? requestedDesktopWireup.prompt.trim()
+            : desktopWireupPrompt(name.trim());
+          if (!prompt || prompt.length > 4000) {
+            return failDesktopCreate(400, 'BAD_REQUEST', 'desktop wire-up prompt must be 1 to 4 000 characters');
+          }
+          if (pendingPrompt !== undefined && pendingPrompt !== null && pendingPrompt !== prompt) {
+            return failDesktopCreate(400, 'DESKTOP_PROMPT_MISMATCH', 'pendingPrompt must equal desktopWireup.prompt');
+          }
+          pendingPrompt = prompt;
+          desktopWireup = {
+            enabled: true,
+            status: 'queued' as const,
+            agentId: configuredAgentId,
+            prompt,
+          };
+        }
+      }
       const projectMetadata = desktopApplicationSelected
         ? {
             ...projectMetadataBase,
@@ -3788,10 +3862,47 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         }
       }
       let project;
+      let desktopProjectDir: string | null = null;
+      let desktopOwnerNonce: string | null = null;
+      const cleanupDesktopClaim = async () => {
+        if (!desktopProjectDir || !desktopOwnerNonce) return;
+        await removeDesktopScaffoldClaim(desktopProjectDir, desktopOwnerNonce).catch(() => {});
+        desktopProjectDir = null;
+        desktopOwnerNonce = null;
+      };
       const pluginResolutionState: {
         snapshot: ResolveSnapshotOk | null;
         failure: ResolveSnapshotError | null;
       } = { snapshot: null, failure: null };
+      if (desktopApplicationSelected) {
+        try {
+          if (externalProjectDir) {
+            desktopProjectDir = externalProjectDir;
+            desktopOwnerNonce = (await materializeDesktopScaffoldProject({
+              projectDir: externalProjectDir,
+              projectId: id,
+              projectName: name.trim(),
+              entryFile: 'index.html',
+              revision: 1,
+            })).ownerNonce;
+          } else {
+            const claim = await claimDesktopProjectDirectory(PROJECTS_DIR, id);
+            desktopProjectDir = claim.projectDir;
+            desktopOwnerNonce = claim.ownerNonce;
+            desktopOwnerNonce = (await materializeDesktopScaffoldProject({
+              projectDir: claim.projectDir,
+              projectId: id,
+              projectName: name.trim(),
+              entryFile: 'index.html',
+              revision: 1,
+              ownerNonce: claim.ownerNonce,
+            })).ownerNonce;
+          }
+        } catch (err) {
+          await cleanupDesktopClaim();
+          throw err;
+        }
+      }
       try {
         if (externalProjectDir) {
           await writeProjectManifest(externalProjectDir, {
@@ -3896,6 +4007,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         if (externalProjectDir) {
           await rm(externalProjectDir, { recursive: true, force: true }).catch(() => {});
         }
+        await cleanupDesktopClaim();
         if (pluginResolutionState.failure) {
           return res
             .status(pluginResolutionState.failure.status)
@@ -3905,31 +4017,13 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       }
       if (desktopApplicationSelected) {
         try {
-          await ensureProject(PROJECTS_DIR, id, projectMetadata);
-          const starterFiles = createDesktopStarterFiles(name.trim());
-          const scaffoldFiles = createDesktopScaffoldFiles({
-            projectName: name.trim(),
-            projectId: id,
-            entryFile: 'index.html',
-            revision: 1,
-          });
-          for (const file of [...starterFiles, ...scaffoldFiles]) {
-            await writeProjectFile(
-              PROJECTS_DIR,
-              id,
-              file.path,
-              Buffer.from(file.body, 'utf8'),
-              { overwrite: false },
-              projectMetadata,
-            );
-          }
+          if (!desktopProjectDir || !desktopOwnerNonce) throw new Error('desktop scaffold claim missing');
+          await markDesktopScaffoldPublished(desktopProjectDir, desktopOwnerNonce);
+          desktopProjectDir = null;
+          desktopOwnerNonce = null;
         } catch (err) {
           dbDeleteProject(db, id);
-          if (externalProjectDir) {
-            await rm(externalProjectDir, { recursive: true, force: true }).catch(() => {});
-          } else {
-            await removeProjectDir(PROJECTS_DIR, id).catch(() => {});
-          }
+          await cleanupDesktopClaim();
           throw err;
         }
       }

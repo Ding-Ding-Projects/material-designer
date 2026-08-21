@@ -53,6 +53,7 @@ interface Props {
   initialTab?: CreateTab;
   agents?: AgentInfo[];
   selectedAgentId?: string | null;
+  onAgentChange?: (id: string) => void;
 }
 
 // The `open` flag stays the public API, but the close animation has to play
@@ -91,6 +92,7 @@ function NewProjectModalBody({
   initialTab,
   agents,
   selectedAgentId,
+  onAgentChange,
 }: Omit<Props, 'open'>) {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const [creating, setCreating] = useState(false);
@@ -195,6 +197,7 @@ function NewProjectModalBody({
             {...(initialTab ? { initialTab } : {})}
             {...(agents ? { agents } : {})}
             {...(selectedAgentId !== undefined ? { selectedAgentId } : {})}
+            {...(onAgentChange ? { onAgentChange } : {})}
           />
           {creating ? (
             <div className="new-project-modal__status" role="status">

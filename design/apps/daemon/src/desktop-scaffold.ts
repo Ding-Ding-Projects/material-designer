@@ -1,6 +1,11 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, lstat, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const DESKTOP_SCAFFOLD_FILE_ROLES = {
+  entry: 'index.html',
+  styles: 'styles.css',
+  script: 'app.js',
   package: 'desktop/package.json',
   main: 'desktop/src/main.cjs',
   preload: 'desktop/src/preload.cjs',
@@ -8,6 +13,8 @@ export const DESKTOP_SCAFFOLD_FILE_ROLES = {
   config: 'desktop/desktop-scaffold.json',
   readme: 'desktop/README.md',
 } as const;
+
+export const DESKTOP_SCAFFOLD_CLAIM_FILENAME = '.desktop-scaffold-claim.json';
 
 export type DesktopScaffoldFileRole = keyof typeof DESKTOP_SCAFFOLD_FILE_ROLES;
 
@@ -43,6 +50,21 @@ export interface DesktopStarterFile {
   body: string;
 }
 
+export type DesktopScaffoldClaimState = 'staging' | 'ready' | 'published';
+
+export interface DesktopScaffoldClaim {
+  schemaVersion: 1;
+  projectId: string;
+  ownerNonce: string;
+  state: DesktopScaffoldClaimState;
+  files: Record<string, string>;
+  createdAt: number;
+}
+
+export const desktopScaffoldTestHooks = {
+  beforeFileWrite: null as null | ((relativePath: string) => void | Promise<void>),
+};
+
 const RELATIVE_ENTRY_RE = /^(?!\/)(?![A-Za-z]:)[^\\]*$/;
 
 function assertRelativeEntryFile(entryFile: string): string {
@@ -60,14 +82,14 @@ function assertRelativeEntryFile(entryFile: string): string {
   return normalized;
 }
 
-function safePackageName(projectName: string): string {
-  const value = String(projectName ?? '')
+function stableDesktopPackageName(projectId: string | undefined): string {
+  const value = String(projectId ?? '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 42);
-  return value ? `${value}-desktop` : 'desktop-application';
+  return value ? `material-designer-${value}` : 'material-designer-desktop';
 }
 
 function safeProjectLabel(projectName: string): string {
@@ -179,7 +201,12 @@ export function createDesktopScaffoldFiles(input: DesktopScaffoldBuildInput): De
     designHandoff: '../DESIGN-HANDOFF.md',
   };
   const packageJson = {
-    name: safePackageName(label),
+    // Package identity is immutable project identity, never the renameable
+    // display label. A renamed project must keep its installed data and update
+    // channel instead of becoming a second application.
+    name: stableDesktopPackageName(projectId),
+    productName: label,
+    applicationId: `com.materialdesigner.project.${stableDesktopPackageName(projectId)}`,
     version: '0.0.0',
     private: true,
     type: 'commonjs',
@@ -203,12 +230,47 @@ function isAbsoluteLike(value) {
   return path.isAbsolute(value) || path.win32.isAbsolute(value) || /^[A-Za-z]:/.test(value) || value.startsWith('\\\\');
 }
 
+function canonicalPath(root, candidate, kind) {
+  const lexicalRoot = path.resolve(root);
+  const lexicalCandidate = path.resolve(candidate);
+  if (!pathIsInside(lexicalRoot, lexicalCandidate)) {
+    throw new Error(kind + ' escapes its canonical root');
+  }
+  const rootReal = fs.realpathSync.native(lexicalRoot);
+  const candidateReal = fs.realpathSync.native(lexicalCandidate);
+  if (!pathIsInside(rootReal, candidateReal)) {
+    throw new Error(kind + ' leaves its canonical root');
+  }
+  // Reject symbolic links and Windows reparse points in every existing path
+  // component. Comparing native realpaths catches junctions as well as links.
+  let cursor = lexicalRoot;
+  const relative = path.relative(lexicalRoot, lexicalCandidate);
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    cursor = path.join(cursor, segment);
+    const info = fs.lstatSync(cursor);
+    if (info.isSymbolicLink()) throw new Error(kind + ' contains a symlink or reparse point');
+    const cursorReal = fs.realpathSync.native(cursor);
+    if (path.normalize(cursorReal).toLowerCase() !== path.normalize(cursor).toLowerCase()) {
+      throw new Error(kind + ' contains a symlink or reparse point');
+    }
+  }
+  return candidateReal;
+}
+
+function canonicalFile(root, candidate, kind) {
+  const resolved = canonicalPath(root, candidate, kind);
+  const info = fs.statSync(resolved);
+  if (!info.isFile()) throw new Error(kind + ' must be a regular file');
+  return resolved;
+}
+
 function isAllowedRendererUrl(rawUrl, sourceRoot) {
   try {
     const parsed = new URL(rawUrl);
     if (parsed.protocol === 'about:' || parsed.protocol === 'blob:' || parsed.protocol === 'data:') return true;
     if (parsed.protocol !== 'file:') return false;
-    return pathIsInside(sourceRoot, fileURLToPath(parsed));
+    canonicalFile(sourceRoot, fileURLToPath(parsed), 'renderer request');
+    return true;
   } catch {
     return false;
   }
@@ -219,19 +281,19 @@ function resolveSource() {
   if (typeof config.sourceRoot !== 'string' || isAbsoluteLike(config.sourceRoot)) {
     throw new Error('sourceRoot must be relative');
   }
-  const sourceRoot = path.resolve(desktopRoot, config.sourceRoot);
+  const sourceRoot = canonicalPath(desktopRoot, path.resolve(desktopRoot, config.sourceRoot), 'sourceRoot');
   if (typeof config.entryFile !== 'string' || isAbsoluteLike(config.entryFile)) {
     throw new Error('entryFile must be relative');
   }
-  const entry = path.resolve(sourceRoot, config.entryFile);
-  if (!pathIsInside(sourceRoot, entry) || entry === sourceRoot) {
+  const entryCandidate = path.resolve(sourceRoot, config.entryFile);
+  if (!pathIsInside(sourceRoot, entryCandidate) || entryCandidate === sourceRoot) {
     throw new Error('entryFile escapes the scaffold source root');
   }
   if (typeof config.rendererFile !== 'string' || isAbsoluteLike(config.rendererFile)) {
     throw new Error('rendererFile must be relative');
   }
-  const rendererPath = path.resolve(desktopRoot, config.rendererFile);
-  if (!pathIsInside(desktopRoot, rendererPath)) throw new Error('rendererFile escapes the desktop scaffold');
+  const entry = canonicalFile(sourceRoot, entryCandidate, 'entryFile');
+  const rendererPath = canonicalFile(desktopRoot, path.resolve(desktopRoot, config.rendererFile), 'rendererFile');
   return { entry, sourceRoot, rendererPath };
 }
 
@@ -285,6 +347,8 @@ if (typeof window !== 'undefined' && window.desktopShell?.scaffoldVersion === 1)
 
 This folder is a source scaffold, not a finished or installable application. The project source remains at the archive root, with its machine-readable map in \`DESIGN-MANIFEST.json\` and implementation guidance in \`DESIGN-HANDOFF.md\`.
 
+This scaffold targets Windows only. Its eventual packaging target is Squirrel.Windows; code signing is disabled by project policy. It makes no macOS or Linux packaging claim.
+
 The scaffold loads the relative HTML entry in \`desktop-scaffold.json\`. Its main process uses Electron's context isolation and sandbox, disables Node integration and webviews, blocks network and out-of-root local-file requests, denies secondary windows, and exposes only a narrow read-only marker through preload. It has no filesystem, shell, environment, credential, or arbitrary IPC bridge.
 
 The selected agent may now wire the real application into the source files. Keep the generated package identity separate from the user's project data and preserve the Squirrel.Windows packaging target. Code signing is intentionally disabled. This source scaffold does not produce an installer or release.
@@ -311,4 +375,300 @@ export function assertDesktopScaffoldCollisions(
     (err as Error & { code?: string }).code = 'BAD_REQUEST';
     throw err;
   }
+}
+
+function desktopProjectIdIsSafe(projectId: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$/.test(projectId);
+}
+
+function sha256(body: string | Buffer): string {
+  const bytes = typeof body === 'string' ? Buffer.from(body, 'utf8') : body;
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function normalizeGeneratedPath(value: string): string {
+  const normalized = value.replace(/\\/g, '/');
+  if (!normalized || normalized.startsWith('/') || normalized.includes('\0')) {
+    throw new Error('desktop scaffold generated path must be relative');
+  }
+  const safe = path.posix.normalize(normalized);
+  if (safe === '.' || safe.startsWith('../') || safe.includes('/../')) {
+    throw new Error('desktop scaffold generated path escapes the project root');
+  }
+  return safe;
+}
+
+function pathIsInside(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+async function assertRealPathComponents(root: string, target: string): Promise<void> {
+  const rootReal = await realpath(root);
+  const lexicalRoot = path.resolve(root);
+  const lexicalTarget = path.resolve(target);
+  if (!pathIsInside(lexicalRoot, lexicalTarget)) {
+    throw new Error('desktop scaffold path escapes its claimed project root');
+  }
+  let cursor = lexicalRoot;
+  const relative = path.relative(lexicalRoot, lexicalTarget);
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    cursor = path.join(cursor, segment);
+    let info;
+    try {
+      info = await lstat(cursor);
+    } catch (error) {
+      if (error?.code === 'ENOENT') continue;
+      throw error;
+    }
+    if (info.isSymbolicLink()) throw new Error('desktop scaffold path contains a symlink or reparse point');
+    const real = await realpath(cursor);
+    if (path.normalize(real).toLowerCase() !== path.normalize(cursor).toLowerCase()) {
+      throw new Error('desktop scaffold path contains a symlink or reparse point');
+    }
+  }
+  const targetRelative = path.relative(rootReal, await realpath(path.dirname(lexicalTarget)).catch(() => path.dirname(lexicalTarget)));
+  if (targetRelative.startsWith('..') || path.isAbsolute(targetRelative)) {
+    throw new Error('desktop scaffold path leaves its claimed project root');
+  }
+}
+
+export async function claimDesktopProjectDirectory(
+  projectsRoot: string,
+  projectId: string,
+): Promise<{ projectDir: string; ownerNonce: string }> {
+  if (!desktopProjectIdIsSafe(projectId)) throw new Error('invalid desktop project id');
+  await mkdir(projectsRoot, { recursive: true });
+  const root = await realpath(projectsRoot);
+  const projectDir = path.join(root, projectId);
+  try {
+    await mkdir(projectDir, { recursive: false });
+  } catch (error) {
+    if (error?.code === 'EEXIST') {
+      const collision = new Error('desktop project directory already exists');
+      collision.code = 'EEXIST';
+      throw collision;
+    }
+    throw error;
+  }
+  const info = await lstat(projectDir);
+  if (!info.isDirectory() || info.isSymbolicLink()) {
+    await rm(projectDir, { recursive: true, force: true }).catch(() => {});
+    throw new Error('desktop project directory must be a real directory');
+  }
+  await assertRealPathComponents(root, projectDir);
+  return { projectDir, ownerNonce: randomUUID() };
+}
+
+function allDesktopGeneratedFiles(input: DesktopScaffoldBuildInput): DesktopScaffoldFile[] {
+  const roleForStarterPath = (filePath: string): DesktopScaffoldFileRole => {
+    if (filePath === 'index.html') return 'entry';
+    if (filePath === 'styles.css') return 'styles';
+    if (filePath === 'app.js') return 'script';
+    throw new Error(`unknown desktop starter file: ${filePath}`);
+  };
+  const starters = createDesktopStarterFiles(input.projectName).map((file) => ({
+    ...file,
+    role: roleForStarterPath(file.path),
+  }));
+  return [...starters, ...createDesktopScaffoldFiles(input)];
+}
+
+function validateDesktopGeneratedFiles(
+  files: readonly DesktopScaffoldFile[],
+  projectId: string,
+): Record<string, string> {
+  const expected = Object.entries(DESKTOP_SCAFFOLD_FILE_ROLES);
+  const byPath = new Map(files.map((file) => [normalizeGeneratedPath(file.path), file]));
+  if (byPath.size !== expected.length) throw new Error('desktop scaffold generated file set is incomplete');
+  const hashes: Record<string, string> = {};
+  for (const [, expectedPath] of expected) {
+    const file = byPath.get(expectedPath);
+    if (!file || file.body.length === 0) throw new Error(`desktop scaffold file is empty: ${expectedPath}`);
+    hashes[expectedPath] = sha256(file.body);
+  }
+  const entry = byPath.get('index.html')?.body ?? '';
+  if (!/^\s*<!doctype html>/i.test(entry)) throw new Error('desktop scaffold entry must be HTML');
+  const configFile = byPath.get(DESKTOP_SCAFFOLD_FILE_ROLES.config);
+  const config = configFile ? JSON.parse(configFile.body) : null;
+  if (
+    !config || config.schema !== 'open-design.desktop-scaffold.v1'
+    || config.projectId !== projectId
+    || config.platform !== 'windows'
+    || config.packagingTarget !== 'squirrel-windows'
+    || config.codeSigning !== 'disabled'
+    || !config.files
+    || Object.keys(config.files).length !== expected.length
+  ) {
+    throw new Error('desktop scaffold metadata is incomplete');
+  }
+  const packageFile = byPath.get(DESKTOP_SCAFFOLD_FILE_ROLES.package);
+  const packageJson = packageFile ? JSON.parse(packageFile.body) : null;
+  if (!packageJson || packageJson.name !== stableDesktopPackageName(projectId) || !packageJson.productName) {
+    throw new Error('desktop scaffold package identity is not project-stable');
+  }
+  const main = byPath.get(DESKTOP_SCAFFOLD_FILE_ROLES.main)?.body ?? '';
+  for (const marker of [
+    'contextIsolation: true',
+    'nodeIntegration: false',
+    'sandbox: true',
+    'webviewTag: false',
+    'canonicalFile',
+    'realpathSync.native',
+    'setWindowOpenHandler',
+    'will-attach-webview',
+  ]) {
+    if (!main.includes(marker)) throw new Error(`desktop scaffold security marker missing: ${marker}`);
+  }
+  return hashes;
+}
+
+async function writeClaimMarker(
+  projectDir: string,
+  claim: DesktopScaffoldClaim,
+): Promise<void> {
+  const marker = path.join(projectDir, DESKTOP_SCAFFOLD_CLAIM_FILENAME);
+  // The marker is the recovery boundary. Keeping a valid staging marker while
+  // this metadata is refreshed means a crash leaves a recoverable claim rather
+  // than an unowned directory. The generated bytes were independently read
+  // and hashed before this metadata update.
+  await writeFile(marker, `${JSON.stringify(claim, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'w',
+  });
+}
+
+export async function materializeDesktopScaffoldProject(input: {
+  projectDir: string;
+  projectId: string;
+  projectName: string;
+  entryFile?: string;
+  revision?: number;
+  ownerNonce?: string;
+}): Promise<{ ownerNonce: string; claim: DesktopScaffoldClaim }> {
+  if (!desktopProjectIdIsSafe(input.projectId)) throw new Error('invalid desktop project id');
+  const projectRoot = await realpath(input.projectDir);
+  const info = await lstat(projectRoot);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('desktop project root must be a real directory');
+  await assertRealPathComponents(projectRoot, projectRoot);
+  const existing = await readdir(projectRoot);
+  if (existing.length > 0) throw new Error('desktop project root must be empty before scaffold creation');
+  const ownerNonce = input.ownerNonce ?? randomUUID();
+  const files = allDesktopGeneratedFiles({
+    projectName: input.projectName,
+    projectId: input.projectId,
+    entryFile: input.entryFile ?? 'index.html',
+    revision: input.revision ?? 1,
+  });
+  const claim: DesktopScaffoldClaim = {
+    schemaVersion: 1,
+    projectId: input.projectId,
+    ownerNonce,
+    state: 'staging',
+    files: {},
+    createdAt: Date.now(),
+  };
+  const marker = path.join(projectRoot, DESKTOP_SCAFFOLD_CLAIM_FILENAME);
+  await writeFile(marker, `${JSON.stringify(claim, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
+  try {
+    const hashes = validateDesktopGeneratedFiles(files, input.projectId);
+    for (const file of files) {
+      const safePath = normalizeGeneratedPath(file.path);
+      await desktopScaffoldTestHooks.beforeFileWrite?.(safePath);
+      const target = path.resolve(projectRoot, safePath);
+      await assertRealPathComponents(projectRoot, path.dirname(target));
+      await mkdir(path.dirname(target), { recursive: true });
+      try {
+        await lstat(target);
+        const collision = new Error(`desktop scaffold path appeared during creation: ${safePath}`);
+        collision.code = 'EEXIST';
+        throw collision;
+      } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+      }
+      const temporary = `${target}.${ownerNonce}.tmp`;
+      await writeFile(temporary, file.body, { encoding: 'utf8', flag: 'wx' });
+      await rename(temporary, target);
+      await assertRealPathComponents(projectRoot, target);
+      const actual = await readFile(target, 'utf8');
+      if (sha256(actual) !== hashes[safePath]) throw new Error(`desktop scaffold validation changed: ${safePath}`);
+    }
+    const ready: DesktopScaffoldClaim = { ...claim, state: 'ready', files: hashes };
+    await writeClaimMarker(projectRoot, ready);
+    return { ownerNonce, claim: ready };
+  } catch (error) {
+    await removeDesktopScaffoldClaim(projectRoot, ownerNonce);
+    throw error;
+  }
+}
+
+export async function markDesktopScaffoldPublished(
+  projectDir: string,
+  ownerNonce: string,
+): Promise<DesktopScaffoldClaim> {
+  const marker = path.join(await realpath(projectDir), DESKTOP_SCAFFOLD_CLAIM_FILENAME);
+  const claim = JSON.parse(await readFile(marker, 'utf8')) as DesktopScaffoldClaim;
+  if (claim.schemaVersion !== 1 || claim.ownerNonce !== ownerNonce) throw new Error('desktop scaffold claim mismatch');
+  const published = { ...claim, state: 'published' as const };
+  await writeFile(marker, `${JSON.stringify(published, null, 2)}\n`, { encoding: 'utf8', flag: 'w' });
+  return published;
+}
+
+export async function removeDesktopScaffoldClaim(
+  projectDir: string,
+  ownerNonce: string,
+): Promise<boolean> {
+  let root: string;
+  try {
+    root = await realpath(projectDir);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+  const marker = path.join(root, DESKTOP_SCAFFOLD_CLAIM_FILENAME);
+  let claim: DesktopScaffoldClaim;
+  try {
+    claim = JSON.parse(await readFile(marker, 'utf8')) as DesktopScaffoldClaim;
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
+  if (claim.schemaVersion !== 1 || claim.ownerNonce !== ownerNonce) return false;
+  await rm(root, { recursive: true, force: true });
+  return true;
+}
+
+export async function reconcileDesktopScaffoldClaims(
+  projectsRoot: string,
+  projectExists: (projectId: string) => boolean,
+): Promise<{ removed: string[]; finalized: string[] }> {
+  const root = await realpath(projectsRoot);
+  const removed: string[] = [];
+  const finalized: string[] = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const projectDir = path.join(root, entry.name);
+    const marker = path.join(projectDir, DESKTOP_SCAFFOLD_CLAIM_FILENAME);
+    let claim: DesktopScaffoldClaim;
+    try {
+      claim = JSON.parse(await readFile(marker, 'utf8')) as DesktopScaffoldClaim;
+    } catch {
+      continue;
+    }
+    if (
+      claim.schemaVersion !== 1
+      || claim.projectId !== entry.name
+      || typeof claim.ownerNonce !== 'string'
+      || !['staging', 'ready', 'published'].includes(claim.state)
+    ) continue;
+    if (projectExists(claim.projectId)) {
+      if (claim.state !== 'published') {
+        await markDesktopScaffoldPublished(projectDir, claim.ownerNonce).catch(() => {});
+        finalized.push(claim.projectId);
+      }
+    } else if (await removeDesktopScaffoldClaim(projectDir, claim.ownerNonce)) {
+      removed.push(claim.projectId);
+    }
+  }
+  return { removed, finalized };
 }

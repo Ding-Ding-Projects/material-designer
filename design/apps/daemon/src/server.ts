@@ -598,6 +598,7 @@ import {
   writeProjectFile,
   reconcileHtmlArtifactManifest,
 } from './projects.js';
+import { reconcileDesktopScaffoldClaims } from './desktop-scaffold.js';
 import { validateArtifactManifestInput } from './artifacts/manifest.js';
 import { ArtifactPublicationBlockedError } from './artifacts/publication-guard.js';
 import {
@@ -3149,6 +3150,13 @@ export async function startServer({
       return detectAgents(config.agentCliEnv ?? {});
     })
     .catch(() => detectAgents().catch(() => {}));
+
+  await reconcileDesktopScaffoldClaims(
+    PROJECTS_DIR,
+    (projectId) => Boolean(getProject(db, projectId)),
+  ).catch((error) => {
+    console.warn('[desktop-scaffold] claim reconciliation failed:', error);
+  });
 
   await recoverStaleLiveArtifactRefreshes({ projectsRoot: PROJECTS_DIR }).catch((error) => {
     console.warn('[od] Failed to recover stale live artifact refreshes:', error);
@@ -7687,6 +7695,7 @@ export async function startServer({
   };
   const validationDeps = { isSafeId, validateExternalApiBaseUrl, validateBaseUrl, validateProjectDesignSystemId, validateProjectSkillId };
   const agentDeps = {
+    detectAgents,
     listProviderModels,
     testProviderConnection,
     testAgentConnection,
@@ -9769,8 +9778,22 @@ export async function startServer({
     if (typeof clientRequestId === 'string' && clientRequestId)
       run.clientRequestId = clientRequestId;
     if (typeof agentId === 'string' && agentId) run.agentId = agentId;
+    const setDesktopWireupStatus = (status: 'running' | 'completed' | 'cancelled' | 'failed') => {
+      if (typeof projectId !== 'string' || !projectId) return;
+      const project = getProject(db, projectId);
+      const metadata = project?.metadata as Record<string, any> | null | undefined;
+      const wireup = metadata?.desktopWireup;
+      if (!metadata || !wireup || wireup.enabled !== true) return;
+      updateProject(db, projectId, {
+        metadata: { ...metadata, desktopWireup: { ...wireup, status } },
+        updatedAt: Date.now(),
+      });
+    };
     const finishRun = (status, code = null, signal = null) => {
       finalizeRunMessageEvents(db, run);
+      if (status === 'succeeded') setDesktopWireupStatus('completed');
+      else if (status === 'canceled') setDesktopWireupStatus('cancelled');
+      else if (status === 'failed') setDesktopWireupStatus('failed');
       return design.runs.finish(run, status, code, signal);
     };
     // Freeze the billing address once, before the first asynchronous setup
@@ -9810,14 +9833,19 @@ export async function startServer({
         ? normalizeConversationSessionMode(sessionMode)
         : normalizeConversationSessionMode(conversationSession?.sessionMode);
     const def = getAgentDef(agentId);
-    if (!def)
+    if (!def) {
+      setDesktopWireupStatus('failed');
       return design.runs.fail(
         run,
         'AGENT_UNAVAILABLE',
         `unknown agent: ${agentId}`,
       );
-    if (!def.bin)
+    }
+    if (!def.bin) {
+      setDesktopWireupStatus('failed');
       return design.runs.fail(run, 'AGENT_UNAVAILABLE', 'agent has no binary');
+    }
+    setDesktopWireupStatus('running');
     const byokOpenCodeProvider = def.id === 'byok-opencode'
       ? buildOpenCodeByokProviderConfig(
           byokProvider,

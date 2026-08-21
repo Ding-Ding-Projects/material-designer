@@ -394,6 +394,7 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
     const { entryFile } = projectFileMap(entries);
     for (const file of createDesktopScaffoldFiles({
       projectName: archiveBaseName || path.basename(projectRoot),
+      projectId,
       entryFile,
     })) {
       zip.file(file.path, file.body, { date: new Date(0), binary: false });

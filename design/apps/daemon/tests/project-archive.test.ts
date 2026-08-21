@@ -143,7 +143,14 @@ describe('buildProjectArchive', () => {
       entryFile: 'ui-design/index.html',
       packagingTarget: 'squirrel-windows',
       codeSigning: 'disabled',
+      files: {
+        entry: 'index.html',
+        styles: 'styles.css',
+        script: 'app.js',
+        package: 'desktop/package.json',
+      },
     });
+    expect(await zip.file('desktop/package.json')?.async('string')).toContain('material-designer-proj-archive-test');
     const main = await zip.file('desktop/src/main.cjs')?.async('string') || '';
     expect(main).toContain('contextIsolation: true');
     expect(main).toContain('nodeIntegration: false');
