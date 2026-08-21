@@ -4123,6 +4123,25 @@ rejected options.
 - `packages/host/src/index.ts`
 - `packages/host/src/protocol.ts`
 
+### 2026-08-21 — Preserve fork branding while importing desktop runtime changes
+
+**Reason:** The v0.20.2 import placed upstream product-name lines beside the
+existing Material Designer replacements in the desktop runtime instead of
+resolving that branding union. The duplicate `subject`, splash-stage key,
+`BrowserWindow` title, and `windowTitle` declarations stopped TypeScript
+parsing before Windows packaging could begin; the remaining duplicated copy
+would also have rendered both product names on recovery and startup surfaces.
+The runtime now retains the upstream mail-routing, preview-navigation,
+appearance, and sender-validation behavior while keeping one Material Designer
+value at each fork-owned branding boundary. A focused source regression lists
+the required fork strings and the forbidden upstream user-facing strings so a
+future upstream import cannot silently recreate this mixed state.
+
+**Changed files:**
+
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/renderer-crash-loop.test.ts`
+
 ### 2026-08-03 — Material Design 3 token sheet, and the layer that maps the app onto it
 
 **Reason:** the product had a hand-tuned neutral palette and no design system

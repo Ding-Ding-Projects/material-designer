@@ -304,7 +304,6 @@ const MIN_SPLASH_MS = 2000;
 // reveal it only once the web bundle reports it has actually mounted (it sets
 // `data-od-app-mounted="1"` on first paint of the real UI), so the user never
 // sees the web's own "Loading Material Designer…" shell flash between the splash and
-// sees the web's own "Loading OpenDesign…" shell flash between the splash and
 // the app. Poll cadence + a hard ceiling so a missing mount signal can never
 // strand the user on the splash forever.
 const WEB_MOUNT_POLL_MS = 80;
@@ -971,7 +970,6 @@ function createPendingHtml(): string {
   <head>
     <meta charset="utf-8" />
     <title>Material Designer</title>
-    <title>OpenDesign</title>
     <style>
       html,
       body {
@@ -1199,7 +1197,6 @@ function buildCrashReportUrl(ctx: RendererCrashScreenContext): string {
   const body = [
     "**What happened**",
     "The Material Designer desktop window crashed several times in a row and showed the recovery screen.",
-    "The OpenDesign desktop window crashed several times in a row and showed the recovery screen.",
     "",
     "**What I was doing when it started** (please add any detail):",
     "",
@@ -1221,9 +1218,6 @@ function buildCrashMailtoUrl(ctx: RendererCrashScreenContext): string {
   const subject = `Material Designer keeps crashing (renderer ${ctx.reason})`;
   const body = [
     "The Material Designer desktop app crashed several times in a row on my device.",
-  const subject = `OpenDesign keeps crashing (renderer ${ctx.reason})`;
-  const body = [
-    "The OpenDesign desktop app crashed several times in a row on my device.",
     "",
     "(If possible, attach the diagnostics file you saved with the “Save logs…” button.)",
     "",
@@ -1242,7 +1236,6 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
   <head>
     <meta charset="utf-8" />
     <title>Material Designer</title>
-    <title>OpenDesign</title>
     <style>
       /* Palette mirrors the app's neutral design tokens (apps/web tokens.css):
          warm off-white + near-black, no accent color — matching the black/white
@@ -1339,7 +1332,6 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
   <body>
     <div class="panel">
       <p class="title">Material Designer keeps closing on this device</p>
-      <p class="title">OpenDesign keeps closing on this device</p>
       <p class="body">The app window crashed several times in a row, so it has paused to avoid getting stuck reloading.</p>
       <p class="body">It will try to recover on its own in a few minutes.</p>
       <div class="actions">
@@ -1350,7 +1342,6 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
       <p class="status" id="status" aria-live="polite"></p>
       <p class="email" id="email-line">Prefer email? <a href="#" id="email">Contact ${SUPPORT_EMAIL}</a></p>
       <p class="hint">If this keeps happening, quitting and reinstalling Material Designer usually resolves it.</p>
-      <p class="hint">If this keeps happening, quitting and reinstalling OpenDesign usually resolves it.</p>
     </div>
     <script>
       (function () {
@@ -1439,7 +1430,6 @@ const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
 
 const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
   starting: "Starting Material Designer",
-  starting: "Starting OpenDesign",
   engine: "Starting the local engine",
   engineReady: "Local engine ready",
   interface: "Preparing the interface",
@@ -1566,7 +1556,7 @@ export function pinNativeAppearanceToLight(): void {
  * + matching size so the reveal swap reads as a single window, never a flash.
  */
 export function createSplashWindow(): SplashWindowHandle {
-  // OpenDesign ships light-only (the theme setting was removed), so pin the
+  // Material Designer ships light-only (the theme setting was removed), so pin the
   // native appearance before the first window exists. Electron defaults
   // `themeSource` to `system`, which paints the macOS vibrancy glass and the
   // native chrome dark on a dark-mode Mac — visible on the splash and again in
@@ -1582,7 +1572,6 @@ export function createSplashWindow(): SplashWindowHandle {
     resizable: false,
     show: true,
     title: "Material Designer",
-    title: "OpenDesign",
     width: 1280,
     webPreferences: {
       contextIsolation: true,
@@ -2300,7 +2289,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const consoleEntries: DesktopConsoleEntry[] = [];
   const petWindow = createDesktopPetWindow(preloadPath, options.osLocale);
   const windowTitle = options.windowTitle ?? "Material Designer";
-  const windowTitle = options.windowTitle ?? "OpenDesign";
   const window = new BrowserWindow({
     height: 900,
     icon: resolveDesktopIconPath(),
@@ -2314,7 +2302,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // app loads in here. We reveal this window only once the app has actually
     // mounted (see `revealWhenReady` below), so there is never a flash of the
     // web's own "Loading Material Designer…" shell.
-    // web's own "Loading OpenDesign…" shell.
     show: false,
     title: windowTitle,
     autoHideMenuBar: true,
@@ -2530,7 +2517,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const requireMainWindowSender = (event: Electron.IpcMainInvokeEvent): void => {
     if (event.sender !== window.webContents) {
       throw new Error("host IPC is only available to the main Material Designer window");
-      throw new Error("host IPC is only available to the main OpenDesign window");
     }
   };
   const discoverUpdateDaemonBaseUrl = async (): Promise<string> => {
@@ -2953,7 +2939,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // Hold the splash until BOTH (a) the web bundle reports it has mounted — it
   // sets `data-od-app-mounted="1"` on first paint of the real UI — so we never
   // reveal the web's own dark "Loading Material Designer…" shell, and (b) the splash
-  // reveal the web's own dark "Loading OpenDesign…" shell, and (b) the splash
   // has been up at least MIN_SPLASH_MS so the brand clip plays through. A hard
   // ceiling guarantees the user is never stranded on the splash if the mount
   // signal never arrives.

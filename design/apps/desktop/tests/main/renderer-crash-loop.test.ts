@@ -143,6 +143,35 @@ describe("renderer crash-loop breaker wiring", () => {
     expect(runtimeSource).toContain("buildCrashReportUrl");
     expect(runtimeSource).toContain("formatRendererExitCode");
   });
+
+  test("keeps fork branding singular when upstream crash and splash changes are imported", () => {
+    const requiredForkBranding = [
+      '<title>Material Designer</title>',
+      'const subject = `Material Designer keeps crashing (renderer ${ctx.reason})`;',
+      'starting: "Starting Material Designer",',
+      'title: "Material Designer",',
+      'const windowTitle = options.windowTitle ?? "Material Designer";',
+    ];
+    const forbiddenUpstreamBranding = [
+      "<title>OpenDesign</title>",
+      "OpenDesign desktop window crashed",
+      "OpenDesign keeps crashing",
+      "OpenDesign desktop app crashed",
+      "OpenDesign keeps closing",
+      "reinstalling OpenDesign",
+      'starting: "Starting OpenDesign",',
+      'title: "OpenDesign",',
+      'windowTitle ?? "OpenDesign"',
+      "main OpenDesign window",
+    ];
+
+    for (const branding of requiredForkBranding) {
+      expect(runtimeSource).toContain(branding);
+    }
+    for (const branding of forbiddenUpstreamBranding) {
+      expect(runtimeSource).not.toContain(branding);
+    }
+  });
 });
 
 describe("isSupportMailtoUrl", () => {
