@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import * as ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { resolveSystemLocale } from '../../src/i18n';
 import { en } from '../../src/i18n/locales/en';
@@ -8,6 +9,98 @@ import { zhTW } from '../../src/i18n/locales/zh-TW';
 import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/types';
 
 const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'zh-HK', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+
+// Hand-written on purpose: discovering only the files already known to the
+// test would let a newly added locale disappear from duplicate-key coverage.
+const LOCALE_SOURCE_FILES = [
+  'ar.ts',
+  'de.ts',
+  'en.ts',
+  'es-ES.ts',
+  'fa.ts',
+  'fr.ts',
+  'hu.ts',
+  'id.ts',
+  'it.ts',
+  'ja.ts',
+  'ko.ts',
+  'pl.ts',
+  'pt-BR.ts',
+  'ru.ts',
+  'th.ts',
+  'tr.ts',
+  'uk.ts',
+  'zh-CN.ts',
+  'zh-HK.ts',
+  'zh-TW.ts',
+] as const;
+
+const LOCALE_SOURCE_DIRECTORY = new URL('../../src/i18n/locales/', import.meta.url);
+
+function localeDictionaryObject(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression {
+  const dictionaries: ts.ObjectLiteralExpression[] = [];
+
+  for (const statement of sourceFile.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (declaration.initializer && ts.isObjectLiteralExpression(declaration.initializer)) {
+        dictionaries.push(declaration.initializer);
+      }
+    }
+  }
+
+  if (dictionaries.length !== 1) {
+    throw new Error(
+      `${sourceFile.fileName} must contain exactly one top-level locale dictionary; found ${dictionaries.length}`,
+    );
+  }
+
+  return dictionaries[0]!;
+}
+
+function staticPropertyName(property: ts.PropertyAssignment, fileName: string): string {
+  if (ts.isStringLiteral(property.name) || ts.isNoSubstitutionTemplateLiteral(property.name)) {
+    return property.name.text;
+  }
+  if (ts.isIdentifier(property.name) || ts.isNumericLiteral(property.name)) {
+    return property.name.text;
+  }
+  throw new Error(`${fileName} contains a computed locale key; use a static key so duplicates stay auditable`);
+}
+
+function duplicateLocaleKeys(source: string, fileName: string): string[] {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const parseDiagnostics = (
+    sourceFile as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }
+  ).parseDiagnostics ?? [];
+  if (parseDiagnostics.length > 0) {
+    const summary = parseDiagnostics
+      .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, ' '))
+      .join('; ');
+    throw new Error(`${fileName} is not valid TypeScript source: ${summary}`);
+  }
+  const dictionary = localeDictionaryObject(sourceFile);
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const property of dictionary.properties) {
+    if (ts.isSpreadAssignment(property)) continue;
+    if (!ts.isPropertyAssignment(property)) {
+      throw new Error(`${fileName} contains a non-property locale entry that cannot be audited`);
+    }
+    const key = staticPropertyName(property, fileName);
+    if (seen.has(key)) duplicates.add(key);
+    seen.add(key);
+  }
+
+  return [...duplicates].sort();
+}
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -36,6 +129,38 @@ function explicitLocaleKeys(locale: Locale): string[] {
 }
 
 describe('i18n locales', () => {
+  it('enumerates every locale source file in the duplicate-key guard', () => {
+    const filesOnDisk = readdirSync(LOCALE_SOURCE_DIRECTORY)
+      .filter((fileName) => fileName.endsWith('.ts'))
+      .sort();
+
+    expect(filesOnDisk).toEqual([...LOCALE_SOURCE_FILES].sort());
+  });
+
+  it('detects repeated source keys before object evaluation can overwrite them', () => {
+    const duplicateFixture = `export const fixture = { 'same.key': 'first', 'same.key': 'second' };`;
+
+    expect(duplicateLocaleKeys(duplicateFixture, 'duplicate-fixture.ts')).toEqual(['same.key']);
+  });
+
+  it('rejects orphan locale values that are not object properties', () => {
+    const orphanFixture = `export const fixture = { 'valid.key': 'value', 'orphan value', 'next.key': 'value' };`;
+
+    expect(() => duplicateLocaleKeys(orphanFixture, 'orphan-fixture.ts')).toThrow();
+  });
+
+  it('keeps every locale dictionary free of repeated source keys', () => {
+    const duplicatesByFile: Record<string, string[]> = {};
+
+    for (const fileName of LOCALE_SOURCE_FILES) {
+      const source = readFileSync(new URL(fileName, LOCALE_SOURCE_DIRECTORY), 'utf8');
+      const duplicates = duplicateLocaleKeys(source, fileName);
+      if (duplicates.length > 0) duplicatesByFile[fileName] = duplicates;
+    }
+
+    expect(duplicatesByFile).toEqual({});
+  });
+
   it('resolves the initial locale from browser language preferences', () => {
     expect(resolveSystemLocale(['zh-Hans-CN', 'en-US'])).toBe('zh-CN');
     expect(resolveSystemLocale(['pt-PT', 'en-US'])).toBe('pt-BR');
