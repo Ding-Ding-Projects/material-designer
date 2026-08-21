@@ -3783,11 +3783,11 @@ function workspaceContextTitle(item: WorkspaceContextItem, t: TranslateFn): stri
   ].filter(Boolean).join(' | ');
 }
 
-function workspaceContextDescription(item: WorkspaceContextItem): string {
-  if (item.kind === 'design-files') return item.path || 'Project files';
+function workspaceContextDescription(item: WorkspaceContextItem, t: TranslateFn): string {
+  if (item.kind === 'design-files') return item.path || t('chat.designToolbox.context.designFiles');
   if (item.kind === 'project') return item.absolutePath || item.path || item.title || item.id;
   if (item.kind === 'local-code') return item.absolutePath || item.path || item.title || item.id;
-  if (item.kind === 'terminal') return item.title || 'Terminal session';
+  if (item.kind === 'terminal') return item.title || t('chat.designToolbox.context.terminal');
   return item.url || item.path || item.absolutePath || item.title || item.tabId || item.id;
 }
 
@@ -5915,7 +5915,7 @@ function MentionPopover({
                   <span className="mention-item-body">
                     <strong>{item.label}</strong>
                     <span className="mention-meta mention-meta--desc">
-                      {workspaceContextDescription(item)}
+                      {workspaceContextDescription(item, t)}
                     </span>
                   </span>
                   <span className="mention-meta mention-item-kind">{workspaceContextKindLabel(item.kind, t)}</span>
