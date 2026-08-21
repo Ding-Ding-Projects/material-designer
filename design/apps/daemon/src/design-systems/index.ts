@@ -19,6 +19,8 @@ import {
   type ComponentsManifest,
   extractComponentsManifest,
   summarizeComponentsManifestForPrompt,
+  markdownHeading,
+  markdownListItem,
 } from '@open-design/contracts';
 
 import { parseFrontmatter } from './frontmatter.js';
@@ -1916,7 +1918,7 @@ export function buildDesignSystemSkillsMarkdown(input: {
   );
 
   const lines: string[] = [];
-  lines.push(`# How to use the ${title} design system`);
+  lines.push(markdownHeading(`How to use the ${title} design system`));
   lines.push('');
   if (summary) {
     lines.push(summary);
@@ -1932,7 +1934,7 @@ export function buildDesignSystemSkillsMarkdown(input: {
 
   lines.push('## What it is good for');
   lines.push('');
-  for (const item of guide.goodFor) lines.push(`- ${item}`);
+  for (const item of guide.goodFor) lines.push(`- ${markdownListItem(item)}`);
   lines.push('');
 
   lines.push('## How to apply it');

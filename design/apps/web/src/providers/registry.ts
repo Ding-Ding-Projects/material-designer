@@ -3244,6 +3244,31 @@ export async function openProjectInEditor(
   return (await resp.json()) as import('@open-design/contracts').OpenProjectInEditorResponse;
 }
 
+/** Open an exported file while preserving the daemon's selected editor. */
+export async function openPathInEditor(
+  exportedPath: string,
+  editorId?: import('@open-design/contracts').HostEditorId,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<import('@open-design/contracts').EditorOpenResponse> {
+  const resp = await fetch('/api/editor/open', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}),
+    },
+    body: JSON.stringify({
+      path: exportedPath,
+      openWorkspaceRoot: true,
+      ...(editorId ? { editorId } : {}),
+    }),
+  });
+  if (!resp.ok) {
+    const body = await readApiErrorBody(resp);
+    throw new Error(body.message);
+  }
+  return (await resp.json()) as import('@open-design/contracts').EditorOpenResponse;
+}
+
 export async function fetchDesignSystemPreview(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,

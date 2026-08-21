@@ -29,6 +29,40 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make complete project ZIP handoffs deterministic and editor-ready
+
+**Reason:** The project-level handoff could only be reached through an active-file
+export path, streamed source mtimes into ZIP metadata, and gave the receiving tool
+no omission ledger or byte/hash receipt. The complete-project action now prepares a
+validated, deterministic ZIP even for an empty project, explicitly omits sensitive
+paths, redacts bounded local paths in text, records per-entry lengths and SHA-256
+values, streams the staged bytes with cancellation/progress, and opens the exact
+staged archive through the selected editor without substituting a missing preference.
+The desktop scaffold target remains a separate export. Shared Markdown escaping and
+source/component/route regressions pin the boundaries; hosted runtime evidence remains
+separate.
+
+**Changed files:**
+
+- `packages/contracts/src/api/export-safety.ts`
+- `packages/contracts/src/index.ts`
+- `packages/contracts/tests/export-safety.test.ts`
+- `apps/daemon/src/projects.ts`
+- `apps/daemon/src/data-export/serialize.ts`
+- `apps/daemon/src/design-systems/index.ts`
+- `apps/daemon/src/import-export-routes.ts`
+- `apps/daemon/src/server.ts`
+- `apps/daemon/tests/project-archive.test.ts`
+- `apps/web/src/runtime/exports.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/lib/history/export.ts`
+- `apps/web/src/components/HandoffButton.tsx`
+- `apps/web/src/components/ProjectArchiveAction.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/styles/design-system-flow.css`
+- `apps/web/tests/components/HandoffButton.test.tsx`
+- `apps/web/tests/components/ProjectArchiveAction.test.tsx`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

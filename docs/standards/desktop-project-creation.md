@@ -40,11 +40,17 @@ the next implementation step. It is a source scaffold, not an installer.
 
 ## Export
 
-The ZIP export uses the same scaffold generator as in-place creation. It refuses
+The complete project ZIP export is project-scoped and does not depend on the
+currently active file. It can prepare an empty project with only the generated
+handoff/manifests, and it refuses
 case-insensitive collisions with project-owned `desktop/` files, requires an HTML
 entry, and records Squirrel.Windows as the eventual Windows packaging target with
 code signing disabled. The export does not run a package manager, create an
 installer, or publish anything.
+
+The desktop scaffold remains a separately named target. The ordinary project
+handoff never silently adds or substitutes the scaffold; both paths share the
+same project-root source boundary and staged editor/download receipt.
 
 ## Failure and security boundaries
 

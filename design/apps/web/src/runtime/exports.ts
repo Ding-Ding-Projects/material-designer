@@ -1254,6 +1254,180 @@ export async function downloadProjectArchive(opts: {
   }
 }
 
+export interface ProjectArchiveReceipt {
+  schema: 'open-design.project-export-receipt.v1';
+  token: string;
+  filename: string;
+  bytes: number;
+  sha256: string;
+  editorPath: string;
+  downloadUrl: string;
+  expiresAt: number;
+  archiveDigestScope: string;
+}
+
+export type ProjectArchiveExportResult =
+  | { ok: true; receipt: ProjectArchiveReceipt }
+  | { ok: false; cancelled: true }
+  | { ok: false; error: string };
+
+export interface ProjectArchiveProgress {
+  bytesReceived: number;
+  totalBytes: number | null;
+}
+
+function isSafeZipEntryName(name: string): boolean {
+  const normalized = name.replace(/\\/g, '/');
+  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return false;
+  const parts = normalized.split('/').filter(Boolean);
+  return parts.every((part) => part !== '.' && part !== '..');
+}
+
+/**
+ * Validate the ZIP envelope before browser download. This intentionally reads
+ * only the EOCD and central directory: source-file hashes and manifest
+ * semantics are produced by the daemon, while this boundary rejects HTML,
+ * truncated bodies, duplicate names, and traversal entries before save.
+ */
+export function validateProjectArchiveZip(
+  bytes: Uint8Array,
+  requiredEntries: readonly string[] = ['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'EXPORT-MANIFEST.json'],
+): { ok: true; entries: string[] } | { ok: false; error: string } {
+  if (bytes.length < 22) return { ok: false, error: 'project export is too small to be a ZIP' };
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const start = Math.max(0, bytes.length - 65_557);
+  let eocd = -1;
+  for (let index = bytes.length - 22; index >= start; index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      eocd = index;
+      break;
+    }
+  }
+  if (eocd < 0) return { ok: false, error: 'project export is missing its ZIP end record' };
+  const entries = view.getUint16(eocd + 10, true);
+  const centralSize = view.getUint32(eocd + 12, true);
+  const centralOffset = view.getUint32(eocd + 16, true);
+  if (centralOffset + centralSize > bytes.length) return { ok: false, error: 'project export central directory is truncated' };
+  const decoder = new TextDecoder();
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let cursor = centralOffset;
+  for (let count = 0; count < entries; count += 1) {
+    if (cursor + 46 > bytes.length || view.getUint32(cursor, true) !== 0x02014b50) {
+      return { ok: false, error: 'project export has a malformed central directory' };
+    }
+    const nameLength = view.getUint16(cursor + 28, true);
+    const extraLength = view.getUint16(cursor + 30, true);
+    const commentLength = view.getUint16(cursor + 32, true);
+    const nameStart = cursor + 46;
+    const nameEnd = nameStart + nameLength;
+    if (nameEnd > bytes.length) return { ok: false, error: 'project export entry name is truncated' };
+    const name = decoder.decode(bytes.subarray(nameStart, nameEnd));
+    if (!isSafeZipEntryName(name)) return { ok: false, error: `unsafe project export entry: ${name}` };
+    if (seen.has(name)) return { ok: false, error: `duplicate project export entry: ${name}` };
+    seen.add(name);
+    names.push(name);
+    cursor = nameEnd + extraLength + commentLength;
+    if (cursor > bytes.length) return { ok: false, error: 'project export central directory entry is truncated' };
+  }
+  for (const required of requiredEntries) {
+    if (!seen.has(required)) return { ok: false, error: `project export is missing ${required}` };
+  }
+  return { ok: true, entries: names };
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error('project export digest validation is unavailable');
+  const digest = await subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
+}
+
+async function readProjectArchiveResponse(
+  response: Response,
+  onProgress?: (progress: ProjectArchiveProgress) => void,
+): Promise<Uint8Array> {
+  const totalBytes = Number(response.headers.get('content-length')) || null;
+  if (!response.body) {
+    const body = new Uint8Array(await response.arrayBuffer());
+    onProgress?.({ bytesReceived: body.byteLength, totalBytes: totalBytes ?? body.byteLength });
+    return body;
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const next = await reader.read();
+    if (next.done) break;
+    const chunk = new Uint8Array(next.value);
+    chunks.push(chunk);
+    received += chunk.byteLength;
+    onProgress?.({ bytesReceived: received, totalBytes });
+  }
+  const result = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
+/** Prepare, validate, stream, and save a complete project ZIP. */
+export async function exportProjectArchive(opts: {
+  projectId: string;
+  fallbackTitle: string;
+  workspaceContext?: WorkspaceCollabContext | null;
+  signal?: AbortSignal;
+  onProgress?: (progress: ProjectArchiveProgress) => void;
+}): Promise<ProjectArchiveExportResult> {
+  try {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : {}),
+    };
+    const prepared = await fetch(
+      `/api/projects/${encodeURIComponent(opts.projectId)}/archive/prepare`,
+      { method: 'POST', headers, body: JSON.stringify({ target: 'project' }), signal: opts.signal },
+    );
+    if (!prepared.ok) throw new Error(`project export preparation failed (${prepared.status})`);
+    const receipt = (await prepared.json()) as ProjectArchiveReceipt;
+    if (
+      receipt.schema !== 'open-design.project-export-receipt.v1' ||
+      !receipt.token ||
+      !receipt.filename ||
+      !receipt.downloadUrl ||
+      !Number.isInteger(receipt.bytes) ||
+      receipt.bytes <= 0 ||
+      !/^[a-f0-9]{64}$/i.test(receipt.sha256)
+    ) {
+      throw new Error('project export returned an invalid receipt');
+    }
+    const response = await fetch(receipt.downloadUrl, {
+      headers: opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : undefined,
+      signal: opts.signal,
+    });
+    if (!response.ok || response.headers.get('content-type')?.split(';', 1)[0].trim() !== 'application/zip') {
+      throw new Error(`project export download was not a ZIP (${response.status})`);
+    }
+    const bytes = await readProjectArchiveResponse(response, opts.onProgress);
+    if (bytes.byteLength !== receipt.bytes) throw new Error('project export byte length does not match its receipt');
+    const digest = await sha256Hex(bytes);
+    if (digest.toLowerCase() !== receipt.sha256.toLowerCase()) {
+      throw new Error('project export digest does not match its receipt');
+    }
+    const validation = validateProjectArchiveZip(bytes);
+    if (!validation.ok) throw new Error(validation.error);
+    triggerDownload(new Blob([bytes], { type: 'application/zip' }), receipt.filename);
+    return { ok: true, receipt };
+  } catch (error) {
+    if (opts.signal?.aborted || (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError')) {
+      return { ok: false, cancelled: true };
+    }
+    return { ok: false, error: error instanceof Error ? error.message : 'project export failed' };
+  }
+}
+
 export async function downloadDesktopScaffold(opts: {
   projectId: string;
   fallbackTitle: string;

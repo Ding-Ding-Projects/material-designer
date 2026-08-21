@@ -23,6 +23,7 @@ export * from './api/project-sync.js';
 export * from './api/team-resources.js';
 export * from './api/connectionTest.js';
 export * from './api/data-export.js';
+export * from './api/export-safety.js';
 export * from './api/destructive-confirmation.js';
 export * from './api/editor.js';
 export * from './api/export.js';

@@ -8,6 +8,7 @@
 // directory to prevent path traversal — see resolveSafe().
 
 import { constants as fsConstants, createReadStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { link, lstat, mkdir, readdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
@@ -39,11 +40,21 @@ import {
   assertDesktopScaffoldCollisions,
   createDesktopScaffoldFiles,
 } from './desktop-scaffold.js';
+import {
+  compareExportPaths,
+  exportPathOmissionReason,
+  markdownHeading,
+  markdownInlineCode,
+  markdownListItem,
+  redactExportText,
+  type ExportOmission,
+} from '@open-design/contracts';
 
 const FORBIDDEN_SEGMENT = /^$|^\.\.?$/;
 const RESERVED_PROJECT_FILE_SEGMENTS = new Set(['.file-versions', '.live-artifacts']);
 const DESIGN_HANDOFF_FILENAME = 'DESIGN-HANDOFF.md';
 const DESIGN_MANIFEST_FILENAME = 'DESIGN-MANIFEST.json';
+const EXPORT_MANIFEST_FILENAME = 'EXPORT-MANIFEST.json';
 export const RUN_ARTIFACT_RECONCILE_MTIME_GRACE_MS = 1000;
 export const projectFileRenameTestHooks = {
   beforeCommit: null as null | ((paths: { source: string; target: string }) => Promise<void> | void),
@@ -60,6 +71,56 @@ function createLazyArchiveFileStream(filePath: string): Readable {
     });
     for await (const chunk of source) yield chunk;
   })());
+}
+
+const MAX_EXPORT_TEXT_SCAN_BYTES = 1_000_000;
+const TEXT_EXPORT_EXTENSION_RE = /\.(?:c|cc|cpp|css|csv|html?|jsx?|json|md|mdx|mjs|py|rs|scss|sh|sql|toml|ts|tsx|txt|vue|xml|yaml|yml)$/i;
+
+async function digestFile(filePath: string): Promise<{ bytes: number; sha256: string }> {
+  const hash = createHash('sha256');
+  let bytes = 0;
+  const source = createReadStream(filePath, {
+    flags: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0),
+  });
+  for await (const chunk of source) {
+    const buffer = Buffer.from(chunk);
+    bytes += buffer.length;
+    hash.update(buffer);
+  }
+  return { bytes, sha256: hash.digest('hex') };
+}
+
+async function prepareArchiveFile(entry: {
+  relPath: string;
+  fullPath: string;
+  size: number;
+}, omissions: ExportOmission[]): Promise<{
+  relPath: string;
+  fullPath: string;
+  mtime: number;
+  size: number;
+  sha256: string;
+  content?: Buffer;
+}> {
+  if (TEXT_EXPORT_EXTENSION_RE.test(entry.relPath) && entry.size <= MAX_EXPORT_TEXT_SCAN_BYTES) {
+    const original = await readFile(entry.fullPath);
+    const decoded = original.toString('utf8');
+    const redaction = redactExportText(decoded, entry.relPath);
+    omissions.push(...redaction.omissions);
+    if (redaction.value !== decoded) {
+      const content = Buffer.from(redaction.value, 'utf8');
+      return {
+        relPath: entry.relPath,
+        fullPath: entry.fullPath,
+        mtime: 0,
+        size: content.length,
+        sha256: createHash('sha256').update(content).digest('hex'),
+        content,
+      };
+    }
+  }
+  const digest = await digestFile(entry.fullPath);
+  return { ...entry, mtime: 0, size: digest.bytes, sha256: digest.sha256 };
 }
 
 export function isRunTouchedProjectFile(fileMtimeMs, runStartTimeMs) {
@@ -328,7 +389,47 @@ export async function buildProjectArchive(projectsRoot, projectId, root, metadat
     metadata,
     options,
   );
-  return { buffer: await collectArchiveStream(stream), baseName };
+  const buffer = await collectArchiveStream(stream);
+  await validateProjectArchiveBuffer(buffer);
+  return { buffer, baseName };
+}
+
+/** Validate the exact bytes before a staged archive is written or handed to a CLI. */
+export async function validateProjectArchiveBuffer(buffer: Buffer): Promise<void> {
+  if (buffer.length < 22 || buffer.readUInt32LE(0) !== 0x04034b50) {
+    throw new Error('project archive is not a ZIP byte stream');
+  }
+  const zip = await JSZip.loadAsync(buffer);
+  const names = Object.values(zip.files)
+    .filter((entry) => !entry.dir)
+    .map((entry) => entry.name);
+  const seen = new Set<string>();
+  for (const name of names) {
+    if (!name || name.startsWith('/') || /^[A-Za-z]:[\\/]/.test(name) || name.split(/[\\/]/).includes('..')) {
+      throw new Error(`unsafe project archive entry: ${name}`);
+    }
+    if (seen.has(name)) throw new Error(`duplicate project archive entry: ${name}`);
+    seen.add(name);
+  }
+  for (const required of [DESIGN_HANDOFF_FILENAME, DESIGN_MANIFEST_FILENAME, EXPORT_MANIFEST_FILENAME]) {
+    if (!seen.has(required)) throw new Error(`project archive is missing ${required}`);
+  }
+  const raw = await zip.file(EXPORT_MANIFEST_FILENAME)?.async('string');
+  const manifest = raw ? JSON.parse(raw) : null;
+  if (!manifest || manifest.schema !== 'open-design.project-export-manifest.v1' || !Array.isArray(manifest.files)) {
+    throw new Error('project archive manifest is malformed');
+  }
+  for (const entry of manifest.files) {
+    if (!entry || typeof entry.path !== 'string' || !Number.isInteger(entry.bytes) || !/^[a-f0-9]{64}$/i.test(entry.sha256)) {
+      throw new Error('project archive manifest has an invalid file record');
+    }
+    const file = zip.file(entry.path);
+    if (!file) throw new Error(`project archive manifest references missing ${entry.path}`);
+    const content = await file.async('nodebuffer');
+    if (content.length !== entry.bytes) throw new Error(`project archive length mismatch for ${entry.path}`);
+    const digest = createHash('sha256').update(content).digest('hex');
+    if (digest !== entry.sha256) throw new Error(`project archive hash mismatch for ${entry.path}`);
+  }
 }
 
 // The HTTP export path uses this streaming form. Unlike buildProjectArchive's
@@ -373,8 +474,10 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
   }
 
   const entries = [];
-  await collectArchiveEntries(archiveRoot, '', entries);
-  if (entries.length === 0) {
+  const omissions: ExportOmission[] = [];
+  await collectArchiveEntries(archiveRoot, '', entries, omissions);
+  entries.sort((left, right) => compareExportPaths(left.relPath, right.relPath));
+  if (entries.length === 0 && options.allowEmptyRoot !== true) {
     const err = new Error('archive root is empty');
     err.code = 'ENOENT';
     throw err;
@@ -382,13 +485,20 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
 
   const zip = new JSZip();
   for (const entry of entries) {
-    zip.file(entry.relPath, createLazyArchiveFileStream(entry.fullPath), {
-      date: new Date(entry.mtime),
+    zip.file(
+      entry.relPath,
+      entry.content ?? createLazyArchiveFileStream(entry.fullPath),
+      {
+      // A fixed DOS-compatible epoch makes the archive bytes reproducible;
+      // source mtimes are metadata on the host, not part of the handoff.
+      date: new Date(0),
       binary: true,
-    });
+      },
+    );
   }
   addDesignHandoff(zip, entries, archiveBaseName || path.basename(projectRoot));
-  addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot));
+  addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot), omissions);
+  addExportManifest(zip, entries, omissions, archiveBaseName || path.basename(projectRoot));
   if (options.target === 'desktop-scaffold') {
     assertDesktopScaffoldCollisions(entries);
     const { entryFile } = projectFileMap(entries);
@@ -396,7 +506,7 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
       projectName: archiveBaseName || path.basename(projectRoot),
       entryFile,
     })) {
-      zip.file(file.path, file.body, { date: new Date(0), binary: false });
+        zip.file(file.path, file.body, { date: new Date(0), binary: false });
     }
   } else if (options.target != null && options.target !== 'project') {
     const err = new Error(`unsupported archive target: ${options.target}`);
@@ -555,7 +665,7 @@ async function collectArchiveStream(stream) {
   });
 }
 
-async function collectArchiveEntries(dir, relDir, out) {
+async function collectArchiveEntries(dir, relDir, out, omissions: ExportOmission[] = []) {
   const dirStat = await lstat(dir).catch((err) => {
     if (err && err.code === 'ENOENT') return null;
     throw err;
@@ -569,15 +679,22 @@ async function collectArchiveEntries(dir, relDir, out) {
     throw err;
   }
   for (const e of entries) {
-    if (e.name.startsWith('.')) continue;
     if (!e.isDirectory() && !e.isFile()) continue;
     const rel = relDir ? `${relDir}/${e.name}` : e.name;
+    if (e.name.startsWith('.')) {
+      const omissionReason = exportPathOmissionReason(rel);
+      if (omissionReason) omissions.push({ path: rel, reason: omissionReason });
+      continue;
+    }
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (isIgnoredProjectDirName(e.name)) continue;
+      if (isIgnoredProjectDirName(e.name)) {
+        omissions.push({ path: rel, reason: 'ignored build/dependency directory' });
+        continue;
+      }
       const st = await lstat(full);
       if (!st.isDirectory() || st.isSymbolicLink()) continue;
-      await collectArchiveEntries(full, rel, out);
+      await collectArchiveEntries(full, rel, out, omissions);
       continue;
     }
     if (e.name.endsWith('.artifact.json')) continue;
@@ -586,7 +703,12 @@ async function collectArchiveEntries(dir, relDir, out) {
     // metadata collection. Keep the archive allowlist fail-closed; the lazy
     // O_NOFOLLOW open below repeats the check when bytes are actually read.
     if (!st.isFile() || st.isSymbolicLink()) continue;
-    out.push({ relPath: rel, fullPath: full, mtime: st.mtimeMs });
+    const omissionReason = exportPathOmissionReason(rel);
+    if (omissionReason) {
+      omissions.push({ path: rel, reason: omissionReason });
+      continue;
+    }
+    out.push(await prepareArchiveFile({ relPath: rel, fullPath: full, size: st.size }, omissions));
   }
 }
 
@@ -602,7 +724,7 @@ function addDesignHandoff(zip, entries, projectLabel) {
   });
 }
 
-function addDesignManifest(zip, entries, projectLabel) {
+function addDesignManifest(zip, entries, projectLabel, _omissions: ExportOmission[] = []) {
   if (entries.some((entry) => entry.relPath.toLowerCase() === DESIGN_MANIFEST_FILENAME.toLowerCase())) {
     const err = new Error(`generated archive path already exists: ${DESIGN_MANIFEST_FILENAME}`);
     err.code = 'BAD_REQUEST';
@@ -612,6 +734,34 @@ function addDesignManifest(zip, entries, projectLabel) {
     date: new Date(0),
     binary: false,
   });
+}
+
+function addExportManifest(zip, entries, omissions: ExportOmission[], projectLabel: string): void {
+  if (entries.some((entry) => entry.relPath.toLowerCase() === EXPORT_MANIFEST_FILENAME.toLowerCase())) {
+    const err = new Error(`generated archive path already exists: ${EXPORT_MANIFEST_FILENAME}`);
+    err.code = 'BAD_REQUEST';
+    throw err;
+  }
+  const files = entries
+    .map((entry) => ({ path: entry.relPath, bytes: entry.size, sha256: entry.sha256 }))
+    .sort((left, right) => compareExportPaths(left.path, right.path));
+  const body = JSON.stringify({
+    schema: 'open-design.project-export-manifest.v1',
+    policyVersion: 1,
+    project: projectLabel || 'project',
+    sourceCommit: process.env.OD_SOURCE_COMMIT || process.env.GIT_COMMIT || null,
+    buildId: process.env.OD_BUILD_ID || process.env.BUILD_ID || null,
+    encoding: 'utf-8 for text entries; binary bytes preserved',
+    archive: {
+      digest: 'reported in the export receipt; intentionally omitted here to avoid a self-referential archive hash',
+      digestScope: 'complete ZIP byte stream, including this manifest, excluding no bytes',
+    },
+    files,
+    omissions: [...omissions].sort((left, right) =>
+      compareExportPaths(`${left.path}\u0000${left.field ?? ''}\u0000${left.reason}`, `${right.path}\u0000${right.field ?? ''}\u0000${right.reason}`),
+    ),
+  }, null, 2) + '\n';
+  zip.file(EXPORT_MANIFEST_FILENAME, body, { date: new Date(0), binary: false });
 }
 
 // A file is treated as a preview-chrome wrapper only when it lives inside
@@ -733,11 +883,11 @@ function buildDesignHandoff(entries, projectLabel) {
     htmlFiles.length > 0 ||
     cssFiles.length > 0 ||
     files.some((name) => /(screens?|pages?|components?|app|src)\//i.test(name));
-  const list = (items) => items.length > 0 ? items.map((name) => `- \`${name}\``).join('\n') : '- None detected';
+  const list = (items) => items.length > 0 ? items.map((name) => `- ${markdownInlineCode(markdownListItem(name))}`).join('\n') : '- None detected';
 
-  return `# ${projectLabel || 'OpenDesign project'} implementation handoff
+  return `${markdownHeading(`${projectLabel || 'OpenDesign project'} implementation handoff`)}
 
-This archive is the source of truth for turning the design into production code. Start from \`${entryFile}\`, then preserve the visual system, responsive behavior, and interactions found in the exported files.
+This archive is the source of truth for turning the design into production code. Start from ${markdownInlineCode(entryFile)}, then preserve the visual system, responsive behavior, and interactions found in the exported files.
 
 ## Implementation target
 - Build production UI from the exported design, not a loose reinterpretation.
@@ -747,7 +897,7 @@ This archive is the source of truth for turning the design into production code.
 - Treat this handoff as a visual contract: if implementation choices conflict, match the exported pixels and behavior first, then refactor internals.
 
 ## Source map
-- Primary entry: \`${entryFile}\`
+- Primary entry: ${markdownInlineCode(entryFile)}
 - HTML screens detected: ${htmlFiles.length}
 - Stylesheets detected: ${cssFiles.length}
 - Script/component files detected: ${jsFiles.length}
@@ -777,7 +927,7 @@ For responsive web exports, treat these as a modern breakpoint system for one ad
 - Do not keep prototype-only annotations, frame labels, or OpenDesign chrome in the production UI.
 
 ## CJX-ready UX contract
-- Use \`${DESIGN_MANIFEST_FILENAME}\` as the machine-readable map for screens, app modules, OS widgets, landing pages, tokens, interactions, and viewport checks.
+- Use ${markdownInlineCode(DESIGN_MANIFEST_FILENAME)} as the machine-readable map for screens, app modules, OS widgets, landing pages, tokens, interactions, and viewport checks.
 - Screen-file-first: when multiple user-facing surfaces exist, implement each HTML screen as its own route/file. Treat \`index.html\` as a launcher/overview when the manifest marks it that way, not as a combined final UI.
 - If \`landing.html\`, app screens, platform screens, or OS widget files exist, preserve those boundaries in the target app instead of merging them into one page.
 - A single self-contained \`${entryFile}\` is acceptable only when the export truly contains one user-facing screen and its CSS/JS are structured enough to extract tokens, components, states, and behavior.

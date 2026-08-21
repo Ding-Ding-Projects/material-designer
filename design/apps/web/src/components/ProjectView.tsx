@@ -302,6 +302,7 @@ import {
   type BrowserOpenRequest,
   type FileRefreshResult,
 } from './FileWorkspace';
+import { ProjectArchiveAction } from './ProjectArchiveAction';
 import {
   type PluginFolderAgentAction,
 } from './design-files/pluginFolderActions';
@@ -11427,6 +11428,14 @@ export function ProjectView({
               {...(projectCollab.member ? { selfMemberId: projectCollab.member.memberId } : {})}
             />
           ) : null}
+          headerActions={
+            <ProjectArchiveAction
+              projectId={project.id}
+              projectName={currentProject.name}
+              projectDir={projectDetail.resolvedDir}
+              workspaceContext={projectRunWorkspaceContext}
+            />
+          }
           chatConfig={config}
           chatAgentsById={agentsById}
           handoffAgents={agents}

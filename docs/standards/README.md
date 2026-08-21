@@ -58,6 +58,7 @@ each has its own article because each guards a distinct failure.
 | [design-reference-parity.md](design-reference-parity.md) | The ten-screen reference/application route inventory, identical capture tuples, component audits, comparisons, visual diffs and negative completeness guard. |
 | [full-folder-browser.md](full-folder-browser.md) | The Windows Explorer-style folder-selection surface, exact folder-only validation, path semantics, failure behavior and built-artifact verification. |
 | [desktop-project-creation.md](desktop-project-creation.md) | Explicit desktop application creation, versioned source scaffolds, selected-agent wire-up, and the shared security boundary used by in-place and ZIP creation. |
+| [export-surface-inventory.md](export-surface-inventory.md) | Hand-written inventory of project, file, data, design-system, diagnostics, history and editor export surfaces with their source/runtime evidence boundary. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.
@@ -83,7 +84,7 @@ section names.
 | 8 | Command palette | **Not started in the application.** Designed in the mockup, including inline live controls. Implemented on the site. | [command-palette.md](command-palette.md) |
 | 9 | Changelog viewer | **Not started in the application.** Designed in the mockup, commit links included. Releases now exist, so the viewer would have content on its first run. | [changelog-viewer.md](changelog-viewer.md) |
 | 10 | Local version history | **Partial upstream, and narrower than the requirement.** Project files are versioned and a restore is recorded as a new version; it is not Git-backed, and records and settings are not covered. | [version-history.md](version-history.md) |
-| 11 | Export everything, bulk actions everywhere | **Partial upstream.** The product exports several formats already; the full matrix, the archive options, the say-what-will-be-lost rule and universal bulk actions are not done. | [export-and-bulk-actions.md](export-and-bulk-actions.md) |
+| 11 | Export everything, bulk actions everywhere | **Partial upstream; complete project ZIP source path implemented.** The project-root handoff now has deterministic manifests, omission receipts, streamed validation and an editor handoff; the full format matrix and universal bulk actions remain open. | [export-and-bulk-actions.md](export-and-bulk-actions.md) |
 | 12 | Startup dim sum surprise | **Not present in the application.** The bundled catalogue is complete and verified — 24 dishes, 24 images. The mockup draws the surprise with a forbidden off switch. | [dim-sum-surprise.md](dim-sum-surprise.md) |
 | 13 | Release code name + line count | **Machinery built, and releases have been published.** The release workflow now runs the counter with attribution enabled. Whether a published release's notes carried the resulting table has not been checked here. | [releases.md](releases.md) |
 | 14 | Accessibility and sizing | **Not started.** Stated as an intent in the mockup; never measured, because no interface has been audited. | [accessibility.md](accessibility.md) |
@@ -94,8 +95,8 @@ section names.
 | --- | --- | --- |
 | Overlays paint their own surface | **Designed correctly, not audited in code.** | [overlays.md](overlays.md) |
 | Context-menu shortcuts and menu search | **Shortcut labels designed and not built; the per-menu search is neither.** | [context-menu-shortcuts.md](context-menu-shortcuts.md) |
-| Long operations report progress | **Designed, not built.** | [long-operations.md](long-operations.md) |
-| External editor integration | **Partial upstream.** Editors are detected and a project opens in one; exports have no hand-off. | [external-editor.md](external-editor.md) |
+| Long operations report progress | **Source-complete for the project ZIP handoff; hosted proof pending.** | [long-operations.md](long-operations.md) |
+| External editor integration | **Partial upstream; staged project exports open through the existing editor route in source.** | [external-editor.md](external-editor.md) |
 | The three M3 faces, bundled | **Bundled and wired; never seen rendered.** Roboto Flex, Roboto Mono and Material Symbols Rounded now ship as local assets with a CJK-safe fallback, and 94 of 95 icon call sites moved to the symbol font. No glyph has been photographed. | [typography-and-icons.md](typography-and-icons.md) |
 
 > [!NOTE]

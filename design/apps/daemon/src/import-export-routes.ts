@@ -1,4 +1,5 @@
 import type { Express, Response } from 'express';
+import { createHash } from 'node:crypto';
 import {
   PROJECT_EXPORT_MANIFEST_SCHEMA,
   isExportFormat,
@@ -578,6 +579,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
   const { listFiles, readProjectFile, resolveProjectFilePath } = ctx.projectFiles;
   const { isSafeId } = ctx.validation;
   const {
+    buildProjectArchive,
     createProjectArchiveStream,
     createBatchArchiveStream,
     buildDesktopPdfExportInput,
@@ -599,6 +601,131 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
     res.once('close', () => stream.destroy());
     stream.pipe(res);
   };
+
+  type StagedProjectArchive = {
+    token: string;
+    projectId: string;
+    filePath: string;
+    filename: string;
+    bytes: number;
+    sha256: string;
+    expiresAt: number;
+  };
+  const stagedProjectArchives = new Map<string, StagedProjectArchive>();
+  const PROJECT_ARCHIVE_STAGE_TTL_MS = 15 * 60 * 1000;
+  const MAX_STAGED_PROJECT_ARCHIVES = 8;
+  const projectArchiveStageRoot = path.join(
+    RUNTIME_DATA_DIR_CANONICAL,
+    'exports',
+    'project-handoffs',
+  );
+
+  function sweepStagedProjectArchives(now = Date.now()): void {
+    for (const [token, staged] of stagedProjectArchives) {
+      if (staged.expiresAt > now) continue;
+      stagedProjectArchives.delete(token);
+      void fs.promises.rm(staged.filePath, { force: true }).catch(() => {});
+    }
+  }
+
+  // Prepare a complete project archive before sending any response bytes.
+  // The staged path is deliberately under the daemon data root, so the
+  // existing `/api/editor/open` route can open the exact exported artifact
+  // without guessing where a browser saved a download.
+  app.post('/api/projects/:id/archive/prepare', async (req, res) => {
+    try {
+      sweepStagedProjectArchives();
+      if (req.body?.target != null && req.body.target !== 'project') {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'project preparation only supports target=project; scaffold export is separate');
+      }
+      const authority = await authorizeExportRead(req, res);
+      if (!authority) return;
+      const project = getProject(db, req.params.id);
+      if (!project) return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+      const { buffer, baseName } = await buildProjectArchive(
+        PROJECTS_DIR,
+        req.params.id,
+        '',
+        project.metadata,
+        // A project-level handoff remains reachable before its first file is
+        // created. The generated manifests and handoff still make the empty
+        // project useful to the receiving coding tool.
+        { target: 'project', allowEmptyRoot: true },
+      );
+      await fs.promises.mkdir(projectArchiveStageRoot, { recursive: true });
+      const token = randomId();
+      if (!/^[A-Za-z0-9_-]{1,120}$/.test(token)) {
+        return sendApiError(res, 500, 'INTERNAL_ERROR', 'daemon generated an invalid archive receipt token');
+      }
+      const fallbackName = project.name || req.params.id;
+      const fileSlug = sanitizeArchiveFilename(baseName || fallbackName) || 'project';
+      const filename = `${fileSlug}.zip`;
+      const filePath = path.join(projectArchiveStageRoot, `${token}.zip`);
+      await fs.promises.writeFile(filePath, buffer, { flag: 'wx' });
+      const sha256 = createHash('sha256').update(buffer).digest('hex');
+      const expiresAt = Date.now() + PROJECT_ARCHIVE_STAGE_TTL_MS;
+      const staged: StagedProjectArchive = {
+        token,
+        projectId: req.params.id,
+        filePath,
+        filename,
+        bytes: buffer.length,
+        sha256,
+        expiresAt,
+      };
+      while (stagedProjectArchives.size >= MAX_STAGED_PROJECT_ARCHIVES) {
+        const oldest = [...stagedProjectArchives.values()].sort((left, right) => left.expiresAt - right.expiresAt)[0];
+        if (!oldest) break;
+        stagedProjectArchives.delete(oldest.token);
+        await fs.promises.rm(oldest.filePath, { force: true }).catch(() => {});
+      }
+      stagedProjectArchives.set(token, staged);
+      res.json({
+        schema: 'open-design.project-export-receipt.v1',
+        token,
+        filename,
+        bytes: staged.bytes,
+        sha256,
+        editorPath: filePath,
+        downloadUrl: `/api/projects/${encodeURIComponent(req.params.id)}/archive/staged/${encodeURIComponent(token)}`,
+        expiresAt,
+        archiveDigestScope: 'complete ZIP byte stream, including EXPORT-MANIFEST.json',
+      });
+    } catch (err: any) {
+      const status = err?.code === 'ENOENT' ? 404 : 400;
+      sendApiError(res, status, status === 404 ? 'FILE_NOT_FOUND' : 'BAD_REQUEST', String(err?.message || err));
+    }
+  });
+
+  app.get('/api/projects/:id/archive/staged/:token', async (req, res) => {
+    try {
+      sweepStagedProjectArchives();
+      const staged = stagedProjectArchives.get(req.params.token);
+      if (!staged || staged.projectId !== req.params.id) {
+        return sendApiError(res, 404, 'FILE_NOT_FOUND', 'prepared project archive has expired or does not exist');
+      }
+      if (!await authorizeExportRead(req, res)) return;
+      const info = await fs.promises.stat(staged.filePath);
+      if (!info.isFile() || info.size !== staged.bytes) {
+        stagedProjectArchives.delete(staged.token);
+        await fs.promises.rm(staged.filePath, { force: true }).catch(() => {});
+        return sendApiError(res, 409, 'BAD_REQUEST', 'prepared project archive changed before download');
+      }
+      const asciiFallback = staged.filename.replace(/[^\x20-\x7e]/g, '_').replace(/"/g, '_') || 'project.zip';
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Length', String(staged.bytes));
+      res.setHeader('Content-Disposition', `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(staged.filename)}`);
+      res.setHeader('X-OD-Archive-SHA256', staged.sha256);
+      res.setHeader('X-OD-Archive-Target', 'project');
+      const stream = fs.createReadStream(staged.filePath);
+      stream.once('error', (error) => res.destroy(error));
+      res.once('close', () => stream.destroy());
+      stream.pipe(res);
+    } catch (err: any) {
+      sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
+    }
+  });
+
   async function authorizeExportRead(
     req: any,
     res: any,

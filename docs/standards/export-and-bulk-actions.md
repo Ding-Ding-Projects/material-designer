@@ -5,7 +5,7 @@ format that can faithfully represent it. Every list, table and grid supports
 multi-select and the full set of its actions in bulk.
 
 > [!IMPORTANT]
-> **Status: partial, inherited from upstream.** The vendored product already
+> **Status: source-complete for complete project ZIP handoffs; hosted runtime proof pending.** The vendored product already
 > exports a design artifact to several formats. The full format matrix, the
 > "say what will be lost before it runs" rule, the archive options and universal
 > bulk actions are **not started**. Nothing in this file has been observed
@@ -37,6 +37,19 @@ project-owned collision fails closed instead of silently replacing the generated
 desktop scaffold additionally requires a real HTML entry, blocks network and out-of-root local
 file requests, denies secondary windows and webviews, and treats case-only path collisions as
 collisions for Windows extraction.
+
+The project-level Export complete website handoff ZIP action is mounted beside
+the project tabs rather than inside a file viewer. It remains reachable when no
+file is active, when the project is empty, and for a read-only project the caller
+is authorized to read. The prepare route writes a short-lived staged archive under
+the daemon data root, returns a receipt with byte length, SHA-256, expiry and the
+exact staged path for the editor handoff, then the browser streams and validates
+the ZIP before saving it. The archive uses a fixed timestamp and code-point path
+ordering, includes EXPORT-MANIFEST.json with per-entry byte lengths and hashes,
+and carries an omission ledger for sensitive paths and redacted local absolute
+paths. The archive digest is reported in the receipt over the complete ZIP byte
+stream, while the manifest deliberately records the scope rather than its own
+digest to avoid a self-referential hash.
 
 ## Behaviour
 
@@ -178,9 +191,11 @@ surface's own search, like any other setting.
 
 ## Verification
 
-**Nothing here has been verified.** The application has not been built or run in
-this repository, so every statement above describes a requirement, not observed
-behaviour.
+**Source verification only for this lane.** No Node, pnpm, Electron, build, or test
+command was run locally. The staged project ZIP path, ZIP-byte validation, export
+policy, deterministic manifest, cancellation/progress controller, and editor
+preference boundary are covered by committed source-level Chuts. Hosted build,
+installed interaction, and real editor process evidence remain pending.
 
 Conformance will be demonstrated by:
 
@@ -204,6 +219,12 @@ Conformance will be demonstrated by:
       undone
 - [ ] a cancelled long-running bulk action reporting exactly which items were
       completed before cancellation
+- [x] the project-level complete-tree ZIP action is reachable without an active
+      file and keeps the desktop scaffold as a separately named target
+- [x] the project ZIP has fixed timestamps, stable ordering, an omission ledger,
+      per-entry lengths/hashes, and a non-self-referential archive digest receipt
+- [x] the browser validates content type, ZIP structure, required manifests,
+      receipt length and digest before saving; hosted runtime proof remains pending
 
 The lossy-format warning and the partial-results report are the two to write
 first. Both guard failures that are silent at the moment they happen and are

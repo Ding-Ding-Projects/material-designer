@@ -13,7 +13,7 @@ import {
   handoffTargetIdToTracking,
   type TrackingArtifactKind,
 } from '@open-design/contracts/analytics';
-import { fetchHostEditors, openProjectInEditor } from '../providers/registry';
+import { fetchHostEditors, openPathInEditor, openProjectInEditor } from '../providers/registry';
 import { useAnalytics } from '../analytics/provider';
 import { trackHandoffClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -108,6 +108,8 @@ interface Props {
   projectId: string;
   projectName?: string;
   projectDir?: string | null;
+  /** When set, the editor chooser opens this exported path instead of the project root. */
+  targetPath?: string | null;
   agents?: AgentInfo[];
   // Active artifact context, so handoff clicks carry the same artifact_id /
   // artifact_kind dimensions as the rest of the artifact_header funnel.
@@ -430,8 +432,13 @@ export function HandoffButton({
   const available = editors.filter((e) => e.available);
   const unavailable = editors.filter((e) => !e.available);
   const preferred = readPreferred();
-  const primary =
-    available.find((e) => e.id === preferred) ?? available[0] ?? null;
+  // A stored preference is an explicit user choice. If that exact editor is
+  // missing, keep the preference visible through the chooser and do not
+  // silently launch a different available editor. With no preference at all,
+  // VS Code/the first detected editor remains the initial suggestion.
+  const primary = preferred
+    ? available.find((e) => e.id === preferred) ?? null
+    : available[0] ?? null;
   const primaryTitle = primary
     ? t('handoff.openInTarget', { target: primary.label })
     : t('handoff.action');
@@ -457,7 +464,11 @@ export function HandoffButton({
     setBusy(editor.id);
     writePreferred(editor.id);
     try {
-      await openProjectInEditor(projectId, editor.id, workspaceContext);
+      if (targetPath) {
+        await openPathInEditor(targetPath, editor.id, workspaceContext);
+      } else {
+        await openProjectInEditor(projectId, editor.id, workspaceContext);
+      }
       setOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -610,7 +621,10 @@ export function HandoffButton({
             });
             setError(null);
             setBusy(fallbackId);
-            void openProjectInEditor(projectId, fallbackId, workspaceContext)
+            const open = targetPath
+              ? openPathInEditor(targetPath, fallbackId, workspaceContext)
+              : openProjectInEditor(projectId, fallbackId, workspaceContext);
+            void open
               .catch((err) => {
                 setError(err instanceof Error ? err.message : String(err));
                 onRequestRevealInFinder?.();

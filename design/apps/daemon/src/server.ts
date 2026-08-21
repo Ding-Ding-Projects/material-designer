@@ -568,6 +568,7 @@ import { buildMcpInstallPayload } from './mcp-install-info.js';
 import { createDiagnosticsExportHandler } from './diagnostics-export.js';
 import { DIAGNOSTICS_EXPORT_PATH } from '@open-design/diagnostics';
 import {
+  buildProjectArchive,
   createProjectArchiveStream,
   createBatchArchiveStream,
   createProjectFolder,
@@ -7566,6 +7567,7 @@ export async function startServer({
   const projectEventDeps = { subscribeFileEvents, activeProjectEventSinks };
   const importDeps = { importClaudeDesignZip, projectDir, detectEntryFile };
   const projectExportDeps = {
+    buildProjectArchive,
     createProjectArchiveStream,
     createBatchArchiveStream,
     buildDesktopPdfExportInput,

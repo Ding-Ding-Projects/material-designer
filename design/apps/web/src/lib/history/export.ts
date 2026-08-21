@@ -11,6 +11,7 @@
 // DTO has; the two text forms carry the human-readable ones and say so.
 
 import type { HistoryRevisionSummary } from '@open-design/contracts';
+import { markdownHeading, markdownInlineCode, markdownListItem } from '@open-design/contracts';
 
 export type HistoryExportFormat = 'markdown' | 'text' | 'json';
 
@@ -44,28 +45,28 @@ export function renderHistoryMarkdown(
   revisions: readonly HistoryRevisionSummary[],
   labels: HistoryExportLabels,
 ): string {
-  const lines: string[] = [`# ${labels.heading}`, '', `_${labels.scope}_`, ''];
+  const lines: string[] = [markdownHeading(labels.heading), '', `_${markdownListItem(labels.scope)}_`, ''];
   if (revisions.length === 0) {
     lines.push(labels.empty, '');
     return lines.join('\n');
   }
   for (const revision of revisions) {
-    lines.push(`## ${revision.label}`);
+    lines.push(markdownHeading(revision.label, 2));
     lines.push('');
     lines.push(
-      `- ${labels.kindLabel(revision.kind)} · \`${revision.id}\` · ${timestamp(revision.createdAt)}`,
+      `- ${markdownListItem(labels.kindLabel(revision.kind))} · ${markdownInlineCode(revision.id)} · ${timestamp(revision.createdAt)}`,
     );
-    lines.push(`- ${labels.changeCount(revision.changeCount)}`);
-    if (revision.domainIds.length > 0) lines.push(`- ${revision.domainIds.join(', ')}`);
+    lines.push(`- ${markdownListItem(labels.changeCount(revision.changeCount))}`);
+    if (revision.domainIds.length > 0) lines.push(`- ${markdownListItem(revision.domainIds.join(', '))}`);
     if (revision.restoredFromId != null) {
-      lines.push(`- ${labels.restoredFrom(revision.restoredFromId)}`);
+      lines.push(`- ${markdownListItem(labels.restoredFrom(revision.restoredFromId))}`);
     }
     // details[0] repeats the label when a revision recorded a single change;
     // printing it twice would read as two things having happened.
     const extra = revision.details.filter((line) => line !== revision.label);
     if (extra.length > 0) {
       lines.push('');
-      for (const line of extra) lines.push(`  - ${line}`);
+      for (const line of extra) lines.push(`  - ${markdownListItem(line)}`);
     }
     lines.push('');
   }

@@ -2358,6 +2358,47 @@ a.ds-source-link-open:focus-visible {
 }
 
 .ws-tabs-actions { display: inline-flex; gap: 4px; align-items: center; }
+.project-export-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: min(52vw, 420px);
+}
+.project-export-action__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+.project-export-action__trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-export-action__cancel { flex: 0 0 auto; }
+.project-export-action__result {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.project-export-action__receipt,
+.project-export-action__error {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.project-export-action__receipt { color: var(--success, #2e7d32); }
+.project-export-action__error { color: var(--danger, #b3261e); }
+@media (max-width: 760px) {
+  .project-export-action { max-width: 44vw; }
+  .project-export-action__trigger span { display: none; }
+}
 .ws-focus-toggle {
   display: inline-flex;
   align-items: center;
