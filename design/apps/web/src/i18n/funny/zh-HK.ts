@@ -16,6 +16,11 @@ import type { FunnyOverrides } from '../types';
  * given level gets the same energy on both sides of the separator.
  */
 export const ZH_HK_FUNNY: FunnyOverrides = {
+  'handoff.downloadSucceeded': { 3: '交接匯出下載咗', 5: '份登記冊自己行咗出去喇' },
+  'handoff.downloadFailed': { 3: '交接匯出下載唔到', 5: '份下載唔肯出門口' },
+  'handoff.statusImplemented': { 3: '已實作', 5: '實作咗，仲有文件做證' },
+  'handoff.statusPartial': { 3: '部分完成', 5: '煮熟咗一半' },
+  'handoff.statusUnverified': { 3: '未驗證', 5: '等緊個真 app 出嚟作證' },
   // 常用
   'common.cancel': { 3: '唔好啦', 5: '當我冇講過' },
   'common.loading': { 3: '整緊喇…', 5: '蒸緊…等陣' },

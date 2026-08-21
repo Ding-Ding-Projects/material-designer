@@ -18,7 +18,8 @@ it is not the existing website export, conversation handoff, or installer flow.
 
 The registry is source data in
 `design/apps/web/src/components/handoff/registry.ts`. The renderer consumes this
-typed registry directly; it does not parse arbitrary CSS or copy static colours.
+typed registry directly; it validates the exact row schema before rendering or
+exporting, does not parse arbitrary CSS, and does not copy static colours.
 Swatches resolve `var(...)` from the live stylesheet instead of storing colour
 literals in the handoff data.
 
@@ -31,9 +32,11 @@ selection, keyboard activation, selecting this list, selecting all matches,
 inverse selection and clearing. Empty filters report a real no-match state.
 
 Selected rows and all rows can be copied as JSON or exported as JSON, Markdown
-or CSV. CSV is offered because the registry has a fixed, faithful column shape;
-the export states the schema and omission policy. There are no destructive list
-actions because this surface owns no user records.
+or CSV. One canonical export allowlist feeds all three formats, including every
+visible source field. Markdown escapes table separators and inline code; CSV
+neutralizes formula-like cells. Each format states the schema and omission
+policy. There are no destructive list actions because this surface owns no user
+records.
 
 ## Routing and settings reachability
 
@@ -55,8 +58,8 @@ node scripts/verify-handoff-contract.mjs --negative
 
 The guard uses bounded comment-stripped brace/declaration checks and explicit
 sets for rows, source paths, statuses, locales, route, settings tab, palette,
-search and export boundaries. Negative mode removes each exact boundary in
-memory, requires a red result, restores it and requires green. No hosted build,
+search and export boundaries. Negative mode removes each complete exact boundary
+in memory, requires a red result, restores it and requires green. No hosted build,
 installed interaction or reference/application capture has been run for this
 lane yet; those remain parent integration work.
 

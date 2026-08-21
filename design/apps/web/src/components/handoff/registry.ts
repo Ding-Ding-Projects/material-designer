@@ -9,6 +9,30 @@
 
 export type HandoffStatus = 'implemented' | 'partial' | 'unverified';
 
+export const HANDOFF_EXPORT_SCHEMA = 'material-designer.handoff.v1' as const;
+export const HANDOFF_EXPORT_OMISSIONS = [
+  'private user data',
+  'credentials',
+  'machine-specific paths',
+  'runtime payloads',
+] as const;
+export const HANDOFF_TOKEN_EXPORT_FIELDS = [
+  'id',
+  'md3Token',
+  'appVariable',
+  'designSourcePath',
+  'appSourcePath',
+  'status',
+  'evidence',
+] as const;
+export const HANDOFF_COMPONENT_EXPORT_FIELDS = [
+  'id',
+  'owner',
+  'sourcePath',
+  'status',
+  'evidence',
+] as const;
+
 export interface HandoffTokenMapping {
   id: string;
   md3Token: string;
@@ -266,14 +290,14 @@ export const HANDOFF_COMPONENT_OWNERS: readonly HandoffComponentOwner[] = [
   {
     id: 'button-primitive',
     owner: 'Button primitive',
-    sourcePath: 'packages/components/src/Button.tsx',
+    sourcePath: 'packages/components/src/button.tsx',
     status: 'unverified',
     evidence: 'The shared primitive is the intended control owner; this handoff records no runtime claim.',
   },
   {
     id: 'text-field-primitive',
     owner: 'Text-field primitives',
-    sourcePath: 'packages/components/src/TextField.tsx',
+    sourcePath: 'packages/components/src/form-controls.tsx',
     status: 'unverified',
     evidence: 'The shared text-field seam is the intended field owner; this handoff records no runtime claim.',
   },
@@ -283,6 +307,66 @@ export const HANDOFF_REGISTRY_SOURCE_PATHS = [
   'apps/web/src/styles/md3-tokens.css',
   'apps/web/src/styles/tokens.css',
 ] as const;
+
+const TOKEN_KEYS = new Set<string>(HANDOFF_TOKEN_EXPORT_FIELDS);
+const COMPONENT_KEYS = new Set<string>(HANDOFF_COMPONENT_EXPORT_FIELDS);
+
+function hasExactKeys(value: object, expected: ReadonlySet<string>): boolean {
+  const actual = Object.keys(value).sort();
+  return actual.length === expected.size && actual.every((key) => expected.has(key));
+}
+
+export function isValidHandoffTokenMapping(value: unknown): value is HandoffTokenMapping {
+  if (!value || typeof value !== 'object' || !hasExactKeys(value, TOKEN_KEYS)) return false;
+  const row = value as HandoffTokenMapping;
+  return typeof row.id === 'string'
+    && typeof row.md3Token === 'string'
+    && typeof row.appVariable === 'string'
+    && typeof row.designSourcePath === 'string'
+    && typeof row.appSourcePath === 'string'
+    && typeof row.status === 'string'
+    && typeof row.evidence === 'string'
+    && row.id.length > 0
+    && row.md3Token.startsWith('--')
+    && row.appVariable.startsWith('--')
+    && row.designSourcePath === 'apps/web/src/styles/md3-tokens.css'
+    && row.appSourcePath === 'apps/web/src/styles/tokens.css'
+    && ['implemented', 'partial', 'unverified'].includes(row.status)
+    && row.evidence.length > 0;
+}
+
+export function isValidHandoffComponentOwner(value: unknown): value is HandoffComponentOwner {
+  if (!value || typeof value !== 'object' || !hasExactKeys(value, COMPONENT_KEYS)) return false;
+  const row = value as HandoffComponentOwner;
+  return typeof row.id === 'string'
+    && typeof row.owner === 'string'
+    && typeof row.sourcePath === 'string'
+    && typeof row.status === 'string'
+    && typeof row.evidence === 'string'
+    && row.id.length > 0
+    && row.owner.length > 0
+    && row.sourcePath.length > 0
+    && ['implemented', 'partial', 'unverified'].includes(row.status)
+    && row.evidence.length > 0;
+}
+
+export function assertHandoffRegistry(): void {
+  if (HANDOFF_TOKEN_MAPPINGS.length !== 18 || HANDOFF_COMPONENT_OWNERS.length !== 12) {
+    throw new Error('Handoff registry row counts drifted from the documented contract');
+  }
+  if (new Set(HANDOFF_TOKEN_MAPPINGS.map((row) => row.id)).size !== 18) {
+    throw new Error('Handoff token ids are not unique');
+  }
+  if (new Set(HANDOFF_COMPONENT_OWNERS.map((row) => row.id)).size !== 12) {
+    throw new Error('Handoff component ids are not unique');
+  }
+  if (!HANDOFF_TOKEN_MAPPINGS.every(isValidHandoffTokenMapping)) {
+    throw new Error('Handoff token registry schema is invalid');
+  }
+  if (!HANDOFF_COMPONENT_OWNERS.every(isValidHandoffComponentOwner)) {
+    throw new Error('Handoff component registry schema is invalid');
+  }
+}
 
 export function handoffRegistryIsExact(): boolean {
   return HANDOFF_TOKEN_MAPPINGS.length === 18 && HANDOFF_COMPONENT_OWNERS.length === 12;

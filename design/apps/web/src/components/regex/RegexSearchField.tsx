@@ -63,6 +63,9 @@ export interface RegexSearchFieldProps {
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onFocus?: () => void;
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
+  /** Additional field-level description (for example a persistent regex error). */
+  ariaDescribedBy?: string;
+  ariaInvalid?: boolean;
 }
 
 export function RegexSearchField({
@@ -82,6 +85,8 @@ export function RegexSearchField({
   inputRef,
   onFocus,
   onKeyDown,
+  ariaDescribedBy,
+  ariaInvalid,
 }: RegexSearchFieldProps) {
   const t = useT();
   const popoverId = useId();
@@ -201,7 +206,11 @@ export function RegexSearchField({
         value={search.query}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        aria-describedby={regexOn ? `${popoverId}-mode` : undefined}
+        aria-describedby={[
+          regexOn ? `${popoverId}-mode` : null,
+          ariaDescribedBy ?? null,
+        ].filter(Boolean).join(' ') || undefined}
+        aria-invalid={ariaInvalid || undefined}
         autoFocus={autoFocus}
         spellCheck={spellCheck}
         autoComplete={autoComplete}

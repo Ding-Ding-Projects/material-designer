@@ -1760,6 +1760,14 @@ export function SettingsDialog({
     );
   }, [onClose, onSectionChange, pageMode, route.kind, route.view]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
+    if (hit.section === 'handoff') {
+      // Handoff is a destination, not a Settings control. Clear any stale
+      // reveal request before closing so the next Settings visit cannot flash
+      // an anchor from this route.
+      requestSettingsReveal(null);
+      selectSettingsSection(hit.section);
+      return;
+    }
     selectSettingsSection(hit.section);
     // The dialog already listens for this and polls for the anchor, so the
     // control does not have to exist yet at the moment of the click.

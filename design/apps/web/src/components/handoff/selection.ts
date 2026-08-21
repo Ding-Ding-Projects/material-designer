@@ -45,7 +45,12 @@ export function invertHandoffSelection(
   state: HandoffSelectionState,
   ids: readonly string[],
 ): HandoffSelectionState {
-  const selected = new Set<string>();
-  for (const id of ids) if (!state.selected.has(id)) selected.add(id);
+  // Inversion is scoped to the visible/filtered rows. Hidden selections are
+  // retained so filtering cannot silently discard a user's earlier choices.
+  const selected = new Set(state.selected);
+  for (const id of ids) {
+    if (selected.has(id)) selected.delete(id);
+    else selected.add(id);
+  }
   return { selected, anchor: state.anchor && selected.has(state.anchor) ? state.anchor : null };
 }

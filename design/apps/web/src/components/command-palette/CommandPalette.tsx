@@ -338,6 +338,7 @@ export function CommandPalette({
         // This row is a destination disguised as a SettingsSection token so
         // the settings search and palette share one inventory. It never asks
         // SettingsDialog to render a fake panel or write a last-section value.
+        requestSettingsReveal(null);
         navigate({ kind: 'home', view: 'handoff' });
         close({ restoreFocus: false });
         return;

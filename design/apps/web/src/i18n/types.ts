@@ -41,6 +41,12 @@ export interface Dict {
   'handoff.exportLabel': string;
   'handoff.copySelected': string;
   'handoff.copyAll': string;
+  'handoff.downloadSucceeded': string;
+  'handoff.downloadFailed': string;
+  'handoff.regexInvalid': string;
+  'handoff.statusImplemented': string;
+  'handoff.statusPartial': string;
+  'handoff.statusUnverified': string;
   'handoff.exportSelected': string;
   'handoff.exportAll': string;
   'handoff.tokensTitle': string;

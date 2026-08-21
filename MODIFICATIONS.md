@@ -50,8 +50,10 @@ guard. Runtime parity and installed captures remain unverified.
 - `apps/web/src/components/settings/settingsTabs.ts`
 - `apps/web/src/components/handoff/HandoffView.module.css`
 - `apps/web/src/components/handoff/HandoffView.tsx`
+- `apps/web/src/components/handoff/export.ts`
 - `apps/web/src/components/handoff/registry.ts`
 - `apps/web/src/components/handoff/selection.ts`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -72,9 +74,12 @@ guard. Runtime parity and installed captures remain unverified.
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
 - `apps/web/src/i18n/types.ts`
 - `apps/web/tests/components/handoff/HandoffView.test.tsx`
 - `apps/web/tests/components/handoff/contract.test.ts`
+- `apps/web/tests/components/handoff/export.test.ts`
 - `apps/web/tests/components/handoff/registry.test.ts`
 - `apps/web/tests/components/settings-handoff.test.ts`
 - `apps/web/tests/router-handoff.test.ts`

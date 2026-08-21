@@ -8,16 +8,24 @@ import {
   type ReactNode,
 } from 'react';
 import { useI18n } from '../../i18n';
+import { copyToClipboard } from '../../lib/copy-to-clipboard';
 import { Icon } from '../Icon';
+import { notify } from '../notifications/notificationStore';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import {
+  assertHandoffRegistry,
+  HANDOFF_COMPONENT_EXPORT_FIELDS,
   HANDOFF_COMPONENT_OWNERS,
+  HANDOFF_EXPORT_OMISSIONS,
+  HANDOFF_EXPORT_SCHEMA,
+  HANDOFF_TOKEN_EXPORT_FIELDS,
   HANDOFF_TOKEN_MAPPINGS,
   type HandoffComponentOwner,
   type HandoffStatus,
   type HandoffTokenMapping,
 } from './registry';
+import { downloadTextDeferred } from './export';
 import {
   EMPTY_HANDOFF_SELECTION,
   invertHandoffSelection,
@@ -33,15 +41,23 @@ interface HandoffViewProps {
   onBack: () => void;
 }
 
-const STATUS_LABEL: Record<HandoffStatus, string> = {
-  implemented: 'Implemented',
-  partial: 'Partial',
-  unverified: 'Unverified',
+const STATUS_LABEL_KEY: Record<HandoffStatus, 'handoff.statusImplemented' | 'handoff.statusPartial' | 'handoff.statusUnverified'> = {
+  implemented: 'handoff.statusImplemented',
+  partial: 'handoff.statusPartial',
+  unverified: 'handoff.statusUnverified',
 };
 
 function rowSearchText(row: HandoffRow): string {
   if ('md3Token' in row) {
-    return [row.id, row.md3Token, row.appVariable, row.status, row.evidence].join(' ');
+    return [
+      row.id,
+      row.md3Token,
+      row.appVariable,
+      row.designSourcePath,
+      row.appSourcePath,
+      row.status,
+      row.evidence,
+    ].join(' ');
   }
   return [row.id, row.owner, row.sourcePath, row.status, row.evidence].join(' ');
 }
@@ -50,88 +66,107 @@ function rowId(row: HandoffRow): string {
   return row.id;
 }
 
+function canonicalRows(rows: readonly HandoffRow[]): HandoffRow[] {
+  assertHandoffRegistry();
+  return rows.map((row) => {
+    if ('md3Token' in row) {
+      const projected: Record<string, string> = {};
+      for (const field of HANDOFF_TOKEN_EXPORT_FIELDS) projected[field] = row[field];
+      return projected as HandoffTokenMapping;
+    }
+    const projected: Record<string, string> = {};
+    for (const field of HANDOFF_COMPONENT_EXPORT_FIELDS) projected[field] = row[field];
+    return projected as HandoffComponentOwner;
+  });
+}
+
 function jsonForRows(rows: readonly HandoffRow[]): string {
+  const canonical = canonicalRows(rows);
   return JSON.stringify(
     {
-      schema: 'material-designer.handoff.v1',
+      schema: HANDOFF_EXPORT_SCHEMA,
       source: 'checked-in source registry',
-      privateData: 'omitted',
-      rows,
+      omissions: HANDOFF_EXPORT_OMISSIONS,
+      rows: canonical,
     },
     null,
     2,
   );
 }
 
+function markdownCell(value: string): string {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/`/g, '\\`')
+    .replace(/\r?\n/g, '<br>');
+}
+
 function markdownForRows(rows: readonly HandoffRow[]): string {
+  const canonical = canonicalRows(rows);
   const lines = [
     '# Material Designer handoff registry',
     '',
-    'Schema: `material-designer.handoff.v1`.',
-    'Private user data and machine-specific paths are omitted.',
+    `Schema: \`${HANDOFF_EXPORT_SCHEMA}\`.`,
+    `Omitted: ${HANDOFF_EXPORT_OMISSIONS.join(', ')}.`,
     '',
   ];
-  if (rows.some((row) => 'md3Token' in row)) {
-    lines.push('| ID | Material Design 3 token | App variable | Status | Evidence |', '| --- | --- | --- | --- | --- |');
-    for (const row of rows) {
+  if (canonical.some((row) => 'md3Token' in row)) {
+    lines.push('| ID | Material Design 3 token | App variable | Design source | Application source | Status | Evidence |', '| --- | --- | --- | --- | --- | --- | --- |');
+    for (const row of canonical) {
       if (!('md3Token' in row)) continue;
-      lines.push(`| ${row.id} | \`${row.md3Token}\` | \`${row.appVariable}\` | ${row.status} | ${row.evidence} |`);
+      lines.push(`| ${markdownCell(row.id)} | \`${markdownCell(row.md3Token)}\` | \`${markdownCell(row.appVariable)}\` | \`${markdownCell(row.designSourcePath)}\` | \`${markdownCell(row.appSourcePath)}\` | ${markdownCell(row.status)} | ${markdownCell(row.evidence)} |`);
     }
     lines.push('');
   }
-  if (rows.some((row) => 'owner' in row)) {
+  if (canonical.some((row) => 'owner' in row)) {
     lines.push('| ID | Component owner | Source path | Status | Evidence |', '| --- | --- | --- | --- | --- |');
-    for (const row of rows) {
+    for (const row of canonical) {
       if (!('owner' in row)) continue;
-      lines.push(`| ${row.id} | ${row.owner} | \`${row.sourcePath}\` | ${row.status} | ${row.evidence} |`);
+      lines.push(`| ${markdownCell(row.id)} | ${markdownCell(row.owner)} | \`${markdownCell(row.sourcePath)}\` | ${markdownCell(row.status)} | ${markdownCell(row.evidence)} |`);
     }
   }
   return `${lines.join('\n')}\n`;
 }
 
 function csvForRows(rows: readonly HandoffRow[]): string {
-  const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
-  const lines = ['schema,id,token_or_owner,app_variable_or_source,status,evidence'];
-  for (const row of rows) {
+  const canonical = canonicalRows(rows);
+  const escape = (value: string) => {
+    const neutralized = /^[\t ]*[=+\-@]/.test(value) ? `'${value}` : value;
+    return `"${neutralized.replace(/"/g, '""')}"`;
+  };
+  const omissionText = HANDOFF_EXPORT_OMISSIONS.join('; ');
+  const lines = ['schema,omissions,kind,id,token_or_owner,app_variable,design_source,application_source,status,evidence'];
+  for (const row of canonical) {
     if ('md3Token' in row) {
       lines.push([
-        'material-designer.handoff.v1',
+        HANDOFF_EXPORT_SCHEMA,
+        omissionText,
+        'token',
         row.id,
         row.md3Token,
         row.appVariable,
+        row.designSourcePath,
+        row.appSourcePath,
         row.status,
         row.evidence,
       ].map(escape).join(','));
     } else {
       lines.push([
-        'material-designer.handoff.v1',
+        HANDOFF_EXPORT_SCHEMA,
+        omissionText,
+        'component',
         row.id,
         row.owner,
         row.sourcePath,
+        '',
+        '',
         row.status,
         row.evidence,
       ].map(escape).join(','));
     }
   }
   return `${lines.join('\n')}\n`;
-}
-
-function downloadText(text: string, fileName: string, type: string): void {
-  if (typeof document === 'undefined' || typeof URL === 'undefined') return;
-  const urlApi = URL as typeof URL & { createObjectURL?: (blob: Blob) => string; revokeObjectURL?: (url: string) => void };
-  if (!urlApi.createObjectURL) return;
-  const url = urlApi.createObjectURL(new Blob([text], { type }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = fileName;
-  anchor.click();
-  urlApi.revokeObjectURL?.(url);
-}
-
-async function copyText(text: string): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-  }
 }
 
 function selectedRows(rows: readonly HandoffRow[], selection: HandoffSelectionState): HandoffRow[] {
@@ -166,19 +201,34 @@ function RegistrySection<T extends HandoffRow>({
   const filteredIds = useMemo(() => filteredRows.map(rowId), [filteredRows]);
   const selectedCount = selection.selected.size;
   const toggle = useCallback((id: string, extend: boolean) => {
-    onSelectionChange(toggleHandoffSelection(selection, id, allIds, extend));
-  }, [allIds, onSelectionChange, selection]);
-  const onRowKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>, id: string) => {
+    // Shift ranges are defined only over the currently visible/filtered
+    // ordering. If the anchor is hidden by a new filter, the clicked row is a
+    // fresh anchor rather than a range through rows the user cannot see.
+    onSelectionChange(toggleHandoffSelection(selection, id, filteredIds, extend));
+  }, [filteredIds, onSelectionChange, selection]);
+  const onRowKeyDown = useCallback((event: KeyboardEvent<HTMLLIElement>, id: string) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const rows = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[data-handoff-row]') ?? []);
+      const index = rows.indexOf(event.currentTarget);
+      const nextIndex = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? rows.length - 1
+          : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+      rows[nextIndex]?.focus();
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     toggle(id, event.shiftKey);
   }, [toggle]);
   const selectVisible = useCallback(() => {
-    onSelectionChange(selectHandoffIds(selection, filteredIds));
-  }, [filteredIds, onSelectionChange, selection]);
-  const selectAll = useCallback(() => {
     onSelectionChange(selectHandoffIds(selection, allIds));
   }, [allIds, onSelectionChange, selection]);
+  const selectAll = useCallback(() => {
+    onSelectionChange(selectHandoffIds(selection, filteredIds));
+  }, [filteredIds, onSelectionChange, selection]);
   const invert = useCallback(() => {
     onSelectionChange(invertHandoffSelection(selection, filteredIds));
   }, [filteredIds, onSelectionChange, selection]);
@@ -203,13 +253,20 @@ function RegistrySection<T extends HandoffRow>({
           testId={searchId}
           hostClassName={styles.searchHost}
           className={styles.searchInput}
+          ariaInvalid={Boolean(search.error)}
+          ariaDescribedBy={search.error ? `${searchId}-regex-error` : undefined}
         />
+        {search.error ? (
+          <p id={`${searchId}-regex-error`} className={styles.regexError} role="status" aria-live="polite">
+            {t('handoff.regexInvalid', { field: title })}
+          </p>
+        ) : null}
       </div>
       <div className={styles.bulkBar} role="toolbar" aria-label={t('handoff.bulkAria', { title })}>
         <button type="button" className={styles.textButton} onClick={selectVisible} disabled={filteredRows.length === 0}>
           {t('handoff.selectThisList')}
         </button>
-        <button type="button" className={styles.textButton} onClick={selectAll} disabled={rows.length === 0}>
+        <button type="button" className={styles.textButton} onClick={selectAll} disabled={filteredRows.length === 0}>
           {t('handoff.selectAllMatches')}
         </button>
         <button type="button" className={styles.textButton} onClick={invert} disabled={filteredRows.length === 0}>
@@ -219,46 +276,43 @@ function RegistrySection<T extends HandoffRow>({
           {t('handoff.clearSelection')}
         </button>
       </div>
-      <div className={styles.rows} role="listbox" aria-multiselectable="true" aria-label={title}>
+      <ul className={styles.rows} aria-label={title}>
         {filteredRows.length === 0 ? (
-          <p className={styles.noMatch} role="status">{t('handoff.noMatches')}</p>
+          <li className={styles.noMatch} role="status">{t('handoff.noMatches')}</li>
         ) : filteredRows.map((row) => {
           const selected = selection.selected.has(row.id);
           return (
-            <div
+            <li
               key={row.id}
               className={`${styles.row}${selected ? ` ${styles.rowSelected}` : ''}`}
-              role="option"
-              aria-selected={selected}
               tabIndex={0}
+              data-handoff-row="true"
               onClick={(event) => toggle(row.id, event.shiftKey)}
               onKeyDown={(event) => onRowKeyDown(event, row.id)}
               data-testid={`${searchId}-row-${row.id}`}
             >
-              <button
-                type="button"
+              <input
+                type="checkbox"
                 className={styles.checkbox}
-                role="checkbox"
-                aria-checked={selected}
+                checked={selected}
                 aria-label={t('handoff.selectRow', { id: row.id })}
-                onClick={(event) => {
+                onChange={(event) => {
                   event.stopPropagation();
-                  toggle(row.id, event.shiftKey);
+                  toggle(row.id, false);
                 }}
-              >
-                {selected ? <Icon name="check" size={16} /> : null}
-              </button>
+              />
               <div className={styles.rowContent}>{children(row)}</div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
 
 export function HandoffView({ onBack }: HandoffViewProps) {
   const { t } = useI18n();
+  assertHandoffRegistry();
   const pageRef = useRef<HTMLElement | null>(null);
   const [tokenQuery, setTokenQuery] = useState('');
   const [componentQuery, setComponentQuery] = useState('');
@@ -296,14 +350,30 @@ export function HandoffView({ onBack }: HandoffViewProps) {
     [],
   );
 
-  const exportRows = useCallback((format: 'json' | 'markdown' | 'csv', rows: readonly HandoffRow[], scope: string) => {
+  const exportRows = useCallback(async (format: 'json' | 'markdown' | 'csv', rows: readonly HandoffRow[], scope: string) => {
     const extension = format === 'json' ? 'json' : format === 'markdown' ? 'md' : 'csv';
     const mime = format === 'json' ? 'application/json' : format === 'markdown' ? 'text/markdown' : 'text/csv';
     const text = format === 'json' ? jsonForRows(rows) : format === 'markdown' ? markdownForRows(rows) : csvForRows(rows);
-    downloadText(text, `material-designer-handoff-${scope}.${extension}`, mime);
-  }, []);
-  const copySelected = useCallback(() => { void copyText(jsonForRows(selected)); }, [selected]);
-  const copyAll = useCallback(() => { void copyText(jsonForRows(allRows)); }, [allRows]);
+    const result = await downloadTextDeferred(text, `material-designer-handoff-${scope}.${extension}`, mime);
+    notify({
+      severity: result.ok ? 'success' : 'error',
+      title: result.ok ? t('handoff.downloadSucceeded') : t('handoff.downloadFailed'),
+    });
+  }, [t]);
+  const copySelected = useCallback(async () => {
+    const ok = await copyToClipboard(jsonForRows(selected));
+    notify({
+      severity: ok ? 'success' : 'error',
+      title: ok ? t('handoff.copied') : t('handoff.copyFailed'),
+    });
+  }, [selected, t]);
+  const copyAll = useCallback(async () => {
+    const ok = await copyToClipboard(jsonForRows(allRows));
+    notify({
+      severity: ok ? 'success' : 'error',
+      title: ok ? t('handoff.copied') : t('handoff.copyFailed'),
+    });
+  }, [allRows, t]);
 
   return (
     <main
@@ -326,19 +396,19 @@ export function HandoffView({ onBack }: HandoffViewProps) {
         </header>
         <div className={styles.exportBar} role="toolbar" aria-label={t('handoff.exportAria')}>
           <span className={styles.exportLabel}>{t('handoff.exportLabel')}</span>
-          <button type="button" className={styles.primaryButton} onClick={copySelected} disabled={selected.length === 0} data-testid="handoff-copy-selected">
+          <button type="button" className={styles.primaryButton} onClick={() => void copySelected()} disabled={selected.length === 0} data-testid="handoff-copy-selected">
             <Icon name="copy" size={16} /> {t('handoff.copySelected')}
           </button>
-          <button type="button" className={styles.textButton} onClick={copyAll} data-testid="handoff-copy-all">
+          <button type="button" className={styles.textButton} onClick={() => void copyAll()} data-testid="handoff-copy-all">
             {t('handoff.copyAll')}
           </button>
           {(['json', 'markdown', 'csv'] as const).map((format) => (
-            <button key={`selected-${format}`} type="button" className={styles.textButton} onClick={() => exportRows(format, selected, 'selected')} disabled={selected.length === 0} data-testid={`handoff-export-selected-${format}`}>
+            <button key={`selected-${format}`} type="button" className={styles.textButton} onClick={() => void exportRows(format, selected, 'selected')} disabled={selected.length === 0} data-testid={`handoff-export-selected-${format}`}>
               {t('handoff.exportSelected', { format: format.toUpperCase() })}
             </button>
           ))}
           {(['json', 'markdown', 'csv'] as const).map((format) => (
-            <button key={`all-${format}`} type="button" className={styles.textButton} onClick={() => exportRows(format, allRows, 'all')} data-testid={`handoff-export-all-${format}`}>
+            <button key={`all-${format}`} type="button" className={styles.textButton} onClick={() => void exportRows(format, allRows, 'all')} data-testid={`handoff-export-all-${format}`}>
               {t('handoff.exportAll', { format: format.toUpperCase() })}
             </button>
           ))}
@@ -359,7 +429,7 @@ export function HandoffView({ onBack }: HandoffViewProps) {
                 <div className={styles.rowTitle}>
                   <span className={styles.swatch} style={{ background: `var(${row.appVariable})` }} role="img" aria-label={t('handoff.swatchAria', { variable: row.appVariable })} />
                   <code>{row.md3Token}</code>
-                  <span className={`${styles.status} ${styles[`status${row.status}`]}`}>{STATUS_LABEL[row.status]}</span>
+                  <span className={`${styles.status} ${styles[`status${row.status}`]}`}>{t(STATUS_LABEL_KEY[row.status])}</span>
                 </div>
                 <div className={styles.rowMeta}><code>{row.appVariable}</code> · {row.designSourcePath} → {row.appSourcePath}</div>
                 <p className={styles.evidence}>{row.evidence}</p>
@@ -381,7 +451,7 @@ export function HandoffView({ onBack }: HandoffViewProps) {
                 <div className={styles.rowTitle}>
                   <span className={styles.ownerIcon} aria-hidden><Icon name="layers-filled" size={17} /></span>
                   <strong>{row.owner}</strong>
-                  <span className={`${styles.status} ${styles[`status${row.status}`]}`}>{STATUS_LABEL[row.status]}</span>
+                  <span className={`${styles.status} ${styles[`status${row.status}`]}`}>{t(STATUS_LABEL_KEY[row.status])}</span>
                 </div>
                 <div className={styles.rowMeta}><code>{row.sourcePath}</code></div>
                 <p className={styles.evidence}>{row.evidence}</p>

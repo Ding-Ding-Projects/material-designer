@@ -1501,3 +1501,19 @@ the reader has no way to know.
 > was run in this lane. The parent integration lane must run the pure-shell port
 > verifier and then arrange hosted build/capture proof before claiming runtime
 > parity.
+
+> [!IMPORTANT]
+> **Handoff completion repair source checkpoint — 2026-08-21.** The repair
+> commit corrects the case-sensitive component-owner paths to
+> `packages/components/src/button.tsx` and
+> `packages/components/src/form-controls.tsx`, and the contract now resolves
+> every referenced path against the exact tracked Git index. The registry
+> schema is validated before rendering/export; token source paths are searchable
+> and present in JSON, Markdown and CSV; Markdown escapes table/code content;
+> CSV neutralizes formula-like values; and object URLs are revoked only after
+> the deferred download task. Selection uses a semantic list with native
+> checkboxes, visible Shift ranges, filtered Select all matches, hidden-selection
+> preserving inverse, and Arrow/Home/End movement. Invalid regex state is
+> localized, persistent while the builder is closed, and connected through
+> `aria-invalid`, `aria-describedby` and a live status. Hosted build, installed
+> interaction and visual parity remain unverified.
