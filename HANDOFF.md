@@ -20,6 +20,10 @@
 > provider/API fixture remain pending; package evidence is separate from runtime/UI
 > proof.
 
+> Follow-up commit [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+> localizes the pasted-text upload row label as well. The source-only boundary and
+> hosted/runtime pending state are unchanged.
+
 > [!IMPORTANT]
 > **Library route and search lane — 2026-08-21.** Commit
 > [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)

@@ -28,6 +28,16 @@ version section when a release carries them.
 
 ### Changed
 
+- **The upload modal also localizes pasted-text status rows.** Commit
+  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+  routes the last inline label through the shared Library locale catalog. This
+  is source-only evidence; hosted and built-runtime verification remains
+  pending.
+
+  Upload modal 而家連貼上文字嘅 status row 都跟 locale catalog，最後一粒
+  inline label 唔會再突然轉英文。今次係 source-only evidence，hosted 同
+  built-runtime verification 仍然 pending。
+
 - **The reachable Library route now keeps its complete, searchable result set
   intact.** Commit
   [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
