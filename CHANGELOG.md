@@ -28,6 +28,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **Appearance startup now waits for the native theme to answer before it
+  reveals the window.** Commit
+  [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
+  replaces the fire-and-forget theme message with acknowledged bounded IPC,
+  keeps local DOM styling alive when the optional host throws, and turns a
+  rejection or timeout into an honest recovery surface. The direct Settings
+  page focuses its labelled region, normalizes its typed URL when tabs change,
+  records Workspace's null tab ownership explicitly, wraps full search hints,
+  and gives Appearance, Settings, regex and navigation controls 48px hit areas.
+  Hosted builds, installed interaction and visual captures remain unverified.
+
+  Appearance 而家要等 native theme 真係答到先開窗，唔再未收工就自己報到。`62e07481d`
+  將 fire-and-forget message 換成有 acknowledgement 同 bounded timeout 嘅 IPC；
+  optional host 掉線都唔會阻住本地 DOM theme，reject 或 timeout 就老實入 recovery
+  surface。Direct Settings page 會 focus labelled region，轉 tab 會正常化 URL，
+  Workspace 嘅 null tab ownership 寫清楚，search hint 會完整換行，Appearance、
+  Settings、regex 同 navigation controls 都有 48px 落腳位。Hosted build、installed
+  interaction 同 visual captures 仍未驗證。
+
 - **Appearance now keeps its full theme and accessibility contract across the
   application.** Commit
   [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)

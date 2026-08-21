@@ -1151,7 +1151,20 @@ labels are longest — and when no legacy design element remains in them.
 - [x] **Theme** — light and dark, persisted, applied live. The segmented
       control in Settings · Appearance writes `data-theme` through
       `applyAppearanceToDocument` on every change and persists in `AppConfig`;
-      cancelling the dialog reverts to the last saved appearance.
+      cancelling the dialog reverts to the last saved appearance. The optional
+      desktop bridge now acknowledges the native theme before startup reveals
+      the window; a bounded rejection or timeout stays an explicit recovery
+      state rather than becoming a false mounted verdict.
+- [~] **Typed Appearance route lifecycle and section ownership** — switching
+      away from `/settings/appearance` normalizes to `/settings`, the labelled
+      Settings region owns initial focus, and Workspace is explicitly recorded
+      as a null strip owner while its guarded panel remains available to an
+      authorized caller. Source contracts are present; hosted lifecycle and
+      installed-renderer evidence remain open.
+- [~] **48px Appearance and Settings hit areas** — seed/font choices, sliders,
+      picker fields, copy actions, tabs, regex toggles, overflow and page-back
+      controls have a 48px hit-area floor while their visual glyphs/tracks may
+      remain compact. Hosted scale measurements remain open.
 - [x] **Density** — compact / default / comfortable, changing the gap, padding
       and row-height variables. Driven rather than dropped: `--sp` now moves
       with the level instead of sitting still while the gap built on it halves,

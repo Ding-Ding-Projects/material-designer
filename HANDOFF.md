@@ -1,6 +1,33 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Appearance native-acknowledgement and hit-area checkpoint — 2026-08-21.**
+> Commit
+> [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
+> repairs the remaining source findings in the task-owned Appearance lane. The
+> native theme bridge now uses acknowledged bounded IPC and returns explicit
+> success or failure; the hidden desktop window reveals only after the renderer
+> reports a mount plus a validated native theme acknowledgement. A rejection or
+> timeout becomes a self-contained recovery surface. Browser-only and older
+> hosts keep the local DOM theme path. The labelled Settings region is the
+> focused landmark, switching away from `/settings/appearance` normalizes to
+> `/settings`, and Workspace has an explicit null strip-ownership decision with
+> a matching command-index entry. Appearance rows, seed/font choices, picker
+> fields, copy actions, Settings tabs, regex controls, overflow and page-back
+> controls all carry a 48px hit-area floor; search-result hints wrap instead of
+> disappearing behind a tooltip.
+>
+> Static evidence at `62e07481d`: `git diff --check` is clean; the Git Bash
+> verifier reports 12,835 expected upstream files, 13,084 tracked files, 591
+> declarations, and zero missing, byte, mode, object-ID, extra, untracked or
+> stale-notice findings in both human and JSON modes. The focused source tests,
+> hosted build, installed interaction, display-scale matrix and visual captures
+> were not run locally because this lane is restricted to pure-shell/static
+> checks; those remain open for the parent integration lane. This linked
+> checkout remains on `codex/settings-appearance` at the commit above and has
+> not been pushed, merged, removed or cleaned by this lane.
+
+> [!IMPORTANT]
 > **Appearance accessibility and theme-ownership checkpoint — 2026-08-21.**
 > Commit
 > [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)
