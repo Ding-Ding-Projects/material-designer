@@ -28,6 +28,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **Released checksum files are now BOM-free and accepted by `sha256sum`.**
+  Release [`32441347386`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32441347386)
+  successfully published `v0.16.128-r127.1`, but its post-publication verifier
+  rejected the checksum file because Windows PowerShell's UTF-8 encoding added
+  a byte-order mark before the hash. The producer now writes the ASCII-only
+  checksum format as ASCII; the hash and installer bytes were not changed.
+
+  `v0.16.128-r127.1` 真係 publish 咗，但 checksum file 開頭畀 PowerShell UTF-8
+  加咗 BOM，`sha256sum` 見到即刻話格式唔啱。依家 producer 用 ASCII 寫純 hash
+  line；installer bytes 同 hash 本身無變，淨係唔再喺門口放粒隱形蕉皮。
+
 - **The current release temporarily skips the contradictory dim-sum photo
   attachment by explicit owner direction.** The workflow no longer fails at the
   photo-policy step for this release. It emits a warning, exposes a

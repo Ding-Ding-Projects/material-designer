@@ -21,6 +21,10 @@
 > contradictory dim-sum photo attachment for now. The next workflow records
 > the exception in its warning and release notes, attaches no copied catalog
 > image, and keeps all Squirrel/provenance/publication verification active.
+> Release `v0.16.128-r127.1` was subsequently published from `f1a13479` with the
+> complete Squirrel asset set and photo-skip disclosure. Its workflow turned red
+> only because the UTF-8 checksum file carried a BOM that GNU `sha256sum` treats
+> as a malformed first token; the next commit writes that ASCII-only file as ASCII.
 
 > [!IMPORTANT]
 > **Current release-shutdown handoff — 2026-08-11.** The local `main` and `origin/main` now match

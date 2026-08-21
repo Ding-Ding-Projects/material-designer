@@ -53,6 +53,7 @@ requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does no
 requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
 requireText(release, 'dim-sum photo attachment temporarily skipped by current owner direction', "release.yml does not record the temporary owner-authorized photo exception");
 requireText(release, 'status=temporarily-skipped', "release.yml does not expose the temporary photo-exception status");
+requireText(release, 'Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding ascii', "release.yml does not write a BOM-free sha256sum-compatible checksum");
 forbid(release, /release publication is blocked: the standing contract requires a downloadable dim-sum photo/, "release.yml still blocks publication on the temporarily skipped photo contract");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the self-hosted runner");

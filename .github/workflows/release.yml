@@ -243,7 +243,10 @@ jobs:
           New-Item -ItemType Directory -Force -Path $staged | Out-Null
           $assetName = "material-designer-${{ steps.version.outputs.app_version }}-win-x64-setup.exe"
           Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $staged $assetName) -Force
-          "$hash  $assetName" | Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding utf8
+          # sha256sum treats a UTF-8 BOM as part of the first hash token and
+          # rejects an otherwise correct checksum line. The file contains only
+          # hexadecimal ASCII plus the asset basename, so write it as ASCII.
+          "$hash  $assetName" | Set-Content -Path (Join-Path $staged "$assetName.sha256") -Encoding ascii
           Copy-Item -LiteralPath $releasesPath -Destination (Join-Path $staged "RELEASES") -Force
           foreach ($packagePath in $packagePaths) { Copy-Item -LiteralPath $packagePath -Destination (Join-Path $staged (Split-Path -Leaf $packagePath)) -Force }
 
