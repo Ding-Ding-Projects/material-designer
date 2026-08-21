@@ -28,6 +28,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **FileViewer menus now search locally, restore focus, and wrap long labels.**
+  Commit [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
+  adds independent plain-text-first search and anchored regex builders to the
+  ten FileViewer Download, Share, Present, Zoom, toolbar and version menus.
+  Each menu reports localized counts/no-match state, focuses its field on open,
+  supports Arrow/Home/End/Enter/Escape keyboard handling, and returns focus to
+  its trigger. Existing action handlers and disabled/error/re-entry semantics
+  remain the owners of behaviour. Direct Share and toolbar labels now wrap at
+  narrow bilingual widths. This is source-level evidence only; no installed
+  build or runtime geometry is claimed.
+
+  FileViewer 嘅 menu 而家可以就地搵嘢、收 menu 還 focus，同埋長 label 自己
+  換行。`bca23732d` 畀十個 Download、Share、Present、Zoom、toolbar 同 version
+  menu 各自有 plain-text-first search 同 anchored regex builder；開 menu 先落
+  search，Arrow/Home/End/Enter/Escape 都有路，收返仲識搵返開門粒掣。原本
+  action handler、disabled/error/re-entry 行為照舊，窄雙語畫面唔再將 label
+  斬到一半。呢度係 source-level evidence，未有 installed build 或 runtime
+  geometry claim。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)

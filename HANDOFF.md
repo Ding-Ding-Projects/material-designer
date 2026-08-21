@@ -47,8 +47,9 @@
 > widths. The hand-written source contract is
 > `design/apps/web/tests/components/FileViewer.menu-contract.test.ts`.
 > No local Node/pnpm/Electron execution, installed build, runtime geometry or
-> screen capture is claimed for this lane; the exact source commit is recorded
-> in the next handoff update.
+> screen capture is claimed for this lane. Commit
+> [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
+> carries the source changes; the branch remains local and unmerged.
 >
 > [!IMPORTANT]
 > **Design-parity infrastructure checkpoint — 2026-08-21.** The version-2
