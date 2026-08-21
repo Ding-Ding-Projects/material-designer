@@ -2,6 +2,7 @@
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ref=${1:-}
 checks=0
 
 fail() {
@@ -9,12 +10,21 @@ fail() {
   exit 1
 }
 
+read_path() {
+  path=$1
+  if [ -n "$ref" ]; then
+    (cd "$root" && MSYS_NO_PATHCONV=1 git show "${ref}:${path}")
+  else
+    cat "$root/$path"
+  fi
+}
+
 assert_count() {
   path=$1
   pattern=$2
   expected=$3
   label=$4
-  actual=$(grep -Ec "$pattern" "$root/$path" || true)
+  actual=$(read_path "$path" | grep -Ec "$pattern" || true)
   [ "$actual" -eq "$expected" ] || fail "$label (expected $expected, found $actual)"
   checks=$((checks + 1))
 }
@@ -50,13 +60,13 @@ assert_count "$layout_path" '^const themeInitScript = ' 1 \
 assert_count "$cli_path" '^const PROJECT_BOOLEAN_FLAGS = ' 1 \
   'PROJECT_BOOLEAN_FLAGS must have one declaration'
 
-figma_section=$(sed -n '/^export function FigmaImportModal(/,/^  const submitUrl =/p' "$root/$figma_path")
+figma_section=$(read_path "$figma_path" | sed -n '/^export function FigmaImportModal(/,/^  const submitUrl =/p')
 assert_text "$figma_section" 'workspaceContext = null' \
   'FigmaImportModal must capture the project workspace context'
 assert_text "$figma_section" 'workspaceContext,' \
   'Figma import must send the captured workspace context'
 
-registry_section=$(sed -n '/^export async function deleteDesignSystemDraft(/,/^export async function importLocalDesignSystem(/p' "$root/$registry_path")
+registry_section=$(read_path "$registry_path" | sed -n '/^export async function deleteDesignSystemDraft(/,/^export async function importLocalDesignSystem(/p')
 assert_text "$registry_section" 'confirmedDelete(resourcePath' \
   'design-system delete must use the confirmation handshake'
 assert_text "$registry_section" 'workspaceProjectHeaders(workspaceContext)' \
@@ -64,7 +74,7 @@ assert_text "$registry_section" 'workspaceProjectHeaders(workspaceContext)' \
 assert_text "$registry_section" 'error instanceof ConfirmedDeleteError' \
   'design-system delete must preserve detailed refusal errors'
 
-projects_section=$(sed -n '/^export async function deleteProject(/,/^\/\/ ---------- conversations/p' "$root/$projects_path")
+projects_section=$(read_path "$projects_path" | sed -n '/^export async function deleteProject(/,/^\/\/ ---------- conversations/p')
 assert_text "$projects_section" 'confirmedDelete(resourcePath' \
   'project delete must use the confirmation handshake'
 assert_text "$projects_section" 'workspaceProjectHeaders(workspaceContext)' \
@@ -74,19 +84,19 @@ assert_text "$projects_section" 'removeCachedTabs(id, workspaceContext)' \
 assert_text "$projects_section" 'removeDesignBrowserProjectCache(id)' \
   'project delete must invalidate Design Browser caches'
 
-confirm_source=$(cat "$root/$confirm_path")
+confirm_source=$(read_path "$confirm_path")
 assert_text "$confirm_source" 'options.headers' \
   'the shared confirmation seam must accept caller identity headers'
 assert_text "$confirm_source" 'headers.set(CONFIRM_DELETE_HEADER, attempt.confirmation.token)' \
   'the minted confirmation token must override caller headers on DELETE'
 
-appearance_source=$(cat "$root/$appearance_path")
+appearance_source=$(read_path "$appearance_path")
 assert_text "$appearance_source" "DEFAULT_ACCENT_COLOR = 'var(--md-sys-color-primary)'" \
   'the default accent must remain the Material Design 3 primary role'
 assert_text "$appearance_source" "'#353535'" \
   'the upstream default accent must remain available as an explicit swatch'
 
-layout_source=$(cat "$root/$layout_path")
+layout_source=$(read_path "$layout_path")
 assert_text "$layout_source" "if(t==='light'||t==='dark')" \
   'pre-hydration must preserve saved light and dark themes'
 assert_text "$layout_source" "else if(t==='system')document.documentElement.removeAttribute('data-theme')" \
@@ -94,7 +104,7 @@ assert_text "$layout_source" "else if(t==='system')document.documentElement.remo
 assert_text "$layout_source" "a='var(--md-sys-color-primary)'" \
   'accent migration must fall back to the Material Design 3 primary role'
 
-cli_source=$(cat "$root/$cli_path")
+cli_source=$(read_path "$cli_path")
 assert_text "$cli_source" "PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow', 'confirm'])" \
   'project boolean flags must retain destructive confirmation'
 assert_text "$cli_source" "'workspace-member'," \
