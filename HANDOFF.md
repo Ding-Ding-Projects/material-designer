@@ -21,7 +21,13 @@
 > keeps the readiness receipt outside the bounded polling loop so a final
 > timeout cannot read an out-of-scope value.
 >
-> Static evidence at `07a8d44c2`: `git diff --check` is clean; the Git Bash
+> Final source follow-up
+> [`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
+> keeps the ordinary theme update and startup witness on one pending bounded
+> acknowledgement, adds the close/reopen/refresh route lifecycle contract for
+> integration tabs, and gives the page-back control a full 48px target.
+>
+> Static evidence at `f50d3c869`: `git diff --check` is clean; the Git Bash
 > verifier reports 12,835 expected upstream files, 13,084 tracked files, 591
 > declarations, and zero missing, byte, mode, object-ID, extra, untracked or
 > stale-notice findings in both human and JSON modes. The focused source tests,

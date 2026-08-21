@@ -22,6 +22,10 @@ The settings page focuses its labelled region, normalizes `/settings/appearance`
 back to `/settings` when another tab is selected, and records Workspace as an
 explicit non-tab panel decision. Appearance hit areas are source-sized to at
 least 48px even when compact density keeps the visual glyph or track smaller.
+The latest source follow-up also shares one pending native acknowledgement
+between the ordinary preview and startup witness, and covers close/reopen/
+refresh lifecycle behavior for integration tabs. Hosted build and installed
+interaction evidence remain open.
 
 > [!NOTE]
 > This file owns standard 3. [material-design-3.md](material-design-3.md) owns

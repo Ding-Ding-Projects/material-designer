@@ -57,6 +57,13 @@ Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
 
+**2026-08-21 Appearance source follow-up.** Commit
+[`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
+shares the bounded native theme acknowledgement used by ordinary preview and
+startup readiness, verifies close/reopen/refresh behavior for integration tabs,
+and gives the page-back control a full 48px target. Hosted build, installed
+interaction, display-scale and visual-capture evidence remains open.
+
 > [!IMPORTANT]
 > **Read this before the checkboxes below — several of them are behind the
 > tree.** Sections written before 2026-08-04 describe Phases 3 and 4 as

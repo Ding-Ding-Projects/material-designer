@@ -44,6 +44,12 @@ version section when a release carries them.
   deadline cannot accidentally read a missing status and silently reveal the
   wrong surface.
 
+  Final source follow-up [`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
+  shares the pending native acknowledgement between the startup witness and
+  ordinary theme updates, and adds the close/reopen/refresh lifecycle contract
+  for integration tabs plus a full-size page-back target. Hosted builds,
+  installed interaction, and visual captures remain unverified.
+
   Appearance 而家要等 native theme 真係答到先開窗，唔再未收工就自己報到。`62e07481d`
   將 fire-and-forget message 換成有 acknowledgement 同 bounded timeout 嘅 IPC；
   optional host 掉線都唔會阻住本地 DOM theme，reject 或 timeout 就老實入 recovery
