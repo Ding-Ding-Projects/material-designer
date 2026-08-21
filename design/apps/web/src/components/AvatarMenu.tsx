@@ -8,7 +8,6 @@ import { AgentIcon } from './AgentIcon';
 import { PlanBadge } from './PlanBadge';
 import { MaterialSymbol } from './MaterialSymbol';
 import { orderAgentsWithOpenDesignFirst } from './agentOrdering';
-import { defaultAgentModelId, effectiveAgentModelChoice } from './agentModelSelection';
 import { modelProviderIconSrc } from './modelProviderIcon';
 import { RemixIcon } from './RemixIcon';
 import {

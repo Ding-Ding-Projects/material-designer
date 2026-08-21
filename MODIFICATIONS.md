@@ -29,6 +29,19 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Consolidate duplicate source imports
+
+**Reason:** An overlapping source integration left several modules imported more than once,
+including repeated local bindings that stop TypeScript before it can check the affected files.
+Each declaration now preserves the union of its distinct value and type specifiers while naming
+its source module only once. A focused source-contract test holds the exact repaired module list
+and proves its counter recognizes two declarations independently, so the same merge shape cannot
+quietly return.
+
+**Changed files:**
+
+- `apps/web/tests/source-import-consolidation.test.ts`
+
 ### 2026-08-21 — Export a secure desktop application scaffold
 
 **Reason:** Project archives already carried the complete website source, a human-readable

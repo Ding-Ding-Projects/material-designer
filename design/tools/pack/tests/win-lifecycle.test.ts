@@ -1,7 +1,6 @@
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { readFile } from "node:fs/promises";
 
 import { SIDECAR_MESSAGES } from "@open-design/sidecar-proto";
 import { describe, expect, it, vi } from "vitest";

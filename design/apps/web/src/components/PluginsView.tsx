@@ -84,7 +84,6 @@ import { humanizeCategory } from './SkillsSection';
 import { buildCategoryCatalog, extractCategories } from './plugins-home/facets';
 import { TrustBadge } from './TrustBadge';
 import { tv, useI18n } from '../i18n';
-import { useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
