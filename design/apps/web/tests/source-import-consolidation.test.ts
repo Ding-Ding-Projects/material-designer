@@ -20,6 +20,8 @@ const CONSOLIDATED_IMPORTS = [
   [new URL('../src/components/EntryNavRail.tsx', import.meta.url), 'react'],
   [new URL('../src/components/FigmaImportModal.tsx', import.meta.url), '@open-design/contracts'],
   [new URL('../src/components/FigmaImportModal.tsx', import.meta.url), '@open-design/components'],
+  [new URL('../src/components/FileWorkspace.tsx', import.meta.url), '@open-design/contracts/analytics'],
+  [new URL('../src/components/FileWorkspace.tsx', import.meta.url), '../state/projects'],
   [new URL('../src/components/PluginsView.tsx', import.meta.url), '../i18n'],
   [new URL('../src/components/RecentProjectsStrip.tsx', import.meta.url), 'react'],
   [new URL('../src/components/RecentProjectsStrip.tsx', import.meta.url), '@open-design/components'],
@@ -43,7 +45,7 @@ function moduleImportCount(source: string, moduleName: string): number {
 
 describe('source import consolidation', () => {
   it('keeps the hand-written consolidation inventory complete', () => {
-    expect(CONSOLIDATED_IMPORTS).toHaveLength(21);
+    expect(CONSOLIDATED_IMPORTS).toHaveLength(23);
   });
 
   it('counts repeated declarations independently', () => {

@@ -12,7 +12,6 @@ import {
 } from 'react';
 import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { createPortal } from 'react-dom';
-import type { DesignSystemEditClickProps, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { getOpenDesignHost, type OpenDesignHostUpdaterSavePreparation } from '@open-design/host';
 import type { DesignSystemEditClickProps, TrackingArtifactKind, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
@@ -114,7 +113,6 @@ import {
   type WorkspaceCollabContext,
   type WorkspaceContextItem,
 } from '@open-design/contracts';
-import { createTerminal, killTerminal, listPlugins } from '../state/projects';
 import { runBulkAction } from './bulk/run';
 import {
   notifyTeamProjectsChanged,
