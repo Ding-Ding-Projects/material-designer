@@ -17,7 +17,7 @@ function hostWithThemeSetter(setTheme: (theme: 'light' | 'dark' | 'system') => P
   return {
     version: 2,
     client: { type: 'desktop', platform: 'win32' },
-    appearance: { setTheme },
+    appearance: { acknowledgementVersion: 1, setTheme },
     shell: { openExternal: vi.fn(), openPath: vi.fn() },
     browser: { clearData: vi.fn() },
     capture: { page: vi.fn() },
@@ -186,6 +186,16 @@ describe('applyAppearanceToDocument', () => {
       host: 'desktop',
     });
     expect(setTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a legacy fire-and-forget theme host without claiming native readiness', async () => {
+    vi.stubGlobal('__od__', hostWithThemeSetter(() => undefined));
+
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toEqual({
+      ok: false,
+      host: 'desktop',
+      reason: 'native appearance host does not advertise acknowledged theme support',
+    });
   });
 });
 

@@ -1,4 +1,4 @@
-import { getOpenDesignHost } from '@open-design/host';
+import { getOpenDesignHost, hasAcknowledgedAppearanceThemeBridge } from '@open-design/host';
 import type { OpenDesignHostActionResult } from '@open-design/host';
 
 import type { AppTheme } from '../types';
@@ -117,8 +117,16 @@ export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<Appearance
   const request = (async (): Promise<AppearanceHostSyncResult> => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     try {
-      const appearance = getOpenDesignHost()?.appearance;
+      const host = getOpenDesignHost();
+      const appearance = host?.appearance;
       if (appearance == null) return { ok: true, host: 'web' };
+      if (!hasAcknowledgedAppearanceThemeBridge(host)) {
+        return {
+          ok: false,
+          host: 'desktop',
+          reason: 'native appearance host does not advertise acknowledged theme support',
+        };
+      }
 
       const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
         Promise.resolve().then(() => appearance.setTheme(theme)),

@@ -13,6 +13,7 @@ import {
   getLatestHostPreviewNavigationFailure,
   getHostUpdaterStatus,
   getOpenDesignHost,
+  hasAcknowledgedAppearanceThemeBridge,
   installHostUpdater,
   isOpenDesignHostAvailable,
   isOpenDesignHostBridge,
@@ -66,6 +67,18 @@ describe("open-design host contract", () => {
     const host = createMockOpenDesignHost();
     expect(isOpenDesignHostBridge(host)).toBe(true);
     expect(host.version).toBe(OPEN_DESIGN_HOST_VERSION);
+    expect(hasAcknowledgedAppearanceThemeBridge(host)).toBe(true);
+  });
+
+  it("distinguishes a legacy fire-and-forget appearance bridge", () => {
+    const legacy = createMockOpenDesignHost({
+      appearance: {
+        acknowledgementVersion: undefined,
+        setTheme: (() => undefined) as never,
+      },
+    });
+    expect(isOpenDesignHostBridge(legacy)).toBe(true);
+    expect(hasAcknowledgedAppearanceThemeBridge(legacy)).toBe(false);
   });
 
   it("rejects legacy or incomplete bridge shapes", () => {

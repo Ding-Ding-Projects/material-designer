@@ -15,16 +15,26 @@ restart persistence and installed-renderer behavior remain unverified here.
 The current Appearance lane also makes the native theme handoff acknowledged:
 desktop IPC returns a bounded success/failure result, and the hidden startup
 window reports its mounted witness only after the optional host accepts the
-resolved theme. A browser-only build and older host without that optional
-capability keep applying the local DOM theme; a throwing, rejected or timed-out
-host produces an explicit startup failure instead of a false readiness claim.
-The settings page focuses its labelled region, normalizes `/settings/appearance`
-back to `/settings` when another tab is selected, and records Workspace as an
-explicit non-tab panel decision. Appearance hit areas are source-sized to at
+resolved theme. The current host advertises acknowledgement capability version
+1; a legacy fire-and-forget host remains discoverable for unrelated capabilities
+but is reported as incompatible for native-theme readiness rather than being
+claimed as ready. A browser-only build with no host keeps applying the local DOM
+theme; a throwing, rejected or timed-out host produces an explicit startup
+failure instead of a false readiness claim. Renderer recovery resets the
+revealed/revealing/readiness latches and re-runs the acknowledgement before a
+reloaded application becomes visible.
+
+The settings page focuses its labelled region only on initial route entry or an
+external deep link; roving tab focus stays on the selected tab during local
+switches. Workspace, Orbit and Routines are real dialog-owned tabs; Workspace is
+filtered from both the tab strip and palette when its permission snapshot says
+the viewer cannot see it. Library remains owned by the entry route and is not
+advertised as a SettingsDialog tab. Appearance hit areas are source-sized to at
 least 48px even when compact density keeps the visual glyph or track smaller.
 The latest source follow-up also shares one pending native acknowledgement
-between the ordinary preview and startup witness, and covers close/reopen/
-refresh lifecycle behavior for integration tabs. Hosted build and installed
+between the ordinary preview and startup witness, gives the 2D colour field a
+current S/V/value announcement, and wraps unsupported typography and colour
+translation rows at narrow or bilingual layouts. Hosted build and installed
 interaction evidence remain open.
 
 > [!NOTE]
@@ -160,8 +170,11 @@ is bound to.
 | Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
 | Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
 | Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
-| Settings route and Workspace ownership | **Source implemented.** Appearance is the only typed settings sub-route; tab changes normalize the URL, and Workspace is explicitly recorded as a null strip owner while its guarded panel remains reachable to authorized callers. |
-| Appearance/settings hit areas | **Source implemented.** Appearance rows, seed/font choices, picker controls, copy actions, settings tabs, regex toggles, overflow and page-back controls carry 48px hit-area floors. Hosted display-scale measurements remain unverified. |
+| Settings route and panel ownership | **Source implemented.** Appearance is the typed settings sub-route; Workspace, Orbit and Routines are real SettingsDialog tabs with labelled panels. Workspace is removed from the strip and palette when its permission snapshot is not authorized, while Library remains owned by the entry route. |
+| Appearance/settings hit areas | **Source implemented.** Appearance rows, theme and seed choices, picker controls, copy actions, settings tabs, search results, reset actions, regex toggles, overflow and page-back controls carry 48px hit-area floors. Hosted display-scale measurements remain unverified. |
+| Native capability compatibility | **Source implemented.** Acknowledgement capability version 1 distinguishes the current promise-returning theme action from a legacy void setter; the latter cannot satisfy the desktop startup witness and produces a truthful incompatibility result. |
+| Renderer recovery witness | **Source implemented.** Crash-screen recovery clears the visible/readiness latches, re-arms the splash, and runs the same acknowledged theme witness on every reload before revealing the application surface. |
+| Narrow and bilingual appearance rows | **Source implemented.** Unsupported typography rows and colour-translation rows wrap or stack instead of clipping; the 2D colour field exposes live saturation, brightness and RGBA text to assistive technology. |
 
 ### What the documentation site implements
 

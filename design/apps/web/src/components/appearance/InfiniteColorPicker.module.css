@@ -50,6 +50,14 @@
   color: var(--text-muted);
 }
 
+.fieldValue {
+  margin: -4px 0 0;
+  font-family: var(--mono);
+  font-size: var(--md-sys-typescale-label-small-size);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .axes {
   display: flex;
   flex-direction: column;
@@ -246,7 +254,7 @@
 
 .translation {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(72px, max-content) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
   padding: 3px 4px;
@@ -273,6 +281,8 @@
 
 .lossBadges {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -309,4 +319,31 @@
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+@media (max-width: 560px) {
+  .translation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .translationLabel {
+    flex: 0 0 100%;
+  }
+
+  .translationValue {
+    flex: 1 1 160px;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .translation .lossBadges {
+    flex: 1 1 100%;
+  }
+
+  .translation .copyButton {
+    flex: 0 0 48px;
+  }
 }

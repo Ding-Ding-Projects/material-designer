@@ -98,6 +98,29 @@ describe('InfiniteColorPicker', () => {
     expect(entry.value).toBe('rgb(12,');
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('exposes the two-dimensional value and announces keyboard changes', () => {
+    const onChange = vi.fn<(next: Rgba) => void>();
+    render(
+      <InfiniteColorPicker
+        value={{ r: 0xc9, g: 0x64, b: 0x42, a: 1 }}
+        onChange={onChange}
+        label="Custom color"
+        background={WHITE}
+      />,
+    );
+
+    const field = screen.getByTestId('appearance-color-field');
+    expect(field.getAttribute('role')).toBe('slider');
+    expect(field.getAttribute('aria-valuetext')).toContain('#c96442ff');
+    const describedBy = field.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+    expect(describedBy.some((id) => document.getElementById(id)?.textContent?.includes('#c96442ff')))
+      .toBe(true);
+
+    fireEvent.keyDown(field, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalled();
+    expect(field.getAttribute('aria-valuetext')).not.toBe('#c96442ff');
+  });
 });
 
 describe('AppearanceRuntime', () => {

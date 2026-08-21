@@ -22,6 +22,7 @@ describe("desktop appearance theme bridge", () => {
   test("forwards the validated renderer value to nativeTheme without a startup override", () => {
     expect(preloadSource).toContain("ipcRenderer.invoke('od:appearance:set-theme', theme)");
     expect(preloadSource).toContain("Promise<OpenDesignHostActionResult>");
+    expect(preloadSource).toContain("acknowledgementVersion: 1");
     expect(runtimeSource).toContain("parseDesktopAppearanceTheme(theme)");
     expect(runtimeSource).toContain("nativeTheme.themeSource = parsedTheme;");
     expect(runtimeSource).toContain('ipcMain.handle("od:appearance:set-theme"');
@@ -31,5 +32,15 @@ describe("desktop appearance theme bridge", () => {
     expect(runtimeSource).not.toContain("pinNativeAppearanceToLight");
     expect(runtimeSource).toContain("main window stays hidden until that renderer mount/reveal");
     expect(runtimeSource).toContain("native appearance acknowledgement");
+    expect(runtimeSource).toContain("resetRevealWitnessForReload");
+    expect(runtimeSource).toContain("rendererSurfaceReady = false");
+    expect(runtimeSource).toContain("rendererRecoveryPending = true");
+    expect(runtimeSource).toContain("revealMainWindow(false)");
+  });
+
+  test("keeps recovery reloads behind a fresh acknowledged witness", () => {
+    expect(runtimeSource).toContain("if (!rendererSurfaceReady) {");
+    expect(runtimeSource).toContain("resetRevealWitnessForReload();");
+    expect(runtimeSource).not.toContain("if (!revealed) {\n          void revealWhenReady();");
   });
 });

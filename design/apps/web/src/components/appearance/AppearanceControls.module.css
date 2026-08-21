@@ -243,3 +243,38 @@
   display: flex;
   justify-content: flex-end;
 }
+
+/* Unsupported values stay visible at narrow widths instead of making the
+   badge and its explanation compete with a slider on one line. Bilingual copy
+   and 150/200% display scale reach this layout through the same small
+   viewport, so the rule is width-based rather than locale-specific. */
+@media (max-width: 720px) {
+  .unsupported .row {
+    align-items: flex-start;
+    gap: var(--sp, 8px);
+  }
+
+  .unsupported .rowLabel {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .unsupported .rowControl {
+    flex: 1 1 220px;
+  }
+
+  .unsupported .badge,
+  .unsupported .reason {
+    flex: 1 1 100%;
+  }
+
+  .unsupported .switchRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .unsupported .switchLabel {
+    flex: 1 1 calc(100% - 36px);
+    min-width: 0;
+  }
+}

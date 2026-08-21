@@ -254,7 +254,11 @@ import {
   settingsHitsElsewhere,
   type SettingsSearchHit,
 } from './settings/settingsSearchMatch';
-import { SETTINGS_TAB_DEFS, writeLastSettingsSection } from './settings/settingsTabs';
+import {
+  SETTINGS_TAB_DEFS,
+  SETTINGS_TABS,
+  writeLastSettingsSection,
+} from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
 import settingsPageStyles from './settings/SettingsPage.module.css';
 import type { TranslationVars } from '../i18n';
@@ -1565,6 +1569,9 @@ export function SettingsDialog({
 }: Props) {
   const pageMode = presentation === 'page';
   const route = useRoute();
+  const settingsRouteKey = route.kind === 'home' && route.view === 'settings'
+    ? route.settingsSection ?? 'settings'
+    : route.kind;
   const {
     t,
     locale,
@@ -1686,6 +1693,7 @@ export function SettingsDialog({
   // The page's own root, so the surfaces it covers can be taken out of the
   // keyboard path while it is open — see the `inert` effect below.
   const settingsPageRef = useRef<HTMLDivElement | null>(null);
+  const localSectionNavigationRef = useRef<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   // The settings surface's own search field.
   //
@@ -1707,27 +1715,20 @@ export function SettingsDialog({
     },
     [t],
   );
-  const settingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
+  const rawSettingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
     if (!settingsSearchActive) return [];
     // `SETTINGS_INDEX` is the command palette's index of what settings
     // contains. It is reused verbatim rather than mirrored, so the palette and
     // this field can never disagree about whether a setting exists.
-    return matchSettingsIndex({
+    const hits = matchSettingsIndex({
       entries: SETTINGS_INDEX,
       matches: settingsSearchMatches,
       translate: t,
       sectionLabel: settingsSectionLabel,
       activeSection,
     });
+    return hits;
   }, [settingsSearchActive, settingsSearchMatches, t, settingsSectionLabel, activeSection]);
-  const settingsSearchCounts = useMemo(
-    () => (settingsSearchActive ? settingsHitCountsBySection(settingsSearchHits) : null),
-    [settingsSearchActive, settingsSearchHits],
-  );
-  const settingsSearchElsewhere = useMemo(
-    () => settingsHitsElsewhere(settingsSearchHits, activeSection),
-    [settingsSearchHits, activeSection],
-  );
   // The only typed settings sub-route is `/settings/appearance`. Keep it
   // truthful while the user moves through the same page's tab strip: entering
   // Appearance advertises the deep link, while every other visible section
@@ -1742,7 +1743,14 @@ export function SettingsDialog({
       || route.kind !== 'home'
       || route.view !== 'settings'
     ) return;
+    const targetPath = section === 'appearance' ? '/settings/appearance' : '/settings';
+    localSectionNavigationRef.current = window.location.pathname !== targetPath
+      ? (section === 'appearance' ? 'appearance' : 'settings')
+      : null;
     navigateRoute(
+      // The route change is caused by the tab itself. The page landmark focus
+      // effect below skips this local transition; external deep links still
+      // focus the page once they arrive.
       section === 'appearance'
         ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
         : { kind: 'home', view: 'settings' },
@@ -1778,6 +1786,34 @@ export function SettingsDialog({
     workspaceContext,
   );
   const showWorkspaceSettings = canShowWorkspaceSettings(workspaceContext);
+  // Workspace is a permissioned surface. Do not let the palette advertise a
+  // destination that the current viewer cannot open; the tab strip applies
+  // the same decision below, so both discovery paths stay truthful.
+  const settingsSearchHits = useMemo(
+    () => rawSettingsSearchHits.filter(
+      (hit) => hit.section !== 'workspace' || showWorkspaceSettings,
+    ),
+    [rawSettingsSearchHits, showWorkspaceSettings],
+  );
+  const settingsSearchCounts = useMemo(
+    () => (settingsSearchActive ? settingsHitCountsBySection(settingsSearchHits) : null),
+    [settingsSearchActive, settingsSearchHits],
+  );
+  const settingsSearchElsewhere = useMemo(
+    () => settingsHitsElsewhere(settingsSearchHits, activeSection),
+    [settingsSearchHits, activeSection],
+  );
+  const visibleSettingsTabs = useMemo(
+    () => SETTINGS_TABS.filter((tab) => tab.section !== 'workspace' || showWorkspaceSettings),
+    [showWorkspaceSettings],
+  );
+  useEffect(() => {
+    if (workspaceContextLoading || showWorkspaceSettings || activeSection !== 'workspace') return;
+    // A deep link may name Workspace before its permission snapshot arrives.
+    // Once the snapshot says the viewer cannot see it, route to the first real
+    // tab instead of leaving a selected-but-empty panel behind.
+    selectSettingsSection('execution');
+  }, [activeSection, selectSettingsSection, showWorkspaceSettings, workspaceContextLoading]);
   // All generic AMR upgrade buttons route through public Pricing. While the
   // workspace read is pending, hide the owner-only action to avoid a flash for
   // admins or members.
@@ -3598,12 +3634,18 @@ export function SettingsDialog({
 
   // A direct settings URL is a real page navigation, not a modal open. Give
   // the page root the first focus stop so keyboard and screen-reader users
-  // land on the named surface before the tab strip, and refocus it when a
-  // caller changes the explicit deep-link section in place.
+  // land on the named surface before the tab strip. A local tab switch keeps
+  // roving focus on the selected tab; only a new route or an external
+  // deep-link focuses the page landmark again.
   useLayoutEffect(() => {
     if (!pageMode) return;
+    const localTarget = localSectionNavigationRef.current;
+    localSectionNavigationRef.current = null;
+    if (localTarget !== null && settingsRouteKey === localTarget) {
+      return;
+    }
     settingsPageRef.current?.focus({ preventScroll: true });
-  }, [initialSection, pageMode]);
+  }, [pageMode, settingsRouteKey]);
 
   const protocolProviders = useMemo(
     () => KNOWN_PROVIDERS.filter((p) => p.protocol === apiProtocol),
@@ -4488,6 +4530,7 @@ export function SettingsDialog({
             activeSection={activeSection}
             onSelect={selectSettingsSection}
             matchCounts={settingsSearchCounts}
+            tabs={visibleSettingsTabs}
             searchField={
               <RegexSearchField
                 search={settingsSearch}

@@ -71,6 +71,8 @@ export function paletteRowScope(row: PaletteRow): PaletteScopeId {
 
 export interface PaletteRegistryContext {
   t: PaletteTranslate;
+  /** Permission snapshot for dialog-owned Workspace settings. */
+  workspaceSettingsVisible?: boolean;
   /** Open the settings section this entry lives in and reveal its control. */
   openSettingsEntry: (entry: SettingsIndexEntry) => void;
   /** Navigate the app shell. */
@@ -243,6 +245,7 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     // visible surface while `LIBRARY_UI_VISIBLE` is false. Offering a row that
     // leads nowhere is worse than offering none.
     if (entry.section === 'library' && !LIBRARY_UI_VISIBLE) continue;
+    if (entry.section === 'workspace' && ctx.workspaceSettingsVisible === false) continue;
     rows.push({
       kind: 'setting',
       id: `setting:${entry.id}`,

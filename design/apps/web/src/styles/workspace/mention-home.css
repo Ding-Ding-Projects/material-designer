@@ -855,17 +855,15 @@
   overflow: hidden;
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0;
   margin: 0;
   padding: 0;
 }
 .settings-page-shell .modal-body {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0;
   min-width: 0;
   min-height: 0;
@@ -876,9 +874,6 @@
      through, exactly like the home scroll surface). The reduced-transparency
      and no-backdrop-filter fallbacks restore it to solid --bg. */
   background: var(--veil-page, var(--bg));
-}
-.modal-settings.settings-sidebar-collapsed .modal-body {
-  grid-template-columns: minmax(0, 1fr);
 }
 .modal-head {
   display: flex;
@@ -1530,10 +1525,25 @@
   flex-direction: column;
   gap: 18px;
 }
+
+/* Settings buttons keep the same full hit area at every density. The visual
+   icon or label may remain compact, but its pointer and keyboard wrapper does
+   not shrink below the accessibility floor. */
+.settings-content .settings-section button {
+  min-height: 48px;
+}
+.settings-content .pet-swatch,
+.settings-content .pet-swatch-picker {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+}
 .settings-content:focus-visible {
   /* The tabpanel takes focus programmatically when a tab is activated; the
      ring would otherwise read as a stray highlight on a whole pane. */
   outline: none;
+}
 .settings-content::-webkit-scrollbar {
   display: none;
 }
@@ -1684,6 +1694,7 @@
   cursor: pointer;
   text-align: center;
   line-height: 1;
+  min-height: 48px;
   min-width: 0;
 }
 /* The global button:hover paints a border-strong outline + bg-subtle fill; the

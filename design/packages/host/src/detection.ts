@@ -2,6 +2,7 @@ import {
   OPEN_DESIGN_HOST_GLOBAL,
   OPEN_DESIGN_HOST_VERSION,
   OPEN_DESIGN_HOST_CLIENT_TYPES,
+  OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION,
   type OpenDesignHostBridge,
   type OpenDesignHostClientType,
   type OpenDesignHostGlobalScope,
@@ -86,6 +87,21 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   }
 
   return true;
+}
+
+/**
+ * True only for the acknowledged theme bridge introduced after the legacy
+ * fire-and-forget host. Keeping this separate from `isOpenDesignHostBridge`
+ * means an older host can still serve unrelated capabilities while startup
+ * refuses to claim native-theme readiness it cannot prove.
+ */
+export function hasAcknowledgedAppearanceThemeBridge(
+  value: OpenDesignHostBridge | null | undefined,
+): boolean {
+  const appearance = value?.appearance;
+  return appearance?.acknowledgementVersion
+    === OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION
+    && typeof appearance.setTheme === "function";
 }
 
 /** @internal Read the host-bridge candidate from a scope (or its `window`). */

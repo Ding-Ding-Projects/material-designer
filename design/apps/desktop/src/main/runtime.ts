@@ -2902,10 +2902,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
   let revealing = false;
+  // `revealed` means that some visible surface is in front of the user; it is
+  // also true for the self-contained recovery screen. Keep the stronger
+  // renderer-ready witness separate so a recovery surface can never be
+  // mistaken for an acknowledged application mount.
+  let rendererSurfaceReady = false;
+  let rendererRecoveryPending = false;
 
-  const revealMainWindow = (): void => {
+  const revealMainWindow = (rendererReady = true): void => {
     if (revealed || window.isDestroyed()) return;
     revealed = true;
+    rendererSurfaceReady = rendererReady;
     showWindowButtons(window);
     window.show();
     window.focus();
@@ -2922,6 +2929,35 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     } catch {
       // A callback fault must not break reveal.
     }
+  };
+
+  /**
+   * A new document must earn the same acknowledged theme witness as the first
+   * document. This resets every latch before loading, recreates the splash if
+   * the prior recovery screen closed it, and hides the main window so a reload
+   * cannot flash an unacknowledged renderer in front of the user.
+   */
+  const resetRevealWitnessForReload = (): void => {
+    const wasRecoveryReload = rendererRecoveryPending;
+    rendererRecoveryPending = false;
+    revealed = false;
+    revealing = false;
+    rendererSurfaceReady = false;
+    if (splash == null || splash.isDestroyed()) {
+      const created = createSplashWindow();
+      splash = created.window;
+      splashStartedAt = created.startedAt;
+    }
+    window.hide();
+    splash.show();
+    splash.focus();
+    // Keep the branch explicit: a crash-screen reload and a normal URL reload
+    // both use the same witness, while the recovery path is visible to the
+    // diagnostics log without changing the readiness contract.
+    if (wasRecoveryReload) {
+      console.info("[open-design desktop] renderer recovery reload re-armed the appearance witness");
+    }
+    setSplashStage(splash, "workspace");
   };
 
   // Hold the splash until BOTH (a) the web bundle reports it has mounted — it
@@ -3012,6 +3048,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // daemon is still alive on a renderer crash, so the bundle is available).
   const showRendererCrashScreen = (crash: { reason: string; exitCode: number | null }) => {
     if (stopped || window.isDestroyed()) return;
+    // The recovery surface is visible, but it is not a mounted application.
+    // Leave the next reload obligated to clear these latches and re-run the
+    // native acknowledgement witness before the product can be shown again.
+    revealing = false;
+    rendererSurfaceReady = false;
+    rendererRecoveryPending = true;
     // Loading the crash screen resets currentUrl so the next successful reload
     // (after re-arm) is treated as a fresh navigation.
     currentUrl = null;
@@ -3034,7 +3076,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // re-focusing the app during a startup crash loop is sent back to the boot
     // splash instead of this recovery screen. revealMainWindow() no-ops when the
     // app already revealed normally (the common crash-after-boot case).
-    revealMainWindow();
+    revealMainWindow(false);
   };
 
   const markRendererFailed = () => {
@@ -3089,6 +3131,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // failed/blank state (URL unchanged but the page died), so a window
       // restored from the background recovers instead of staying blank.
       if (url != null && (url !== currentUrl || rendererFailed)) {
+        resetRevealWitnessForReload();
         pendingUrl = url;
         // Clear the failure flag BEFORE the load: `did-navigate` (which
         // re-flags an HTTP 5xx error document) fires before `loadURL`'s
@@ -3108,7 +3151,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           await petWindow.loadURL(nextPetUrl);
           currentPetUrl = nextPetUrl;
         }
-        if (!revealed) {
+        if (!rendererSurfaceReady) {
           void revealWhenReady();
         } else {
           showWindowButtons(window);

@@ -29,6 +29,44 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Make Appearance theme readiness compatible and recoverable
+
+**Reason:** The Appearance follow-up exposed two classes of source-only failure:
+legacy hosts could expose a fire-and-forget theme setter without proving native
+readiness, and renderer recovery could reveal a reloaded document without
+re-running that proof. The same pass repairs the settings flex flow and tab
+ownership, keeps permission-hidden Workspace out of discovery, preserves stable
+tab descriptions and selected-tab contrast, exposes the colour field's live
+two-dimensional value, keeps hit wrappers at 48px, and wraps unsupported or
+translated rows at narrow and bilingual layouts.
+
+**Changed files:**
+
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/appearance/AppearanceControls.module.css`
+- `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/settings/settingsTabs.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/AppearanceEditor.test.tsx`
+- `apps/web/tests/components/appearance-follow-up-contract.test.ts`
+- `apps/web/tests/components/CommandPalette.settings-index.test.ts`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+- `apps/web/tests/state/appearance.test.ts`
+- `packages/host/src/detection.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/testing.ts`
+- `packages/host/tests/index.test.ts`
+
 ### 2026-08-21 — Acknowledge native Appearance theme application
 
 **Reason:** The native theme bridge previously accepted a fire-and-forget message, so

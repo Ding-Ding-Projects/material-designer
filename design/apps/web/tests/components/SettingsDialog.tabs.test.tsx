@@ -173,10 +173,17 @@ describe('Settings: the tab strip', () => {
 
   it('records an explicit tab or null ownership decision for every section token', () => {
     expect(Object.keys(SETTINGS_TAB_DEFS).sort()).toEqual(Object.keys(SETTINGS_SECTION_TOKENS).sort());
-    expect(SETTINGS_TAB_DEFS.workspace).toBeNull();
-    expect(SETTINGS_TAB_DEFS.orbit).toBeNull();
-    expect(SETTINGS_TAB_DEFS.routines).toBeNull();
+    expect(SETTINGS_TAB_DEFS.workspace).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.orbit).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.routines).not.toBeNull();
     expect(SETTINGS_TAB_DEFS.library).toBeNull();
+  });
+
+  it('does not advertise a permission-hidden Workspace palette destination', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain('visibleSettingsTabs');
+    expect(SETTINGS_DIALOG_SOURCE).toContain("tab.section !== 'workspace' || showWorkspaceSettings");
+    expect(SETTINGS_DIALOG_SOURCE).toContain('rawSettingsSearchHits.filter');
+    expect(SETTINGS_DIALOG_SOURCE).toContain("selectSettingsSection('execution')");
   });
 
   it('wires the selected tab to the one panel every tab controls', () => {
@@ -201,6 +208,20 @@ describe('Settings: the tab strip', () => {
 
     expect(tab('appearance').tabIndex).toBe(0);
     expect(tab('execution').tabIndex).toBe(-1);
+  });
+
+  it('gives each tab a stable hint description and exposes no-match state without dimming the selection', () => {
+    renderSettings();
+
+    const appearance = tab('appearance');
+    expect(appearance.getAttribute('aria-describedby')).toBe('settings-tab-appearance-hint');
+    expect(document.getElementById('settings-tab-appearance-hint')).toBeTruthy();
+
+    typeInSearch('a value that matches no settings label');
+    expect(appearance.getAttribute('aria-selected')).toBe('true');
+    expect(appearance.getAttribute('aria-describedby')).toContain('settings-tab-appearance-no-match');
+    expect(document.getElementById('settings-tab-appearance-no-match')?.textContent)
+      .toBe(en['settings.searchNoMatches']);
   });
 
   it('switches the panel when a tab is clicked', () => {
@@ -371,6 +392,12 @@ describe('Settings: the tab strip', () => {
     expect(SETTINGS_GLOBAL_CSS).toContain('.settings-page-back');
     expect(SETTINGS_GLOBAL_CSS).toContain('min-width: 48px;');
     expect(SETTINGS_GLOBAL_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.settings-content .settings-section button');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.modal-settings .modal-body');
+    expect(SETTINGS_GLOBAL_CSS).toContain('flex-direction: column;');
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('grid-template-columns: 240px minmax(0, 1fr);');
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('grid-template-columns: 272px minmax(0, 1fr);');
   });
 
   it('keeps a portalled overflow surface above the opaque settings page', () => {

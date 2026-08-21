@@ -435,6 +435,7 @@ const hostBridge = {
         return actionFailure(reasonFromError(error));
       }
     },
+    acknowledgementVersion: 1,
   },
   shell,
   browser,

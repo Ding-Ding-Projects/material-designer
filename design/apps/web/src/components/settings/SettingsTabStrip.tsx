@@ -295,7 +295,13 @@ export function SettingsTabStrip({
         {tabs.map((tab) => {
           const active = tab.section === activeSection;
           const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
-          const dimmed = count === 0;
+          // Never dim the selected tab: it remains the user's current context
+          // even when the query matches nothing inside it. The no-match state
+          // is still exposed through the stable description below.
+          const dimmed = count === 0 && !active;
+          const tabId = settingsTabId(tab.section);
+          const hintId = `${tabId}-hint`;
+          const noMatchId = `${tabId}-no-match`;
           return (
             <button
               key={tab.section}
@@ -304,9 +310,10 @@ export function SettingsTabStrip({
               }}
               type="button"
               role="tab"
-              id={settingsTabId(tab.section)}
+              id={tabId}
               aria-selected={active}
               aria-controls={SETTINGS_TABPANEL_ID}
+              aria-describedby={count === 0 ? `${hintId} ${noMatchId}` : hintId}
               tabIndex={active ? 0 : -1}
               data-section={tab.section}
               // `settings-nav-item` is retained deliberately: it is what the
@@ -329,9 +336,14 @@ export function SettingsTabStrip({
               <span className={styles.tabLabel}>
                 <strong>{t(tab.titleKey)}</strong>
               </span>
-              <small className={styles.tabHint} aria-hidden>
+              <small className={styles.tabHint} id={hintId}>
                 {t(tab.hintKey)}
               </small>
+              {count === 0 ? (
+                <span className={styles.tabHint} id={noMatchId}>
+                  {t('settings.searchNoMatches')}
+                </span>
+              ) : null}
               {count !== null && count > 0 ? (
                 <span className={styles.tabCount} aria-hidden>
                   {count}

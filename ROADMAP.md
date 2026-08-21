@@ -57,12 +57,15 @@ Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
 
-**2026-08-21 Appearance source follow-up.** Commit
-[`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
-shares the bounded native theme acknowledgement used by ordinary preview and
-startup readiness, verifies close/reopen/refresh behavior for integration tabs,
-and gives the page-back control a full 48px target. Hosted build, installed
-interaction, display-scale and visual-capture evidence remains open.
+**2026-08-21 Appearance source follow-up.** The next source repair keeps the
+native theme acknowledgement capability explicit, distinguishes legacy
+fire-and-forget hosts from the current bridge, resets renderer reveal state
+before every recovery reload, and gives Workspace, Orbit and Routines real
+SettingsDialog tab ownership while permission-filtering Workspace from the
+palette. The selected tab stays focused during local switching; stable hint and
+no-match descriptions, 2D colour values, 48px wrappers, and narrow/bilingual
+wrapping are source-covered. Hosted build, installed interaction, display-scale
+and visual-capture evidence remains open.
 
 > [!IMPORTANT]
 > **Read this before the checkboxes below — several of them are behind the
@@ -1166,14 +1169,17 @@ labels are longest — and when no legacy design element remains in them.
       keeps the readiness receipt in scope through the polling deadline.
 - [~] **Typed Appearance route lifecycle and section ownership** — switching
       away from `/settings/appearance` normalizes to `/settings`, the labelled
-      Settings region owns initial focus, and Workspace is explicitly recorded
-      as a null strip owner while its guarded panel remains available to an
-      authorized caller. Source contracts are present; hosted lifecycle and
-      installed-renderer evidence remain open.
-- [~] **48px Appearance and Settings hit areas** — seed/font choices, sliders,
-      picker fields, copy actions, tabs, regex toggles, overflow and page-back
-      controls have a 48px hit-area floor while their visual glyphs/tracks may
-      remain compact. Hosted scale measurements remain open.
+      Settings region focuses only on initial route entry or an external deep
+      link, and Workspace, Orbit and Routines are real dialog-owned tabs.
+      Workspace is filtered from the strip and palette when its permission
+      snapshot is not authorized; Library remains owned by the entry route.
+      Source contracts are present; hosted lifecycle and installed-renderer
+      evidence remain open.
+- [~] **48px Appearance and Settings hit areas** — theme/seed/font choices,
+      sliders, picker fields, copy actions, tabs, search results, reset actions,
+      regex toggles, overflow and page-back controls have a 48px hit-area floor
+      while their visual glyphs/tracks may remain compact. Hosted scale
+      measurements remain open.
 - [x] **Density** — compact / default / comfortable, changing the gap, padding
       and row-height variables. Driven rather than dropped: `--sp` now moves
       with the level instead of sitting still while the gap built on it halves,
@@ -1794,9 +1800,9 @@ rows say so rather than counting their file size as progress.
 | --- | --- | --- | --- |
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
 | 2 | Full Material Design 3 conformance | 2.1–2.4 | **Colour landed; anatomy did not, and a capture proved it.** The token sheet, its mapping layer and the Windows frameless title bar are real, so every component inherits M3 roles. But the mockup's defining furniture is absent from the running screen: no persistent navigation rail (the component exists and collapses to a **zero-width** track, so a fresh install shows none), no header search bar, no 28px status bar. A reader comparing the shipped capture to `mockups/` would say it is still the upstream screen in new colours, and for the anatomy they would be right |
-| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Source-reachable, runtime-unverified.** The real Appearance tab mounts the live System / Light / Dark theme control, infinite colour picker, translator, contrast readout, built-in presets, seed, density, scale and typography controls. Localized theme labels, shared roving radio behavior, a visible direct-page landmark, opener focus restoration, and validated native startup forwarding are covered by source contracts. A typed `/settings/appearance` route selects it before first render, while `/settings` keeps the normal first tab. Per-element appearance editing, complete appearance-search coverage, hosted build verification and installed interaction remain open. |
+| 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Source-reachable, runtime-unverified.** The real Appearance tab mounts the live System / Light / Dark theme control, infinite colour picker, translator, contrast readout, built-in presets, seed, density, scale and typography controls. Localized theme labels, shared roving radio behavior, a visible direct-page landmark, route-only focus, acknowledged native startup forwarding with legacy-host incompatibility, renderer recovery re-witnessing, 48px wrappers, live 2D colour values and narrow-row wrapping are covered by source contracts. A typed `/settings/appearance` route selects it before first render, while `/settings` keeps the normal first tab. Per-element appearance editing, complete appearance-search coverage, hosted build verification and installed interaction remain open. |
 | 4 | Regex builder on every search bar | 3.3 | **Partial.** The command palette and the settings tab overflow menu now have independent anchored builders with bounded local matching; the remaining search inventory, including the four tab-discovery fields, is still open. [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6) is source-level evidence only |
-| 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, with the settings surface now tabbed.** The settings dialog has a 17-section tab strip, a viewport-bounded above/below overflow surface, local search and its own regex builder; the workspace tab strip, pinning, grouping, four discovery searches and bulk-close actions remain open. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the capture at `90e52d3` records the old scrolling section list, while [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621) records the follow-up geometry repair |
+| 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, with the settings surface now tabbed.** The settings dialog has a permission-aware tab strip for its dialog-owned sections, including Workspace, Orbit and Routines, a viewport-bounded above/below overflow surface, stable hint/no-match descriptions, local search and its own regex builder; Library remains owned by the entry route. The workspace tab strip, pinning, grouping, four discovery searches and bulk-close actions remain open. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the capture at `90e52d3` records the old scrolling section list, while [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621) records the follow-up geometry repair |
 | 6 | Non-blocking notifications | 4.2 | **Built and mounted.** `NotificationHost` mounts in `App.tsx`, the centre opens from the tab bar. Two audit findings stand against it and are unverified: an empty-state that promises history the centre may not keep, and destructive paths still using blocking `confirm()`/`alert()` where a toast belongs — one such `alert()` was removed today |
 | 7 | Super-confirmation gate | 4.3 | **The boundary exists; the interface routing is unfinished.** The gate is built and mounted, its eight confirmed defects are closed, and the three irreversible deletes are now enforced in the daemon's own handler behind a single-use per-resource token — so a `curl`, a script or a third-party client cannot delete in one replayable request. That is the authorization boundary the standard asks for. What remains is affordance coverage: some delete buttons still reach the operation through a plain dialog rather than two keys and a slider. Nobody has operated any of it |
 | 8 | Command palette | 3.6 | **Built and mounted**, with an indexed settings surface, live inline controls whose union is exhaustive, and its own anchored regex builder. Unverified: whether the index covers every setting the dialog actually has, and whether the new builder passes hosted verification |
@@ -1805,7 +1811,7 @@ rows say so rather than counting their file size as progress.
 | 11 | Export everything, bulk actions | 4.5, 4.6 | **Partial.** Export paths and the bulk machinery (selection, plan, preview, runner, outcome messages) exist and are well-factored — the runner is now genuinely used rather than dead. Missing: the full archive option set, and bulk actions on every list rather than the few that have them |
 | 12 | Dim sum surprise | 3.4 | **Built and mounted.** `DimSumSurprise` mounts in `App.tsx` against the bundled 24-dish catalogue under `assets/dim-sum/`. Unverified: the 10%-per-launch draw and the once-per-launch cap in a running build |
 | 13 | Release code name and line count | 1.1 | **Met, and demonstrated twice.** Both published releases carry a different dish code name with its photograph attached, and a line count measured by the committed counter at the released commit, broken down by category and by surviving-line authorship |
-| 14 | Accessibility and sizing as blockers | Every phase | **Partial, source-level audit only.** The final six-finding Figma repair is [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe), the residual drop/input repair is [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd), the corrected focus-trap contract is [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e) with wrap-edge proof tightened in [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56), and the settings overflow menu's local search/keyboard route is [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6). Focused source tests and the `MODIFICATIONS.md` allowlist are committed; no local build, CI run, installed-build capture or runtime matrix is claimed. The 100/125/150/200% narrow-width bilingual runtime matrix and installed-build captures remain open |
+| 14 | Accessibility and sizing as blockers | Every phase | **Partial, source-level audit only.** The final six-finding Figma repair is [`a5a9365`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5a9365b141bb7d31a08c0a8f08c2e61bbc2aefe), the residual drop/input repair is [`8b76513`](https://github.com/Ding-Ding-Projects/material-designer/commit/8b7651350daa8b3fdcda3dc9c74e44d7a8d880dd), the corrected focus-trap contract is [`cbdc4f5`](https://github.com/Ding-Ding-Projects/material-designer/commit/cbdc4f5ae673b7387445ad8e2fc0ba49dcdacb4e) with wrap-edge proof tightened in [`ac3ba56`](https://github.com/Ding-Ding-Projects/material-designer/commit/ac3ba56), and the settings overflow menu's local search/keyboard route is [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6). The Appearance follow-up keeps selected tabs undimmed, gives stable descriptions and no-match status, expands settings wrappers to 48px, exposes live 2D colour values, and stacks unsupported/translation rows at narrow and bilingual layouts. Focused source tests and the `MODIFICATIONS.md` allowlist are committed; no local build, CI run, installed-build capture or runtime matrix is claimed. The 100/125/150/200% narrow-width bilingual runtime matrix and installed-build captures remain open |
 | 15 | All assets bundled locally | 2.2, 1.3 | **Met for the application and the site.** The site is bundled and its deployment enforces that at publish time; the application's one CDN font import is gone, with the three Cairo subsets bundled under `apps/web/public/fonts/cairo/`. The mockup still carries three, and it ships to nobody. Roboto Flex, Roboto Mono and Material Symbols are not bundled because nothing consumes them yet — 2.2 tracks that as its own work, not as a violation of this row |
 | 16 | Docs, changelog, roadmap accurate; honest CI evidence | 1.1, 1.2 | **Partially in place.** `CHANGELOG.md` exists with a section per published tag and a commit link on every entry; this file, the notice file and `docs/` are kept honest. The recurring failure is staleness rather than invention — several documents claimed nothing had been built for some time after two releases existed |
 

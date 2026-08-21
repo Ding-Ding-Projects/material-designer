@@ -39,14 +39,9 @@ export interface SettingsTabDef {
 /**
  * Every `SettingsSection`, exhaustively, mapped to its tab or to `null`.
  *
- * The four `null`s are not oversights:
- *   - `workspace` has a real deep-linked panel, but the current product
- *     deliberately keeps it out of the persistent strip; the Workspace entry
- *     rail owns discovery and the Settings route remains available to
- *     authorized callers.
- *   - `orbit` and `routines` have panels in the dialog but are reached from
- *     their own surfaces, not from settings navigation.
- *   - `library` has no panel at all; the entry shell owns that route.
+ * The one `null` is deliberate: `library` has no panel at all; the entry shell
+ * owns that route. Workspace, Orbit and Routines are dialog-owned panels, so
+ * palette results can select a real tab with a matching labelled panel.
  */
 export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> = {
   execution: {
@@ -54,6 +49,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     icon: 'sliders',
     titleKey: 'settings.envConfigure',
     hintKey: 'settings.subtitle',
+  },
+  workspace: {
+    section: 'workspace',
+    icon: 'users',
+    titleKey: 'settings.workspace',
+    hintKey: 'settings.workspaceHint',
   },
   instructions: {
     section: 'instructions',
@@ -84,6 +85,18 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     icon: 'sliders',
     titleKey: 'connectors.title',
     hintKey: 'settings.connectorsNavHint',
+  },
+  orbit: {
+    section: 'orbit',
+    icon: 'orbit',
+    titleKey: 'settings.orbit.title',
+    hintKey: 'settings.orbit.lede',
+  },
+  routines: {
+    section: 'routines',
+    icon: 'refresh',
+    titleKey: 'routines.title',
+    hintKey: 'routines.subtitle',
   },
   integrations: {
     section: 'integrations',
@@ -151,9 +164,6 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.about',
     hintKey: 'settings.aboutHint',
   },
-  workspace: null,
-  orbit: null,
-  routines: null,
   library: null,
 };
 
@@ -164,11 +174,14 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
  */
 export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
   'execution',
+  'workspace',
   'instructions',
   'memory',
   'media',
   'mcpClient',
   'composio',
+  'orbit',
+  'routines',
   'integrations',
   'language',
   'appearance',

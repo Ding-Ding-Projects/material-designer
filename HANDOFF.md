@@ -1,6 +1,31 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Appearance compatibility, recovery, and ownership follow-up — 2026-08-21.**
+> The source lane now marks the acknowledged native theme capability explicitly
+> and treats a legacy fire-and-forget host as incompatible for startup readiness
+> rather than claiming native success. Renderer crash recovery clears its
+> revealed/revealing/readiness latches, re-arms the splash, and requires the
+> native acknowledgement witness again on every reload before the application
+> surface is shown.
+>
+> Settings now uses a real horizontal flex flow rather than the obsolete global
+> two-column grid. Workspace, Orbit and Routines are dialog-owned tabs with
+> truthful labelled panels; Workspace is removed from the tab strip and command
+> palette when its permission snapshot is not authorized, while Library remains
+> owned by the entry route. Local tab switches preserve roving focus; external
+> deep links focus the labelled page landmark. Stable tab hint/no-match
+> descriptions, 48px settings wrappers, live 2D colour values, and narrow or
+> bilingual wrapping for unsupported typography and translation rows are source
+> covered.
+>
+> This follow-up remains static-only in this linked checkout. `git diff --check`
+> and both pure-shell port-verifier forms are the local evidence; hosted source
+> checks, the build, installed interaction, display-scale matrix and visual
+> captures remain pending for the parent integration lane. No push, merge, public
+> publication or cleanup was performed here.
+
+> [!IMPORTANT]
 > **Appearance native-acknowledgement and hit-area checkpoint — 2026-08-21.**
 > Commit
 > [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
