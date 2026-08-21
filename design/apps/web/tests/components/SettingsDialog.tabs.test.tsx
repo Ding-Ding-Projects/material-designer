@@ -213,6 +213,74 @@ describe('Settings: the tab strip', () => {
     expect(tabPanel().getAttribute('aria-labelledby')).toBe('settings-tab-privacy');
   });
 
+  it('normalizes the typed Appearance URL across close, reopen, refresh, and integration tabs', () => {
+    window.history.replaceState(null, '', '/settings/appearance');
+    const onSectionChange = vi.fn();
+    const first = render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="appearance"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(tab('integrations'));
+
+    expect(window.location.pathname).toBe('/settings');
+    expect(onSectionChange).toHaveBeenCalledWith('integrations');
+    expect(tab('integrations').getAttribute('aria-selected')).toBe('true');
+
+    // Closing and reopening uses the section App retained from the callback,
+    // rather than falling back to Appearance or the generic first tab.
+    first.unmount();
+    const reopened = render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="integrations"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+    expect(tab('integrations').getAttribute('aria-selected')).toBe('true');
+
+    // A refresh/remount from the explicit route still selects Appearance,
+    // while the generic route remains the normalized URL for other tabs.
+    reopened.unmount();
+    window.history.replaceState(null, '', '/settings/appearance');
+    render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="appearance"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+    expect(tab('appearance').getAttribute('aria-selected')).toBe('true');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('moves between tabs with the arrow keys, and wraps at the ends', () => {
     renderSettings();
     const tablist = screen.getByRole('tablist', { name: en['settings.tabsAria'] });
@@ -300,6 +368,9 @@ describe('Settings: the tab strip', () => {
     expect(APPEARANCE_CONTROLS_CSS).toContain('min-height: 48px;');
     expect(APPEARANCE_PICKER_CSS).toContain('min-width: 48px;');
     expect(APPEARANCE_PICKER_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.settings-page-back');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-width: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-height: 48px;');
   });
 
   it('keeps a portalled overflow surface above the opaque settings page', () => {

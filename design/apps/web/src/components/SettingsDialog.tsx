@@ -469,6 +469,8 @@ interface Props {
   appVersionInfo: AppVersionInfo | null;
   welcome?: boolean;
   initialSection?: SettingsSection;
+  /** Keep App's reopen state aligned when a page tab normalizes its URL. */
+  onSectionChange?: (section: SettingsSection) => void;
   initialHighlight?: SettingsHighlight;
   /** Workspace id persisted on the currently-open project, when any. */
   persistedProjectWorkspaceId?: string | null;
@@ -1538,6 +1540,7 @@ export function SettingsDialog({
   appVersionInfo,
   welcome,
   initialSection = 'execution',
+  onSectionChange,
   initialHighlight = null,
   persistedProjectWorkspaceId = null,
   onPersist,
@@ -1683,6 +1686,7 @@ export function SettingsDialog({
   // The page's own root, so the surfaces it covers can be taken out of the
   // keyboard path while it is open — see the `inert` effect below.
   const settingsPageRef = useRef<HTMLDivElement | null>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   // The settings surface's own search field.
   //
   // The controller is created here and handed to `RegexSearchField`, exactly as
@@ -1724,7 +1728,6 @@ export function SettingsDialog({
     () => settingsHitsElsewhere(settingsSearchHits, activeSection),
     [settingsSearchHits, activeSection],
   );
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   // The only typed settings sub-route is `/settings/appearance`. Keep it
   // truthful while the user moves through the same page's tab strip: entering
   // Appearance advertises the deep link, while every other visible section
@@ -1733,6 +1736,7 @@ export function SettingsDialog({
   // untouched.
   const selectSettingsSection = useCallback((section: SettingsSection) => {
     setActiveSection(section);
+    onSectionChange?.(section);
     if (
       !pageMode
       || route.kind !== 'home'
@@ -1743,7 +1747,7 @@ export function SettingsDialog({
         ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
         : { kind: 'home', view: 'settings' },
     );
-  }, [pageMode, route.kind, route.view]);
+  }, [onSectionChange, pageMode, route.kind, route.view]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
     selectSettingsSection(hit.section);
     // The dialog already listens for this and polls for the anchor, so the

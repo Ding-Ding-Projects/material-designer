@@ -5051,6 +5051,7 @@ function AppInner() {
           ? route.settingsSection
           : settingsInitialSection
       }
+      onSectionChange={setSettingsInitialSection}
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'
@@ -5601,6 +5602,7 @@ function AppInner() {
             welcome={settingsWelcome}
             initialSection={settingsInitialSection}
             initialHighlight={settingsHighlight}
+            onSectionChange={setSettingsInitialSection}
             composioConfigLoading={composioConfigLoading}
             onPersist={handleConfigPersist}
             onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}

@@ -175,6 +175,18 @@ describe('applyAppearanceToDocument', () => {
       host: 'desktop',
     });
   });
+
+  it('shares the startup acknowledgement with the ordinary theme update', async () => {
+    const setTheme = vi.fn(async () => ({ ok: true as const }));
+    vi.stubGlobal('__od__', hostWithThemeSetter(setTheme));
+
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#10B981' });
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toMatchObject({
+      ok: true,
+      host: 'desktop',
+    });
+    expect(setTheme).toHaveBeenCalledTimes(1);
+  });
 });
 
 // The UI scale used to be CSS `zoom` on `<html>` unconditionally, which

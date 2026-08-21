@@ -92,6 +92,10 @@ export type AppearanceHostSyncResult =
   | { ok: false; host: 'desktop'; reason: string };
 
 const APPEARANCE_HOST_ACK_TIMEOUT_MS = 1500;
+const pendingAppearanceThemeSyncs = new Map<
+  AppTheme,
+  Promise<AppearanceHostSyncResult>
+>();
 
 function isSuccessfulHostAction(value: unknown): value is { ok: true } {
   return typeof value === 'object' && value != null && (value as { ok?: unknown }).ok === true;
@@ -106,40 +110,50 @@ function isSuccessfulHostAction(value: unknown): value is { ok: true } {
  * startup uses the result as its second half of the mounted witness and gets a
  * bounded, truthful failure instead of waiting forever on an IPC promise.
  */
-export async function syncAppearanceThemeWithHost(
-  theme: AppTheme,
-): Promise<AppearanceHostSyncResult> {
-  const appearance = getOpenDesignHost()?.appearance;
-  if (appearance == null) return { ok: true, host: 'web' };
+export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<AppearanceHostSyncResult> {
+  const pending = pendingAppearanceThemeSyncs.get(theme);
+  if (pending) return pending;
 
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-  try {
-    const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
-      Promise.resolve().then(() => appearance.setTheme(theme)),
-      new Promise<{ ok: false; reason: string }>((resolve) => {
-        timeout = setTimeout(
-          () => resolve({ ok: false, reason: 'native appearance acknowledgement timed out' }),
-          APPEARANCE_HOST_ACK_TIMEOUT_MS,
-        );
-      }),
-    ]);
-    if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
-    return {
-      ok: false,
-      host: 'desktop',
-      reason: typeof result.reason === 'string' && result.reason.trim()
-        ? result.reason
-        : 'native appearance host rejected the theme',
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      host: 'desktop',
-      reason: error instanceof Error ? error.message : String(error),
-    };
-  } finally {
-    if (timeout != null) clearTimeout(timeout);
-  }
+  const request = (async (): Promise<AppearanceHostSyncResult> => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const appearance = getOpenDesignHost()?.appearance;
+      if (appearance == null) return { ok: true, host: 'web' };
+
+      const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
+        Promise.resolve().then(() => appearance.setTheme(theme)),
+        new Promise<{ ok: false; reason: string }>((resolve) => {
+          timeout = setTimeout(
+            () => resolve({ ok: false, reason: 'native appearance acknowledgement timed out' }),
+            APPEARANCE_HOST_ACK_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: typeof result.reason === 'string' && result.reason.trim()
+          ? result.reason
+          : 'native appearance host rejected the theme',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      if (timeout != null) clearTimeout(timeout);
+    }
+  })();
+  pendingAppearanceThemeSyncs.set(theme, request);
+  void request.finally(() => {
+    if (pendingAppearanceThemeSyncs.get(theme) === request) {
+      pendingAppearanceThemeSyncs.delete(theme);
+    }
+  }).catch(() => undefined);
+  return request;
 }
 
 export function applyAppearanceToDocument({
