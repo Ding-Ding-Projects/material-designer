@@ -4746,6 +4746,13 @@ function AppInner() {
     section: SettingsSection = readLastSettingsSection(),
     opts?: { highlight?: SettingsHighlight },
   ) => {
+    if (section === 'handoff') {
+      setSettingsOpen(false);
+      settingsDraftConfigRef.current = null;
+      setSettingsHighlight(null);
+      navigate({ kind: 'home', view: 'handoff' });
+      return;
+    }
     captureSettingsOpener();
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =

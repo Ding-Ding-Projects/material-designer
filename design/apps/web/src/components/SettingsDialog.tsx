@@ -285,6 +285,8 @@ export type SettingsSection =
   // section. Reconcile follow-up: route library through a dedicated
   // navigate() call so openSettings only owns dialog-bound sections.
   | 'library'
+  /** Virtual source-handoff destination. It opens /handoff and is never a panel. */
+  | 'handoff'
   | 'about';
 
 interface ByokProviderPreset {
@@ -1735,6 +1737,15 @@ export function SettingsDialog({
   // over a project never owns the browser URL, so its existing route remains
   // untouched.
   const selectSettingsSection = useCallback((section: SettingsSection) => {
+    if (section === 'handoff') {
+      // Handoff is a real destination, not a settings panel. Close a modal
+      // caller first, then navigate to the dedicated shell view. The parent
+      // close handler restores the opener focus; the page's Back button
+      // returns through the ordinary /settings focus entry point.
+      onClose();
+      navigateRoute({ kind: 'home', view: 'handoff' });
+      return;
+    }
     setActiveSection(section);
     onSectionChange?.(section);
     if (
@@ -1747,7 +1758,7 @@ export function SettingsDialog({
         ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
         : { kind: 'home', view: 'settings' },
     );
-  }, [onSectionChange, pageMode, route.kind, route.view]);
+  }, [onClose, onSectionChange, pageMode, route.kind, route.view]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
     selectSettingsSection(hit.section);
     // The dialog already listens for this and polls for the anchor, so the
@@ -4072,6 +4083,7 @@ export function SettingsDialog({
     // 'library' is opened via EntryShell route — SettingsDialog doesn't
     // render it but SettingsSection must accept the token (see type def).
     library: { title: '', subtitle: '' },
+    handoff: { title: t('handoff.title'), subtitle: t('handoff.subtitle') },
     about: { title: t('settings.about'), subtitle: t('settings.aboutHint') },
   };
   const activeHeader = sectionHeader[activeSection];

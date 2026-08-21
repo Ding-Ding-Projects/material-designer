@@ -155,6 +155,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
   orbit: null,
   routines: null,
   library: null,
+  handoff: {
+    section: 'handoff',
+    icon: 'layers-filled',
+    titleKey: 'handoff.title',
+    hintKey: 'handoff.tabHint',
+  },
 };
 
 /**
@@ -179,6 +185,7 @@ export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
   'designSystems',
   'projectLocations',
   'privacy',
+  'handoff',
   'about',
 ];
 
@@ -207,7 +214,7 @@ export function isRestorableSettingsSection(value: unknown): value is SettingsSe
   // Every visible tab is owned by SettingsDialog, including the three
   // integration sections. Explicit callers select a section directly; a bare
   // Settings open restores whichever visible tab the user last chose.
-  return isTabbedSettingsSection(value);
+  return isTabbedSettingsSection(value) && value !== 'handoff';
 }
 
 export const SETTINGS_LAST_SECTION_STORAGE_KEY = 'od.settings.lastSection';

@@ -102,6 +102,7 @@ export const SETTINGS_SECTION_TOKENS: Record<SettingsSection, true> = {
   memory: true,
   privacy: true,
   library: true,
+  handoff: true,
   about: true,
 };
 
@@ -447,6 +448,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'settings.about',
     hintKey: 'settings.aboutHint',
     keywords: ['about', 'version', 'update', 'changelog'],
+  },
+  {
+    id: sectionAnchorFor('handoff'),
+    section: 'handoff',
+    titleKey: 'handoff.title',
+    hintKey: 'handoff.tabHint',
+    keywords: ['handoff', 'tokens', 'components', 'design reference', 'inventory'],
   },
 ];
 

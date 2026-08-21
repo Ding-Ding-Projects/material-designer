@@ -334,6 +334,14 @@ export function CommandPalette({
 
   const openSettingsEntry = useCallback(
     (entry: SettingsIndexEntry) => {
+      if (entry.section === 'handoff') {
+        // This row is a destination disguised as a SettingsSection token so
+        // the settings search and palette share one inventory. It never asks
+        // SettingsDialog to render a fake panel or write a last-section value.
+        navigate({ kind: 'home', view: 'handoff' });
+        close({ restoreFocus: false });
+        return;
+      }
       // Ask for the reveal BEFORE the section opens: the dialog consumes the
       // request as it mounts, and the control it points at may not exist for
       // another frame or two.

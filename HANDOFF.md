@@ -1481,3 +1481,23 @@ the reader has no way to know.
   delete under the explicitly authorized cleanup pass.
 - `git stash list` is empty. Open issue scans for `material-designer` and
   `agent-global-memory` returned zero issues at this final checkpoint.
+
+> [!IMPORTANT]
+> **Design handoff registry source checkpoint — 2026-08-21.** The linked
+> `codex/handoff-tokens` lane adds a genuine `/handoff` home view rather than
+> reusing the existing website export, conversation handoff or installer path.
+> `registry.ts` contains exactly 18 Material Design 3 token-to-application
+> variable mappings and exactly 12 component owners, each with source paths,
+> status and evidence. The view has independent token/component regex fields,
+> read-only click/Shift/keyboard selection, select-this-list/all-matches/inverse
+> actions, and faithful JSON/Markdown/CSV export with private-data omission.
+> Settings, its search results and the command palette route the virtual section
+> to `/handoff`; it is excluded from last-settings persistence. Back to Settings
+> returns to the ordinary settings-page focus entry point.
+>
+> Static source evidence is the committed
+> `scripts/verify-handoff-contract.mjs` guard and its negative mode. No Node,
+> pnpm, Electron, hosted build, installed interaction or visual parity capture
+> was run in this lane. The parent integration lane must run the pure-shell port
+> verifier and then arrange hosted build/capture proof before claiming runtime
+> parity.
