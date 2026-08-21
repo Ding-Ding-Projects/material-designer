@@ -29,6 +29,11 @@
 > captures, and the provider/API-backed public-safe fixture remain pending.
 > Squirrel/release/photo work remains deliberately parked outside this app-only
 > lane.
+
+> Follow-up commit [`2c08fb3a3`](https://github.com/Ding-Ding-Projects/material-designer/commit/2c08fb3a3737f2fcd9561bf4c4ea108c4602a605)
+> tightens the viewport edge calculation and prevents Arrow navigation from
+> bubbling twice out of the filter's own search field; Home and End remain
+> available to the search caret. This follow-up is also source-only.
 > **Library route follow-up — source-only, 2026-08-21.** Commit
 > [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
 > closes the remaining source boundaries from the prior Library repair pass.

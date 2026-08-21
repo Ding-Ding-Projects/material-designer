@@ -54,6 +54,11 @@ version section when a release carries them.
   app、runtime captures 同 provider/API public-safe fixture 仍然 pending，無加
   photo 或 release asset。
 
+  Follow-up commit [`2c08fb3a3`](https://github.com/Ding-Ding-Projects/material-designer/commit/2c08fb3a3737f2fcd9561bf4c4ea108c4602a605)
+  tightens the viewport edge calculation and keeps Arrow navigation inside the
+  filter's own search field, while Home and End remain caret keys. This remains
+  source-only evidence.
+
 - **Library pagination and uploads now tell the truth at the wire boundary.**
   Commit
   [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
