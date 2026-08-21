@@ -1,6 +1,34 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Library boundary repair — source-only, 2026-08-21.** Commit
+> [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
+> repairs the final accepted Library boundaries without touching the shell-owned
+> rail path. Refreshes keep previously loaded picker rows visible and show an
+> inline retry error; continuation cursors must advance by the returned row
+> count; daemon and store pagination rejects malformed values; destructive gates
+> freeze the visible id list they previewed; and SSE merges carry abort,
+> generation, unmount, and current-view checks. Upload callbacks are suppressed
+> after unmount or batch replacement, progress is throttled from real byte
+> events, and stable upload codes map to localized copy while raw detail remains
+> diagnostic-only.
+>
+> The shared Dialog now admits a named portalled focus scope, so the Library
+> picker's regex builder remains inside the modal Tab trap. Filter popovers are
+> measured and viewport-bounded, filter triggers announce their current value,
+> Home/End stay available to the search caret, and focus-leave restores the
+> trigger. Preview disclosure has a stable labelled region; video thumbnails are
+> hidden from assistive technology while full previews are named; and Library/
+> regex controls use 48×48 targets.
+>
+> Evidence for this commit is source-only: `git diff --check`,
+> `scripts/verify-port.sh`, and `scripts/verify-port.sh --json` through the
+> repository's Git Bash executable passed with zero port gaps. No Node,
+> package-manager command, build, type check, test, UI action, runtime, or
+> capture was run locally. Hosted checks, built-app interaction, runtime
+> captures, and the provider/API-backed public-safe fixture remain pending.
+> Squirrel/release/photo work remains deliberately parked outside this app-only
+> lane.
 > **Library route follow-up — source-only, 2026-08-21.** Commit
 > [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
 > closes the remaining source boundaries from the prior Library repair pass.
