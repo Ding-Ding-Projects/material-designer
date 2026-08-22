@@ -106,6 +106,7 @@ import {
 } from '../analytics/onboarding-session';
 import { navigate } from '../router';
 import {
+  isStudioFixtureCaptureStorageLocked,
   isStudioFixtureCaptureActiveForProjectConversation,
   isStudioFixtureProjectId,
 } from '../capture/studio-fixture';
@@ -1053,6 +1054,7 @@ function designSystemNeedsWorkPrompt(
 
 function readSavedChatPanelWidth(): number {
   if (typeof window === 'undefined') return DEFAULT_CHAT_PANEL_WIDTH;
+  if (isStudioFixtureCaptureStorageLocked()) return DEFAULT_CHAT_PANEL_WIDTH;
   try {
     const raw = window.localStorage.getItem(CHAT_PANEL_WIDTH_STORAGE_KEY);
     const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
@@ -1066,6 +1068,7 @@ function readSavedChatPanelWidth(): number {
 
 function saveChatPanelWidth(width: number): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.localStorage.setItem(
       CHAT_PANEL_WIDTH_STORAGE_KEY,
@@ -1130,6 +1133,7 @@ function designSystemAuditAutoRepairKey(projectId: string): string {
 
 function readAutoSendAttachments(projectId: string): ChatAttachment[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.sessionStorage.getItem(autoSendAttachmentsKey(projectId));
     if (!raw) return [];
@@ -1143,6 +1147,7 @@ function readAutoSendAttachments(projectId: string): ChatAttachment[] {
 
 function readAutoSendPrompt(projectId: string): string | null {
   if (typeof window === 'undefined') return null;
+  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     return window.sessionStorage.getItem(autoSendPromptKey(projectId));
   } catch {
@@ -1152,6 +1157,7 @@ function readAutoSendPrompt(projectId: string): string | null {
 
 function readAutoSendContext(projectId: string): RunContextSelection | null {
   if (typeof window === 'undefined') return null;
+  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     const raw = window.sessionStorage.getItem(autoSendContextKey(projectId));
     if (!raw) return null;
@@ -1166,6 +1172,7 @@ function readAutoSendAmrGateWitness(
   projectId: string,
 ): AmrBalanceGateScope | undefined {
   if (typeof window === 'undefined') return undefined;
+  if (isStudioFixtureCaptureStorageLocked()) return undefined;
   try {
     const raw = window.sessionStorage.getItem(
       autoSendAmrGateWitnessKey(projectId),
@@ -1180,6 +1187,7 @@ function readAutoSendAmrGateWitness(
 
 function clearAutoSendSession(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.removeItem(autoSendFirstMessageKey(projectId));
     window.sessionStorage.removeItem(autoSendPromptKey(projectId));
@@ -1194,6 +1202,7 @@ function clearAutoSendSession(projectId: string): void {
 
 function markDesignSystemAuditAutoRepairEligible(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.setItem(
       designSystemAuditAutoRepairKey(projectId),
@@ -1206,6 +1215,7 @@ function markDesignSystemAuditAutoRepairEligible(projectId: string): void {
 
 function consumeDesignSystemAuditAutoRepair(projectId: string): boolean {
   if (typeof window === 'undefined') return false;
+  if (isStudioFixtureCaptureStorageLocked()) return false;
   try {
     const key = designSystemAuditAutoRepairKey(projectId);
     const raw = window.sessionStorage.getItem(key);
@@ -1228,6 +1238,7 @@ function consumeDesignSystemAuditAutoRepair(projectId: string): boolean {
 
 function clearDesignSystemAuditAutoRepair(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.removeItem(designSystemAuditAutoRepairKey(projectId));
   } catch {
@@ -11967,6 +11978,7 @@ function queuedChatSendsStorageKey(projectId: string): string {
 
 function loadQueuedChatSends(projectId: string): QueuedChatSend[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.localStorage.getItem(queuedChatSendsStorageKey(projectId));
     const parsed = raw ? JSON.parse(raw) : [];
@@ -11987,6 +11999,7 @@ function loadQueuedChatSends(projectId: string): QueuedChatSend[] {
 
 function saveQueuedChatSends(projectId: string, items: QueuedChatSend[]): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     const key = queuedChatSendsStorageKey(projectId);
     if (items.length === 0) {

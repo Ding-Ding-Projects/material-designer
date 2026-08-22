@@ -28,6 +28,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **Studio capture lifecycle leases now fence every delayed state boundary.**
+  Reserved fixture-shaped `od://` near-misses refuse before ordinary routing or
+  live fetch, delayed fixture bodies recheck the run/generation/route lease,
+  and token-owned fetch wrappers restore the exact ordinary predecessor in any
+  teardown order. Capture exit rehydrates ordinary analytics consent, client,
+  headers, identity, and exception context even when locale and version are
+  unchanged. Refused capture reads use safe defaults; tab, project-display,
+  coalesced, and runtime-version caches are lifecycle-partitioned; and live
+  artifact preview keys include complete identity. Hosted typecheck, built
+  rendering, installed launch, and visual parity evidence remain pending.
+  Source commit: [`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8).
+
+  Studio capture lifecycle lease 而家會睇實每個 delayed state boundary：fixture
+  形狀嘅 `od://` near-miss 會喺 ordinary route/fetch 前拒絕，遲到嘅 fixture
+  request 會再驗 run/generation/route，token-owned fetch wrapper 無論邊個先
+  teardown 都還原返原本 predecessor。Capture 離場就算 locale/version 無變，
+  都會 rehydrate ordinary analytics consent、client、headers、identity 同
+  exception context；refused capture 只讀安全預設，tab/project/version cache
+  分 lifecycle，artifact preview key 亦齊 identity。Hosted typecheck、built
+  rendering、installed launch 同 visual parity evidence 仲未驗證。
+  Source commit：[`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8)。
+
 - **Studio capture lifecycle now fails closed and restores ordinary state.**
   Canonical-path near misses publish an explicit refused/unready state and never
   forward scripted fetches to the ordinary network path. A validated per-run

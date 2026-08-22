@@ -221,6 +221,8 @@ import {
   studioFixtureProjectPath,
   studioFixtureActiveRouteFromCurrentLocation,
   studioFixtureCaptureRefusedForCurrentLocation,
+  isStudioFixtureCaptureLifecycleCurrent,
+  studioFixtureCaptureLifecycleSnapshot,
   STUDIO_FIXTURE_LIFECYCLE_EVENT,
   isStudioFixtureCaptureStorageLocked,
 } from './capture/studio-fixture';
@@ -249,13 +251,16 @@ import {
   type WorkspaceProjectListView,
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
+import { evictCoalescedGetPrefix } from './lib/coalesced-get';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import {
   markProjectDisplaySnapshotsDirty,
   patchProjectDisplaySnapshots,
   projectDisplaySnapshotKey,
   readProjectDisplaySnapshot,
+  resetProjectDisplaySnapshots,
   removeProjectFromDisplaySnapshots,
+  setProjectDisplaySnapshotsSuspended,
   writeProjectDisplaySnapshot,
 } from './state/project-display-cache';
 import { getOpenDesignHost, type OpenDesignHostProjectImportSuccess } from '@open-design/host';
@@ -895,11 +900,17 @@ export function App() {
       : null;
   useLayoutEffect(() => {
     if (!studioFixtureCaptureKey) return undefined;
+    setProjectDisplaySnapshotsSuspended(true);
     setAnalyticsCaptureDisabled(true);
     const disposeFixture = installStudioFixtureFetch(studioFixtureRoute);
     return () => {
       disposeFixture();
       setAnalyticsCaptureDisabled(false);
+      evictCoalescedGetPrefix('studio-fixture:');
+      resetProjectDisplaySnapshots();
+      setProjectDisplaySnapshotsSuspended(false);
+      resetAppearancePreferencesCache();
+      applyAppearancePreferencesToDocument(getAppearancePreferences());
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent(STUDIO_FIXTURE_LIFECYCLE_EVENT, {
           detail: { active: false },
@@ -953,7 +964,6 @@ export function App() {
         delete root.dataset.odCaptureUiScale;
         delete root.dataset.odCaptureFontStack;
       }
-      if (!studioFixtureRoute) return;
       resetAppearancePreferencesCache();
       applyAppearancePreferencesToDocument(getAppearancePreferences());
     };
@@ -1003,6 +1013,7 @@ function AppInner() {
   const route = useRoute();
   const currentStudioFixtureRoute = studioFixtureActiveRouteFromCurrentLocation();
   const studioFixtureCaptureActive = currentStudioFixtureRoute !== null;
+  const studioFixtureCaptureStorageLocked = isStudioFixtureCaptureStorageLocked();
   const studioFixtureCaptureRouteKey = currentStudioFixtureRoute?.cacheKey ?? null;
   const workspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
   const workspaceContextStateRef = useRef(workspaceContextState);
@@ -1560,7 +1571,9 @@ function AppInner() {
   if (projectDisplayKeyRef.current !== currentProjectDisplayKey) {
     const leftAResolvedWorkspace =
       projectListScopeRef.current !== UNRESOLVED_PROJECT_LIST_SCOPE;
-    const snapshot = readProjectDisplaySnapshot(currentProjectDisplayKey);
+    const snapshot = studioFixtureCaptureStorageLocked
+      ? null
+      : readProjectDisplaySnapshot(currentProjectDisplayKey);
     // A create/import is immediately projected into `projects`, but opening
     // that project changes the list projection from Home's `recent` to `all`.
     // An older exact-scope `all` snapshot must not erase the pending local row:
@@ -1580,7 +1593,10 @@ function AppInner() {
           ));
     projectListScopeRef.current = currentProjectListScope;
     projectDisplayKeyRef.current = currentProjectDisplayKey;
-    if (snapshot) {
+    if (studioFixtureCaptureStorageLocked) {
+      setProjects([]);
+      setProjectsLoading(true);
+    } else if (snapshot) {
       const snapshotIds = new Set(snapshot.projects.map((project) => project.id));
       const preserved = pendingProjects.filter((project) => !snapshotIds.has(project.id));
       setProjects(preserved.length > 0 ? [...preserved, ...snapshot.projects] : snapshot.projects);
@@ -2231,10 +2247,13 @@ function AppInner() {
   // must react to those changes belongs in its own effect.
   useEffect(() => {
     let cancelled = false;
+    const bootLifecycle = studioFixtureCaptureLifecycleSnapshot();
+    const bootStillCurrent = () => !cancelled
+      && isStudioFixtureCaptureLifecycleCurrent(bootLifecycle);
     let effectAgentStreamAbort: AbortController | null = null;
     (async () => {
       const alive = await daemonIsLive();
-      if (cancelled) return;
+      if (!bootStillCurrent()) return;
       setDaemonLive(alive);
       if (!alive) {
         // No daemon — clear every loading flag so empty states render
@@ -2258,7 +2277,7 @@ function AppInner() {
       void fetchAgentsStream({
         signal: effectAgentStreamAbort?.signal,
         onAgent: (agent) => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgents((current) =>
             mergeAmrModelsIntoAgents(
               upsertAgent(current, agent),
@@ -2268,7 +2287,7 @@ function AppInner() {
         },
       })
         .then((list) => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgents(
             mergeAmrModelsIntoAgents(
               orderAgentsByRegistry(list),
@@ -2278,7 +2297,7 @@ function AppInner() {
         })
         .catch((err) => {
           if (
-            cancelled ||
+             !bootStillCurrent() ||
             isAbortError(err) ||
             !isCurrentAgentStreamRequest(agentRequestId)
           ) {
@@ -2287,7 +2306,7 @@ function AppInner() {
           setAgents([]);
         })
         .finally(() => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgentsLoading(false);
         });
 
@@ -2304,7 +2323,7 @@ function AppInner() {
       // spend a second `/api/skills` request per launch, and the first one
       // would be the headerless (fail-closed) answer.
       void fetchDesignTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setDesignTemplates(list);
         markSkillRegistryReady('templates');
       });
@@ -2328,8 +2347,8 @@ function AppInner() {
           designSystemsRequestGeneration,
         );
         void fetchDesignSystems(designSystemsContext).then((list) => {
-          if (
-            cancelled ||
+           if (
+             !bootStillCurrent() ||
             workspaceContextStateRef.current.identityChangePending ||
             designSystemsRequestGenerationRef.current.get(designSystemsCatalogIdentity)
               !== designSystemsRequestGeneration ||
@@ -2349,24 +2368,24 @@ function AppInner() {
       void listCurrentWorkspaceProjects({
         workspaceView: workspaceProjectViewRef.current,
       }).then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         reconcileFetchedProjects(list, request);
         setProjectsLoading(false);
       });
 
       void listTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setTemplates(list);
       });
 
       void fetchPromptTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setPromptTemplates(list);
         setPromptTemplatesLoading(false);
       });
 
       void fetchAppVersionInfo().then((info) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setAppVersionInfo(info);
       });
 
@@ -2383,7 +2402,7 @@ function AppInner() {
         daemonComposioConfig,
         daemonMediaProvidersResult,
       ]) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         const daemonMediaProvidersLoaded =
           daemonMediaProvidersResult.status === 'ok'
             ? daemonMediaProvidersResult.providers
@@ -2423,7 +2442,7 @@ function AppInner() {
         // migration settles so an older key cannot race a user replacement.
         if (hasLocalComposioKey) {
           const migrated = await syncComposioConfigToDaemon(next.composio);
-          if (cancelled) return;
+         if (!bootStillCurrent()) return;
           // Only remove the legacy plaintext after the daemon confirms it was
           // stored. A failed migration deliberately leaves the existing local
           // draft intact so the user can retry Save instead of losing the only
@@ -2432,6 +2451,7 @@ function AppInner() {
             next.composio = normalizeSavedComposioConfig(next.composio);
           }
         }
+        if (!bootStillCurrent()) return;
         saveConfig(next);
         if (
           daemonMediaProvidersResult.status === 'ok'
@@ -2445,8 +2465,10 @@ function AppInner() {
         // Migrate localStorage prefs to daemon on first boot with the new
         // endpoint. If daemon already had values the merge above used them;
         // writing back is idempotent and keeps both sides in sync.
+        if (!bootStillCurrent()) return;
         void syncConfigToDaemon(next);
         latestPersistedConfigRef.current = next;
+        if (!bootStillCurrent()) return;
         setConfig(next);
 
         // Route first-run users through the global onboarding panel.
@@ -3420,6 +3442,7 @@ function AppInner() {
         // pre-filling the composer. Scoped to sessionStorage so a page
         // reload after the run has started does not refire.
         if (
+          !isStudioFixtureCaptureStorageLocked() &&
           !workingDirHandoffFailed &&
           input.autoSendFirstMessage &&
           (derivedPendingPrompt !== undefined || firstMessageAttachments.length > 0)
@@ -3598,6 +3621,7 @@ function AppInner() {
         sourceWorkspaceContext,
       );
       try {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         window.sessionStorage.setItem(`od:auto-send-first:${result.project.id}`, '1');
         const pendingPrompt = input.pendingPrompt ?? result.project.pendingPrompt;
         if (pendingPrompt !== undefined) {
@@ -3667,6 +3691,7 @@ function AppInner() {
       );
       if (!outcome.ok) return outcome;
       try {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         window.sessionStorage.setItem(
           `od:auto-send-first:${outcome.project.id}`,
           '1',

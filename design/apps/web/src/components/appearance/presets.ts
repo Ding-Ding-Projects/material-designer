@@ -19,6 +19,7 @@ import {
   type AppearancePreferences,
 } from '../../state/appearance';
 import type { AppTheme } from '../../types';
+import { isStudioFixtureCaptureStorageLocked } from '../../capture/studio-fixture';
 
 /**
  * A complete, shareable appearance.
@@ -171,6 +172,7 @@ export function normalizePreset(value: unknown): AppearancePreset | null {
 
 export function readStoredPresets(): AppearancePreset[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.localStorage.getItem(PRESETS_STORAGE_KEY);
     if (!raw) return [];
@@ -189,6 +191,7 @@ export function readStoredPresets(): AppearancePreset[] {
 
 export function writeStoredPresets(presets: AppearancePreset[]): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
   } catch {

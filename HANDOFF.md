@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+> **Studio lifecycle repair checkpoint — source-only.** This follow-up adds
+> generation-scoped capture leases, stateless reserved-route refusal
+> recognition, delayed fixture request rechecks, token-owned fetch wrapper
+> teardown, ordinary analytics rehydration after capture exit, refused-capture
+> safe defaults for tabs and project caches, lifecycle-partitioned
+> coalesced/project/version state, and complete live-artifact identity memo
+> dependencies. The source-level inventory covers SL1–SL7 and SP1/SP2/SP4–SP7;
+> SP3/SP8 remain intentionally out of scope after refutation. Hosted typecheck,
+> built rendering, installed launch, and parity capture evidence remain
+> unverified.
+
 > [!IMPORTANT]
 > **Studio fixture source checkpoint — 2026-08-21.** The desktop foundation owns
 > the raw `material-designer://studio` launch address and translates it to the canonical

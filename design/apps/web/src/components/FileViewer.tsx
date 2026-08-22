@@ -2281,7 +2281,18 @@ export function LiveArtifactViewer({
       liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       `v=${reloadKey}`,
     );
-  }, [projectId, liveArtifact.artifactId, reloadKey, workspaceContext]);
+  }, [
+    projectId,
+    liveArtifact.artifactId,
+    liveArtifact.sessionId,
+    liveArtifact.createdByRunId,
+    liveArtifact.createdAt,
+    liveArtifact.updatedAt,
+    liveArtifact.status,
+    liveArtifact.preview?.entry,
+    reloadKey,
+    workspaceContext,
+  ]);
   const directPreviewUrl = studioFixtureArtifactPreviewUrl(
     projectId,
     liveArtifact.artifactId,
@@ -2307,7 +2318,15 @@ export function LiveArtifactViewer({
       artifactId: liveArtifact.artifactId,
       projectId,
     });
-  }, [mode, previewUrl, liveArtifact.artifactId, projectId]);
+  }, [
+    mode,
+    previewUrl,
+    liveArtifact.artifactId,
+    liveArtifact.sessionId,
+    liveArtifact.createdByRunId,
+    liveArtifact.updatedAt,
+    projectId,
+  ]);
 
   async function handleRefresh() {
     if (refreshing) return;
@@ -2598,7 +2617,7 @@ export function LiveArtifactViewer({
             <div style={previewScaleShellStyle(previewViewport, previewScale)}>
               <PreviewDrawOverlay>
                 <iframe
-                  key={`live-artifact-preview-${liveArtifact.artifactId}-${reloadKey}`}
+                      key={`live-artifact-preview-${projectId}-${liveArtifact.artifactId}-${liveArtifact.sessionId}-${liveArtifact.createdByRunId}-${liveArtifact.updatedAt}-${reloadKey}`}
                   ref={iframeRef}
                   data-testid="live-artifact-preview-frame"
                   title={liveArtifact.title}

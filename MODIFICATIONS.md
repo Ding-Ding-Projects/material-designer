@@ -99,6 +99,35 @@ typecheck, built rendering, and installed capture evidence remain pending.
 - `apps/web/src/router.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
+### 2026-08-21 — Fence Studio lifecycle leases and cache partitions
+
+**Reason:** Refused and accepted capture lifecycles shared too much mutable module
+state with ordinary rendering. This repair adds a generation-scoped lifecycle lease,
+stateless refusal recognition for reserved `od://` near-misses, post-await request
+lease checks, a token-owned fetch wrapper multiplexer, ordinary analytics rehydration,
+run/refusal-scoped tab and project caches, lifecycle-scoped app-version loading, and
+complete artifact preview identity dependencies. Capture teardown now rehydrates the
+ordinary appearance and project display caches. Source-level checks and deliberate
+negative-boundary cases are recorded, while hosted typecheck, built rendering, and
+installed capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/analytics/identity.ts`
+- `apps/web/src/analytics/onboarding-session.ts`
+- `apps/web/src/analytics/provider.tsx`
+- `apps/web/src/capture/fetch-wrapper-stack.ts`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/appearance/presets.ts`
+- `apps/web/src/lib/coalesced-get.ts`
+- `apps/web/src/state/project-display-cache.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

@@ -12,6 +12,7 @@ import type {
 } from '@open-design/contracts';
 import type { AppConfig } from '../types';
 import type { AppearancePreferences } from '../state/appearance';
+import { installFetchWrapper } from './fetch-wrapper-stack';
 
 /**
  * The Studio parity route is a developer-only, public-safe fixture. The
@@ -43,6 +44,40 @@ export const STUDIO_FIXTURE_TIME_MS = Date.parse(STUDIO_FIXTURE_TIME);
 export const STUDIO_FIXTURE_VERSION_ID = 'fixture-version-1';
 export const STUDIO_FIXTURE_CAPTURE_RUN_ID_PATTERN = /^run-[0-9a-f]{32}$/;
 export const STUDIO_FIXTURE_LIFECYCLE_EVENT = 'material-designer:studio-fixture-lifecycle';
+
+/** Hand-written lifecycle coverage inventory used by source-level Chuts. */
+export const STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY = [
+  { id: 'SL1', path: 'apps/web/src/App.tsx', anchors: ['resetAppearancePreferencesCache', 'applyAppearancePreferencesToDocument'] },
+  { id: 'SL2', path: 'apps/web/src/analytics/provider.tsx', anchors: ['bootstrapExceptionTracking', 'getAnalyticsClient', 'studio-fixture-lifecycle'] },
+  { id: 'SL3', path: 'apps/web/src/analytics/provider.tsx', anchors: ['studioFixtureCaptureLifecycleSnapshot', 'isStudioFixtureCaptureLifecycleCurrent'] },
+  { id: 'SL4', path: 'apps/web/src/state/projects.ts', anchors: ['isStudioFixtureCaptureStorageLocked', 'studioFixtureCaptureNamespaceForCurrentLocation'] },
+  { id: 'SL5', path: 'apps/web/src/capture/studio-fixture.ts', anchors: ['delayed request lease expired', 'studioFixtureCaptureLifecycleIsCurrent'] },
+  { id: 'SL6', path: 'apps/web/src/capture/fetch-wrapper-stack.ts', anchors: ['installFetchWrapper', 'Symbol'] },
+  { id: 'SL7', path: 'apps/web/src/components/FileViewer.tsx', anchors: ['createdByRunId', 'updatedAt'] },
+  { id: 'SP1', path: 'apps/web/src/capture/studio-fixture.ts', anchors: ['isReservedStudioFixtureRendererPath', 'isStudioFixtureCaptureAddress'] },
+  { id: 'SP2', path: 'apps/web/src/App.tsx', anchors: ['bootStillCurrent', 'studioFixtureCaptureLifecycleSnapshot'] },
+  { id: 'SP4', path: 'apps/web/src/state/project-display-cache.ts', anchors: ['setProjectDisplaySnapshotsSuspended', 'snapshots.clear'] },
+  { id: 'SP5', path: 'apps/web/src/state/projects.ts', anchors: ['studio-fixture:', 'isStudioFixtureCaptureLifecycleCurrent'] },
+  { id: 'SP6', path: 'apps/web/src/analytics/provider.tsx', anchors: ['runtimeAppVersionNamespace', 'lifecycle.namespace'] },
+  { id: 'SP7', path: 'apps/web/src/capture/studio-fixture.ts', anchors: ['STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY'] },
+] as const;
+
+/** Complete browser-storage inventory mounted by the Studio capture path. */
+export const STUDIO_FIXTURE_CAPTURE_STORAGE_INVENTORY = [
+  'composer drafts',
+  'queued sends',
+  'todo/continued state',
+  'chat panel width',
+  'Designs mode',
+  'run-turn storage',
+  'App session storage',
+  'analytics identity/session storage',
+  'onboarding session storage',
+  'appearance preferences',
+  'appearance presets and recent colors',
+  'project tabs',
+  'every fixture-mounted store',
+] as const;
 
 /**
  * The capture route owns appearance and language. These values are deliberately
@@ -177,6 +212,59 @@ type StudioFixtureCaptureSession = {
 };
 
 let activeStudioFixtureSession: StudioFixtureCaptureSession | null = null;
+let studioFixtureCaptureRefused = false;
+let studioFixtureLifecycleGeneration = 0;
+
+export interface StudioFixtureCaptureLifecycleSnapshot {
+  generation: number;
+  active: boolean;
+  refused: boolean;
+  runId: string | null;
+  routeKey: string | null;
+  namespace: string;
+  now: number | null;
+}
+
+function currentStudioFixtureLifecycleSnapshot(): StudioFixtureCaptureLifecycleSnapshot {
+  const active = activeStudioFixtureSession !== null;
+  const refused = studioFixtureCaptureRefused;
+  const runId = activeStudioFixtureSession?.captureRunId ?? null;
+  const routeKey = activeStudioFixtureSession?.route.cacheKey ?? null;
+  return {
+    generation: studioFixtureLifecycleGeneration,
+    active,
+    refused,
+    runId,
+    routeKey,
+    namespace: runId ? `studio-fixture:${runId}` : refused
+      ? `studio-fixture-refused:${studioFixtureLifecycleGeneration}`
+      : 'ordinary',
+    now: active || refused ? STUDIO_FIXTURE_TIME_MS : null,
+  };
+}
+
+export function studioFixtureCaptureLifecycleSnapshot(): StudioFixtureCaptureLifecycleSnapshot {
+  return currentStudioFixtureLifecycleSnapshot();
+}
+
+export function studioFixtureCaptureLifecycleGeneration(): number {
+  return studioFixtureLifecycleGeneration;
+}
+
+export function studioFixtureCaptureLifecycleIsCurrent(
+  snapshot: StudioFixtureCaptureLifecycleSnapshot,
+): boolean {
+  const current = currentStudioFixtureLifecycleSnapshot();
+  return current.generation === snapshot.generation
+    && current.active === snapshot.active
+    && current.refused === snapshot.refused
+    && current.runId === snapshot.runId
+    && current.routeKey === snapshot.routeKey;
+}
+
+function advanceStudioFixtureLifecycle(): void {
+  studioFixtureLifecycleGeneration += 1;
+}
 
 type CaptureGlobals = typeof globalThis & {
   __MATERIAL_DESIGNER_CAPTURE_TUPLE__?: StudioFixtureCaptureWitness;
@@ -285,6 +373,13 @@ function isStudioFixtureRendererEnvelope(
 
 function isStudioFixtureEnvelope(url: URL): boolean {
   return isStudioFixtureRendererEnvelope(url);
+}
+
+function isReservedStudioFixtureRendererPath(pathname: string): boolean {
+  const marker = `/projects/${STUDIO_FIXTURE_PROJECT_ID}/conversations/${STUDIO_FIXTURE_CONVERSATION_ID}`;
+  return pathname === marker
+    || pathname.startsWith(`${marker}/files/`)
+    || pathname.startsWith(`${marker}/files`);
 }
 
 /**
@@ -417,6 +512,11 @@ export function isStudioFixtureCaptureAddress(input?: string | URL | Location): 
   }
   const canonicalAddress = isStudioFixtureRendererEnvelope(url);
   if (canonicalAddress) return true;
+  if (
+    url.protocol === STUDIO_RENDERER_PROTOCOL
+    && url.hostname === STUDIO_RENDERER_HOST
+    && isReservedStudioFixtureRendererPath(url.pathname)
+  ) return true;
   const session = activeStudioFixtureSession;
   return session !== null
     && url.protocol === STUDIO_RENDERER_PROTOCOL
@@ -459,6 +559,7 @@ function dispatchStudioFixtureLifecycle(active: boolean): void {
 
 export function isStudioFixtureCaptureStorageLocked(): boolean {
   if (studioFixtureCaptureAddressActiveForCurrentLocation()) return true;
+  if (studioFixtureCaptureRefused) return true;
   return studioFixtureCaptureRefusedForCurrentLocation();
 }
 
@@ -540,7 +641,11 @@ export function studioFixtureCaptureRunIdForCurrentLocation(): string | null {
 }
 
 export function studioFixtureCaptureTimeMsForCurrentLocation(): number | null {
-  return studioFixtureActiveRouteFromCurrentLocation() ? STUDIO_FIXTURE_TIME_MS : null;
+  return isStudioFixtureCaptureStorageLocked() ? STUDIO_FIXTURE_TIME_MS : null;
+}
+
+export function studioFixtureCaptureNamespaceForCurrentLocation(): string {
+  return currentStudioFixtureLifecycleSnapshot().namespace;
 }
 
 export function isStudioFixtureProjectId(projectId: string): boolean {
@@ -1500,28 +1605,36 @@ export function installStudioFixtureFetch(route: StudioFixtureRoute | null): () 
   const captureRunId = currentStudioFixtureCaptureRunId();
   const captureAddress = isStudioFixtureCaptureAddress(window.location);
   if (!captureAddress) return () => {};
+  advanceStudioFixtureLifecycle();
   if (!route || !studioFixtureCaptureSessionIsValid(route, captureRunId, currentStudioFixtureCaptureWitness())) {
-    const originalFetch = window.fetch.bind(window);
-    const refusedFetch: typeof window.fetch = async () => {
+    activeStudioFixtureSession = null;
+    studioFixtureCaptureRefused = true;
+    dispatchStudioFixtureLifecycle(false);
+    const disposeRefusedFetch = installFetchWrapper(async () => {
       throw new Error('Studio capture refused: the canonical capture tuple or run witness is invalid.');
-    };
-    window.fetch = refusedFetch;
+    });
     return () => {
-      if (window.fetch === refusedFetch) window.fetch = originalFetch;
+      disposeRefusedFetch();
+      if (studioFixtureCaptureRefused) {
+        studioFixtureCaptureRefused = false;
+        advanceStudioFixtureLifecycle();
+        dispatchStudioFixtureLifecycle(false);
+      }
     };
   }
-  const originalFetch = window.fetch.bind(window);
   const tabsState = { current: { ...studioFixtureTabs, tabs: [...studioFixtureTabs.tabs] } };
   activeStudioFixtureSession = { route, captureRunId: captureRunId! };
+  studioFixtureCaptureRefused = false;
   dispatchStudioFixtureLifecycle(true);
-  const patchedFetch: typeof window.fetch = async (input, init) => {
+  const lease = studioFixtureCaptureLifecycleSnapshot();
+  const disposeFetch = installFetchWrapper(async (input, init, next) => {
     const request = input instanceof Request ? input : new Request(input, init);
     const url = new URL(request.url, window.location.href);
     const currentLocation = captureLocationFromWindow();
     if (!currentLocation || !isStudioFixtureCaptureAddress(currentLocation)) {
-      return originalFetch(input, init);
+      return next(input, init);
     }
-    if (!isFixtureCaptureLocation(currentLocation)) {
+    if (!studioFixtureCaptureLifecycleIsCurrent(lease) || !isFixtureCaptureLocation(currentLocation)) {
       throw new Error('Studio capture refused: the active session no longer matches the current route.');
     }
     const sameRendererOrigin = isExactRendererOrigin(url, window.location);
@@ -1534,27 +1647,35 @@ export function installStudioFixtureFetch(route: StudioFixtureRoute | null): () 
     }
     const method = request.method.toUpperCase();
     if (url.pathname.endsWith(`/projects/${STUDIO_FIXTURE_PROJECT_ID}/tabs`) && method === 'PUT') {
+      let validated: ProjectTabsState | null = null;
       try {
         const body = await request.clone().json() as unknown;
-        const validated = validateFixtureTabsState(body);
-        if (!validated) {
-          return jsonResponse({ error: { code: 'INVALID_TABS', message: 'Fixture tabs state is invalid.' } }, 400);
-        }
-        tabsState.current = validated;
+        validated = validateFixtureTabsState(body);
       } catch {
         return jsonResponse({ error: { code: 'INVALID_TABS', message: 'Fixture tabs state is invalid JSON.' } }, 400);
       }
+      if (!validated) {
+        return jsonResponse({ error: { code: 'INVALID_TABS', message: 'Fixture tabs state is invalid.' } }, 400);
+      }
+      const delayedLocation = captureLocationFromWindow();
+      if (!delayedLocation
+        || !studioFixtureCaptureLifecycleIsCurrent(lease)
+        || !isFixtureCaptureLocation(delayedLocation)) {
+        throw new Error('Studio capture refused: delayed request lease expired.');
+      }
+      tabsState.current = validated;
     }
     return fixtureResponse(url, method, tabsState);
-  };
-  window.fetch = patchedFetch;
+  });
   return () => {
-    if (window.fetch === patchedFetch) window.fetch = originalFetch;
+    disposeFetch();
     const activeSession = activeStudioFixtureSession;
     if (activeSession
       && activeSession.route.cacheKey === route.cacheKey
       && activeSession.captureRunId === captureRunId) {
       activeStudioFixtureSession = null;
+      studioFixtureCaptureRefused = false;
+      advanceStudioFixtureLifecycle();
       dispatchStudioFixtureLifecycle(false);
     }
   };

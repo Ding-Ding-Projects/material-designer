@@ -33,6 +33,7 @@ import {
 } from 'react';
 
 import { Icon } from '../Icon';
+import { isStudioFixtureCaptureStorageLocked } from '../../capture/studio-fixture';
 import { tv, useT } from '../../i18n';
 import { copyToClipboard } from '../../lib/copy-to-clipboard';
 import {
@@ -62,6 +63,7 @@ const MAX_RECENTS = 12;
 
 export function readRecentColors(): string[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.localStorage.getItem(RECENTS_KEY);
     if (!raw) return [];
@@ -77,6 +79,7 @@ export function readRecentColors(): string[] {
 }
 
 export function rememberRecentColor(hex: string): string[] {
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   const normalized = hex.toLowerCase();
   const next = [normalized, ...readRecentColors().filter((entry) => entry !== normalized)].slice(
     0,

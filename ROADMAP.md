@@ -58,8 +58,11 @@ with the project's standards.
       authoritative across queryless file continuations, restores ordinary
       configuration and appearance state on exit, bypasses ordinary tab cache
       and wall-clock timestamps, and requires a project/conversation/artifact/run
-      witness for direct previews. Hosted typecheck, built rendering, and
-      installed parity captures remain pending.
+      witness for direct previews. The follow-up adds generation-fenced delayed
+      request leases, refused-route safe storage defaults, token-owned fetch
+      teardown, ordinary analytics rehydration, lifecycle-scoped project/version
+      caches, and full artifact identity memo keys. Hosted typecheck, built
+      rendering, and installed parity captures remain pending.
 
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an

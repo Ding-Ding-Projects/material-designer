@@ -59,8 +59,10 @@ import type {
 import { removeDesignBrowserProjectCache } from '../components/design-browser-storage';
 import { boundedRequestErrorCode } from '../analytics/workspace';
 import {
-  isStudioFixtureCaptureActiveForCurrentLocation,
-  studioFixtureCaptureRunIdForCurrentLocation,
+  isStudioFixtureCaptureLifecycleCurrent,
+  isStudioFixtureCaptureStorageLocked,
+  studioFixtureCaptureLifecycleSnapshot,
+  studioFixtureCaptureNamespaceForCurrentLocation,
   studioFixtureCaptureTimeMsForCurrentLocation,
 } from '../capture/studio-fixture';
 
@@ -310,7 +312,11 @@ export async function listProjects(options?: {
   // `listWorkspaceProjectSummaries` below and carries the full wire identity
   // plus the requested view.
   try {
-    return await coalescedGet('local-projects', async () => {
+    const lifecycle = studioFixtureCaptureLifecycleSnapshot();
+    const requestKey = lifecycle.active || lifecycle.refused
+      ? `${studioFixtureCaptureNamespaceForCurrentLocation()}:local-projects`
+      : 'local-projects';
+    const projects = await coalescedGet(requestKey, async () => {
       const resp = await fetch('/api/projects');
       // Throw inside the coalesced run so a failed read is not cached — the next
       // caller/poll retries immediately (see coalesced-get.ts).
@@ -318,6 +324,8 @@ export async function listProjects(options?: {
       const json = (await resp.json()) as { projects: Project[] };
       return json.projects ?? [];
     });
+    if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return [];
+    return projects;
   } catch (err) {
     if (options?.throwOnError) throw err;
     return [];
@@ -1649,7 +1657,7 @@ function readCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState | null {
-  if (isStudioFixtureCaptureActiveForCurrentLocation()) return null;
+  if (isStudioFixtureCaptureStorageLocked()) return null;
   if (typeof window === 'undefined') return null;
   try {
     return normalizeTabsState(JSON.parse(
@@ -1664,7 +1672,7 @@ function removeCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): void {
-  if (isStudioFixtureCaptureActiveForCurrentLocation()) return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(tabsCacheKey(projectId, workspaceContext));
@@ -1678,6 +1686,12 @@ function writeCachedTabs(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState {
+  if (isStudioFixtureCaptureStorageLocked()) {
+    return {
+      ...state,
+      updatedAt: studioFixtureCaptureTimeMsForCurrentLocation() ?? 0,
+    };
+  }
   const fixtureTime = studioFixtureCaptureTimeMsForCurrentLocation();
   const next: OpenTabsState = {
     ...state,
@@ -1711,8 +1725,10 @@ async function persistTabsToDaemon(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<void> {
+  const lifecycle = studioFixtureCaptureLifecycleSnapshot();
+  if (lifecycle.refused) return;
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureRunIdForCurrentLocation() ?? 'ordinary'}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureNamespaceForCurrentLocation()}`;
   // Thin invalidation: a write makes any burst-shared read stale.
   evictCoalescedGet(requestKey);
   await fetch(`/api/projects/${encodeURIComponent(projectId)}/tabs`, {
@@ -1724,6 +1740,7 @@ async function persistTabsToDaemon(
     body: JSON.stringify(state),
     keepalive: true,
   });
+  if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return;
 }
 
 export async function loadTabs(
@@ -1733,9 +1750,13 @@ export async function loadTabs(
     reconcileNewerCacheToDaemon?: boolean;
   } = {},
 ): Promise<OpenTabsState> {
+  const lifecycle = studioFixtureCaptureLifecycleSnapshot();
+  if (lifecycle.refused) {
+    return { tabs: [], active: null };
+  }
   const cached = readCachedTabs(projectId, workspaceContext);
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureRunIdForCurrentLocation() ?? 'ordinary'}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureNamespaceForCurrentLocation()}`;
   try {
     // Concurrent mounts share one daemon read per burst (Batch A §4.3); the
     // per-caller cache reconciliation below still runs for every caller.
@@ -1749,6 +1770,7 @@ export async function loadTabs(
       if (!resp.ok) throw new Error(`tabs ${resp.status}`);
       return normalizeTabsState(await resp.json());
     });
+    if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return { tabs: [], active: null };
     const latest = newestTabsState(cached, saved);
     if (
       options.reconcileNewerCacheToDaemon !== false
@@ -1769,6 +1791,7 @@ export async function saveTabs(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<void> {
+  if (studioFixtureCaptureLifecycleSnapshot().refused) return;
   const next = writeCachedTabs(projectId, state, workspaceContext);
   try {
     await persistTabsToDaemon(projectId, next, workspaceContext);
@@ -1789,6 +1812,7 @@ export function cacheTabsLocally(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState {
+  if (isStudioFixtureCaptureStorageLocked()) return { ...state, updatedAt: studioFixtureCaptureTimeMsForCurrentLocation() ?? 0 };
   return writeCachedTabs(projectId, state, workspaceContext);
 }
 

@@ -32,6 +32,10 @@ import {
   studioFixtureSafeConfig,
   studioFixtureTabs,
   studioFixtureTabsStateIsValid,
+  studioFixtureCaptureLifecycleSnapshot,
+  studioFixtureCaptureLifecycleIsCurrent,
+  STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY,
+  STUDIO_FIXTURE_CAPTURE_STORAGE_INVENTORY,
   STUDIO_FIXTURE_ACTIVE_FILE,
   STUDIO_FIXTURE_CONVERSATION_ID,
   STUDIO_FIXTURE_PROJECT_ID,
@@ -139,6 +143,45 @@ describe('Studio capture fixture contract', () => {
     expect(isStudioFixtureCaptureAddress(STUDIO_RENDERER_URL)).toBe(true);
     expect(isStudioFixtureCaptureAddress(STUDIO_RENDERER_URL.replace('od://app', 'od://app:4173'))).toBe(true);
     expect(isStudioFixtureCaptureAddress('od://app/projects/ordinary/conversations/ordinary/files/index.html')).toBe(false);
+    expect(isStudioFixtureCaptureAddress(`od://app:4173${STUDIO_FIXTURE_RENDERER_PATH}?query=malformed`)).toBe(true);
+    expect(isStudioFixtureCaptureAddress(`od://app${STUDIO_FIXTURE_RENDERER_PATH}?state=wrong`)).toBe(true);
+    expect(isStudioFixtureCaptureAddress(`od://app${STUDIO_FIXTURE_RENDERER_PATH}/near-miss`)).toBe(true);
+  });
+
+  it('exposes a stable ordinary lifecycle lease for negative-transition Chuts', () => {
+    const lease = studioFixtureCaptureLifecycleSnapshot();
+    expect(lease.active).toBe(false);
+    expect(lease.refused).toBe(false);
+    expect(lease.namespace).toBe('ordinary');
+    expect(studioFixtureCaptureLifecycleIsCurrent(lease)).toBe(true);
+  });
+
+  it('keeps the complete accepted lifecycle/cache/storage inventory hand-written', () => {
+    expect(STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY.map((entry) => entry.id)).toEqual([
+      'SL1', 'SL2', 'SL3', 'SL4', 'SL5', 'SL6', 'SL7',
+      'SP1', 'SP2', 'SP4', 'SP5', 'SP6', 'SP7',
+    ]);
+    expect(new Set(STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY.map((entry) => entry.id)).size)
+      .toBe(STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY.length);
+    for (const entry of STUDIO_FIXTURE_LIFECYCLE_SOURCE_INVENTORY) {
+      expect(entry.path.length).toBeGreaterThan(0);
+      expect(entry.anchors.length).toBeGreaterThan(0);
+    }
+    expect(STUDIO_FIXTURE_CAPTURE_STORAGE_INVENTORY).toEqual([
+      'composer drafts',
+      'queued sends',
+      'todo/continued state',
+      'chat panel width',
+      'Designs mode',
+      'run-turn storage',
+      'App session storage',
+      'analytics identity/session storage',
+      'onboarding session storage',
+      'appearance preferences',
+      'appearance presets and recent colors',
+      'project tabs',
+      'every fixture-mounted store',
+    ]);
   });
 
   it('keeps every deterministic tuple field owned by the desktop capture tuple', () => {

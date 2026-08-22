@@ -97,6 +97,28 @@ run-scoped request namespace used instead. Direct artifact previews require the
 current session plus the matching project, conversation, artifact, and creating
 run witness; matching IDs on an ordinary route return no preview.
 
+The lifecycle lease is generation-scoped. Reserved fixture-shaped `od://`
+paths are recognized before route or live-fetch resolution, including cold
+malformed query and port variants. Every delayed fixture request rechecks its
+run, generation, and route lease after body parsing. Fetch decoration uses a
+token-owned multiplexer so fixture, analytics, and one-shot request-ID teardown
+restores the exact ordinary predecessor in any order. Analytics rehydrates its
+ordinary consent, client, headers, identity and exception context after a
+capture exit even when locale and version are unchanged. Project display,
+coalesced project reads, runtime version reads, and every tab cache operation
+are partitioned by lifecycle namespace; refused capture reads use safe defaults
+and writes/removals are inert. Artifact preview memo keys include session,
+creating run, timestamps, status, and entry identity. Hosted typecheck, built
+rendering, installed launch, and visual parity evidence remain pending.
+
+The capture storage inventory is hand-written and complete: composer drafts,
+queued sends, todo/continued state, chat-panel width, Designs mode, run-turn
+state, App session state, analytics identity/session state, onboarding state,
+appearance preferences/presets/recent colors, project tabs, and every
+fixture-mounted store are listed. Capture reads return safe defaults; writes
+and removals are inert or use the run/refusal namespace, while ordinary mode
+continues to use its existing storage.
+
 ## Evidence boundary
 
 The inventory is structurally complete and all ten rows are currently marked
