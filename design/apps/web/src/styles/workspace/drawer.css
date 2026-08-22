@@ -780,6 +780,7 @@
   color: var(--md-sys-color-on-surface);
   font-size: var(--md-sys-typescale-label-large-size);
   font-weight: var(--md-sys-typescale-label-large-weight);
+}
 /* Select-mode toolbar controls */
 .designs-select-toggle {
   display: inline-flex;

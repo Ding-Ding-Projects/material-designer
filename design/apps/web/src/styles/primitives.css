@@ -147,10 +147,15 @@ button.ghost {
   color: var(--md-sys-color-on-surface-variant);
   padding: 0 12px;
 }
+
+/* Subtle — a quiet secondary action on tinted surfaces. */
+button.subtle {
   background: var(--bg-subtle);
   border-color: transparent;
   color: var(--text-strong);
 }
+button.subtle:hover:not(:disabled) { background: var(--bg-muted); }
+button.subtle:active:not(:disabled) { background: var(--border-strong); }
 button.primary-ghost:hover:not(:disabled) { background: var(--bg-muted); }
 button.primary-ghost:active:not(:disabled) { background: var(--border-strong); }
 
@@ -298,14 +303,13 @@ input:disabled, textarea:disabled, select:disabled {
   color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
 }
-/* Entry sidebar form fields keep a quieter, neutral focus so the orange
-   "Create" CTA stays the loudest thing in the panel. A low-opacity black
-   halo reads as "focused" without re-introducing the global blue/accent
-   ring. Using rgba directly because the Next CSS pipeline collapses
-   `color-mix(in srgb, var(--text) 8%, transparent)` to a solid var(--text)
-   ring (would render a 3px black band — too loud). */
+input:focus, textarea:focus, select:focus {
+  outline: none;
   border-color: var(--selected);
 }
+/* Entry sidebar form fields keep a quieter, neutral focus (just a darker
+   border, no outer halo) so the orange "Create" CTA stays the loudest thing
+   in the panel. */
 /* Entry sidebar form fields keep a quieter, neutral focus (just a darker
    border, no outer halo) so the orange "Create" CTA stays the loudest thing
    in the panel. */

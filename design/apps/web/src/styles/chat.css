@@ -2182,11 +2182,6 @@
    `--bg-panel` and gets correctly in both themes. */
 .composer-send.stop { background: var(--md-sys-color-inverse-surface); border-color: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); }
 .composer-send.stop:hover { background: var(--md-sys-color-inverse-surface); border-color: var(--md-sys-color-inverse-surface); color: var(--md-sys-color-inverse-on-surface); }
-  outline: var(--stroke-thin) solid var(--blue);
-  outline-offset: 2px;
-  box-shadow: var(--shadow-xs);
-}
-.composer-send:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 /* Executing state: black pill at the same 36px height as Send, showing the
    dot-matrix bloom animation followed by a "思考中" label. The button still
    stops the run on click (tooltip: 停止). */
