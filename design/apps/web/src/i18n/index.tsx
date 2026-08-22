@@ -50,7 +50,7 @@ import {
 import {
   isStudioFixtureCaptureStorageLocked,
   studioFixtureActiveRouteFromCurrentLocation,
-  studioFixtureCaptureLanguageState,
+  studioFixtureCaptureFunnyLevels,
   STUDIO_FIXTURE_LIFECYCLE_EVENT,
 } from '../capture/studio-fixture';
 
@@ -211,13 +211,13 @@ function writeStored(key: string, value: string): void {
 
 export function detectInitialLanguageMode(): LanguageMode {
   const route = studioFixtureActiveRouteFromCurrentLocation();
-  if (route) return studioFixtureCaptureLanguageState(route).languageMode;
+  if (route) return 'single';
   return readStored(LS_LANGUAGE_MODE_KEY) === 'bilingual' ? 'bilingual' : DEFAULT_LANGUAGE_MODE;
 }
 
 export function detectInitialFunnyLevels(): Record<FunnyLanguage, FunnyLevel> {
   const route = studioFixtureActiveRouteFromCurrentLocation();
-  if (route) return { ...studioFixtureCaptureLanguageState(route).funnyLevels };
+  if (route) return { ...studioFixtureCaptureFunnyLevels };
   const levels: Record<FunnyLanguage, FunnyLevel> = { ...DEFAULT_FUNNY_LEVELS };
   for (const language of ['en', 'zh-HK'] as const) {
     const stored = Number(readStored(`${LS_FUNNY_LEVEL_PREFIX}${language}`));
@@ -381,10 +381,9 @@ export function I18nProvider({ initial, children }: ProviderProps) {
     const syncCaptureLanguage = () => {
       const route = studioFixtureActiveRouteFromCurrentLocation();
       if (route) {
-        const capture = studioFixtureCaptureLanguageState(route);
-        setLocaleState(capture.locale);
-        setLanguageModeState(capture.languageMode);
-        setFunnyLevelsState({ ...capture.funnyLevels });
+        setLocaleState('en');
+        setLanguageModeState('single');
+        setFunnyLevelsState({ ...studioFixtureCaptureFunnyLevels });
         return;
       }
       setLocaleState(detectInitialLocale());
