@@ -5878,6 +5878,7 @@ function AppInner() {
           ) : null}
           </AnimatePresence>
         </div>
+        </div>
         {/* The shell's fourth explicit row is reserved for this readout. Keeping
             the status bar in the DOM rather than synthesising it in a sibling
             overlay means the 28px geometry remains part of the layout contract
