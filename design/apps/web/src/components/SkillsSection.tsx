@@ -7,9 +7,6 @@ import {
   localizeSkillName,
 } from '../i18n/content';
 import { Icon } from './Icon';
-import { Switch } from './Switch';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
 import type { AppConfig } from '../types';
 import type { SkillSummary } from '@open-design/contracts';
 import {
@@ -89,17 +86,12 @@ function parseTriggers(raw: string): string[] {
     .filter(Boolean);
 }
 
-// The predicate comes from the search field's own regex controller, so the
-// same haystack is matched whether the user typed plain text or a pattern.
-function skillMatchesSearch(
-  skill: SkillSummary,
-  matches: (text: string) => boolean,
-  locale: Locale,
-): boolean {
+function skillMatchesSearch(skill: SkillSummary, q: string, locale: Locale): boolean {
+  if (!q) return true;
   const hay = `${skill.name}\n${localizeSkillName(locale, skill)}\n${skill.description}\n${localizeSkillDescription(locale, skill)}\n${(skill.triggers ?? []).join(
     ' ',
   )}\n${skill.category ?? ''}`;
-  return matches(hay);
+  return hay.toLowerCase().includes(q);
 }
 
 export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }: Props) {
@@ -135,9 +127,6 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     ? skillsCatalog.items
     : [];
   const [search, setSearch] = useState('');
-  // This settings field's own regex controller — independent of every other
-  // search bar in the dialog.
-  const searchRegex = useRegexSearch(search, setSearch);
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
   const [modeFilter, setModeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -246,7 +235,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     [cfg.disabledSkills],
   );
 
-  const matchesSearch = searchRegex.matches;
+  const searchQuery = search.toLowerCase().trim();
 
   const sourceCounts = useMemo(() => {
     const counts = new Map<SourceFilter, number>([
@@ -257,14 +246,14 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     for (const s of skills) {
       if (modeFilter !== 'all' && s.mode !== modeFilter) continue;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) continue;
-      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
+      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
       counts.set('all', (counts.get('all') ?? 0) + 1);
       if (s.source === 'user' || s.source === 'built-in') {
         counts.set(s.source, (counts.get(s.source) ?? 0) + 1);
       }
     }
     return counts;
-  }, [skills, modeFilter, categoryFilter, matchesSearch, locale]);
+  }, [skills, modeFilter, categoryFilter, searchQuery, locale]);
 
   const modeOptions = useMemo(() => {
     const modes = new Set(skills.map((s) => s.mode));
@@ -272,13 +261,13 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     for (const s of skills) {
       if (sourceFilter !== 'all' && s.source !== sourceFilter) continue;
       if (categoryFilter !== 'all' && s.category !== categoryFilter) continue;
-      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
+      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
       counts.set(s.mode, (counts.get(s.mode) ?? 0) + 1);
     }
     return Array.from(modes, (mode) => [mode, counts.get(mode) ?? 0] as const).sort(
       (a, b) => a[0].localeCompare(b[0]),
     );
-  }, [skills, sourceFilter, categoryFilter, matchesSearch, locale]);
+  }, [skills, sourceFilter, categoryFilter, searchQuery, locale]);
 
   const modeAllCount = useMemo(
     () =>
@@ -286,9 +275,9 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
         if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
         if (categoryFilter !== 'all' && s.category !== categoryFilter)
           return false;
-        return skillMatchesSearch(s, matchesSearch, locale);
+        return skillMatchesSearch(s, searchQuery, locale);
       }).length,
-    [skills, sourceFilter, categoryFilter, matchesSearch, locale],
+    [skills, sourceFilter, categoryFilter, searchQuery, locale],
   );
 
   // Categories are optional per-skill metadata (`od.category` in the
@@ -307,22 +296,22 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       if (typeof cat !== 'string' || !cat) continue;
       if (modeFilter !== 'all' && s.mode !== modeFilter) continue;
       if (sourceFilter !== 'all' && s.source !== sourceFilter) continue;
-      if (!skillMatchesSearch(s, matchesSearch, locale)) continue;
+      if (!skillMatchesSearch(s, searchQuery, locale)) continue;
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
     return Array.from(categories, (cat) => [cat, counts.get(cat) ?? 0] as const).sort(
       (a, b) => a[0].localeCompare(b[0]),
     );
-  }, [skills, modeFilter, sourceFilter, matchesSearch, locale]);
+  }, [skills, modeFilter, sourceFilter, searchQuery, locale]);
 
   const categoryAllCount = useMemo(
     () =>
       skills.filter((s) => {
         if (modeFilter !== 'all' && s.mode !== modeFilter) return false;
         if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
-        return skillMatchesSearch(s, matchesSearch, locale);
+        return skillMatchesSearch(s, searchQuery, locale);
       }).length,
-    [skills, modeFilter, sourceFilter, matchesSearch, locale],
+    [skills, modeFilter, sourceFilter, searchQuery, locale],
   );
 
   const filteredSkills = useMemo(() => {
@@ -331,9 +320,9 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       if (sourceFilter !== 'all' && s.source !== sourceFilter) return false;
       if (categoryFilter !== 'all' && s.category !== categoryFilter)
         return false;
-      return skillMatchesSearch(s, matchesSearch, locale);
+      return skillMatchesSearch(s, searchQuery, locale);
     });
-  }, [skills, modeFilter, sourceFilter, categoryFilter, matchesSearch, locale]);
+  }, [skills, modeFilter, sourceFilter, categoryFilter, searchQuery, locale]);
 
   const ensureBody = useCallback(
     async (id: string) => {
@@ -635,13 +624,12 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
       <div className="library-toolbar skills-toolbar">
         {/* Row 1: search + New skill button */}
         <div className="skills-toolbar-top">
-          <RegexSearchField
-            search={searchRegex}
-            fieldLabel={t('settings.skills')}
+          <input
+            type="search"
             className="library-search"
             placeholder={t('settings.librarySearch')}
-            ariaLabel={t('settings.librarySearch')}
-            testId="skills-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <button
             type="button"
@@ -935,17 +923,18 @@ function SkillRow({
               ) : null}
             </>
           )}
-          {/* The M3 switch (roadmap § 2.4 Wave 4). This was a 30×17
-              `.toggle-switch` with an 11px dot — a shape Material Design 3
-              does not define, and a `<label>` wrapping a checkbox, which a
-              screen reader announces as "checked" rather than as on or off. */}
-          <Switch
-            className="skills-row-enable"
-            checked={enabled}
-            onChange={onToggleEnabled}
-            label={t('settings.libraryToggleLabel')}
+          <label
+            className="toggle-switch toggle-switch-sm skills-row-enable"
             title={t('settings.libraryToggleLabel')}
-          />
+          >
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => onToggleEnabled(e.target.checked)}
+              aria-label={t('settings.libraryToggleLabel')}
+            />
+            <span className="toggle-slider" />
+          </label>
         </div>
       </div>
 

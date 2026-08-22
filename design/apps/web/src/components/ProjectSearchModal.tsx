@@ -52,8 +52,7 @@ export function ProjectSearchModal({
 }: Props) {
   const t = useT();
   const [query, setQuery] = useState('');
-  // Keyboard-driven selection: the project search surface is opened from the
-  // rail search control and typed into, so
+  // Keyboard-driven selection: the palette is opened by ⌘K and typed into, so
   // the hands are already on the keys — ↑/↓ move the highlight and Enter opens
   // it, without ever leaving the input (which keeps typing responsive).
   const [activeIndex, setActiveIndex] = useState(0);

@@ -1,8 +1,8 @@
 // Supported UI locales. Adding a new locale requires creating a new
 // dictionary in `./locales/` and registering it in `./index.tsx`.
-export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it';
+export type Locale = 'en' | 'id' | 'de' | 'zh-CN' | 'zh-TW' | 'pt-BR' | 'es-ES' | 'ru' | 'fa' | 'ar' | 'ja' | 'ko' | 'pl' | 'hu' | 'fr' | 'uk' | 'tr' | 'th' | 'it';
 
-export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'zh-HK', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+export const LOCALES: Locale[] = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
 
 export const LOCALE_LABEL: Record<Locale, string> = {
   'en': 'English',
@@ -10,7 +10,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
   'de': 'Deutsch',
   'zh-CN': '简体中文',
   'zh-TW': '繁體中文',
-  'zh-HK': '廣東話',
   'pt-BR': 'Português (Brasil)',
   'es-ES': 'Español (España)',
   'ru': 'Русский',
@@ -31,41 +30,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
-  'handoff.title': string;
-  'handoff.tabHint': string;
-  'handoff.eyebrow': string;
-  'handoff.subtitle': string;
-  'handoff.statusNote': string;
-  'handoff.backToSettings': string;
-  'handoff.exportAria': string;
-  'handoff.exportLabel': string;
-  'handoff.copySelected': string;
-  'handoff.copyAll': string;
-  'handoff.downloadSucceeded': string;
-  'handoff.downloadFailed': string;
-  'handoff.regexInvalid': string;
-  'handoff.statusImplemented': string;
-  'handoff.statusPartial': string;
-  'handoff.statusUnverified': string;
-  'handoff.exportSelected': string;
-  'handoff.exportAll': string;
-  'handoff.tokensTitle': string;
-  'handoff.tokensDescription': string;
-  'handoff.componentsTitle': string;
-  'handoff.componentsDescription': string;
-  'handoff.selectionCount': string;
-  'handoff.searchAria': string;
-  'handoff.searchPlaceholder': string;
-  'handoff.bulkAria': string;
-  'handoff.selectThisList': string;
-  'handoff.selectAllMatches': string;
-  'handoff.invertSelection': string;
-  'handoff.clearSelection': string;
-  'handoff.noMatches': string;
-  'handoff.selectRow': string;
-  'handoff.swatchAria': string;
-  'handoff.privacyNote': string;
-
   // Workspace invite acceptance (C lane)
   'invite.header.eyebrow': string;
   'invite.loading': string;
@@ -165,7 +129,6 @@ export interface Dict {
   'designFiles.library.title': string;
   'libraryPicker.title': string;
   'libraryPicker.searchPlaceholder': string;
-  'libraryPicker.kindFilter': string;
   'libraryPicker.empty': string;
   'libraryPicker.allKinds': string;
   'libraryPicker.add': string;
@@ -180,7 +143,6 @@ export interface Dict {
   'common.share': string;
   'common.search': string;
   'common.searchEllipsis': string;
-  'common.download'?: string;
   'common.loading': string;
   'common.all': string;
   'common.none': string;
@@ -411,11 +373,6 @@ export interface Dict {
   'settings.subtitle': string;
   'settings.general': string;
   'settings.generalHint': string;
-  'settings.appearance': string;
-  'settings.appearanceHint': string;
-  'settings.themeSystem': string;
-  'settings.themeLight': string;
-  'settings.themeDark': string;
   'settings.modeAria': string;
   'settings.protocolAria': string;
   'settings.modeDaemon': string;
@@ -672,15 +629,6 @@ export interface Dict {
   'settings.privacyDataDeletionHint': string;
   'settings.about': string;
   'settings.aboutHint': string;
-  'settings.searchPlaceholder': string;
-  'settings.searchAria': string;
-  'settings.searchResultsHeading': string;
-  'settings.searchElsewhereNote': string;
-  'settings.searchOtherTabBadge': string;
-  'settings.searchNoMatches': string;
-  'settings.tabsAria': string;
-  'settings.tabsOverflow': string;
-  'settings.tabsOffscreen': string;
   'settings.appVersion': string;
   'settings.appChannel': string;
   'settings.appRuntime': string;
@@ -1078,8 +1026,9 @@ export interface Dict {
   'settings.mcpCapabilityDefault': string;
   'settings.mcpRunningNote': string;
 
-  // Notifications (settings + system notifications). The rows now live in
-  // the authoritative Notifications tab rather than a shared General block.
+  // Notifications (settings + system notifications)
+  // `systemPrefs*` heads the System preferences block on Settings → General,
+  // which groups the completion sound and desktop notification rows.
   'settings.systemPrefsTitle': string;
   'settings.systemPrefsHint': string;
   'settings.notifications': string;
@@ -1178,6 +1127,7 @@ export interface Dict {
   'entry.discordAria': string;
   'entry.discordAriaWithOnline': string;
   'entry.discordOnlineLabel': string;
+  'entry.feishuAria': string;
   'entry.mailAria': string;
   'entry.accountSettings': string;
   'chat.collapsePane': string;
@@ -2131,13 +2081,6 @@ export interface Dict {
   'automations.pause': string;
   'automations.resume': string;
   'automations.deleteAria': string;
-  /**
-   * Accessible name for the M3 switch that enables or pauses one automation.
-   * It names the automation and does NOT name the action: a switch reports
-   * its state through `aria-checked`, so a label that said "Pause" would be
-   * read as "Pause, on" — the opposite of what the control is about to do.
-   */
-  'automations.enabledSwitchAria': string;
   'automations.deleteTitle': string;
   'automations.deleteConfirm': string;
   'automations.proposalsTitle': string;
@@ -2471,16 +2414,6 @@ export interface Dict {
   'newproj.dsNoneTitle': string;
   'newproj.dsNoneSub': string;
   'newproj.dsEmpty': string;
-  'newproj.dsResults': string;
-  'newproj.desktopAgentLabel': string;
-  'newproj.desktopAgentSearch': string;
-  'newproj.desktopAgentResults': string;
-  'newproj.desktopAgentEmpty': string;
-  'newproj.desktopAgentMissing': string;
-  'newproj.desktopAgentUnavailable': string;
-  'newproj.desktopWireupToggle': string;
-  'newproj.desktopWireupNotStarted': string;
-  'newproj.desktopWireupPromptLabel': string;
   'newproj.dsFootSingular': string;
   'newproj.dsFootPlural': string;
   'newproj.dsFootClear': string;
@@ -2939,6 +2872,20 @@ export interface Dict {
   'chat.amrLowBalance.rechargeCta': string;
   'chat.amrLowBalance.proceedCta': string;
   'chat.amrLowBalance.dontRemind': string;
+  'chat.amrArtifactUpgrade.title': string;
+  'chat.amrArtifactUpgrade.message': string;
+  'chat.amrArtifactUpgrade.benefit1': string;
+  'chat.amrArtifactUpgrade.benefit2': string;
+  'chat.amrArtifactUpgrade.benefit3': string;
+  'chat.amrArtifactUpgrade.benefit4': string;
+  'chat.amrArtifactUpgrade.promoBanner': string;
+  'chat.amrArtifactUpgrade.countdownLabel': string;
+  'chat.amrArtifactUpgrade.plansCta': string;
+  'chat.amrArtifactUpgrade.homePlansCta': string;
+  'chat.amrArtifactUpgrade.laterCta': string;
+  'chat.amrArtifactUpgrade.homeTitle': string;
+  'chat.amrArtifactUpgrade.homeMessage': string;
+  'chat.amrArtifactUpgrade.homeArtifactCta': string;
   'chat.antigravityError.launchTerminalCta': string;
   'chat.antigravityError.launchSwitchModelCta': string;
   'chat.connectionDropped': string;
@@ -4168,8 +4115,6 @@ export interface Dict {
   'fileViewer.exportPptxHint': string;
   'fileViewer.exportPptxNa': string;
   'fileViewer.exportZip': string;
-  'fileViewer.exportWebsiteHandoff': string;
-  'fileViewer.exportDesktopScaffold': string;
   'fileViewer.exportHtml': string;
   'fileViewer.exportMd': string;
   'fileViewer.exportImage': string;
@@ -4876,27 +4821,6 @@ export interface Dict {
   'dsCreate.savedFigmaHelp': string;
   'dsCreate.notes': string;
   'dsCreate.notesPlaceholder': string;
-  'dsCreate.figmaImportTitle': string;
-  'dsCreate.figmaImportSource': string;
-  'dsCreate.figmaConnectorHelper': string;
-  'dsCreate.figmaInvalidFile': string;
-  'dsCreate.figmaProjectUnavailable': string;
-  'dsCreate.figmaImportFailed': string;
-  'dsCreate.figmaInvalidUrl': string;
-  'dsCreate.figmaImportAction': string;
-  'dsCreate.figmaDecoding': string;
-  'dsCreate.figmaImporting': string;
-  'dsCreate.figmaImported': string;
-  'dsCreate.figmaAssetsOnly': string;
-  'dsCreate.figmaNodes': string;
-  'dsCreate.figmaPages': string;
-  'dsCreate.figmaFrames': string;
-  'dsCreate.figmaComponents': string;
-  'dsCreate.figmaColors': string;
-  'dsCreate.figmaFonts': string;
-  'dsCreate.figmaAssets': string;
-  'dsCreate.figmaColorTokens': string;
-  'dsCreate.figmaSummaryFoot': string;
   'dsCreate.back': string;
   'dsCreate.generate': string;
   'dsCreate.libraryPickerTitle': string;
@@ -4965,688 +4889,6 @@ export interface Dict {
   'questions.uploadNeedsProject': string;
   'questions.uploadPartialFailed': string;
   'questions.uploadFailed': string;
-  // Window caption buttons on the frameless Windows shell. Standard
-  // window-control labels — use each language's conventional term.
-  'titleBar.minimize': string;
-  'titleBar.maximize': string;
-  'titleBar.restore': string;
-  'titleBar.close': string;
-  // Language mode (one language / both) and the two funny-level sliders,
-  // all in Settings → Language. `settings.funnyLevelValue` names the
-  // active step; the five level names below are its `{name}` operand.
-  'settings.languageModeTitle': string;
-  'settings.languageModeHint': string;
-  'settings.languageModeSingle': string;
-  'settings.languageModeBilingual': string;
-  'settings.languageModeBilingualHint': string;
-  'settings.funnyTitle': string;
-  'settings.funnyHint': string;
-  'settings.funnyFactsNotice': string;
-  'settings.funnyEnglishLabel': string;
-  'settings.funnyCantoneseLabel': string;
-  'settings.funnyLevel1': string;
-  'settings.funnyLevel2': string;
-  'settings.funnyLevel3': string;
-  'settings.funnyLevel4': string;
-  'settings.funnyLevel5': string;
-  'settings.funnyLevelValue': string;
-  'settings.funnyDisclosureTitle': string;
-  'settings.funnyDisclosureBody': string;
-  'settings.funnyDisclosureDismiss': string;
-
-  // Regex search field: the affordance beside a search bar, and what it tells assistive
-  // technology about the mode in force.
-  // The per-field regex affordance beside a search input: the toggle that
-  // opens the anchored builder, and the status line that says which mode
-  // that one field is currently matching in. `{field}` is the search bar's
-  // own label, so the toggle names the field it belongs to.
-  'regexSearch.toggleAria': string;
-  'regexSearch.toggleTitleText': string;
-  'regexSearch.toggleTitleRegex': string;
-  'regexSearch.modeStatusText': string;
-  'regexSearch.modeStatusRegex': string;
-
-  // The header search field in the entry topbar. It is the command palette's
-  // typeable entry point, so its copy names what the palette can find rather
-  // than promising a result list of its own.
-  'entrySearch.placeholder': string;
-  'entrySearch.aria': string;
-  'entrySearch.fieldLabel': string;
-  'entrySearch.paletteAria': string;
-
-  // Regex builder: the popover that affordance opens. Raw pattern, guided parts, flags,
-  // and a live sample with its capture-group table.
-  // The anchored regex builder itself — mode, pattern editor, flags, the
-  // guided parts, and the sample/matches panel. `{engine}` is the real
-  // engine the pattern runs on (and that the wired search filters with),
-  // never a friendlier alias; `{token}`/`{at}` name the exact construct
-  // and offset the guided parts cannot represent.
-  'regexBuilder.title': string;
-  'regexBuilder.forField': string;
-  'regexBuilder.engineNote': string;
-  'regexBuilder.modeLegend': string;
-  'regexBuilder.modePlain': string;
-  'regexBuilder.modeRegex': string;
-  'regexBuilder.plainNotice': string;
-  'regexBuilder.enableRegex': string;
-  'regexBuilder.patternLabel': string;
-  'regexBuilder.patternPlaceholder': string;
-  'regexBuilder.patternLength': string;
-  'regexBuilder.errorHeading': string;
-  'regexBuilder.errorTooLong': string;
-  'regexBuilder.usingLastValid': string;
-  'regexBuilder.slowShape': string;
-  'regexBuilder.copyPattern': string;
-  'regexBuilder.copyLiteral': string;
-  'regexBuilder.copied': string;
-  'regexBuilder.copyFailed': string;
-  'regexBuilder.escapeAsLiteral': string;
-  'regexBuilder.flagsLegend': string;
-  'regexBuilder.flagG': string;
-  'regexBuilder.flagI': string;
-  'regexBuilder.flagM': string;
-  'regexBuilder.flagS': string;
-  'regexBuilder.flagU': string;
-  'regexBuilder.flagY': string;
-  'regexBuilder.partsLegend': string;
-  'regexBuilder.partsEmpty': string;
-  'regexBuilder.addPartLegend': string;
-  'regexBuilder.addLiteral': string;
-  'regexBuilder.addCharClass': string;
-  'regexBuilder.addAnchor': string;
-  'regexBuilder.addGroup': string;
-  'regexBuilder.addAlternation': string;
-  'regexBuilder.outOfSyncTitle': string;
-  'regexBuilder.outOfSyncBody': string;
-  'regexBuilder.outOfSyncTooLong': string;
-  'regexBuilder.outOfSyncAction': string;
-  'regexBuilder.partLiteral': string;
-  'regexBuilder.partCharClass': string;
-  'regexBuilder.partAnchor': string;
-  'regexBuilder.partGroup': string;
-  'regexBuilder.partAlternation': string;
-  'regexBuilder.movePartUp': string;
-  'regexBuilder.movePartDown': string;
-  'regexBuilder.removePart': string;
-  'regexBuilder.literalValueLabel': string;
-  'regexBuilder.literalHint': string;
-  'regexBuilder.classPresetLabel': string;
-  'regexBuilder.classDigit': string;
-  'regexBuilder.classNotDigit': string;
-  'regexBuilder.classWord': string;
-  'regexBuilder.classNotWord': string;
-  'regexBuilder.classWhitespace': string;
-  'regexBuilder.classNotWhitespace': string;
-  'regexBuilder.classAny': string;
-  'regexBuilder.classCustom': string;
-  'regexBuilder.classCustomLabel': string;
-  'regexBuilder.classCustomHint': string;
-  'regexBuilder.classNegate': string;
-  'regexBuilder.anchorLabel': string;
-  'regexBuilder.anchorStart': string;
-  'regexBuilder.anchorEnd': string;
-  'regexBuilder.anchorWordBoundary': string;
-  'regexBuilder.anchorNotWordBoundary': string;
-  'regexBuilder.groupKindLabel': string;
-  'regexBuilder.groupCapturing': string;
-  'regexBuilder.groupNonCapturing': string;
-  'regexBuilder.groupNamed': string;
-  'regexBuilder.groupNameLabel': string;
-  'regexBuilder.groupBodyLabel': string;
-  'regexBuilder.groupBodyHint': string;
-  'regexBuilder.alternationHint': string;
-  'regexBuilder.alternationOptionLabel': string;
-  'regexBuilder.alternationAdd': string;
-  'regexBuilder.alternationRemove': string;
-  'regexBuilder.quantifierLabel': string;
-  'regexBuilder.quantifierOne': string;
-  'regexBuilder.quantifierOptional': string;
-  'regexBuilder.quantifierStar': string;
-  'regexBuilder.quantifierPlus': string;
-  'regexBuilder.quantifierExactly': string;
-  'regexBuilder.quantifierAtLeast': string;
-  'regexBuilder.quantifierBetween': string;
-  'regexBuilder.quantifierMin': string;
-  'regexBuilder.quantifierMax': string;
-  'regexBuilder.quantifierLazy': string;
-  'regexBuilder.quantifierLazyHint': string;
-  'regexBuilder.sampleLegend': string;
-  'regexBuilder.samplePlaceholder': string;
-  'regexBuilder.sampleEmpty': string;
-  'regexBuilder.sampleTruncated': string;
-  'regexBuilder.matchCount': string;
-  'regexBuilder.matchCountOne': string;
-  'regexBuilder.matchNone': string;
-  'regexBuilder.matchesTruncated': string;
-  'regexBuilder.matchesTimedOut': string;
-  'regexBuilder.previewLabel': string;
-  'regexBuilder.groupsLegend': string;
-  'regexBuilder.groupsNone': string;
-  'regexBuilder.colMatch': string;
-  'regexBuilder.colGroup': string;
-  'regexBuilder.colName': string;
-  'regexBuilder.colValue': string;
-  'regexBuilder.groupUnmatched': string;
-  'regexBuilder.safetyNote': string;
-
-  // Dim sum surprise: the line of copy under the dish's own name.
-  'dimSum.blurb': string;
-
-  // Changelog viewer: every recorded version, the typed/calendar date filter, the scope
-  // sentence and the export.
-  // The in-app changelog viewer: releases, the date-range picker, the
-  // search/date scope line, and the commit reference carried by every
-  // entry. `changelog.datePlaceholder` is a format mask rather than
-  // prose, so it reads YYYY-MM-DD in every locale.
-  'changelog.title': string;
-  'changelog.subtitle': string;
-  'changelog.openButton': string;
-  'changelog.settingsHint': string;
-  'changelog.searchLabel': string;
-  'changelog.searchPlaceholder': string;
-  'changelog.dateFrom': string;
-  'changelog.dateTo': string;
-  'changelog.datePlaceholder': string;
-  'changelog.dateHint': string;
-  'changelog.dateOpenAria': string;
-  'changelog.dateRangeBackwards': string;
-  'changelog.datePartialFields': string;
-  'changelog.datePartialYear': string;
-  'changelog.dateInvalidShape': string;
-  'changelog.dateInvalidRange': string;
-  'changelog.calendarAria': string;
-  'changelog.monthLabel': string;
-  'changelog.yearLabel': string;
-  'changelog.prevMonth': string;
-  'changelog.nextMonth': string;
-  'changelog.pickStart': string;
-  'changelog.pickEnd': string;
-  'changelog.scopeAll': string;
-  'changelog.scopeFiltered': string;
-  'changelog.scopeSearch': string;
-  'changelog.scopeRange': string;
-  'changelog.scopeRangeFrom': string;
-  'changelog.scopeRangeTo': string;
-  'changelog.scopeUndated': string;
-  'changelog.empty': string;
-  'changelog.emptyHint': string;
-  'changelog.releaseDateSource': string;
-  'changelog.releaseDateCommits': string;
-  'changelog.releaseDateUnknown': string;
-  'changelog.entryCount': string;
-  'changelog.sourceLabel': string;
-  'changelog.commitLinkAria': string;
-  'changelog.commitSummarizes': string;
-  'changelog.commitUnrecorded': string;
-  'changelog.commitUnresolved': string;
-  'changelog.copy': string;
-  'changelog.copied': string;
-  'changelog.copyFailed': string;
-  'changelog.exportMarkdown': string;
-  'changelog.exportText': string;
-  'changelog.exported': string;
-
-  // Local version history: the panel over the daemon's append-only snapshot
-  // repository. The `history.action*` keys name actions that are *derived
-  // from the recorded revisions*, never a fixed menu — an action the store
-  // has not recorded is simply never offered as a filter, so this list is an
-  // ordering rather than a promise that all nine can occur.
-  'history.title': string;
-  'history.subtitle': string;
-  'history.openButton': string;
-  'history.settingsHint': string;
-  'history.searchLabel': string;
-  'history.searchPlaceholder': string;
-  'history.refresh': string;
-  'history.unavailable': string;
-  'history.loadFailed': string;
-  'history.empty': string;
-  'history.emptyHint': string;
-  'history.noMatch': string;
-  'history.scopeAll': string;
-  'history.scopeFiltered': string;
-  'history.loadedOf': string;
-  'history.loadMore': string;
-  'history.filters': string;
-  'history.filtersHiding': string;
-  'history.actionsLabel': string;
-  'history.domainsLabel': string;
-  'history.actionInitial': string;
-  'history.actionCreated': string;
-  'history.actionUpdated': string;
-  'history.actionDeleted': string;
-  'history.actionRestored': string;
-  'history.actionUndone': string;
-  'history.actionPruned': string;
-  'history.actionSettings': string;
-  'history.actionRecorded': string;
-  'history.kindMutation': string;
-  'history.changeCount': string;
-  'history.restoredFrom': string;
-  'history.changesTitle': string;
-  'history.detailTitle': string;
-  'history.viewEntry': string;
-  'history.hideEntry': string;
-  'history.entryRedacted': string;
-  'history.sensitive': string;
-  'history.restore': string;
-  'history.restoreLabel': string;
-  'history.restoreLabelPlaceholder': string;
-  'history.restoreDone': string;
-  'history.restoreUnchanged': string;
-  'history.restoreFailed': string;
-  'history.appendOnly': string;
-  'history.retentionTitle': string;
-  'history.retentionRevisions': string;
-  'history.retentionDays': string;
-  'history.retentionUnlimited': string;
-  'history.retentionSaved': string;
-  'history.pruneTitle': string;
-  'history.prunePreview': string;
-  'history.pruneNothing': string;
-  'history.pruneWould': string;
-  'history.pruneApply': string;
-  'history.pruneDone': string;
-  'history.exportMarkdown': string;
-  'history.exportText': string;
-  'history.exportJson': string;
-  'history.exported': string;
-
-  // Command palette: scopes, groups, commands and destinations.
-  // The command palette (Cmd/Ctrl+Shift+F): its scopes, row groups, and
-  // the commands it can run directly. Setting rows borrow their labels
-  // from the settings surface they teleport to, so only palette-owned
-  // strings live here.
-  'commandPalette.title': string;
-  'commandPalette.placeholder': string;
-  'commandPalette.noResults': string;
-  'commandPalette.filesUnavailable': string;
-  'commandPalette.scopeLabel': string;
-  'commandPalette.scopeAll': string;
-  'commandPalette.scopeCommands': string;
-  'commandPalette.scopeSettings': string;
-  'commandPalette.scopeGo': string;
-  'commandPalette.scopeFiles': string;
-  'commandPalette.groupCommands': string;
-  'commandPalette.groupGo': string;
-  'commandPalette.groupSettings': string;
-  'commandPalette.groupFiles': string;
-  'commandPalette.commandSearchFiles': string;
-  'commandPalette.commandSearchFilesHint': string;
-  'commandPalette.commandNewTab': string;
-  'commandPalette.commandFullWindow': string;
-  'commandPalette.commandExitFullWindow': string;
-  'commandPalette.commandFullWindowHint': string;
-  'commandPalette.commandCycleTheme': string;
-  'commandPalette.commandToggleLanguageMode': string;
-  'commandPalette.destinationLibrary': string;
-  'commandPalette.footerOpen': string;
-  // Shown when the header search field handed the palette a pattern, so the
-  // list is being matched with that rather than with the words in the box.
-  'commandPalette.regexNote': string;
-  'commandPalette.regexClear': string;
-
-  // Workspace tabs: pinning, and closing tabs in bulk by their visible title.
-  // (`workspaceTabs.project` and its neighbours are above.)
-  // Workspace tab pinning and the two bulk-close actions. The close
-  // preview always states its counts and what it deliberately excluded,
-  // so an excluded tab is reported rather than silently skipped.
-  'workspaceTabs.pin': string;
-  'workspaceTabs.unpin': string;
-  'workspaceTabs.permanentTab': string;
-  'workspaceTabs.matchMode': string;
-  'workspaceTabs.bulkCloseTitle': string;
-  'workspaceTabs.bulkCloseQueryLabel': string;
-  'workspaceTabs.bulkCloseModeText': string;
-  'workspaceTabs.bulkCloseModeRegex': string;
-  'workspaceTabs.bulkCloseCaseSensitive': string;
-  'workspaceTabs.bulkCloseIncludePinned': string;
-  'workspaceTabs.bulkCloseContaining': string;
-  'workspaceTabs.bulkCloseNotContaining': string;
-  'workspaceTabs.bulkClosePreview': string;
-  'workspaceTabs.bulkCloseMore': string;
-  'workspaceTabs.bulkCloseExcludedPinned': string;
-  'workspaceTabs.bulkCloseExcludedPermanent': string;
-  'workspaceTabs.bulkCloseEmptyQuery': string;
-  'workspaceTabs.bulkCloseInvalidPattern': string;
-  'workspaceTabs.bulkCloseTooLong': string;
-  'workspaceTabs.bulkCloseNoMatches': string;
-  'workspaceTabs.bulkCloseConfirm': string;
-
-  // Tab groups. A group is named, coloured, collapsible and reorderable, and
-  // its decoration never replaces its accessible name or its expanded state —
-  // `groupTabCount` is part of the header's accessible name for exactly that
-  // reason, so the count is announced once rather than twice.
-  'workspaceTabs.groupUntitled': string;
-  'workspaceTabs.groupNew': string;
-  'workspaceTabs.groupNewFromTab': string;
-  'workspaceTabs.groupNone': string;
-  'workspaceTabs.groupNoneYet': string;
-  'workspaceTabs.groupRemove': string;
-  'workspaceTabs.groupRemoveTab': string;
-  'workspaceTabs.groupAddTab': string;
-  'workspaceTabs.groupAddTabPlaceholder': string;
-  'workspaceTabs.groupCollapse': string;
-  'workspaceTabs.groupExpand': string;
-  'workspaceTabs.groupMoveEarlier': string;
-  'workspaceTabs.groupMoveLater': string;
-  'workspaceTabs.groupMoveTabHeading': string;
-  'workspaceTabs.groupRenameLabel': string;
-  'workspaceTabs.groupTabCount': string;
-  'workspaceTabs.groupEmpty': string;
-  'workspaceTabs.groupColorLabel': string;
-  'workspaceTabs.groupColorSky': string;
-  'workspaceTabs.groupColorGrape': string;
-  'workspaceTabs.groupColorCitrus': string;
-  'workspaceTabs.groupColorMoss': string;
-  'workspaceTabs.groupColorClay': string;
-  'workspaceTabs.groupColorSlate': string;
-
-  // The per-group appearance editor. Every property has its own reset, and
-  // resetting means the group follows the theme again rather than being pinned
-  // to a snapshot of it — `groupAppearanceDefault` is what an unset value reads.
-  'workspaceTabs.groupEditAppearance': string;
-  'workspaceTabs.groupAppearanceTitle': string;
-  'workspaceTabs.groupAppearanceClose': string;
-  'workspaceTabs.groupAppearanceAccent': string;
-  'workspaceTabs.groupAppearanceLabelColor': string;
-  'workspaceTabs.groupAppearanceBackground': string;
-  'workspaceTabs.groupAppearanceWeight': string;
-  'workspaceTabs.groupAppearanceSize': string;
-  'workspaceTabs.groupAppearanceRadius': string;
-  'workspaceTabs.groupAppearanceBadge': string;
-  'workspaceTabs.groupAppearanceBadgeHint': string;
-  'workspaceTabs.groupAppearanceReset': string;
-  'workspaceTabs.groupAppearanceResetAll': string;
-  'workspaceTabs.groupAppearanceDefault': string;
-  'workspaceTabs.groupAppearanceNote': string;
-
-  // The four tab-discovery searches: the current strip, inside each individual
-  // group, groups by their visible name, and every open tab across every
-  // window. The `…Field` keys name what a field searches; they are what the
-  // regex builder's own heading and toggle say, so they read as a noun phrase
-  // ("this tab strip"), not as a sentence.
-  'workspaceTabs.searchStripHeading': string;
-  'workspaceTabs.searchStripField': string;
-  'workspaceTabs.searchGroupsHeading': string;
-  'workspaceTabs.searchGroupsField': string;
-  'workspaceTabs.searchInGroupField': string;
-  'workspaceTabs.searchMasterHeading': string;
-  'workspaceTabs.searchMasterField': string;
-  'workspaceTabs.searchNoTabs': string;
-  'workspaceTabs.searchNoGroups': string;
-  'workspaceTabs.masterScope': string;
-  'workspaceTabs.resultPinned': string;
-  'workspaceTabs.resultUngrouped': string;
-  'workspaceTabs.resultCollapsedGroup': string;
-  'workspaceTabs.resultThisWindow': string;
-  'workspaceTabs.resultOtherWindow': string;
-  'workspaceTabs.resultStrip': string;
-  'workspaceTabs.otherWindowHint': string;
-  'workspaceTabs.reveal': string;
-  'workspaceTabs.revealHint': string;
-
-  // Non-blocking notifications: the corner stack and the centre that keeps every
-  // record a toast dropped. `notifications.severity*` are reached indirectly
-  // through `SEVERITY_LABEL_KEYS` rather than by a literal `t()` call, so they
-  // are as load-bearing as the rest even though nothing here names them.
-  // `{count}` is a number of records; `{label}` is the action a spent
-  // notification was offering.
-  'notifications.title': string;
-  'notifications.open': string;
-  'notifications.unread': string;
-  'notifications.searchLabel': string;
-  'notifications.searchPlaceholder': string;
-  'notifications.markAllRead': string;
-  'notifications.markRead': string;
-  'notifications.clear': string;
-  'notifications.dismiss': string;
-  'notifications.empty': string;
-  'notifications.noMatches': string;
-  'notifications.actionOffered': string;
-  'notifications.stackOverflow': string;
-  'notifications.severityInfo': string;
-  'notifications.severitySuccess': string;
-  'notifications.severityProgress': string;
-  'notifications.severityWarning': string;
-  'notifications.severityError': string;
-
-  // Destructive-action super confirmation: the two keys, the slider, the running
-  // status and the emergency exit. Every string here has to stay unambiguous at
-  // every funny level and in every language — what is destroyed, and whether it
-  // comes back, are facts the gate exists to state. `{action}` is the real verb
-  // and target the host passed in; `{percent}` is how far the slider has moved.
-  'destructive.affects': string;
-  'destructive.irreversible': string;
-  'destructive.reversible': string;
-  'destructive.keysLabel': string;
-  'destructive.keyFirst': string;
-  'destructive.keyFirstHint': string;
-  'destructive.keySecond': string;
-  'destructive.keySecondHint': string;
-  'destructive.sliderLabel': string;
-  'destructive.sliderValue': string;
-  'destructive.statusLocked': string;
-  'destructive.statusArmed': string;
-  'destructive.statusReady': string;
-  'destructive.statusRunning': string;
-  'destructive.statusDone': string;
-  'destructive.statusFailed': string;
-  'destructive.emergencyExit': string;
-  'destructive.emergencyExitHint': string;
-  'destructive.emergencyExitRunning': string;
-
-  // Bulk actions: the selection bar, the preview that says what will happen
-  // before it happens, and the outcome toast afterwards. The counts are
-  // deliberately separate placeholders — `{selected}` and `{willChange}` are
-  // allowed to disagree, and collapsing them into one number is the failure the
-  // preview exists to prevent.
-  'bulk.barLabel': string;
-  'bulk.selected': string;
-  'bulk.selectedOnPage': string;
-  'bulk.selectedEveryMatch': string;
-  'bulk.selectPage': string;
-  'bulk.selectEveryMatch': string;
-  'bulk.invert': string;
-  'bulk.clear': string;
-  'bulk.previewCounts': string;
-  'bulk.previewWillChange': string;
-  'bulk.previewMore': string;
-  'bulk.previewNothing': string;
-  'bulk.previewSkipped': string;
-  'bulk.previewMissing': string;
-  'bulk.previewMissingNote': string;
-  'bulk.progress': string;
-  'bulk.progressFailed': string;
-  'bulk.progressCurrent': string;
-  'bulk.stop': string;
-  'bulk.resultDone': string;
-  'bulk.resultNothing': string;
-  'bulk.resultPartial': string;
-  'bulk.resultFailed': string;
-  'bulk.resultCancelled': string;
-  'bulk.resultSkipped': string;
-
-  // Design files in bulk: the confirm labels, the preview titles, and the
-  // sentence each skip reason turns into. `{n}` is a file count everywhere
-  // except `bulkSkipOverTabLimit`, where it is the tab limit itself.
-  'designFiles.bulkOpen': string;
-  'designFiles.bulkOpenTitle': string;
-  'designFiles.bulkDeleteTitle': string;
-  'designFiles.bulkDownloadTitle': string;
-  'designFiles.bulkCopyPaths': string;
-  'designFiles.bulkCopyPathsTitle': string;
-  'designFiles.bulkSkipBusy': string;
-  'designFiles.bulkSkipNoLocalPath': string;
-  'designFiles.bulkSkipOverTabLimit': string;
-
-  // What the destructive gate lists when a project or a live artifact is being
-  // deleted. These are the "what goes" lines, so they name the thing by its own
-  // name (`{name}`, `{title}`) rather than describing it.
-  'designs.deleteGateProjectItem': string;
-  'designs.deleteGateProjectDetail': string;
-  'designs.deleteGateArtifactItem': string;
-
-  // The same, for the privacy screen's "delete my data". `{id}` is the real
-  // installation id, printed so the user can read the value being discarded.
-  'privacy.deleteGateIdItem': string;
-  'privacy.deleteGateSharingItem': string;
-  'privacy.deleteGateDone': string;
-
-  // The same, for deleting a saved memory. The entry's markdown file is
-  // unlinked and its bullet dropped from the index, with no revision written
-  // anywhere, so the gate names the memory (`{name}`), the category it is
-  // filed under (`{type}`) and — when it has one — its own description
-  // (`{description}`) quoted back rather than summarized.
-  'memory.deleteGateAction': string;
-  'memory.deleteGateEntryItem': string;
-  'memory.deleteGateEntryTextItem': string;
-  'memory.deleteGateEntryDetail': string;
-
-  // The infinite colour picker and its translator: the continuous field, the
-  // axes, typed entry, and an honest account of what each representation costs.
-  // `{components}` lists the channels that were clipped, `{format}` is a format
-  // name (HEX, RGB) left untranslated, `{ratio}` is a formatted contrast ratio
-  // and `{rating}` is its WCAG level.
-  'appearance.color.fieldLabel': string;
-  'appearance.color.fieldHint': string;
-  'appearance.color.hue': string;
-  'appearance.color.saturation': string;
-  'appearance.color.brightness': string;
-  'appearance.color.alpha': string;
-  'appearance.color.alphaDropped': string;
-  'appearance.color.entryLabel': string;
-  'appearance.color.entryInvalid': string;
-  'appearance.color.clipped': string;
-  'appearance.color.swatches': string;
-  'appearance.color.recents': string;
-  'appearance.color.spaceSrgb': string;
-  'appearance.color.noName': string;
-  'appearance.color.contrast': string;
-  'appearance.color.ratingFail': string;
-  'appearance.color.compositedNote': string;
-  'appearance.color.copyValue': string;
-  'appearance.color.lossAlpha': string;
-  'appearance.color.lossRounding': string;
-  'appearance.color.lossNotCss': string;
-  'appearance.color.lossUnmanaged': string;
-
-  // Names of the built-in appearance presets. Reached through `BuiltInPreset.
-  // nameKey` rather than a literal `t()` call. `appearance.presets` is the
-  // group itself — the one key in this block a component names directly.
-  'appearance.preset.sunset': string;
-  'appearance.preset.violet': string;
-  'appearance.preset.teal': string;
-  'appearance.preset.lime': string;
-  'appearance.preset.compact': string;
-  'appearance.preset.readable': string;
-  'appearance.presets': string;
-
-  // The runtime appearance controls: seed, sizing and typography.
-  //
-  // The four seed names and the three density levels are deliberately NOT
-  // here. The seeds reuse `appearance.preset.*` above, because the four
-  // colour presets are named after exactly these four seeds; the density
-  // levels reuse `statusBar.density*`, because the status bar was already
-  // naming them. Two key sets for one word is two places to translate it
-  // differently.
-  'appearance.seedLabel': string;
-  'appearance.seedHint': string;
-  'appearance.sizing': string;
-  'appearance.sizingHint': string;
-  'appearance.uiScaleLabel': string;
-  'appearance.densityLabel': string;
-  'appearance.autoFit': string;
-  'appearance.autoFitHint': string;
-  'appearance.typography': string;
-  'appearance.typographyHint': string;
-  'appearance.fontFamily': string;
-  'appearance.font.default': string;
-  'appearance.font.system': string;
-  'appearance.font.grotesque': string;
-  'appearance.font.humanist': string;
-  'appearance.font.serif': string;
-  'appearance.font.mono': string;
-  // Three answers, never two: "cannot tell" is its own state because
-  // `isFaceAvailable` returns null where `document.fonts` is absent, and
-  // guessing either way there would be a claim about the user's machine
-  // that the app cannot support.
-  'appearance.fontInstalled': string;
-  'appearance.fontNotInstalled': string;
-  'appearance.fontUnknown': string;
-  'appearance.fontSize': string;
-  'appearance.fontWeight': string;
-  'appearance.lineHeight': string;
-  'appearance.letterSpacing': string;
-  // Properties this platform cannot honour. They keep their control and
-  // their saved value; these strings are what turns a dead control into an
-  // explanation. See `components/appearance/typography.ts`.
-  'appearance.opticalSize': string;
-  'appearance.grade': string;
-  'appearance.smallCaps': string;
-  'appearance.glow': string;
-  'appearance.unsupportedBadge': string;
-  'appearance.unsupportedNoVariableFont': string;
-  'appearance.unsupportedCjkUnsafe': string;
-  'appearance.unsupportedContrastUnsafe': string;
-  'appearance.reset': string;
-
-  // The optional spoken narrator: its settings panel, the three language
-  // choices (reached through `LANGUAGE_LABEL`), and the line the "speak a
-  // sample" button says. `{voice}` is the platform voice actually chosen.
-  'narrator.title': string;
-  'narrator.hint': string;
-  'narrator.enable': string;
-  'narrator.enableHint': string;
-  'narrator.language': string;
-  'narrator.languageEnglish': string;
-  'narrator.languageCantonese': string;
-  'narrator.languageBoth': string;
-  'narrator.languageBothHint': string;
-  'narrator.quiet': string;
-  'narrator.quietHint': string;
-  'narrator.screenReader': string;
-  'narrator.screenReaderHint': string;
-  'narrator.noSpeechEngine': string;
-  'narrator.noCantoneseVoice': string;
-  'narrator.cantoneseVoice': string;
-  'narrator.speakSample': string;
-  'narrator.stop': string;
-  'narrator.sample': string;
-  // Copy for the surfaces that replaced blocking browser dialogs: the fact
-  // lines the destructive gate states, the sketch discard choice, and the
-  // rename failure that is now a notification rather than an `alert()`.
-  'designFiles.renameFailed': string;
-  'memory.clearGateItem': string;
-  'memory.clearGateDetail': string;
-  'brandDetail.deleteGateItem': string;
-  'conv.deleteGateItem': string;
-  'automations.deleteGateItem': string;
-  'automations.deleteGateDetail': string;
-  'dsManager.deleteGateItem': string;
-  'dsManager.deleteGateDetail': string;
-  'workspace.deleteFileGateItem': string;
-  'ds.deleteProjectGateItem': string;
-  'ds.deleteProjectGateDetail': string;
-  'settings.mediaProviderClearGateAction': string;
-  'settings.mediaProviderClearGateItem': string;
-  'sketch.closeDiscard': string;
-
-  // The entry view's navigation rail, and the shell's status bar.
-  // `entry.navLandmark` names the rail as a landmark for screen readers; it
-  // was previously a hard-coded English "Primary" on the `<nav>`.
-  'entry.navLandmark': string;
-  'statusBar.aria': string;
-  'statusBar.daemonLive': string;
-  'statusBar.daemonOffline': string;
-  'statusBar.notSet': string;
-  'statusBar.designSystem': string;
-  'statusBar.uiScale': string;
-  'statusBar.density': string;
-  'statusBar.densityCompact': string;
-  'statusBar.densityDefault': string;
-  'statusBar.densityComfortable': string;
-  'statusBar.version': string;
   'manualEdit.sectionImage': string;
   'manualEdit.sectionContent': string;
   'manualEdit.sectionPage': string;
@@ -5773,48 +5015,6 @@ export interface Dict {
   'library.editAsPage': string;
   'library.viewSource': string;
   'library.remove': string;
-  /** Library route/picker additions use optional keys so older locale files
-   * fall back through the normal English dictionary until translated. */
-  'library.noMatches'?: string;
-  'library.loadError'?: string;
-  'library.retry'?: string;
-  'library.resultsCount'?: string;
-  'library.scopeVisible'?: string;
-  'library.previousAsset'?: string;
-  'library.nextAsset'?: string;
-  'library.downloadFigma'?: string;
-  'library.uploadStatus'?: string;
-  'library.uploadDeduped'?: string;
-  'library.uploadDone'?: string;
-  'library.uploadFailed'?: string;
-  'library.uploadTooLarge'?: string;
-  'library.uploadUnsupported'?: string;
-  'library.uploadNetworkError'?: string;
-  'library.uploadNothing'?: string;
-  'library.uploadSummary'?: string;
-  'library.uploadProgress'?: string;
-  'library.cancelUpload'?: string;
-  'library.cancellingUpload'?: string;
-  'library.uploadCancelled'?: string;
-  'library.uploadMaxHint'?: string;
-  'library.pastedText'?: string;
-  'library.noColor'?: string;
-  'library.noLink'?: string;
-  'library.loadTextError'?: string;
-  'library.loadElementError'?: string;
-  'library.showHtml'?: string;
-  'library.hideHtml'?: string;
-  'library.copy'?: string;
-  'library.copied'?: string;
-  'library.deleteAction'?: string;
-  'library.deleteTarget'?: string;
-  'library.deleteItemOwned'?: string;
-  'library.deleteItemReferenced'?: string;
-  'library.deleteMore'?: string;
-  'library.deleteDetailMixed'?: string;
-  'library.deleteDetailOwned'?: string;
-  'library.deleteDetailReferenced'?: string;
-  'library.handoffPrompt'?: string;
   'mcp.aboutTemplate': string;
   'mcp.approvedRefresh': string;
   'mcp.approveInBrowserHint': string;
@@ -6254,30 +5454,3 @@ export interface Dict {
   'experienceSurvey.thanksTitle': string;
   'experienceSurvey.thanksBody': string;
 }
-
-// How many languages a rendered string carries. 'single' is the historical
-// behaviour — the active locale only. 'bilingual' appends a second language
-// so both read at once; the pairing is English ↔ 廣東話 (see `t()`).
-export type LanguageMode = 'single' | 'bilingual';
-
-export const LANGUAGE_MODES: LanguageMode[] = ['single', 'bilingual'];
-
-// The two languages that carry a funny-level dictionary. Every other locale
-// renders at its neutral base text regardless of the sliders, because no
-// override map has been written for it — saying so is honest, and the
-// slider UI names these two explicitly rather than implying wider coverage.
-export type FunnyLanguage = 'en' | 'zh-HK';
-
-// 1 is the neutral base dictionary; 2–5 progressively pick up voice. A level
-// only ever changes *how* a string reads, never what it states — see the
-// placeholder/number guard in `applyFunny` (i18n/index.tsx), which drops any
-// override that would lose a `{placeholder}` or a digit the base carried.
-export type FunnyLevel = 1 | 2 | 3 | 4 | 5;
-
-export const FUNNY_LEVELS: FunnyLevel[] = [1, 2, 3, 4, 5];
-
-// Sparse per-key override map. Levels are deliberately partial in both
-// dimensions: a key may define only some levels (the missing ones fall back
-// to the nearest lower defined level, then to the base dict), and most keys
-// define none at all.
-export type FunnyOverrides = Partial<Record<keyof Dict, Partial<Record<Exclude<FunnyLevel, 1>, string>>>>;

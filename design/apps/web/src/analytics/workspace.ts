@@ -49,8 +49,6 @@ export function entryViewToTracking(view: string): TrackingWorkspacePage {
       return 'design_systems';
     case 'plugins':
       return 'plugins';
-    case 'library':
-      return 'library';
     default:
       return 'home';
   }

@@ -6,8 +6,6 @@ import { getProjectDetail, listProjects } from '../state/projects';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { dirExists } from '../providers/registry';
 import { Icon } from './Icon';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
 import styles from './ProjectReferenceModal.module.css';
 
 export interface ProjectReferenceSelection {
@@ -47,9 +45,6 @@ export function ProjectReferenceModal({
   const loadFailedMessage = t('chat.referenceProject.loadFailed');
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [query, setQuery] = useState('');
-  // This modal's own regex controller — created here, so opening the modal
-  // twice does not inherit the previous field's mode or flags from anywhere.
-  const searchRegex = useRegexSearch(query, setQuery);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -97,11 +92,12 @@ export function ProjectReferenceModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, pending]);
 
-  const matchesSearch = searchRegex.matches;
   const visibleProjects = useMemo(() => {
     if (!projects) return [];
-    return projects.filter((project) => matchesSearch(projectSearchText(project)));
-  }, [projects, matchesSearch]);
+    const needle = query.trim().toLowerCase();
+    if (!needle) return projects;
+    return projects.filter((project) => projectSearchText(project).toLowerCase().includes(needle));
+  }, [projects, query]);
 
   const selectedProjects = useMemo(() => {
     if (!projects) return [];
@@ -176,13 +172,12 @@ export function ProjectReferenceModal({
         <div className={styles.body}>
           <label className={styles.search}>
             <Icon name="search" size={14} />
-            <RegexSearchField
-              search={searchRegex}
-              fieldLabel={t('chat.referenceProject.title')}
+            <input
               autoFocus
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
               placeholder={t('chat.referenceProject.search')}
-              ariaLabel={t('chat.referenceProject.search')}
-              testId="project-reference-search"
             />
           </label>
           <div

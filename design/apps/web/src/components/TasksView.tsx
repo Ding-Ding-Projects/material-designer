@@ -16,8 +16,6 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon, type IconName } from './Icon';
-import { Switch } from './Switch';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
 import { useT } from '../i18n';
 import type { SkillSummary } from '../types';
@@ -442,10 +440,6 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  // Deleting an automation stops it running and removes it from this device
-  // with no restore path, so it goes through the super-confirmation gate
-  // rather than a browser dialog a mistimed Enter answers.
-  const [deleteTarget, setDeleteTarget] = useState<Routine | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [templateFilter, setTemplateFilter] = useState<TemplateFilter>('all');
   const [automationCatalog, setAutomationCatalog] = useState<ContractAutomationTemplate[]>([]);
@@ -656,14 +650,11 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
     }
   };
 
-  // The delete itself, run by the gate. A failure is rethrown rather than
-  // routed to the view's error banner: the banner sits behind the gate the
-  // user is looking at, and the gate renders the message in place while
-  // keeping itself open over an automation that is demonstrably still there.
-  const remove = async (routine: Routine) => {
-    setBusyId(routine.id);
+  const remove = async (id: string) => {
+    if (!window.confirm(t('automations.deleteConfirm')))
+      return;
+    setBusyId(id);
     try {
-      const res = await fetch(`/api/routines/${routine.id}`, { method: 'DELETE' });
       const res = await fetch(`/api/routines/${id}`, {
         method: 'DELETE',
         ...(routineHeaders ? { headers: routineHeaders } : {}),
@@ -672,9 +663,10 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `delete failed: ${res.status}`);
       }
-      if (expandedId === routine.id) setExpandedId(null);
+      if (expandedId === id) setExpandedId(null);
       void refresh();
-      return true;
+    } catch (err) {
+      setError(errorMessage(err));
     } finally {
       setBusyId(null);
     }
@@ -765,20 +757,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                       <Icon name={r.skillId ? 'sparkles' : 'history'} size={15} />
                     </span>
                     <span className="automation-row__content">
-                      <span className="automation-row__title-line">
-                        <span className="automation-row__title">{r.name}</span>
-                        {/* The state chip the mockup draws beside the name. It
-                            says the same thing the switch does, deliberately:
-                            the switch carries the state as `aria-checked`, and
-                            a row scanned visually needs a word for it too. */}
-                        <span
-                          className={`automation-state-chip${r.enabled ? ' is-active' : ''}`}
-                        >
-                          {r.enabled
-                            ? t('automations.metricActive')
-                            : t('automations.metricPaused')}
-                        </span>
-                      </span>
+                      <span className="automation-row__title">{r.name}</span>
                       <span className="automation-row__meta">
                         <span>{scheduleStatusLabel(r, t)}</span>
                         <span aria-hidden="true">·</span>
@@ -816,7 +795,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                   <div className="automation-row__actions">
                     <button
                       type="button"
-                      className="automation-row__btn tonal"
+                      className="automation-row__btn"
                       onClick={() => {
                         fireClick('run_now');
                         runNow(r.id);
@@ -854,10 +833,21 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                     </button>
                     <button
                       type="button"
+                      className="automation-row__btn"
+                      onClick={() => {
+                        fireClick(r.enabled ? 'pause' : 'resume');
+                        togglePaused(r);
+                      }}
+                      disabled={isBusy}
+                    >
+                      {r.enabled ? t('automations.pause') : t('automations.resume')}
+                    </button>
+                    <button
+                      type="button"
                       className="automation-row__btn automation-row__btn--danger"
                       onClick={() => {
                         fireClick('delete');
-                        setDeleteTarget(r);
+                        remove(r.id);
                       }}
                       disabled={isBusy}
                       aria-label={t('automations.deleteAria')}
@@ -865,20 +855,6 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                     >
                       <Icon name="trash" size={14} />
                     </button>
-                    {/* Pause/resume was a text button whose label flipped
-                        between two words. It is the M3 switch now: one control
-                        with a stable accessible name and the state carried in
-                        `aria-checked`, which is what a screen reader announces
-                        as on/off rather than as a button that renamed itself. */}
-                    <Switch
-                      checked={r.enabled}
-                      disabled={isBusy}
-                      label={t('automations.enabledSwitchAria', { name: r.name })}
-                      onChange={() => {
-                        fireClick(r.enabled ? 'pause' : 'resume');
-                        togglePaused(r);
-                      }}
-                    />
                   </div>
                   {isExpanded ? (
                     <AutomationRunHistory
@@ -1073,20 +1049,6 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
           })();
         }}
       />
-
-      {deleteTarget ? (
-        <DestructiveGate
-          action={t('automations.deleteTitle')}
-          // The automation's own name, not a description of one — this is the
-          // string the user has to be able to check the slider against.
-          target={deleteTarget.name}
-          items={[t('automations.deleteGateItem', { name: deleteTarget.name })]}
-          detail={t('automations.deleteGateDetail')}
-          irreversible
-          onConfirm={() => remove(deleteTarget)}
-          onClose={() => setDeleteTarget(null)}
-        />
-      ) : null}
     </section>
   );
 }

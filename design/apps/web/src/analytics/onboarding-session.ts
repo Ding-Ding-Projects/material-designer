@@ -8,13 +8,11 @@
 // NOT inherit the previous session's id.
 
 import { randomUUID } from '../utils/uuid';
-import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 const STORAGE_KEY = 'od:onboarding-session-id';
 
 function readSessionStorage(): string | null {
   if (typeof window === 'undefined') return null;
-  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     return window.sessionStorage.getItem(STORAGE_KEY);
   } catch {
@@ -24,7 +22,6 @@ function readSessionStorage(): string | null {
 
 function writeSessionStorage(value: string): void {
   if (typeof window === 'undefined') return;
-  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.setItem(STORAGE_KEY, value);
   } catch {
@@ -35,7 +32,6 @@ function writeSessionStorage(value: string): void {
 
 function clearSessionStorage(): void {
   if (typeof window === 'undefined') return;
-  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.removeItem(STORAGE_KEY);
   } catch {

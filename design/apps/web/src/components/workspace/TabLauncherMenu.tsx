@@ -8,9 +8,8 @@ import type { WorkspaceContextItem } from '@open-design/contracts';
 import type { TabLauncherClickProps } from '@open-design/contracts/analytics';
 import type { LauncherAction, LauncherContext } from './tab-launcher';
 import styles from './TabLauncherMenu.module.css';
-import type { TranslationVars } from '../../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 // Create-new rows cycle through a small hue palette (one color per row) so
 // the icon column reads as a colorful menu instead of a uniform gray strip.
@@ -417,3 +416,4 @@ function workspaceContextSearchText(item: WorkspaceContextItem): string {
     item.title ?? '',
   ].join(' ');
 }
+

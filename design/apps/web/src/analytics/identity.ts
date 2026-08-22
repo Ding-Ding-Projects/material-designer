@@ -6,7 +6,6 @@
 
 import type { AnalyticsClientType } from '@open-design/contracts/analytics';
 import { detectOpenDesignHostClientType } from '@open-design/host';
-import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 const ANONYMOUS_ID_KEY = 'open-design:analytics.anonymous_id';
 const SESSION_ID_KEY = 'open-design:analytics.session_id';
@@ -31,7 +30,6 @@ function randomUuid(): string {
 
 export function getAnonymousId(): string {
   if (typeof window === 'undefined') return 'ssr';
-  if (isStudioFixtureCaptureStorageLocked()) return 'studio-fixture-anonymous';
   try {
     const existing = window.localStorage.getItem(ANONYMOUS_ID_KEY);
     if (existing) return existing;
@@ -47,7 +45,6 @@ export function getAnonymousId(): string {
 
 export function getSessionId(): string {
   if (typeof window === 'undefined') return 'ssr';
-  if (isStudioFixtureCaptureStorageLocked()) return 'studio-fixture-session';
   try {
     const existing = window.sessionStorage.getItem(SESSION_ID_KEY);
     if (existing) return existing;
@@ -79,7 +76,6 @@ const FIRST_SESSION_ID_KEY = 'open-design:analytics.first_session_id';
 // contexts report false — we'd rather under-count first sessions than throw.
 export function isFirstSession(): boolean {
   if (typeof window === 'undefined') return false;
-  if (isStudioFixtureCaptureStorageLocked()) return false;
   try {
     const pinned = window.localStorage.getItem(FIRST_SESSION_ID_KEY);
     if (!pinned) return true;
@@ -96,7 +92,6 @@ export function isFirstSession(): boolean {
 // contexts.
 export function pinFirstSessionForCapture(): void {
   if (typeof window === 'undefined') return;
-  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     if (window.localStorage.getItem(FIRST_SESSION_ID_KEY)) return;
     window.localStorage.setItem(FIRST_SESSION_ID_KEY, getSessionId());
@@ -115,7 +110,6 @@ export function pinFirstSessionForCapture(): void {
 // mode), so callers omit the hint rather than reporting a misleading turn 0.
 export function claimRunTurnIndex(): { turnIndex: number; isFirstRun: boolean } | null {
   if (typeof window === 'undefined') return null;
-  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     const raw = window.sessionStorage.getItem(RUN_TURN_INDEX_KEY);
     const current = raw ? Number.parseInt(raw, 10) : 0;
@@ -141,7 +135,6 @@ export function claimProjectTurnIndex(
 ): { projectTurnIndex: number } | null {
   if (typeof window === 'undefined') return null;
   if (!projectId) return null;
-  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     const key = `${PROJECT_TURN_INDEX_KEY_PREFIX}${projectId}`;
     const raw = window.localStorage.getItem(key);

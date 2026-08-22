@@ -6,7 +6,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -38,12 +37,6 @@ import {
   isFirstSession,
 } from './identity';
 import { randomUUID } from '../utils/uuid';
-import { installFetchWrapper } from '../capture/fetch-wrapper-stack';
-import {
-  isStudioFixtureCaptureLifecycleCurrent,
-  isStudioFixtureCaptureStorageLocked,
-  studioFixtureCaptureLifecycleSnapshot,
-} from '../capture/studio-fixture';
 
 interface AnalyticsContextValue {
   // The track helper accepts any event/props pair; per-event safety is
@@ -102,28 +95,18 @@ function isSameOriginApiCall(url: unknown): boolean {
 
 let runtimeAppVersion: string | null = null;
 let runtimeAppVersionPromise: Promise<string | null> | null = null;
-let runtimeAppVersionNamespace = 'ordinary';
 
 // Shared single-flight fetch of the daemon-pinned version. Cached at module
 // scope so the hook, the capture paths, and repeated calls all settle on one
 // /api/version round-trip and the same resolved value.
 async function loadRuntimeAppVersion(): Promise<string | null> {
-  const lifecycle = studioFixtureCaptureLifecycleSnapshot();
-  const namespace = lifecycle.namespace;
-  if (runtimeAppVersionNamespace !== lifecycle.namespace) {
-    runtimeAppVersion = null;
-    runtimeAppVersionPromise = null;
-    runtimeAppVersionNamespace = lifecycle.namespace;
-  }
   if (runtimeAppVersion) return runtimeAppVersion;
   if (!runtimeAppVersionPromise) {
     runtimeAppVersionPromise = (async () => {
       try {
         const res = await fetch('/api/version');
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return null;
         if (!res.ok) return null;
         const body = (await res.json()) as { version?: { version?: string } };
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return null;
         const next = body?.version?.version;
         if (!next) return null;
         runtimeAppVersion = next;
@@ -132,9 +115,7 @@ async function loadRuntimeAppVersion(): Promise<string | null> {
         return null;
       } finally {
         // Allow a retry on the next call when the fetch yielded nothing.
-        if (runtimeAppVersionNamespace === namespace && !runtimeAppVersion) {
-          runtimeAppVersionPromise = null;
-        }
+        if (!runtimeAppVersion) runtimeAppVersionPromise = null;
       }
     })();
   }
@@ -191,10 +172,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     }),
     [],
   );
-  const consentRef = useRef(false);
-  const installationIdRef = useRef<string | null>(null);
-  const userIdRef = useRef<string | null>(null);
-  const configureGlobalsRef = useRef<AnalyticsConfigureGlobals | null>(null);
 
   // Once the PostHog client has talked to /api/analytics/config, the
   // installationId the daemon stamped becomes the canonical anonymous id —
@@ -203,17 +180,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const [resolvedAnonId, setResolvedAnonId] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    const lifecycle = studioFixtureCaptureLifecycleSnapshot();
     void (async () => {
       const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
-      if (cancelled || !isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked()) return;
       patchExceptionTrackingAppVersion(resolvedAppVersion);
       // Bridge the always-on error tracker to /api/analytics/config so any
       // exceptions buffered since module load (see client-app.tsx) can flush
       // to PostHog. This runs regardless of the user's analytics consent
       // toggle — error reports are intentionally not gated by it.
-      await bootstrapExceptionTracking({
+      void bootstrapExceptionTracking({
         anonymousId: identity.anonymousId,
         sessionId: identity.sessionId,
         clientType: identity.clientType,
@@ -221,8 +195,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         locale,
         appVersion: resolvedAppVersion,
       });
-      if (cancelled || !isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked()) return;
       await getAnalyticsClient({
         anonymousId: identity.anonymousId,
         sessionId: identity.sessionId,
@@ -231,64 +203,14 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         locale,
         appVersion: resolvedAppVersion,
       });
-      if (cancelled || !isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked()) return;
+      if (cancelled) return;
       const resolved = getResolvedAnonymousId();
       if (resolved) setResolvedAnonId(resolved);
-      if (resolved) applyConsent(consentRef.current);
-      if (userIdRef.current) setAnalyticsUserId(userIdRef.current);
-      if (configureGlobalsRef.current) setConfigureGlobals(configureGlobalsRef.current);
-      if (installationIdRef.current) applyIdentity(installationIdRef.current);
     })();
     return () => {
       cancelled = true;
     };
   }, [identity, locale, appVersion]);
-
-  // Leaving a refused or accepted capture must rehydrate the ordinary client
-  // even when locale/version did not change. The lifecycle generation is the
-  // lease for every await and every post-await mutation in this recovery path.
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const onLifecycle = (event: Event) => {
-      const detail = (event as CustomEvent<{ active?: unknown }>).detail;
-      if (detail?.active) return;
-      const lifecycle = studioFixtureCaptureLifecycleSnapshot();
-      if (lifecycle.active || lifecycle.refused) return;
-      void (async () => {
-        const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return;
-        await bootstrapExceptionTracking({
-          anonymousId: identity.anonymousId,
-          sessionId: identity.sessionId,
-          clientType: identity.clientType,
-          isFirstSession: identity.isFirstSession,
-          locale,
-          appVersion: resolvedAppVersion,
-        });
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return;
-        const client = await getAnalyticsClient({
-          anonymousId: identity.anonymousId,
-          sessionId: identity.sessionId,
-          clientType: identity.clientType,
-          isFirstSession: identity.isFirstSession,
-          locale,
-          appVersion: resolvedAppVersion,
-        });
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return;
-        const resolved = getResolvedAnonymousId();
-        if (resolved) setResolvedAnonId(resolved);
-        if (client) {
-          applyConsent(consentRef.current);
-          if (userIdRef.current) setAnalyticsUserId(userIdRef.current);
-          if (configureGlobalsRef.current) setConfigureGlobals(configureGlobalsRef.current);
-          if (installationIdRef.current) applyIdentity(installationIdRef.current);
-        }
-      })();
-    };
-    window.addEventListener('material-designer:studio-fixture-lifecycle', onLifecycle);
-    return () => window.removeEventListener('material-designer:studio-fixture-lifecycle', onLifecycle);
-  }, [appVersion, identity, locale]);
 
   // Wrap window.fetch so every same-origin /api/* request carries the
   // analytics context for the daemon to mirror result events back with the
@@ -303,25 +225,25 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!resolvedAnonId) return;
-    const lifecycle = studioFixtureCaptureLifecycleSnapshot();
+    const original = window.fetch;
     const baseHeaders: Record<string, string> = {
       [ANALYTICS_HEADER_DEVICE_ID]: resolvedAnonId,
       [ANALYTICS_HEADER_SESSION_ID]: identity.sessionId,
       [ANALYTICS_HEADER_CLIENT_TYPE]: identity.clientType,
     };
-    const dispose = installFetchWrapper(async (input, init, next) => {
-      if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked()) return next(input, init);
+    window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-      if (!isSameOriginApiCall(url)) return next(input, init);
+      if (!isSameOriginApiCall(url)) return original(input, init);
       const merged: HeadersInit = {
         ...baseHeaders,
         [ANALYTICS_HEADER_LOCALE]: locale,
         ...(init?.headers ?? {}),
       };
-      return next(input, { ...(init ?? {}), headers: merged });
-    });
-    return dispose;
+      return original(input, { ...(init ?? {}), headers: merged });
+    };
+    return () => {
+      window.fetch = original;
+    };
   }, [identity, locale, resolvedAnonId]);
 
   // Update PostHog's super-properties whenever locale changes so subsequent
@@ -329,11 +251,8 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   // every track call site.
   useEffect(() => {
     let cancelled = false;
-    const lifecycle = studioFixtureCaptureLifecycleSnapshot();
     void (async () => {
       const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
-      if (cancelled || !isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked()) return;
       const client = await getAnalyticsClient({
         anonymousId: identity.anonymousId,
         sessionId: identity.sessionId,
@@ -342,8 +261,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
         locale: locale,
         appVersion: resolvedAppVersion,
       });
-      if (cancelled || !isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-        || isStudioFixtureCaptureStorageLocked() || !client) return;
+      if (cancelled || !client) return;
       try {
         client.register({
           locale: locale,
@@ -361,33 +279,32 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   const track = useCallback<AnalyticsContextValue['track']>(
     (event, properties, options) => {
-      const lifecycle = studioFixtureCaptureLifecycleSnapshot();
       const insertId = options?.insertId ?? randomUUID();
       const requestId = options?.requestId ?? null;
       // Attach request_id to the in-flight fetch wrapper too, so the daemon
       // can stitch click→result pairs without the caller threading it.
       if (typeof window !== 'undefined' && requestId) {
         try {
-          const disposeRequestId = installFetchWrapper(async (input, init, next) => {
-            if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-              || isStudioFixtureCaptureStorageLocked()) return next(input, init);
+          const baseFetch = window.fetch;
+          const wrapped: typeof fetch = async (input, init) => {
             const url =
               typeof input === 'string'
                 ? input
                 : input instanceof URL
                   ? input.href
                   : input.url;
-            if (!isSameOriginApiCall(url)) return next(input, init);
+            if (!isSameOriginApiCall(url)) return baseFetch(input, init);
             const merged: HeadersInit = {
               [ANALYTICS_HEADER_REQUEST_ID]: requestId,
               ...(init?.headers ?? {}),
             };
-            return next(input, { ...(init ?? {}), headers: merged });
-          });
+            return baseFetch(input, { ...(init ?? {}), headers: merged });
+          };
           // Single-shot: restore after next microtask so only the originating
           // fetch picks up the request_id header.
+          window.fetch = wrapped;
           queueMicrotask(() => {
-            disposeRequestId();
+            window.fetch = baseFetch;
           });
         } catch {
           // Best-effort header injection.
@@ -395,8 +312,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       }
       void (async () => {
         const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-          || isStudioFixtureCaptureStorageLocked()) return;
         const client = await getAnalyticsClient({
           anonymousId: identity.anonymousId,
           sessionId: identity.sessionId,
@@ -405,8 +320,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           locale: locale,
           appVersion: resolvedAppVersion,
         });
-        if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-          || isStudioFixtureCaptureStorageLocked()) return;
         capture(client, {
           event,
           properties: {
@@ -426,7 +339,6 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
     () => ({
       track,
       setConsent: (granted: boolean) => {
-        consentRef.current = granted;
         applyConsent(granted);
         if (!granted) {
           // Clear the header-injection state so the fetch wrapper effect
@@ -440,10 +352,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
           // the previous response was enabled=false. Resolved id propagates
           // into the wrapper via setResolvedAnonId below.
           void (async () => {
-            const lifecycle = studioFixtureCaptureLifecycleSnapshot();
             const resolvedAppVersion = await resolveAppVersionForCapture(appVersion);
-            if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-              || isStudioFixtureCaptureStorageLocked()) return;
             await getAnalyticsClient({
               anonymousId: identity.anonymousId,
               sessionId: identity.sessionId,
@@ -452,26 +361,21 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
               locale,
               appVersion: resolvedAppVersion,
             });
-            if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)
-              || isStudioFixtureCaptureStorageLocked()) return;
             const resolved = getResolvedAnonymousId();
             if (resolved) setResolvedAnonId(resolved);
           })();
         }
       },
       setIdentity: (installationId: string | null) => {
-        installationIdRef.current = installationId;
         applyIdentity(installationId);
         // Keep the fetch wrapper's header in sync so daemon-side captures
         // start using the new id immediately, not after the next reload.
         if (installationId) setResolvedAnonId(installationId);
       },
       setConfigureGlobals: (next: AnalyticsConfigureGlobals) => {
-        configureGlobalsRef.current = next;
         setConfigureGlobals(next);
       },
       setUserId: (userId: string | null) => {
-        userIdRef.current = userId;
         setAnalyticsUserId(userId);
       },
       anonymousId: identity.anonymousId,

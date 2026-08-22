@@ -1,7 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
-import { desktopWireupPrompt } from '@open-design/contracts';
 import { createTabToTracking } from '@open-design/contracts/analytics';
 import { isOpenDesignHostAvailable, pickHostWorkingDir } from '@open-design/host';
 import type { OpenDesignHostProjectImportSuccess } from '@open-design/host';
@@ -27,7 +26,6 @@ import { isStoredMediaProviderEntryPresent } from '../state/config';
 import { isMediaProviderPickerReady } from '../media/provider-readiness';
 import type {
   AudioKind,
-  AgentInfo,
   DesignSystemSummary,
   MediaAspect,
   ProjectKind,
@@ -64,9 +62,6 @@ import { Icon } from './Icon';
 import { Skeleton } from './Loading';
 import { Toast } from './Toast';
 import { useOpenFolderImport } from './useOpenFolderImport';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
-import type { TranslationVars } from '../i18n';
 
 // Snapshot of a curated prompt template, captured at New Project time and
 // folded into ProjectMetadata.promptTemplate. The user may have edited the
@@ -78,7 +73,7 @@ type PromptTemplatePick = {
 
 const SFX_AUDIO_DURATIONS_SEC = AUDIO_DURATIONS_SEC.filter((sec) => sec <= 30);
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 type NewProjectPlatform = Exclude<ProjectPlatform, 'auto'>;
 
@@ -136,9 +131,6 @@ export interface CreateInput {
   designSystemId: string | null;
   metadata: ProjectMetadata;
   userWorkingDirToken?: string;
-  pendingPrompt?: string;
-  autoSendFirstMessage?: boolean;
-  conversationMode?: 'design' | 'chat' | 'plan';
 }
 
 export type ImportClaudeDesignOutcome =
@@ -175,9 +167,6 @@ interface Props {
   onOpenConnectorsTab?: () => void;
   loading?: boolean;
   initialTab?: CreateTab;
-  agents?: AgentInfo[];
-  selectedAgentId?: string | null;
-  onAgentChange?: (id: string) => void;
 }
 
 const TAB_LABEL_KEYS: Record<CreateTab, keyof Dict> = {
@@ -299,9 +288,6 @@ export function NewProjectPanel({
   onOpenConnectorsTab,
   loading = false,
   initialTab = 'prototype',
-  agents = [],
-  selectedAgentId = null,
-  onAgentChange,
 }: Props) {
   const t = useT();
   const { locale } = useI18n();
@@ -363,8 +349,6 @@ export function NewProjectPanel({
     'high-fidelity',
   );
   const [platformTargets, setPlatformTargets] = useState<NewProjectPlatform[]>(['responsive']);
-  const [desktopWireupEnabled, setDesktopWireupEnabled] = useState(false);
-  const [desktopWireupBrief, setDesktopWireupBrief] = useState('');
   const [includeLandingPage, setIncludeLandingPage] = useState(false);
   const [includeOsWidgets, setIncludeOsWidgets] = useState(false);
   const [speakerNotes, setSpeakerNotes] = useState(false);
@@ -442,15 +426,6 @@ export function NewProjectPanel({
   }, [tab, skills, startTemplateId, designTemplates]);
   const showDesignSystemPicker =
     tabSupportsDesignSystem && !tabDefaultSkillForcesNoDs;
-  const desktopApplicationSelected = platformTargets.includes('desktop-app');
-  const selectedDesktopAgent = agents.find((agent) => agent.id === selectedAgentId) ?? null;
-
-  useEffect(() => {
-    if (!desktopApplicationSelected) {
-      setDesktopWireupEnabled(true);
-      setDesktopWireupPrompt('');
-    }
-  }, [desktopApplicationSelected]);
 
   useEffect(() => {
     if (dsSelectionTouched) return;
@@ -753,9 +728,6 @@ export function NewProjectPanel({
       mediaSurface,
       fidelity,
       platformTargets,
-      desktopWireupEnabled,
-      desktopWireupPrompt: desktopWireupBrief,
-      desktopAgentId: selectedDesktopAgent?.id ?? null,
       includeLandingPage,
       includeOsWidgets,
       speakerNotes,
@@ -791,9 +763,6 @@ export function NewProjectPanel({
       },
       { requestId },
     );
-    const desktopPrompt = metadata.desktopWireup?.enabled
-      ? metadata.desktopWireup.prompt?.trim() || desktopWireupPrompt(trimmedName)
-      : undefined;
     onCreate({
       name: trimmedName || autoName(tab, mediaSurface, t),
       skillId: startTemplateId ?? skillIdForTab,
@@ -803,11 +772,6 @@ export function NewProjectPanel({
         nameSource: trimmedName ? 'user' : 'generated',
         ...(workingDir ? { userWorkingDir: workingDir } : {}),
       },
-      ...(desktopPrompt ? {
-        pendingPrompt: desktopPrompt,
-        autoSendFirstMessage: true,
-        conversationMode: 'design' as const,
-      } : {}),
       ...(workingDirToken ? { userWorkingDirToken: workingDirToken } : {}),
       requestId,
     });
@@ -819,7 +783,7 @@ export function NewProjectPanel({
     setWorkingDirError(null);
     try {
       if (isOpenDesignHostAvailable()) {
-        const result = await pickHostWorkingDir(t('workingDirPicker.title'));
+        const result = await pickHostWorkingDir();
         if (result.ok) {
           setWorkingDir(result.baseDir);
           setWorkingDirToken(result.token);
@@ -827,16 +791,12 @@ export function NewProjectPanel({
         }
         if ('canceled' in result && result.canceled) return;
         setWorkingDirError({
-          message: t('workingDirPicker.unavailable'),
-          details: 'reason' in result ? result.reason : undefined,
+          message: `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
         });
         return;
       }
       try {
-        const picked = await openFolderDialog({
-          throwOnError: true,
-          title: t('workingDirPicker.title'),
-        });
+        const picked = await openFolderDialog({ throwOnError: true });
         if (picked) {
           setWorkingDir(picked);
           setWorkingDirToken(null);
@@ -876,7 +836,6 @@ export function NewProjectPanel({
   }
 
   const folderImport = useOpenFolderImport({
-    folderDialogTitle: t('workingDirPicker.title'),
     skillId: skillIdForTab,
     onImportFolder,
     onImportFolderResponse,
@@ -1044,19 +1003,6 @@ export function NewProjectPanel({
 
         {tab === 'prototype' || tab === 'live-artifact' || tab === 'template' || tab === 'other' ? (
           <PlatformPicker value={platformTargets} onChange={setPlatformTargets} />
-        ) : null}
-
-        {desktopApplicationSelected ? (
-          <DesktopApplicationOptions
-            agents={agents}
-            selectedAgent={selectedDesktopAgent}
-            selectedAgentId={selectedAgentId}
-            enabled={desktopWireupEnabled}
-            prompt={desktopWireupBrief}
-            onEnabled={setDesktopWireupEnabled}
-            onPrompt={setDesktopWireupBrief}
-            onAgentChange={onAgentChange}
-          />
         ) : null}
 
         {tab === 'prototype' || tab === 'live-artifact' || tab === 'template' || tab === 'other' ? (
@@ -1258,23 +1204,10 @@ function PlatformPicker({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [focusedIndex, setFocusedIndex] = useState(0);
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-  const openerRef = useRef<HTMLButtonElement | null>(null);
-  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const listboxId = useId();
-  const search = useRegexSearch(query, setQuery);
-  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
 
   function togglePlatform(next: NewProjectPlatform) {
-    if (value.includes('desktop-app') && next !== 'desktop-app') return;
-    if (next === 'desktop-app' && !value.includes('desktop-app')) {
-      onChange(['desktop-app']);
-      return;
-    }
     const active = value.includes(next);
     const updated = active
       ? value.filter((item) => item !== next)
@@ -1285,16 +1218,11 @@ function PlatformPicker({
   useEffect(() => {
     if (!open) return;
     function onPointer(e: MouseEvent) {
-      if (wrapRef.current?.contains(e.target as Node) || popoverRef.current?.contains(e.target as Node)) return;
+      if (wrapRef.current?.contains(e.target as Node)) return;
       setOpen(false);
-      openerRef.current?.focus();
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-        openerRef.current?.focus();
-      }
+      if (e.key === 'Escape') setOpen(false);
     }
     // Defer listener registration by a tick so the very click that opened
     // the popover doesn't get re-interpreted as an outside-click on the
@@ -1310,80 +1238,16 @@ function PlatformPicker({
     };
   }, [open]);
 
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const position = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const margin = 12;
-      const width = Math.min(Math.max(rect.width, 320), Math.max(240, window.innerWidth - margin * 2));
-      const availableBelow = window.innerHeight - rect.bottom - margin;
-      const availableAbove = rect.top - margin;
-      const maxHeight = Math.max(160, Math.min(420, Math.max(availableBelow, availableAbove)));
-      const below = availableBelow >= 220 || availableBelow >= availableAbove;
-      const top = below
-        ? Math.min(rect.bottom + 6, window.innerHeight - maxHeight - margin)
-        : Math.max(margin, rect.top - maxHeight - 6);
-      const left = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
-      setPopoverStyle({ position: 'fixed', top, left, width, maxHeight, zIndex: 1000 });
-    };
-    position();
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => {
-      window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
-    };
-  }, [open]);
-
   const primary = DESIGN_PLATFORMS.find((o) => o.value === value[0]) ?? null;
   const extraCount = Math.max(0, value.length - 1);
-  const filteredOptions = DESIGN_PLATFORMS.filter((option) => {
-    const haystack = `${t(option.labelKey)} ${t(option.hintKey)} ${option.value}`;
-    return search.matches(haystack);
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    setFocusedIndex(0);
-    itemRefs.current = [];
-  }, [open, query]);
-
-  function handleOptionKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-      event.preventDefault();
-      const next = Math.min(index + 1, filteredOptions.length - 1);
-      setFocusedIndex(next);
-      itemRefs.current[next]?.focus();
-    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-      event.preventDefault();
-      const next = Math.max(index - 1, 0);
-      setFocusedIndex(next);
-      itemRefs.current[next]?.focus();
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      const next = event.key === 'Home' ? 0 : Math.max(filteredOptions.length - 1, 0);
-      setFocusedIndex(next);
-      itemRefs.current[next]?.focus();
-    } else if (event.key === ' ' || event.key === 'Enter') {
-      event.preventDefault();
-      const option = filteredOptions[index];
-      if (option) togglePlatform(option.value);
-    }
-  }
 
   return (
     <div
       className={`newproj-section ds-picker platform-picker${open ? ' open' : ''}`}
       ref={wrapRef}
     >
-      <label className="newproj-label">{t('newproj.targetPlatformsLabel')}</label>
-      <p className="platform-picker-hint">{t('newproj.targetPlatformsHint')}</p>
+      <label className="newproj-label">Target platforms</label>
       <button
-        ref={(element) => {
-          triggerRef.current = element;
-          openerRef.current = element;
-        }}
         type="button"
         className={`ds-picker-trigger${open ? ' open' : ''}${primary ? '' : ' empty'}`}
         onClick={() => setOpen((v) => !v)}
@@ -1393,9 +1257,7 @@ function PlatformPicker({
       >
         <span className="ds-picker-meta">
           <span className="ds-picker-title">
-            <span className="ds-picker-title-text">
-              {primary ? t(primary.labelKey) : t('newproj.targetPlatformsLabel')}
-            </span>
+            {primary ? t(primary.labelKey) : 'Pick a platform'}
             {extraCount > 0 ? (
               <span className="ds-picker-extra-pill">+{extraCount}</span>
             ) : null}
@@ -1408,63 +1270,28 @@ function PlatformPicker({
           style={{ transform: open ? 'rotate(180deg)' : undefined }}
         />
       </button>
-      {open ? createPortal(
-          <div
-            ref={popoverRef}
-            className="ds-picker-popover ds-picker-popover-portal"
-            style={popoverStyle}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                setOpen(false);
-                openerRef.current?.focus();
-              }
-            }}
-          >
-            <div role="group" aria-label={t('newproj.dsSearch')}>
-              <RegexSearchField
-                search={search}
-                fieldLabel={t('newproj.targetPlatformsLabel')}
-                placeholder={t('newproj.dsSearch')}
-                ariaLabel={t('newproj.dsSearch')}
-                className="ds-picker-search"
-              />
-            </div>
-            <p className="ds-picker-results" role="status" aria-live="polite">
-              {filteredOptions.length > 0
-                ? t('newproj.dsResults', { count: filteredOptions.length })
-                : t('newproj.dsEmpty', { query })}
-            </p>
-            <div
-              className="ds-picker-list"
-              id={listboxId}
-              role="listbox"
-              aria-label={t('newproj.targetPlatformsLabel')}
-              aria-multiselectable="true"
-            >
-            {filteredOptions.map((option, index) => {
+      {open ? (
+        <div
+          className="ds-picker-popover"
+          id={listboxId}
+          role="listbox"
+          aria-label="Target platforms"
+          aria-multiselectable="true"
+        >
+          <div className="ds-picker-list">
+            {DESIGN_PLATFORMS.map((option) => {
               const active = value.includes(option.value);
               return (
                 <button
                   key={option.value}
-                  ref={(element) => { itemRefs.current[index] = element; }}
                   type="button"
                   role="option"
                   aria-selected={active}
-                  aria-disabled={value.includes('desktop-app') && option.value !== 'desktop-app'}
-                  disabled={value.includes('desktop-app') && option.value !== 'desktop-app'}
-                  tabIndex={index === focusedIndex ? 0 : -1}
                   className={`ds-picker-item${active ? ' active' : ''}`}
                   onClick={() => togglePlatform(option.value)}
-                  onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 >
                   <span className="ds-picker-item-text">
-                    <span className="ds-picker-item-title">
-                      <span className="ds-picker-item-title-text">
-                        {t(option.labelKey)}
-                      </span>
-                    </span>
+                    <span className="ds-picker-item-title">{t(option.labelKey)}</span>
                     <span className="ds-picker-item-sub">{t(option.hintKey)}</span>
                   </span>
                   <span
@@ -1476,215 +1303,10 @@ function PlatformPicker({
                 </button>
               );
             })}
-            {filteredOptions.length === 0 ? <p className="ds-picker-empty">{t('newproj.dsEmpty', { query })}</p> : null}
-            </div>
-          </div>,
-          document.body,
-        ) : null}
-    </div>
-  );
-}
-
-function DesktopApplicationOptions({
-  agents,
-  selectedAgent,
-  selectedAgentId,
-  enabled,
-  prompt,
-  onEnabled,
-  onPrompt,
-  onAgentChange,
-}: {
-  agents: AgentInfo[];
-  selectedAgent: AgentInfo | null;
-  selectedAgentId: string | null;
-  enabled: boolean;
-  prompt: string;
-  onEnabled: (value: boolean) => void;
-  onPrompt: (value: string) => void;
-  onAgentChange?: (id: string) => void;
-}) {
-  const t = useT();
-  const agentReady = Boolean(selectedAgent?.available);
-  const [agentOpen, setAgentOpen] = useState(false);
-  const [agentQuery, setAgentQuery] = useState('');
-  const [agentFocusedIndex, setAgentFocusedIndex] = useState(0);
-  const agentSearch = useRegexSearch(agentQuery, setAgentQuery);
-  const agentTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const agentPopoverRef = useRef<HTMLDivElement | null>(null);
-  const agentItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const [agentPopoverStyle, setAgentPopoverStyle] = useState<React.CSSProperties>({});
-  const agentOptions = agents.filter((agent) => agent.id && agent.id !== 'api');
-  const filteredAgents = agentOptions.filter((agent) =>
-    agentSearch.matches(`${agent.name} ${agent.id} ${agent.version ?? ''}`),
-  );
-
-  useLayoutEffect(() => {
-    if (!agentOpen || !agentTriggerRef.current) return;
-    const position = () => {
-      const rect = agentTriggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const margin = 12;
-      const width = Math.min(Math.max(rect.width, 300), Math.max(240, window.innerWidth - margin * 2));
-      const belowSpace = window.innerHeight - rect.bottom - margin;
-      const aboveSpace = rect.top - margin;
-      const maxHeight = Math.max(160, Math.min(360, Math.max(belowSpace, aboveSpace)));
-      const below = belowSpace >= 220 || belowSpace >= aboveSpace;
-      const top = below
-        ? Math.min(rect.bottom + 6, window.innerHeight - maxHeight - margin)
-        : Math.max(margin, rect.top - maxHeight - 6);
-      const left = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
-      setAgentPopoverStyle({ position: 'fixed', top, left, width, maxHeight, zIndex: 1001 });
-    };
-    position();
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => {
-      window.removeEventListener('resize', position);
-      window.removeEventListener('scroll', position, true);
-    };
-  }, [agentOpen]);
-
-  useEffect(() => {
-    if (!agentOpen) return;
-    setAgentFocusedIndex(0);
-    agentItemRefs.current = [];
-  }, [agentOpen, agentQuery]);
-
-  function selectAgent(agent: AgentInfo): void {
-    if (!agent.available || !onAgentChange) return;
-    onAgentChange(agent.id);
-    setAgentOpen(false);
-    agentTriggerRef.current?.focus();
-  }
-
-  return (
-    <section className="newproj-section desktop-application-options" aria-labelledby="desktop-application-options-title">
-      <div className="newproj-label" id="desktop-application-options-title">
-        {t('newproj.platform.desktopApp.label')}
-      </div>
-      <p className="platform-picker-hint">{t('newproj.platform.desktopApp.hint')}</p>
-      <div className="desktop-agent-picker" role="group" aria-labelledby="desktop-agent-picker-label">
-        <span id="desktop-agent-picker-label" className="newproj-label">{t('newproj.desktopAgentLabel')}</span>
-        <button
-          ref={agentTriggerRef}
-          type="button"
-          className="ds-picker-trigger desktop-agent-trigger"
-          onClick={() => setAgentOpen((value) => !value)}
-          aria-haspopup="listbox"
-          aria-expanded={agentOpen}
-          aria-controls="desktop-agent-options"
-        >
-          <span>{selectedAgent?.name ?? t('newproj.desktopAgentMissing')}</span>
-          <Icon name="chevron-down" size={14} aria-hidden />
-        </button>
-        {agentOpen ? createPortal(
-          <div
-            ref={agentPopoverRef}
-            className="ds-picker-popover ds-picker-popover-portal desktop-agent-popover"
-            style={agentPopoverStyle}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                setAgentOpen(false);
-                agentTriggerRef.current?.focus();
-              }
-            }}
-          >
-            <div role="group" aria-label={t('newproj.desktopAgentSearch')}>
-              <RegexSearchField
-                search={agentSearch}
-                fieldLabel={t('newproj.desktopAgentLabel')}
-                placeholder={t('newproj.desktopAgentSearch')}
-                ariaLabel={t('newproj.desktopAgentSearch')}
-                className="ds-picker-search"
-              />
-            </div>
-            <p className="ds-picker-results" role="status" aria-live="polite">
-              {filteredAgents.length > 0
-                ? t('newproj.desktopAgentResults', { count: filteredAgents.length })
-                : t('newproj.desktopAgentEmpty', { query: agentQuery })}
-            </p>
-            <div id="desktop-agent-options" className="ds-picker-list" role="listbox" aria-label={t('newproj.desktopAgentLabel')}>
-              {filteredAgents.map((agent, index) => (
-                <button
-                  key={agent.id}
-                  ref={(element) => { agentItemRefs.current[index] = element; }}
-                  type="button"
-                  role="option"
-                  aria-selected={agent.id === selectedAgentId}
-                  aria-disabled={!agent.available}
-                  disabled={!agent.available}
-                  tabIndex={index === agentFocusedIndex ? 0 : -1}
-                  className={`ds-picker-item${agent.id === selectedAgentId ? ' active' : ''}`}
-                  onClick={() => selectAgent(agent)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-                      event.preventDefault();
-                      const next = Math.min(index + 1, filteredAgents.length - 1);
-                      setAgentFocusedIndex(next);
-                      agentItemRefs.current[next]?.focus();
-                    } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-                      event.preventDefault();
-                      const next = Math.max(index - 1, 0);
-                      setAgentFocusedIndex(next);
-                      agentItemRefs.current[next]?.focus();
-                    } else if (event.key === 'Home' || event.key === 'End') {
-                      event.preventDefault();
-                      const next = event.key === 'Home' ? 0 : Math.max(filteredAgents.length - 1, 0);
-                      setAgentFocusedIndex(next);
-                      agentItemRefs.current[next]?.focus();
-                    } else if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      selectAgent(agent);
-                    }
-                  }}
-                >
-                  <span className="ds-picker-item-text">
-                    <span className="ds-picker-item-title">{agent.name}</span>
-                    <span className="ds-picker-item-sub">{agent.available ? agent.version ?? agent.id : t('agentPicker.notInstalled')}</span>
-                  </span>
-                  {agent.id === selectedAgentId ? <span className="ds-picker-mark check active" aria-hidden>✓</span> : null}
-                </button>
-              ))}
-            </div>
-          </div>,
-          document.body,
-        ) : null}
-      </div>
-      <label className="compact-toggle desktop-wireup-toggle">
-        <input
-          type="checkbox"
-          checked={enabled}
-          disabled={!agentReady}
-          onChange={(event) => onEnabled(event.currentTarget.checked)}
-          aria-describedby="desktop-wireup-status"
-        />
-        <span>
-          {t('newproj.desktopWireupToggle')}
-        </span>
-      </label>
-      <p id="desktop-wireup-status" className="platform-picker-hint" role="status">
-        {agentReady
-          ? t('newproj.desktopWireupNotStarted')
-          : agents.length === 0
-            ? t('newproj.desktopAgentMissing')
-            : t('newproj.desktopAgentUnavailable')}
-      </p>
-      {enabled && agentReady ? (
-        <label className="newproj-desktop-wireup-prompt">
-          <span className="newproj-label">{t('newproj.desktopWireupPromptLabel')}</span>
-          <textarea
-            value={prompt}
-            onChange={(event) => onPrompt(event.currentTarget.value.slice(0, 4000))}
-            placeholder={t('chat.placeholder')}
-            rows={3}
-            maxLength={4000}
-          />
-        </label>
+          </div>
+        </div>
       ) : null}
-    </section>
+    </div>
   );
 }
 
@@ -2287,9 +1909,7 @@ function PromptTemplatePicker({
       >
         <PromptTemplateAvatar summary={value?.summary ?? null} />
         <span className="ds-picker-meta">
-          <span className="ds-picker-title">
-            <span className="ds-picker-title-text">{triggerTitle}</span>
-          </span>
+          <span className="ds-picker-title">{triggerTitle}</span>
           <span className="ds-picker-sub">{triggerSub}</span>
         </span>
         <Icon
@@ -2324,9 +1944,7 @@ function PromptTemplatePicker({
               </span>
               <span className="ds-picker-item-text">
                 <span className="ds-picker-item-title">
-                  <span className="ds-picker-item-title-text">
-                    {t('newproj.promptTemplateNoneTitle')}
-                  </span>
+                  {t('newproj.promptTemplateNoneTitle')}
                 </span>
                 <span className="ds-picker-item-sub">
                   {t('newproj.promptTemplateNoneSub')}
@@ -2357,7 +1975,7 @@ function PromptTemplatePicker({
                     </span>
                     <span className="ds-picker-item-text">
                       <span className="ds-picker-item-title">
-                        <span className="ds-picker-item-title-text">{tpl.title}</span>
+                        {tpl.title}
                         {loadingId === tpl.id ? (
                           <span className="ds-picker-item-badge">
                             {t('common.loading')}
@@ -2746,9 +2364,7 @@ function DesignSystemPicker({
         <DesignSystemAvatar system={primary} extraCount={extraCount} />
         <span className="ds-picker-meta">
           <span className="ds-picker-title">
-            <span className="ds-picker-title-text">
-              {primary ? primary.title : t('newproj.dsNoneFreeform')}
-            </span>
+            {primary ? primary.title : t('newproj.dsNoneFreeform')}
             {extraCount > 0 ? (
               <span className="ds-picker-extra-pill">+{extraCount}</span>
             ) : null}
@@ -2939,7 +2555,7 @@ function DsPickerItem({
       <span className="ds-picker-item-avatar">{avatar}</span>
       <span className="ds-picker-item-text">
         <span className="ds-picker-item-title">
-          <span className="ds-picker-item-title-text">{title}</span>
+          {title}
           {badge ? <span className="ds-picker-item-badge">{badge}</span> : null}
         </span>
         <span className="ds-picker-item-sub">{subtitle}</span>
@@ -3304,9 +2920,7 @@ function MediaModelCards({
         aria-expanded={open}
       >
         <span className="ds-picker-meta">
-          <span className="ds-picker-title">
-            <span className="ds-picker-title-text">{triggerTitle}</span>
-          </span>
+          <span className="ds-picker-title">{triggerTitle}</span>
           <span className="ds-picker-sub">{triggerSub}</span>
         </span>
         <Icon
@@ -3358,9 +2972,7 @@ function MediaModelCards({
                       >
                         <span className="ds-picker-item-text">
                           <span className="ds-picker-item-title">
-                            <span className="ds-picker-item-title-text">
-                              {model.label}
-                            </span>
+                            {model.label}
                             {model.default ? (
                               <span className="ds-picker-item-badge">
                                 {t('newproj.modelRecommended')}
@@ -3464,9 +3076,6 @@ function buildMetadata(input: {
   mediaSurface: MediaSurface;
   fidelity: 'wireframe' | 'high-fidelity';
   platformTargets: NewProjectPlatform[];
-  desktopWireupEnabled: boolean;
-  desktopWireupPrompt: string;
-  desktopAgentId: string | null;
   includeLandingPage: boolean;
   includeOsWidgets: boolean;
   speakerNotes: boolean;
@@ -3485,9 +3094,6 @@ function buildMetadata(input: {
   inspirationIds: string[];
   promptTemplate: PromptTemplatePick | null;
 }): ProjectMetadata {
-  if (input.platformTargets.includes('desktop-app') && input.platformTargets.some((target) => target !== 'desktop-app')) {
-    throw new Error('Desktop application is an exclusive target; remove the other platform selections first.');
-  }
   const kind: ProjectKind =
     input.tab === 'live-artifact'
       ? 'prototype'
@@ -3505,26 +3111,6 @@ function buildMetadata(input: {
     platform: selectedPlatforms[0],
     platformTargets: concreteTargets,
     ...surfaceOptions,
-    ...(input.desktopWireupEnabled && Boolean(input.desktopAgentId) && input.platformTargets.includes('desktop-app')
-      ? {
-          intent: 'desktop-app' as const,
-          platform: 'desktop-app' as const,
-          skipDiscoveryBrief: true,
-          desktopWireup: {
-            enabled: true,
-            status: 'not_started' as const,
-            ...(input.desktopAgentId ? { agentId: input.desktopAgentId } : {}),
-            ...(input.desktopWireupPrompt.trim()
-              ? { prompt: input.desktopWireupPrompt.trim().slice(0, 4000) }
-              : {}),
-          },
-        }
-      : input.platformTargets.includes('desktop-app')
-        ? {
-            intent: 'desktop-app' as const,
-            desktopWireup: { enabled: false, status: 'not_started' as const },
-          }
-        : {}),
   };
   const inspirations = input.inspirationIds.length > 0
     ? { inspirationDesignSystemIds: input.inspirationIds }

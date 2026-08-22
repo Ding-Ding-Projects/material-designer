@@ -4,26 +4,22 @@ import {
   pickAndImportHostProject,
   type OpenDesignHostProjectImportSuccess,
 } from '@open-design/host';
-import { useT } from '../i18n';
 import { pickLocalFolderPath } from '../state/projects';
 import { resolvedWorkspaceContextForWrite } from '../state/projects';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { formatPickAndImportFailure } from '../utils/pickAndImportError';
 
 interface UseOpenFolderImportArgs {
-  folderDialogTitle: string;
   skillId?: string | null;
   onImportFolder?: (baseDir: string) => Promise<void> | void;
   onImportFolderResponse?: (response: OpenDesignHostProjectImportSuccess) => Promise<void> | void;
 }
 
 export function useOpenFolderImport({
-  folderDialogTitle,
   skillId,
   onImportFolder,
   onImportFolderResponse,
 }: UseOpenFolderImportArgs) {
-  const t = useT();
   const workspaceContextState = useWorkspaceContext();
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
@@ -37,7 +33,6 @@ export function useOpenFolderImport({
       setImporting(true);
       try {
         const result = await pickAndImportHostProject({
-          folderDialogTitle,
           skillId: skillId ?? null,
           workspaceContext: resolvedWorkspaceContextForWrite(workspaceContextState),
         });
@@ -47,14 +42,10 @@ export function useOpenFolderImport({
           return;
         }
         if ('canceled' in result && result.canceled === true) return;
-        setError({
-          message: t('chat.linkedFolderPickError'),
-          details: formatPickAndImportFailure(result),
-        });
+        setError(formatPickAndImportFailure(result));
       } catch (err) {
         setError({
-          message: t('chat.linkedFolderPickError'),
-          details: err instanceof Error ? err.message : undefined,
+          message: err instanceof Error ? err.message : 'Failed to import folder',
         });
       } finally {
         setImporting(false);
@@ -66,13 +57,12 @@ export function useOpenFolderImport({
     setError(null);
     setImporting(true);
     try {
-      const selectedPath = await pickLocalFolderPath({ title: folderDialogTitle });
+      const selectedPath = await pickLocalFolderPath();
       if (!selectedPath) return;
       await onImportFolder(selectedPath);
     } catch (err) {
       setError({
-        message: t('chat.linkedFolderPickError'),
-        details: err instanceof Error ? err.message : undefined,
+        message: err instanceof Error ? err.message : 'Failed to import folder',
       });
     } finally {
       setImporting(false);
@@ -82,8 +72,6 @@ export function useOpenFolderImport({
     onImportFolder,
     onImportFolderResponse,
     skillId,
-    folderDialogTitle,
-    t,
     workspaceContextState,
   ]);
 

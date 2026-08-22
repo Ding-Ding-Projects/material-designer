@@ -303,6 +303,7 @@ interface Props {
   }) => boolean | void | Promise<boolean | void>;
   onRecommendationDismiss?: () => void;
   executionSwitcher?: ReactNode;
+  artifactUpgradeSlot?: ReactNode;
   deepSeekV4FlashCampaignAudience?: DeepSeekV4FlashCampaignAudience;
   /** Real model switch for the campaign modal's paid 立即使用 CTA (D5).
    *  EntryShell owns the agent/model persistence callbacks; HomeView only
@@ -490,6 +491,7 @@ export function HomeView({
   onRecommendationStart,
   onRecommendationDismiss,
   executionSwitcher,
+  artifactUpgradeSlot,
   deepSeekV4FlashCampaignAudience = 'unknown',
   onDeepSeekV4FlashCampaignUseNow,
   deepSeekV4FlashCampaignMetricsConsent = false,
@@ -2085,7 +2087,7 @@ export function HomeView({
     // On desktop the working-dir POST is gated behind a host-minted token, so
     // pick through the host bridge to capture { baseDir, token } together.
     if (isOpenDesignHostAvailable()) {
-      const result = await pickHostWorkingDir(t('workingDirPicker.title'));
+      const result = await pickHostWorkingDir();
       if (result.ok) {
         setWorkingDir(result.baseDir);
         setWorkingDirToken(result.token);
@@ -2102,17 +2104,14 @@ export function HomeView({
       // POST /api/projects/:id/working-dir would be rejected by the desktop
       // auth gate and surface as a confusing late create-time failure.
       // Surface the host error instead and keep the existing working dir.
-      setError(t('workingDirPicker.unavailable'));
+      setError(
+        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
+      );
       return null;
     }
     // Pure web path: no desktop host, so there is no token gate — the raw
     // browser folder path is the expected, working input.
-    let picked: string | null = null;
-    try {
-      picked = await openFolderDialog({ throwOnError: true, title: t('workingDirPicker.title') });
-    } catch {
-      setError(t('chat.linkedFolderPickError'));
-    }
+    const picked = await openFolderDialog();
     if (picked) {
       setWorkingDir(picked);
       setWorkingDirToken(null);
@@ -2124,21 +2123,18 @@ export function HomeView({
 
   async function handlePickLocalCodeDir() {
     if (isOpenDesignHostAvailable()) {
-      const result = await pickHostWorkingDir(t('workingDirPicker.title'));
+      const result = await pickHostWorkingDir();
       if (result.ok) {
         void rememberRecentDir(result.baseDir);
         return result.baseDir;
       }
       if ('canceled' in result && result.canceled) return null;
-      setError(t('workingDirPicker.unavailable'));
+      setError(
+        `Couldn't open the folder picker (${'reason' in result ? result.reason : 'host unavailable'}). Please update OpenDesign and try again.`,
+      );
       return null;
     }
-    let picked: string | null = null;
-    try {
-      picked = await openFolderDialog({ throwOnError: true, title: t('workingDirPicker.title') });
-    } catch {
-      setError(t('chat.linkedFolderPickError'));
-    }
+    const picked = await openFolderDialog();
     if (picked) {
       void rememberRecentDir(picked);
       return picked;
@@ -3049,6 +3045,7 @@ export function HomeView({
         // third way to say the same thing, wedged between the two. The
         // recommendation engine and `RecommendedStartRegion` are left intact;
         // only this mount point is gone.
+        recommendationSlot={artifactUpgradeSlot}
       />
 
       {recentProjectsEmpty ? null : (

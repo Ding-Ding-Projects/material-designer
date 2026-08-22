@@ -17,7 +17,6 @@ import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/ty
 import { useI18n, type Locale } from '../i18n';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
-import { notify } from './notifications/notificationStore';
 import { readDefaultSketchToolColor } from './sketch-colors';
 import {
   emptySketchScene,
@@ -330,14 +329,7 @@ export function SketchEditor({
       });
     } catch (err) {
       console.warn('[SketchEditor] export image failed', err);
-      // A failed export only informs — there is nothing for the user to decide
-      // — so it goes to the corner rather than halting the canvas behind a
-      // browser dialog. Raised through the notification store rather than this
-      // component's own `Toast` because that toast counts down a TTL, and an
-      // error that expires unread while the user is looking at the drawing is
-      // an error nobody was told about. `error` records pin open until
-      // dismissed and stay in the notification centre afterwards.
-      notify({ severity: 'error', title: t('common.exportImageFailed') });
+      alert(t('common.exportImageFailed'));
     } finally {
       setExporting(false);
     }
@@ -677,10 +669,6 @@ function excalidrawLangCode(locale: Locale): string {
     'de': 'de-DE',
     'zh-CN': 'zh-CN',
     'zh-TW': 'zh-TW',
-    // Excalidraw ships no zh-HK bundle, so Cantonese users get the
-    // Traditional Chinese one — the right script, and the closest thing
-    // that actually exists upstream.
-    'zh-HK': 'zh-TW',
     'pt-BR': 'pt-BR',
     'es-ES': 'es-ES',
     'ru': 'ru-RU',
@@ -945,10 +933,7 @@ const ZH_TW_SKETCH_TEXT_OVERRIDES: Record<string, string> = {
 
 function sketchTextOverrides(locale: Locale): Record<string, string> | null {
   if (locale === 'zh-CN') return ZH_CN_SKETCH_TEXT_OVERRIDES;
-  // zh-HK rides the Traditional overrides for the same reason it rides the
-  // Traditional Excalidraw bundle: the script is right and no Cantonese
-  // Excalidraw copy exists to override with.
-  if (locale === 'zh-TW' || locale === 'zh-HK') return ZH_TW_SKETCH_TEXT_OVERRIDES;
+  if (locale === 'zh-TW') return ZH_TW_SKETCH_TEXT_OVERRIDES;
   return null;
 }
 

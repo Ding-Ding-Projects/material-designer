@@ -3,11 +3,10 @@ import { fetchDesignSystemsResult } from '../providers/registry';
 import type { DesignSystemSummary } from '../types';
 import type { Dict } from '../i18n/types';
 import { Icon } from './Icon';
-import type { TranslationVars } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 interface Props {
   t: TranslateFn;

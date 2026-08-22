@@ -1,8 +1,7 @@
 import type { ChatMessage } from '../types';
 import type { Dict } from '../i18n/types';
-import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 export function messageTime(message: ChatMessage): number | undefined {
   if (message.role === 'assistant') {

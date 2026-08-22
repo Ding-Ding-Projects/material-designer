@@ -23,7 +23,6 @@ import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import { describeRoutineSchedule, describeRoutineScheduleParts } from './routineScheduleLabels';
-import type { TranslationVars } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 
@@ -38,7 +37,7 @@ type ContextMention = {
   query: string;
 };
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 type SelectedContextItem = {
   kind: CapabilityKind;

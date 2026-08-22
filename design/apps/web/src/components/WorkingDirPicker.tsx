@@ -13,7 +13,7 @@ interface Props {
   /** Most-recently-used directories, most-recent-first. */
   recentDirs: string[];
   /** Open the native folder picker. */
-  onPickDirectory: () => void | Promise<void>;
+  onPickDirectory: () => void;
   /** Re-select a previously used directory. */
   onSelectRecent: (dir: string) => void;
   /** Clear the current selection. Only reachable when `workingDir` is set. */
@@ -62,7 +62,6 @@ export function WorkingDirPicker({
   const [open, setOpen] = useState(false);
   const [recentOpen, setRecentOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -93,7 +92,6 @@ export function WorkingDirPicker({
       <div className={styles.triggerRow}>
         <button
           type="button"
-          ref={triggerRef}
           className={`${styles.trigger}${invalid ? ` ${styles.triggerInvalid}` : ''}`}
           data-testid="working-dir-trigger"
           aria-expanded={open}
@@ -124,13 +122,9 @@ export function WorkingDirPicker({
             role="menuitem"
             className={styles.item}
             data-testid="working-dir-pick"
-            onClick={async () => {
+            onClick={() => {
               setOpen(false);
-              try {
-                await onPickDirectory();
-              } finally {
-                triggerRef.current?.focus();
-              }
+              onPickDirectory();
             }}
           >
             <Icon name="folder" size={14} className={styles.itemIcon} />

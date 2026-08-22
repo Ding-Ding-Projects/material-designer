@@ -12,7 +12,6 @@ import {
 import { useI18n } from '../i18n';
 import { openExternalUrl } from '../providers/registry';
 import {
-  DEFAULT_RELEASES_URL,
   checkForUpdaterUpdate,
   deriveUpdaterModel,
   downloadUpdaterUpdate,
@@ -28,15 +27,8 @@ import {
 } from '../lib/updater';
 import styles from './UpdateDialog.module.css';
 
+const RELEASES_URL = 'https://github.com/nexu-io/open-design/releases';
 const MENU_SOURCE = 'mac-app-menu';
-const FOCUSABLE_SELECTOR = [
-  'button:not([disabled])',
-  '[href]',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
 
 function withEllipsis(value: string): string {
   return `${value.replace(/[.\u2026]+$/u, '')}…`;
@@ -53,13 +45,9 @@ export function UpdateDialog() {
   analyticsTrackRef.current = analytics.track;
   const statusRef = useRef<OpenDesignHostUpdaterStatusSnapshot | null>(null);
   const statusRevisionRef = useRef(0);
-  const checkGenerationRef = useRef(0);
   const laterRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const primaryRef = useRef<HTMLButtonElement | null>(null);
-  const dialogRef = useRef<HTMLElement | null>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const openRef = useRef(false);
   const [status, setStatus] = useState<OpenDesignHostUpdaterStatusSnapshot | null>(null);
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState(MENU_SOURCE);
@@ -71,26 +59,6 @@ export function UpdateDialog() {
     ...(model.currentVersion ? { app_version_before: model.currentVersion } : {}),
     ...(model.availableVersion ? { app_version_after: model.availableVersion } : {}),
   }), [model.availableVersion, model.currentVersion]);
-
-  const dismiss = useCallback(() => {
-    checkGenerationRef.current += 1;
-    openRef.current = false;
-    setOpen(false);
-    setRestartSafety(null);
-    setActionError(null);
-  }, []);
-
-  const close = useCallback(() => {
-    if (actionBusy) return;
-    trackUpdateIndicatorClick(analytics.track, {
-      action: 'dismiss',
-      area: 'update_dialog',
-      element: 'later',
-      page_name: 'app',
-      ...versionProps,
-    });
-    dismiss();
-  }, [actionBusy, analytics.track, dismiss, versionProps]);
 
   const applyStatus = useCallback((next: OpenDesignHostUpdaterStatusSnapshot) => {
     statusRevisionRef.current += 1;
@@ -117,14 +85,6 @@ export function UpdateDialog() {
     const unsubscribeOpen = subscribeToUpdaterOpenDialog((request) => {
       if (!mounted) return;
       const requestSource = request.source || MENU_SOURCE;
-      if (!openRef.current) {
-        const activeElement = document.activeElement;
-        openerRef.current = activeElement instanceof HTMLElement && activeElement !== document.body
-          ? activeElement
-          : null;
-      }
-      openRef.current = true;
-      const checkGeneration = ++checkGenerationRef.current;
       setSource(requestSource);
       setRestartSafety(null);
       setActionError(null);
@@ -139,7 +99,7 @@ export function UpdateDialog() {
         let current = statusRef.current;
         if (current == null) {
           const result = await readUpdaterStatus({ payload: { source: requestSource } });
-          if (!mounted || checkGenerationRef.current !== checkGeneration || !openRef.current || !result.ok) return;
+          if (!mounted || !result.ok) return;
           current = result.status;
           applyStatus(current);
         }
@@ -147,7 +107,7 @@ export function UpdateDialog() {
         const result = await checkForUpdaterUpdate({
           payload: { autoDownload: true, source: requestSource },
         });
-        if (!mounted || checkGenerationRef.current !== checkGeneration || !openRef.current) return;
+        if (!mounted) return;
         if (result.ok) {
           applyStatus(result.status);
           trackUpdateCheckResult(analyticsTrackRef.current, {
@@ -203,70 +163,38 @@ export function UpdateDialog() {
 
   useEffect(() => {
     if (!open || restartSafety != null) return;
-    const dialog = dialogRef.current;
-    const activeElement = document.activeElement;
-    if (dialog && activeElement instanceof Node && dialog.contains(activeElement)) return;
     (primaryRef.current ?? closeRef.current)?.focus();
   }, [open, restartSafety, status?.state]);
 
-  useEffect(() => {
-    if (open) return;
-    const opener = openerRef.current;
-    openerRef.current = null;
-    if (opener?.isConnected) opener.focus();
-  }, [open]);
+  const close = useCallback(() => {
+    if (actionBusy) return;
+    trackUpdateIndicatorClick(analytics.track, {
+      action: 'dismiss',
+      area: 'update_dialog',
+      element: 'later',
+      page_name: 'app',
+      ...versionProps,
+    });
+    setOpen(false);
+    setRestartSafety(null);
+    setActionError(null);
+  }, [actionBusy, analytics.track, versionProps]);
 
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        // Consume Escape even while a restart/save handoff is busy. Otherwise
-        // the event can reach a page-level handler and close or mutate the
-        // surface underneath this dialog.
-        event.preventDefault();
-        event.stopPropagation();
-        close();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-
-      const dialog = dialogRef.current;
-      if (!dialog) return;
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-      if (focusable.length === 0) {
-        event.preventDefault();
-        dialog.focus();
-        return;
-      }
-      const firstFocusable = focusable[0];
-      const lastFocusable = focusable[focusable.length - 1];
-      if (!firstFocusable || !lastFocusable) return;
-
-      const activeElement = document.activeElement;
-      const activeIndex = activeElement instanceof HTMLElement ? focusable.indexOf(activeElement) : -1;
-      if (activeIndex === -1) {
-        event.preventDefault();
-        (event.shiftKey ? lastFocusable : firstFocusable).focus();
-      } else if (event.shiftKey && activeIndex === 0) {
-        event.preventDefault();
-        lastFocusable.focus();
-      } else if (!event.shiftKey && activeIndex === focusable.length - 1) {
-        event.preventDefault();
-        firstFocusable.focus();
-      }
+      if (event.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [close, open]);
 
   const checkAgain = useCallback(async () => {
-    const checkGeneration = ++checkGenerationRef.current;
     setActionBusy(true);
     setActionError(null);
     setRestartSafety(null);
     try {
       const result = await checkForUpdaterUpdate({ payload: { autoDownload: true, source } });
-      if (checkGenerationRef.current !== checkGeneration || !openRef.current) return;
       if (result.ok) {
         applyStatus(result.status);
         trackUpdateCheckResult(analytics.track, {
@@ -287,7 +215,7 @@ export function UpdateDialog() {
         });
       }
     } finally {
-      if (checkGenerationRef.current === checkGeneration) setActionBusy(false);
+      setActionBusy(false);
     }
   }, [analytics.track, applyStatus, source]);
 
@@ -368,12 +296,11 @@ export function UpdateDialog() {
           result: 'success',
           ...versionProps,
         });
-        dismiss();
       }
     } finally {
       setActionBusy(false);
     }
-  }, [analytics.track, applyStatus, dismiss, source, versionProps]);
+  }, [analytics.track, applyStatus, source, versionProps]);
 
   const openReleaseNotes = useCallback(() => {
     trackUpdateIndicatorClick(analytics.track, {
@@ -383,8 +310,8 @@ export function UpdateDialog() {
       page_name: 'app',
       ...versionProps,
     });
-    void openExternalUrl(model.releaseNotesUrl ?? DEFAULT_RELEASES_URL);
-  }, [analytics.track, model.releaseNotesUrl, versionProps]);
+    void openExternalUrl(RELEASES_URL);
+  }, [analytics.track, versionProps]);
 
   if (!open) return null;
 
@@ -393,10 +320,7 @@ export function UpdateDialog() {
   const available = state === 'available';
   const checking = state === 'checking';
   const downloading = state === 'downloading';
-  // An opened Squirrel installer is ready for a retry if the renderer-save or
-  // quit handoff failed. Treating it as "installing" removed the only primary
-  // action and made a transient failure unrecoverable from the dialog.
-  const installing = state === 'installing';
+  const installing = state === 'installing' || model.installerOpened;
   const unsupported = state === 'unsupported';
   const progress = model.downloadProgress?.percent;
   const statusMessage = (() => {
@@ -440,7 +364,7 @@ export function UpdateDialog() {
     if (model.upToDate) {
       if (status?.currentVersion == null) return t('updater.upToDate');
       const version = `v${status.currentVersion}`;
-      return locale === 'zh-CN' || locale === 'zh-TW' || locale === 'zh-HK'
+      return locale === 'zh-CN' || locale === 'zh-TW'
         ? `${t('updater.upToDate')}（${version}）`
         : `${t('updater.upToDate')} (${version})`;
     }
@@ -452,11 +376,7 @@ export function UpdateDialog() {
   const reinstallUrl = model.reinstall?.url ?? null;
   const title = showSafety ? t('updater.activeRunsTitle') : t('settings.updateCheck');
   const primaryLabel = (() => {
-    if (ready) {
-      return model.updateKind === 'payload' || model.requiresRestartToInstall
-        ? t('updater.installRestart')
-        : t('updater.openInstaller');
-    }
+    if (ready) return model.updateKind === 'payload' ? t('updater.installRestart') : t('updater.openInstaller');
     if (available) return t('updater.download');
     if (unsupported) return t('updater.manualDownload');
     if (state === 'error') return t('settings.updateRecheck');
@@ -477,9 +397,7 @@ export function UpdateDialog() {
         aria-modal="true"
         className={styles.dialog}
         data-testid="update-dialog"
-        ref={dialogRef}
         role="dialog"
-        tabIndex={-1}
       >
         <button
           aria-label={t('common.close')}
@@ -519,8 +437,6 @@ export function UpdateDialog() {
             ) : (
               <button
                 className={styles.releaseLink}
-                data-release-notes-url={model.releaseNotesUrl ?? DEFAULT_RELEASES_URL}
-                data-testid="update-dialog-release-notes"
                 onClick={openReleaseNotes}
                 type="button"
               >

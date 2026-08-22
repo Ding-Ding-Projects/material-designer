@@ -14,19 +14,12 @@ import { buildSrcdoc, type SrcdocOptions } from './srcdoc';
 import { buildReactComponentSrcdoc } from './react-component';
 import { buildZip } from './zip';
 import { randomUUID } from '../utils/uuid';
-import { notify } from '../components/notifications/notificationStore';
 import {
   captureHostPage,
   isOpenDesignHostAvailable,
   printHostPdf,
 } from '@open-design/host';
-import {
-  PROJECT_EXPORT_LIMITS,
-  PROJECT_EXPORT_RECEIPT_SCHEMA,
-  type ProjectExportReceipt,
-  type ProjectExportTarget,
-  type WorkspaceCollabContext,
-} from '@open-design/contracts';
+import type { WorkspaceCollabContext } from '@open-design/contracts';
 import {
   workspaceProjectHeaders,
   workspaceResourceUrl,
@@ -39,34 +32,6 @@ export { isOpenDesignHostAvailable } from '@open-design/host';
 
 const DESIGN_HANDOFF_FILENAME = 'DESIGN-HANDOFF.md';
 const DESIGN_MANIFEST_FILENAME = 'DESIGN-MANIFEST.json';
-
-const EXPORT_FAILURE_TITLE = 'Export PDF';
-const PRINT_FAILED_MESSAGE =
-  'Print failed. Please try Export PDF again or use the browser version.';
-const POPUP_BLOCKED_MESSAGE =
-  'Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.';
-
-/**
- * Say that an export did not work, without stopping the page.
- *
- * These were `alert()` calls, which is the wrong shape twice over: a failed
- * export is purely informational — there is nothing for the user to decide —
- * and a modal browser dialog freezes the app until it is answered, on the one
- * path where the user most likely wants to go straight back and retry. The
- * popup-blocked message in particular tells them to click something in the
- * browser chrome, which the alert itself was blocking them from reaching.
- *
- * `error` records pin open until dismissed and stay readable in the
- * notification centre afterwards, so a message raised while the user had
- * flipped to another tab is not lost.
- *
- * The copy stays English because this module is not a component and has no
- * route to the active locale; it was English before this change too. Threading
- * a translator through every export caller is a separate piece of work.
- */
-function reportExportFailure(message: string): void {
-  notify({ severity: 'error', title: EXPORT_FAILURE_TITLE, body: message });
-}
 
 function safeFilename(name: string, fallback: string): string {
   const slug = (name || fallback)
@@ -1121,7 +1086,13 @@ export function planDeckImageCapture(opts: {
 export type ProjectImageExportResult =
   | { ok: true; snapshot: PreviewSnapshot }
   | { ok: false; unavailable: true }
-  | { ok: false; error: string };
+  // `code` / `status` carry the daemon's own classification through to the
+  // caller. Dropping them (as this used to) forced `exportErrorCode` to
+  // re-derive a code by regex-matching the message, and anything it could not
+  // match fell through to `err.name` — the literal string "Error", which is
+  // what 48% of image-export failures reported in analytics. See
+  // `apps/web/src/analytics/export-error-code.ts`.
+  | { ok: false; error: string; code?: string; status?: number };
 
 export async function exportProjectImageDataUrl(opts: {
   projectId: string;
@@ -1162,13 +1133,15 @@ export async function exportProjectImageDataUrl(opts: {
     // 501 = this runtime has no off-screen renderer → caller may fall back.
     if (resp.status === 501) return { ok: false, unavailable: true };
     let message = `image export failed (${resp.status})`;
+    let code: string | undefined;
     try {
       const err = await resp.json();
       if (err?.error?.message) message = String(err.error.message);
+      if (typeof err?.error?.code === 'string' && err.error.code) code = err.error.code;
     } catch {
       // non-JSON body; keep the status-based message
     }
-    return { ok: false, error: message };
+    return { ok: false, error: message, status: resp.status, ...(code ? { code } : {}) };
   }
   // A 200 with an unreadable/corrupt payload is a real export failure, NOT
   // "renderer unavailable" — surface it instead of silently downgrading to the
@@ -1258,287 +1231,6 @@ export async function downloadProjectArchive(opts: {
     console.warn('[downloadProjectArchive] failed:', err);
     return false;
   }
-}
-
-export type ProjectArchiveReceipt = ProjectExportReceipt;
-
-export type ProjectArchiveExportResult =
-  | { ok: true; receipt: ProjectArchiveReceipt }
-  | { ok: false; cancelled: true; bytesReceived: number; target: ProjectExportTarget }
-  | { ok: false; error: string };
-
-export type ProjectArchivePhase = 'preparing' | 'downloading' | 'validating' | 'saving';
-
-export interface ProjectArchiveProgress {
-  bytesReceived: number;
-  totalBytes: number | null;
-  phase: ProjectArchivePhase;
-}
-
-const activeProjectArchiveExports = new Set<string>();
-
-function isSafeZipEntryName(name: string): boolean {
-  const normalized = name.replace(/\\/g, '/');
-  if (!normalized || normalized.startsWith('/') || /^[A-Za-z]:\//.test(normalized)) return false;
-  const parts = normalized.split('/').filter(Boolean);
-  return parts.every((part) => part !== '.' && part !== '..');
-}
-
-/**
- * Validate the ZIP envelope before browser download. This intentionally reads
- * only the EOCD and central directory: source-file hashes and manifest
- * semantics are produced by the daemon, while this boundary rejects HTML,
- * truncated bodies, duplicate names, and traversal entries before save.
- */
-export function validateProjectArchiveZip(
-  bytes: Uint8Array,
-  requiredEntries: readonly string[] = ['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'EXPORT-MANIFEST.json'],
-): { ok: true; entries: string[] } | { ok: false; error: string } {
-  if (bytes.length < 22) return { ok: false, error: 'project export is too small to be a ZIP' };
-  if (bytes.length > PROJECT_EXPORT_LIMITS.maxArchiveBytes) return { ok: false, error: 'project export exceeds the supported archive size' };
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const start = Math.max(0, bytes.length - 65_557);
-  let eocd = -1;
-  for (let index = bytes.length - 22; index >= start; index -= 1) {
-    if (view.getUint32(index, true) === 0x06054b50) {
-      eocd = index;
-      break;
-    }
-  }
-  if (eocd < 0) return { ok: false, error: 'project export is missing its ZIP end record' };
-  const disk = view.getUint16(eocd + 4, true);
-  const centralDisk = view.getUint16(eocd + 6, true);
-  const entries = view.getUint16(eocd + 10, true);
-  const centralSize = view.getUint32(eocd + 12, true);
-  const centralOffset = view.getUint32(eocd + 16, true);
-  const commentLength = view.getUint16(eocd + 20, true);
-  if (disk !== 0 || centralDisk !== 0 || entries === 0xffff || centralSize === 0xffffffff || centralOffset === 0xffffffff) {
-    return { ok: false, error: 'ZIP64 and multi-volume project exports are not supported' };
-  }
-  if (commentLength > PROJECT_EXPORT_LIMITS.maxCommentBytes || eocd + 22 + commentLength !== bytes.length) {
-    return { ok: false, error: 'project export has an invalid trailing comment or bytes' };
-  }
-  if (entries > PROJECT_EXPORT_LIMITS.maxEntries || centralSize > PROJECT_EXPORT_LIMITS.maxCentralDirectoryBytes || centralOffset + centralSize !== eocd) {
-    return { ok: false, error: 'project export central directory exceeds its bounds' };
-  }
-  const decoder = new TextDecoder();
-  const names: string[] = [];
-  const seen = new Set<string>();
-  let cursor = centralOffset;
-  for (let count = 0; count < entries; count += 1) {
-    if (cursor + 46 > bytes.length || view.getUint32(cursor, true) !== 0x02014b50) {
-      return { ok: false, error: 'project export has a malformed central directory' };
-    }
-    const nameLength = view.getUint16(cursor + 28, true);
-    const extraLength = view.getUint16(cursor + 30, true);
-    const commentLength = view.getUint16(cursor + 32, true);
-    const method = view.getUint16(cursor + 10, true);
-    const compressedSize = view.getUint32(cursor + 20, true);
-    const uncompressedSize = view.getUint32(cursor + 24, true);
-    const diskStart = view.getUint16(cursor + 34, true);
-    const localOffset = view.getUint32(cursor + 42, true);
-    if (diskStart !== 0 || compressedSize === 0xffffffff || uncompressedSize === 0xffffffff || method !== 0 && method !== 8) {
-      return { ok: false, error: 'project export entry uses an unsupported ZIP feature' };
-    }
-    if (uncompressedSize > PROJECT_EXPORT_LIMITS.maxEntryBytes || compressedSize > PROJECT_EXPORT_LIMITS.maxArchiveBytes) {
-      return { ok: false, error: 'project export entry exceeds its size limit' };
-    }
-    if (uncompressedSize > 0 && compressedSize === 0 || compressedSize > 0 && uncompressedSize / compressedSize > PROJECT_EXPORT_LIMITS.maxCompressionRatio) {
-      return { ok: false, error: 'project export entry exceeds its compression-ratio limit' };
-    }
-    const nameStart = cursor + 46;
-    const nameEnd = nameStart + nameLength;
-    if (nameEnd > bytes.length) return { ok: false, error: 'project export entry name is truncated' };
-    const name = decoder.decode(bytes.subarray(nameStart, nameEnd));
-    if (!isSafeZipEntryName(name)) return { ok: false, error: `unsafe project export entry: ${name}` };
-    if (seen.has(name)) return { ok: false, error: `duplicate project export entry: ${name}` };
-    seen.add(name);
-    names.push(name);
-    if (localOffset >= centralOffset || localOffset + 30 > bytes.length || view.getUint32(localOffset, true) !== 0x04034b50) {
-      return { ok: false, error: 'project export local header is invalid' };
-    }
-    const localNameLength = view.getUint16(localOffset + 26, true);
-    const localExtraLength = view.getUint16(localOffset + 28, true);
-    const localNameStart = localOffset + 30;
-    const localDataStart = localNameStart + localNameLength + localExtraLength;
-    if (localDataStart > centralOffset || decoder.decode(bytes.subarray(localNameStart, localNameStart + localNameLength)) !== name || localDataStart + compressedSize > centralOffset) {
-      return { ok: false, error: 'project export local header does not match its central directory' };
-    }
-    cursor = nameEnd + extraLength + commentLength;
-    if (cursor > bytes.length) return { ok: false, error: 'project export central directory entry is truncated' };
-  }
-  for (const required of requiredEntries) {
-    if (!seen.has(required)) return { ok: false, error: `project export is missing ${required}` };
-  }
-  return { ok: true, entries: names };
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) throw new Error('project export digest validation is unavailable');
-  const digest = await subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, '0')).join('');
-}
-
-async function saveProjectArchiveBytes(bytes: Uint8Array, filename: string): Promise<void> {
-  const picker = (window as Window & {
-    showSaveFilePicker?: (options?: Record<string, unknown>) => Promise<{
-      createWritable: () => Promise<{ write: (value: Uint8Array) => Promise<void>; close: () => Promise<void> }>;
-    }>;
-  }).showSaveFilePicker;
-  if (typeof picker === 'function') {
-    const handle = await picker({
-      suggestedName: filename,
-      types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
-    });
-    const writable = await handle.createWritable();
-    try {
-      await writable.write(bytes);
-      await writable.close();
-    } catch (error) {
-      await writable.close().catch(() => {});
-      throw error;
-    }
-    return;
-  }
-  triggerDownload(new Blob([bytes], { type: 'application/zip' }), filename);
-}
-
-async function projectExportResponseError(response: Response, fallback: string): Promise<Error> {
-  try {
-    const body = await response.json() as { error?: { code?: string; message?: string } };
-    const code = body.error?.code;
-    const message = body.error?.message;
-    if (code === 'DESKTOP_SCAFFOLD_HTML_REQUIRED') return new Error('Desktop scaffold export requires an HTML entry file.');
-    if (code === 'PROJECT_EXPORT_ALREADY_RUNNING') return new Error('A project export is already running.');
-    if (message && !/[A-Za-z]:[\\/]|\\\\|\/Users\/|\/home\//.test(message)) return new Error(message);
-  } catch {
-    // Keep the stable fallback below.
-  }
-  return new Error(fallback);
-}
-
-async function readProjectArchiveResponse(
-  response: Response,
-  onProgress?: (progress: ProjectArchiveProgress) => void,
-): Promise<Uint8Array> {
-  const totalBytes = Number(response.headers.get('content-length')) || null;
-  if (!totalBytes || totalBytes > PROJECT_EXPORT_LIMITS.maxArchiveBytes) {
-    throw new Error('project export did not provide a bounded content length');
-  }
-  if (!response.body) throw new Error('project export response has no stream');
-  const reader = response.body.getReader();
-  const result = new Uint8Array(totalBytes);
-  let received = 0;
-  for (;;) {
-    const next = await reader.read();
-    if (next.done) break;
-    const chunk = new Uint8Array(next.value);
-    if (received + chunk.byteLength > totalBytes) throw new Error('project export stream exceeds its declared length');
-    result.set(chunk, received);
-    received += chunk.byteLength;
-    onProgress?.({ bytesReceived: received, totalBytes, phase: 'downloading' });
-  }
-  if (received !== totalBytes) throw new Error('project export stream ended before its declared length');
-  return result;
-}
-
-/** Prepare, validate, stream, and save a complete project ZIP. */
-export async function exportProjectArchive(opts: {
-  projectId: string;
-  fallbackTitle: string;
-  target?: ProjectExportTarget;
-  workspaceContext?: WorkspaceCollabContext | null;
-  signal?: AbortSignal;
-  onProgress?: (progress: ProjectArchiveProgress) => void;
-}): Promise<ProjectArchiveExportResult> {
-  let received = 0;
-  let target: ProjectExportTarget = opts.target ?? 'project';
-  const latchKey = `${opts.projectId}:${target}`;
-  if (activeProjectArchiveExports.has(latchKey)) {
-    return { ok: false, error: 'PROJECT_EXPORT_ALREADY_RUNNING' };
-  }
-  activeProjectArchiveExports.add(latchKey);
-  try {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : {}),
-    };
-    const prepared = await fetch(
-      `/api/projects/${encodeURIComponent(opts.projectId)}/archive/prepare`,
-      { method: 'POST', headers, body: JSON.stringify({ target }), signal: opts.signal, cache: 'no-store' },
-    );
-    if (!prepared.ok) throw await projectExportResponseError(prepared, `project export preparation failed (${prepared.status})`);
-    const receipt = (await prepared.json()) as ProjectArchiveReceipt;
-    if (
-      receipt.schema !== PROJECT_EXPORT_RECEIPT_SCHEMA ||
-      receipt.target !== target ||
-      receipt.projectId !== opts.projectId ||
-      !receipt.token ||
-      !/^[A-Za-z0-9_-]{1,120}$/.test(receipt.token) ||
-      !receipt.filename ||
-      !receipt.downloadUrl ||
-      !receipt.editorPath ||
-      /[\u0000\r\n]/.test(receipt.editorPath) ||
-      !Number.isInteger(receipt.bytes) ||
-      receipt.bytes <= 0 ||
-      receipt.bytes > PROJECT_EXPORT_LIMITS.maxArchiveBytes ||
-      !/^[a-f0-9]{64}$/i.test(receipt.sha256) ||
-      !Number.isFinite(receipt.expiresAt) ||
-      receipt.expiresAt <= Date.now()
-    ) {
-      throw new Error('project export returned an invalid receipt');
-    }
-    const expectedDownloadUrl = `/api/projects/${encodeURIComponent(opts.projectId)}/archive/staged/${encodeURIComponent(receipt.token)}?target=${encodeURIComponent(target)}`;
-    if (receipt.downloadUrl !== expectedDownloadUrl || /^[a-z][a-z0-9+.-]*:/i.test(receipt.downloadUrl)) {
-      throw new Error('project export returned an unsafe download URL');
-    }
-    const response = await fetch(receipt.downloadUrl, {
-      headers: opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : undefined,
-      signal: opts.signal,
-      cache: 'no-store',
-    });
-    if (!response.ok || response.headers.get('content-type')?.split(';', 1)[0].trim() !== 'application/zip') {
-      throw await projectExportResponseError(response, `project export download was not a ZIP (${response.status})`);
-    }
-    const bytes = await readProjectArchiveResponse(response, (progress) => {
-      received = progress.bytesReceived;
-      opts.onProgress?.(progress);
-    });
-    if (bytes.byteLength !== receipt.bytes) throw new Error('project export byte length does not match its receipt');
-    const digest = await sha256Hex(bytes);
-    if (digest.toLowerCase() !== receipt.sha256.toLowerCase()) {
-      throw new Error('project export digest does not match its receipt');
-    }
-    opts.onProgress?.({ bytesReceived: bytes.byteLength, totalBytes: bytes.byteLength, phase: 'validating' });
-    const validation = validateProjectArchiveZip(bytes);
-    if (!validation.ok) throw new Error(validation.error);
-    opts.onProgress?.({ bytesReceived: bytes.byteLength, totalBytes: bytes.byteLength, phase: 'saving' });
-    await saveProjectArchiveBytes(bytes, receipt.filename);
-    return { ok: true, receipt };
-  } catch (error) {
-    if (opts.signal?.aborted || (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError')) {
-      return { ok: false, cancelled: true, bytesReceived: received, target };
-    }
-    return { ok: false, error: error instanceof Error ? error.message : 'project export failed' };
-  } finally {
-    activeProjectArchiveExports.delete(latchKey);
-  }
-}
-
-export async function downloadDesktopScaffold(opts: {
-  projectId: string;
-  fallbackTitle: string;
-  workspaceContext?: WorkspaceCollabContext | null;
-}): Promise<boolean> {
-  const result = await exportProjectArchive({
-    projectId: opts.projectId,
-    fallbackTitle: opts.fallbackTitle,
-    target: 'desktop-scaffold',
-    workspaceContext: opts.workspaceContext,
-  });
-  if (!result.ok) console.warn('[downloadDesktopScaffold] failed:', result);
-  return result.ok;
 }
 
 // Exported for unit tests. Pure string transform with no DOM dependency.
@@ -1688,9 +1380,13 @@ export async function exportAsPdf(
     try {
       const result = await printHostPdf(doc, nonce, opts?.deck ? { deck: true } : undefined);
       if (result.ok) return;
-      reportExportFailure(PRINT_FAILED_MESSAGE);
+      if (typeof alert !== 'undefined') {
+        alert('Print failed. Please try Export PDF again or use the browser version.');
+      }
     } catch {
-      reportExportFailure(PRINT_FAILED_MESSAGE);
+      if (typeof alert !== 'undefined') {
+        alert('Print failed. Please try Export PDF again or use the browser version.');
+      }
     }
     return;
   }
@@ -1726,7 +1422,9 @@ export async function exportAsPdf(
   const win = window.open('', '_blank');
 
   if (!win) {
-    reportExportFailure(POPUP_BLOCKED_MESSAGE);
+    if (typeof alert !== 'undefined') {
+      alert('Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.');
+    }
     URL.revokeObjectURL(url);
     return;
   }

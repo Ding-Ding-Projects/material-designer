@@ -12,7 +12,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -100,7 +99,7 @@ import { workspaceContextDetailLine, workspaceContextKindLabel } from './workspa
 import { FigmaHelpModal } from './FigmaHelpModal';
 import { TemplatePicker } from './home-hero/TemplatePicker';
 import { TypePillRow } from './home-hero/TypePillRow';
-import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
+import { LibraryPicker } from './LibraryPicker';
 import { ComposerModePicker } from './ComposerModePicker';
 import { assetTitle } from './LibraryAssetMeta';
 import { libraryAssetRawUrl } from '../providers/registry';
@@ -384,14 +383,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   ref,
 ) {
   const { locale, t } = useI18n();
-  const composerA11yId = useId().replace(/:/g, '');
   const analytics = useAnalytics();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionTab, setMentionTab] = useState<HomeMentionTab>('all');
-  const mentionTabRefs = useRef(new Map<HomeMentionTab, HTMLButtonElement>());
-  const mentionTabId = (id: HomeMentionTab) => `${composerA11yId}-home-tab-${id}`;
-  const mentionPanelId = `${composerA11yId}-home-panel-${mentionTab}`;
-  const mentionListboxId = `${composerA11yId}-home-listbox`;
   const [hoveredPlugin, setHoveredPlugin] = useState<InstalledPluginRecord | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
@@ -1152,20 +1146,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     if (!active) dismissMentionPicker();
   }, [active]);
 
-  function moveMentionTab(direction: 'previous' | 'next' | 'first' | 'last') {
-    const index = tabs.findIndex((item) => item.id === mentionTab);
-    const nextIndex = direction === 'first'
-      ? 0
-      : direction === 'last'
-        ? tabs.length - 1
-        : (index + (direction === 'next' ? 1 : -1) + tabs.length) % tabs.length;
-    const next = tabs[nextIndex];
-    if (!next) return;
-    setMentionTab(next.id);
-    setSelectedIndex(0);
-    mentionTabRefs.current.get(next.id)?.focus();
-  }
-
   // Routes popover navigation keys from the Lexical editor over the visible
   // picker option union. Returns true when consumed so the editor can
   // preventDefault.
@@ -1204,20 +1184,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // "Import from library": the home composer has no project yet, so we fetch
   // each picked asset's bytes and stage them as regular files. They ride the
   // existing upload-on-submit path into the new project's design files.
-  async function importLibraryAssets(assets: LibraryAsset[]): Promise<LibraryPickerConfirmResult> {
+  async function importLibraryAssets(assets: LibraryAsset[]) {
     const files: File[] = [];
-    const failed: LibraryPickerConfirmResult['failed'] = [];
     for (const asset of assets) {
       const file = await fileFromLibraryAsset(asset);
       if (file) files.push(file);
-      else failed.push({ assetId: asset.id });
     }
     handleFiles(files);
-    return {
-      applied: assets.filter((asset) => !failed.some((item) => item.assetId === asset.id)).map((asset) => asset.id),
-      failed,
-      skipped: [],
-    };
   }
 
   function removeFileChip(index: number, file: File) {
@@ -1320,14 +1293,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
   return (
     <section ref={homeHeroRef} className="home-hero" data-testid="home-hero">
-      <div className="home-hero__brand" aria-hidden>
-        <span className="home-hero__brand-mark od-brand-glyph" />
-        <span className="home-hero__brand-name">{t('app.brand')}</span>
-      </div>
-      <h1 className="home-hero__title">{t('homeHero.title')}</h1>
-      <p className="home-hero__subtitle">
-        {t('homeHero.subtitlePrefix')}
-      </p>
       {/* #5517 hero header: the OpenDesign logotype replaces the small
           brand-mark + name pair, and the tagline subtitle is dropped. The
           static wordmark is now a WebGL pixel-scan effect (round 7) — the
@@ -1633,7 +1598,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 key={`ctx-workspace-${item.id}`}
                 className="home-hero__active-chip home-hero__active-chip--context"
                 data-testid={`home-hero-context-workspace-${item.id}`}
-                typeLabel={workspaceContextKindLabel(item.kind, t)}
+                typeLabel={workspaceContextKindLabel(item.kind)}
                 detail={workspaceContextDetailLine(item)}
               >
                 <span className="home-hero__active-icon" aria-hidden>
@@ -1670,7 +1635,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           <div ref={promptEditorRef} className="home-hero__prompt-editor home-hero__lexical">
             <LexicalComposerInput
               ref={editorRef}
-              a11yIdPrefix={composerA11yId}
               testId="home-hero-input"
               draft={prompt}
               // While the carousel animates, blank the editor's own placeholder
@@ -1702,10 +1666,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               onPopoverKey={handlePopoverKey}
               comboboxAria={{
                 expanded: pickerOpen,
-                activeId: pickerOpen
-                  ? `${composerA11yId}-home-option-${selectedIndex}`
-                  : null,
-                controlsId: `${composerA11yId}-home-listbox`,
+                activeId: pickerOpen ? `home-hero-option-${selectedIndex}` : null,
               }}
             />
             <PlaceholderCarousel
@@ -1719,51 +1680,24 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         <CaretFloatingLayer caret={caretRect} open={pickerOpen}>
           <div
             ref={mentionPickerRef}
-            id={mentionListboxId}
+            id="home-hero-context-picker"
             className="home-hero__plugin-picker home-hero__plugin-picker--floating"
             role="listbox"
             aria-label={t('homeHero.contextSearchResults')}
             data-testid="home-hero-plugin-picker"
           >
-            <div
-              className="home-hero__mention-tabs"
-              role="tablist"
-              aria-label={t('homeHero.contextSurfaces')}
-              aria-orientation="horizontal"
-            >
+            <div className="home-hero__mention-tabs" role="tablist" aria-label={t('homeHero.contextSurfaces')}>
               {tabs.map((item) => (
                 <button
                   key={item.id}
-                  ref={(node) => {
-                    if (node) mentionTabRefs.current.set(item.id, node);
-                    else mentionTabRefs.current.delete(item.id);
-                  }}
-                  id={mentionTabId(item.id)}
                   type="button"
                   role="tab"
                   aria-selected={mentionTab === item.id}
-                  aria-controls={mentionPanelId}
-                  tabIndex={mentionTab === item.id ? 0 : -1}
                   className={`home-hero__mention-tab${mentionTab === item.id ? ' is-active' : ''}`}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
                     setMentionTab(item.id);
                     setSelectedIndex(0);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'ArrowRight') {
-                      event.preventDefault();
-                      moveMentionTab('next');
-                    } else if (event.key === 'ArrowLeft') {
-                      event.preventDefault();
-                      moveMentionTab('previous');
-                    } else if (event.key === 'Home') {
-                      event.preventDefault();
-                      moveMentionTab('first');
-                    } else if (event.key === 'End') {
-                      event.preventDefault();
-                      moveMentionTab('last');
-                    }
                   }}
                 >
                   <span>{item.label}</span>
@@ -1771,12 +1705,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 </button>
               ))}
             </div>
-            <div
-              className="home-hero__plugin-picker-results"
-              id={mentionPanelId}
-              role="tabpanel"
-              aria-labelledby={mentionTabId(mentionTab)}
-            >
+            <div className="home-hero__plugin-picker-results">
               {visibleLoading && visiblePickerOptions.length === 0 ? (
                 <div className="home-hero__plugin-picker-empty">{t('homeHero.loadingContext')}</div>
               ) : null}
@@ -1798,7 +1727,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                     return (
                       <button
                         key={item.id}
-                        id={`${composerA11yId}-home-option-${optionIndex}`}
+                        id={`home-hero-option-${optionIndex}`}
                         type="button"
                         role="option"
                         aria-selected={optionIndex === selectedIndex}
@@ -2192,49 +2121,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       </div>
 
       {recommendationSlot}
-
-      {activeCreateChip ? null : (
-        <div className="home-hero__template-section" data-testid="home-hero-template-section">
-          {/* M3 section header: a title-medium heading with the supporting
-              line set beside it on the same baseline, left-aligned above the
-              scenario grid. The supporting line reuses the rail's own
-              description string rather than introducing a second one — it is
-              already the sentence that describes what the grid is for. */}
-          <div className="home-hero__template-heading">
-            <h2 className="home-hero__template-heading-title">
-              {t('homeHero.startWithTemplate')}
-            </h2>
-            <span className="home-hero__template-heading-hint">
-              {t('homeHero.railAria')}
-            </span>
-          </div>
-          <RailGroup
-            group="create"
-            activeChipId={activeChipId}
-            pendingChipId={pendingChipId}
-            pendingPluginId={pendingPluginId}
-            pluginsLoading={pluginsLoading}
-            onPickChip={handlePickTaskChip}
-            variant="tabs"
-            pulseChipId={guidePulseChipId}
-            onHoverChip={setPreviewTemplateId}
-          >
-            <ShortcutsMenu
-              activeChipId={activeChipId}
-              pendingChipId={pendingChipId}
-              pendingPluginId={pendingPluginId}
-              pluginsLoading={pluginsLoading}
-              open={shortcutsOpen}
-              refNode={shortcutsMenuRef}
-              onOpenChange={setShortcutsOpen}
-              onPickChip={(chip) => {
-                setShortcutsOpen(false);
-                handlePickTaskChip(chip);
-              }}
-            />
-          </RailGroup>
-        </div>
-      )}
 
       {activeSubChips.length > 0 && isSubChipParent(activeChipId) ? (
         <SubTypeRow
@@ -4581,44 +4467,6 @@ const HOME_PROMPT_EXAMPLES: Record<Locale, Record<string, string[]>> = {
       "製作一段 20 秒的 Podcast 開場墊樂，溫暖開場、脈動清晰，並乾淨地接入旁白",
       "為冥想 app 製作無縫環境音循環，運用柔和的自然音質、低頻溫暖感與沉穩的節奏",
       "產生一組品牌通知音效，涵蓋成功、提醒與錯誤狀態，並維持一致的聲音識別",
-    ],
-  },
-  "zh-HK": {
-    prototype: [
-      "幫 AI CRM 設計個高轉換率網站，要有清晰主視覺、功能故事、佐證亮點同試用 CTA",
-      "幫團隊知識庫整個桌面儀表板，要有搜尋、近期更新、權限管理同協作入口",
-      "重新設計金融 SaaS 產品嘅引導流程，等新用戶快手駁到資料、做完設定、即刻見到價值",
-      "幫手機健身教練 app 整個原型，包埋目標設定、每週計劃、運動打卡同進度回顧",
-    ],
-    deck: [
-      "研究產品上市嘅市場機會，包括競品、目標客群、定價假設同上市敘事",
-      "整份每週團隊進度報告，講清楚進展、風險、指標變化同下星期優先事項",
-      "設計一份投資者簡報，包括市場規模、增長模型、產品優勢同三年預測數據",
-      "整份策略性業務檢討簡報，涵蓋季度表現、根本原因、機會點同跟進行動",
-    ],
-    image: [
-      "整張玻璃擬物風格嘅 AI 工作空間海報，要有多螢幕協作、柔和光線同高質感上市氣氛",
-      "幫全新無線耳機整張電商主視覺，突出材質細節、生活情境同核心賣點",
-      "設計極簡科技上市主視覺，構圖乾淨、產品焦點清晰，配克制嘅上市文案",
-      "幫產品開賣整套社群預告，包括倒數、細節特寫、賣點揭曉同上市當日視覺",
-    ],
-    video: [
-      "整條 8 秒產品揭曉影片，由剪影過渡到細節特寫，最後收喺品牌標誌",
-      "整條 app 功能示範影片，跟住用戶旅程、關鍵狀態同最終成果行",
-      "幫短影音整個直式品牌開場，配有節奏感嘅字體動畫、產品特寫同乾淨嘅 logo 收尾",
-      "將個網站變成 15 秒社群廣告，抽出主視覺主張、互動亮點同清晰 CTA",
-    ],
-    hyperframes: [
-      "整條有字幕嘅產品上市短片，包括標題卡、功能畫面、有節奏嘅轉場同結尾 CTA",
-      "整個聲音反應式資料視覺化，等長條、粒子同標題跟住旁白節拍郁",
-      "用線條匯聚、細膩彈性動態同品牌色系，整個 3 秒 logo 收尾動畫",
-      "整張動態飛行航線地圖，顯示城市節點、航線延伸、里程數據同最後嘅摘要畫面",
-    ],
-    audio: [
-      "整個產品啟動音效，聽落輕盈、可靠、有少少未來感，啱桌面 app 啟動用",
-      "整段 20 秒 Podcast 開場墊樂，開頭溫暖、脈動清晰，乾淨咁接入旁白",
-      "幫冥想 app 整段無縫環境音循環，用柔和自然音色、低頻溫暖感同沉穩節奏",
-      "整套品牌通知音效，涵蓋成功、提醒同錯誤狀態，聲音識別要一致",
     ],
   },
   "pt-BR": {

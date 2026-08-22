@@ -36,7 +36,6 @@ import type {
   WorkspaceProjectsResponse,
 } from '@open-design/contracts';
 import { randomUUID } from '../utils/uuid';
-import { confirmedDelete, ConfirmedDeleteError } from '../lib/confirm-delete';
 import { markProjectDisplaySnapshotsDirty } from './project-display-cache';
 import {
   workspaceIdentityCacheKey,
@@ -58,13 +57,6 @@ import type {
 } from '../types';
 import { removeDesignBrowserProjectCache } from '../components/design-browser-storage';
 import { boundedRequestErrorCode } from '../analytics/workspace';
-import {
-  isStudioFixtureCaptureLifecycleCurrent,
-  isStudioFixtureCaptureStorageLocked,
-  studioFixtureCaptureLifecycleSnapshot,
-  studioFixtureCaptureNamespaceForCurrentLocation,
-  studioFixtureCaptureTimeMsForCurrentLocation,
-} from '../capture/studio-fixture';
 
 export type { PluginInstallOutcome } from '@open-design/contracts';
 export type { PluginShareAction } from '@open-design/contracts';
@@ -312,11 +304,7 @@ export async function listProjects(options?: {
   // `listWorkspaceProjectSummaries` below and carries the full wire identity
   // plus the requested view.
   try {
-    const lifecycle = studioFixtureCaptureLifecycleSnapshot();
-    const requestKey = lifecycle.active || lifecycle.refused
-      ? `${studioFixtureCaptureNamespaceForCurrentLocation()}:local-projects`
-      : 'local-projects';
-    const projects = await coalescedGet(requestKey, async () => {
+    return await coalescedGet('local-projects', async () => {
       const resp = await fetch('/api/projects');
       // Throw inside the coalesced run so a failed read is not cached — the next
       // caller/poll retries immediately (see coalesced-get.ts).
@@ -324,8 +312,6 @@ export async function listProjects(options?: {
       const json = (await resp.json()) as { projects: Project[] };
       return json.projects ?? [];
     });
-    if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return [];
-    return projects;
   } catch (err) {
     if (options?.throwOnError) throw err;
     return [];
@@ -916,16 +902,9 @@ export async function duplicateProject(
   }
 }
 
-export async function pickLocalFolderPath(options: { title?: string } = {}): Promise<string | null> {
-  const title = typeof options.title === 'string' ? options.title.trim().slice(0, 200) : '';
+export async function pickLocalFolderPath(): Promise<string | null> {
   const resp = await fetch('/api/dialog/open-folder', {
     method: 'POST',
-    ...(title
-      ? {
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title }),
-        }
-      : {}),
   });
   if (!resp.ok) {
     let message = 'Could not open folder picker';
@@ -1099,10 +1078,9 @@ export async function patchProject(
 }
 
 /**
- * Delete a project through the daemon's confirmation handshake.
+ * Delete a project.
  *
- * `workspaceContext`, when known, is attached to both the confirmation mint
- * and the DELETE. `enforceWorkspaceProjectMutation`
+ * `workspaceContext`, when known, MUST be attached: `enforceWorkspaceProjectMutation`
  * (apps/daemon/src/routes/project/index.ts) treats a request carrying NEITHER
  * `x-od-workspace-id` NOR `x-od-workspace-member-id` as a legacy pre-workspace
  * caller and skips its ownership check entirely (`ctx === null` → allowed).
@@ -1117,20 +1095,12 @@ export async function deleteProject(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<true> {
-  const resourcePath = `/api/projects/${encodeURIComponent(id)}`;
   try {
-    await confirmedDelete(resourcePath, undefined, {
+    const resp = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
       ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
-      throwOnFailure: true,
     });
-    // Drop per-project browser caches once the project is gone server-side so
-    // they do not accumulate in localStorage for the lifetime of the profile.
-    removeCachedTabs(id, workspaceContext);
-    removeDesignBrowserProjectCache(id);
-    return true;
-  } catch (error) {
-    if (error instanceof ConfirmedDeleteError && error.response) {
-      const resp = error.response;
+    if (!resp.ok) {
       let message = `project delete failed with status ${resp.status}`;
       let code: string | undefined;
       try {
@@ -1166,13 +1136,15 @@ export async function deleteProject(
       }
       throw new ProjectDeleteError(message, resp.status, code);
     }
+    // Drop per-project browser caches once the project is gone server-side so
+    // they do not accumulate in localStorage for the lifetime of the profile.
+    removeCachedTabs(id, workspaceContext);
+    removeDesignBrowserProjectCache(id);
+    return true;
+  } catch (error) {
     if (error instanceof ProjectDeleteError) throw error;
     throw new ProjectDeleteError(
-      error instanceof ConfirmedDeleteError && error.requestCause instanceof Error
-        ? error.requestCause.message
-        : error instanceof Error
-          ? error.message
-          : 'Project delete request failed.',
+      error instanceof Error ? error.message : 'Project delete request failed.',
       undefined,
       'network_error',
     );
@@ -1664,7 +1636,6 @@ function readCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState | null {
-  if (isStudioFixtureCaptureStorageLocked()) return null;
   if (typeof window === 'undefined') return null;
   try {
     return normalizeTabsState(JSON.parse(
@@ -1679,7 +1650,6 @@ function removeCachedTabs(
   projectId: string,
   workspaceContext?: WorkspaceCollabContext | null,
 ): void {
-  if (isStudioFixtureCaptureStorageLocked()) return;
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.removeItem(tabsCacheKey(projectId, workspaceContext));
@@ -1693,18 +1663,11 @@ function writeCachedTabs(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState {
-  if (isStudioFixtureCaptureStorageLocked()) {
-    return {
-      ...state,
-      updatedAt: studioFixtureCaptureTimeMsForCurrentLocation() ?? 0,
-    };
-  }
-  const fixtureTime = studioFixtureCaptureTimeMsForCurrentLocation();
   const next: OpenTabsState = {
     ...state,
-    updatedAt: fixtureTime ?? Date.now(),
+    updatedAt: Date.now(),
   };
-  if (typeof window !== 'undefined' && fixtureTime === null) {
+  if (typeof window !== 'undefined') {
     try {
       window.localStorage.setItem(
         tabsCacheKey(projectId, workspaceContext),
@@ -1732,10 +1695,8 @@ async function persistTabsToDaemon(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<void> {
-  const lifecycle = studioFixtureCaptureLifecycleSnapshot();
-  if (lifecycle.refused) return;
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureNamespaceForCurrentLocation()}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}`;
   // Thin invalidation: a write makes any burst-shared read stale.
   evictCoalescedGet(requestKey);
   await fetch(`/api/projects/${encodeURIComponent(projectId)}/tabs`, {
@@ -1747,7 +1708,6 @@ async function persistTabsToDaemon(
     body: JSON.stringify(state),
     keepalive: true,
   });
-  if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return;
 }
 
 export async function loadTabs(
@@ -1757,13 +1717,9 @@ export async function loadTabs(
     reconcileNewerCacheToDaemon?: boolean;
   } = {},
 ): Promise<OpenTabsState> {
-  const lifecycle = studioFixtureCaptureLifecycleSnapshot();
-  if (lifecycle.refused) {
-    return { tabs: [], active: null };
-  }
   const cached = readCachedTabs(projectId, workspaceContext);
   const requestKey =
-    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}:${studioFixtureCaptureNamespaceForCurrentLocation()}`;
+    `project-tabs:${projectId}:${workspaceIdentityCacheKey(workspaceContext)}`;
   try {
     // Concurrent mounts share one daemon read per burst (Batch A §4.3); the
     // per-caller cache reconciliation below still runs for every caller.
@@ -1777,7 +1733,6 @@ export async function loadTabs(
       if (!resp.ok) throw new Error(`tabs ${resp.status}`);
       return normalizeTabsState(await resp.json());
     });
-    if (!isStudioFixtureCaptureLifecycleCurrent(lifecycle)) return { tabs: [], active: null };
     const latest = newestTabsState(cached, saved);
     if (
       options.reconcileNewerCacheToDaemon !== false
@@ -1798,7 +1753,6 @@ export async function saveTabs(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<void> {
-  if (studioFixtureCaptureLifecycleSnapshot().refused) return;
   const next = writeCachedTabs(projectId, state, workspaceContext);
   try {
     await persistTabsToDaemon(projectId, next, workspaceContext);
@@ -1819,7 +1773,6 @@ export function cacheTabsLocally(
   state: OpenTabsState,
   workspaceContext?: WorkspaceCollabContext | null,
 ): OpenTabsState {
-  if (isStudioFixtureCaptureStorageLocked()) return { ...state, updatedAt: studioFixtureCaptureTimeMsForCurrentLocation() ?? 0 };
   return writeCachedTabs(projectId, state, workspaceContext);
 }
 

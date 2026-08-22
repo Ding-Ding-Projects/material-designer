@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { tv, useT } from '../i18n';
+import { useT } from '../i18n';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import {
   exportAsHtml,
@@ -12,7 +12,6 @@ import {
 } from '../runtime/exports';
 import { buildSrcdoc } from '../runtime/srcdoc';
 import { Icon } from './Icon';
-import { notify } from './notifications/notificationStore';
 
 export interface PreviewView {
   id: string;
@@ -877,27 +876,16 @@ export function PreviewModal({
                               const snap =
                                 (await captureHostIframeSnapshot(iframe)) ??
                                 (await requestPreviewSnapshot(iframe));
-                              // Both failures only report a result — there is
-                              // nothing to decide — so neither halts the modal
-                              // behind a browser dialog. `error` records pin
-                              // open until dismissed and stay reviewable in the
-                              // notification centre afterwards.
                               try {
                                 if (snap) {
                                   exportAsImage(snap.dataUrl, exportTitle);
                                 } else {
                                   console.warn('[PreviewModal] snapshot capture returned null');
-                                  notify({
-                                    severity: 'error',
-                                    title: t('common.exportImageFailed'),
-                                  });
+                                  alert(t('common.exportImageFailed'));
                                 }
                               } catch (err) {
                                 console.warn('[PreviewModal] failed to convert snapshot:', err);
-                                notify({
-                                  severity: 'error',
-                                  title: t('common.exportImageFailed'),
-                                });
+                                alert(t('common.exportImageFailed'));
                               }
                             }}
                           >
@@ -1053,13 +1041,8 @@ export function PreviewModal({
             ) : activeHtml === null || activeHtml === undefined ? (
               <div className="ds-modal-empty">
                 {t('preview.loading', {
-                  // The lower-casing rides along with the key so it is applied
-                  // to each language's own word. Applied to a `t()` result it
-                  // would have hit an already-composed bilingual string, and
-                  // the fallback would then have been said twice.
                   label:
-                    activeView?.label.toLowerCase() ??
-                    tv('common.preview', undefined, (value) => value.toLowerCase()),
+                    activeView?.label.toLowerCase() ?? t('common.preview').toLowerCase(),
                 })}
               </div>
             ) : (

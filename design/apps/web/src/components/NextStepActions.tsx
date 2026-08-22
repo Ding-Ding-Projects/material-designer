@@ -22,9 +22,8 @@ import {
 } from '../runtime/design-toolbox';
 import type { SkillSummary } from '../types';
 import styles from './NextStepActions.module.css';
-import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 export type NextStepActionsVariant =
   | 'default'
   | 'project-incomplete'

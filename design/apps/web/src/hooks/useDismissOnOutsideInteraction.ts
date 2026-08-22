@@ -23,7 +23,6 @@ export function useDismissOnOutsideInteraction(
   open: boolean,
   containerRef: RefObject<HTMLElement | null>,
   onDismiss: () => void,
-  ownerToken?: string,
 ): void {
   // Callers pass an inline arrow; keeping it in a ref means the listeners are
   // bound once per open rather than re-bound on every render.
@@ -35,12 +34,6 @@ export function useDismissOnOutsideInteraction(
     const onPointerDown = (event: PointerEvent) => {
       const container = containerRef.current;
       if (!container) return;
-      const target = event.target as Element | null;
-      // FileViewer menu surfaces and builders are portalled to document.body.
-      // Exempt only the exact owner token; a neighbouring menu must still
-      // dismiss this one rather than sharing a global escape hatch.
-      if (ownerToken && target?.closest?.(`[data-file-viewer-menu-surface="${CSS.escape(ownerToken)}"]`)) return;
-      if (ownerToken && target?.closest?.(`[data-file-viewer-menu-builder="${CSS.escape(ownerToken)}"]`)) return;
       if (!container.contains(event.target as Node)) onDismissRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -52,5 +45,5 @@ export function useDismissOnOutsideInteraction(
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open, containerRef, ownerToken]);
+  }, [open, containerRef]);
 }

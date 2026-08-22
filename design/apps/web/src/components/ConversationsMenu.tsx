@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { tv, useT } from '../i18n';
+import { useT } from '../i18n';
 import { conversationMetaLabel } from './ChatPane';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import type { Conversation } from '../types';
 
 interface Props {
@@ -27,31 +26,18 @@ export function ConversationsMenu({
 }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  // Deleting a conversation takes every message in it and nothing in the
-  // product puts them back, so the "×" on the row now opens the
-  // super-confirmation gate instead of a browser dialog one stray Enter
-  // answered. The target lives up here, not in the dropdown, so the gate
-  // survives anything that happens to the portal below it.
-  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const pillRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      // While the gate is up, every click belongs to it. Closing the dropdown
-      // underneath would unmount the "×" the gate has to hand focus back to,
-      // and would make the first key-turn read as "dismiss this menu".
-      if (deleteTarget) return;
       const target = e.target as Node;
       if (pillRef.current?.contains(target)) return;
       if (menuRef.current?.contains(target)) return;
       setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
-      // The gate binds Escape in the capture phase and stops the event there,
-      // so this bubble-phase listener never sees the key that dismisses it —
-      // one Escape closes the gate, a second closes the menu.
       if (e.key === 'Escape') setOpen(false);
     }
     document.addEventListener('mousedown', onDown);
@@ -60,7 +46,7 @@ export function ConversationsMenu({
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, deleteTarget]);
+  }, [open]);
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -97,30 +83,12 @@ export function ConversationsMenu({
                 setOpen(false);
                 onCreate();
               }}
-              onRequestDelete={setDeleteTarget}
+              onDelete={onDelete}
               onRename={onRename}
             />,
             document.body,
           )
         : null}
-      {deleteTarget ? (
-        <DestructiveGate
-          action={t('conv.delete')}
-          // The conversation's own title, not a description of one — this is
-          // the string the user has to be able to check the slider against.
-          target={deleteTarget.title || t('conv.untitled')}
-          items={[
-            t('conv.deleteGateItem', {
-              // Copy travels as a key so each language of the gate line gets
-              // its own reading of it; a real title is the user's own text.
-              title: deleteTarget.title || tv('conv.untitled'),
-            }),
-          ]}
-          irreversible
-          onConfirm={() => onDelete(deleteTarget.id)}
-          onClose={() => setDeleteTarget(null)}
-        />
-      ) : null}
     </>
   );
 }
@@ -133,7 +101,7 @@ function ConversationsDropdown({
   onClose: _onClose,
   onSelect,
   onCreate,
-  onRequestDelete,
+  onDelete,
   onRename,
 }: {
   menuRef: React.MutableRefObject<HTMLDivElement | null>;
@@ -143,8 +111,7 @@ function ConversationsDropdown({
   onClose: () => void;
   onSelect: (id: string) => void;
   onCreate: () => void;
-  /** Ask the menu to open the destructive gate; it owns the actual delete. */
-  onRequestDelete: (conversation: Conversation) => void;
+  onDelete: (id: string) => void;
   onRename: (id: string, title: string) => void;
 }) {
   const t = useT();
@@ -231,7 +198,15 @@ function ConversationsDropdown({
                 title={t('conv.delete')}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onRequestDelete(c);
+                  if (
+                    confirm(
+                      t('conv.deleteConfirm', {
+                        title: c.title || t('conv.untitled'),
+                      }),
+                    )
+                  ) {
+                    onDelete(c.id);
+                  }
                 }}
               >
                 ×

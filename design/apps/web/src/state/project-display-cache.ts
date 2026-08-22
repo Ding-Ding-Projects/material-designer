@@ -25,13 +25,6 @@ interface StoredProjectDisplaySnapshot extends ProjectDisplaySnapshot {
 export const MAX_PROJECT_DISPLAY_SNAPSHOTS = 24;
 
 const snapshots = new Map<string, StoredProjectDisplaySnapshot>();
-let snapshotsSuspended = false;
-
-/** Capture and refused-capture lifecycles must never render ordinary cache data. */
-export function setProjectDisplaySnapshotsSuspended(suspended: boolean): void {
-  snapshotsSuspended = suspended;
-  if (suspended) snapshots.clear();
-}
 
 export function projectDisplaySnapshotKey(scope: ProjectDisplaySnapshotScope): string {
   return [
@@ -43,7 +36,6 @@ export function projectDisplaySnapshotKey(scope: ProjectDisplaySnapshotScope): s
 }
 
 export function readProjectDisplaySnapshot(key: string): ProjectDisplaySnapshot | null {
-  if (snapshotsSuspended) return null;
   const snapshot = snapshots.get(key);
   if (!snapshot) return null;
   // Map insertion order is the LRU order. Touch exact-key hits without ever
@@ -60,7 +52,6 @@ export function writeProjectDisplaySnapshot(
   scope: ProjectDisplaySnapshotScope,
   projects: Project[],
 ): void {
-  if (snapshotsSuspended) return;
   const key = projectDisplaySnapshotKey(scope);
   const snapshot: StoredProjectDisplaySnapshot = {
     accountGeneration: scope.accountGeneration,
