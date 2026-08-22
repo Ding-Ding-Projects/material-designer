@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { ToolPackCache } from "../cache/index.js";
-import type { ToolPackConfig } from "../config/index.js";
+import { ToolPackCache } from "../cache.js";
+import type { ToolPackConfig } from "../config.js";
 import {
   collectWorkspaceTarballs,
   createWinPackagedAppCacheKey,
@@ -18,11 +18,13 @@ import {
   readPackagedVersion,
 } from "./manifest.js";
 import { buildWinLauncherPayloadArchive } from "./payload.js";
-import { resolveWinPaths } from "./paths.js";
+import { resolveWinPaths, resolveWinSquirrelOutputRoot } from "./paths.js";
 import {
+  collectWinSquirrelArtifactPaths,
   collectWinSizeReport,
   shouldBuildWinNsisInstaller,
   shouldBuildWinPortableZip,
+  shouldBuildWinSquirrelInstaller,
 } from "./report.js";
 import { copyWinIcon, prepareResourceTree } from "./resources.js";
 import type { WinPackResult, WinPackTiming, WinPaths } from "./types.js";
@@ -64,6 +66,7 @@ export async function packWin(config: ToolPackConfig): Promise<WinPackResult> {
   const timings: WinPackTiming[] = [];
   const segments: WinPackTiming[] = [];
   const hasNsisTarget = shouldBuildWinNsisInstaller(config.to);
+  const hasSquirrelTarget = shouldBuildWinSquirrelInstaller(config.to);
   const hasZipTarget = shouldBuildWinPortableZip(config.to);
   const hasLauncherPayloadTarget = hasNsisTarget || hasZipTarget;
   const runPhase = async <T>(phase: string, task: () => Promise<T>): Promise<T> => {
@@ -91,20 +94,18 @@ export async function packWin(config: ToolPackConfig): Promise<WinPackResult> {
       await rm(paths.installerBasePayloadPath, { force: true });
       await rm(paths.installerOverlayPayloadPath, { force: true });
       await rm(paths.latestYmlPath, { force: true });
+      await rm(paths.blockmapPath, { force: true });
     }
     if (!hasZipTarget) {
       await rm(paths.setupZipPath, { force: true });
     }
+    if (!hasSquirrelTarget) {
+      await rm(resolveWinSquirrelOutputRoot(paths.appBuilderOutputRoot), { force: true, recursive: true });
+    }
   });
   const workspaceBuildKey = await runPhase("workspace-build", async () => ensureWinWorkspaceBuild(config, cache));
   const resourceTree = await runPhase("resource-tree", async () =>
-    prepareResourceTree(
-      config,
-      paths,
-      cache,
-      { bundleAgentRuntimes: true, materialize: config.to !== "dir" },
-      workspaceBuildKey,
-    )
+    prepareResourceTree(config, paths, cache, { materialize: config.to !== "dir" })
   );
   await runPhase("win-icon", async () => {
     await copyWinIcon(paths);
@@ -142,10 +143,18 @@ export async function packWin(config: ToolPackConfig): Promise<WinPackResult> {
       }));
     });
   }
+  const squirrelArtifacts = hasSquirrelTarget
+    ? await runPhase("squirrel-artifacts", async () => collectWinSquirrelArtifactPaths(config, paths))
+    : {
+        deltaPackagePaths: [],
+        fullPackagePaths: [],
+        releasesPath: null,
+        setupPath: null,
+      };
   const sizeReport = await runPhase("size-report", async () => collectWinSizeReport(config, paths, builtApp));
   return {
     blockmapPath: (await pathExists(paths.blockmapPath)) ? paths.blockmapPath : null,
-    installerPath: hasNsisTarget && await pathExists(paths.setupPath) ? paths.setupPath : null,
+    installerPath: squirrelArtifacts.setupPath ?? (hasNsisTarget && await pathExists(paths.setupPath) ? paths.setupPath : null),
     latestYmlPath: hasNsisTarget && await pathExists(paths.latestYmlPath) ? paths.latestYmlPath : null,
     outputRoot: config.roots.output.namespaceRoot,
     payloadPath: (await pathExists(paths.launcherPayloadPath)) ? paths.launcherPayloadPath : null,
@@ -155,6 +164,10 @@ export async function packWin(config: ToolPackConfig): Promise<WinPackResult> {
     cacheReport: cache.report(),
     segments,
     sizeReport,
+    squirrelDeltaPackagePaths: squirrelArtifacts.deltaPackagePaths,
+    squirrelFullPackagePaths: squirrelArtifacts.fullPackagePaths,
+    squirrelReleasesPath: squirrelArtifacts.releasesPath,
+    squirrelSetupPath: squirrelArtifacts.setupPath,
     timings,
     to: config.to,
     unpackedPath: builtApp?.unpackedRoot ?? ((await pathExists(paths.unpackedRoot)) ? paths.unpackedRoot : null),

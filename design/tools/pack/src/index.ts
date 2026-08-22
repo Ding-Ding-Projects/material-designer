@@ -1,7 +1,7 @@
 import { cac } from "cac";
 import type { CAC } from "cac";
 
-import { resolveToolPackConfig, type ToolPackCliOptions, type ToolPackPlatform } from "./config/index.js";
+import { resolveToolPackConfig, type ToolPackCliOptions, type ToolPackPlatform } from "./config.js";
 import {
   cleanupPackedMacNamespace,
   installPackedMacDmg,
@@ -82,7 +82,7 @@ function addSharedOptions(command: CacCommand) {
 const TO_HELP_BY_PLATFORM: Record<ToolPackPlatform, string> = {
   linux: "build target: all|appimage|dir (default: all)",
   mac: "build target: all|app|dmg|zip (default: all)",
-  win: "build target: all|dir|nsis|zip (default: nsis). `zip` produces a portable zip from the unpacked build; `all` produces dir+nsis+zip.",
+  win: "build target: all|dir|nsis|squirrel|zip (default: squirrel). `squirrel` produces Setup.exe plus Squirrel package files; `zip` produces a portable zip; `all` produces dir+squirrel+zip.",
 };
 
 function addBuildOptions(command: CacCommand, platform: ToolPackPlatform) {
@@ -90,8 +90,6 @@ function addBuildOptions(command: CacCommand, platform: ToolPackPlatform) {
     .option("--app-version <version>", "override packaged app version for release artifacts")
     .option("--portable", "do not bake local tools-pack runtime roots into the packaged config")
     .option("--require-vela-cli", "fail packaging when the bundled Vela CLI cannot be resolved")
-    .option("--signed", "build a signed mac artifact")
-    .option("--notarize", "notarize a signed mac artifact")
     .option("--to <target>", TO_HELP_BY_PLATFORM[platform]);
 }
 
