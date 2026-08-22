@@ -1,5 +1,45 @@
 ﻿# Handoff
 
+> [!IMPORTANT]
+> **Application integration closeout — 2026-08-21.** The default-branch source
+> integration is represented by
+> [`ec3cecd7b`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec3cecd7b0e1766de03a559bb33933ac43e9ba19).
+> It combines the production Library route, shared shell chrome, Appearance
+> settings, design handoff registry, project-wide composer context, desktop
+> project scaffolding, complete project ZIP export, Squirrel packaging
+> diagnostics, deterministic capture isolation, Studio fixture lifecycle,
+> localized Explorer folder selection, and FileViewer menu ownership.
+>
+> The permitted local checks are green at this exact tree. `git diff --check`
+> reports no whitespace errors. Both `scripts/verify-port.sh` forms report
+> 12,835 expected upstream files, 13,122 tracked files, 690 declared
+> modifications, and zero missing, byte, mode, object-id, extra, untracked, or
+> stale-notice gaps. No local Node, package-manager, desktop-runtime, build,
+> type-check, source-test, installed interaction, or screen-capture command was
+> run during this integration.
+>
+> This is not a runtime-complete delivery. The final static reviews still record
+> open correctness and accessibility findings in desktop project creation,
+> shell tab visibility/state preservation, secondary composer context
+> forwarding, Appearance reveal generation/docking, and the remaining
+> production parity fixtures. Hosted source checks, the Windows build, installed
+> launch, native folder interaction, project/scaffold ZIP downloads, editor
+> launch, updater states, the ten-screen capture matrix, visual diffs, and
+> per-control Material Design audits remain unverified. Continue from issues
+> [#7](https://github.com/Ding-Ding-Projects/material-designer/issues/7),
+> [#9](https://github.com/Ding-Ding-Projects/material-designer/issues/9),
+> [#10](https://github.com/Ding-Ding-Projects/material-designer/issues/10),
+> [#11](https://github.com/Ding-Ding-Projects/material-designer/issues/11), and
+> [#12](https://github.com/Ding-Ding-Projects/material-designer/issues/12).
+>
+> One immutable historical commit,
+> [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3),
+> contains literal newline escape text in its body, so Git does not parse its
+> otherwise present co-author text as a trailer. Its author and committer are
+> both `Claude Fable 5 <noreply@anthropic.com>`, and it contains no private
+> session vocabulary. Correcting that immutable message would require an
+> explicitly authorized history rewrite; none was performed.
+>
 > **Studio lifecycle repair checkpoint — source-only.** This follow-up adds
 > generation-scoped capture leases, stateless reserved-route refusal
 > recognition, delayed fixture request rechecks, token-owned fetch wrapper
