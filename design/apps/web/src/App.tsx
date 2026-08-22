@@ -5319,9 +5319,10 @@ function AppInner() {
         onCompleteOnboarding={handleCompleteOnboarding}
         onSignedOut={handleActiveCloudSignOut}
         onAmrLoginStatusChange={handleAmrLoginStatusChange}
-        artifactUpgradeSlot={
-  }
-  return (
+      />
+    );
+    }
+    return (
     <>
       <div
         className={`workspace-shell workspace-shell--${clientType}`}
