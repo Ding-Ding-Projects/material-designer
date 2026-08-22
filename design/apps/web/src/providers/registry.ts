@@ -3502,22 +3502,125 @@ export interface LibraryAssetQuery {
   q?: string;
   date?: string;
   tag?: string;
+  limit?: number;
+  /** Opaque point-in-time keyset cursor returned by the daemon. */
+  cursor?: string;
 }
 
-export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise<LibraryAsset[]> {
+export type LibraryAssetFetchErrorKind =
+  | 'network'
+  | 'http'
+  | 'invalid-response'
+  | 'pagination-limit'
+  | 'aborted';
+
+export interface LibraryAssetFetchError {
+  kind: LibraryAssetFetchErrorKind;
+  status?: number;
+}
+
+export type LibraryAssetFetchResult =
+  | { ok: true; assets: LibraryAsset[]; nextCursor: string | null }
+  | { ok: false; error: LibraryAssetFetchError };
+
+/**
+ * Parse the untrusted opaque continuation field from one daemon page.
+ *
+ * The wire contract is deliberately narrower than JavaScript's coercion rules:
+ * `null` and an omitted field end the walk, while only a bounded non-empty
+ * string can continue the point-in-time keyset snapshot. Numbers, booleans,
+ * empty strings, and oversized values are malformed rather than convenient
+ * cursors. Keeping this boundary in one pure helper makes the runtime parser
+ * and its source-level contract agree on the same valid and invalid cases.
+ */
+export function parseLibraryNextCursor(
+  value: unknown,
+): { ok: true; nextCursor: string | null } | { ok: false } {
+  if (value === null || value === undefined) return { ok: true, nextCursor: null };
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) {
+    return { ok: false };
+  }
+  return { ok: true, nextCursor: value };
+}
+
+/** @deprecated Use parseLibraryNextCursor for the point-in-time HTTP route. */
+export function parseLibraryNextOffset(
+  value: unknown,
+): { ok: true; nextOffset: number | null } | { ok: false } {
+  if (value === null || value === undefined) return { ok: true, nextOffset: null };
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return { ok: false };
+  return { ok: true, nextOffset: value };
+}
+
+/** One bounded page from the real daemon Library endpoint. */
+export async function fetchLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options: { signal?: AbortSignal } = {},
+): Promise<LibraryAssetFetchResult> {
   try {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
-      if (value) params.set(key, value);
+      if (value !== undefined && value !== '') params.set(key, String(value));
     }
     const qs = params.toString();
-    const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`);
-    if (!resp.ok) return [];
-    const json = (await resp.json()) as LibraryAssetListResponse;
-    return json.assets ?? [];
-  } catch {
-    return [];
+    const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`, {
+      signal: options.signal,
+    });
+    if (!resp.ok) return { ok: false, error: { kind: 'http', status: resp.status } };
+    const json = (await resp.json()) as Partial<LibraryAssetListResponse>;
+    if (!Array.isArray(json.assets)) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    const next = parseLibraryNextCursor(json.nextCursor);
+    if (!next.ok) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    return { ok: true, assets: json.assets, nextCursor: next.nextCursor };
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return { ok: false, error: { kind: 'aborted' } };
+    }
+    return { ok: false, error: { kind: 'network' } };
   }
+}
+
+/**
+ * Walk every bounded page for a Library view. The page count is bounded as a
+ * safety limit, but it never truncates silently: a continuation that would
+ * exceed it becomes a typed failure and leaves the caller's existing rows
+ * intact. This is deliberately used for both plain text and regex searches so
+ * neither mode inherits the daemon's first-page default.
+ */
+export async function fetchAllLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options: { pageSize?: number; maxPages?: number; signal?: AbortSignal } = {},
+): Promise<LibraryAssetFetchResult> {
+  const pageSize = Math.max(1, Math.min(Math.floor(options.pageSize ?? 500), 500));
+  const maxPages = Math.max(1, Math.min(Math.floor(options.maxPages ?? 1000), 1000));
+  const assets: LibraryAsset[] = [];
+  let cursor: string | undefined;
+  const seenCursors = new Set<string>();
+  for (let pageNumber = 0; pageNumber < maxPages; pageNumber += 1) {
+    const result = await fetchLibraryAssets(
+      { ...query, limit: pageSize, ...(cursor ? { cursor } : {}) },
+      { signal: options.signal },
+    );
+    if (!result.ok) return result;
+    assets.push(...result.assets);
+    // A few older test/integration adapters still return the terminal
+    // `nextOffset: null` shape. Accept that terminal only; numeric offsets are
+    // deliberately not converted because they cannot preserve a snapshot.
+    const legacyNextOffset = (result as { nextOffset?: number | null }).nextOffset;
+    const nextCursor = result.nextCursor
+      ?? (legacyNextOffset === null ? null : undefined);
+    if (nextCursor === null) return { ok: true, assets, nextCursor: null };
+    if (typeof nextCursor !== 'string' || seenCursors.has(nextCursor)) {
+      return { ok: false, error: { kind: 'invalid-response' } };
+    }
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+  return { ok: false, error: { kind: 'pagination-limit' } };
 }
 
 /**
@@ -3526,9 +3629,12 @@ export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise
  * incremental SSE merge — on an `ingest` event we hydrate just the one asset
  * instead of refetching the whole list.
  */
-export async function fetchLibraryAsset(id: string): Promise<LibraryAsset | null> {
+export async function fetchLibraryAsset(
+  id: string,
+  options: { signal?: AbortSignal } = {},
+): Promise<LibraryAsset | null> {
   try {
-    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`);
+    const resp = await fetch(`/api/library/assets/${encodeURIComponent(id)}`, { signal: options.signal });
     if (!resp.ok) return null;
     const json = (await resp.json()) as { asset?: LibraryAsset };
     return json.asset ?? null;
@@ -3666,8 +3772,34 @@ export async function fetchLibraryAssetAsFile(asset: LibraryAsset): Promise<File
  * gets its own token. That is the intended shape — one authorization
  * authorizes one deletion, never a batch.
  */
-export async function deleteLibraryAsset(id: string): Promise<boolean> {
-  return confirmedDelete(`/api/library/assets/${encodeURIComponent(id)}`);
+export interface LibraryDeleteOutcome {
+  id: string;
+  status: 'deleted' | 'failed';
+  /** Stable daemon code, safe for the UI to map to localized copy. */
+  code?: string;
+  /** Sidecars that could not be removed after the row was deleted. */
+  residue?: string[];
+}
+
+export async function deleteLibraryAsset(id: string): Promise<LibraryDeleteOutcome> {
+  let residue: string[] | undefined;
+  const ok = await confirmedDelete(`/api/library/assets/${encodeURIComponent(id)}`, undefined, {
+    onSuccess: async (response) => {
+      try {
+        const body = (await response.json()) as { residue?: unknown };
+        if (Array.isArray(body.residue)) {
+          const labels = body.residue.filter((value): value is string => typeof value === 'string');
+          if (labels.length) residue = labels;
+        }
+      } catch {
+        // A successful delete remains a successful delete; residue is only an
+        // optional diagnostic ledger from the daemon.
+      }
+    },
+  });
+  return ok
+    ? { id, status: 'deleted', ...(residue ? { residue } : {}) }
+    : { id, status: 'failed', code: 'DELETE_FAILED' };
 }
 
 /**
@@ -3703,11 +3835,43 @@ export interface LibraryUploadOutcome {
   code?: string;
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
+function readFileAsDataUrl(
+  file: File,
+  onProgress?: (progress: number) => void,
+  signal?: AbortSignal,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('file read failed'));
+    const cleanup = () => signal?.removeEventListener('abort', onAbort);
+    const onAbort = () => {
+      reader.abort();
+      const error = new Error('Upload cancelled');
+      error.name = 'AbortError';
+      reject(error);
+    };
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+    };
+    reader.onload = () => {
+      cleanup();
+      onProgress?.(100);
+      resolve(String(reader.result));
+    };
+    reader.onerror = () => {
+      cleanup();
+      reject(reader.error ?? new Error('file read failed'));
+    };
+    reader.onabort = () => {
+      cleanup();
+      const error = new Error('Upload cancelled');
+      error.name = 'AbortError';
+      reject(error);
+    };
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener('abort', onAbort, { once: true });
     reader.readAsDataURL(file);
   });
 }
@@ -3718,9 +3882,104 @@ async function readLibraryUploadError(resp: Response): Promise<{ error: string; 
     | null;
   const err = payload?.error;
   if (typeof err === 'object' && err) {
-    return { error: err.message ?? `Upload failed (${resp.status})`, ...(err.code ? { code: err.code } : {}) };
+    return {
+      error: err.message ?? `Upload failed (${resp.status})`,
+      code: err.code ?? 'UPLOAD_FAILED',
+    };
   }
-  return { error: typeof err === 'string' && err ? err : `Upload failed (${resp.status})` };
+  return {
+    error: typeof err === 'string' && err ? err : `Upload failed (${resp.status})`,
+    code: 'UPLOAD_FAILED',
+  };
+}
+
+interface LibraryJsonUploadOptions {
+  signal?: AbortSignal;
+  /** Progress of the request body, not an invented timer. */
+  onProgress?: (progress: number) => void;
+}
+
+/**
+ * POST JSON with byte-backed upload progress and AbortController support.
+ * `fetch` can cancel a request but does not expose request-body progress, so
+ * using it here made the upload row jump from an arbitrary midpoint to 100%.
+ * XHR is deliberately kept behind this one small helper; callers still get a
+ * normal Response for the shared error parser and no other provider request
+ * inherits an upload-specific transport.
+ */
+function postLibraryJson(
+  path: string,
+  body: unknown,
+  options: LibraryJsonUploadOptions = {},
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    if (typeof XMLHttpRequest === 'undefined') {
+      reject(new Error('Upload transport is unavailable'));
+      return;
+    }
+
+    const xhr = new XMLHttpRequest();
+    let settled = false;
+    const abortError = () => {
+      const error = new Error('Upload cancelled');
+      error.name = 'AbortError';
+      return error;
+    };
+    const cleanup = () => {
+      options.signal?.removeEventListener('abort', onAbort);
+    };
+    const settleResolve = (response: Response) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(response);
+    };
+    const settleReject = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const onAbort = () => {
+      if (settled) return;
+      xhr.abort();
+      settleReject(abortError());
+    };
+
+    try {
+      xhr.open('POST', path);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          options.onProgress?.(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+      xhr.onload = () => {
+        if (xhr.status < 200 || xhr.status > 599) {
+          settleReject(new Error('Upload request failed'));
+          return;
+        }
+        const headers = new Headers();
+        const contentType = xhr.getResponseHeader('content-type');
+        if (contentType) headers.set('content-type', contentType);
+        settleResolve(new Response(xhr.responseText, {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          headers,
+        }));
+      };
+      xhr.onerror = () => settleReject(new Error('Upload request failed'));
+      xhr.onabort = () => settleReject(abortError());
+      if (options.signal?.aborted) {
+        onAbort();
+        return;
+      }
+      options.signal?.addEventListener('abort', onAbort, { once: true });
+      xhr.send(JSON.stringify(body));
+    } catch (error) {
+      settleReject(error);
+    }
+  });
 }
 
 /**
@@ -3731,7 +3990,14 @@ async function readLibraryUploadError(resp: Response): Promise<{ error: string; 
  * round-trip, then posts the bytes inline as a `data:` URI. The daemon enforces
  * the same policy as the source of truth.
  */
-export async function uploadLibraryFile(file: File): Promise<LibraryUploadOutcome> {
+export async function uploadLibraryFile(
+  file: File,
+  options: { signal?: AbortSignal; onProgress?: (progress: number) => void } = {},
+): Promise<LibraryUploadOutcome> {
+  options.onProgress?.(0);
+  if (options.signal?.aborted) {
+    return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
+  }
   if (file.size > LIBRARY_UPLOAD_MAX_BYTES) {
     return {
       ok: false,
@@ -3743,19 +4009,35 @@ export async function uploadLibraryFile(file: File): Promise<LibraryUploadOutcom
     return { ok: false, code: 'UNSUPPORTED_MEDIA_TYPE', error: 'Unsupported format' };
   }
   try {
-    const dataUrl = await readFileAsDataUrl(file);
-    const resp = await fetch('/api/library/ingest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dataUrl, filename: file.name, mime: file.type || undefined }),
+    const dataUrl = await readFileAsDataUrl(
+      file,
+      (progress) => options.onProgress?.(Math.round(progress * 0.4)),
+      options.signal,
+    );
+    options.onProgress?.(40);
+    const resp = await postLibraryJson('/api/library/ingest', {
+      dataUrl,
+      filename: file.name,
+      mime: file.type || undefined,
+    }, {
+      signal: options.signal,
+      onProgress: (progress) => options.onProgress?.(40 + Math.round(progress * 0.6)),
     });
     if (!resp.ok) {
       return { ok: false, ...(await readLibraryUploadError(resp)) };
     }
     const json = (await resp.json()) as LibraryIngestResponse;
+    options.onProgress?.(100);
     return { ok: true, asset: json.asset, deduped: json.deduped };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Upload failed' };
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
+    }
+    return {
+      ok: false,
+      code: 'NETWORK_ERROR',
+      error: err instanceof Error ? err.message : 'Upload failed',
+    };
   }
 }
 
@@ -3763,20 +4045,42 @@ export async function uploadLibraryFile(file: File): Promise<LibraryUploadOutcom
 export async function uploadLibraryText(
   text: string,
   opts: { filename?: string } = {},
+  progress?: { signal?: AbortSignal; onProgress?: (progress: number) => void },
 ): Promise<LibraryUploadOutcome> {
+  progress?.onProgress?.(0);
+  if (progress?.signal?.aborted) {
+    return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
+  }
+  if (new Blob([text]).size > LIBRARY_UPLOAD_MAX_BYTES) {
+    return {
+      ok: false,
+      code: 'PAYLOAD_TOO_LARGE',
+      error: `Too large — max ${Math.round(LIBRARY_UPLOAD_MAX_BYTES / 1_000_000)} MB`,
+    };
+  }
   try {
-    const resp = await fetch('/api/library/ingest', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, ...(opts.filename ? { filename: opts.filename } : {}) }),
+    const resp = await postLibraryJson('/api/library/ingest', {
+      text,
+      ...(opts.filename ? { filename: opts.filename } : {}),
+    }, {
+      signal: progress?.signal,
+      onProgress: (value) => progress?.onProgress?.(Math.round(value * 0.95)),
     });
     if (!resp.ok) {
       return { ok: false, ...(await readLibraryUploadError(resp)) };
     }
     const json = (await resp.json()) as LibraryIngestResponse;
+    progress?.onProgress?.(100);
     return { ok: true, asset: json.asset, deduped: json.deduped };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Upload failed' };
+    if (err instanceof Error && err.name === 'AbortError') {
+      return { ok: false, code: 'ABORTED', error: 'Upload cancelled' };
+    }
+    return {
+      ok: false,
+      code: 'NETWORK_ERROR',
+      error: err instanceof Error ? err.message : 'Upload failed',
+    };
   }
 }
 

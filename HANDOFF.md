@@ -1,6 +1,140 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Library completion repair — source-only, 2026-08-21.** Commit
+> [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+> closes the accepted N1–N10 and A1–A10 Library findings while leaving the
+> shell-owned navigation rail unchanged. The daemon list route now returns a
+> bounded point-in-time keyset cursor over `(archivedDate, createdAt, id)`, so a
+> complete walk is stable across concurrent ingest/delete. Full loads and
+> targeted SSE hydration share generation and abort state and use a four-worker
+> pool. Bulk delete records each item, removes only successes, keeps failures
+> selected, keeps the confirmation gate failed until retry succeeds, and shows
+> an itemized ledger. Owned-byte deletion retries transient file locks, keeps
+> the row on primary unlink failure, removes verified `.element.html` and
+> `.od-figma.json` sidecars, and returns bounded residue labels.
+>
+> `LibraryPicker` callbacks now return structured `applied`, `failed`, and
+> `skipped` outcomes consistently from HomeHero, DesignSystemFlow, ChatComposer,
+> and FileWorkspace. During a callback, search, kind chips, cards, and close
+> controls are disabled and the reviewed selection is frozen; partial results
+> leave failed/skipped items selected with itemized retry. Upload progress and
+> counts are scoped to the current batch while prior rows remain visible. The
+> visible preview projection drives previous/next navigation, the design-system
+> menu measures and flips within the viewport and returns the trigger focus only
+> for Escape/explicit selection, and the remaining title/search/card/HTML-region
+> accessibility and 48px hit-area boundaries are explicit.
+>
+> Evidence for this commit is source-only: `git diff --check` passed; Git Bash
+> `sh scripts/verify-port.sh` and `sh scripts/verify-port.sh --json` both report
+> zero gaps (`bytesDiffer: 0`, `staleNotice: 0`). No Node, package-manager,
+> build, type-check, test, UI action, runtime, or capture command was run
+> locally. Hosted checks, built-app interaction, runtime captures, and CI remain
+> pending. The shell-owned rail and release/photo work remain outside this lane.
+
+> **Previous Library boundary repair — source-only, 2026-08-21.** Commit
+> [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
+> repairs the final accepted Library boundaries without touching the shell-owned
+> rail path. Refreshes keep previously loaded picker rows visible and show an
+> inline retry error; continuation cursors must advance by the returned row
+> count; daemon and store pagination rejects malformed values; destructive gates
+> freeze the visible id list they previewed; and SSE merges carry abort,
+> generation, unmount, and current-view checks. Upload callbacks are suppressed
+> after unmount or batch replacement, progress is throttled from real byte
+> events, and stable upload codes map to localized copy while raw detail remains
+> diagnostic-only.
+>
+> The shared Dialog now admits a named portalled focus scope, so the Library
+> picker's regex builder remains inside the modal Tab trap. Filter popovers are
+> measured and viewport-bounded, filter triggers announce their current value,
+> Home/End stay available to the search caret, and focus-leave restores the
+> trigger. Preview disclosure has a stable labelled region; video thumbnails are
+> hidden from assistive technology while full previews are named; and Library/
+> regex controls use 48×48 targets.
+>
+> Evidence for this commit is source-only: `git diff --check`,
+> `scripts/verify-port.sh`, and `scripts/verify-port.sh --json` through the
+> repository's Git Bash executable passed with zero port gaps. No Node,
+> package-manager command, build, type check, test, UI action, runtime, or
+> capture was run locally. Hosted checks, built-app interaction, runtime
+> captures, and the provider/API-backed public-safe fixture remain pending.
+> Squirrel/release/photo work remains deliberately parked outside this app-only
+> lane.
+
+> Follow-up commit [`2c08fb3a3`](https://github.com/Ding-Ding-Projects/material-designer/commit/2c08fb3a3737f2fcd9561bf4c4ea108c4602a605)
+> tightens the viewport edge calculation and prevents Arrow navigation from
+> bubbling twice out of the filter's own search field; Home and End remain
+> available to the search caret. This follow-up is also source-only.
+
+> Follow-up commit [`bca9fbc89`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca9fbc89fb3090eaa7bdaf15e5a85ad2244e00f)
+> removes disabled design-system actions from the menu's roving-focus list, so
+> keyboard traversal cannot park on an unavailable action while a handoff is
+> busy. Source-only evidence remains unchanged.
+> **Library route follow-up — source-only, 2026-08-21.** Commit
+> [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+> closes the remaining source boundaries from the prior Library repair pass.
+> `nextOffset` now accepts only an omitted/`null` terminal value or a
+> non-negative safe JSON number, with explicit valid and invalid contract cases.
+> Library page walks carry an `AbortController` and generation identity so stale
+> rows and errors cannot overwrite a newer search, filter, retry, or refresh.
+> Element filtering includes both image screenshots and HTML snapshots carrying
+> `metadata.element`. Picker kind controls are an `aria-pressed` group, and
+> search controls sit outside the owned listbox/menu roles. Manual uploads now
+> use cancellable XHR request progress, byte-weighted aggregate progress, the
+> shared byte limit for pasted text, and visible done/deduped/failed/cancelled
+> partial outcomes.
+>
+> The allowed local evidence for this commit is source-only: `git diff --check`,
+> `sh scripts/verify-port.sh`, and `sh scripts/verify-port.sh --json` run through
+> Git Bash. No Node, package-manager command, build, type check, test, UI action,
+> runtime, or capture was run locally. Hosted verification, built-app interaction,
+> and deterministic provider/API-backed public-safe capture evidence remain open.
+> Squirrel/release/photo work is deliberately parked outside this app-only lane.
+
+> [!IMPORTANT]
+> **Library route repair pass — source-only, 2026-08-21.** Commit
+> [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+> extends the route seam with daemon continuation (`nextOffset`),
+> a discriminated provider failure result that preserves loaded rows, reconciliation
+> SSE refresh, independently searchable kind/source comboboxes, a searchable
+> design-system handoff menu, and an independent `LibraryPicker` builder. Visible
+> matching ids now define shift/select-all/bulk scope. The collapsed rail stays
+> reachable, upload/preview/picker use the shared dialog focus scope, and upload
+> re-entry/close is refused while work is in flight with explicit busy state.
+> New modal/picker/result copy is localized through the shared catalog. No fixture
+> cards, photos, or release assets were added.
+>
+> This repair pass has not run Node, package-manager commands, builds, type checks,
+> tests, UI actions or captures locally, by lane boundary. The permitted port
+> verifier and static diff checks remain the evidence to record after the final
+> commit. Hosted tests, built-app interaction, runtime captures, and the public-safe
+> provider/API fixture remain pending; package evidence is separate from runtime/UI
+> proof.
+
+> Follow-up commit [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+> localizes the pasted-text upload row label as well. The source-only boundary and
+> hosted/runtime pending state are unchanged.
+
+> [!IMPORTANT]
+> **Library route and search lane — 2026-08-21.** Commit
+> [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+> exposes the existing provider-backed `LibrarySection` at `/library`, adds
+> its persistent navigation-rail destination and analytics page identity, and
+> changes only the Library toolbar search to a field-owned anchored regex
+> builder. Plain text remains the default; explicit regex mode stays local and
+> bounded, with a screen-reader result count and no shared builder state.
+>
+> The source lane added focused route/buildPath, rail, real component render,
+> hidden-flag, builder-ownership and accessibility contracts. It did not run
+> Node, package-manager commands, builds, type checks, tests, UI actions or
+> captures locally. `scripts/verify-port.sh` and `scripts/verify-port.sh --json`
+> both reported zero gaps. The deterministic capture fixture remains pending:
+> it must use public-safe `LibraryAsset` records through the real provider/API
+> boundary, not replacement DOM. Existing upload, sync, select, preview,
+> project/design-system handoff and destructive confirmation paths remain in
+> place. Photo/release work is explicitly deferred to the owning lane.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

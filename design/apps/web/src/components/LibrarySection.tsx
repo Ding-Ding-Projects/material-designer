@@ -19,10 +19,10 @@
 // also unlinks the stored bytes; nothing writes a revision, so none of it is
 // recoverable from inside the product.
 //
-// Copy is intentionally inline (not yet i18n-keyed) — localization of the
-// Library surface is a tracked follow-up.
+// User-facing copy is routed through the shared locale catalog; provider and
+// metadata identifiers remain exact data.
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
 import {
   applyLibraryAsset,
@@ -31,17 +31,19 @@ import {
   fetchDesignSystem,
   fetchDesignSystems,
   fetchLibraryAsset,
-  fetchLibraryAssets,
+  fetchAllLibraryAssets,
   fetchLibraryAssetAsFile,
   libraryAssetRawUrl,
   syncLibrary,
   type LibraryAssetQuery,
+  type LibraryAssetFetchError,
+  type LibraryDeleteOutcome,
 } from '../providers/registry';
 import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { setComposerSeed, setDesignSystemAssetSeed, setHomeComposerAssetSeed } from '../state/libraryHandoff';
-import { Button } from '@open-design/components';
+import { Button, VisuallyHidden } from '@open-design/components';
 import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
 import {
@@ -56,10 +58,13 @@ import {
   originDesignSystemId,
   originProjectId,
   primarySource,
+  libraryAssetSearchText,
   type KindFilterValue,
 } from './LibraryAssetMeta';
 import { LibraryPreviewModal } from './LibraryPreviewModal';
 import { LibraryUploadModal } from './LibraryUploadModal';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 import styles from './LibrarySection.module.css';
 import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
@@ -101,6 +106,242 @@ function sourceFilters(t: Translate): Array<{ value: string; label: string }> {
     { value: 'generated', label: t('library.sourceGenerated') },
   ];
 }
+
+function localizedLibraryKindLabel(kind: ReturnType<typeof badgeKind>, t: Translate): string {
+  switch (kind) {
+    case 'image': return t('library.kindImages');
+    case 'element': return t('library.kindElements');
+    case 'design-system': return t('library.kindDesignSystems');
+    case 'video': return t('library.kindVideo');
+    case 'font': return t('library.kindFonts');
+    case 'color': return t('library.kindColors');
+    case 'text': return t('library.kindText');
+    case 'url': return t('library.kindLinks');
+    case 'html': return 'HTML';
+    default: return kindLabel(kind);
+  }
+}
+
+function localizedLibrarySourceLabel(source: keyof typeof SOURCE_LABELS, t: Translate): string {
+  switch (source) {
+    case 'clipper': return t('library.sourceClipper');
+    case 'manual-upload': return t('library.upload');
+    case 'agent-task': return t('library.sourceAgent');
+    case 'design-system': return t('library.sourceDesignSystem');
+    case 'generated': return t('library.sourceGenerated');
+    default: return SOURCE_LABELS[source];
+  }
+}
+
+interface LibraryFilterComboboxProps {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  testId: string;
+  noMatchesLabel: string;
+}
+
+/**
+ * A real searchable filter picker. Each instance owns its query, regex mode,
+ * flags and anchored builder; the kind and source controls never share hidden
+ * search state or accidentally apply one filter's pattern to the other.
+ */
+function LibraryFilterCombobox({
+  label,
+  value,
+  options,
+  onChange,
+  testId,
+  noMatchesLabel,
+}: LibraryFilterComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [panelStyle, setPanelStyle] = useState<CSSProperties>({});
+  const listId = `${testId}-list`;
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? options[0]?.label ?? label;
+  const visible = options.filter((option) => search.matches(option.label));
+
+  const measurePanel = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger || typeof window === 'undefined') return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.max(1, Math.min(320, window.innerWidth - margin * 2));
+    const below = window.innerHeight - rect.bottom - margin;
+    const above = rect.top - margin;
+    const placeAbove = below < 220 && above > below;
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
+    const room = Math.max(1, (placeAbove ? above : below) - 6);
+    setPanelStyle({
+      position: 'fixed',
+      top: placeAbove ? rect.top - 6 : rect.bottom + 6,
+      left,
+      width,
+      maxHeight: Math.min(360, room),
+      transform: placeAbove ? 'translateY(-100%)' : undefined,
+    });
+  }, []);
+
+  const close = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+    measurePanel();
+    const onViewportChange = () => measurePanel();
+    const onPointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const regexPopover = (event.target as HTMLElement | null)?.closest(
+        `[data-testid="${testId}-search-regex-popover"]`,
+      );
+      if (!regexPopover && !panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) close();
+    };
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement | null;
+      const regexPopover = target?.closest(`[data-testid="${testId}-search-regex-popover"]`);
+      if (!regexPopover && !panelRef.current?.contains(event.target as Node) && !triggerRef.current?.contains(event.target as Node)) {
+        close();
+      }
+    };
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [close, measurePanel, open, testId]);
+
+  const focusOption = useCallback((delta: number) => {
+    const optionsNow = Array.from(panelRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []);
+    if (!optionsNow.length) return;
+    const current = optionsNow.indexOf(document.activeElement as HTMLButtonElement);
+    const next = current < 0 ? (delta > 0 ? 0 : optionsNow.length - 1) : (current + delta + optionsNow.length) % optionsNow.length;
+    optionsNow[next]?.focus();
+  }, []);
+
+  return (
+    <div className={styles.filterCombo} data-testid={testId}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={styles.filterComboTrigger}
+        role="combobox"
+        aria-label={`${label}: ${selectedLabel}`}
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => {
+          setQuery('');
+          setOpen((current) => !current);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            setQuery('');
+            setOpen(true);
+          }
+        }}
+      >
+        <span className={styles.filterComboLabel}>{selectedLabel}</span>
+        <Icon name="chevron-down" size={14} aria-hidden />
+      </button>
+      {open ? (
+        <div
+          ref={panelRef}
+          className={styles.filterComboPanel}
+          style={panelStyle}
+          role="group"
+          aria-label={`${label} options`}
+          onKeyDown={(event) => {
+            const target = event.target as HTMLElement | null;
+            const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+            if (typing && event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Escape') return;
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              close();
+            } else if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              focusOption(1);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              focusOption(-1);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              panelRef.current?.querySelector<HTMLButtonElement>('[role="option"]')?.focus();
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              const items = panelRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
+              items?.[items.length - 1]?.focus();
+            }
+          }}
+        >
+          <RegexSearchField
+            search={search}
+            fieldLabel={label}
+            hostClassName={styles.filterComboSearch}
+            placeholder={label}
+            ariaLabel={label}
+            testId={`${testId}-search`}
+            inputRef={inputRef}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                event.stopPropagation();
+                focusOption(1);
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                event.stopPropagation();
+                focusOption(-1);
+              }
+            }}
+          />
+          <div className={styles.filterComboOptions} aria-live="polite">
+            <div id={listId} role="listbox" aria-label={label}>
+              {visible.map((option) => (
+                <button
+                  key={option.value || '__all'}
+                  type="button"
+                  role="option"
+                  aria-selected={option.value === value}
+                  className={styles.filterComboOption}
+                  onClick={() => {
+                    onChange(option.value);
+                    close();
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {!visible.length ? <div className={styles.filterComboEmpty} role="status">{noMatchesLabel}</div> : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Text owned by one Library record and searched by the local controller.
+ * Keeping this projection explicit means plain text and regex mode share one
+ * bounded matcher without asking the browser to search rendered DOM or
+ * sending a regex pattern to the daemon's keyword endpoint.
+ */
+// Keep the historical import path stable for focused tests and other Library
+// surfaces while sharing the complete projection with LibraryPicker.
+export { libraryAssetSearchText } from './LibraryAssetMeta';
 
 /** Local `YYYY-MM-DD` for a Date — matches the daemon's `archivedDate` bucket. */
 function ymdLocal(date: Date): string {
@@ -162,6 +403,8 @@ function MediaThumb({ asset }: { asset: LibraryAsset }) {
           muted
           preload="metadata"
           playsInline
+          aria-hidden="true"
+          tabIndex={-1}
           data-loaded={flag}
           onLoadedData={() => setLoaded(true)}
           onError={() => setLoaded(true)}
@@ -346,6 +589,52 @@ export interface Band {
   h: number;
 }
 
+export const LIBRARY_MAX_CONCURRENCY = 4;
+
+export interface LibraryPoolResult<T, R> {
+  item: T;
+  ok: boolean;
+  value?: R;
+  error?: unknown;
+}
+
+/** Run Library work through a small, abort-aware worker pool. */
+export async function runLibraryPool<T, R>(
+  items: readonly T[],
+  worker: (item: T, signal: AbortSignal) => Promise<R>,
+  options: { concurrency?: number; signal?: AbortSignal } = {},
+): Promise<LibraryPoolResult<T, R>[]> {
+  const concurrency = Math.max(
+    1,
+    Math.min(Math.floor(options.concurrency ?? LIBRARY_MAX_CONCURRENCY), LIBRARY_MAX_CONCURRENCY),
+  );
+  const controller = new AbortController();
+  const onAbort = () => controller.abort();
+  options.signal?.addEventListener('abort', onAbort, { once: true });
+  const out: Array<LibraryPoolResult<T, R> | undefined> = new Array(items.length);
+  let next = 0;
+  const workerLoop = async () => {
+    while (!controller.signal.aborted) {
+      const index = next;
+      next += 1;
+      if (index >= items.length) return;
+      const item = items[index];
+      try {
+        out[index] = { item, ok: true, value: await worker(item, controller.signal) };
+      } catch (error) {
+        out[index] = { item, ok: false, error };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => workerLoop()));
+  options.signal?.removeEventListener('abort', onAbort);
+  return out.filter((entry): entry is LibraryPoolResult<T, R> => Boolean(entry));
+}
+
+function deleteOutcomeSucceeded(value: LibraryDeleteOutcome | boolean): boolean {
+  return typeof value === 'boolean' ? value : value.status === 'deleted';
+}
+
 /** How many assets the gate names one line each before it starts counting. */
 export const MAX_GATE_ITEMS = 12;
 
@@ -363,8 +652,13 @@ export const MAX_GATE_ITEMS = 12;
  * source rather than restoring what was there, so "you can just sync it back"
  * is not true of the parts a person curated.
  */
-export function describeAssetLoss(asset: LibraryAsset): string {
+export function describeAssetLoss(asset: LibraryAsset, t?: Translate): string {
   const title = assetTitle(asset);
+  if (t) {
+    return asset.storage === 'owned'
+      ? t('library.deleteItemOwned', { title })
+      : t('library.deleteItemReferenced', { title });
+  }
   return asset.storage === 'owned'
     ? `${title} — the file stored in your Library, plus its caption, OCR text, tags and palette`
     : `${title} — its Library record: caption, OCR text, tags and palette. The file itself stays in the project that owns it.`;
@@ -376,17 +670,24 @@ export function describeAssetLoss(asset: LibraryAsset): string {
  * the slider under a scroll, and a list that silently stopped at twelve would
  * under-report what is about to go.
  */
-export function describeAssetItems(assets: readonly LibraryAsset[]): string[] {
-  const named = assets.slice(0, MAX_GATE_ITEMS).map(describeAssetLoss);
+export function describeAssetItems(assets: readonly LibraryAsset[], t?: Translate): string[] {
+  const named = assets.slice(0, MAX_GATE_ITEMS).map((asset) => describeAssetLoss(asset, t));
   const rest = assets.length - named.length;
-  if (rest > 0) named.push(`…and ${rest} more asset${rest === 1 ? '' : 's'} in the selection`);
+  if (rest > 0) {
+    named.push(t ? t('library.deleteMore', { count: rest }) : `…and ${rest} more asset${rest === 1 ? '' : 's'} in the selection`);
+  }
   return named;
 }
 
 /** The blast-radius sentence, keyed on which storage models are in the set. */
-export function describeDeleteDetail(assets: readonly LibraryAsset[]): string {
+export function describeDeleteDetail(assets: readonly LibraryAsset[], t?: Translate): string {
   const owned = assets.filter((a) => a.storage === 'owned').length;
   const referenced = assets.length - owned;
+  if (t) {
+    if (owned > 0 && referenced > 0) return t('library.deleteDetailMixed', { owned, referenced });
+    if (owned > 0) return t('library.deleteDetailOwned', { count: owned });
+    return t('library.deleteDetailReferenced', { count: referenced });
+  }
   if (owned > 0 && referenced > 0) {
     return (
       `${owned} of these ${owned === 1 ? 'is' : 'are'} stored by the Library and ${owned === 1 ? 'its file is' : 'their files are'} ` +
@@ -397,7 +698,7 @@ export function describeDeleteDetail(assets: readonly LibraryAsset[]): string {
   if (owned > 0) {
     return (
       `The ${owned === 1 ? 'file is' : 'files are'} unlinked from the Library folder. ` +
-      'Nothing in Open Design keeps a second copy, so this cannot be undone.'
+      'Nothing else keeps a second copy, so this cannot be undone.'
     );
   }
   return (
@@ -409,7 +710,7 @@ export function describeDeleteDetail(assets: readonly LibraryAsset[]): string {
 
 interface LibraryCardProps {
   asset: LibraryAsset;
-  /** Flat position in `assets` — drives shift-range + box selection. */
+  /** Flat position in the currently visible result set — drives shift-range. */
   index: number;
   selected: boolean;
   /** This card's asset is mid "Edit as page" (spinner gate). */
@@ -497,7 +798,7 @@ const LibraryCard = memo(function LibraryCard({
         </button>
         {src ? (
           <span className={styles.badge} data-source={src}>
-            {SOURCE_LABELS[src]}
+            {localizedLibrarySourceLabel(src, t)}
           </span>
         ) : null}
         <span
@@ -505,7 +806,7 @@ const LibraryCard = memo(function LibraryCard({
           style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}
         >
           <KindIcon kind={badgeKind(asset)} size={12} />
-          {kindLabel(badgeKind(asset))}
+          {localizedLibraryKindLabel(badgeKind(asset), t)}
         </span>
       </div>
       <figcaption className={styles.meta}>
@@ -513,6 +814,7 @@ const LibraryCard = memo(function LibraryCard({
           type="button"
           className={styles.title}
           title={asset.sourceTitle ?? asset.sourceUrl ?? asset.id}
+          aria-label={t('library.previewAsset', { title })}
           onClick={() => onPreview(asset.id)}
         >
           {title}
@@ -520,7 +822,7 @@ const LibraryCard = memo(function LibraryCard({
         <span className={styles.sub}>
           {asset.width && asset.height
             ? `${asset.width}×${asset.height}`
-            : kindLabel(badgeKind(asset))}
+            : localizedLibraryKindLabel(badgeKind(asset), t)}
         </span>
       </figcaption>
       <div className={styles.cardActions}>
@@ -569,18 +871,25 @@ const LibraryCard = memo(function LibraryCard({
 
 export function LibrarySection({ active, onOpenProject }: Props) {
   const t = useT();
+  const dsMenuId = useId();
   const { context: workspaceContext } = useWorkspaceContext();
   const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
   const [kind, setKind] = useState('');
   const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
-  // The input updates `search` instantly (responsive typing) but the server
-  // query keys off `debouncedSearch`, so a fast typist fires one request, not
-  // one per keystroke.
+  // This controller belongs to this field only. RegexSearchField renders the
+  // adjacent builder and returns focus to this input when it closes; no
+  // module-level controller or shared builder state is involved.
+  const librarySearch = useRegexSearch(search, setSearch);
+  const { matches: matchesLibraryAsset } = librarySearch;
+  // The input updates `search` instantly; the debounced mirror only schedules
+  // a bounded complete-page reload after a typing pause.
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [libraryError, setLibraryError] = useState<LibraryAssetFetchError | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [band, setBand] = useState<Band | null>(null);
@@ -598,19 +907,42 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     detail: string;
     onConfirm: () => Promise<boolean>;
   } | null>(null);
+  const [deleteOutcome, setDeleteOutcome] = useState<{
+    deleted: LibraryAsset[];
+    failed: LibraryAsset[];
+    skipped: LibraryAsset[];
+    residue: string[];
+  } | null>(null);
   // Asset currently being turned into an editable OD page (spinner gate).
   const [editingId, setEditingId] = useState<string | null>(null);
+  const editingIdsRef = useRef(new Set<string>());
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   // "Use in design system" menu state (multi-select → design system).
   const [dsMenuOpen, setDsMenuOpen] = useState(false);
   const [dsList, setDsList] = useState<DesignSystemSummary[]>([]);
   const [dsBusy, setDsBusy] = useState(false);
+  const dsBusyRef = useRef(false);
   const dsLoadedRef = useRef(false);
   const dsMenuWrapRef = useRef<HTMLDivElement>(null);
+  const dsMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const dsMenuPanelRef = useRef<HTMLDivElement>(null);
+  const dsMenuRef = useRef<HTMLDivElement>(null);
+  const dsMenuSearchInputRef = useRef<HTMLInputElement>(null);
+  const [dsMenuQuery, setDsMenuQuery] = useState('');
+  const [dsMenuStyle, setDsMenuStyle] = useState<CSSProperties | undefined>(undefined);
+  const dsMenuSearch = useRegexSearch(dsMenuQuery, setDsMenuQuery);
   const [fileDragActive, setFileDragActive] = useState(false);
   const fileDragDepth = useRef(0);
   const loadedOnce = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  // Full page walks and targeted SSE merges share one generation/abort domain.
+  // A newer operation therefore cancels both kinds of stale work rather than
+  // letting a late targeted response overwrite a newer full projection.
+  const loadGenerationRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
+  // Updated from the rendered result set below so keyboard and shift-range
+  // actions never reach hidden rows when a search/filter is active.
+  const visibleAssetsRef = useRef<LibraryAsset[]>([]);
   const anchorRef = useRef<number | null>(null);
   const dragRef = useRef<{
     startX: number;
@@ -621,6 +953,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     rects: CardRect[];
   } | null>(null);
 
+  const beginDesignSystemAction = useCallback(() => {
+    if (dsBusyRef.current) return false;
+    dsBusyRef.current = true;
+    setDsBusy(true);
+    return true;
+  }, []);
+
+  const endDesignSystemAction = useCallback(() => {
+    dsBusyRef.current = false;
+    setDsBusy(false);
+  }, []);
+
   // Debounce the search box before it touches the network (250ms trailing).
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 250);
@@ -629,43 +973,80 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   const query = useMemo<LibraryAssetQuery>(() => {
     const q: LibraryAssetQuery = {};
-    // `element` is a badge identity, not a storage kind (element clips are
-    // stored as `image`); narrow to images on the server, then split client-side.
-    if (kind) q.kind = kind === 'element' ? 'image' : kind;
+    // `element` is a badge identity, not a storage kind: element clips are
+    // image screenshots or HTML snapshots marked in metadata. Leave the
+    // storage-kind query open and split client-side from that marker.
+    if (kind && kind !== 'element') q.kind = kind;
     if (source) q.source = source;
-    if (debouncedSearch.trim()) q.q = debouncedSearch.trim();
     return q;
-  }, [kind, source, debouncedSearch]);
+  }, [kind, source]);
 
   // Whether any filter narrows the default newest-first feed. Tracked in a ref
   // so the long-lived SSE subscription can read it without resubscribing on
   // every keystroke. When filters are active the SSE handler can't safely
-  // predict membership (server `source` is an EXISTS join, `q` is a fuzzy
-  // match), so it falls back to a single full reload.
+  // predict membership (source is an EXISTS join and search is a complete
+  // client projection), so it falls back to a single full reload.
   const filtersActive = !!(kind || source || debouncedSearch.trim());
   const filtersActiveRef = useRef(filtersActive);
   useEffect(() => {
     filtersActiveRef.current = filtersActive;
   }, [filtersActive]);
 
+  const beginRefresh = useCallback(() => {
+    const generation = loadGenerationRef.current + 1;
+    loadGenerationRef.current = generation;
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
+    return { generation, controller };
+  }, []);
+
   const load = useCallback(async () => {
+    const { generation, controller } = beginRefresh();
+    const hadLoadedRows = loadedOnce.current;
     setLoading(true);
-    const next = await fetchLibraryAssets(query);
-    // Final filtering is badge-aware (shared with the picker) so `image` excludes
-    // element captures and `element` keeps only them; other kinds pass through.
-    setAssets(next.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
-    setLoading(false);
-  }, [query, kind]);
+    if (!hadLoadedRows) setLibraryError(null);
+    try {
+      // Fetch every bounded page before applying either plain text or regex
+      // locally. The daemon's first-page default is never a hidden search cap,
+      // and both modes therefore see the same complete projection.
+      const result = await fetchAllLibraryAssets(query, { signal: controller.signal });
+      if (generation !== loadGenerationRef.current) return;
+      if (!result.ok) {
+        if (result.error.kind === 'aborted') return;
+        setLibraryError(result.error);
+        return;
+      }
+      // Final filtering is badge-aware (shared with the picker) so `image` excludes
+      // element captures and `element` keeps only them; other kinds pass through.
+      loadedOnce.current = true;
+      setAssets(result.assets.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
+    } finally {
+      if (generation === loadGenerationRef.current && loadAbortRef.current === controller) {
+        loadAbortRef.current = null;
+        setLoading(false);
+      }
+    }
+  }, [beginRefresh, debouncedSearch, kind, query]);
+
+  useEffect(() => () => {
+    loadGenerationRef.current += 1;
+    loadAbortRef.current?.abort();
+    loadAbortRef.current = null;
+  }, []);
 
   // Force a reconcile (design systems + agent deliverables → referenced Library
   // rows), then reload so the freshly-indexed assets appear. The throttle lives
   // on the daemon; this is the explicit "pull everything in now" action.
   const runSync = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       await syncLibrary();
       await load();
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
   }, [load]);
@@ -673,7 +1054,6 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // Fetch when the tab becomes active or filters change.
   useEffect(() => {
     if (!active) return;
-    loadedOnce.current = true;
     void load();
   }, [active, load]);
 
@@ -695,37 +1075,53 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     if (!active) return;
     let es: EventSource | null = null;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let alive = true;
     const pendingIngest = new Set<string>();
     const pendingDelete = new Set<string>();
     let pendingFull = false;
 
     const flush = async () => {
       timer = null;
+      const { generation, controller } = beginRefresh();
+      const current = () => alive && generation === loadGenerationRef.current && !controller.signal.aborted;
       // Deletes are free (no fetch); apply them first.
       if (pendingDelete.size) {
         const del = new Set(pendingDelete);
         pendingDelete.clear();
         for (const id of del) pendingIngest.delete(id);
-        setAssets((prev) => prev.filter((a) => !del.has(a.id)));
+        if (current()) {
+          setAssets((prev) => prev.filter((a) => !del.has(a.id)));
+          setLibraryError(null);
+        }
       }
       // A filtered view can't predict membership client-side — one reload.
       if (pendingFull || filtersActiveRef.current) {
         pendingFull = false;
         pendingIngest.clear();
+        if (!current()) return;
         await loadRef.current();
         return;
       }
       if (pendingIngest.size) {
         const ids = [...pendingIngest];
         pendingIngest.clear();
-        const fetched = await Promise.all(ids.map((id) => fetchLibraryAsset(id)));
+        const fetched = await runLibraryPool(
+          ids,
+          (id, signal) => fetchLibraryAsset(id, { signal }),
+          { signal: controller.signal },
+        );
+        if (!current()) return;
         // A missing fetch is ambiguous (filtered out? race?) — reload instead.
-        if (fetched.some((a) => a === null)) {
+        if (fetched.some((entry) => !entry.ok || entry.value === null)) {
           await loadRef.current();
           return;
         }
-        const resolved = fetched.filter((a): a is LibraryAsset => a !== null);
+        const resolved = fetched
+          .map((entry) => entry.value)
+          .filter((a): a is LibraryAsset => a !== null && a !== undefined);
+        if (!current()) return;
         setAssets((prev) => mergeIngestedAssets(prev, resolved));
+        setLibraryError(null);
       }
     };
 
@@ -748,16 +1144,26 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         else pendingFull = true;
         schedule();
       };
+      const onReconcile = () => {
+        // Reconcile can change rows that have no individual ingest id. Every
+        // active view gets the same bounded reload, including filtered views.
+        pendingFull = true;
+        schedule();
+      };
       es.addEventListener('ingest', onIngest);
       es.addEventListener('delete', onDelete);
+      es.addEventListener('reconcile', onReconcile);
     } catch {
       // EventSource unavailable — manual Refresh remains the fallback.
     }
     return () => {
+      alive = false;
+      loadGenerationRef.current += 1;
+      loadAbortRef.current?.abort();
       if (timer) clearTimeout(timer);
       es?.close();
     };
-  }, [active]);
+  }, [active, beginRefresh]);
 
   // Drop selected ids that no longer exist after a reload / delete. Membership
   // is a single Set lookup so a large grid + large selection stays O(n).
@@ -774,11 +1180,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // that refused leaves the gate open saying so instead of closing on a
   // removal that did not happen.
   const onDelete = useCallback(async (id: string) => {
-    const ok = await deleteLibraryAsset(id);
-    if (!ok) return false;
+    const asset = assets.find((candidate) => candidate.id === id);
+    const result = await deleteLibraryAsset(id);
+    if (!deleteOutcomeSucceeded(result)) {
+      if (asset) setDeleteOutcome({ deleted: [], failed: [asset], skipped: [], residue: [] });
+      return false;
+    }
+    if (asset && typeof result !== 'boolean' && result.residue?.length) {
+      setDeleteOutcome({ deleted: [asset], failed: [], skipped: [], residue: result.residue });
+    }
     setAssets((prev) => prev.filter((a) => a.id !== id));
     return true;
-  }, []);
+  }, [assets]);
 
   // Removing one asset had no confirmation at all: a single click on a small
   // button inside a hover-revealed row, and the bytes were gone. It now names
@@ -788,17 +1201,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     (id: string) => {
       const asset = assets.find((a) => a.id === id);
       if (!asset) return;
+      setDeleteOutcome(null);
       setDeleteGate({
-        action: 'Delete asset',
+        action: t('library.deleteAction', { count: 1 }),
         // The asset's own title, so the user can check the gate against the
         // card they meant to act on rather than against a generic noun.
         target: assetTitle(asset),
-        items: describeAssetItems([asset]),
-        detail: describeDeleteDetail([asset]),
+        items: describeAssetItems([asset], t),
+        detail: describeDeleteDetail([asset], t),
         onConfirm: () => onDelete(id),
       });
     },
-    [assets, onDelete],
+    [assets, onDelete, t],
   );
 
   // "Edit as page": turn a captured html asset into a fresh editable OD project
@@ -806,6 +1220,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // just gate a spinner and navigate on success.
   const handleEditAsPage = useCallback(
     async (assetId: string) => {
+      if (editingIdsRef.current.has(assetId)) return;
+      editingIdsRef.current.add(assetId);
       setEditingId(assetId);
       try {
         const result = await editLibraryAssetAsPage(assetId);
@@ -814,25 +1230,63 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           onOpenProject(result.projectId, result.relPath);
         }
       } finally {
+        editingIdsRef.current.delete(assetId);
         setEditingId(null);
       }
     },
     [onOpenProject],
   );
 
-  const deleteSelected = useCallback(async () => {
-    const ids = Array.from(selectedIds);
+  const deleteSelectedRef = useRef<(previewedIds: readonly string[]) => Promise<boolean>>(async () => false);
+  const deleteSelected = useCallback(async (previewedIds: readonly string[]) => {
+    const ids = [...previewedIds];
     if (!ids.length) return false;
-    const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
-    const deleted = new Set(ids.filter((_, i) => results[i]));
-    // Nothing landed — reported as a failure so the gate says so rather than
-    // closing over a selection that is still entirely there.
-    if (!deleted.size) return false;
-    setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
-    setSelectedIds(new Set());
-    setPreviewId((cur) => (cur && deleted.has(cur) ? null : cur));
-    return true;
-  }, [selectedIds]);
+    const results = await runLibraryPool(
+      ids,
+      async (id) => deleteLibraryAsset(id),
+      { concurrency: LIBRARY_MAX_CONCURRENCY },
+    );
+    const resultById = new Map(results.map((entry) => [entry.item, entry]));
+    const deletedIds = new Set(
+      ids.filter((id) => {
+        const result = resultById.get(id);
+        return Boolean(result?.ok && result.value && deleteOutcomeSucceeded(result.value));
+      }),
+    );
+    const failedIds = new Set(ids.filter((id) => !deletedIds.has(id)));
+    const deletedAssets = assets.filter((asset) => deletedIds.has(asset.id));
+    const failedAssets = assets.filter((asset) => failedIds.has(asset.id));
+    // The ledger is itemized and survives a partial attempt. Failed rows stay
+    // selected and the gate returns false, so DestructiveGate shows its failed
+    // phase instead of playing the completion animation over half a delete.
+    const residue = results.flatMap((entry) => (
+      entry.ok && entry.value && typeof entry.value !== 'boolean' ? entry.value.residue ?? [] : []
+    ));
+    setDeleteOutcome({ deleted: deletedAssets, failed: failedAssets, skipped: [], residue });
+    if (deletedIds.size) {
+      setAssets((prev) => prev.filter((a) => !deletedIds.has(a.id)));
+      setPreviewId((cur) => (cur && deletedIds.has(cur) ? null : cur));
+    }
+    setSelectedIds(new Set(failedIds));
+    if (failedIds.size) {
+      setDeleteGate((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          action: t('library.deleteAction', { count: failedAssets.length }),
+          target: t('library.deleteTarget', { count: failedAssets.length }),
+          items: describeAssetItems(failedAssets, t),
+          detail: describeDeleteDetail(failedAssets, t),
+          onConfirm: () => deleteSelectedRef.current([...failedIds]),
+        };
+      });
+      return false;
+    }
+    return deletedIds.size > 0;
+  }, [assets, t]);
+  useEffect(() => {
+    deleteSelectedRef.current = deleteSelected;
+  }, [deleteSelected]);
 
   // Bulk delete is destructive and very easy to trigger — a button in the
   // selection bar, or Delete/Backspace with a box-selection still live. The
@@ -840,16 +1294,19 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // button, which a stray Enter supplies; the gate cannot be answered by one
   // reflex, and it lists what is in the selection rather than only counting it.
   const requestDeleteSelected = useCallback(() => {
-    const chosen = assets.filter((a) => selectedIds.has(a.id));
+    const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
+    const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
     if (!chosen.length) return;
+    setDeleteOutcome(null);
+    const previewedIds = Object.freeze(chosen.map((asset) => asset.id));
     setDeleteGate({
-      action: `Delete ${chosen.length} ${chosen.length === 1 ? 'asset' : 'assets'}`,
-      target: `${chosen.length} selected ${chosen.length === 1 ? 'asset' : 'assets'}`,
-      items: describeAssetItems(chosen),
-      detail: describeDeleteDetail(chosen),
-      onConfirm: () => deleteSelected(),
+      action: t('library.deleteAction', { count: chosen.length }),
+      target: t('library.deleteTarget', { count: chosen.length }),
+      items: describeAssetItems(chosen, t),
+      detail: describeDeleteDetail(chosen, t),
+      onConfirm: () => deleteSelected(previewedIds),
     });
-  }, [assets, selectedIds, deleteSelected]);
+  }, [assets, deleteSelected, selectedIds, t]);
 
   // --- multi-select → design system ---------------------------------------
 
@@ -871,44 +1328,121 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     };
   }, [dsMenuOpen, workspaceIdentity]);
 
+  const closeDsMenu = useCallback(() => {
+    setDsMenuOpen(false);
+    setDsMenuQuery('');
+    window.setTimeout(() => dsMenuButtonRef.current?.focus(), 0);
+  }, []);
+
+  const closeDsMenuWithoutFocus = useCallback(() => {
+    setDsMenuOpen(false);
+    setDsMenuQuery('');
+  }, []);
+
+  const visibleDesignSystemMenuItems = useMemo(
+    () => dsList.filter((ds) => dsMenuSearch.matches(`${ds.title}\n${t('library.addAssetsAndRefine')}`)),
+    [dsList, dsMenuSearch.matches, t],
+  );
+
+  const positionDsMenu = useCallback(() => {
+    const trigger = dsMenuButtonRef.current;
+    const panel = dsMenuPanelRef.current;
+    if (!trigger || !panel || typeof window === 'undefined') return;
+    const rect = trigger.getBoundingClientRect();
+    const margin = 12;
+    const gap = 6;
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 320;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 320;
+    const width = Math.min(320, Math.max(200, viewportWidth - margin * 2));
+    const measuredHeight = Math.max(1, panel.scrollHeight);
+    const below = Math.max(0, viewportHeight - rect.bottom - margin - gap);
+    const above = Math.max(0, rect.top - margin - gap);
+    const placeAbove = below < Math.min(measuredHeight, 220) && above > below;
+    const maxHeight = Math.max(120, Math.min(measuredHeight, placeAbove ? above : below));
+    const left = Math.max(margin, Math.min(rect.right - width, viewportWidth - width - margin));
+    if (placeAbove) {
+      setDsMenuStyle({ position: 'fixed', left, bottom: Math.max(margin, viewportHeight - rect.top + gap), width, maxHeight });
+    } else {
+      setDsMenuStyle({ position: 'fixed', left, top: Math.max(margin, rect.bottom + gap), width, maxHeight });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dsMenuOpen) return;
+    const frame = window.requestAnimationFrame(positionDsMenu);
+    const onViewportChange = () => positionDsMenu();
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [dsMenuOpen, positionDsMenu, visibleDesignSystemMenuItems.length, dsMenuQuery]);
+
   // Dismiss the menu on outside click / Escape. Deliberately NOT a full-screen
   // backdrop element: a stray bare overlay can paint opaque (e.g. UA button
   // styling) and blank the whole page behind it.
   useEffect(() => {
     if (!dsMenuOpen) return;
     const onPointerDown = (e: MouseEvent) => {
-      if (!dsMenuWrapRef.current?.contains(e.target as Node)) setDsMenuOpen(false);
+      const target = e.target as HTMLElement | null;
+      const regexPopover = target?.closest('[data-testid="library-design-system-menu-search-regex-popover"]');
+      if (!regexPopover && !dsMenuWrapRef.current?.contains(e.target as Node)) closeDsMenuWithoutFocus();
+    };
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as Node | null;
+      const regexPopover = (target as HTMLElement | null)?.closest('[data-testid="library-design-system-menu-search-regex-popover"]');
+      if (!regexPopover && !dsMenuWrapRef.current?.contains(target)) closeDsMenuWithoutFocus();
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDsMenuOpen(false);
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeDsMenu();
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('keydown', onKey);
     };
+  }, [closeDsMenu, closeDsMenuWithoutFocus, dsMenuOpen]);
+
+  useEffect(() => {
+    if (!dsMenuOpen) return;
+    dsMenuSearchInputRef.current?.focus();
   }, [dsMenuOpen]);
+
+  const moveDesignSystemMenuFocus = useCallback((delta: number) => {
+    const items = Array.from(dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
+    if (!items.length) return;
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next = current < 0 ? (delta > 0 ? 0 : items.length - 1) : (current + delta + items.length) % items.length;
+    items[next]?.focus();
+  }, []);
 
   // Path A: open the create-design-system flow pre-seeded with the selected
   // assets as source material (fetched into File objects via a hand-off store).
   const createDesignSystemFromSelection = useCallback(async () => {
-    const chosen = assets.filter((a) => selectedIds.has(a.id));
-    if (!chosen.length) return;
-    setDsBusy(true);
+    const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
+    const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
+    if (!chosen.length || !beginDesignSystemAction()) return;
     try {
       const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
         (f): f is File => f !== null,
       );
       setDesignSystemAssetSeed({ files });
-      setDsMenuOpen(false);
+      closeDsMenu();
       setSelectedIds(new Set());
       setPendingDesignSystemCreateEntry('library');
       navigate({ kind: 'design-system-create' });
     } finally {
-      setDsBusy(false);
+      endDesignSystemAction();
     }
-  }, [assets, selectedIds]);
+  }, [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, selectedIds]);
 
   // "Chat to design": fetch the selected assets into File objects, hand them to
   // the Home chat composer, and navigate there. The user lands in the creation
@@ -916,30 +1450,31 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // a new project — the assets ride the normal upload-on-Run path. Mirrors the
   // create-design-system File hand-off above, but the destination is Home.
   const chatToDesignFromSelection = useCallback(async () => {
-    const chosen = assets.filter((a) => selectedIds.has(a.id));
-    if (!chosen.length) return;
-    setDsBusy(true);
+    const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
+    const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
+    if (!chosen.length || !beginDesignSystemAction()) return;
     try {
       const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
         (f): f is File => f !== null,
       );
       if (!files.length) return;
       setHomeComposerAssetSeed({ files });
+      closeDsMenu();
       setSelectedIds(new Set());
       navigate({ kind: 'home', view: 'home' });
     } finally {
-      setDsBusy(false);
+      endDesignSystemAction();
     }
-  }, [assets, selectedIds]);
+  }, [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, selectedIds]);
 
   // Path B: copy the selected assets into an existing design system's project,
   // stage a composer seed (query + the copied assets as attachments), and open
   // that project so the user can review and Send to refine the system.
   const optimizeExistingDesignSystem = useCallback(
     async (ds: DesignSystemSummary) => {
-      const chosen = assets.filter((a) => selectedIds.has(a.id));
-      if (!chosen.length) return;
-      setDsBusy(true);
+      const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
+      const chosen = assets.filter((a) => visibleIds.has(a.id) && selectedIds.has(a.id));
+      if (!chosen.length || !beginDesignSystemAction()) return;
       try {
         const mutationWorkspaceContext = workspaceContext;
         let projectId = ds.projectId;
@@ -948,7 +1483,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           projectId = detail?.projectId;
         }
         if (!projectId) {
-          setDsMenuOpen(false);
+          closeDsMenu();
           return;
         }
         const projectWorkspaceContext = await resolveProjectWorkspaceContext(
@@ -984,18 +1519,16 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           }
         }
         const n = chosen.length;
-        const text =
-          `Use ${n} reference${n > 1 ? 's' : ''} I just added from my Library to refine this design ` +
-          `system — pull the palette, typography, and component patterns that fit and update the design tokens.`;
+        const text = t('library.handoffPrompt', { count: n });
         setComposerSeed({ projectId, text, attachments });
-        setDsMenuOpen(false);
+        closeDsMenu();
         setSelectedIds(new Set());
         onOpenProject(projectId);
       } finally {
-        setDsBusy(false);
+        endDesignSystemAction();
       }
     },
-    [assets, onOpenProject, selectedIds, workspaceIdentity],
+    [assets, beginDesignSystemAction, closeDsMenu, endDesignSystemAction, onOpenProject, selectedIds, t, workspaceIdentity],
   );
 
   const toggleOne = useCallback((id: string, index: number) => {
@@ -1016,16 +1549,19 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       setSelectedIds((prev) => {
         const next = new Set(prev);
         for (let i = lo; i <= hi; i++) {
-          const a = assets[i];
-          if (a) next.add(a.id);
+          const asset = visibleAssetsRef.current[i];
+          if (asset) next.add(asset.id);
         }
         return next;
       });
     },
-    [assets],
+    [],
   );
 
-  const selectAll = useCallback(() => setSelectedIds(new Set(assets.map((a) => a.id))), [assets]);
+  const selectAll = useCallback(
+    () => setSelectedIds(new Set(visibleAssetsRef.current.map((asset) => asset.id))),
+    [],
+  );
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   // --- file upload (drop-anywhere + Upload button) -------------------------
@@ -1202,8 +1738,36 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     [assets],
   );
 
-  const previewIndex = previewId ? assets.findIndex((a) => a.id === previewId) : -1;
-  const previewAsset = previewIndex >= 0 ? assets[previewIndex] : null;
+  // Search locally over the real provider results. `useRegexSearch` supplies
+  // plain-text matching by default and a bounded regex matcher after the
+  // explicit opt-in. Preserve each source index so range selection and box
+  // selection keep their existing semantics when a query narrows the view.
+  const visibleAssetEntries = useMemo(
+    () => assets
+      .map((asset, index) => ({ asset, index }))
+      .filter(({ asset }) => matchesLibraryAsset(libraryAssetSearchText(asset))),
+    [assets, matchesLibraryAsset],
+  );
+  visibleAssetsRef.current = visibleAssetEntries.map(({ asset }) => asset);
+  useEffect(() => {
+    // A query change must not leave a hidden row selected while the new result
+    // set is waiting for the next user action.
+    const visibleIds = new Set(visibleAssetsRef.current.map((asset) => asset.id));
+    setSelectedIds((prev) => {
+      const next = new Set([...prev].filter((id) => visibleIds.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleAssetEntries]);
+  const searchActive = search.trim().length > 0 || kind !== '' || source !== '';
+  // Preview navigation follows the same visible projection as the grid. A
+  // hidden filtered row must never become the next/previous destination.
+  const previewIndex = previewId
+    ? visibleAssetEntries.findIndex(({ asset }) => asset.id === previewId)
+    : -1;
+  const previewAsset = previewIndex >= 0 ? visibleAssetEntries[previewIndex]?.asset ?? null : null;
+  useEffect(() => {
+    if (previewId && previewIndex < 0) setPreviewId(null);
+  }, [previewId, previewIndex]);
   const selectedCount = selectedIds.size;
 
   // Day-bucketed groups for the timeline view (newest day first). Items keep
@@ -1211,16 +1775,16 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // both views. Grouping by a Map collapses non-contiguous same-day assets.
   const timelineGroups = useMemo(() => {
     const map = new Map<string, Array<{ asset: LibraryAsset; index: number }>>();
-    assets.forEach((asset, index) => {
+    visibleAssetEntries.forEach(({ asset }, visibleIndex) => {
       const key = dayKeyOf(asset);
       const bucket = map.get(key);
-      if (bucket) bucket.push({ asset, index });
-      else map.set(key, [{ asset, index }]);
+      if (bucket) bucket.push({ asset, index: visibleIndex });
+      else map.set(key, [{ asset, index: visibleIndex }]);
     });
     return [...map.entries()]
       .sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0))
       .map(([key, items]) => ({ key, items }));
-  }, [assets]);
+  }, [visibleAssetEntries]);
 
   const kindFilterOptions = useMemo(() => kindFilters(t), [t]);
   const sourceFilterOptions = useMemo(() => sourceFilters(t), [t]);
@@ -1247,6 +1811,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   return (
     <div
       className={`entry-section ${styles.root}`}
+      data-testid="library-section"
       onDragEnter={onSectionDragEnter}
       onDragOver={onSectionDragOver}
       onDragLeave={onSectionDragLeave}
@@ -1272,28 +1837,39 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <Icon name="search" size={15} className={styles.searchIcon} />
-          <input
+          <RegexSearchField
+            search={librarySearch}
+            fieldLabel={t('library.title')}
             className={styles.search}
-            type="search"
+            hostClassName={styles.searchFieldHost}
             placeholder={t('library.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            ariaLabel={t('library.searchPlaceholder')}
+            testId="library-search"
           />
         </div>
-        <select aria-label={t('library.filterByKind')} className={styles.select} value={kind} onChange={(e) => setKind(e.target.value)}>
-          {kindFilterOptions.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <select aria-label={t('library.filterBySource')} className={styles.select} value={source} onChange={(e) => setSource(e.target.value)}>
-          {sourceFilterOptions.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <VisuallyHidden
+          role="status"
+          aria-live="polite"
+          data-testid="library-search-results"
+        >
+          {t('library.resultsCount', { count: visibleAssetEntries.length })}
+        </VisuallyHidden>
+        <LibraryFilterCombobox
+          label={t('library.filterByKind')}
+          value={kind}
+          options={kindFilterOptions}
+          onChange={setKind}
+          noMatchesLabel={t('library.noMatches')}
+          testId="library-kind-filter"
+        />
+        <LibraryFilterCombobox
+          label={t('library.filterBySource')}
+          value={source}
+          options={sourceFilterOptions}
+          onChange={setSource}
+          noMatchesLabel={t('library.noMatches')}
+          testId="library-source-filter"
+        />
         <div className={styles.viewToggle} role="group" aria-label={t('library.viewMode')}>
           <button
             type="button"
@@ -1352,10 +1928,41 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         </Button>
       </div>
 
+      {libraryError ? (
+        <div className={styles.loadError} role="alert" data-testid="library-load-error">
+          <span>{t('library.loadError')}</span>
+          <button type="button" className={styles.selectionLink} onClick={() => void load()}>
+            {t('library.retry')}
+          </button>
+        </div>
+      ) : null}
+
+      {deleteOutcome && (deleteOutcome.failed.length > 0 || deleteOutcome.residue.length > 0) ? (
+        <div className={styles.loadError} role="alert" data-testid="library-delete-outcome">
+          <div>
+            <div>{t('library.uploadSummary', {
+              added: deleteOutcome.deleted.length,
+              failed: deleteOutcome.failed.length + deleteOutcome.skipped.length + deleteOutcome.residue.length,
+            })}</div>
+            <ul className={styles.outcomeItems}>
+              {deleteOutcome.failed.map((asset) => <li key={asset.id}>{assetTitle(asset)}</li>)}
+              {deleteOutcome.skipped.map((asset) => <li key={asset.id}>{assetTitle(asset)}</li>)}
+              {deleteOutcome.residue.length > 0 ? <li>{deleteOutcome.residue.join(', ')}</li> : null}
+            </ul>
+          </div>
+          <button type="button" className={styles.selectionLink} onClick={requestDeleteSelected}>
+            {t('library.retry')}
+          </button>
+        </div>
+      ) : null}
+
       {selectedCount > 0 && !dragging ? (
         <div className={styles.selectionBar}>
           <span className={styles.selectionCount}>
             {t('library.selectedCount', { count: selectedCount })}
+          </span>
+          <span className={styles.selectionScope} data-testid="library-selection-scope">
+            {t('library.scopeVisible', { count: visibleAssetEntries.length })}
           </span>
           <button type="button" className={styles.selectionLink} onClick={selectAll}>
             {t('library.selectAll')}
@@ -1378,11 +1985,17 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           </button>
           <div className={styles.dsMenuWrap} ref={dsMenuWrapRef}>
             <button
+              ref={dsMenuButtonRef}
               type="button"
               className={styles.dsMenuBtn}
-              onClick={() => setDsMenuOpen((o) => !o)}
+              onClick={() => {
+                if (dsMenuOpen) closeDsMenu();
+                else setDsMenuOpen(true);
+              }}
               aria-haspopup="menu"
               aria-expanded={dsMenuOpen}
+              aria-controls={dsMenuId}
+              aria-label={t('library.useInDesignSystem')}
               disabled={dsBusy}
             >
               {dsBusy ? t('library.working') : t('library.useInDesignSystem')}
@@ -1391,36 +2004,94 @@ export function LibrarySection({ active, onOpenProject }: Props) {
               </svg>
             </button>
             {dsMenuOpen ? (
-              <div className={styles.dsMenu} role="menu">
-                <button
-                  type="button"
-                  className={styles.dsMenuItem}
-                  role="menuitem"
-                  onClick={() => void createDesignSystemFromSelection()}
+              <div
+                className={styles.dsMenu}
+                ref={dsMenuPanelRef}
+                style={dsMenuStyle}
+                role="group"
+                aria-label={t('library.useInDesignSystem')}
+              >
+                <RegexSearchField
+                  search={dsMenuSearch}
+                  fieldLabel={t('library.useInDesignSystem')}
+                  hostClassName={styles.dsMenuSearch}
+                  placeholder={t('library.useInDesignSystem')}
+                  ariaLabel={t('library.useInDesignSystem')}
+                  inputRef={dsMenuSearchInputRef}
+                  testId="library-design-system-menu-search"
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      moveDesignSystemMenuFocus(1);
+                    } else if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      const items = dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)');
+                      items?.[items.length - 1]?.focus();
+                    }
+                  }}
+                />
+                <div
+                  ref={dsMenuRef}
+                  id={dsMenuId}
+                  className={styles.dsMenuItems}
+                  role="menu"
+                  aria-label={t('library.useInDesignSystem')}
+                  aria-live="polite"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      closeDsMenu();
+                    } else if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      moveDesignSystemMenuFocus(1);
+                    } else if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      moveDesignSystemMenuFocus(-1);
+                    } else if (event.key === 'Home') {
+                      event.preventDefault();
+                      dsMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus();
+                    } else if (event.key === 'End') {
+                      event.preventDefault();
+                      const items = dsMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)');
+                      items?.[items.length - 1]?.focus();
+                    }
+                  }}
                 >
-                  <span className={styles.dsMenuItemTitle}>{t('library.createDesignSystem')}</span>
-                  <span className={styles.dsMenuItemSub}>
-                    {t('library.createDesignSystemSub', { count: selectedCount })}
-                  </span>
-                </button>
-                <div className={styles.dsMenuDivider} />
-                <div className={styles.dsMenuHeader}>{t('library.refineExisting')}</div>
-                {dsList.length === 0 ? (
-                  <div className={styles.dsMenuEmpty}>{t('library.noEditableDesignSystems')}</div>
-                ) : (
-                  dsList.map((ds) => (
+                  {dsMenuSearch.matches(t('library.createDesignSystem')) ? (
+                    <button
+                      type="button"
+                      className={styles.dsMenuItem}
+                      role="menuitem"
+                      disabled={dsBusy}
+                      aria-busy={dsBusy}
+                      onClick={() => void createDesignSystemFromSelection()}
+                    >
+                      <span className={styles.dsMenuItemTitle}>{t('library.createDesignSystem')}</span>
+                      <span className={styles.dsMenuItemSub}>
+                        {t('library.createDesignSystemSub', { count: selectedCount })}
+                      </span>
+                    </button>
+                  ) : null}
+                  {dsList.length > 0 ? <div className={styles.dsMenuDivider} role="separator" /> : null}
+                  {dsList.length > 0 ? <div className={styles.dsMenuHeader} role="presentation">{t('library.refineExisting')}</div> : null}
+                  {visibleDesignSystemMenuItems.map((ds) => (
                     <button
                       key={ds.id}
                       type="button"
                       className={styles.dsMenuItem}
                       role="menuitem"
+                      disabled={dsBusy}
+                      aria-busy={dsBusy}
                       onClick={() => void optimizeExistingDesignSystem(ds)}
                     >
                       <span className={styles.dsMenuItemTitle}>{ds.title}</span>
                       <span className={styles.dsMenuItemSub}>{t('library.addAssetsAndRefine')}</span>
                     </button>
-                  ))
-                )}
+                  ))}
+                </div>
+                {visibleDesignSystemMenuItems.length === 0 && !dsMenuSearch.matches(t('library.createDesignSystem')) ? (
+                  <div className={styles.dsMenuEmpty} role="status">{t('library.noMatches')}</div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1440,6 +2111,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             <code>od library import &lt;file&gt;</code>
             {t('library.emptyHintAfter')}
           </p>
+        </div>
+      ) : searchActive && visibleAssetEntries.length === 0 ? (
+        <div className={styles.empty} data-testid="library-search-empty">
+          <p>{t('library.noMatches')}</p>
         </div>
       ) : viewMode === 'timeline' ? (
         <div
@@ -1468,7 +2143,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           onMouseDown={onGridMouseDown}
           data-selecting={selectedCount > 0 ? 'true' : 'false'}
         >
-          {assets.map((asset, index) => renderCard(asset, index))}
+          {visibleAssetEntries.map(({ asset }, visibleIndex) => renderCard(asset, visibleIndex))}
         </div>
       )}
 
@@ -1515,46 +2190,19 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           // the grid already reflects whatever landed.
           onClose={() => setDeleteGate(null)}
         />
-      {confirmDeleteOpen ? (
-        <Dialog
-          className="modal-confirm"
-          role="alertdialog"
-          onClose={() => setConfirmDeleteOpen(false)}
-          closeOnEscape
-          ariaLabelledBy={confirmDeleteTitleId}
-        >
-          <DialogTitle id={confirmDeleteTitleId}>
-            {selectedCount === 1
-              ? t('library.confirmDeleteTitleOne', { count: selectedCount })
-              : t('library.confirmDeleteTitleMany', { count: selectedCount })}
-          </DialogTitle>
-          <DialogDescription className="modal-confirm-message">
-            {selectedCount === 1
-              ? t('library.confirmDeleteBodyOne')
-              : t('library.confirmDeleteBodyMany')}
-          </DialogDescription>
-          <DialogFooter className="row">
-            <button type="button" onClick={() => setConfirmDeleteOpen(false)}>
-              {t('library.cancel')}
-            </button>
-            <button type="button" className="primary danger" autoFocus onClick={confirmDeleteSelected}>
-              {t('library.deleteCount', { count: selectedCount })}
-            </button>
-          </DialogFooter>
-        </Dialog>
       ) : null}
 
       {previewAsset ? (
         <LibraryPreviewModal
           asset={previewAsset}
           hasPrev={previewIndex > 0}
-          hasNext={previewIndex >= 0 && previewIndex < assets.length - 1}
+          hasNext={previewIndex >= 0 && previewIndex < visibleAssetEntries.length - 1}
           onPrev={() => {
-            const prev = assets[previewIndex - 1];
+            const prev = visibleAssetEntries[previewIndex - 1]?.asset;
             if (prev) setPreviewId(prev.id);
           }}
           onNext={() => {
-            const next = assets[previewIndex + 1];
+            const next = visibleAssetEntries[previewIndex + 1]?.asset;
             if (next) setPreviewId(next.id);
           }}
           onClose={() => setPreviewId(null)}

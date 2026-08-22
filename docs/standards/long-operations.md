@@ -9,6 +9,12 @@ can decline it and is told what declining leaves undone.
 progress, phase text, a disabled submit control with a distinct label, and an
 optional slow phase that names what declining costs. Nothing implements it.
 
+The production Library route applies the same contract to refresh, targeted SSE
+hydration, upload, and bulk deletion: each operation has a generation/abort
+boundary, bounded concurrency, visible progress or per-item outcomes, and a
+handler-side re-entry latch. A partial delete is not completion; failed ids stay
+selected for retry and the confirmation surface stays in its failed state.
+
 ## The requirement
 
 ### Real progress, in the dialog

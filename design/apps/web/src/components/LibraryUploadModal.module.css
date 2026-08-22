@@ -46,8 +46,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   border: 1px solid var(--border);
   border-radius: var(--radius-large, 8px);
   background: var(--bg-elevated);
@@ -123,6 +123,7 @@
   gap: 10px;
   padding: 8px 0;
   border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
 }
 .item:first-child {
   border-top: none;
@@ -139,6 +140,9 @@
 .item[data-status='error'] .itemIcon {
   color: var(--red);
 }
+.item[data-status='cancelled'] .itemIcon {
+  color: var(--text-muted);
+}
 .itemName {
   flex: 1 1 auto;
   min-width: 0;
@@ -152,6 +156,14 @@
   flex: 0 0 auto;
   font-size: 12px;
   color: var(--text-muted);
+  max-width: 45%;
+  overflow-wrap: anywhere;
+}
+.itemProgress {
+  flex: 0 1 120px;
+  width: 120px;
+  height: 6px;
+  accent-color: var(--accent);
 }
 .item[data-status='error'] .itemStatus {
   color: var(--red);
@@ -178,4 +190,35 @@
 .summary {
   font-size: 13px;
   color: var(--text-muted);
+}
+.aggregateProgress {
+  flex: 0 1 140px;
+  width: 140px;
+  height: 8px;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .backdrop {
+    padding: 10px;
+  }
+  .modal {
+    max-height: calc(100vh - 20px);
+  }
+  .head,
+  .foot {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .foot {
+    flex-wrap: wrap;
+  }
+  .summary {
+    flex: 1 1 100%;
+  }
+  .itemProgress,
+  .aggregateProgress {
+    flex-basis: 100%;
+    width: 100%;
+  }
 }

@@ -16,15 +16,14 @@
 // Plus a metadata bar (kind / source / dimensions / size / date / tags) and
 // prev/next navigation so the user can flip through the grid without closing.
 //
-// Copy is intentionally inline (not yet i18n-keyed), matching LibrarySection.
+// Primary modal copy is localized through the shared Library catalog.
 
-import { type CSSProperties, useCallback, useEffect, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'motion/react';
 import type { LibraryAsset } from '@open-design/contracts';
-import { Button } from '@open-design/components';
+import { Button, Dialog } from '@open-design/components';
+import { useT } from '../i18n';
 import { libraryAssetElementUrl, libraryAssetFigmaUrl, libraryAssetRawUrl } from '../providers/registry';
-import { modalOverlay, modalContent } from '../motion';
 import {
   KindIcon,
   SOURCE_LABELS,
@@ -41,6 +40,32 @@ import {
   primarySource,
 } from './LibraryAssetMeta';
 import styles from './LibraryPreviewModal.module.css';
+
+function localizedPreviewKind(kind: ReturnType<typeof badgeKind>, t: ReturnType<typeof useT>): string {
+  switch (kind) {
+    case 'image': return t('library.kindImages');
+    case 'element': return t('library.kindElements');
+    case 'design-system': return t('library.kindDesignSystems');
+    case 'video': return t('library.kindVideo');
+    case 'font': return t('library.kindFonts');
+    case 'color': return t('library.kindColors');
+    case 'text': return t('library.kindText');
+    case 'url': return t('library.kindLinks');
+    case 'html': return 'HTML';
+    default: return kindLabel(kind);
+  }
+}
+
+function localizedPreviewSource(source: keyof typeof SOURCE_LABELS, t: ReturnType<typeof useT>): string {
+  switch (source) {
+    case 'clipper': return t('library.sourceClipper');
+    case 'manual-upload': return t('library.upload');
+    case 'agent-task': return t('library.sourceAgent');
+    case 'design-system': return t('library.sourceDesignSystem');
+    case 'generated': return t('library.sourceGenerated');
+    default: return SOURCE_LABELS[source];
+  }
+}
 
 interface Props {
   asset: LibraryAsset;
@@ -100,11 +125,12 @@ function FontSpecimen({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }
 }
 
 function ColorStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
+  const t = useT();
   const needsText = !asset.palette?.length;
   const { text, loading } = useRawText(rawUrl, needsText);
   const value = colorOf(asset, text);
-  if (loading && !value) return <div className={styles.stageNote}>Loading…</div>;
-  if (!value) return <div className={styles.stageNote}>No color value available.</div>;
+  if (loading && !value) return <div className={styles.stageNote}>{t('library.loading')}</div>;
+  if (!value) return <div className={styles.stageNote}>{t('library.noColor')}</div>;
   const swatches = asset.palette?.length ? asset.palette : [value];
   return (
     <div className={styles.colorStage}>
@@ -124,17 +150,19 @@ function ColorStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) 
 }
 
 function TextStage({ rawUrl }: { rawUrl: string }) {
+  const t = useT();
   const { text, loading, error } = useRawText(rawUrl, true);
-  if (loading) return <div className={styles.stageNote}>Loading…</div>;
-  if (error) return <div className={styles.stageNote}>Could not load text.</div>;
+  if (loading) return <div className={styles.stageNote}>{t('library.loading')}</div>;
+  if (error) return <div className={styles.stageNote}>{t('library.loadTextError')}</div>;
   return <pre className={styles.textStage}>{text}</pre>;
 }
 
 function UrlStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
+  const t = useT();
   const needsText = !asset.sourceUrl;
   const { text } = useRawText(rawUrl, needsText);
   const href = asset.sourceUrl || (text ?? '').trim();
-  if (!href) return <div className={styles.stageNote}>No link available.</div>;
+  if (!href) return <div className={styles.stageNote}>{t('library.noLink')}</div>;
   return (
     <div className={styles.urlStage}>
       <KindIcon kind="url" size={40} className={styles.urlGlyph} />
@@ -142,7 +170,7 @@ function UrlStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
         {href}
       </a>
       <a className={styles.urlOpen} href={href} target="_blank" rel="noreferrer">
-        Open in new tab →
+        {t('common.openInNewTab')} →
       </a>
     </div>
   );
@@ -155,7 +183,7 @@ function Stage({ asset }: { asset: LibraryAsset }) {
     case 'image':
       return <img className={styles.stageImage} src={rawUrl} alt={title} />;
     case 'video':
-      return <video className={styles.stageVideo} src={rawUrl} controls autoPlay loop playsInline />;
+      return <video className={styles.stageVideo} src={rawUrl} controls autoPlay loop playsInline aria-label={title} />;
     case 'design-system':
     case 'html':
       // Opaque-origin sandbox: scripts/animations run, daemon stays unreachable.
@@ -182,9 +210,11 @@ function Stage({ asset }: { asset: LibraryAsset }) {
  * the modal's stylesheet.
  */
 function ElementPanel({ asset }: { asset: LibraryAsset }) {
+  const t = useT();
   const element = elementMetaOf(asset);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const htmlRegionId = useId();
   const { text, loading, error } = useRawText(libraryAssetElementUrl(asset.id), open && Boolean(element?.hasHtml));
   if (!element) return null;
   const dims = element.width && element.height ? `${element.width}×${element.height}` : null;
@@ -218,20 +248,31 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
         </code>
         {dims ? <span style={{ fontSize: 12, color: 'var(--text-muted, #6b7280)' }}>{dims}</span> : null}
         {element.hasHtml ? (
-          <button type="button" style={{ ...chipBtn, marginLeft: 'auto' }} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Hide HTML' : 'Show HTML'}
+          <button
+            type="button"
+            style={{ ...chipBtn, marginLeft: 'auto' }}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls={htmlRegionId}
+          >
+            {open ? t('library.hideHtml') : t('library.showHtml')}
           </button>
         ) : null}
       </div>
-      {open && element.hasHtml ? (
-        loading ? (
-          <div className={styles.stageNote}>Loading…</div>
+      <div
+        id={htmlRegionId}
+        role="region"
+        aria-label={`${t('library.showHtml')}: ${element.selector || element.tag}`}
+        hidden={!open || !element.hasHtml}
+      >
+        {loading ? (
+          <div className={styles.stageNote}>{t('library.loading')}</div>
         ) : error ? (
-          <div className={styles.stageNote}>Could not load element HTML.</div>
+          <div className={styles.stageNote}>{t('library.loadElementError')}</div>
         ) : (
           <div style={{ position: 'relative' }}>
             <button type="button" style={{ ...chipBtn, position: 'absolute', top: 6, right: 6, background: 'var(--panel, #fff)' }} onClick={copy}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('library.copied') : t('library.copy')}
             </button>
             <pre
               style={{
@@ -250,8 +291,8 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
               {text}
             </pre>
           </div>
-        )
-      ) : null}
+        )}
+      </div>
     </div>
   );
 }
@@ -267,13 +308,18 @@ export function LibraryPreviewModal({
   onOpenProject,
   onEditAsPage,
 }: Props) {
+  const t = useT();
+  const titleId = useId();
   const [editing, setEditing] = useState(false);
+  const editingRef = useRef(false);
   const editAsPage = useCallback(async () => {
-    if (!onEditAsPage) return;
+    if (!onEditAsPage || editingRef.current) return;
+    editingRef.current = true;
     setEditing(true);
     try {
       await onEditAsPage(asset.id);
     } finally {
+      editingRef.current = false;
       setEditing(false);
     }
   }, [onEditAsPage, asset.id]);
@@ -291,16 +337,15 @@ export function LibraryPreviewModal({
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'ArrowLeft' && hasPrev) {
         e.preventDefault();
-        onClose();
-      } else if (e.key === 'ArrowLeft' && hasPrev) {
         onPrev();
       } else if (e.key === 'ArrowRight' && hasNext) {
+        e.preventDefault();
         onNext();
       }
     },
-    [onClose, onPrev, onNext, hasPrev, hasNext],
+    [onPrev, onNext, hasPrev, hasNext],
   );
 
   useEffect(() => {
@@ -309,36 +354,27 @@ export function LibraryPreviewModal({
   }, [handleKey]);
 
   const modal = (
-    <motion.div
-      className={styles.backdrop}
-      onClick={onClose}
-      variants={modalOverlay}
-      initial="hidden"
-      animate="visible"
-      exit="exit"
-      role="presentation"
+    <Dialog
+      className={styles.modal}
+      backdropClassName={styles.backdrop}
+      includeChromeClassName={false}
+      role="dialog"
+      ariaLabelledBy={titleId}
+      closeOnBackdrop
+      closeOnEscape
+      onClose={onClose}
+      data-testid="library-preview-modal"
     >
-      <motion.div
-        className={styles.modal}
-        onClick={(e) => e.stopPropagation()}
-        variants={modalContent}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
         <header className={styles.head}>
           <span className={styles.kindBadge} style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}>
             <KindIcon kind={badgeKind(asset)} size={13} />
-            {kindLabel(badgeKind(asset))}
+            {localizedPreviewKind(badgeKind(asset), t)}
           </span>
-          <span className={styles.headTitle} title={title}>
+          <h2 className={styles.headTitle} id={titleId} title={title}>
             {title}
-          </span>
-          {src ? <span className={styles.headSource}>{SOURCE_LABELS[src]}</span> : null}
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close preview">
+          </h2>
+          {src ? <span className={styles.headSource}>{localizedPreviewSource(src, t)}</span> : null}
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('common.close')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
@@ -347,7 +383,7 @@ export function LibraryPreviewModal({
 
         <div className={styles.stage}>
           {hasPrev ? (
-            <button type="button" className={`${styles.nav} ${styles.navPrev}`} onClick={onPrev} aria-label="Previous asset">
+            <button type="button" className={`${styles.nav} ${styles.navPrev}`} onClick={onPrev} aria-label={t('library.previousAsset')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m15 18-6-6 6-6" />
               </svg>
@@ -357,7 +393,7 @@ export function LibraryPreviewModal({
             <Stage asset={asset} />
           </div>
           {hasNext ? (
-            <button type="button" className={`${styles.nav} ${styles.navNext}`} onClick={onNext} aria-label="Next asset">
+            <button type="button" className={`${styles.nav} ${styles.navNext}`} onClick={onNext} aria-label={t('library.nextAsset')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m9 18 6-6-6-6" />
               </svg>
@@ -382,17 +418,17 @@ export function LibraryPreviewModal({
           <div className={styles.actions}>
             {asset.kind === 'html' && onEditAsPage ? (
               <Button onClick={() => void editAsPage()} disabled={editing}>
-                {editing ? 'Opening…' : 'Edit as page'}
+                {editing ? t('library.opening') : t('library.editAsPage')}
               </Button>
             ) : null}
             {projectId && onOpenProject ? (
               <Button variant="ghost" onClick={() => onOpenProject(projectId)}>
-                Open project
+                {t('library.openProject')}
               </Button>
             ) : null}
             {asset.sourceUrl ? (
               <a className={styles.linkAction} href={asset.sourceUrl} target="_blank" rel="noreferrer">
-                Source
+                {t('library.viewSource')}
               </a>
             ) : null}
             {hasFigmaCapture ? (
@@ -400,21 +436,20 @@ export function LibraryPreviewModal({
                 className={styles.linkAction}
                 href={libraryAssetFigmaUrl(asset.id)}
                 download
-                title="Download Figma import JSON — rebuild it with the OD Figma Import plugin"
+                title={t('library.downloadFigma')}
               >
-                Download Figma JSON
+                {t('library.downloadFigma')}
               </a>
             ) : null}
             <a className={styles.linkAction} href={rawUrl} target="_blank" rel="noreferrer" download>
-              Download
+              {t('common.download')}
             </a>
             <button type="button" className={styles.removeAction} onClick={() => onDelete(asset.id)}>
-              Remove
+              {t('library.remove')}
             </button>
           </div>
         </footer>
-      </motion.div>
-    </motion.div>
+    </Dialog>
   );
 
   if (typeof document === 'undefined') return modal;

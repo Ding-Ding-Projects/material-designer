@@ -29,6 +29,128 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Close Library partial-delete, snapshot, picker, and accessibility gaps
+
+**Reason:** The production Library route still had several source-level gaps at
+the seams between the browser and daemon: mutable offset pages could repeat or
+skip rows while ingest changed the collection; owned-byte deletion removed the
+database row after a failed unlink; full loads and targeted SSE work had separate
+freshness domains; picker callbacks had no structured partial result; and busy,
+preview, menu, batch-progress, focus, geometry, and 48px boundaries were not
+enforced consistently. This repair adds the point-in-time keyset cursor,
+bounded/abort-aware worker pool, structured ledgers and retry-preserving UI,
+bounded unlink retries with sidecar residue reporting, frozen picker controls,
+visible projection navigation, measured menu placement, current-batch progress,
+and focused negative source contracts. No build, package-manager, app runtime,
+or local test command was run; hosted verification remains pending.
+
+**Changed files:**
+
+- `apps/daemon/src/library-store.ts`
+- `apps/daemon/src/routes/library.ts`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/src/components/HomeHero.tsx`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibraryPreviewModal.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/LibraryUploadModal.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/lib/confirm-delete.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `packages/contracts/src/api/library.ts`
+
+### 2026-08-21 — Complete Library pagination, refresh, filters, and modal behavior
+
+**Reason:** Enabling the production Library exposed several boundaries that were
+previously unreachable: the first page could hide assets from explicit regex
+search, failed refreshes erased a loaded view, reconciliation did not tell other
+open views to refresh, and the native filters, handoff menu, picker, and modal
+surfaces lacked their own searchable or shared focus behavior. The repair adds
+bounded continuation with a typed provider failure result, preserves loaded rows
+on errors with a localized retry surface, broadcasts reconciliation SSE, gives
+kind/source/design-system/picker searches independent anchored builders, limits
+bulk selection to visible matching ids, keeps the collapsed rail operable, and
+uses the shared dialog focus scope while upload work is pending. No fixture cards,
+catalog photos, or release assets were added; hosted/runtime verification remains
+pending.
+
+The continuation parser now accepts only omitted/`null` terminal cursors or
+non-negative safe JSON numbers; coercible strings and other malformed values are
+rejected. Library page walks carry abort and generation identity so stale rows and
+errors cannot overwrite a newer view. Element filtering remains open to both
+image and HTML snapshots marked with `metadata.element`, while kind chips use an
+`aria-pressed` group and menu/listbox search fields remain outside their owned
+interactive roles. Manual uploads use cancellable XHR request progress, byte-
+weighted aggregate progress, the shared byte limit for pasted text, and visible
+partial outcomes. These source contracts remain unverified until the hosted app
+checks run.
+
+**Changed files:**
+
+- `apps/daemon/src/library-store.ts`
+- `apps/daemon/src/routes/library.ts`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/LibraryAssetMeta.tsx`
+- `apps/web/src/components/LibraryPicker.module.css`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/LibraryPreviewModal.module.css`
+- `apps/web/src/components/LibraryPreviewModal.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/LibraryUploadModal.module.css`
+- `apps/web/src/components/LibraryUploadModal.tsx`
+- `apps/web/src/components/regex/RegexSearchField.module.css`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/LibrarySection.a11y.test.tsx`
+- `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
+- `apps/web/tests/components/library-picker-perf.test.tsx`
+- `apps/web/tests/components/library-section-perf.test.tsx`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `packages/contracts/src/api/library.ts`
+- `packages/components/src/dialog.tsx`
+
+### 2026-08-21 — Expose the production Library route and own its regex search
+
+**Reason:** The real LibrarySection and its provider/API boundary already existed,
+but a release flag hid the destination from `/library` and the normal navigation
+rail. The route is now enabled, the rail and workspace analytics recognize it,
+and focused source contracts cover route recognition, buildPath, rail reachability,
+real component mounting, and the hidden-flag regression. LibrarySection's search
+now owns one `useRegexSearch` controller and adjacent `RegexSearchField`: plain
+text remains the default, regex mode stays local to the loaded asset records,
+bounded matching is shared with the existing regex implementation, and the
+screen-reader status reports the visible result count. No fixture data or catalog
+image was added; deterministic capture-fixture status remains pending until a
+  provider/API-backed public-safe record set is available. The kind/source filters
+  and design-system action menu now have their own local search and anchored builder,
+  and the focused contract keeps those surfaces from regressing to native controls
+  or shared hidden state.
+
+**Changed files:**
+
+- `apps/web/src/analytics/workspace.ts`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/LibrarySection.module.css`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/features/libraryUi.ts`
+- `apps/web/tests/components/EntryNavRail.library.test.tsx`
+- `apps/web/tests/components/LibrarySection.a11y.test.tsx`
+- `apps/web/tests/design-system-asset-dropzone.test.tsx`
+- `apps/web/tests/library-route-and-search.contract.test.ts`
+- `apps/web/tests/router-marketplace.test.ts`
+- `packages/contracts/src/analytics/events/workspace.ts`
+
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 
 **Reason:** The v0.20.2 source reconciliation left upstream product-name values

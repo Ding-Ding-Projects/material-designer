@@ -53,6 +53,45 @@ with the project's standards.
       removes the remaining active-file attachment path; narrower evidence now
       reaches a send only through an explicit user action.
 
+- [ ] **Expose the production Library destination and field-owned search.**
+      Source commit [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+      enables `/library` through the real `LibrarySection`, adds the persistent
+      rail destination and analytics route, and gives the Library search its own
+      anchored bounded regex builder with an accessible result count. The same
+      route's repair in [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+      now adds complete bounded continuation, typed retryable
+      provider failures, reconciliation SSE, independent filter/menu/picker
+      builders, visible-only bulk selection, collapsed-rail reachability, shared
+      modal focus scopes, pending-upload protection, and localized copy. Source
+      contracts and the pure port verifier are in the lane; hosted tests,
+      built-app interaction, runtime captures, and a deterministic provider/API-
+      backed public-safe fixture remain unverified. Photo/release work is
+      intentionally outside this lane.
+
+      Follow-up source commit [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+      tightens terminal cursor parsing, aborts stale page walks, keeps image and
+      HTML element captures together, corrects nested menu/listbox ownership,
+      changes picker kind chips to an `aria-pressed` group, and reports real,
+      byte-weighted cancellable upload progress with partial outcomes. This
+      remains unchecked until hosted source checks and built-runtime evidence
+      exist; no photo or release asset was added.
+
+      The final boundary repair adds exact cursor advancement, immutable delete
+      previews, abortable SSE merges, post-unmount upload suppression, stable
+      localized upload error codes, portal-aware dialog focus, measured filter
+      geometry, and 48×48 interaction targets. These remain source-only until
+      the hosted and installed evidence exists, so this item stays unticked.
+
+      Follow-up source commit [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+      closes the remaining accepted Library gaps: point-in-time keyset snapshots,
+      bounded refresh/hydration/delete workers, primary-unlink preservation and
+      sidecar residue reporting, structured picker outcomes with retry-preserved
+      selection, visible-projection preview navigation, current-batch upload
+      counts, measured handoff-menu placement, focus-leave behavior, and the
+      remaining 48px/busy/live-status boundaries. The source verifier is green;
+      hosted tests, built-app interaction, runtime captures, and CI evidence are
+      still pending, so the roadmap item remains unticked.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.

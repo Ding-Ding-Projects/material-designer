@@ -157,7 +157,7 @@ import { pluginSubfacetLabel } from './plugins-home/subfacetLabel';
 import { useInView } from './plugins-home/useInView';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
-import { LibraryPicker } from './LibraryPicker';
+import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
 import { QuickSwitcher } from './QuickSwitcher';
 import { publishQuickSwitcherScope } from './command-palette/quickSwitcherScope';
 import { SketchEditor } from './SketchEditor';
@@ -4802,7 +4802,7 @@ export function FileWorkspace({
         {!initialMaterializationPending && showLibraryPicker ? (
           <LibraryPicker
             onClose={() => setShowLibraryPicker(false)}
-            onConfirm={async (assets) => {
+            onConfirm={async (assets): Promise<LibraryPickerConfirmResult> => {
               // Copy each picked asset into the project's design files (under the
               // folder currently in view, if any). Apply records a provenance
               // back-link so the registry knows the asset was consumed. For
@@ -4811,6 +4811,8 @@ export function FileWorkspace({
               // lands in Design Files alongside its screenshot.
               const dir = uploadDir || undefined;
               let lastRelPath: string | null = null;
+              const applied: string[] = [];
+              const failed: LibraryPickerConfirmResult['failed'] = [];
               for (const asset of assets) {
                 const res = await applyLibraryAsset(
                   asset.id,
@@ -4819,11 +4821,20 @@ export function FileWorkspace({
                   { includeElement: true },
                   workspaceContext,
                 );
-                if (res?.relPath) lastRelPath = res.relPath;
+                if (res?.relPath) {
+                  applied.push(asset.id);
+                  lastRelPath = res.relPath;
+                } else {
+                  failed.push({ assetId: asset.id });
+                }
                 if (res?.elementRelPath) lastRelPath = res.elementRelPath;
               }
               await onRefreshFiles();
               if (lastRelPath) openFile(lastRelPath);
+              if (failed.length > 0) {
+                setUploadError(`Added ${applied.length} item(s), but ${failed.length} failed.`);
+              }
+              return { applied, failed, skipped: [] };
             }}
           />
         ) : null}

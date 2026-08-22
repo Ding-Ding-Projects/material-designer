@@ -22,6 +22,8 @@ const deleteLibraryAsset = vi.fn(async (_id: string): Promise<boolean> => true);
 
 vi.mock('../../src/providers/registry', () => ({
   fetchLibraryAssets: (...args: unknown[]) => fetchLibraryAssets(...(args as [])),
+  fetchAllLibraryAssets: (...args: unknown[]) =>
+    fetchLibraryAssets(...(args as [])).then((assets) => ({ ok: true, assets, nextOffset: null })),
   fetchLibraryAsset: (...args: unknown[]) => fetchLibraryAsset(...(args as [])),
   deleteLibraryAsset: (...args: unknown[]) => deleteLibraryAsset(...(args as [string])),
   libraryAssetRawUrl: (id: string) => `/raw/${id}`,

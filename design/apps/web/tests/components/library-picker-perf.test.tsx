@@ -20,6 +20,8 @@ vi.mock('../../src/components/plugins-home/useInView', () => ({
 const fetchLibraryAssets = vi.fn(async (): Promise<LibraryAsset[]> => []);
 vi.mock('../../src/providers/registry', () => ({
   fetchLibraryAssets: (...args: unknown[]) => fetchLibraryAssets(...(args as [])),
+  fetchAllLibraryAssets: (...args: unknown[]) =>
+    fetchLibraryAssets(...(args as [])).then((assets) => ({ ok: true, assets, nextOffset: null })),
   libraryAssetRawUrl: (id: string) => `/raw/${id}`,
 }));
 
@@ -47,7 +49,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('LibraryPicker debounced search', () => {
+describe('LibraryPicker field-owned search', () => {
   beforeEach(() => {
     lazyInView = true;
     fetchLibraryAssets.mockReset().mockResolvedValue([
@@ -57,17 +59,14 @@ describe('LibraryPicker debounced search', () => {
     ]);
   });
 
-  it('keeps every result on the first keystroke, then narrows after the debounce', async () => {
+  it('narrows the complete provider result set on the first search edit', async () => {
     render(<LibraryPicker onClose={() => {}} onConfirm={() => {}} />);
     await screen.findByText('Alpha');
     expect(screen.getByText('Beta')).toBeTruthy();
 
     fireEvent.change(screen.getByTestId('library-picker-search'), { target: { value: 'alp' } });
-    // Debounce not yet elapsed — the filter has not applied, both still show.
-    expect(screen.getByText('Alpha')).toBeTruthy();
-    expect(screen.getByText('Beta')).toBeTruthy();
-
-    // After the debounce window the filter applies once and drops the non-match.
+    // The field owns the matcher, so a search edit immediately drops the
+    // non-match while the provider result set remains complete.
     await waitFor(() => expect(screen.queryByText('Beta')).toBeNull());
     expect(screen.getByText('Alpha')).toBeTruthy();
     // The picker fetches the catalog exactly once — search is client-side.

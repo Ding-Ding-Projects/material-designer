@@ -11,6 +11,13 @@ multi-select and the full set of its actions in bulk.
 > bulk actions are **not started**. Nothing in this file has been observed
 > running, because the application has not been built here.
 
+The production Library route is a scoped exception to that broad inventory: its
+destructive bulk action now uses a bounded worker pool, records each selected id
+as deleted or failed, keeps failed rows selected, and leaves the destructive gate
+in its failed state until the full reviewed set succeeds. The visible ledger names
+the successful/failed counts and offers retry; hosted/runtime proof remains
+pending.
+
 ### Agent handoff archives
 
 The project Download surface now distinguishes two complete-tree handoffs:

@@ -83,7 +83,7 @@ import { DesignSystemAssetDropzone } from './DesignSystemAssetDropzone';
 import { BrandPickerModal } from './BrandPickerModal';
 import { DesignSystemCreateHero } from './DesignSystemCreateHero';
 import { DesignSystemPicker } from './DesignSystemPicker';
-import { LibraryPicker } from './LibraryPicker';
+import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
 import { notifyConnectorsChanged } from './connectors-events';
 import { connectorAuthSnapshotChanged } from './connectors-state';
 import { FileWorkspace, type FileRefreshResult } from './FileWorkspace';
@@ -841,16 +841,25 @@ export function DesignSystemCreationFlow({
   // browser File and stage it like any other asset, so generation uploads them
   // through the same path. No project exists yet at setup time, so we seed File
   // objects (fetchLibraryAssetAsFile) rather than apply-into-project.
-  async function addAssetsFromLibrary(assets: LibraryAsset[]) {
-    if (assets.length === 0) return;
+  async function addAssetsFromLibrary(assets: LibraryAsset[]): Promise<LibraryPickerConfirmResult> {
+    if (assets.length === 0) return { applied: [], failed: [], skipped: [] };
     const finish = beginSourceProcessing();
+    const failed: LibraryPickerConfirmResult['failed'] = [];
     try {
       const fetched = await Promise.all(assets.map((asset) => fetchLibraryAssetAsFile(asset)));
       const files = fetched.filter((file): file is File => file !== null);
       mergeAssetFiles(files);
+      fetched.forEach((file, index) => {
+        if (!file) failed.push({ assetId: assets[index].id });
+      });
       if (files.length < assets.length) {
         setVisibleError(t('dsCreate.libraryPartiallyAdded', { added: files.length, total: assets.length }));
       }
+      return {
+        applied: assets.filter((asset) => !failed.some((item) => item.assetId === asset.id)).map((asset) => asset.id),
+        failed,
+        skipped: [],
+      };
     } finally {
       finish();
     }

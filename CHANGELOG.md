@@ -28,6 +28,137 @@ version section when a release carries them.
 
 ### Changed
 
+- **Library partial-operation boundaries now stay honest.** Commit
+  [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
+  replaces mutable HTTP offsets with a point-in-time keyset snapshot, shares
+  one generation/abort domain between full loads and SSE hydration, bounds
+  targeted work and bulk deletion to four workers, and keeps failed delete rows
+  selected with an itemized retry ledger. Owned-byte deletion preserves the row
+  when the primary unlink fails, retries transient file locks, removes verified
+  `.element.html`/`.od-figma.json` sidecars, and reports residue labels. The
+  picker now returns structured applied/failed/skipped outcomes, freezes all
+  actionable controls while busy, and exposes visible/selected/total/no-match
+  status; preview projection, menu geometry, current-batch progress, focus
+  leave, HTML-region naming, and 48px hit areas are aligned. This is source-only
+  evidence: `git diff --check` and both Git Bash port-verifier forms are green;
+  no Node, package-manager, build, type-check, test, or runtime command was run.
+
+  素材庫 partial operation 而家唔再扮乜都成功：`a881a525f` 用 point-in-time
+  keyset snapshot 取代會郁位嘅 HTTP offset，full load 同 SSE hydration 共用
+  一套 generation/abort，targeted work 同 bulk delete 限四隻 worker，失敗
+  delete row 留返選取狀態同逐項 retry ledger。Owned bytes 主 unlink 失手就
+  保留 record，短暫 file lock 會 bounded retry，`.element.html` 同
+  `.od-figma.json` sidecar 會清理，剩餘 residue 亦報返出嚟。Picker 回傳
+  applied/failed/skipped 結構化結果，忙緊時鎖晒 controls，仲有 visible、
+  selected、total、no-match status；preview、menu 量位、current batch、
+  focus leave、HTML region 名同 48px hit area 都對齊。今次係 source-only
+  evidence：`git diff --check` 同 Git Bash port verifier 兩種格式都綠，冇
+  行 Node、package-manager、build、type-check、test 或 runtime command。
+
+- **Library refresh, focus, and upload boundaries now fail closed.** Commit
+  [`34f95a650`](https://github.com/Ding-Ding-Projects/material-designer/commit/34f95a6502f56f090ea2c8d2b4b63e75ca3c84e3)
+  requires continuation offsets to advance exactly by the returned row count,
+  rejects malformed pagination at the HTTP and store boundaries, freezes the
+  visible ids named by a destructive preview, and prevents stale SSE merges or
+  upload callbacks from mutating a newer or unmounted view. The Library picker
+  retains rows during refresh failures, upload progress is throttled from real
+  byte events, stable error codes are localized, and the shared dialog trap
+  includes its portalled regex builder. Filter geometry is measured and bounded,
+  Library and regex targets are 48×48, and decorative video thumbnails are
+  hidden from assistive technology while full previews remain labelled. This is
+  source-only evidence; hosted checks, built-app interaction, runtime captures,
+  and the provider/API-backed public-safe fixture remain pending. No photo or
+  release asset was added.
+
+  素材庫 refresh、focus 同 upload boundary 而家 fail closed：`34f95a650` 要求
+  continuation offset 必須跟返今頁真正 row 數，HTTP 同 store 都拒絕古怪
+  pagination；destructive preview 鎖實當刻見到嘅 visible ids，舊 SSE merge 同
+  upload callback 唔可以返嚟改新 view 或已經 unmount 嘅 view。Picker refresh
+  出錯仍保留 rows，progress 按真 bytes 節流，穩定 error code 跟 locale，shared
+  dialog trap 亦包埋 portalled regex builder。Filter 會量位同留喺 viewport，
+  Library 同 regex targets 有 48×48，video thumbnail 唔再煩 screen reader，
+  full preview 仍然有 label。今次係 source-only evidence；hosted checks、built
+  app、runtime captures 同 provider/API public-safe fixture 仍然 pending，無加
+  photo 或 release asset。
+
+  Follow-up commit [`2c08fb3a3`](https://github.com/Ding-Ding-Projects/material-designer/commit/2c08fb3a3737f2fcd9561bf4c4ea108c4602a605)
+  tightens the viewport edge calculation and keeps Arrow navigation inside the
+  filter's own search field, while Home and End remain caret keys. This remains
+  source-only evidence.
+
+  Follow-up commit [`bca9fbc89`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca9fbc89fb3090eaa7bdaf15e5a85ad2244e00f)
+  keeps disabled design-system actions out of roving keyboard focus while a
+  handoff is busy. This remains source-only evidence.
+
+- **Library pagination and uploads now tell the truth at the wire boundary.**
+  Commit
+  [`30bc9566c`](https://github.com/Ding-Ding-Projects/material-designer/commit/30bc9566c36351020c8225bf8cc8830d10727ba1)
+  rejects coercible continuation cursors, cancels stale page walks before they
+  can overwrite newer rows or errors, keeps element filters inclusive of both
+  image and HTML captures, separates search fields from menu/listbox ownership,
+  and reports byte-backed per-file and aggregate upload progress with explicit
+  cancellation and partial outcomes. This is source-only evidence; hosted and
+  built-runtime verification remains pending. No photo or release asset was added.
+
+  Library pagination 同 upload 而家喺 wire boundary 講真話：`30bc9566c` 拒絕
+  會偷偷轉型嘅 continuation cursor，舊 page walk 會先取消，唔會反過來蓋走
+  新 rows 或 errors；element filter 連 image 同 HTML capture 都照收，search
+  field 同 menu/listbox ownership 分清楚，upload progress 就按真 bytes 報數，
+  取消同 partial outcome 都有名有姓。今次仍然係 source-only evidence，hosted
+  同 built-runtime verification 未完成，亦無加 photo 或 release asset。
+
+- **The upload modal also localizes pasted-text status rows.** Commit
+  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+  routes the last inline label through the shared Library locale catalog. This
+  is source-only evidence; hosted and built-runtime verification remains
+  pending.
+
+  Upload modal 而家連貼上文字嘅 status row 都跟 locale catalog，最後一粒
+  inline label 唔會再突然轉英文。今次係 source-only evidence，hosted 同
+  built-runtime verification 仍然 pending。
+
+- **The reachable Library route now keeps its complete, searchable result set
+  intact.** Commit
+  [`06e45980d`](https://github.com/Ding-Ding-Projects/material-designer/commit/06e45980d892f493d0915dd75e0949a7022661de)
+  adds bounded `nextOffset` continuation, typed provider failures that preserve
+  loaded rows with a localized retry action, reconciliation SSE refresh, and
+  independent anchored regex builders for the kind/source filters, design-system
+  handoff menu, and Library picker. Bulk selection is visibly scoped to matching
+  rows; the collapsed rail remains keyboard-reachable; shared dialogs trap and
+  restore focus; upload work blocks re-entry and close while pending; narrow
+  headers and actions wrap instead of clipping. Hosted verification, built-app
+  interaction, runtime captures, and a deterministic public-safe fixture remain
+  pending. No photo or release asset was added.
+
+  Reachable Library route 而家唔會偷偷漏結果：`06e45980d` 加咗 bounded
+  `nextOffset` continuation，provider 出錯會保留已載入 rows，同埋有 localized
+  retry；reconcile SSE、kind/source filter、design-system handoff 同 picker
+  都各自有 anchored regex builder。Bulk selection 清楚講明只計符合嘅 rows，
+  收窄 rail 照樣 keyboard reachable，shared dialog 會 trap 同 restore focus，
+  upload 未完就唔畀重入或者閂門，窄 header/action 會換行唔會剪走。Hosted
+  verification、built app、runtime captures 同 deterministic public-safe
+  fixture 仍然 pending；今次無加 photo 或 release asset。
+
+- **The production Library destination is reachable, and its search now owns
+  an anchored regex builder.** Commit
+  [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)
+  enables the existing provider-backed `LibrarySection` at `/library`, adds the
+  normal navigation-rail and analytics route, preserves the real upload,
+  preview, selection, handoff and destructive-action paths, and gives its
+  toolbar search independent plain-text/regex state with bounded local matching
+  and an accessible result count. Focused source contracts and the pure port
+  verifier are recorded; hosted tests, built-app interaction, runtime captures,
+  and a provider/API-backed deterministic public-safe fixture remain pending.
+  No photo or release asset was added by this lane.
+
+  Production Library route 而家唔再收埋喺暗門後面：`e4fcbfab1` 令現有
+  provider-backed `LibrarySection` 真係由 `/library` 同正常 navigation rail
+  入場，upload、preview、selection、handoff 同 destructive-action 路線照舊。
+  Toolbar search 由自己嘅 field controller 管 plain text / regex，bounded
+  local matching 同 result count 都有；hosted tests、built app、runtime
+  captures 同 deterministic provider/API fixture 仍然 pending。今個 lane
+  無加 photo 或 release asset。
+
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit
   [`252bb5cc2`](https://github.com/Ding-Ding-Projects/material-designer/commit/252bb5cc27666ef429d6f0125b30b1de61902e80)
@@ -64,7 +195,7 @@ version section when a release carries them.
   `preview` row，dynamic channel 照樣用 Material Designer app ID，唔會換咗名牌。
 
 - **The imported Open Design baseline advances by 309 commits to `393af2f99`,
-  and Download now offers explicit agent handoffs.** The Tow Fat, byte manifest,
+  and Download now offers explicit agent handoffs.** The nested repository, byte manifest,
   and 12,835-file upstream mirror now point at v0.20.2. Non-declared paths were
   imported as exact blobs; declared product changes were three-way merged. The
   project ZIP remains the complete website handoff, while a new desktop scaffold

@@ -9291,3 +9291,33 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+/* MATERIAL-DESIGNER-LIBRARY-RAIL-REPAIR-2026-08-21
+   The collapsed rail is an icon rail, not a hidden rail. These rules are
+   intentionally last: upstream contains older collapse cascades that set the
+   same descendants to opacity:0 and even zero the grid track. Keep the winning
+   boundary explicit so a future style edit cannot make the Library destination
+   visually disappear while leaving it keyboard reachable. */
+.entry-shell--no-header .entry:not(.entry--rail-open) {
+  grid-template-columns: var(--md-ref-shell-nav-width, 88px) minmax(0, 1fr);
+  transition-delay: 0ms;
+}
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail {
+  overflow: visible;
+  pointer-events: auto;
+}
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__group > *,
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__team-section > *,
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__footer {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0ms;
+}
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__collapse {
+  opacity: 1;
+  pointer-events: auto;
+}
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__btn-label,
+.entry-shell--no-header .entry:not(.entry--rail-open) .entry-nav-rail__label {
+  display: none;
+}

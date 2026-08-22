@@ -1,8 +1,8 @@
 // Material Design 3 navigation rail for the entry view.
 //
 // The first slot is the brand logo, followed by the primary destinations
-// users expect to keep in reach: New project, home, projects, brand kit,
-// automations, plugins, and integrations. Footer controls are reserved for
+// users expect to keep in reach: New project, home, Library, projects, brand
+// kit, automations, plugins, and integrations. Footer controls are reserved for
 // lower-frequency support affordances such as the help launcher.
 // Language switching and other account-scoped controls live behind the
 // floating settings cog in the top-right corner of the main content.
@@ -75,7 +75,6 @@ import { MessageCenter } from './MessageCenter';
 import type { EntrySettingsSection } from './EntrySettingsMenu';
 import { useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
-import { ENTRY_RAIL_TOGGLE_EVENT } from './entryRailBridge';
 import {
   beginWorkspaceScopedRead,
   notifyTeamProjectsChanged,
@@ -1224,6 +1223,7 @@ export function EntryNavRail({
   const analyticsPage = entryViewToTracking(view);
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const communityLabel = t('pluginsHome.title');
+  const libraryLabel = t('library.title');
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).
@@ -1447,19 +1447,6 @@ export function EntryNavRail({
   // landmark, and hiding a visible control from assistive technology while
   // sighted users can click it is exactly the defect those attributes exist
   // to prevent elsewhere.
-  // While collapsed the rail is visually hidden but its controls stay mounted;
-  // mark it `inert` so they leave the tab order and pointer flow entirely.
-  const railRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const node = railRef.current;
-    if (!node) return;
-    if (open) {
-      node.removeAttribute('inert');
-    } else {
-      node.setAttribute('inert', '');
-    }
-  }, [open]);
-
   useEffect(() => {
     if (!teamOpen) return;
     void loadWorkspaceDirectory();
@@ -1508,10 +1495,8 @@ export function EntryNavRail({
   return (
     <nav
       className={`entry-nav-rail${open ? ' is-open' : ''}`}
-      aria-label={t('entry.navLandmark')}
       data-rail-expanded={open ? 'true' : 'false'}
       aria-label={t('entry.primaryNavAria')}
-      aria-hidden={open ? undefined : true}
     >
       <div className="entry-nav-rail__panel">
       <div className="entry-nav-rail__group">
@@ -1687,21 +1672,14 @@ export function EntryNavRail({
               describing where the rail currently is. */}
           <button
             type="button"
-            className="entry-nav-rail__collapse"
+            className="entry-nav-rail__collapse od-tooltip"
             onClick={open ? onClose : onOpen}
             aria-label={open ? t('entry.navCollapse') : t('entry.navExpand')}
             aria-expanded={open}
             title={open ? t('entry.navCollapse') : t('entry.navExpand')}
             data-testid="entry-nav-collapse"
-            className="entry-nav-rail__collapse od-tooltip"
-            aria-label={t('entry.navCollapse')}
-            title={t('entry.navCollapse')}
-            data-tooltip={t('entry.navCollapse')}
+            data-tooltip={open ? t('entry.navCollapse') : t('entry.navExpand')}
             data-tooltip-placement="bottom"
-            data-testid="entry-rail-collapse"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-            }}
           >
             <Icon name="panel-left" size={15} />
           </button>
@@ -1724,6 +1702,15 @@ export function EntryNavRail({
           testId="entry-nav-community"
         >
           <Icon name="globe" size={16} />
+        </NavButton>
+        <NavButton
+          active={view === 'library'}
+          ariaLabel={libraryLabel}
+          label={libraryLabel}
+          onClick={() => selectView('library')}
+          testId="entry-nav-library"
+        >
+          <Icon name="layers-filled" size={16} />
         </NavButton>
 
         {context ? (

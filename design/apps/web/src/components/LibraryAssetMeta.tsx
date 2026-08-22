@@ -4,8 +4,8 @@
 // both need to label an asset by kind, badge its source, and format its raw
 // numbers. Keeping that here avoids two diverging copies of the same map.
 //
-// Copy is intentionally inline (not yet i18n-keyed) — the Library surface's
-// localization is a tracked follow-up, matching LibrarySection.tsx.
+// Stable metadata labels remain data-level values; user-facing surface copy is
+// localized by the owning component.
 
 import type {
   LibraryAsset,
@@ -114,6 +114,35 @@ export function assetTitle(asset: LibraryAsset): string {
     asset.relPath?.split('/').pop() ||
     `${kindLabel(asset.kind)} · ${asset.id.slice(0, 8)}`
   );
+}
+
+/** Complete local search projection shared by the grid and picker. */
+export function libraryAssetSearchText(asset: LibraryAsset): string {
+  const sourceText = asset.sources.flatMap((source) => [
+    source.id,
+    source.projectId,
+    source.conversationId,
+    source.runId,
+    source.designSystemId,
+    source.relPath,
+    source.sourceKind,
+  ]);
+  return [
+    assetTitle(asset),
+    asset.id,
+    asset.kind,
+    asset.mime,
+    asset.sourceTitle,
+    asset.sourceDomain,
+    asset.sourceUrl,
+    asset.relPath,
+    asset.caption,
+    asset.ocrText,
+    ...asset.tags,
+    ...sourceText,
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .join('\n');
 }
 
 export function formatBytes(n?: number): string | null {

@@ -70,7 +70,7 @@ describe('DesignSystemAssetDropzone — seeded preview lifecycle', () => {
     expect(revoked.has(src)).toBe(false);
   });
 
-  it('does not show the library picker affordance while the Library UI is gated off', () => {
+  it('shows the library picker affordance when the production Library is enabled', () => {
     const noop = () => {};
 
     render(
@@ -83,7 +83,7 @@ describe('DesignSystemAssetDropzone — seeded preview lifecycle', () => {
       />,
     );
 
-    expect(screen.queryByTestId('ds-asset-library')).toBeNull();
-    expect(screen.queryByText(/reuse an asset/i)).toBeNull();
+    expect(screen.getByTestId('ds-asset-library')).toBeTruthy();
+    expect(screen.getByText(/reuse an asset/i)).toBeTruthy();
   });
 });

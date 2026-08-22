@@ -403,8 +403,56 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
     where.push('EXISTS (SELECT 1 FROM library_asset_sources s WHERE s.asset_id = a.id AND s.design_system_id = ?)');
     args.push(filter.designSystemId);
   }
+  if (filter.snapshotAt !== undefined) {
+    if (!Number.isSafeInteger(filter.snapshotAt) || filter.snapshotAt < 0) {
+      throw new RangeError('library snapshotAt must be a non-negative safe integer');
+    }
+    where.push('a.created_at <= ?');
+    args.push(filter.snapshotAt);
+  }
+  const hasAfterCursor =
+    filter.afterArchivedDate !== undefined
+    || filter.afterCreatedAt !== undefined
+    || filter.afterId !== undefined;
+  if (hasAfterCursor) {
+    if (
+      typeof filter.afterArchivedDate !== 'string'
+      || !Number.isSafeInteger(filter.afterCreatedAt)
+      || filter.afterCreatedAt < 0
+      || typeof filter.afterId !== 'string'
+      || !filter.afterId
+    ) {
+      throw new RangeError('library cursor tuple is incomplete');
+    }
+    // The feed is newest-first. A cursor resumes strictly after the last
+    // tuple from the same snapshot, so an ingest or delete cannot shift a
+    // later page and make a row appear twice or disappear between pages.
+    where.push(`(
+      a.archived_date < ?
+      OR (a.archived_date = ? AND (
+        a.created_at < ?
+        OR (a.created_at = ? AND a.id < ?)
+      ))
+    )`);
+    args.push(
+      filter.afterArchivedDate,
+      filter.afterArchivedDate,
+      filter.afterCreatedAt,
+      filter.afterCreatedAt,
+      filter.afterId,
+    );
+  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const limit = Number.isFinite(filter.limit) ? Math.max(1, Math.min(Number(filter.limit), 1000)) : 500;
+  const limit = filter.limit === undefined
+    ? 500
+    : Number.isSafeInteger(filter.limit) && filter.limit > 0
+      ? Math.min(filter.limit, 1000)
+      : (() => { throw new RangeError('library limit must be a positive safe integer'); })();
+  const offset = filter.offset === undefined
+    ? 0
+    : Number.isSafeInteger(filter.offset) && filter.offset >= 0
+      ? filter.offset
+      : (() => { throw new RangeError('library offset must be a non-negative safe integer'); })();
   const raws = db
     .prepare(
       // Order by archive date first so the grid/timeline reflect when an
@@ -413,8 +461,8 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
       // idx_library_assets_archived.
       `SELECT ${ASSET_COLS} FROM library_assets a
        ${whereSql}
-       ORDER BY a.archived_date DESC, a.created_at DESC
-       LIMIT ${limit}`,
+       ORDER BY a.archived_date DESC, a.created_at DESC, a.id DESC
+       LIMIT ${limit} OFFSET ${offset}`,
     )
     .all(...args) as RawAssetRow[];
   if (raws.length === 0) return [];
