@@ -29,6 +29,30 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Close FileViewer menu completion and ownership gaps
+
+**Reason:** The FileViewer menu source repair now keeps programmatic Markdown
+downloads visible without stealing focus, gives every mounted surface a unique
+owner token, returns focus safely when the exact opener is clicked again, closes
+mixed surfaces when focus leaves their owner, and clamps measured width and
+height to the available viewport. Disabled rows remain visible with their
+existing reason while keyboard navigation skips them. Share and Export labels,
+portal-aware version-menu checks, inactive Markdown viewers, and the hand-written
+inventory now use exact source associations. The focused source checks include
+explicit red-then-green mutations for ownership, disabled navigation, mixed
+focus, portal boundaries, inactive viewers, row pairing, and invalid regex
+feedback. This is source-level evidence only; no installed build or runtime
+geometry has been verified here.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewerMenuSearch.tsx`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/styles/viewer/tools.css`
+- `apps/web/src/styles/viewer/core.css`
+- `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+- `apps/web/tests/components/file-viewer-version-download.test.tsx`
+
 ### 2026-08-21 — Make FileViewer menus searchable, focusable, and wrap-safe
 
 **Reason:** FileViewer's Download, Share, Present, Zoom, toolbar and version menus

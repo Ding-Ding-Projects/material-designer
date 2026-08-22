@@ -69,13 +69,13 @@ function readableActionLabel(element: HTMLElement): string {
   return copy.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 }
 
-function focusableElements(surface: HTMLElement | null, menuId: string): HTMLElement[] {
+function focusableElements(surface: HTMLElement | null, ownerToken: string): HTMLElement[] {
   if (!surface) return [];
   const own = Array.from(surface.querySelectorAll<HTMLElement>(
     'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
   ));
   const builder = document.querySelector<HTMLElement>(
-    `[data-file-viewer-menu-builder="${CSS.escape(menuId)}"]`,
+    `[data-file-viewer-menu-builder="${CSS.escape(ownerToken)}"]`,
   );
   const nested = builder
     ? Array.from(builder.querySelectorAll<HTMLElement>(
@@ -87,9 +87,19 @@ function focusableElements(surface: HTMLElement | null, menuId: string): HTMLEle
     .filter((element, index, all) => all.indexOf(element) === index);
 }
 
-function isOwnedRegexBuilder(target: EventTarget | null, menuId: string): boolean {
+function isOwnedRegexBuilder(target: EventTarget | null, ownerToken: string): boolean {
   return target instanceof Element
-    && Boolean(target.closest(`[data-file-viewer-menu-builder="${CSS.escape(menuId)}"]`));
+    && Boolean(target.closest(`[data-file-viewer-menu-builder="${CSS.escape(ownerToken)}"]`));
+}
+
+function isOwnedSurface(target: EventTarget | null, ownerToken: string): boolean {
+  return target instanceof Element
+    && Boolean(target.closest(`[data-file-viewer-menu-surface="${CSS.escape(ownerToken)}"]`));
+}
+
+function isOwnedTrigger(target: EventTarget | null, triggerRef?: TriggerRef): boolean {
+  const trigger = triggerRef?.current;
+  return Boolean(trigger && target instanceof Node && trigger.contains(target));
 }
 
 function focusRelativeMenuItem(actions: MenuAction[], current: EventTarget | null, delta: number) {
@@ -154,7 +164,7 @@ export function FileViewerMenuSearch({
         if (kind === 'menu') element.setAttribute('role', 'menuitem');
         else if (element.getAttribute('role') === 'menuitem') element.removeAttribute('role');
         return {
-          id: `${menuId}-action-${index}`,
+          id: `${resolvedSurfaceId}-action-${index}`,
           label: readableActionLabel(element),
           section: element.closest<HTMLElement>('[data-menu-search-section]')?.dataset.menuSearchSection
             ?? menuLabel,
@@ -162,7 +172,7 @@ export function FileViewerMenuSearch({
         };
       });
     setRegistry(next);
-  }, [kind, menuId, menuLabel]);
+  }, [kind, menuLabel, resolvedSurfaceId]);
 
   useLayoutEffect(() => {
     rebuildRegistry();
@@ -186,18 +196,36 @@ export function FileViewerMenuSearch({
   const measureSurface = useCallback(() => {
     const trigger = triggerRef?.current;
     const surface = surfaceRef.current;
-    if (!trigger || !surface || typeof window === 'undefined') return;
+    if (!surface || typeof window === 'undefined') return;
     const margin = 12;
-    const triggerRect = trigger.getBoundingClientRect();
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
-    const maxWidth = Math.max(220, viewportWidth - margin * 2);
-    const measuredWidth = Math.max(280, surface.scrollWidth || 280);
-    const width = Math.min(maxWidth, measuredWidth);
+    const availableWidth = Math.max(1, viewportWidth - margin * 2);
+    const availableHeight = Math.max(1, viewportHeight - margin * 2);
+    if (!trigger) {
+      setSurfaceStyle({
+        position: 'fixed',
+        left: margin,
+        top: margin,
+        width: availableWidth,
+        maxWidth: availableWidth,
+        maxHeight: availableHeight,
+        overflowY: 'auto',
+        boxSizing: 'border-box',
+        visibility: 'visible',
+      });
+      return;
+    }
+    const triggerRect = trigger.getBoundingClientRect();
+    const measuredWidth = Math.max(1, surface.scrollWidth || 280);
+    const width = Math.min(availableWidth, measuredWidth);
     const roomBelow = viewportHeight - triggerRect.bottom - margin;
     const roomAbove = triggerRect.top - margin;
     const above = roomBelow < 300 && roomAbove > roomBelow;
-    const maxHeight = Math.max(128, (above ? roomAbove : roomBelow) - 8);
+    const maxHeight = Math.min(
+      availableHeight,
+      Math.max(1, (above ? roomAbove : roomBelow) - 8),
+    );
     const left = Math.max(
       margin,
       Math.min(triggerRect.right - width, viewportWidth - width - margin),
@@ -208,7 +236,7 @@ export function FileViewerMenuSearch({
       left,
       top,
       width,
-      maxWidth,
+      maxWidth: availableWidth,
       maxHeight,
       overflowY: 'auto',
       boxSizing: 'border-box',
@@ -231,17 +259,18 @@ export function FileViewerMenuSearch({
 
   useEffect(() => {
     if (!open) return undefined;
-    searchInputRef.current?.focus();
+    if (triggerRef?.current) searchInputRef.current?.focus();
     const onPointerDown = (event: PointerEvent) => {
-      if (surfaceRef.current?.contains(event.target as Node)) return;
-      if (triggerRef?.current?.contains(event.target as Node)) return;
-      if (isOwnedRegexBuilder(event.target, menuId)) return;
+      if (isOwnedSurface(event.target, resolvedSurfaceId)) return;
+      if (isOwnedTrigger(event.target, triggerRef)) return;
+      if (isOwnedRegexBuilder(event.target, resolvedSurfaceId)) return;
       closeMenu();
     };
     const onFocusIn = (event: FocusEvent) => {
-      if (surfaceRef.current?.contains(event.target as Node)) return;
-      if (isOwnedRegexBuilder(event.target, menuId)) return;
-      if (kind === 'menu') closeMenu();
+      if (isOwnedSurface(event.target, resolvedSurfaceId)) return;
+      if (isOwnedTrigger(event.target, triggerRef)) return;
+      if (isOwnedRegexBuilder(event.target, resolvedSurfaceId)) return;
+      closeMenu();
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
@@ -252,9 +281,10 @@ export function FileViewerMenuSearch({
       document.removeEventListener('focusin', onFocusIn);
       focusMenuTrigger(triggerRef);
     };
-  }, [closeMenu, kind, menuId, open, triggerRef]);
+  }, [closeMenu, open, resolvedSurfaceId, triggerRef]);
 
   const visibleActions = registry.filter((action) => visibleIds.has(action.id));
+  const keyboardActions = visibleActions.filter((action) => !action.element.matches(':disabled'));
 
   const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
@@ -269,7 +299,7 @@ export function FileViewerMenuSearch({
         closeMenu();
         return;
       }
-      const focusables = focusableElements(surfaceRef.current, menuId);
+      const focusables = focusableElements(surfaceRef.current, resolvedSurfaceId);
       if (focusables.length === 0) return;
       event.preventDefault();
       const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
@@ -283,20 +313,20 @@ export function FileViewerMenuSearch({
     // listbox, text, and button keyboard models. The outer owner handles only
     // Escape and focus containment; it never steals their arrow/Enter keys.
     if (kind === 'mixed') return;
-    const action = visibleActions.find((candidate) => candidate.element === event.target);
+    const action = keyboardActions.find((candidate) => candidate.element === event.target);
     if (!action) return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      focusRelativeMenuItem(visibleActions, event.target, 1);
+      focusRelativeMenuItem(keyboardActions, event.target, 1);
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      focusRelativeMenuItem(visibleActions, event.target, -1);
+      focusRelativeMenuItem(keyboardActions, event.target, -1);
     } else if (event.key === 'Home') {
       event.preventDefault();
-      focusBoundaryMenuItem(visibleActions, false);
+      focusBoundaryMenuItem(keyboardActions, false);
     } else if (event.key === 'End') {
       event.preventDefault();
-      focusBoundaryMenuItem(visibleActions, true);
+      focusBoundaryMenuItem(keyboardActions, true);
     } else if (event.key === 'Enter') {
       event.preventDefault();
       action.element.click();
@@ -313,7 +343,7 @@ export function FileViewerMenuSearch({
     if (kind === 'mixed') return;
     if (event.key === 'ArrowDown' || event.key === 'Enter') {
       event.preventDefault();
-      const first = visibleActions[0];
+      const first = keyboardActions[0];
       if (first) {
         if (event.key === 'Enter') first.element.click();
         else first.element.focus();
@@ -322,12 +352,12 @@ export function FileViewerMenuSearch({
     }
     if (event.key === 'ArrowUp' || event.key === 'Home') {
       event.preventDefault();
-      focusBoundaryMenuItem(visibleActions, false);
+      focusBoundaryMenuItem(keyboardActions, false);
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
-      focusBoundaryMenuItem(visibleActions, true);
+      focusBoundaryMenuItem(keyboardActions, true);
     }
   };
 
@@ -340,7 +370,7 @@ export function FileViewerMenuSearch({
       className={className}
       role={kind === 'mixed' ? 'dialog' : 'group'}
       aria-label={menuLabel}
-      data-file-viewer-menu-surface={menuId}
+      data-file-viewer-menu-surface={resolvedSurfaceId}
       style={surfaceStyle}
       onKeyDown={onMenuKeyDown}
     >
@@ -353,10 +383,10 @@ export function FileViewerMenuSearch({
           ariaControls={resolvedActionsId}
           ariaLabel={t('common.searchEllipsis')}
           placeholder={t('common.searchEllipsis')}
-          autoFocus
+          autoFocus={Boolean(triggerRef?.current)}
           className="file-viewer-menu-search__input"
           hostClassName="file-viewer-menu-search__field"
-          focusScopeId={menuId}
+          focusScopeId={resolvedSurfaceId}
           onKeyDown={onSearchKeyDown}
         />
         <span className="file-viewer-menu-search__count" role="status" aria-live="polite">
@@ -370,7 +400,7 @@ export function FileViewerMenuSearch({
         id={resolvedActionsId}
         role={kind === 'menu' ? 'menu' : 'group'}
         aria-label={kind === 'menu' ? menuLabel : `${menuLabel} actions`}
-        data-file-viewer-menu-actions={menuId}
+        data-file-viewer-menu-actions={resolvedSurfaceId}
       >
         {children}
       </div>

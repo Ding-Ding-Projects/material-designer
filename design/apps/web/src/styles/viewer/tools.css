@@ -779,7 +779,8 @@
   top: calc(100% + 6px);
   right: 0;
   z-index: var(--viewer-action-menu-z);
-  min-width: 300px;
+  min-width: 0;
+  max-width: 100%;
   padding: 4px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -830,6 +831,10 @@
 }
 [data-file-viewer-menu-surface] {
   overscroll-behavior: contain;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
 }
 .file-viewer-menu-search__count {
   flex: 0 0 auto;

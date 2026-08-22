@@ -2038,6 +2038,7 @@ export const FileViewer = memo(function FileViewer({
         onFileSaved={onFileSaved}
         onRegisterUpdateSavePreparation={onRegisterUpdateSavePreparation}
         viewerOnly={viewerOnly}
+        workspaceActive={workspaceActive}
         downloadRequest={downloadRequest}
       />
     );
@@ -6708,6 +6709,9 @@ function ReactComponentViewer({
   const [reloadKey, setReloadKey] = useState(0);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [unifiedActionTab, setUnifiedActionTab] = useState<'share' | 'export'>('share');
+  const activeUnifiedActionLabel = unifiedActionTab === 'share'
+    ? t('fileViewer.unifiedShareTab')
+    : t('fileViewer.unifiedExportTab');
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
   const [shareAccessMenuOpen, setShareAccessMenuOpen] = useState(false);
   const [shareAccessConfirm, setShareAccessConfirm] = useState<'private' | 'workspace' | null>(null);
@@ -7147,6 +7151,9 @@ function ReactComponentViewer({
                     }
                     aria-haspopup="dialog"
                     aria-expanded={shareMenuOpen && unifiedActionTab === tab}
+                    aria-label={tab === 'share'
+                      ? t('fileViewer.unifiedShareTab')
+                      : t('fileViewer.unifiedExportTab')}
                     disabled={viewerOnly}
                     title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
                     data-tooltip={
@@ -7175,7 +7182,7 @@ function ReactComponentViewer({
                 {shareMenuOpen ? (
                   <FileViewerMenuSearch
                     menuId="react-component-share-menu"
-                    menuLabel={t('fileViewer.unifiedShareTab')}
+                    menuLabel={activeUnifiedActionLabel}
                     open={shareMenuOpen}
                     onClose={() => setShareMenuOpen(false)}
                     kind="mixed"
@@ -15239,6 +15246,9 @@ function HtmlViewer({
         ? t('useEverywhere.copyFailed')
         : t('fileViewer.copyShareLink');
   const shareMenuLabel = t('fileViewer.shareLabel');
+  const activeUnifiedActionLabel = unifiedActionTab === 'share'
+    ? t('fileViewer.unifiedShareTab')
+    : t('fileViewer.unifiedExportTab');
   const deployMenuLabel = t('fileViewer.deployModalTitle') || 'Deploy';
   const isSocialShareDeployModal = deployModalIntent === 'social-share';
   const deployModalKicker = isSocialShareDeployModal
@@ -16414,7 +16424,7 @@ function HtmlViewer({
                 {deployMenuOpen && (rawCanShare || rawCanDownload) ? (
                   <FileViewerMenuSearch
                     menuId="html-viewer-share-menu"
-                    menuLabel={shareMenuLabel}
+                    menuLabel={activeUnifiedActionLabel}
                     open={deployMenuOpen}
                     onClose={() => setDeployMenuOpen(false)}
                     kind="mixed"
@@ -16422,7 +16432,7 @@ function HtmlViewer({
                     className="share-menu-popover chrome-unified-popover"
                   >
                     {unifiedActionTab === 'share' && rawCanShare ? (
-                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={shareMenuLabel}>
+                      <div className="chrome-unified-panel chrome-unified-panel--share" data-menu-search-section={activeUnifiedActionLabel}>
                       {/* Team-only, same as ReactComponentViewer's copy of this card above —
                           see the comment there (recvq5bM78HWCE). */}
                       {workspaceContextHasTeamIdentity(workspaceContext) ? (
@@ -18859,6 +18869,7 @@ function MarkdownViewer({
   onFileSaved,
   onRegisterUpdateSavePreparation,
   viewerOnly = false,
+  workspaceActive = true,
   downloadRequest,
 }: {
   projectId: string;
@@ -18868,6 +18879,7 @@ function MarkdownViewer({
     handler: () => Promise<OpenDesignHostUpdaterSavePreparation>,
   ) => () => void;
   viewerOnly?: boolean;
+  workspaceActive?: boolean;
   downloadRequest?: { nonce: number } | null;
 }) {
   const { t, locale } = useI18n();
@@ -18916,13 +18928,17 @@ function MarkdownViewer({
   }, [viewerOnly]);
 
   useEffect(() => {
+    if (!workspaceActive) setDownloadMenuOpen(false);
+  }, [workspaceActive]);
+
+  useEffect(() => {
     const nonce = downloadRequest?.nonce;
-    if (nonce == null || text === null || viewerOnly) return;
+    if (nonce == null || text === null || viewerOnly || !workspaceActive) return;
     if (loadedFileKeyRef.current !== markdownFileKey) return;
     if (!consumeDownloadNonceOnce(markdownFileKey, nonce)) return;
     downloadTriggerRef.current = null; // programmatic download request has no opener
     setDownloadMenuOpen(true);
-  }, [downloadRequest?.nonce, markdownFileKey, text, viewerOnly]);
+  }, [downloadRequest?.nonce, markdownFileKey, text, viewerOnly, workspaceActive]);
 
   useEffect(() => {
     const sameLoadedFile = loadedFileKeyRef.current === markdownFileKey;
@@ -19518,7 +19534,7 @@ function MarkdownViewer({
                 <Icon name="download" size={13} />
                 <span>{t('fileViewer.download')}</span>
               </button>
-              {downloadMenuOpen ? (
+              {workspaceActive && downloadMenuOpen ? (
                 <FileViewerMenuSearch
                   menuId="markdown-download-menu"
                   menuLabel={t('fileViewer.download')}
