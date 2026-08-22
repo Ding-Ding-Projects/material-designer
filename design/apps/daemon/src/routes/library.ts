@@ -150,11 +150,11 @@ function decodeLibraryCursor(value: unknown): LibraryListCursor | null | undefin
     const parsed = JSON.parse(raw.toString('utf8')) as Partial<LibraryListCursor>;
     if (
       !Number.isSafeInteger(parsed.snapshotAt)
-      || parsed.snapshotAt < 0
+      || (parsed.snapshotAt as number) < 0
       || typeof parsed.archivedDate !== 'string'
       || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.archivedDate)
       || !Number.isSafeInteger(parsed.createdAt)
-      || parsed.createdAt < 0
+      || (parsed.createdAt as number) < 0
       || typeof parsed.id !== 'string'
       || parsed.id.length === 0
       || parsed.id.length > 256
