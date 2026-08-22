@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { ToolPackConfig } from "../config.js";
+import type { ToolPackConfig } from "../config/index.js";
 import { WIN_PREBUNDLED_APP_DIR_NAME } from "../win-prebundle.js";
 import {
   ELECTRON_BUILDER_ASAR,
@@ -122,7 +122,7 @@ export async function collectWinSizeReport(
       },
       nodeGypRebuild: ELECTRON_BUILDER_NODE_GYP_REBUILD,
       npmRebuild: ELECTRON_BUILDER_NPM_REBUILD,
-      targets: resolveWinTargets(config.to),
+      targets: resolveWinTargets(config.to) as Array<"dir" | "nsis" | "zip">,
       webOutputMode: config.webOutputMode,
     },
     generatedAt: new Date().toISOString(),
