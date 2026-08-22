@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeE
 import { createPortal, flushSync } from 'react-dom';
 
 import { Icon } from './Icon';
-import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
+import { RemixIcon } from './RemixIcon';
 import { useT } from '../i18n';
 import type { PreviewVisualMarkKind } from '../types';
 import { requestPreviewSnapshot } from '../runtime/exports';
@@ -1245,7 +1245,7 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationAddToInput'),
       pendingLabel: t('chat.annotationAddingToInput'),
       title: t('chat.annotationAddToInput'),
-      icon: <MaterialSymbol name="text_fields" size={15} />,
+      icon: <RemixIcon name="input-field" size={15} />,
       enabled: canAddToInput,
     },
     {
@@ -1253,17 +1253,10 @@ export function PreviewDrawOverlay({
       label: t('chat.annotationQueue'),
       pendingLabel: t('chat.annotationQueueing'),
       title: t('chat.annotationQueue'),
-      icon: <MaterialSymbol name="checklist" size={15} />,
+      icon: <RemixIcon name="list-check-2" size={15} />,
       enabled: canSubmit,
     },
   ];
-  const currentSubmit = submitOptions.find((opt) => opt.action === submitAction) ?? submitOptions[0]!;
-  // The one current-tool button and its dropdown share this list: box-select,
-  // freehand pen, and drop-a-text-label.
-  const markToolOptions: { tool: MarkTool; label: string; icon: MaterialSymbolName }[] = [
-    { tool: 'box', label: t('fileViewer.boxSelect'), icon: 'check_box_outline_blank' },
-    { tool: 'pen', label: t('sketch.toolPen'), icon: 'edit' },
-    { tool: 'text', label: t('fileViewer.textTool'), icon: 'title' },
   // The segmented tool group renders this list in order: box-select, freehand
   // pen, and drop-a-text-label.
   const markToolOptions: { tool: MarkTool; label: string; icon: string }[] = [
@@ -1561,47 +1554,6 @@ export function PreviewDrawOverlay({
             }}
           >
           <div className="preview-draw-tool-cluster" style={drawToolbarClusterStyle}>
-            <div ref={markToolMenuRef} style={subToolGroupStyle} aria-label={t('fileViewer.markTool')}>
-              <button
-                type="button"
-                onClick={() => setMarkToolMenuOpen((open) => !open)}
-                disabled={sending}
-                aria-haspopup="menu"
-                aria-expanded={markToolMenuOpen}
-                aria-label={currentMarkTool.label}
-                title={currentMarkTool.label}
-                data-tooltip={currentMarkTool.label}
-                className="preview-draw-subtool-action"
-                style={subToolButtonStyle}
-              >
-                <MaterialSymbol name={currentMarkTool.icon} size={14} />
-                <MaterialSymbol name="keyboard_arrow_down" size={12} style={{ opacity: 0.78 }} />
-              </button>
-              {markToolMenuOpen ? (
-                <div role="menu" aria-label={t('fileViewer.markTool')} style={markToolMenuStyle}>
-                  {markToolOptions.map((item) => {
-                    const activeTool = markTool === item.tool;
-                    return (
-                      <button
-                        key={item.tool}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={activeTool}
-                        aria-label={item.label}
-                        disabled={sending}
-                        onClick={() => selectMarkTool(item.tool)}
-                        style={submitMenuItemStyle(activeTool, !sending)}
-                      >
-                        <span style={submitMenuItemIconStyle}>
-                          <MaterialSymbol name={item.icon} size={14} />
-                        </span>
-                        <span style={{ flex: '1 1 auto' }}>{item.label}</span>
-                        {activeTool ? <MaterialSymbol name="check" size={14} /> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
             {/* Segmented tool group: every mark tool is one click away and the
                 active one is visible without opening anything. A dropdown here
                 cost a click per switch and hid which tool was armed — the two
@@ -1640,7 +1592,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.undo')}
               title={t('manualEdit.undo')}
             >
-              <MaterialSymbol name="undo" size={14} />
+              <RemixIcon name="arrow-go-back-line" size={14} />
             </button>
             <button
               type="button"
@@ -1650,7 +1602,7 @@ export function PreviewDrawOverlay({
               aria-label={t('manualEdit.redo')}
               title={t('manualEdit.redo')}
             >
-              <MaterialSymbol name="redo" size={14} />
+              <RemixIcon name="arrow-go-forward-line" size={14} />
             </button>
             <input
               ref={fileInputRef}
@@ -1673,7 +1625,7 @@ export function PreviewDrawOverlay({
               className="preview-draw-icon-action"
               style={historyButtonStyle(!sending)}
             >
-              <MaterialSymbol name="add_photo_alternate" size={14} />
+              <RemixIcon name="image-add-line" size={14} />
             </button>
           </div>
           <div className="preview-draw-note-actions" style={drawToolbarNoteActionsStyle}>
@@ -1712,76 +1664,6 @@ export function PreviewDrawOverlay({
                 if (e.key === 'Enter') void send('queue');
               }}
             />
-            <div className="preview-draw-submit" ref={submitMenuRef} style={submitSplitStyle}>
-              <button
-                type="button"
-                onClick={() => void send(submitAction)}
-                disabled={sending || !currentSubmit.enabled}
-                aria-label={pendingAction === submitAction ? currentSubmit.pendingLabel : currentSubmit.label}
-                title={pendingAction === submitAction ? currentSubmit.pendingLabel : currentSubmit.title}
-                data-tooltip={pendingAction === submitAction ? currentSubmit.pendingLabel : currentSubmit.title}
-                className="preview-draw-icon-action"
-                style={{
-                  ...drawActionButtonStyle(true),
-                  width: 'auto',
-                  minWidth: 40,
-                  padding: '0 7px 0 12px',
-                  borderRadius: '999px 0 0 999px',
-                  opacity: currentSubmit.enabled ? 1 : 0.4,
-                  cursor: sending ? 'wait' : (currentSubmit.enabled ? 'pointer' : 'not-allowed'),
-                }}
-              >
-                {pendingAction === submitAction ? <Icon name="spinner" size={14} /> : currentSubmit.icon}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSubmitMenuOpen((open) => !open)}
-                disabled={sending || !canSubmit}
-                aria-haspopup="menu"
-                aria-expanded={submitMenuOpen}
-                aria-label={t('chat.annotationSubmitOptions')}
-                title={t('chat.annotationSubmitOptions')}
-                style={{
-                  ...drawActionButtonStyle(true),
-                  width: 25,
-                  borderRadius: '0 999px 999px 0',
-                  borderLeft: '1px solid rgba(255,255,255,0.28)',
-                  opacity: (!sending && canSubmit) ? 1 : 0.5,
-                  cursor: sending ? 'wait' : (canSubmit ? 'pointer' : 'not-allowed'),
-                }}
-              >
-                <MaterialSymbol name={submitMenuOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_up'} size={14} />
-              </button>
-              {submitMenuOpen ? (
-                <div role="menu" aria-label={t('chat.annotationSubmitOptions')} style={submitMenuStyle}>
-                  {submitOptions.map((opt) => {
-                    const itemEnabled = !sending && opt.enabled;
-                    const active = submitAction === opt.action;
-                    return (
-                      <button
-                        key={opt.action}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={active}
-                        aria-label={opt.label}
-                        disabled={itemEnabled ? undefined : true}
-                        title={opt.title}
-                        onClick={() => {
-                          setSubmitAction(opt.action);
-                          setSubmitMenuOpen(false);
-                          void send(opt.action);
-                        }}
-                        style={submitMenuItemStyle(active, itemEnabled)}
-                      >
-                        <span style={submitMenuItemIconStyle}>{opt.icon}</span>
-                        <span style={{ flex: '1 1 auto' }}>{opt.label}</span>
-                        {active ? <MaterialSymbol name="check" size={14} /> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
             {/* Three independent buttons, ordered add-to-input → queue → send.
                 A split button hid two of the three behind a chevron and made
                 the primary action depend on remembered state — the user had to
@@ -2119,3 +2001,8 @@ const previewDrawDockDockedStyle: CSSProperties = {
   transform: 'translateX(-50%)',
   maxWidth: 'min(760px, calc(100% - 144px))',
 };
+
+
+
+
+

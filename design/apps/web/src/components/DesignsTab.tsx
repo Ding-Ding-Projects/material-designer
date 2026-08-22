@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from "@open-design/components";
 import type { WorkspaceCollabContext } from "@open-design/contracts";
 import { projectKindFromMetadataToTracking } from "@open-design/contracts/analytics";
@@ -27,7 +28,6 @@ import type {
 	SkillSummary,
 } from "../types";
 import { AnimatePresence } from "motion/react";
-import { DestructiveGate } from "./destructive/DestructiveGate";
 import { Icon } from "./Icon";
 import {
 	isDesignSystemProject,
@@ -35,7 +35,6 @@ import {
 	resolveProjectDesignSystemId,
 } from "./design-system-project";
 import { LiveArtifactBadges } from "./LiveArtifactBadges";
-import { notify } from "./notifications/notificationStore";
 import { Toast } from "./Toast";
 import {
 	HtmlProjectCoverFrame,
@@ -138,6 +137,7 @@ export function DesignsTab({
 	isActive = true,
 }: Props) {
 	const renameTitleId = useId();
+	const confirmTitleId = useId();
 	const t = useT();
 	const analytics = useAnalytics();
 	const { context: workspaceContext, loading: workspaceContextLoading } = useWorkspaceContext();
@@ -176,38 +176,7 @@ export function DesignsTab({
 	const coverWorkspaceIdentityRef = useRef<string | null>(null);
 	const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
 	const [renameInput, setRenameInput] = useState("");
-	// Every one of the three things this can hold deletes something a user
-	// cannot get back, so the shape carries what the super-confirmation gate
-	// has to state: the action, the thing it acts on by its real name, and one
-	// line per piece of data that goes. `onConfirm` may report failure — a
-	// `false` return leaves the gate open saying so, rather than closing on a
-	// delete that did not happen.
 	const [confirmTarget, setConfirmTarget] = useState<{
-		action: string;
-		target: string;
-		items: string[];
-		detail?: string;
-		onConfirm: () => Promise<boolean | void> | boolean | void;
-	} | null>(null);
-	// Everything this tab announces is also recorded, so a toast that expired
-	// while the user was elsewhere is still readable in the notification
-	// centre. `silent` because the toast below is already the announcement —
-	// a second copy in the corner would be one sentence said twice. Keyed on
-	// the toast object, which carries a fresh id per message, so two identical
-	// results in a row are two records rather than one.
-	useEffect(() => {
-		if (!designsToast) return;
-		notify({
-			severity:
-				designsToast.tone === "error"
-					? "error"
-					: designsToast.tone === "success"
-						? "success"
-						: "info",
-			title: designsToast.message,
-			silent: true,
-		});
-	}, [designsToast]);
 		title: string;
 		message: string;
 		confirmLabel: string;
@@ -529,10 +498,9 @@ export function DesignsTab({
 	const handleDeleteProject = (project: Project) => {
 		setConfirmError(null);
 		setConfirmTarget({
-			action: t("designs.deleteTitle"),
-			target: project.name,
-			items: [t("designs.deleteGateProjectItem", { name: project.name })],
-			detail: t("designs.deleteGateProjectDetail"),
+			title: t("designs.deleteTitle"),
+			message: t("designs.deleteConfirm", { name: project.name }),
+			confirmLabel: t("designs.menuDelete"),
 			onConfirm: () => onDelete(project.id),
 		});
 	};
@@ -550,19 +518,11 @@ export function DesignsTab({
 	const handleBatchDelete = () => {
 		const ids = Array.from(selected);
 		if (ids.length === 0) return;
-		const names = ids.map(
-			(id) =>
-				projects.find((candidate) => candidate.id === id)?.name ?? id,
-		);
 		setConfirmError(null);
 		setConfirmTarget({
-			action: t("designs.deleteSelected"),
-			target: t("designs.deleteSelectedConfirm", { n: ids.length }),
-			// Every selected project by name, one line each. A count alone
-			// ("Delete 12 project(s)?") is the number the user already knew;
-			// what they cannot check without this list is *which* twelve.
-			items: names,
-			detail: t("designs.deleteGateProjectDetail"),
+			title: t("designs.deleteTitle"),
+			message: t("designs.deleteSelectedConfirm", { n: ids.length }),
+			confirmLabel: t("designs.deleteSelected"),
 			onConfirm: async () => {
 				const results = await Promise.all(
 					ids.map(async (id) => {
@@ -595,14 +555,10 @@ export function DesignsTab({
 	) => {
 		setConfirmError(null);
 		setConfirmTarget({
-			action: t("common.delete"),
-			target: artifact.title,
-			items: [t("designs.deleteGateArtifactItem", { title: artifact.title })],
+			title: t("common.delete"),
+			message: `${t("common.delete")} "${artifact.title}"?`,
+			confirmLabel: t("designs.menuDelete"),
 			onConfirm: async () => {
-				const ok = await deleteLiveArtifact(projectId, artifact.id);
-				// Reported rather than swallowed. This used to `return` on a
-				// failed delete, which closed the dialog and left the artifact
-				// in the list with nothing said about why.
 				const ok = await deleteLiveArtifact(projectId, artifact.id, workspaceContext);
 				if (!ok) return false;
 				setLiveArtifactsByProject((current) => ({
@@ -1274,22 +1230,7 @@ export function DesignsTab({
 					</DialogFooter>
 				</Dialog>
 			) : null}
-			{/* Deleting a project takes its files, its conversations and its
-			    artifacts with it, and nothing in this product puts them back.
-			    A single-button confirm was the wrong weight for that: it named
-			    the project and asked "?", and one mistimed Enter answered it.
-			    The gate names what goes, and it cannot be answered by one
-			    reflex. */}
 			{confirmTarget ? (
-				<DestructiveGate
-					action={confirmTarget.action}
-					target={confirmTarget.target}
-					items={confirmTarget.items}
-					detail={confirmTarget.detail ?? null}
-					irreversible
-					onConfirm={confirmTarget.onConfirm}
-					onClose={() => setConfirmTarget(null)}
-				/>
 				<Dialog
 					className="modal-confirm"
 					role="alertdialog"
