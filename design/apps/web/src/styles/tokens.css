@@ -94,8 +94,8 @@
   --red-border: #f5c6c2;
   --amber: #b26200;
   --amber-bg: #fff3e0;
-   OpenDesign — neutral product workspace
-   ============================================================ */
+}
+
 :root {
   /* OpenDesign system palette. Neutrals carry the interface; brand green is
      reserved for sparse feedback, selected assists, and brand emphasis. */
