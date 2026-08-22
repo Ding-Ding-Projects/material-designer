@@ -2163,9 +2163,9 @@ function attachDownloadSaveAsDialog(
       options.onCaptureDownload?.();
       return;
     }
-    const options = saveAsDialogOptionsForFilename(item.getFilename());
-    if (!options) return;
-    item.setSaveDialogOptions(options);
+    const saveAsOptions = saveAsDialogOptionsForFilename(item.getFilename());
+    if (!saveAsOptions) return;
+    item.setSaveDialogOptions(saveAsOptions);
   });
 }
 
