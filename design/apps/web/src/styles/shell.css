@@ -1143,7 +1143,7 @@ html.od-radial-open .workspace-shell {
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 38px;
+  min-height: 48px;
   padding: 0 10px;
   border: 0;
   border-top: 1px solid var(--border-soft);
@@ -1656,6 +1656,7 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
 }
 .artifact-version-panel__download {
   min-width: 0;
+  min-height: 48px;
 }
 .artifact-version-panel__download span,
 .artifact-version-panel__restore span {
@@ -1711,6 +1712,8 @@ body:has(.artifact-version-panel) .ws-tabs-file-actions-before {
   transform: none;
 }
 .zoom-menu-item {
+  min-height: 48px;
+  min-width: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2842,7 +2845,7 @@ a.avatar-item:visited {
 
 .zoom-menu-item,
 .workspace-tabs-list__item {
-  min-height: 40px;
+  min-height: 48px;
   border-radius: var(--md-sys-shape-corner-m);
 }
 

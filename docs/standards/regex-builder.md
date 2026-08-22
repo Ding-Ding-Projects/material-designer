@@ -9,8 +9,12 @@ search now owns the same field-local controller and anchored builder, committed
 at
 [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58). The follow-up
 [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) keeps that portalled builder in its own focus scope while the menu remains open. The remaining search bars and the four tab-discovery surfaces
-still need their own builders, so the application does not yet meet the
-project-wide standard. No installed build has been rendered for this audit.
+still need their own builders; the FileViewer's ten source-inventoried menus now
+have independent field-owned builders with exact owner tokens, so a builder click
+cannot dismiss a neighbouring menu. Mixed Share/Export surfaces keep their nested
+listboxes and tab controls outside the outer menu's keyboard registry. The
+application does not yet meet the project-wide standard. No installed build has
+been rendered for this audit.
 
 ## The requirement
 

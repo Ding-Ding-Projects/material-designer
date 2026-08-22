@@ -1740,14 +1740,35 @@ installed build.
 - [~] **4.9 Context-menu search and shortcut labels.** The audit fixed the
       concrete menu defects found in the file-menu path: long labels wrap and
       Escape, outside click, scroll, Tab and item selection restore focus to the
-      originating control. The full requirement remains: every context menu — tab,
-      group, appearance, application and overflow — carries its own
-      keyboard-accessible search field filtering visible items locally without
-      changing action semantics. Every item with a keyboard shortcut displays
-      it, right-aligned in the platform's notation, derived from the same source
-      that registers the binding so the two cannot drift. A shortcut shown that
-      does not work in that context trains the user to press a key that does
-      nothing.
+      originating control. The FileViewer now has a hand-written ten-menu
+      inventory with an independent plain-text-first search, anchored regex
+      builder, exact owner token, owner-local action registry, localized
+      count/no-match status, measured viewport placement, keyboard navigation and
+      exact trigger focus restoration for each Download, Share, Present, Zoom and
+      toolbar menu. Simple menus use a nested `role="menu"`; mixed
+      Share/Export/Access/Publish surfaces use named dialog/group containers that
+      preserve their listbox and tab widgets. The source contract is
+      `apps/web/tests/components/FileViewer.menu-contract.test.ts`; no
+      installed-build geometry or runtime interaction has been verified. Commit
+      [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+      closes the accepted completion findings: no-opener Markdown menus have a
+      visible viewport-safe fallback without focus theft, every surface and
+      portalled builder uses a unique resolved owner token, mixed surfaces close
+      when focus leaves their owner, exact opener re-clicks remain toggles,
+      disabled rows stay visible but leave keyboard navigation, geometry clamps
+      actual width and height without viewport-breaking minima, Share/Export
+      labels follow active intent, inactive Markdown viewers refuse stale menus,
+      and version-menu checks query the portalled owner directly. The focused
+      source contract binds every inventory row to its own JSX block and watches
+      structural red-then-green mutations for these boundaries. Runtime proof
+      remains open.
+      The full requirement remains: every context menu — tab, group, appearance,
+      application and overflow — carries its own keyboard-accessible search field
+      filtering visible items locally without changing action semantics. Every item
+      with a keyboard shortcut displays it, right-aligned in the platform's notation,
+      derived from the same source that registers the binding so the two cannot drift.
+      A shortcut shown that does not work in that context trains the user to press a
+      key that does nothing.
 - [ ] **4.10 Infinite colour picker and colour translator.** A continuous
       spectrum or two-dimensional field plus numeric entry, replacing the
       mockup's four fixed swatches, with bidirectional conversion across the

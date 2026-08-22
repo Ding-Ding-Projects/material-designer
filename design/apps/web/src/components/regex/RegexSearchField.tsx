@@ -54,6 +54,8 @@ export interface RegexSearchFieldProps {
   toggleClassName?: string;
   placeholder?: string;
   ariaLabel?: string;
+  /** Stable menu/list id for the owning field's result collection. */
+  ariaControls?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -78,6 +80,7 @@ export function RegexSearchField({
   toggleClassName,
   placeholder,
   ariaLabel,
+  ariaControls,
   testId,
   autoFocus,
   spellCheck = false,
@@ -208,6 +211,7 @@ export function RegexSearchField({
         value={search.query}
         placeholder={placeholder}
         aria-label={ariaLabel}
+        aria-controls={ariaControls}
         aria-describedby={[
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,
@@ -274,6 +278,7 @@ export function RegexSearchField({
               className={styles.popover}
               style={popoverStyle}
               data-focus-scope={focusScopeId}
+              data-file-viewer-menu-builder={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;

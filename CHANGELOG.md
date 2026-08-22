@@ -606,6 +606,82 @@ version section when a release carries them.
   window 同原本 trigger 會返 focus，`OpenFileDialog`、sentinel、Unicode、空/非空
   folder、file、missing path 同 title 都有 source regression。純 shell verifier
   已綠；hosted typecheck、packaged interaction 同 installed capture 今個 lane 未跑。
+- **FileViewer menu completion boundaries now fail closed.** Commit
+  [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+  gives no-opener Markdown downloads a visible viewport-safe menu without
+  stealing focus, assigns one resolved owner token to each surface, builder,
+  action collection and dismissal path, exempts the exact opener from focus
+  dismissal, closes mixed surfaces when focus leaves their owner, and clamps
+  measured geometry without viewport-breaking minima. Disabled rows remain
+  visible with their existing reason but are skipped by keyboard navigation.
+  Active Share/Export labels, inactive Markdown suppression and portal-aware
+  version-menu assertions now follow the same ownership boundary. This is
+  source-level evidence only: no installed build, runtime geometry or screen
+  capture is claimed.
+
+  FileViewer menu completion boundary 而家 fail closed。`3ef99677d`
+  畀冇 opener 嘅 Markdown Download 有個睇得見、唔搶 focus 嘅 viewport-safe
+  menu；每個 surface、builder、action collection 同 dismissal path 都跟同一粒
+  resolved owner token，真正 opener 唔會畀 focus dismissal 誤收，mixed surface
+  一離開 owner 就會收，geometry 亦唔再靠會爆 viewport 嘅硬 minima。Disabled
+  row 照見到同原有 reason，但 keyboard 唔會行入去。Active Share/Export label、
+  inactive Markdown suppression 同 portal-aware version menu assertion 而家
+  都跟同一條 ownership boundary。呢個係 source-level evidence，未有
+  installed build、runtime geometry 或 screen capture claim。
+
+- **FileViewer menu ownership and focus boundaries are now explicit.** Commit
+  [`919073e7a`](https://github.com/Ding-Ding-Projects/material-designer/commit/919073e7ae3cc0d55316000549ba1aa2cf15c810)
+  repairs the ten-menu source contract: simple actions live in a nested menu
+  collection, mixed Share/Export/Access/Publish content lives in a named dialog
+  or group without flattening listboxes, each owner has a local searchable action
+  registry and exact regex-builder token, version Download has one head/footer
+  origin at a time, and measured placement clamps, flips and scrolls inside the
+  viewport. Actual opener refs now restore focus; programmatic opens explicitly
+  have no opener. Search, toggle and action hit areas use a 48px floor. The
+  hand-written negative-regression contract covers nested widgets, focus,
+  geometry and the dual viewer scopes. This is source-level evidence only: no
+  installed build, runtime geometry, or screen capture is claimed.
+
+  Follow-up commit
+  [`330d300d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/330d300d4ae3393e80ccac2ba51c7d459365fbed)
+  keeps the exact opener out of outside-click dismissal, so clicking the same
+  trigger reliably toggles the surface instead of closing on pointerdown and
+  reopening on click.
+
+  FileViewer menu ownership 同 focus boundary 而家講清楚晒。`919073e7a`
+  將十個 menu 分好：普通 action 放入 nested menu collection，Share/Export/
+  Access/Publish 呢啲混合內容就用 named dialog/group，listbox 唔會畀人撈亂；
+  每個 owner 有自己 searchable action registry 同 exact regex-builder token，
+  version Download 一次只會有 head 或 footer 一個來源。實際 opener ref 會
+  收返 focus，programmatic open 就明講冇 opener；placement 會量度、避位、
+  clamp 同內部 scroll，search/toggle/action hit area 有 48px 底線。呢個係
+  source-level evidence，未有 installed build、runtime geometry 或 screen-capture claim。
+
+  Follow-up `330d300d4` 會保護真正開 menu 嗰粒 trigger，撳同一粒掣就
+  可靠咁 toggle，唔會 pointerdown 收咗、click 又偷偷開返。
+
+- **FileViewer menus now search locally, restore focus, and wrap long labels.**
+  Commit [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
+  adds independent plain-text-first search and anchored regex builders to the
+  ten FileViewer Download, Share, Present, Zoom, toolbar and version menus.
+  Each menu reports localized counts/no-match state, focuses its field on open,
+  supports Arrow/Home/End/Enter/Escape keyboard handling, and returns focus to
+  its trigger. Existing action handlers and disabled/error/re-entry semantics
+  remain the owners of behaviour. Direct Share and toolbar labels now wrap at
+  narrow bilingual widths. This is source-level evidence only; no installed
+  build or runtime geometry is claimed. Follow-up commit
+  [`6473425c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/6473425c5d4ae72ecb8a7b3a7dbdc71f9c6529d4)
+  keeps clicks inside the portalled regex builder from dismissing its owning
+  menu while preserving ordinary outside-click dismissal.
+
+  FileViewer 嘅 menu 而家可以就地搵嘢、收 menu 還 focus，同埋長 label 自己
+  換行。`bca23732d` 畀十個 Download、Share、Present、Zoom、toolbar 同 version
+  menu 各自有 plain-text-first search 同 anchored regex builder；開 menu 先落
+  search，Arrow/Home/End/Enter/Escape 都有路，收返仲識搵返開門粒掣。原本
+  action handler、disabled/error/re-entry 行為照舊，窄雙語畫面唔再將 label
+  斬到一半。呢度係 source-level evidence，未有 installed build 或 runtime
+  geometry claim。Follow-up commit `6473425c5` 令 portalled regex builder 入面
+  嘅 click 唔會誤收自己個 menu，普通撳出面照樣收。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

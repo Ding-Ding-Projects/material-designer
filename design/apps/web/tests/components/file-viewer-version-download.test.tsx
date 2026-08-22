@@ -163,6 +163,14 @@ function openVersionDownloadMenu(versionDialog: HTMLElement, version = 1) {
   fireEvent.click(within(versionDialog).getByRole('button', { name: `Download Version ${version}` }));
 }
 
+function versionDownloadMenu(): HTMLElement {
+  return screen.getByRole('group', { name: 'Download', exact: true });
+}
+
+function versionDownloadItem(name: string): HTMLElement {
+  return within(versionDownloadMenu()).getByRole('menuitem', { name });
+}
+
 describe('FileViewer version download actions', () => {
   afterEach(() => {
     cleanup();
@@ -178,7 +186,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file, 'current');
 
     openVersionDownloadMenu(versionDialog, 2);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as PDF' }));
+    fireEvent.click(versionDownloadItem('Export as PDF'));
 
     await waitFor(() => {
       expect(exportProjectScreenshotPdfMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -202,7 +210,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file);
 
     openVersionDownloadMenu(versionDialog);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as PDF' }));
+    fireEvent.click(versionDownloadItem('Export as PDF'));
 
     await waitFor(() => {
       expect(exportProjectScreenshotPdfMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -226,7 +234,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file);
 
     openVersionDownloadMenu(versionDialog);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as PDF' }));
+    fireEvent.click(versionDownloadItem('Export as PDF'));
 
     expect(await screen.findByText(/version renderer failed/)).toBeTruthy();
     expect(requestPreviewSnapshotMock).not.toHaveBeenCalled();
@@ -242,7 +250,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file);
 
     openVersionDownloadMenu(versionDialog);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as PDF' }));
+    fireEvent.click(versionDownloadItem('Export as PDF'));
 
     const toastMessage = await screen.findByText(/Exporting/);
     const toast = toastMessage.closest('.od-toast');
@@ -260,7 +268,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file, currentVersion ? 'current' : undefined);
 
     openVersionDownloadMenu(versionDialog, currentVersion ? 2 : undefined);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: menuItemName }));
+    fireEvent.click(versionDownloadItem(menuItemName));
 
     await waitFor(() => {
       expect(exporter).toHaveBeenCalled();
@@ -287,7 +295,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file);
 
     openVersionDownloadMenu(versionDialog);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as image' }));
+    fireEvent.click(versionDownloadItem('Export as image'));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Versions' })).toBeNull();
@@ -314,7 +322,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file, 'current');
 
     openVersionDownloadMenu(versionDialog, 2);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as image' }));
+    fireEvent.click(versionDownloadItem('Export as image'));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: 'Versions' })).toBeNull();
@@ -328,9 +336,9 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file);
 
     openVersionDownloadMenu(versionDialog);
-    expect(within(versionDialog).queryByRole('menuitem', { name: 'Export as standalone HTML' })).toBeNull();
+    expect(within(versionDownloadMenu()).queryByRole('menuitem', { name: 'Export as standalone HTML' })).toBeNull();
 
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Download as .zip' }));
+    fireEvent.click(versionDownloadItem('Download as .zip'));
 
     await waitFor(() => {
       expect(exportProjectAsZipMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -351,7 +359,7 @@ describe('FileViewer version download actions', () => {
     const versionDialog = await renderVersionDialog(file, 'current');
 
     openVersionDownloadMenu(versionDialog, 2);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Export as standalone HTML' }));
+    fireEvent.click(versionDownloadItem('Export as standalone HTML'));
 
     await waitFor(() => {
       expect(exportProjectAsHtmlMock).toHaveBeenCalledWith(expect.objectContaining({
@@ -363,7 +371,7 @@ describe('FileViewer version download actions', () => {
     expect(exportProjectAsHtmlMock.mock.calls[0]?.[0]).not.toHaveProperty('versionId');
 
     openVersionDownloadMenu(versionDialog, 2);
-    fireEvent.click(within(versionDialog).getByRole('menuitem', { name: 'Download as .zip' }));
+    fireEvent.click(versionDownloadItem('Download as .zip'));
 
     await waitFor(() => {
       expect(exportProjectAsZipMock).toHaveBeenCalledWith(expect.objectContaining({
