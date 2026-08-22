@@ -29,12 +29,6 @@ const App = dynamic(() => import('../../src/App').then((m) => m.App), {
   // Keeps the `od-loading-shell` class on the outer node: the white-screen
   // detector filters this whole subtree out by that class when deciding
   // whether the app really mounted (`src/observability/white-screen.ts`).
-  loading: () => (
-    <div className="od-loading-shell">
-      <MatrixLoader />
-      <span>Loading OpenDesign…</span>
-    </div>
-  ),
 });
 
 export function ClientApp() {
