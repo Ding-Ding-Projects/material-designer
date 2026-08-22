@@ -140,6 +140,7 @@ import {
   writeProjectTextFileDetailed,
 } from '../providers/registry';
 import type { ProjectFilePreview } from '../providers/registry';
+import { studioFixtureArtifactPreviewUrl } from '../capture/studio-fixture';
 import {
   downloadImageDataUrl,
   downloadDesktopScaffold,
@@ -2250,12 +2251,41 @@ export function LiveArtifactViewer({
     };
   }, [projectId, liveArtifact.artifactId, liveArtifact.updatedAt, workspaceContext]);
 
-  const previewUrl = useMemo(
-    () => appendResourceQuery(
+  const previewUrl = useMemo(() => {
+    const fixtureUrl = studioFixtureArtifactPreviewUrl(
+      projectId,
+      liveArtifact.artifactId,
+      reloadKey,
+      {
+        conversationId: liveArtifact.sessionId,
+        runId: liveArtifact.createdByRunId,
+      },
+    );
+    if (fixtureUrl) return fixtureUrl;
+    return appendResourceQuery(
       liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       `v=${reloadKey}`,
-    ),
-    [projectId, liveArtifact.artifactId, reloadKey, workspaceContext],
+    );
+  }, [
+    projectId,
+    liveArtifact.artifactId,
+    liveArtifact.sessionId,
+    liveArtifact.createdByRunId,
+    liveArtifact.createdAt,
+    liveArtifact.updatedAt,
+    liveArtifact.status,
+    liveArtifact.preview?.entry,
+    reloadKey,
+    workspaceContext,
+  ]);
+  const directPreviewUrl = studioFixtureArtifactPreviewUrl(
+    projectId,
+    liveArtifact.artifactId,
+    reloadKey,
+    {
+      conversationId: liveArtifact.sessionId,
+      runId: liveArtifact.createdByRunId,
+    },
   );
   const previewScale = zoom / 100;
 
@@ -2273,7 +2303,15 @@ export function LiveArtifactViewer({
       artifactId: liveArtifact.artifactId,
       projectId,
     });
-  }, [mode, previewUrl, liveArtifact.artifactId, projectId]);
+  }, [
+    mode,
+    previewUrl,
+    liveArtifact.artifactId,
+    liveArtifact.sessionId,
+    liveArtifact.createdByRunId,
+    liveArtifact.updatedAt,
+    projectId,
+  ]);
 
   async function handleRefresh() {
     if (refreshing) return;
@@ -2336,7 +2374,8 @@ export function LiveArtifactViewer({
     setPresentMenuOpen(false);
     if (typeof window === 'undefined') return;
     window.open(
-      liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
+      directPreviewUrl
+        ?? liveArtifactPreviewUrl(projectId, liveArtifact.artifactId, 'rendered', workspaceContext),
       '_blank',
       'noopener,noreferrer',
     );
@@ -2491,7 +2530,7 @@ export function LiveArtifactViewer({
             <span className="viewer-divider" aria-hidden />
             <a
               className="ghost-link"
-              href={liveArtifactPreviewUrl(
+              href={directPreviewUrl ?? liveArtifactPreviewUrl(
                 projectId,
                 liveArtifact.artifactId,
                 'rendered',
@@ -2562,6 +2601,7 @@ export function LiveArtifactViewer({
             <div style={previewScaleShellStyle(previewViewport, previewScale)}>
               <PreviewDrawOverlay>
                 <iframe
+                      key={`live-artifact-preview-${projectId}-${liveArtifact.artifactId}-${liveArtifact.sessionId}-${liveArtifact.createdByRunId}-${liveArtifact.updatedAt}-${reloadKey}`}
                   ref={iframeRef}
                   data-testid="live-artifact-preview-frame"
                   title={liveArtifact.title}

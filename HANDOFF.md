@@ -1,5 +1,16 @@
 ﻿# Handoff
 
+> **Studio lifecycle repair checkpoint — source-only.** This follow-up adds
+> generation-scoped capture leases, stateless reserved-route refusal
+> recognition, delayed fixture request rechecks, token-owned fetch wrapper
+> teardown, ordinary analytics rehydration after capture exit, refused-capture
+> safe defaults for tabs and project caches, lifecycle-partitioned
+> coalesced/project/version state, and complete live-artifact identity memo
+> dependencies. The source-level inventory covers SL1–SL7 and SP1/SP2/SP4–SP7;
+> SP3/SP8 remain intentionally out of scope after refutation. Hosted typecheck,
+> built rendering, installed launch, and parity capture evidence remain
+> unverified.
+
 > [!IMPORTANT]
 > **Library completion repair — source-only, 2026-08-21.** Commit
 > [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
@@ -436,6 +447,55 @@
 > integrated on the default branch by the commit above.
 
 > [!IMPORTANT]
+> **Studio fixture source checkpoint — 2026-08-21.** The desktop foundation owns
+> the raw `material-designer://studio` launch address and translates it to the canonical
+> `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+> renderer handoff is the only renderer activation path and resolves to the
+> ordinary project/conversation/file route through a capture-only provider. The
+> canonical renderer path additionally requires the desktop-owned frozen tuple
+> witness, so an ordinary `od://` page cannot activate the fixture. The
+> provider feeds the existing production `ProjectView`, `ChatPane`,
+> `FileWorkspace`, and `FileViewer` seams with one public-safe fixture
+> revision (`material-designer-m3-v2`), one project, one conversation, a real
+> completed run with tool/progress events, `orders-dashboard.html`, `DESIGN.md`,
+> `data.json`, and one live-artifact preview. The initial active file is
+> explicit; refreshes and later tab/project changes do not implicitly attach or
+> select another file, while explicit switches among the three known fixture
+> files keep the provider bound to the same project and conversation. Only fixture
+> `/api/` requests are intercepted; browser-managed bundled assets stay outside
+> the scripted fetch seam, loopback API origins are accepted, scripted non-API
+> fetches are refused, and external network requests are rejected while the exact fixture
+> is active. The renderer publishes route/provider witnesses for the desktop
+> readiness receipt, direct live-artifact preview navigation uses the fixture
+> transport, refresh returns `{artifact, refresh}`, and normal routes retain the
+> original provider. Fixture config is explicit and analytics/error buffers are
+> disabled for the capture lifetime. The capture provider now requires the
+> desktop-owned per-run identity in addition to the tuple witness; queryless
+> file continuation is refused when that session proof is missing. Boot
+> consumers are explicitly inventoried (including Vela status/refresh, AMR
+> models, complete version metadata and `providers: {}`), finite message/version
+> IDs and exact project/conversation scopes return structured 404/400 responses,
+> capture-owned appearance/language values ignore the user profile, and config
+> and provider writes are suppressed. Direct artifact data previews carry a
+> bounded reload identity and remount key. This is
+> source-only: hosted typecheck, built rendering, and installed capture
+> evidence remain pending; dim-sum photo work remains intentionally deferred.
+
+> **Studio lifecycle follow-up — source-only.** Capture-shaped canonical paths
+> with missing or mismatched tuple/run witnesses now publish an explicit refused /
+> unready state and never fall through to ordinary fetch. A validated per-run
+> session is the only authority for queryless file continuations; leaving it
+> disposes the fixture provider, clears renderer/readiness attributes, restores
+> ordinary config/language/appearance and resumes the ordinary active-context
+> write. Capture-locked setters return before live React, module, DOM, host-scale,
+> analytics, or error-context mutation. Project-tab localStorage and wall-clock
+> timestamps are bypassed in favor of the fixture time and run-scoped request
+> namespace. Direct artifact previews require matching current
+> project/conversation/artifact/run witnesses, so ordinary routes with the same
+> IDs receive no fixture preview. The source changes are committed locally;
+> hosted typecheck, built rendering, installed launch, and parity captures remain
+> unverified.
+>
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

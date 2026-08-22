@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { Button } from '@open-design/components';
 import { useAnalytics } from './analytics/provider';
+import { setAnalyticsCaptureDisabled } from './analytics/client';
 import {
   trackExperienceSurveyDismissed,
   trackExperienceSurveySent,
@@ -184,10 +185,15 @@ import {
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import {
+  applyAppearancePreferencesToDocument,
   applyAppearanceToDocument,
   resolveAppTheme,
   syncAppearanceThemeWithHost,
 } from './state/appearance';
+import {
+  getAppearancePreferences,
+  resetAppearancePreferencesCache,
+} from './components/appearance/store';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -207,6 +213,21 @@ import {
   type AmrAuthRetryContinuation,
 } from './runtime/amr-auth-retry-continuation';
 import { installFontRecovery } from './runtime/font-recovery';
+import {
+  installStudioFixtureFetch,
+  STUDIO_FIXTURE_RENDERER_STATE,
+  STUDIO_FIXTURE_SOURCE,
+  createStudioFixtureSafeConfig,
+  studioFixtureCaptureAppearanceForRoute,
+  studioFixtureCaptureLanguageState,
+  studioFixtureProjectPath,
+  studioFixtureActiveRouteFromCurrentLocation,
+  studioFixtureCaptureRefusedForCurrentLocation,
+  isStudioFixtureCaptureLifecycleCurrent,
+  studioFixtureCaptureLifecycleSnapshot,
+  STUDIO_FIXTURE_LIFECYCLE_EVENT,
+  isStudioFixtureCaptureStorageLocked,
+} from './capture/studio-fixture';
 import {
   bootstrapFirstOpenTeamProjectRoute,
   bootstrapProjectRoute,
@@ -232,13 +253,16 @@ import {
   type WorkspaceProjectListView,
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
+import { evictCoalescedGetPrefix } from './lib/coalesced-get';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import {
   markProjectDisplaySnapshotsDirty,
   patchProjectDisplaySnapshots,
   projectDisplaySnapshotKey,
   readProjectDisplaySnapshot,
+  resetProjectDisplaySnapshots,
   removeProjectFromDisplaySnapshots,
+  setProjectDisplaySnapshotsSuspended,
   writeProjectDisplaySnapshot,
 } from './state/project-display-cache';
 import { getOpenDesignHost, type OpenDesignHostProjectImportSuccess } from '@open-design/host';
@@ -864,6 +888,91 @@ export async function hydrateReadyTeamProject(
 }
 
 export function App() {
+  // Install the capture-only provider before child passive effects begin. The
+  // existing project/conversation/file components then consume the same
+  // provider seams they use in normal operation; no replacement DOM is
+  // rendered, and every non-fixture route keeps the original fetch function.
+  const studioFixtureRoute = studioFixtureActiveRouteFromCurrentLocation();
+  const studioFixtureCaptureActive = studioFixtureRoute !== null;
+  const studioFixtureCaptureRefused = studioFixtureCaptureRefusedForCurrentLocation();
+  const studioFixtureCaptureKey = studioFixtureCaptureActive
+    ? 'studio-fixture'
+    : studioFixtureCaptureRefused
+      ? 'studio-fixture-refused'
+      : null;
+  useLayoutEffect(() => {
+    if (!studioFixtureCaptureKey) return undefined;
+    setProjectDisplaySnapshotsSuspended(true);
+    setAnalyticsCaptureDisabled(true);
+    const disposeFixture = installStudioFixtureFetch(studioFixtureRoute);
+    return () => {
+      disposeFixture();
+      setAnalyticsCaptureDisabled(false);
+      evictCoalescedGetPrefix('studio-fixture:');
+      resetProjectDisplaySnapshots();
+      setProjectDisplaySnapshotsSuspended(false);
+      resetAppearancePreferencesCache();
+      applyAppearancePreferencesToDocument(getAppearancePreferences());
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(STUDIO_FIXTURE_LIFECYCLE_EVENT, {
+          detail: { active: false },
+        }));
+      }
+    };
+    // The key intentionally stays stable while the user switches known
+    // fixture files; re-running here would tear down the project-scoped seam.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioFixtureCaptureKey]);
+  // The desktop capture readiness receipt reads this renderer-owned witness.
+  // It is written only after the exact fixture route was accepted and names
+  // the concrete project path consumed by ProjectView.
+  useLayoutEffect(() => {
+    if (!studioFixtureCaptureKey || typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const rendererPath = studioFixtureRoute ? studioFixtureProjectPath(studioFixtureRoute) : null;
+    const language = studioFixtureRoute
+      ? studioFixtureCaptureLanguageState(studioFixtureRoute)
+      : null;
+    const appearance = studioFixtureRoute
+      ? studioFixtureCaptureAppearanceForRoute(studioFixtureRoute)
+      : null;
+    root.dataset.odCaptureState = studioFixtureRoute ? 'ready' : 'refused';
+    if (rendererPath && language && appearance && studioFixtureRoute) {
+      root.dataset.odRendererRoutePath = rendererPath;
+      root.dataset.odRendererRouteState = STUDIO_FIXTURE_RENDERER_STATE;
+      root.dataset.odFixtureSource = STUDIO_FIXTURE_SOURCE;
+      root.dataset.odFixtureRevision = studioFixtureRoute.fixtureRevision;
+      root.dataset.odCaptureLanguageMode = language.languageMode;
+      root.dataset.odCaptureFunnyEnglish = String(language.funnyLevels.en);
+      root.dataset.odCaptureFunnyCantonese = String(language.funnyLevels['zh-HK']);
+      root.dataset.odCaptureSeed = appearance.seed;
+      root.dataset.odCaptureDensity = appearance.density;
+      root.dataset.odCaptureUiScale = String(appearance.uiScale);
+      root.dataset.odCaptureFontStack = appearance.typography.fontStackId;
+      applyAppearancePreferencesToDocument(appearance, { allowCapture: true });
+    }
+    return () => {
+      if (root.dataset.odCaptureState === (studioFixtureRoute ? 'ready' : 'refused')) {
+        delete root.dataset.odCaptureState;
+        delete root.dataset.odRendererRoutePath;
+        delete root.dataset.odRendererRouteState;
+        delete root.dataset.odFixtureSource;
+        delete root.dataset.odFixtureRevision;
+        delete root.dataset.odCaptureLanguageMode;
+        delete root.dataset.odCaptureFunnyEnglish;
+        delete root.dataset.odCaptureFunnyCantonese;
+        delete root.dataset.odCaptureSeed;
+        delete root.dataset.odCaptureDensity;
+        delete root.dataset.odCaptureUiScale;
+        delete root.dataset.odCaptureFontStack;
+      }
+      resetAppearancePreferencesCache();
+      applyAppearancePreferencesToDocument(getAppearancePreferences());
+    };
+    // The key intentionally stays stable while the user switches known
+    // fixture files; the initial canonical witness remains authoritative.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioFixtureCaptureKey]);
   // `reducedMotion="user"` makes every motion/react component honor the OS
   // `prefers-reduced-motion` setting: transform/layout animations are zeroed
   // out while opacity-only changes are kept. The CSS `@media (prefers-reduced-
@@ -903,6 +1012,11 @@ function AppInner() {
       : ['workspace-account', workspaceAccountGeneration, currentWorkspaceIdentity],
   );
   const workspaceBilling = useWorkspaceBilling();
+  const route = useRoute();
+  const currentStudioFixtureRoute = studioFixtureActiveRouteFromCurrentLocation();
+  const studioFixtureCaptureActive = currentStudioFixtureRoute !== null;
+  const studioFixtureCaptureStorageLocked = isStudioFixtureCaptureStorageLocked();
+  const studioFixtureCaptureRouteKey = currentStudioFixtureRoute?.cacheKey ?? null;
   const workspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
   const workspaceContextStateRef = useRef(workspaceContextState);
   const projectRouteWorkspaceContextRef = useRef<WorkspaceCollabContext | null>(null);
@@ -937,6 +1051,44 @@ function AppInner() {
   // Icon fonts whose startup fetch lost a race stay tofu forever without
   // this — see runtime/font-recovery.ts.
   useEffect(() => installFontRecovery(), []);
+  useEffect(() => {
+    if (!studioFixtureCaptureActive || typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const acceptedRoute = studioFixtureActiveRouteFromCurrentLocation();
+    const expectedPath = acceptedRoute ? studioFixtureProjectPath(acceptedRoute) : null;
+    let settled = false;
+    let timeout: number | null = null;
+    let observer: MutationObserver;
+    const markSettled = () => {
+      if (settled || expectedPath === null) return;
+      const studio = document.querySelector('[data-testid="entry-view-studio"][data-active="true"]');
+      if (!studio) return;
+      settled = true;
+      root.dataset.odCaptureSettled = '1';
+      root.dataset.odCaptureSettledRoute = expectedPath;
+      root.dataset.odCaptureSettledRevision = 'capture-settled-v1';
+      observer.disconnect();
+      if (timeout !== null) window.clearTimeout(timeout);
+    };
+    observer = new MutationObserver(markSettled);
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-active'],
+    });
+    markSettled();
+    timeout = window.setTimeout(() => observer.disconnect(), 10_000);
+    return () => {
+      observer.disconnect();
+      if (timeout !== null) window.clearTimeout(timeout);
+      if (root.dataset.odCaptureSettledRoute === expectedPath) {
+        delete root.dataset.odCaptureSettled;
+        delete root.dataset.odCaptureSettledRoute;
+        delete root.dataset.odCaptureSettledRevision;
+      }
+    };
+  }, [studioFixtureCaptureActive, studioFixtureCaptureRouteKey]);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -957,12 +1109,40 @@ function AppInner() {
       root.classList.remove('is-window-blurred');
     };
   }, [clientType, hostPlatform]);
-  const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+  const [config, setConfigState] = useState<AppConfig>(() => {
+    return studioFixtureActiveRouteFromCurrentLocation()
+      ? createStudioFixtureSafeConfig()
+      : loadConfig();
+  });
+  const setConfig = useCallback<
+    (next: AppConfig | ((current: AppConfig) => AppConfig)) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
+      setConfigState(next);
+    },
+    [],
+  );
   const configRef = useRef(config);
   configRef.current = config;
   const appMountWitnessRef = useRef(false);
   const latestPersistedConfigRef = useRef(config);
   latestPersistedConfigRef.current = config;
+  const previousStudioFixtureCaptureActiveRef = useRef(studioFixtureCaptureActive);
+  useEffect(() => {
+    const wasActive = previousStudioFixtureCaptureActiveRef.current;
+    previousStudioFixtureCaptureActiveRef.current = studioFixtureCaptureActive;
+    if (!wasActive || studioFixtureCaptureActive) return;
+    const restored = loadConfig();
+    latestPersistedConfigRef.current = restored;
+    setConfigState(restored);
+    void fetchDaemonConfig().then((daemonConfig) => {
+      if (studioFixtureActiveRouteFromCurrentLocation()) return;
+      const next = daemonConfig
+        ? mergeDaemonConfig(restored, daemonConfig)
+        : restored;
+      latestPersistedConfigRef.current = next;
+      setConfigState(next);
+    });
+  }, [studioFixtureCaptureActive]);
   const settingsDraftConfigRef = useRef<AppConfig | null>(null);
   const completionFeedbackGestureConsumedRef = useRef(false);
   useEffect(() => {
@@ -1342,14 +1522,13 @@ function AppInner() {
   // mistake for "no key saved" — and to disable Save/Clear so a misclick
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
-  const route = useRoute();
   // Capture readiness consumes this renderer-owned witness rather than the
   // desktop prelude's requested tuple markers. The route path/state come from
-  // the actual web router, while the fixture source records whether ordinary
-  // daemon-backed data is in use. The capture provider is intentionally not
-  // implemented yet, so parity remains unready until that source is explicit.
+  // the actual web router. Studio owns a more specific fixture witness, while
+  // the remaining routes record whether ordinary daemon-backed data is in use.
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
+    if (studioFixtureCaptureStorageLocked) return undefined;
     const root = document.documentElement;
     const rendererState = route.kind === 'home' ? route.view : route.kind;
     root.setAttribute('data-od-renderer-route-path', buildPath(route));
@@ -1362,7 +1541,7 @@ function AppInner() {
       root.removeAttribute('data-od-fixture-source');
       root.removeAttribute('data-od-fixture-revision');
     };
-  }, [daemonLive, route]);
+  }, [daemonLive, route, studioFixtureCaptureStorageLocked]);
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
@@ -1421,7 +1600,9 @@ function AppInner() {
   if (projectDisplayKeyRef.current !== currentProjectDisplayKey) {
     const leftAResolvedWorkspace =
       projectListScopeRef.current !== UNRESOLVED_PROJECT_LIST_SCOPE;
-    const snapshot = readProjectDisplaySnapshot(currentProjectDisplayKey);
+    const snapshot = studioFixtureCaptureStorageLocked
+      ? null
+      : readProjectDisplaySnapshot(currentProjectDisplayKey);
     // A create/import is immediately projected into `projects`, but opening
     // that project changes the list projection from Home's `recent` to `all`.
     // An older exact-scope `all` snapshot must not erase the pending local row:
@@ -1441,7 +1622,10 @@ function AppInner() {
           ));
     projectListScopeRef.current = currentProjectListScope;
     projectDisplayKeyRef.current = currentProjectDisplayKey;
-    if (snapshot) {
+    if (studioFixtureCaptureStorageLocked) {
+      setProjects([]);
+      setProjectsLoading(true);
+    } else if (snapshot) {
       const snapshotIds = new Set(snapshot.projects.map((project) => project.id));
       const preserved = pendingProjects.filter((project) => !snapshotIds.has(project.id));
       setProjects(preserved.length > 0 ? [...preserved, ...snapshot.projects] : snapshot.projects);
@@ -1936,11 +2120,12 @@ function AppInner() {
   // useLayoutEffect (vs useEffect) fires before the browser paints, so no
   // 1-frame flash. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
+    if (studioFixtureCaptureStorageLocked) return;
     applyAppearanceToDocument({
       theme: config.theme,
       accentColor: config.accentColor,
     });
-  }, [config.theme, config.accentColor]);
+  }, [config.theme, config.accentColor, studioFixtureCaptureStorageLocked]);
 
   // The desktop runtime's reveal witness is deliberately later than the DOM
   // paint: the optional native shell must acknowledge the resolved theme
@@ -1953,6 +2138,16 @@ function AppInner() {
     if (appMountWitnessRef.current || typeof document === 'undefined') return undefined;
     let active = true;
     const root = document.documentElement;
+    const deterministicCaptureActive =
+      typeof (globalThis as { __MATERIAL_DESIGNER_CAPTURE_RUN_ID__?: unknown })
+        .__MATERIAL_DESIGNER_CAPTURE_RUN_ID__ === 'string';
+    if (deterministicCaptureActive) {
+      appMountWitnessRef.current = true;
+      root.removeAttribute('data-od-app-mount-failure');
+      root.setAttribute('data-od-app-mounted', '1');
+      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
+      return undefined;
+    }
     void syncAppearanceThemeWithHost(resolveAppTheme(config.theme)).then((result) => {
       if (!active) return;
       if (!result.ok) {
@@ -1969,7 +2164,7 @@ function AppInner() {
     return () => {
       active = false;
     };
-  }, [config.theme]);
+  }, [config.theme, studioFixtureCaptureStorageLocked]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
@@ -2003,6 +2198,7 @@ function AppInner() {
     config.privacyDecisionAt == null &&
     config.onboardingCompleted === true;
   useEffect(() => {
+    if (studioFixtureCaptureActive) return;
     const body = activeProjectId
       ? { projectId: activeProjectId, fileName: activeFileName }
       : { active: false };
@@ -2013,7 +2209,7 @@ function AppInner() {
     }).catch(() => {
       // Daemon down or transient network — not worth surfacing.
     });
-  }, [activeProjectId, activeFileName]);
+  }, [activeProjectId, activeFileName, studioFixtureCaptureActive]);
 
   useEffect(() => {
     if (!daemonLive) return;
@@ -2151,10 +2347,13 @@ function AppInner() {
   // must react to those changes belongs in its own effect.
   useEffect(() => {
     let cancelled = false;
+    const bootLifecycle = studioFixtureCaptureLifecycleSnapshot();
+    const bootStillCurrent = () => !cancelled
+      && isStudioFixtureCaptureLifecycleCurrent(bootLifecycle);
     let effectAgentStreamAbort: AbortController | null = null;
     (async () => {
       const alive = await daemonIsLive();
-      if (cancelled) return;
+      if (!bootStillCurrent()) return;
       setDaemonLive(alive);
       if (!alive) {
         // No daemon — clear every loading flag so empty states render
@@ -2178,7 +2377,7 @@ function AppInner() {
       void fetchAgentsStream({
         signal: effectAgentStreamAbort?.signal,
         onAgent: (agent) => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgents((current) =>
             mergeAmrModelsIntoAgents(
               upsertAgent(current, agent),
@@ -2188,7 +2387,7 @@ function AppInner() {
         },
       })
         .then((list) => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgents(
             mergeAmrModelsIntoAgents(
               orderAgentsByRegistry(list),
@@ -2198,7 +2397,7 @@ function AppInner() {
         })
         .catch((err) => {
           if (
-            cancelled ||
+             !bootStillCurrent() ||
             isAbortError(err) ||
             !isCurrentAgentStreamRequest(agentRequestId)
           ) {
@@ -2207,7 +2406,7 @@ function AppInner() {
           setAgents([]);
         })
         .finally(() => {
-          if (cancelled || !isCurrentAgentStreamRequest(agentRequestId)) return;
+           if (!bootStillCurrent() || !isCurrentAgentStreamRequest(agentRequestId)) return;
           setAgentsLoading(false);
         });
 
@@ -2224,7 +2423,7 @@ function AppInner() {
       // spend a second `/api/skills` request per launch, and the first one
       // would be the headerless (fail-closed) answer.
       void fetchDesignTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setDesignTemplates(list);
         markSkillRegistryReady('templates');
       });
@@ -2248,8 +2447,8 @@ function AppInner() {
           designSystemsRequestGeneration,
         );
         void fetchDesignSystems(designSystemsContext).then((list) => {
-          if (
-            cancelled ||
+           if (
+             !bootStillCurrent() ||
             workspaceContextStateRef.current.identityChangePending ||
             designSystemsRequestGenerationRef.current.get(designSystemsCatalogIdentity)
               !== designSystemsRequestGeneration ||
@@ -2269,24 +2468,24 @@ function AppInner() {
       void listCurrentWorkspaceProjects({
         workspaceView: workspaceProjectViewRef.current,
       }).then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         reconcileFetchedProjects(list, request);
         setProjectsLoading(false);
       });
 
       void listTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setTemplates(list);
       });
 
       void fetchPromptTemplates().then((list) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setPromptTemplates(list);
         setPromptTemplatesLoading(false);
       });
 
       void fetchAppVersionInfo().then((info) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         setAppVersionInfo(info);
       });
 
@@ -2303,7 +2502,7 @@ function AppInner() {
         daemonComposioConfig,
         daemonMediaProvidersResult,
       ]) => {
-        if (cancelled) return;
+         if (!bootStillCurrent()) return;
         const daemonMediaProvidersLoaded =
           daemonMediaProvidersResult.status === 'ok'
             ? daemonMediaProvidersResult.providers
@@ -2343,7 +2542,7 @@ function AppInner() {
         // migration settles so an older key cannot race a user replacement.
         if (hasLocalComposioKey) {
           const migrated = await syncComposioConfigToDaemon(next.composio);
-          if (cancelled) return;
+         if (!bootStillCurrent()) return;
           // Only remove the legacy plaintext after the daemon confirms it was
           // stored. A failed migration deliberately leaves the existing local
           // draft intact so the user can retry Save instead of losing the only
@@ -2352,6 +2551,7 @@ function AppInner() {
             next.composio = normalizeSavedComposioConfig(next.composio);
           }
         }
+        if (!bootStillCurrent()) return;
         saveConfig(next);
         if (
           daemonMediaProvidersResult.status === 'ok'
@@ -2365,8 +2565,10 @@ function AppInner() {
         // Migrate localStorage prefs to daemon on first boot with the new
         // endpoint. If daemon already had values the merge above used them;
         // writing back is idempotent and keeps both sides in sync.
+        if (!bootStillCurrent()) return;
         void syncConfigToDaemon(next);
         latestPersistedConfigRef.current = next;
+        if (!bootStillCurrent()) return;
         setConfig(next);
 
         // Route first-run users through the global onboarding panel.
@@ -2758,9 +2960,11 @@ function AppInner() {
     createSilentUpdatePreferenceWriter<AppConfig>({
       readBase: () => latestPersistedConfigRef.current,
       writeDaemon: async (next) => {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         await syncConfigToDaemon(next, { throwOnError: true });
       },
       commit: (allowSilentUpdates) => {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         const next: AppConfig = {
           ...latestPersistedConfigRef.current,
           allowSilentUpdates,
@@ -2790,6 +2994,7 @@ function AppInner() {
     next: AppConfig,
     options?: { forceMediaProviderSync?: boolean },
   ) => {
+    if (isStudioFixtureCaptureStorageLocked()) return;
     // Strip the in-flight Composio secret before anything hits disk so
     // a half-typed key can't survive in localStorage. If the dialog is
     // closing, preserve any onboarding completion that the close gesture
@@ -2834,10 +3039,12 @@ function AppInner() {
   }, [daemonMediaProviders, daemonMediaProvidersFetchState]);
 
   const handleSettingsDraftChange = useCallback((draft: AppConfig) => {
+    if (isStudioFixtureCaptureStorageLocked()) return;
     settingsDraftConfigRef.current = draft;
   }, []);
 
   const handlePrivacyConsentChoice = useCallback((share: boolean) => {
+    if (isStudioFixtureCaptureStorageLocked()) return;
     const base = settingsDraftConfigRef.current ?? latestPersistedConfigRef.current;
     const installationId = share
       ? base.installationId ?? generateInstallationIdSafe()
@@ -2863,6 +3070,7 @@ function AppInner() {
    */
   const handleConfigPersistComposioKey = useCallback(
     async (composio: AppConfig['composio']) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = await persistComposioConfigChange(
         latestPersistedConfigRef.current,
         composio,
@@ -2876,6 +3084,7 @@ function AppInner() {
 
   const handleModeChange = useCallback(
     (mode: AppConfig['mode']) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = { ...latestPersistedConfigRef.current, mode };
       latestPersistedConfigRef.current = next;
       saveConfig(next);
@@ -2886,6 +3095,7 @@ function AppInner() {
 
   const handleAgentChange = useCallback(
     (agentId: string) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = { ...latestPersistedConfigRef.current, agentId };
       latestPersistedConfigRef.current = next;
       saveConfig(next);
@@ -2897,6 +3107,7 @@ function AppInner() {
 
   const handleAgentModelChange = useCallback(
     (agentId: string, choice: { model?: string; reasoning?: string; serviceTier?: string }) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const current = latestPersistedConfigRef.current;
       const prev = current.agentModels?.[agentId] ?? {};
       const merged = mergeAgentModelChoice(prev, choice);
@@ -2919,6 +3130,7 @@ function AppInner() {
   // user had previously configured for the target protocol.
   const handleApiProtocolChange = useCallback(
     (protocol: ApiProtocol) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = switchApiProtocolConfig(
         latestPersistedConfigRef.current,
         protocol,
@@ -2936,6 +3148,7 @@ function AppInner() {
   // mid-session without retyping their key.
   const handleApiModelChange = useCallback(
     (model: string) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = updateCurrentApiProtocolConfig(
         latestPersistedConfigRef.current,
         { model },
@@ -2950,6 +3163,7 @@ function AppInner() {
 
   const handleChangeDefaultDesignSystem = useCallback(
     (designSystemId: string | null) => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       const next = {
         ...latestPersistedConfigRef.current,
         designSystemId,
@@ -2964,6 +3178,7 @@ function AppInner() {
 
   const refreshAgents = useCallback(
     async (options?: { throwOnError?: boolean; agentCliEnv?: AppConfig['agentCliEnv'] }) => {
+      if (isStudioFixtureCaptureStorageLocked()) return [];
       if (options && Object.prototype.hasOwnProperty.call(options, 'agentCliEnv')) {
         const current = latestPersistedConfigRef.current;
         const nextConfig = clearStaleAmrModelChoiceOnProfileChange(current, {
@@ -2976,6 +3191,7 @@ function AppInner() {
         setConfig(nextConfig);
         await syncConfigToDaemon(nextConfig);
       }
+      if (isStudioFixtureCaptureStorageLocked()) return [];
       const agentRequestId = beginAgentStreamRequest();
       setAgentsLoading(true);
       try {
@@ -2992,6 +3208,7 @@ function AppInner() {
           },
         });
         const ordered = orderAgentsByRegistry(next);
+        if (isStudioFixtureCaptureStorageLocked()) return [];
         if (isCurrentAgentStreamRequest(agentRequestId)) {
           setAgents(mergeAmrModelsIntoAgents(ordered, amrModelsRef.current));
           setAgentsLoading(false);
@@ -3033,7 +3250,9 @@ function AppInner() {
 
   useEffect(() => {
     const handleAppConfigChanged = () => {
+      if (isStudioFixtureCaptureStorageLocked()) return;
       void fetchDaemonConfig().then((daemonConfig) => {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         const previous = latestPersistedConfigRef.current;
         const next = clearStaleAmrModelChoiceOnProfileChange(
           previous,
@@ -3323,6 +3542,7 @@ function AppInner() {
         // pre-filling the composer. Scoped to sessionStorage so a page
         // reload after the run has started does not refire.
         if (
+          !isStudioFixtureCaptureStorageLocked() &&
           !workingDirHandoffFailed &&
           input.autoSendFirstMessage &&
           (derivedPendingPrompt !== undefined || firstMessageAttachments.length > 0)
@@ -3501,6 +3721,7 @@ function AppInner() {
         sourceWorkspaceContext,
       );
       try {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         window.sessionStorage.setItem(`od:auto-send-first:${result.project.id}`, '1');
         const pendingPrompt = input.pendingPrompt ?? result.project.pendingPrompt;
         if (pendingPrompt !== undefined) {
@@ -3570,6 +3791,7 @@ function AppInner() {
       );
       if (!outcome.ok) return outcome;
       try {
+        if (isStudioFixtureCaptureStorageLocked()) return;
         window.sessionStorage.setItem(
           `od:auto-send-first:${outcome.project.id}`,
           '1',
@@ -4862,6 +5084,7 @@ function AppInner() {
   }, []);
 
   const handleCompleteOnboarding = useCallback(() => {
+    if (isStudioFixtureCaptureStorageLocked()) return;
     const current = latestPersistedConfigRef.current;
     if (current.onboardingCompleted) return;
     const next: AppConfig = { ...current, onboardingCompleted: true };
@@ -5036,6 +5259,10 @@ function AppInner() {
   );
 
   const handleCloseSettings = () => {
+    if (isStudioFixtureCaptureStorageLocked()) {
+      setSettingsOpen(false);
+      return;
+    }
     // Closing Settings is still the canonical "I'm done" gesture now that
     // there is no global Save button. The same close path is shared by the
     // legacy modal and the full-page route. We mark onboardingCompleted on

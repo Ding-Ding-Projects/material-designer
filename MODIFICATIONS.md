@@ -82,6 +82,31 @@ archive or conversation handoff. The source registry is intentionally explicit:
 18 Material Design 3 token mappings and 12 component owners, two independent
 regex fields, keyboard/range selection, faithful exports and a negative contract
 guard. Runtime parity and installed captures remain unverified.
+### 2026-08-21 — Add a real deterministic Studio capture fixture
+
+**Reason:** The checked-in parity inventory names a Studio screen, but the
+production application had no safe way to resolve its deterministic
+`material-designer://studio` address. This source-only lane adds a strict,
+public-safe fixture provider that feeds the existing project, conversation,
+message, run, project-file, tab, and live-artifact API seams. The desktop owns
+the launch envelope and the renderer accepts only the canonical `od://`
+project/conversation/file route, so the existing `ProjectView`, `ChatPane`,
+`FileWorkspace`, and `FileViewer` components render the state. The fixture
+provider is active only for the exact frozen tuple and the desktop-owned
+capture witness, intercepts only declared fixture `/api/` requests, leaves
+same-origin bundled assets on the normal fetch path, accepts validated loopback
+API origins, blocks external network requests, and keeps the declared file
+selection one-shot while binding the provider to the fixture project and
+conversation across known file switches. It publishes route/provider witnesses
+for the desktop readiness receipt, supplies a direct-loadable live-artifact
+preview, and disables analytics/error buffers for the capture lifetime.
+The follow-up hardens that boundary with a per-run capture identity, finite
+message/version IDs, exact project/conversation and live-artifact scopes,
+explicit Vela/AMR/version/media boot consumers, capture-owned appearance and
+language values, suppressed config/provider writes, bounded text preview, and a
+reload-keyed direct artifact preview. Ordinary routes retain their existing
+provider and selection behavior. Hosted
+typecheck, built rendering, and installed capture evidence remain pending.
 
 **Changed files:**
 
@@ -527,6 +552,75 @@ no installed build or runtime geometry has been verified here.
 - `apps/web/src/styles/viewer/tools.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/tests/components/FileViewer.menu-contract.test.ts`
+- `apps/web/app/layout.tsx`
+- `apps/web/src/analytics/client.ts`
+- `apps/web/src/analytics/error-tracking.ts`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/appearance/store.ts`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/router.ts`
+- `apps/web/src/state/config.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
+
+### 2026-08-21 — Close the Studio capture lifecycle and stale-state seams
+
+**Reason:** The first fixture route correctly bound the happy path, but a malformed
+canonical address could still fall through to ordinary fetch, a queryless continuation
+could outlive the accepted route, and ordinary tab/configuration/appearance state could
+win over the deterministic tuple. This follow-up makes invalid capture-shaped addresses
+terminal and unready, keeps the validated per-run session as the only continuation
+authority, restores ordinary state on exit, ignores ordinary tab cache and wall-clock
+timestamps during capture, and requires the current project/conversation/run witness for
+direct artifact previews. Analytics and error-tracking generations now discard stale
+async completions before initialization, registration, or context transport. Ordinary
+routes keep their prior persistence, fetch, header, and appearance behavior. Hosted
+typecheck, built rendering, and installed capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/analytics/client.ts`
+- `apps/web/src/analytics/error-tracking.ts`
+- `apps/web/src/analytics/provider.tsx`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/appearance/store.ts`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/src/router.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
+
+### 2026-08-21 — Fence Studio lifecycle leases and cache partitions
+
+**Reason:** Refused and accepted capture lifecycles shared too much mutable module
+state with ordinary rendering. This repair adds a generation-scoped lifecycle lease,
+stateless refusal recognition for reserved `od://` near-misses, post-await request
+lease checks, a token-owned fetch wrapper multiplexer, ordinary analytics rehydration,
+run/refusal-scoped tab and project caches, lifecycle-scoped app-version loading, and
+complete artifact preview identity dependencies. Capture teardown now rehydrates the
+ordinary appearance and project display caches. Source-level checks and deliberate
+negative-boundary cases are recorded, while hosted typecheck, built rendering, and
+installed capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/analytics/identity.ts`
+- `apps/web/src/analytics/onboarding-session.ts`
+- `apps/web/src/analytics/provider.tsx`
+- `apps/web/src/capture/fetch-wrapper-stack.ts`
+- `apps/web/src/capture/studio-fixture.ts`
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/appearance/presets.ts`
+- `apps/web/src/lib/coalesced-get.ts`
+- `apps/web/src/state/project-display-cache.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 

@@ -1,5 +1,6 @@
 import { getOpenDesignHost, hasAcknowledgedAppearanceThemeBridge } from '@open-design/host';
 import type { OpenDesignHostActionResult } from '@open-design/host';
+import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 import type { AppTheme } from '../types';
 
@@ -167,10 +168,13 @@ export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<Appearance
 export function applyAppearanceToDocument({
   theme,
   accentColor,
+  allowCapture = false,
 }: {
   theme?: AppTheme;
   accentColor?: string;
+  allowCapture?: boolean;
 }): void {
+  if (!allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
   const resolvedTheme = resolveAppTheme(theme);
   if (resolvedTheme === 'light' || resolvedTheme === 'dark') {
@@ -654,7 +658,11 @@ function requestHostUiScale(factor: number): boolean {
  * as the default source of `--od-css-zoom` rather than declaring and
  * ignoring.
  */
-export function applyAppearancePreferencesToDocument(prefs: AppearancePreferences): void {
+export function applyAppearancePreferencesToDocument(
+  prefs: AppearancePreferences,
+  options?: { allowCapture?: boolean },
+): void {
+  if (!options?.allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
   const normalized = normalizeAppearancePreferences(prefs);
 

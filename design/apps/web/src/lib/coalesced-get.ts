@@ -85,6 +85,13 @@ export function evictCoalescedGet(key: string): void {
   entries.delete(key);
 }
 
+/** Remove all lifecycle-partitioned entries without touching ordinary reads. */
+export function evictCoalescedGetPrefix(prefix: string): void {
+  for (const key of entries.keys()) {
+    if (key.startsWith(prefix)) entries.delete(key);
+  }
+}
+
 // Last time `forceCoalescedGet` actually evicted+refetched a given key, keyed
 // the same way as `entries`. See `forceCoalescedGet` for why this exists.
 const forcedAt = new Map<string, number>();

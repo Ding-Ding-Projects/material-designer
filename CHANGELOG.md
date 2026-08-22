@@ -682,6 +682,125 @@ version section when a release carries them.
   斬到一半。呢度係 source-level evidence，未有 installed build 或 runtime
   geometry claim。Integrated commit `a5742e28d` 令 portalled regex builder 入面
   嘅 click 唔會誤收自己個 menu，普通撳出面照樣收。
+- **Studio capture lifecycle leases now fence every delayed state boundary.**
+  Reserved fixture-shaped `od://` near-misses refuse before ordinary routing or
+  live fetch, delayed fixture bodies recheck the run/generation/route lease,
+  and token-owned fetch wrappers restore the exact ordinary predecessor in any
+  teardown order. Capture exit rehydrates ordinary analytics consent, client,
+  headers, identity, and exception context even when locale and version are
+  unchanged. Refused capture reads use safe defaults; tab, project-display,
+  coalesced, and runtime-version caches are lifecycle-partitioned; and live
+  artifact preview keys include complete identity. Hosted typecheck, built
+  rendering, installed launch, and visual parity evidence remain pending.
+  Source commit: [`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8).
+
+  Studio capture lifecycle lease 而家會睇實每個 delayed state boundary：fixture
+  形狀嘅 `od://` near-miss 會喺 ordinary route/fetch 前拒絕，遲到嘅 fixture
+  request 會再驗 run/generation/route，token-owned fetch wrapper 無論邊個先
+  teardown 都還原返原本 predecessor。Capture 離場就算 locale/version 無變，
+  都會 rehydrate ordinary analytics consent、client、headers、identity 同
+  exception context；refused capture 只讀安全預設，tab/project/version cache
+  分 lifecycle，artifact preview key 亦齊 identity。Hosted typecheck、built
+  rendering、installed launch 同 visual parity evidence 仲未驗證。
+  Source commit：[`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8)。
+
+- **Studio capture lifecycle now fails closed and restores ordinary state.**
+  Canonical-path near misses publish an explicit refused/unready state and never
+  forward scripted fetches to the ordinary network path. A validated per-run
+  session owns queryless file continuation; leaving it disposes the fixture,
+  clears readiness markers, restores ordinary configuration/language/appearance,
+  and resumes the active-context write. Capture-locked setters stop before live
+  React, module, DOM, host-scale, analytics, or error-context mutation. Project
+  tab persistence uses the frozen fixture timestamp and run-scoped request key,
+  while direct artifact previews require the current project/conversation,
+  artifact, and creating-run witness. Hosted typecheck, built rendering,
+  installed launch, and visual parity evidence remain pending.
+  Source commit: [`d50712f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50712f90973214946829b9335c1e06e8f2fc4a4).
+
+  Studio capture lifecycle 而家 fail closed 同埋識得還原普通狀態：canonical path
+  撞到 near miss 就直接話 refused/unready，scripted fetch 唔會偷雞走普通
+  network。Valid per-run session 自己管 queryless file continuation；離開之後
+  fixture dispose、readiness marker 清走、普通 config/language/appearance
+  還原，active context write 再開返。Capture lock 期間，React、module、DOM、
+  host scale、analytics 同 error context 都未郁先收手。Project tabs 用 frozen
+  fixture time 同 run-scoped key，artifact preview 要齊 project/conversation/
+  artifact/creating-run witness。Hosted typecheck、built rendering、installed
+  launch 同 visual parity evidence 仲未驗證。Source commit：[`d50712f90`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50712f90973214946829b9335c1e06e8f2fc4a4)。
+
+- **Malformed capture paths stay outside ordinary route resolution.** The router
+  now keeps a refused canonical capture address from being interpreted as a
+  regular project URL, while valid fixture sessions still resolve through the
+  production project route. Source commit: [`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc55089b7c91ee078af8957b609891b35fab).
+
+  Malformed capture path 而家唔會再扮普通 project URL；router 會留住 refused
+  狀態，valid fixture session 就照樣落返 production project route。Source
+  commit：[`df38dc550`](https://github.com/Ding-Ding-Projects/material-designer/commit/df38dc55089b7c91ee078af8957b609891b35fab)。
+
+- **Capture teardown no longer resurrects an old analytics fetch wrapper.**
+  Analytics cleanup now restores `window.fetch` only while the wrapper still
+  owns it; a single-shot request header follows the same ownership rule. This
+  keeps ordinary navigation from inheriting a stale capture hook.
+  Source commit: [`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60d10e70be86dc356dac86f4f3462e0da).
+
+  Capture teardown 而家唔會復活舊 analytics fetch wrapper：只有 wrapper 仲擁有
+  `window.fetch` 先會 restore，single-shot request header 都用同一條規矩，
+  普通 navigation 唔會食返 capture 嘅舊 hook。Source commit：[`b9317ef60`](https://github.com/Ding-Ding-Projects/material-designer/commit/b9317ef60d10e70be86dc356dac86f4f3462e0da)。
+
+- **Studio capture isolation now fails closed at the per-run boundary.** The
+  fixture requires the desktop-owned capture identity as well as the tuple
+  witness, keeps queryless file continuation inside that accepted session,
+  inventories Vela status/refresh and AMR boot consumers, returns complete
+  version metadata and `providers: {}`, and suppresses config, active-context
+  and provider writes during capture. Run/message/version/live-artifact scopes
+  are finite and structured 404/400 responses reject foreign or malformed
+  values. Text previews are bounded, and direct live-artifact data previews
+  carry the reload identity so a refresh remounts the exact fixture bytes.
+  Source commit: [`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26).
+
+  Studio capture isolation 而家喺每次 run 個 boundary fail closed：要有
+  desktop-owned capture identity 加 tuple witness，換 file 仍然只留喺同一個
+  accepted session。Vela status/refresh 同 AMR boot calls 有清楚 manifest，version
+  metadata 齊晒，`providers: {}` 亦唔會扮成 array。Capture 期間 config、active
+  context 同 provider writes 全部收聲；foreign/malformed IDs 同 scope 返
+  structured 404/400。Text preview 有界，live-artifact data preview 帶埋
+  reload identity，refresh 唔會食舊 bytes。Source commit：[`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26)。
+
+- **The Studio parity route now drives the real project workspace components.**
+  The desktop foundation owns the frozen `material-designer://studio` launch
+  address and translates it to the canonical
+  `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+  renderer handoff. The renderer accepts only that canonical path, exact tuple
+  query, and desktop-owned tuple witness. It resolves to the ordinary
+  project/conversation/file route and keeps the initial file choice explicit;
+  later file refreshes and tab/project changes do not auto-select an unrelated
+  file, while explicit switches among the three known files keep the provider
+  bound to the same project and conversation. Capture mode synthesizes only
+  declared fixture `/api/` responses, leaves same-origin bundled assets on the
+  normal fetch path, validates loopback API origins separately, and rejects
+  external network requests. The fixture config contains no local credentials,
+  account state, customization, or telemetry consent; analytics and direct
+  error buffers are disabled for the capture lifetime. The live-artifact iframe
+  uses a direct-loadable fixture transport, and refresh returns the exact
+  `{artifact, refresh}` consumer envelope. Unknown paths return 404 and wrong
+  methods return 405. This is source-level route readiness only; hosted
+  typecheck, built rendering, and installed capture evidence remain pending.
+  Source commit: [`59c5faca5`](https://github.com/Ding-Ding-Projects/material-designer/commit/59c5faca5a7cbea9f31f650a1f0694ba9bee9d97).
+
+  Studio parity route 而家真係行 production workspace components，唔係另起一
+  個假畫面。Desktop foundation 收住 frozen `material-designer://studio` launch
+  address，再轉做 canonical `od://app/.../files/orders-dashboard.html`
+  renderer handoff。Renderer 只接受 exact path、tuple query 同 desktop-owned
+  tuple witness。佢會落返普通 project/conversation/file route，初次指定 file
+  先會揀；之後 refresh、換 tab、換 project 都唔會亂自動揀第二個 file，明確
+  換三個已知 files 就繼續綁住同一個 project 同 conversation。Capture mode
+  只 synthesize 宣布過嘅 fixture `/api/`，bundled asset 照走原本 fetch，
+  loopback API 分開 validation，外部 network 一律拒絕。Fixture config 冇
+  local credential、account state、customization 或 telemetry consent，analytics
+  同 direct error buffer 會喺 capture lifetime 停低；live-artifact iframe 有
+  direct-loadable transport，refresh 會返 exact `{artifact, refresh}` envelope。
+  Unknown path 返 404，錯 method 返 405。今次只係 source-level route readiness；
+  hosted typecheck、built rendering 同 installed capture evidence 仍然 pending。
+  Source commit 係 [`59c5faca5`](https://github.com/Ding-Ding-Projects/material-designer/commit/59c5faca5a7cbea9f31f650a1f0694ba9bee9d97)。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

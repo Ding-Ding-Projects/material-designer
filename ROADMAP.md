@@ -182,6 +182,17 @@ with the project's standards.
       rethrowing. Hosted behavior and the packer root cause remain unverified
       until a replacement run exercises the path.
 
+- [~] **Harden the Studio deterministic capture lifecycle.** The source route now
+      refuses malformed canonical addresses, keeps a validated per-run session
+      authoritative across queryless file continuations, restores ordinary
+      configuration and appearance state on exit, bypasses ordinary tab cache
+      and wall-clock timestamps, and requires a project/conversation/artifact/run
+      witness for direct previews. The follow-up adds generation-fenced delayed
+      request leases, refused-route safe storage defaults, token-owned fetch
+      teardown, ordinary analytics rehydration, lifecycle-scoped project/version
+      caches, and full artifact identity memo keys. Hosted typecheck, built
+      rendering, and installed parity captures remain pending.
+
 Most of what is here is not done. This document exists so that the size of the
 remaining work is visible rather than implied, and so no reader mistakes an
 imported upstream tree for a shipping product.
@@ -641,8 +652,24 @@ Not by a local build — local builds do not happen here.
       unreachable, renderer zoom incorrectly standing in for device scale, and
       time/random/motion/font/network inputs outside tuple equality. The version-2
       registry and inventory correct those static boundaries and now fail closed on
-      the missing installed-application route. Every row remains pending until that
-      route exists and both sides are captured at identical tuples, including the
+      missing built-artifact evidence. The desktop foundation owns the raw
+      `material-designer://studio` launch address and translates it to the canonical
+      `od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+      renderer handoff, which the renderer accepts only with the exact tuple and
+      desktop-owned witness, resolves through the real project/conversation/file
+      components via a network-disabled public-safe fixture provider. The provider
+      stays bound to the fixture project/conversation across known file switches,
+      serves a direct-loadable live-artifact preview, returns the exact refresh
+      envelope, and isolates config/analytics state. The renderer exposes route and
+      provider witnesses for the desktop readiness receipt. The fixture now also
+      requires a per-run capture identity alongside the tuple witness, keeps
+      queryless file continuation inside that session, inventories boot consumers,
+      suppresses config/provider writes, bounds text-preview and fixture numeric
+      inputs, and rejects foreign message/version/live-artifact scopes with
+      structured responses. Direct artifact data preview carries a reload identity.
+      The source-level
+      route is ready, but every row remains pending until the installed build is captured at
+      identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
       receipts, labelled comparisons, visual diffs and per-control reviews.
 - [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is

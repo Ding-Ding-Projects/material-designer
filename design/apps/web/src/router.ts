@@ -5,6 +5,11 @@
 
 import { useSyncExternalStore } from 'react';
 import { LIBRARY_UI_VISIBLE } from './features/libraryUi';
+import {
+  studioFixtureProjectRoute,
+  studioFixtureCaptureRefusedForCurrentLocation,
+  studioFixtureRouteFromCurrentLocation,
+} from './capture/studio-fixture';
 
 // Entry-shell sub-views. The home/project landing renders one of three
 // columns and each sub-view now owns a top-level path so the browser
@@ -259,7 +264,12 @@ const navigationGuards = new Set<NavigationGuard>();
 let guardedNavigationSequence = 0;
 
 interface AcceptedHistoryLocation {
+  protocol: string;
+  host: string;
   pathname: string;
+  search: string;
+  hash: string;
+  href: string;
   index: number;
 }
 
@@ -315,14 +325,27 @@ function readHistoryIndex(): number {
 }
 
 function readHistoryLocation(): AcceptedHistoryLocation {
-  return { pathname: window.location.pathname, index: readHistoryIndex() };
+  return {
+    protocol: window.location.protocol,
+    host: window.location.host,
+    pathname: window.location.pathname,
+    search: window.location.search,
+    hash: window.location.hash,
+    href: window.location.href,
+    index: readHistoryIndex(),
+  };
 }
 
 function isSameHistoryLocation(
   left: AcceptedHistoryLocation | null,
   right: AcceptedHistoryLocation,
 ): boolean {
-  return left?.pathname === right.pathname && left.index === right.index;
+  return left?.protocol === right.protocol
+    && left.host === right.host
+    && left.pathname === right.pathname
+    && left.search === right.search
+    && left.hash === right.hash
+    && left.index === right.index;
 }
 
 function repairHistoryTraversal(
@@ -348,7 +371,7 @@ function repairHistoryTraversal(
 
   // A foreign/deep-link entry may not carry a distinct odIndex. Preserve the
   // accepted route without recursively dispatching another popstate.
-  window.history.pushState({ odIndex: previous.index }, '', previous.pathname);
+  window.history.pushState({ odIndex: previous.index }, '', previous.href);
   acceptedHistoryLocation = previous;
 }
 
@@ -383,8 +406,7 @@ function handlePopstate(): void {
 
   if (
     pendingHistoryRepair
-    && pendingHistoryRepair.pathname === target.pathname
-    && pendingHistoryRepair.index === target.index
+    && isSameHistoryLocation(pendingHistoryRepair, target)
   ) {
     acceptedHistoryLocation = pendingHistoryRepair;
     pendingHistoryRepair = null;
@@ -437,7 +459,11 @@ interface NavigationOptions {
 
 function commitNavigation(route: Route, opts: NavigationOptions = {}): void {
   const target = buildPath(route);
-  if (target === window.location.pathname) return;
+  if (
+    target === window.location.pathname
+    && window.location.search === ''
+    && window.location.hash === ''
+  ) return;
   const index = readHistoryIndex();
   // `replace` keeps the current depth (it swaps the entry in place); a push
   // adds one level so the entry we are leaving becomes the "previous layer".
@@ -481,17 +507,39 @@ export function goBack(fallback: Route): void {
   });
 }
 
-let cachedPathname: string | null = null;
+let cachedLocationKey: string | null = null;
 let cachedRoute: Route | null = null;
+
+function historyLocationKey(location: AcceptedHistoryLocation): string {
+  return [
+    location.protocol,
+    location.host,
+    location.pathname,
+    location.search,
+    location.hash,
+    location.index,
+  ].join('\u0000');
+}
 
 function getRouteSnapshot(): Route {
   // Native Back/Forward mutates window.location before its asynchronous guard
   // resolves. Keep render-time reads on the last accepted route until the
   // coordinator explicitly publishes the traversal.
-  const pathname = acceptedHistoryLocation?.pathname ?? window.location.pathname;
-  if (cachedPathname !== pathname || cachedRoute === null) {
-    cachedPathname = pathname;
-    cachedRoute = parseRoute(pathname);
+  const location = acceptedHistoryLocation ?? readHistoryLocation();
+  const pathname = location.pathname;
+  const locationKey = historyLocationKey(location);
+  if (cachedLocationKey !== locationKey || cachedRoute === null) {
+    cachedLocationKey = locationKey;
+    // The desktop foundation's canonical capture URL is developer-only. It is
+    // accepted only by the strict fixture parser, then resolved to the same
+    // concrete project/conversation/file route that normal navigation uses.
+    // No capture URL gets a parallel DOM tree or a special workspace renderer.
+    const studioFixtureRoute = studioFixtureRouteFromCurrentLocation();
+    cachedRoute = studioFixtureCaptureRefusedForCurrentLocation()
+      ? { kind: 'home', view: 'home' }
+      : studioFixtureRoute
+        ? studioFixtureProjectRoute(studioFixtureRoute)
+        : parseRoute(pathname);
   }
   return cachedRoute;
 }

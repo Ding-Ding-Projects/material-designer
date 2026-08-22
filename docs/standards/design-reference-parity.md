@@ -86,33 +86,109 @@ network requests, uses Chromium device scaling instead of renderer zoom, and
 checks the measured viewport, device-pixel ratio and loaded fonts before it
 reports readiness.
 
+The production application now has the first capture-only application route:
+the desktop foundation owns the raw `material-designer://studio` launch
+address and translates it to the exact canonical
+`od://app/projects/fixture-studio-project/conversations/fixture-studio-conversation/files/orders-dashboard.html`
+renderer handoff. The renderer accepts only that canonical path, the exact
+tuple query, and the desktop-owned frozen tuple witness. The accepted route activates a
+public-safe fixture provider and resolves to the ordinary concrete project,
+conversation, and file route. The provider feeds the existing project,
+conversation, message, run, project-file, tab, and live-artifact request seams;
+the production `ProjectView`, `ChatPane`, `FileWorkspace`, and `FileViewer`
+therefore render the fixture. Its declared `orders-dashboard.html` selection
+is applied only during initial route hydration. File refreshes, project
+switches, and later tab changes do not select a file implicitly. The provider
+also rejects external network requests, intercepts only the fixture's `/api/`
+seams, leaves browser-managed bundled assets outside the scripted fetch seam, and
+accepts only the exact `od:` renderer origin or a separately validated HTTP loopback
+API origin. A scripted fetch from a capture-shaped location is refused rather than
+forwarded to the ordinary network path. The provider stays bound to the fixture project and conversation while
+the user explicitly changes among the three known files. Its live-artifact
+preview uses a direct-loadable fixture transport, and refresh returns the real
+`{ artifact, refresh }` consumer envelope. The renderer publishes
+`data-od-renderer-route-path`, `data-od-renderer-route-state`,
+`data-od-fixture-source`, and `data-od-fixture-revision` witnesses for the
+desktop readiness receipt. The fixture config is explicit and contains no local
+credentials, account identity, customization, or telemetry consent; analytics
+and direct error buffers are disabled for the capture lifetime. The provider is
+inactive for ordinary routes. This is source-level route readiness only: no
+hosted build, installed capture, or provider reachability is claimed here.
+
+The fixture boundary is session-scoped as well. A canonical renderer handoff
+must carry the desktop-owned per-run capture identity and exact tuple witness;
+queryless file continuations are accepted only while that same identity and
+witness remain live. Fixture runs, messages, versions, live-artifact scopes and
+text previews use finite public IDs and declared project/conversation query
+scopes; foreign or malformed values return structured 404/400 responses rather
+than falling through to a live daemon or an internal error. The hand-written
+fixture consumer manifest covers Vela status (including refresh), AMR models,
+the complete version response and the empty `providers` object. Capture
+appearance and language settings are forced from the tuple/fixture presentation
+in per-run storage, config and provider writes are suppressed, and the direct
+artifact data preview carries a bounded reload identity so refreshes cannot
+reuse stale bytes.
+
+The lifecycle is fail-closed in both directions. Any address with the canonical
+fixture path but a missing, malformed, stale, or mismatched tuple/run witness
+publishes an explicit capture-refused/unready state and installs a refusal fetch
+boundary; it never falls through to the ordinary daemon or browser fetch. Once a
+valid session leaves the launch URL, only its validated queryless project,
+conversation, and known-file continuation remains active. Leaving that location
+disposes the fixture provider, clears readiness and renderer data attributes,
+rehydrates ordinary language/configuration/appearance state, and resumes the
+ordinary active-context write. While capture is locked, language, funny-level,
+appearance, config, host-scale, analytics, and error-context setters return before
+mutating live React, module, DOM, or host state. Project-tab localStorage and wall
+clock timestamps are bypassed for the session, with the frozen fixture time and a
+run-scoped request namespace used instead. Direct artifact previews require the
+current session plus the matching project, conversation, artifact, and creating
+run witness; matching IDs on an ordinary route return no preview.
+
+The lifecycle lease is generation-scoped. Reserved fixture-shaped `od://`
+paths are recognized before route or live-fetch resolution, including cold
+malformed query and port variants. Every delayed fixture request rechecks its
+run, generation, and route lease after body parsing. Fetch decoration uses a
+token-owned multiplexer so fixture, analytics, and one-shot request-ID teardown
+restores the exact ordinary predecessor in any order. Analytics rehydrates its
+ordinary consent, client, headers, identity and exception context after a
+capture exit even when locale and version are unchanged. Project display,
+coalesced project reads, runtime version reads, and every tab cache operation
+are partitioned by lifecycle namespace; refused capture reads use safe defaults
+and writes/removals are inert. Artifact preview memo keys include session,
+creating run, timestamps, status, and entry identity. Hosted typecheck, built
+rendering, installed launch, and visual parity evidence remain pending.
+
+The capture storage inventory is hand-written and complete: composer drafts,
+queued sends, todo/continued state, chat-panel width, Designs mode, run-turn
+state, App session state, analytics identity/session state, onboarding state,
+appearance preferences/presets/recent colors, project tabs, and every
+fixture-mounted store are listed. Capture reads return safe defaults; writes
+and removals are inert or use the run/refusal namespace, while ordinary mode
+continues to use its existing storage.
+
 ## Evidence boundary
 
 The inventory is structurally complete and all ten rows are currently marked
 `pending`. That is deliberate: source code and route strings do not prove
-visual parity. The installed application now contains the strict tuple resolver
-and capture startup context, but the default verifier still stops before capture
-evidence. Only six rows currently have semantically identical production paths,
-and none is runtime-ready for parity evidence yet: the real renderer witness
-proves the route component, but ordinary daemon-backed data is detected and no
-capture fixture/provider exists; the sidecar boundary is source-only until
-hosted runtime proof.
-Unexpected blocked requests also fail readiness. This is deliberate
-fail-closed foundation status, not a visual-parity verdict. The runtime refuses
-raw capture operations while that predicate is unready; no live-daemon screen
-can be interacted with or promoted into parity evidence. Every capture run has a
-unique lease beneath the forced capture root; the exact run is retired by a
-marker while its evidence bytes remain retained for review, and a duplicate run
-identity is rejected rather than reused.
-The remaining rows are intentionally unresolved: `route.studio_unresolved` (no
-production Studio route), `route.library_hidden` (the Library component is
-hidden by its product feature flag), `route.settings_appearance_unresolved`
-(the Settings page does not yet accept the appearance state from this route),
-and `route.handoff_unresolved` (handoff is currently project/file-scoped rather
-than a standalone destination). These are product-route blockers, not permission
-to inject DOM or to label a different page as parity evidence. Dark presentation
-is also fail-closed as `route.theme_dark_unresolved` because the product's
-appearance state is currently light-only.
+visual parity. The installed application contains the strict tuple resolver and
+capture startup context, but the default verifier still stops before capture
+evidence. Six rows have production route paths, yet they still detect ordinary
+daemon-backed data and do not have deterministic screen fixtures. The Studio
+row now has a source-level application route and fixture provider, but the
+desktop route resolver has not integrated that destination and no installed
+build has been captured at the declared tuple. Library, Appearance, and Handoff
+also have real source destinations now, while their capture-route mappings
+remain fail-closed and unresolved.
+
+Unexpected blocked requests fail readiness. This is deliberate foundation
+status, not a visual-parity verdict. The runtime refuses raw capture operations
+while the predicate is unready; no live-daemon screen can be interacted with or
+promoted into parity evidence. Every capture run has a unique lease beneath the
+forced capture root; the exact run is retired by a marker while its evidence
+bytes remain retained for review, and a duplicate run identity is rejected
+rather than reused. Dark presentation also remains fail-closed as
+`route.theme_dark_unresolved` until the product and route fixture can prove it.
 
 A row becomes verified only after the checked-in reference and real installed
 Squirrel application are launched through the approved hidden-desktop route at

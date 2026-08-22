@@ -105,6 +105,11 @@ import {
   peekOnboardingSessionId,
 } from '../analytics/onboarding-session';
 import { navigate } from '../router';
+import {
+  isStudioFixtureCaptureStorageLocked,
+  isStudioFixtureCaptureActiveForProjectConversation,
+  isStudioFixtureProjectId,
+} from '../capture/studio-fixture';
 import { agentDisplayName, agentModelDisplayName } from '../utils/agentLabels';
 import { isMacPlatform } from '../utils/platform';
 import {
@@ -1050,6 +1055,7 @@ function designSystemNeedsWorkPrompt(
 
 function readSavedChatPanelWidth(): number {
   if (typeof window === 'undefined') return DEFAULT_CHAT_PANEL_WIDTH;
+  if (isStudioFixtureCaptureStorageLocked()) return DEFAULT_CHAT_PANEL_WIDTH;
   try {
     const raw = window.localStorage.getItem(CHAT_PANEL_WIDTH_STORAGE_KEY);
     const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
@@ -1063,6 +1069,7 @@ function readSavedChatPanelWidth(): number {
 
 function saveChatPanelWidth(width: number): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.localStorage.setItem(
       CHAT_PANEL_WIDTH_STORAGE_KEY,
@@ -1127,6 +1134,7 @@ function designSystemAuditAutoRepairKey(projectId: string): string {
 
 function readAutoSendAttachments(projectId: string): ChatAttachment[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.sessionStorage.getItem(autoSendAttachmentsKey(projectId));
     if (!raw) return [];
@@ -1140,6 +1148,7 @@ function readAutoSendAttachments(projectId: string): ChatAttachment[] {
 
 function readAutoSendPrompt(projectId: string): string | null {
   if (typeof window === 'undefined') return null;
+  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     return window.sessionStorage.getItem(autoSendPromptKey(projectId));
   } catch {
@@ -1149,6 +1158,7 @@ function readAutoSendPrompt(projectId: string): string | null {
 
 function readAutoSendContext(projectId: string): RunContextSelection | null {
   if (typeof window === 'undefined') return null;
+  if (isStudioFixtureCaptureStorageLocked()) return null;
   try {
     const raw = window.sessionStorage.getItem(autoSendContextKey(projectId));
     if (!raw) return null;
@@ -1163,6 +1173,7 @@ function readAutoSendAmrGateWitness(
   projectId: string,
 ): AmrBalanceGateScope | undefined {
   if (typeof window === 'undefined') return undefined;
+  if (isStudioFixtureCaptureStorageLocked()) return undefined;
   try {
     const raw = window.sessionStorage.getItem(
       autoSendAmrGateWitnessKey(projectId),
@@ -1177,6 +1188,7 @@ function readAutoSendAmrGateWitness(
 
 function clearAutoSendSession(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.removeItem(autoSendFirstMessageKey(projectId));
     window.sessionStorage.removeItem(autoSendPromptKey(projectId));
@@ -1191,6 +1203,7 @@ function clearAutoSendSession(projectId: string): void {
 
 function markDesignSystemAuditAutoRepairEligible(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.setItem(
       designSystemAuditAutoRepairKey(projectId),
@@ -1203,6 +1216,7 @@ function markDesignSystemAuditAutoRepairEligible(projectId: string): void {
 
 function consumeDesignSystemAuditAutoRepair(projectId: string): boolean {
   if (typeof window === 'undefined') return false;
+  if (isStudioFixtureCaptureStorageLocked()) return false;
   try {
     const key = designSystemAuditAutoRepairKey(projectId);
     const raw = window.sessionStorage.getItem(key);
@@ -1225,6 +1239,7 @@ function consumeDesignSystemAuditAutoRepair(projectId: string): boolean {
 
 function clearDesignSystemAuditAutoRepair(projectId: string): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     window.sessionStorage.removeItem(designSystemAuditAutoRepairKey(projectId));
   } catch {
@@ -4037,7 +4052,8 @@ export function ProjectView({
   // after the daemon settles them as unbound. A missing local workspaceId is
   // not sufficient: that project row can lag a hidden daemon-side Team mirror.
   const projectEventsEnabled =
-    daemonLive
+    !isStudioFixtureProjectId(project.id)
+    && daemonLive
     && projectWorkspaceScopeReady(projectWorkspaceScopeState.scope);
   useProjectFileEvents(project.id, projectEventsEnabled, handleProjectEvent, {
     onConnectedChange: setProjectEventsSseConnected,
@@ -4091,10 +4107,24 @@ export function ProjectView({
   // When the URL points at a specific file, fire an open request so the
   // FileWorkspace promotes it to an active tab. We watch routeFileName
   // (the parsed segment) so back/forward navigation triggers the same path.
+  const fixtureInitialSelectionProjectRef = useRef<string | null>(null);
   useEffect(() => {
     if (!routeFileName) return;
+    // The deterministic Studio provider is allowed one explicit initial
+    // selection. Once the concrete route has been committed, later file/tab
+    // changes are already represented by persisted tabs and must not be
+    // reinterpreted as an implicit attachment.
+    if (
+      isStudioFixtureCaptureActiveForProjectConversation(
+        project.id,
+        routeConversationId ?? activeConversationId ?? '',
+      )
+    ) {
+      if (fixtureInitialSelectionProjectRef.current === project.id) return;
+      fixtureInitialSelectionProjectRef.current = project.id;
+    }
     requestOpenFile(routeFileName);
-  }, [routeFileName, requestOpenFile]);
+  }, [project.id, routeFileName, requestOpenFile]);
 
   // Sync the URL when the active tab changes, so reload + share-link both
   // land back on the same view. Replace (not push) on tab activation so the
@@ -4126,6 +4156,21 @@ export function ProjectView({
     if (nextKey === lastSyncedRouteKeyRef.current) return;
     lastSyncedRouteKeyRef.current = nextKey;
     lastSyncedConversationIdRef.current = effectiveConversationId;
+    // The desktop foundation's canonical `od://` URL carries the validated
+    // capture tuple. Preserve that envelope through the initial hydration so
+    // readiness can measure the exact handoff; an explicit file/tab change
+    // still differs from routeFileName and takes the normal navigation path.
+    if (
+      isStudioFixtureCaptureActiveForProjectConversation(
+        project.id,
+        effectiveConversationId ?? '',
+      )
+      && typeof window !== 'undefined'
+      && window.location.protocol === 'od:'
+      && window.location.search !== ''
+      && effectiveConversationId === routeConversationId
+      && (target === null || target === routeFileName)
+    ) return;
     // PerishCode + Codex P1 on PR #1508: the prior version of this
     // sync stripped any `/conversations/:cid` segment from the URL as
     // soon as a tab became active, which regressed the deep-link
@@ -4149,6 +4194,7 @@ export function ProjectView({
     project.id,
     activeConversationId,
     routeConversationId,
+    routeFileName,
   ]);
 
   const handleEnsureProject = useCallback(async (): Promise<string | null> => {
@@ -11014,6 +11060,7 @@ export function ProjectView({
   // hand-off. Owning the shell here would make each view mount its own
   // element and replay the `.app` entrance animation, which reads as the
   // project frame flashing twice on the way in from Home.
+  const studioFixtureProject = isStudioFixtureProjectId(project.id);
   return (
     <CollabProvider value={collabValue}>
       <CritiqueTheaterMount
@@ -11031,6 +11078,9 @@ export function ProjectView({
           resizingChatPanel && !workspaceFocused ? 'is-resizing-chat' : '',
         ].filter(Boolean).join(' ')}
         style={projectSplitStyle(workspaceFocused, splitLeftPanelWidth, workspacePanelTrack)}
+        {...(studioFixtureProject
+          ? { 'data-testid': 'entry-view-studio', 'data-active': 'true' }
+          : {})}
       >
         <div
           className={[
@@ -11937,6 +11987,7 @@ function queuedChatSendsStorageKey(projectId: string): string {
 
 function loadQueuedChatSends(projectId: string): QueuedChatSend[] {
   if (typeof window === 'undefined') return [];
+  if (isStudioFixtureCaptureStorageLocked()) return [];
   try {
     const raw = window.localStorage.getItem(queuedChatSendsStorageKey(projectId));
     const parsed = raw ? JSON.parse(raw) : [];
@@ -11957,6 +12008,7 @@ function loadQueuedChatSends(projectId: string): QueuedChatSend[] {
 
 function saveQueuedChatSends(projectId: string, items: QueuedChatSend[]): void {
   if (typeof window === 'undefined') return;
+  if (isStudioFixtureCaptureStorageLocked()) return;
   try {
     const key = queuedChatSendsStorageKey(projectId);
     if (items.length === 0) {
