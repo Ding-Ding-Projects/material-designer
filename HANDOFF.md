@@ -352,20 +352,28 @@
 > `scripts/verify-port.sh --json` are green at zero gaps: 12,835 expected upstream
 > files, 13,079 tracked files, 574 declarations, and zero missing, byte, mode,
 > object-ID, extra, untracked or stale-notice findings.
+> **Packaging diagnostics checkpoint — 2026-08-21.** The integrated default branch
+> is [`4eb5ad2d`](https://github.com/Ding-Ding-Projects/material-designer/commit/4eb5ad2dff3c7bb13b21d2e3f8f0ccc8167fc5e7).
+> The v0.20.2 Open Design baseline is `393af2f99`; the port verifier reports
+> 12,835 expected upstream files, 13,080 tracked files, 580 declarations, and
+> zero missing, byte, mode, object-ID, extra, untracked or stale-notice findings.
+> Verify [`32506068594`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32506068594)
+> and Pages [`32506068716`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32506068716)
+> are green for this integrated tip. Release
+> [`32506068934`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32506068934)
+> failed in **Build the Windows Squirrel installer** after `tools-pack` exited
+> with code `1`. No package, unsigned verdict, artifact receipt, installed
+> runtime proof or release publication came from that run. Its nested temporary
+> build log was not retained by the evidence upload, so the packer root cause is
+> unverified.
 >
-> Hosted Verify
-> [`32450372891`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372891)
-> and Pages
-> [`32450372890`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372890)
-> are green for `aa0673659`. Release
-> [`32450372884`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32450372884)
-> is still running in **Install dependencies**; it has not built a Squirrel
-> package, checked `NotSigned`, recorded the photo exception, published, or
-> verified a release. Earlier Release `32449571270` failed in package postinstall
-> on a duplicate release-channel registry, and `32449844884` failed on daemon
-> syntax created by overlapping three-way union hunks; commits `69b562d10` and
-> `aa0673659` repair those exact boundaries. The active run's terminal result is
-> the next owner's first check.
+> The bounded source repair in [`e241a1f1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e241a1f1568077d6958f14896e0082b224b6d5f6)
+> now streams safe tools-pack diagnostics and preserves
+> a run-scoped immutable build log plus schema-version-1 failure JSON before the
+> packaging step rethrows. That repair is source-only until a replacement hosted
+> run exercises it; it does not claim to fix the packer. The dim-sum photo
+> attachment remains temporarily skipped by owner direction, with no catalog image
+> copied into or attached by this repository.
 >
 > **Still open:** installed Squirrel launch proof for the repaired build; updater
 > `available` → `downloading` → `ready-to-restart` evidence; real interaction and
