@@ -5964,10 +5964,10 @@ function AppInner() {
           && projectOpenError == null
           && legacyByokMigrationErrorView == null
         }
+      />
       {settingsOpen ? (
         renderSettingsSurface('modal')
       ) : null}
-      </AnimatePresence>
       <MemoryToast
         onOpenMemory={() => openSettings('memory')}
         subscriptionMode={memoryToastSubscriptionMode({
