@@ -1,6 +1,26 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **FileViewer menu completion repair — 2026-08-21.** Commit
+> [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+> closes the accepted source-level completion findings. Programmatic Markdown
+> downloads now render a visible viewport-safe menu without moving focus; each
+> surface, builder, action collection and dismissal path uses one resolved owner
+> token; the exact opener is exempt from focus dismissal; mixed surfaces close
+> when focus leaves their owner; and measured width/height no longer carry hard
+> minima that can exceed the viewport. Disabled rows remain visible with their
+> existing reason but are excluded from keyboard navigation. Share/Export labels
+> follow the active intent, Markdown viewers close and refuse programmatic menus
+> while inactive, and version-menu tests query the portalled surface by its exact
+> owner association. The hand-written source contract now pairs every inventory
+> row with its own JSX block and uses red-then-green structural mutations for
+> owner, geometry, disabled, mixed-focus, portal, inactive-viewer, row-pairing
+> and invalid-regex boundaries. `git diff --check` and both pure-shell port
+> verifier forms are green. No local Node/pnpm/Electron execution, hosted run,
+> installed build, runtime geometry or screen capture is claimed. This branch is
+> still local and unmerged for the integration owner.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

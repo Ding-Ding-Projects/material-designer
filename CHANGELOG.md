@@ -28,6 +28,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **FileViewer menu completion boundaries now fail closed.** Commit
+  [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+  gives no-opener Markdown downloads a visible viewport-safe menu without
+  stealing focus, assigns one resolved owner token to each surface, builder,
+  action collection and dismissal path, exempts the exact opener from focus
+  dismissal, closes mixed surfaces when focus leaves their owner, and clamps
+  measured geometry without viewport-breaking minima. Disabled rows remain
+  visible with their existing reason but are skipped by keyboard navigation.
+  Active Share/Export labels, inactive Markdown suppression and portal-aware
+  version-menu assertions now follow the same ownership boundary. This is
+  source-level evidence only: no installed build, runtime geometry or screen
+  capture is claimed.
+
+  FileViewer menu completion boundary 而家 fail closed。`3ef99677d`
+  畀冇 opener 嘅 Markdown Download 有個睇得見、唔搶 focus 嘅 viewport-safe
+  menu；每個 surface、builder、action collection 同 dismissal path 都跟同一粒
+  resolved owner token，真正 opener 唔會畀 focus dismissal 誤收，mixed surface
+  一離開 owner 就會收，geometry 亦唔再靠會爆 viewport 嘅硬 minima。Disabled
+  row 照見到同原有 reason，但 keyboard 唔會行入去。Active Share/Export label、
+  inactive Markdown suppression 同 portal-aware version menu assertion 而家
+  都跟同一條 ownership boundary。呢個係 source-level evidence，未有
+  installed build、runtime geometry 或 screen capture claim。
+
 - **FileViewer menu ownership and focus boundaries are now explicit.** Commit
   [`919073e7a`](https://github.com/Ding-Ding-Projects/material-designer/commit/919073e7ae3cc0d55316000549ba1aa2cf15c810)
   repairs the ten-menu source contract: simple actions live in a nested menu

@@ -1561,7 +1561,19 @@ installed build.
       Share/Export/Access/Publish surfaces use named dialog/group containers that
       preserve their listbox and tab widgets. The source contract is
       `apps/web/tests/components/FileViewer.menu-contract.test.ts`; no
-      installed-build geometry or runtime interaction has been verified.
+      installed-build geometry or runtime interaction has been verified. Commit
+      [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+      closes the accepted completion findings: no-opener Markdown menus have a
+      visible viewport-safe fallback without focus theft, every surface and
+      portalled builder uses a unique resolved owner token, mixed surfaces close
+      when focus leaves their owner, exact opener re-clicks remain toggles,
+      disabled rows stay visible but leave keyboard navigation, geometry clamps
+      actual width and height without viewport-breaking minima, Share/Export
+      labels follow active intent, inactive Markdown viewers refuse stale menus,
+      and version-menu checks query the portalled owner directly. The focused
+      source contract binds every inventory row to its own JSX block and watches
+      structural red-then-green mutations for these boundaries. Runtime proof
+      remains open.
       The full requirement remains: every context menu — tab, group, appearance,
       application and overflow — carries its own keyboard-accessible search field
       filtering visible items locally without changing action semantics. Every item
