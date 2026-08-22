@@ -3443,7 +3443,6 @@ function OnboardingView({
               {amrLoginError}
             </span>
           ) : null}
-          {cloudBusy ? (
         <div className="onboarding-cloud__pane">
           <div className="onboarding-cloud__center">
             <h1 className="onboarding-cloud__title">{t('settings.onboardingCloudTitle')}</h1>

@@ -16,8 +16,60 @@ function depthOf(path) {
   return depth;
 }
 
-for (const path of process.argv.slice(2)) {
+for (const path of process.argv.slice(2).filter((a) => a !== "--scan")) {
   console.log(path, depthOf(path));
+}
+
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+
+function walk(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walk(full));
+    else if (/\.(tsx?|jsx?)$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
+if (process.argv.includes("--scan")) {
+  const broken = [];
+  const reachedTwo = [];
+  const lastZero = new Map();
+  for (const path of walk("design/apps/web/src")) {
+    const lines = readFileSync(path, "utf8").split("\n");
+    let depth = 0;
+    let inComment = false;
+    for (let i = 0; i < lines.length; i += 1) {
+      let line = lines[i];
+      if (inComment) {
+        if (line.includes("*/")) inComment = false;
+        else continue;
+      }
+      const open = line.indexOf("/*");
+      if (open >= 0) {
+        const close = line.indexOf("*/", open);
+        if (close >= 0) line = line.slice(0, open) + line.slice(close + 2);
+        else {
+          line = line.slice(0, open);
+          inComment = true;
+        }
+      }
+      if (line.trimStart().startsWith("//")) continue;
+      depth += (line.match(/\{/g) ?? []).length;
+      depth -= (line.match(/\}/g) ?? []).length;
+      if (depth >= 2) reachedTwo.push(`${path}:${i + 1}`);
+      if (depth === 0) lastZero.set(path, i + 1);
+      if (depth < 0) {
+        broken.push(`${path}: line ${i + 1}`);
+        break;
+      }
+    }
+  }
+  console.log(broken.length === 0 ? "all balanced" : broken.join("\n"));
+  console.log("reached-two:", reachedTwo.slice(0, 12).join(" "));
+  for (const [p, l] of lastZero) console.log(`last-zero ${p}:${l}`);
 }
 
 const app = readFileSync("design/apps/web/src/App.tsx", "utf8");
