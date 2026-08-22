@@ -1750,7 +1750,7 @@ installed build.
       preserve their listbox and tab widgets. The source contract is
       `apps/web/tests/components/FileViewer.menu-contract.test.ts`; no
       installed-build geometry or runtime interaction has been verified. Commit
-      [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+      [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
       closes the accepted completion findings: no-opener Markdown menus have a
       visible viewport-safe fallback without focus theft, every surface and
       portalled builder uses a unique resolved owner token, mixed surfaces close

@@ -417,7 +417,7 @@
 >
 > [!IMPORTANT]
 > **FileViewer menu completion repair — 2026-08-21.** Commit
-> [`3ef99677d`](https://github.com/Ding-Ding-Projects/material-designer/commit/3ef99677d1b14bf962d863fad712c3eddcd580c8)
+> [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
 > closes the accepted source-level completion findings. Programmatic Markdown
 > downloads now render a visible viewport-safe menu without moving focus; each
 > surface, builder, action collection and dismissal path uses one resolved owner
@@ -432,8 +432,8 @@
 > owner, geometry, disabled, mixed-focus, portal, inactive-viewer, row-pairing
 > and invalid-regex boundaries. `git diff --check` and both pure-shell port
 > verifier forms are green. No local Node/pnpm/Electron execution, hosted run,
-> installed build, runtime geometry or screen capture is claimed. This branch is
-> still local and unmerged for the integration owner.
+> installed build, runtime geometry or screen capture is claimed. The source is
+> integrated on the default branch by the commit above.
 
 > [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
@@ -482,7 +482,7 @@
 
 > [!IMPORTANT]
 > **FileViewer menu boundary repair — 2026-08-21.** Commit
-> [`919073e7a`](https://github.com/Ding-Ding-Projects/material-designer/commit/919073e7ae3cc0d55316000549ba1aa2cf15c810)
+> [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
 > repairs the ten-menu source contract. Simple action surfaces now have a
 > named outer group and nested menu collection. Mixed Share/Export/Access/Publish
 > surfaces use a named dialog/group while preserving their listbox and tab
@@ -494,10 +494,10 @@
 > source contract covers the ten rows, nested-widget exclusion, focus, geometry,
 > and deliberate red-then-green boundary mutations. `git diff --check` was
 > green. No local Node/pnpm/Electron execution, hosted run, installed build,
-> runtime geometry or screen capture is claimed. The branch remains local and
-> unmerged for the integration owner to incorporate.
+> runtime geometry or screen capture is claimed. The source is integrated on
+> the default branch by the commit above.
 > Follow-up commit
-> [`330d300d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/330d300d4ae3393e80ccac2ba51c7d459365fbed)
+> [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
 > keeps the exact opener outside the portalled surface's outside-click dismissal,
 > so clicking the same trigger reliably toggles the menu.
 
@@ -512,11 +512,11 @@
 > `design/apps/web/tests/components/FileViewer.menu-contract.test.ts`.
 > No local Node/pnpm/Electron execution, installed build, runtime geometry or
 > screen capture is claimed for this lane. Commit
-> [`bca23732d`](https://github.com/Ding-Ding-Projects/material-designer/commit/bca23732de1fdf7568da0227b220fdbce19969e0)
+> [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
 > carries the source changes; follow-up commit
-> [`6473425c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/6473425c5d4ae72ecb8a7b3a7dbdc71f9c6529d4)
+> [`a5742e28d`](https://github.com/Ding-Ding-Projects/material-designer/commit/a5742e28d96897230cca6bf916298c6096b6ac5c)
 > keeps clicks inside the portalled builder from dismissing its owning menu.
-> The branch remains local and unmerged.
+> The source is integrated on the default branch by the commit above.
 >
 > [!IMPORTANT]
 > **Design-parity infrastructure checkpoint — 2026-08-21.** The version-2
