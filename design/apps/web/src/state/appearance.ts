@@ -1,8 +1,8 @@
-import { getOpenDesignHost } from '@open-design/host';
+import { getOpenDesignHost, hasAcknowledgedAppearanceThemeBridge } from '@open-design/host';
+import type { OpenDesignHostActionResult } from '@open-design/host';
+import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 import type { AppTheme } from '../types';
-
-export const FORCED_APP_THEME = 'light' as const;
 
 const ACCENT_VARS = [
   '--accent',
@@ -38,6 +38,15 @@ export const CUSTOM_ACCENT_FALLBACK = '#c96442';
 export const ACCENT_SWATCHES = [
   DEFAULT_ACCENT_COLOR,
   CUSTOM_ACCENT_FALLBACK,
+  '#353535',
+  '#202020',
+  '#848484',
+  '#87ea5c',
+  '#0d5400',
+  '#1a74ff',
+  '#ffba12',
+  '#ff7528',
+  '#f04142',
   '#2563eb',
   '#7c3aed',
   '#059669',
@@ -61,26 +70,128 @@ function accentVars(accentColor: string): Record<(typeof ACCENT_VARS)[number], s
   return {
     '--accent': accentColor,
     // Keep these mix ratios in sync with the pre-hydration script in app/layout.tsx.
-    '--accent-strong': `color-mix(in srgb, ${accentColor} 86%, var(--text-strong))`,
-    '--accent-soft': `color-mix(in srgb, ${accentColor} 22%, var(--bg-panel))`,
-    '--accent-tint': `color-mix(in srgb, ${accentColor} 12%, var(--bg-panel))`,
-    '--accent-hover': `color-mix(in srgb, ${accentColor} 90%, var(--text-strong))`,
+    '--accent-strong': `color-mix(in srgb, ${accentColor} 82%, var(--text-strong))`,
+    '--accent-soft': `color-mix(in srgb, ${accentColor} 12%, var(--bg-subtle))`,
+    '--accent-tint': `color-mix(in srgb, ${accentColor} 6%, var(--bg-panel))`,
+    '--accent-hover': `color-mix(in srgb, ${accentColor} 86%, var(--text-strong))`,
   };
+}
+
+/**
+ * Resolve a persisted theme without allowing malformed values to leak into
+ * the document or the native shell. `system` is represented by the absence of
+ * `data-theme`, which lets the stylesheet's media queries choose the palette.
+ */
+export function resolveAppTheme(persisted?: AppTheme | null): AppTheme {
+  return persisted === 'light' || persisted === 'dark' || persisted === 'system'
+    ? persisted
+    : 'system';
+}
+
+export type AppearanceHostSyncResult =
+  | { ok: true; host: 'desktop' | 'web' }
+  | { ok: false; host: 'desktop'; reason: string };
+
+const APPEARANCE_HOST_ACK_TIMEOUT_MS = 1500;
+const pendingAppearanceThemeSyncs = new Map<
+  AppTheme,
+  Promise<AppearanceHostSyncResult>
+>();
+
+function isSuccessfulHostAction(value: unknown): value is { ok: true } {
+  return typeof value === 'object' && value != null && (value as { ok?: unknown }).ok === true;
+}
+
+/**
+ * Ask the optional native shell to accept the resolved theme.
+ *
+ * The DOM is deliberately handled by `applyAppearanceToDocument` before this
+ * promise is awaited. A browser/web build therefore keeps applying its local
+ * theme even when a malformed or throwing optional host is present. Desktop
+ * startup uses the result as its second half of the mounted witness and gets a
+ * bounded, truthful failure instead of waiting forever on an IPC promise.
+ */
+export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<AppearanceHostSyncResult> {
+  const pending = pendingAppearanceThemeSyncs.get(theme);
+  if (pending) return pending;
+
+  const request = (async (): Promise<AppearanceHostSyncResult> => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const host = getOpenDesignHost();
+      const appearance = host?.appearance;
+      if (appearance == null) return { ok: true, host: 'web' };
+      if (!hasAcknowledgedAppearanceThemeBridge(host)) {
+        return {
+          ok: false,
+          host: 'desktop',
+          reason: 'native appearance host does not advertise acknowledged theme support',
+        };
+      }
+
+      const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
+        Promise.resolve().then(() => appearance.setTheme(theme)),
+        new Promise<{ ok: false; reason: string }>((resolve) => {
+          timeout = setTimeout(
+            () => resolve({ ok: false, reason: 'native appearance acknowledgement timed out' }),
+            APPEARANCE_HOST_ACK_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: typeof result.reason === 'string' && result.reason.trim()
+          ? result.reason
+          : 'native appearance host rejected the theme',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      if (timeout != null) clearTimeout(timeout);
+    }
+  })();
+  pendingAppearanceThemeSyncs.set(theme, request);
+  void request.finally(() => {
+    if (pendingAppearanceThemeSyncs.get(theme) === request) {
+      pendingAppearanceThemeSyncs.delete(theme);
+    }
+  }).catch(() => undefined);
+  return request;
 }
 
 export function applyAppearanceToDocument({
   theme,
   accentColor,
+  allowCapture = false,
 }: {
   theme?: AppTheme;
   accentColor?: string;
+  allowCapture?: boolean;
 }): void {
+  if (!allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
-  if (theme === 'light' || theme === 'dark') {
-    root.setAttribute('data-theme', theme);
+  const resolvedTheme = resolveAppTheme(theme);
+  if (resolvedTheme === 'light' || resolvedTheme === 'dark') {
+    root.setAttribute('data-theme', resolvedTheme);
   } else {
     root.removeAttribute('data-theme');
   }
+  // Desktop shell: keep the native window appearance (the macOS vibrancy
+  // glass material) in step with the app theme. Without this the glass
+  // follows the OS appearance, so the light app over a dark OS sat on dark
+  // glass and read as a muddy gray (#94). Feature-detected — browsers and
+  // older host builds have no appearance capability.
+  // Optional host compatibility must never prevent local DOM styling. The
+  // startup witness calls `syncAppearanceThemeWithHost` separately and waits
+  // for its validated acknowledgement; ordinary theme changes stay best
+  // effort and deliberately cannot create an unhandled rejection.
+  void syncAppearanceThemeWithHost(resolvedTheme);
 
   const normalized = resolveAccentColor(accentColor);
   const vars = accentVars(normalized);
@@ -547,7 +658,11 @@ function requestHostUiScale(factor: number): boolean {
  * as the default source of `--od-css-zoom` rather than declaring and
  * ignoring.
  */
-export function applyAppearancePreferencesToDocument(prefs: AppearancePreferences): void {
+export function applyAppearancePreferencesToDocument(
+  prefs: AppearancePreferences,
+  options?: { allowCapture?: boolean },
+): void {
+  if (!options?.allowCapture && isStudioFixtureCaptureStorageLocked()) return;
   const root = document.documentElement;
   const normalized = normalizeAppearancePreferences(prefs);
 
