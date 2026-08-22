@@ -1,8 +1,7 @@
-import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { ToolPackConfig } from "../config.js";
-import { WIN_PREBUNDLED_APP_DIR_NAME } from "../win-prebundle.js";
+import type { ToolPackConfig } from "../config/index.js";
+import { WIN_PREBUNDLED_APP_DIR_NAME } from "./prebundle.js";
 import {
   ELECTRON_BUILDER_ASAR,
   ELECTRON_BUILDER_BUILD_DEPENDENCIES_FROM_SOURCE,
@@ -14,11 +13,6 @@ import {
   WEB_STANDALONE_RESOURCE_NAME,
 } from "./constants.js";
 import { PathSizeIndex, pathExists, sizeExistingFileBytes } from "./fs.js";
-import {
-  resolveWinSquirrelOutputRoot,
-  resolveWinSquirrelReleasesPath,
-  resolveWinSquirrelSetupPath,
-} from "./paths.js";
 import type { WinBuiltAppManifest, WinPaths, WinSizeReport } from "./types.js";
 
 function isBetterSqlite3SourceResidue(path: string): boolean {
@@ -28,16 +22,14 @@ function isBetterSqlite3SourceResidue(path: string): boolean {
   );
 }
 
-export function resolveWinTargets(to: ToolPackConfig["to"]): Array<"dir" | "nsis" | "squirrel" | "zip"> {
+export function resolveWinTargets(to: ToolPackConfig["to"]): Array<"dir" | "nsis" | "zip"> {
   switch (to) {
     case "dir":
       return ["dir"];
     case "all":
-      return ["dir", "squirrel", "zip"];
+      return ["dir", "nsis", "zip"];
     case "nsis":
       return ["nsis"];
-    case "squirrel":
-      return ["squirrel"];
     case "zip":
       return ["zip"];
     default:
@@ -45,14 +37,13 @@ export function resolveWinTargets(to: ToolPackConfig["to"]): Array<"dir" | "nsis
   }
 }
 
-// The portable zip is assembled afterwards from the cached unpacked content
-// using bundled 7z, so filter only that target before handing the list to
-// electron-builder. When the user asks for `zip` alone we still need the
-// unpacked dir, so the helper substitutes `dir` in its place.
-export function resolveElectronBuilderWinTargets(to: ToolPackConfig["to"]): Array<"dir" | "nsis" | "squirrel"> {
-  const filtered = resolveWinTargets(to).filter(
-    (target): target is "dir" | "nsis" | "squirrel" => target !== "zip",
-  );
+// electron-builder only knows how to produce the unpacked `dir` and the NSIS
+// installer; the portable zip is assembled afterwards from the same unpacked
+// content using bundled 7z, so we filter the zip target out before handing the
+// list to electron-builder. When the user asks for `zip` alone we still need
+// the unpacked dir, so the helper substitutes `dir` in its place.
+export function resolveElectronBuilderWinTargets(to: ToolPackConfig["to"]): Array<"dir" | "nsis"> {
+  const filtered = resolveWinTargets(to).filter((target): target is "dir" | "nsis" => target !== "zip");
   if (filtered.length === 0) return ["dir"];
   return filtered;
 }
@@ -61,38 +52,8 @@ export function shouldBuildWinNsisInstaller(to: ToolPackConfig["to"]): boolean {
   return resolveWinTargets(to).includes("nsis");
 }
 
-export function shouldBuildWinSquirrelInstaller(to: ToolPackConfig["to"]): boolean {
-  return resolveWinTargets(to).includes("squirrel");
-}
-
 export function shouldBuildWinPortableZip(to: ToolPackConfig["to"]): boolean {
   return resolveWinTargets(to).includes("zip");
-}
-
-export type WinSquirrelArtifactPaths = {
-  deltaPackagePaths: string[];
-  fullPackagePaths: string[];
-  releasesPath: string | null;
-  setupPath: string | null;
-};
-
-export async function collectWinSquirrelArtifactPaths(
-  config: ToolPackConfig,
-  paths: WinPaths,
-): Promise<WinSquirrelArtifactPaths> {
-  const outputRoot = resolveWinSquirrelOutputRoot(paths.appBuilderOutputRoot);
-  const entries = await readdir(outputRoot, { withFileTypes: true }).catch(() => []);
-  const files = entries
-    .filter((entry) => entry.isFile())
-    .map((entry) => join(outputRoot, entry.name));
-  const releasesPath = resolveWinSquirrelReleasesPath(paths);
-  const setupPath = resolveWinSquirrelSetupPath(config, paths);
-  return {
-    deltaPackagePaths: files.filter((path) => path.toLowerCase().endsWith("-delta.nupkg")).sort(),
-    fullPackagePaths: files.filter((path) => path.toLowerCase().endsWith("-full.nupkg")).sort(),
-    releasesPath: await pathExists(releasesPath) ? releasesPath : null,
-    setupPath: await pathExists(setupPath) ? setupPath : null,
-  };
 }
 
 export async function collectWinSizeReport(
@@ -126,9 +87,7 @@ export async function collectWinSizeReport(
       webOutputMode: config.webOutputMode,
     },
     generatedAt: new Date().toISOString(),
-    installerBytes: await sizeExistingFileBytes(
-      shouldBuildWinSquirrelInstaller(config.to) ? resolveWinSquirrelSetupPath(config, paths) : paths.setupPath,
-    ),
+    installerBytes: await sizeExistingFileBytes(paths.setupPath),
     outputRootBytes: namespaceSizeIndex.sizePathBytes(config.roots.output.namespaceRoot),
     portableZipBytes: await sizeExistingFileBytes(paths.setupZipPath),
     resourceRootBytes: sizeIndex.sizePathBytes(join(appResourcesRoot, "open-design")),
