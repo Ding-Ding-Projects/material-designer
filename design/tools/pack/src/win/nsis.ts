@@ -1,9 +1,10 @@
 import { execFile } from "node:child_process";
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
-import { dirname, win32 } from "node:path";
+import { appendFile, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { dirname, join, win32 } from "node:path";
 import { promisify } from "node:util";
 
-import type { ToolPackConfig } from "../config.js";
+import type { ToolPackConfig } from "../config/index.js";
+import { pathExists } from "./fs.js";
 import { resolveWinUninstallLocalDataRoot } from "./paths.js";
 import type { WinPaths } from "./types.js";
 
@@ -42,19 +43,19 @@ LangString OD_REMOVE_LOCAL_DATA_TITLE 1046 "Remover dados locais"
 LangString OD_REMOVE_LOCAL_DATA_TITLE 1049 "Удалить локальные данные"
 LangString OD_REMOVE_LOCAL_DATA_TITLE 1065 "حذف داده‌های محلی"
 
-LangString OD_REMOVE_LOCAL_DATA_HINT 1033 "Choose whether the uninstaller should remove Material Designer data stored on this computer."
-LangString OD_REMOVE_LOCAL_DATA_HINT 2052 "请选择卸载程序是否删除此电脑上保存的 Material Designer 数据。"
-LangString OD_REMOVE_LOCAL_DATA_HINT 1028 "請選擇解除安裝程式是否刪除此電腦上儲存的 Material Designer 資料。"
-LangString OD_REMOVE_LOCAL_DATA_HINT 1046 "Escolha se o desinstalador deve remover os dados do Material Designer armazenados neste computador."
-LangString OD_REMOVE_LOCAL_DATA_HINT 1049 "Выберите, должен ли деинсталлятор удалить данные Material Designer, сохраненные на этом компьютере."
-LangString OD_REMOVE_LOCAL_DATA_HINT 1065 "انتخاب کنید که حذف‌کننده داده‌های Material Designer ذخیره‌شده در این رایانه را حذف کند یا نه."
+LangString OD_REMOVE_LOCAL_DATA_HINT 1033 "Choose whether the uninstaller should remove Open Design data stored on this computer."
+LangString OD_REMOVE_LOCAL_DATA_HINT 2052 "请选择卸载程序是否删除此电脑上保存的 Open Design 数据。"
+LangString OD_REMOVE_LOCAL_DATA_HINT 1028 "請選擇解除安裝程式是否刪除此電腦上儲存的 Open Design 資料。"
+LangString OD_REMOVE_LOCAL_DATA_HINT 1046 "Escolha se o desinstalador deve remover os dados do Open Design armazenados neste computador."
+LangString OD_REMOVE_LOCAL_DATA_HINT 1049 "Выберите, должен ли деинсталлятор удалить данные Open Design, сохраненные на этом компьютере."
+LangString OD_REMOVE_LOCAL_DATA_HINT 1065 "انتخاب کنید که حذف‌کننده داده‌های Open Design ذخیره‌شده در این رایانه را حذف کند یا نه."
 
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1033 "Remove local Material Designer data:"
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 2052 "删除本地 Material Designer 数据："
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1028 "刪除本機 Material Designer 資料："
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1046 "Remover dados locais do Material Designer:"
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1049 "Удалить локальные данные Material Designer:"
-LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1065 "حذف داده‌های محلی Material Designer:"
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1033 "Remove local Open Design data:"
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 2052 "删除本地 Open Design 数据："
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1028 "刪除本機 Open Design 資料："
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1046 "Remover dados locais do Open Design:"
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1049 "Удалить локальные данные Open Design:"
+LangString OD_REMOVE_LOCAL_DATA_CHECKBOX 1065 "حذف داده‌های محلی Open Design:"
 
 !macro customUnWelcomePage
   !insertmacro MUI_UNPAGE_WELCOME
@@ -127,7 +128,7 @@ FunctionEnd
     StrCpy $odLocalDataRoot "${localDataRoot}"
   \${EndIf}
   \${If} $odRemoveLocalData != "0"
-    DetailPrint "Removing local Material Designer data: $odLocalDataRoot"
+    DetailPrint "Removing local Open Design data: $odLocalDataRoot"
     RMDir /r "$odLocalDataRoot"
   \${EndIf}
 !macroend
@@ -136,6 +137,66 @@ FunctionEnd
   );
 }
 
+
+async function listChildDirectories(root: string): Promise<string[]> {
+  try {
+    const entries = await readdir(root, { withFileTypes: true });
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => join(root, entry.name));
+  } catch {
+    return [];
+  }
+}
+
+async function findNsisLanguageDirectories(root: string, depth = 4): Promise<string[]> {
+  const languageDir = join(root, "Contrib", "Language files");
+  if (await pathExists(join(languageDir, "Farsi.nlf"))) return [languageDir];
+  if (depth <= 0) return [];
+  const children = await listChildDirectories(root);
+  const nested = await Promise.all(children.map((child) => findNsisLanguageDirectories(child, depth - 1)));
+  return nested.flat();
+}
+
+export async function ensureNsisPersianLanguageAlias(config: ToolPackConfig): Promise<boolean> {
+  const cacheRoots = [
+    process.env.ELECTRON_BUILDER_CACHE,
+    process.env.LOCALAPPDATA == null ? undefined : join(process.env.LOCALAPPDATA, "electron-builder", "Cache"),
+    process.env.APPDATA == null ? undefined : join(process.env.APPDATA, "electron-builder", "Cache"),
+    join(config.workspaceRoot, "node_modules", ".cache", "electron-builder"),
+    process.env["ProgramFiles(x86)"] == null ? undefined : join(process.env["ProgramFiles(x86)"], "NSIS"),
+    process.env.ProgramFiles == null ? undefined : join(process.env.ProgramFiles, "NSIS"),
+    "C:\\Program Files (x86)\\NSIS",
+    "C:\\Program Files\\NSIS",
+  ].filter((entry): entry is string => entry != null && entry.length > 0);
+  let updated = false;
+  for (const cacheRoot of cacheRoots) {
+    for (const languageDir of await findNsisLanguageDirectories(cacheRoot)) {
+      let updatedLanguageDir = false;
+      const farsiNlf = join(languageDir, "Farsi.nlf");
+      const farsiNsh = join(languageDir, "Farsi.nsh");
+      const persianNlf = join(languageDir, "Persian.nlf");
+      const persianNsh = join(languageDir, "Persian.nsh");
+      if ((await pathExists(farsiNlf)) && !(await pathExists(persianNlf))) {
+        await cp(farsiNlf, persianNlf);
+        updatedLanguageDir = true;
+        updated = true;
+      }
+      if (await pathExists(farsiNsh)) {
+        const farsiMessages = await readFile(farsiNsh, "utf8");
+        const persianMessages = farsiMessages.replace('LANGFILE "Farsi"', 'LANGFILE "Persian"');
+        const existingPersianMessages = await readFile(persianNsh, "utf8").catch(() => null);
+        if (existingPersianMessages !== persianMessages) {
+          await writeFile(persianNsh, persianMessages, "utf8");
+          updatedLanguageDir = true;
+          updated = true;
+        }
+      }
+      if (updatedLanguageDir) {
+        process.stderr.write(`[tools-pack] added NSIS Persian language alias in ${languageDir}\n`);
+      }
+    }
+  }
+  return updated;
+}
 
 export async function appendNsisLog(paths: WinPaths, message: string, meta: Record<string, unknown> = {}): Promise<void> {
   await mkdir(dirname(paths.nsisLogPath), { recursive: true });
