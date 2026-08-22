@@ -90,7 +90,6 @@ import type { Dict } from "../i18n/types";
 import { agentDisplayName, agentIconId, exactAgentDisplayName } from "../utils/agentLabels";
 import { AgentIcon } from "./AgentIcon";
 import { filterImplicitProducedFiles } from "../produced-files";
-import type { TranslationVars } from '../i18n';
 import type {
   AgentEvent,
   ChatAttachment,
@@ -105,7 +104,7 @@ import type {
 
 type TranslateFn = (
   key: keyof Dict,
-  vars?: TranslationVars
+  vars?: Record<string, string | number>
 ) => string;
 
 // The host reports whether it accepted the answer into a real chat turn. A
@@ -3890,7 +3889,7 @@ function CurrentTaskActivityRow({
 
 function summarizeGroup(
   items: ToolItem[],
-  t: (k: keyof Dict, vars?: TranslationVars) => string,
+  t: (k: keyof Dict, vars?: Record<string, string | number>) => string,
   runStreaming: boolean,
   runSucceeded: boolean
 ): { label: string; icon: string } {

@@ -28,7 +28,7 @@ const HOME_ARGUMENT_PLACEHOLDER_PATTERN =
 export type PromptLocaleKind = 'zh' | 'ja' | 'en';
 
 export function promptLocaleKind(locale: Locale): PromptLocaleKind {
-  if (locale === 'zh-CN' || locale === 'zh-TW' || locale === 'zh-HK') return 'zh';
+  if (locale === 'zh-CN' || locale === 'zh-TW') return 'zh';
   if (locale === 'ja') return 'ja';
   return 'en';
 }

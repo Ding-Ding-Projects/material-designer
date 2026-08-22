@@ -1054,6 +1054,135 @@
 .settings-base-url-customize {
   flex-shrink: 0;
 }
+.settings-general-section {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  /* 24px section rhythm — matches the 24px horizontal inset and the blocks'
+     24px bottom padding, so the spacing around each divider is a symmetric 24. */
+  gap: var(--spacing-24);
+  overflow-x: hidden;
+}
+.settings-general-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-18);
+  min-width: 0;
+  /* Section-to-section vertical rhythm = 24px, matching the 24px horizontal
+     inset (was 32px). */
+  padding: 0 0 var(--spacing-24);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+.settings-general-block:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.settings-general-block-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+}
+.settings-general-block-head h3 {
+  margin: 0;
+  color: var(--text-strong);
+  /* Sub-heading per the type spec: 16 / 600, line-height 125%. Matches the
+     界面语言 field label below so every section title reads at one level. */
+  font-size: var(--font-size-16);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.settings-general-block-head .hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-13);
+  line-height: 1.25;
+}
+.settings-general-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-12);
+  min-width: 0;
+}
+.settings-general-label {
+  display: block;
+  color: var(--text-strong);
+  font-size: var(--font-size-16);
+  font-weight: 600;
+  line-height: 1.25;
+}
+.settings-general-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+}
+.settings-general-select select {
+  width: auto;
+  max-width: min(420px, 100%);
+  field-sizing: content;
+  height: var(--spacing-48);
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-md, 12px);
+  background: color-mix(in srgb, var(--bg-subtle) 74%, var(--bg-panel));
+  color: var(--text);
+  padding: 0 var(--spacing-42) 0 var(--spacing-16);
+  font: inherit;
+  font-size: var(--font-size-14);
+  font-weight: 500;
+  line-height: 1.25;
+  outline: 0;
+  cursor: pointer;
+  box-shadow: none;
+}
+.settings-general-select select:hover {
+  background: color-mix(in srgb, var(--bg-subtle) 88%, var(--bg-panel));
+}
+.settings-general-select select:focus-visible {
+  border-color: var(--selected);
+}
+/* The chevron renders as an <i class="od-icon"> font glyph, not an <svg>, so
+   anchor it to the pill's right edge (inside the 42px right padding). */
+.settings-general-select svg,
+.settings-general-select .od-icon {
+  position: absolute;
+  right: var(--spacing-12);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.settings-general-block .settings-section {
+  gap: var(--spacing-16);
+  min-width: 0;
+}
+.settings-general-block .settings-section-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.settings-general-block .section-head {
+  display: none;
+}
+.settings-general-block .seg-control {
+  max-width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--bg-subtle) 58%, var(--bg-panel));
+}
+.settings-general-block .project-locations-section,
+.settings-general-block .project-location-card,
+.settings-general-block .project-location-edit {
+  max-width: 100%;
+  min-width: 0;
+}
+.settings-general-block .project-location-card code,
+.settings-general-block .project-location-edit input {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .settings-cloud-signin-callout {
   display: flex;
   align-items: center;
@@ -1169,79 +1298,6 @@
 .settings-language-tile:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-}
-/* One-time disclosure that the copy has an adjustable personality, plus the
-   two funny-level sliders it points at. Both live in Settings -> Language
-   beside the locale tiles, so they share that group's surface treatment
-   rather than inventing a third card style. */
-.settings-language-disclosure {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: start;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 12px;
-  background: var(--accent-tint);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-}
-.settings-language-disclosure > svg {
-  color: var(--accent);
-  margin-top: 2px;
-}
-.settings-language-disclosure-text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.settings-funny-row {
-  display: grid;
-  grid-template-columns: minmax(80px, auto) 1fr minmax(96px, auto);
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-}
-.settings-funny-label {
-  font-size: 13px;
-  color: var(--text);
-  overflow-wrap: anywhere;
-}
-.settings-funny-slider {
-  width: 100%;
-  min-width: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.settings-funny-slider:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-.settings-funny-value {
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-/* At narrow widths the three columns crowd the longest bilingual labels, so
-   the row stacks instead of clipping. */
-@media (max-width: 520px) {
-  .settings-funny-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-  .settings-funny-value {
-    text-align: start;
-  }
-  .settings-language-disclosure {
-    grid-template-columns: auto 1fr;
-  }
-  .settings-language-disclosure > button {
-    grid-column: 2;
-    justify-self: start;
-  }
 }
 .empty-card {
   padding: 16px;
@@ -2687,11 +2743,6 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  z-index: 1401;
-  background: var(--md-sys-color-surface-container);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-m);
-  box-shadow: var(--md-sys-elevation-2);
   /* Above every modal layer: the popover portals to <body>, and the settings
      dialog backdrop sits at 1700 (app-modal at 10000) — at the old 1401 the
      dropdown OPENED but rendered underneath the dialog, reading as "click
@@ -2905,19 +2956,6 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-/* The option label escapes the flex-container trap above because its text is
-   wrapped in that real `> span`. The trigger's value label has no element to
-   hand the ellipsis to — `{selectedOption.label}` is its only child — so the
-   model name was a bare anonymous flex item, which `text-overflow` cannot
-   reach, and a long name was clipped mid-glyph with no ellipsis at all.
-
-   A block container can take the property. Nothing about the label's own
-   placement moves: it is a flex item of `.model-select-searchable__value`,
-   which blockifies `inline-flex` to `flex` and `block` to `block` alike, and
-   `align-items` had nothing to align because there were never any children. */
-.model-select-searchable__value-label {
-  display: block;
 }
 .model-select-searchable__value-badge,
 .model-select-searchable__option-badge {
@@ -3567,27 +3605,6 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-subtle);
 }
 .newproj-section { display: flex; flex-direction: column; gap: 6px; }
-
-/* New-project controls keep a 48px interaction wrapper even when the visual
-   glyph or label is compact. The wrapper is the target users can reliably hit
-   at high display scales and in bilingual mode. */
-.newproj-section .ds-picker-trigger,
-.newproj-section .ds-picker-item,
-.newproj-section .compact-toggle,
-.newproj-section .desktop-agent-trigger {
-  min-height: 48px !important;
-}
-.newproj-section .compact-toggle { padding-block: 8px; }
-.newproj-working-dir-clear,
-.new-project-modal__close {
-  width: 48px;
-  height: 48px;
-}
-.desktop-agent-picker { position: relative; display: flex; flex-direction: column; gap: 6px; }
-.desktop-agent-trigger { justify-content: space-between; }
-.desktop-agent-popover { overflow: hidden; }
-.desktop-agent-popover .ds-picker-list { max-height: none; flex: 1 1 auto; min-height: 0; }
-.ds-picker-results { margin: 0; padding: 4px 12px; color: var(--text-muted); font-size: 12px; }
 /* -------- "Start from" rail (blank-first scenario templates) --------
    Horizontal card rail on the prototype/deck tabs. The Blank card is
    always first and selected by default; template cards reroute create

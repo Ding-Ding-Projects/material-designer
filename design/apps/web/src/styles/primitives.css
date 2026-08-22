@@ -1,82 +1,5 @@
-/* -------- Buttons ---------------------------------------------------
- *
- * Material Design 3 common-button anatomy. The geometry here is the visible
- * half of the redesign: 40px tall, fully rounded, with a state layer rather
- * than a colour swap on hover.
- *
- * Why a state layer and not `background: <lighter colour>`: M3 expresses
- * interaction as a translucent film of the FOREGROUND colour over whatever
- * surface the button sits on. That composites correctly on a filled button, a
- * tonal one and a transparent one alike, and it keeps working when the seed
- * colour changes — which a hand-picked hover colour does not.
- *
- * The `::after` layer is the film. It is inert to pointer events, sits under
- * the label, and animates opacity only, so it cannot shift layout.
- *
- * The height, the horizontal padding and the icon gap are read from the
- * density tokens rather than written as the three numbers they used to be.
- * That is what makes the density control real: `--control-h`,
- * `--control-pad-x` and `--sp` resolve to 40px, 16px and 8px at default
- * density — the exact values that were hard-coded here — so nothing moves
- * for an install that never touches the control, and every button in the
- * app resizes the moment one does. The fallbacks keep the geometry intact
- * if this rule is ever rendered without the token sheet.
- */
+/* -------- Buttons --------------------------------------------------- */
 button {
-  position: relative;
-  isolation: isolate;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp, 8px);
-  min-height: var(--control-h, 40px);
-  padding: 0 var(--control-pad-x, 16px);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: 0.1px;
-  color: var(--md-sys-color-on-surface);
-  background: var(--md-sys-color-surface-container-low);
-  border: 0;
-  border-radius: var(--md-sys-shape-corner-full);
-  cursor: pointer;
-  transition:
-    background var(--dur-quick) var(--ease-out),
-    box-shadow var(--dur-quick) var(--ease-out),
-    color var(--dur-quick) var(--ease-out);
-}
-
-/* The state layer. `currentColor` is what makes one rule serve every variant. */
-button::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: currentColor;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-quick) var(--ease-out);
-}
-button:hover:not(:disabled)::after { opacity: 0.08; }
-button:focus-visible::after { opacity: 0.10; }
-button:active:not(:disabled)::after { opacity: 0.12; }
-
-button:focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
-button:disabled {
-  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
-  background: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
-  cursor: not-allowed;
-}
-
-/* Filled — the highest-emphasis action on a surface. */
-button.primary {
-  background: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -118,44 +41,11 @@ button.primary:active:not(:disabled) {
   background: var(--text);
   border-color: var(--text);
 }
-button.primary:hover:not(:disabled) { box-shadow: var(--md-sys-elevation-1); }
-
-/* Filled tonal — the variant the app was missing, and the reason two
- * automation surfaces had no emphasis hierarchy at all. `.btn-primary` and
- * `.btn-danger` are written on buttons throughout this codebase and neither
- * class is declared anywhere, so "Run now" rendered as the same grey
- * container as "Edit" and "Delete" beside it. M3's answer for a recurring
- * row action is not the filled button — a list of rows each carrying a full
- * accent reads as a page of calls to action — it is this one:
- * `primary-container` under `on-primary-container`. */
-button.tonal {
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-}
-button.tonal:hover:not(:disabled) { box-shadow: var(--md-sys-elevation-1); }
-
-/* Outlined — a medium-emphasis action that must not compete with the filled one. */
 button.primary-ghost {
-  background: transparent;
-  color: var(--md-sys-color-primary);
-  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
-}
-
-/* Text — low emphasis, no container until it is touched. */
-button.ghost {
-  background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
-  padding: 0 12px;
-}
-
-/* Subtle — a quiet secondary action on tinted surfaces. */
-button.subtle {
   background: var(--bg-subtle);
   border-color: transparent;
   color: var(--text-strong);
 }
-button.subtle:hover:not(:disabled) { background: var(--bg-muted); }
-button.subtle:active:not(:disabled) { background: var(--border-strong); }
 button.primary-ghost:hover:not(:disabled) { background: var(--bg-muted); }
 button.primary-ghost:active:not(:disabled) { background: var(--border-strong); }
 
@@ -261,29 +151,8 @@ button:disabled {
 }
 
 /* -------- Inputs ---------------------------------------------------- */
-/* Material Design 3 outlined text field.
- *
- * 40px minimum height to match the buttons beside it, an outline that
- * thickens to 2px on focus rather than growing a separate halo ring, and the
- * M3 shape scale. The thickening is drawn with an inset box-shadow, not a
- * border-width change: changing the border would move the field's content by a
- * pixel on focus, which reads as a twitch on every click into an input.
- *
- * "40px minimum height to match the buttons beside it" is now enforced
- * rather than restated: the field and the button read the same
- * `--control-h`, so they cannot drift apart at compact or comfortable
- * density the way two independently hard-coded 40s would. */
 input, textarea, select {
   font: inherit;
-  min-height: var(--control-h, 40px);
-  color: var(--md-sys-color-on-surface);
-  background: var(--md-sys-color-surface);
-  border: 0;
-  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-xs);
-  padding: 8px 16px;
-  width: 100%;
-  transition: box-shadow var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out);
   color: var(--text);
   background: var(--bg-panel);
   border: var(--stroke-thin, 1px) solid var(--border);
@@ -294,22 +163,11 @@ input, textarea, select {
     border-color var(--duration-faster, 100ms) var(--curve-easy-ease, ease),
     box-shadow var(--duration-faster, 100ms) var(--curve-easy-ease, ease);
 }
-input::placeholder, textarea::placeholder { color: var(--md-sys-color-on-surface-variant); }
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--md-sys-color-primary);
-}
-input:disabled, textarea:disabled, select:disabled {
-  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
-}
+input::placeholder, textarea::placeholder { color: var(--text-faint); }
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--selected);
 }
-/* Entry sidebar form fields keep a quieter, neutral focus (just a darker
-   border, no outer halo) so the orange "Create" CTA stays the loudest thing
-   in the panel. */
 /* Entry sidebar form fields keep a quieter, neutral focus (just a darker
    border, no outer halo) so the orange "Create" CTA stays the loudest thing
    in the panel. */
@@ -360,9 +218,7 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger {
   width: 100%;
   min-width: 0;
-  /* The smaller of the two density heights: this trigger is deliberately
-     shorter than a button, and reading `--control-h` would erase that. */
-  min-height: var(--control-h-sm, 36px);
+  min-height: 36px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -504,151 +360,3 @@ code {
   -webkit-mask: url(/brand-icon.svg) center / contain no-repeat;
   mask: url(/brand-icon.svg) center / contain no-repeat;
 }
-
-/* -------- Reveal flash ------------------------------------------------ */
-/* Applied for ~1.6s by `components/command-palette/reveal.ts` to whatever the
-   palette just navigated to, so the eye lands where the keyboard already did.
-   It is a global class rather than a CSS Module because the targets are
-   arbitrary controls all over the app — the module that applies it never owns
-   the element it lands on.
-
-   `outline` rather than `border` or `box-shadow`: an outline is drawn outside
-   the box and participates in no layout, so flashing a control cannot nudge the
-   surrounding form by a pixel. The ring is what carries the meaning, so it
-   stays put under `prefers-reduced-motion`; only the pulse stops. */
-.od-reveal-flash {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-  animation: od-reveal-flash-pulse 800ms var(--ease-out) 2;
-}
-@keyframes od-reveal-flash-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
-  }
-  40% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 26%, transparent);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .od-reveal-flash {
-    animation: none;
-  }
-}
-
-/* -------- Material Design 3 surfaces ---------------------------------
- *
- * Dialogs, popovers and menus in this application are styled per component,
- * in dozens of files, each having chosen its own radius and shadow. Rewriting
- * every one of them is the long tail of this redesign; this block gives all of
- * them M3 shape and elevation now, by attribute and by the naming conventions
- * the components already follow.
- *
- * Two rules of the standard are enforced here rather than left to each
- * component to remember:
- *
- *   1. An overlay paints its OWN surface. An overlay that renders transparent
- *      lets whatever is behind it read straight through the text on top — the
- *      fastest way to make a well-built dialog look broken. Every surface below
- *      sets a background explicitly.
- *   2. An overlay is bounded by the viewport and SCROLLS when it does not fit.
- *      Capping height and hiding the overflow deletes the content past the cap
- *      with no scrollbar to say anything is missing: a calendar loses its last
- *      week, a menu its last items, and the user has no way to know.
- *
- * Component rules with higher specificity still win, so this is a floor and
- * not a straitjacket.
- */
-
-[class*='-modal']:not([class*='backdrop']):not([class*='__']),
-[class*='-dialog']:not([class*='backdrop']):not([class*='__']),
-dialog {
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
-  border: 0;
-  border-radius: var(--md-sys-shape-corner-xl);
-  box-shadow: var(--md-sys-elevation-3);
-  max-height: min(90vh, 100%);
-  overflow: auto;
-}
-
-[class*='-popover']:not([class*='__']),
-[class*='-menu']:not([class*='item']):not([class*='icon']):not([class*='__']) {
-  background: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  border: 0;
-  border-radius: var(--md-sys-shape-corner-m);
-  box-shadow: var(--md-sys-elevation-2);
-  max-height: min(80vh, 100%);
-  overflow: auto;
-}
-
-[class*='-card']:not([class*='__']) {
-  background: var(--md-sys-color-surface-container-low);
-  color: var(--md-sys-color-on-surface);
-  border-radius: var(--md-sys-shape-corner-m);
-}
-
-/* The scrim behind a modal. The token already carries its own alpha — it is
-   `rgba(0, 0, 0, .32)`, not an opaque colour — so it is used directly. Passing
-   it through a further color-mix would dim it twice and produce a scrim far
-   darker than the specification, hiding the context the user often needs in
-   order to answer the dialog. */
-[class*='modal-backdrop'],
-[class*='-scrim'] {
-  background: var(--md-sys-color-scrim);
-}
-/* ============================================================
-   MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:BEGIN
-   Shared safety floor. Deliberately narrow selectors: component modules keep
-   ownership of their layout and this block only fixes focus, viewport bounds
-   and M3 control geometry that must not vary by screen.
-   ============================================================ */
-:where(button, [role='button'], [role='menuitem'], [role='option'], a[href]):focus-visible {
-  outline: 2px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
-
-:where(.btn, .od-select-trigger) {
-  border-radius: var(--md-sys-shape-corner-full);
-}
-
-.od-select-trigger {
-  min-height: 40px;
-  border-color: var(--md-sys-color-outline);
-  background: var(--md-sys-color-surface-container-lowest);
-}
-
-.od-select-menu {
-  max-width: min(420px, calc(var(--od-vw, 100vw) - 24px));
-  max-height: min(420px, calc(var(--od-vh, 100vh) - 24px));
-  border-color: var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-l);
-  background: var(--md-sys-color-surface-container);
-  box-shadow: var(--md-sys-elevation-2);
-}
-
-.od-select-option {
-  min-height: 40px;
-  border-radius: var(--md-sys-shape-corner-m);
-}
-
-.od-select-option:hover:not(:disabled),
-.od-select-option.active:not(:disabled) {
-  background: var(--ripple);
-}
-
-:where(dialog, [role='dialog'], [aria-modal='true']) {
-  max-width: min(720px, calc(var(--od-vw, 100vw) - 32px));
-  max-height: calc(var(--od-vh, 100vh) - 32px);
-  border-radius: var(--md-sys-shape-corner-xl);
-  overscroll-behavior: contain;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :where(*, *::before, *::after) {
-    scroll-behavior: auto !important;
-  }
-}
-/* MATERIAL-DESIGNER-M3-CONTRACT-COMPLETION-2026-08-10:END */

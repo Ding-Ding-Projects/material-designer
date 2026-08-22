@@ -30,8 +30,7 @@ import styles from './WhatsNewPopup.module.css';
 // (see ./UpdaterPopup.tsx) — this surface must never claim to install anything.
 
 // Fallback for the CTA when the highlight document omits an explicit link.
-// This fork's own release page, never upstream's — see SettingsDialog.
-const RELEASES_INDEX_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
+const RELEASES_INDEX_URL = 'https://github.com/nexu-io/open-design/releases';
 
 /**
  * The version this dialog is allowed to state, or null when nothing real can
@@ -156,52 +155,6 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
     setCard(null);
   }, [analytics.track, appVersion, card]);
 
-  return (
-    <AnimatePresence>
-      {active && card != null ? (
-        <motion.section
-          aria-labelledby="whats-new-popup-title"
-          className={styles.card}
-          data-testid="whats-new-popup"
-          role="complementary"
-          variants={cardIn}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
-          <div className={styles.header}>
-            <span className={styles.eyebrow}>Material Designer {card.appVersion}</span>
-            <Button
-              aria-label={t('whatsNew.dismissAria')}
-              className={styles.close}
-              data-testid="whats-new-dismiss"
-              size="icon"
-              variant="ghost"
-              onClick={dismiss}
-            >
-              <Icon name="close" size={14} strokeWidth={2} />
-            </Button>
-          </div>
-          <div className={styles.content}>
-            <div className={styles.main}>
-              <h2 className={styles.title} id="whats-new-popup-title">
-                {card.title}
-              </h2>
-              <div className={styles.actions}>
-                <Button
-                  data-testid="whats-new-cta"
-                  variant="subtle"
-                  onClick={openLink}
-                >
-                  {t('whatsNew.cta')}
-                </Button>
-              </div>
-            </div>
-            {card.imageUrl != null ? (
-              <img alt="" className={styles.image} src={card.imageUrl} />
-            ) : null}
-          </div>
-        </motion.section>
   // `appVersion == null` means neither the hook nor the document can name a
   // version yet; the dialog waits rather than titling itself with a guess.
   if (!active || card == null || appVersion == null) return null;

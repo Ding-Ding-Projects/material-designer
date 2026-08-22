@@ -73,9 +73,6 @@ import {
   uploadPluginZip,
 } from '../state/projects';
 import { Icon } from './Icon';
-import { RegexSearchField } from './regex/RegexSearchField';
-import regexFieldStyles from './regex/RegexSearchField.module.css';
-import { useRegexSearch, type RegexSearchMode } from './regex/useRegexSearch';
 import { Toast } from './Toast';
 import { PluginDetailsModal } from './PluginDetailsModal';
 import { SkillDetailView } from './SkillDetailView';
@@ -83,7 +80,7 @@ import { PluginsHomeSection } from './PluginsHomeSection';
 import { humanizeCategory } from './SkillsSection';
 import { buildCategoryCatalog, extractCategories } from './plugins-home/facets';
 import { TrustBadge } from './TrustBadge';
-import { tv, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
@@ -199,7 +196,6 @@ const PLUGIN_SHARE_DETAILS: Record<PluginShareAction, {
       'Creates a public GitHub repository for this local OpenDesign plugin.',
     confirmLabel: 'Start publishing',
     steps: [
-      'Create a new Material Designer project for the publish workflow.',
       'Create a new OpenDesign project for the publish workflow.',
       'Copy this plugin into that project as isolated source context.',
       'Run the official publish action plugin against the local daemon.',
@@ -212,7 +208,6 @@ const PLUGIN_SHARE_DETAILS: Record<PluginShareAction, {
       'Opens a pull request that adds this plugin to the OpenDesign community catalog.',
     confirmLabel: 'Start contribution',
     steps: [
-      'Create a new Material Designer project for the contribution workflow.',
       'Create a new OpenDesign project for the contribution workflow.',
       'Copy this plugin into that project as isolated source context.',
       'Run the official contribution action plugin against the local daemon.',
@@ -3018,21 +3013,10 @@ function AvailablePluginsPanel({
   const [sourceFilter, setSourceFilter] = useState('all');
   const searchTrackedRef = useRef(false);
   const sourceTrackedRef = useRef(false);
-  // This section's own regex controller. The installed-plugins list and the
-  // marketplace list each keep their own; neither can see the other's pattern.
-  const searchRegex = useRegexSearch(query, setQuery);
-  const searchMode = searchRegex.mode;
-  const matchesSearch = searchRegex.matches;
   const sourceOptions = useMemo(() => buildAvailableSourceOptions(plugins), [plugins]);
   const filteredPlugins = useMemo(
-    () =>
-      filterAvailablePlugins(plugins, {
-        query,
-        sourceFilter,
-        mode: searchMode,
-        matches: matchesSearch,
-      }),
-    [plugins, query, sourceFilter, searchMode, matchesSearch],
+    () => filterAvailablePlugins(plugins, { query, sourceFilter }),
+    [plugins, query, sourceFilter],
   );
   const filterActive = query.trim().length > 0 || sourceFilter !== 'all';
 
@@ -3052,24 +3036,19 @@ function AvailablePluginsPanel({
       {plugins.length > 0 ? (
         <div className="plugins-view__available-controls" aria-label={t('pluginsView.availableFiltersAria')}>
           <div className="plugins-view__search">
-            <Icon name="search" size={13} className="plugins-view__search-icon" />
-            <RegexSearchField
-              search={searchRegex}
-              fieldLabel={t('pluginsView.availableTitle')}
             <Icon name="search" size={14} className="plugins-view__search-icon" />
             <input
               id="plugins-available-search"
-              ariaLabel={t('pluginsView.searchAvailableAria')}
-              placeholder={t('pluginsView.searchAvailablePlaceholder')}
-              testId="plugins-available-search"
-              // The pill parks its clear button at the right edge, so the
-              // builder affordance is inset to sit clear of it.
-              toggleClassName={regexFieldStyles.toggleInset}
+              type="search"
+              aria-label={t('pluginsView.searchAvailableAria')}
+              value={query}
               onFocus={() => {
                 if (searchTrackedRef.current) return;
                 searchTrackedRef.current = true;
                 onSearchInput?.();
               }}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('pluginsView.searchAvailablePlaceholder')}
             />
             {query ? (
               <button
@@ -3310,7 +3289,6 @@ function AvailablePluginDetailsModal({
                 </h3>
               </div>
               <p className="plugin-details-modal__section-hint">
-                This official catalog entry is bundled with Material Designer and is ready to use.
                 This official catalog entry is bundled with OpenDesign and is ready to use.
               </p>
             </section>
@@ -3368,11 +3346,8 @@ function AvailablePluginDetailsModal({
               {selectedVersionInfo?.deprecated ? (
                 <p className="plugin-details-modal__section-hint">
                   {t('plugins.availableDetails.deprecatedPrefix', {
-                    // `true` means "deprecated, no reason given", so the
-                    // stand-in reason is our own copy and travels as a key;
-                    // a string is the registry's own text and does not.
                     message: selectedVersionInfo.deprecated === true
-                      ? tv('plugins.availableDetails.deprecatedFallback')
+                      ? t('plugins.availableDetails.deprecatedFallback')
                       : selectedVersionInfo.deprecated,
                   })}
                 </p>
@@ -4164,30 +4139,19 @@ function buildAvailableSourceOptions(plugins: AvailableMarketplacePlugin[]): Ava
 
 function filterAvailablePlugins(
   plugins: AvailableMarketplacePlugin[],
-  filters: {
-    query: string;
-    sourceFilter: string;
-    mode: RegexSearchMode;
-    matches: (text: string) => boolean;
-  },
+  filters: { query: string; sourceFilter: string },
 ): AvailableMarketplacePlugin[] {
-  // Plain text keeps its existing every-word-must-appear behaviour; a regex is
-  // matched whole, because splitting a pattern on spaces would break it.
-  const terms =
-    filters.mode === 'text'
-      ? filters.query
-          .trim()
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(Boolean)
-      : [];
+  const terms = filters.query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
   return plugins.filter((plugin) => {
     if (filters.sourceFilter !== 'all' && plugin.marketplace.id !== filters.sourceFilter) {
       return false;
     }
-    const haystack = availablePluginSearchText(plugin);
-    if (filters.mode === 'regex') return filters.matches(haystack);
     if (terms.length === 0) return true;
+    const haystack = availablePluginSearchText(plugin);
     return terms.every((term) => haystack.includes(term));
   });
 }

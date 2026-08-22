@@ -14,13 +14,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  hasOdCard,
-  type AppliedPluginSnapshot,
-  type ChatSessionMode,
-  type RunContextSelection,
-  type WorkspaceContextItem,
-} from '@open-design/contracts';
+import { hasOdCard } from '@open-design/contracts';
 import { useAnalytics } from '../analytics/provider';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
@@ -35,7 +29,7 @@ import {
   runAgentProviderId,
 } from '../analytics/run-task';
 import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
-import { tv, useI18n, useT, type TranslationVars } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import {
@@ -51,10 +45,16 @@ import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import { projectRawUrl } from '../providers/registry';
 import { appendResourceQuery } from '../collab/workspace-identity';
 import { useProjectCollabContext } from '../collab/collab-context';
-import { workspaceContextKindLabel } from './workspace-context';
 import { takeComposerSeedFor } from '../state/libraryHandoff';
 import { splitOnQuestionForms } from '../artifacts/question-form';
 import { stripArtifact } from '../artifacts/strip';
+import type { TodoItem } from '../runtime/todos';
+import type {
+  AppliedPluginSnapshot,
+  ChatSessionMode,
+  RunContextSelection,
+  WorkspaceContextItem,
+} from '@open-design/contracts';
 import type {
   TrackingProjectKind,
   TrackingRunRecoveryActionType,
@@ -68,7 +68,6 @@ import {
   isTodoWriteToolName,
   latestTodoWriteInputForPinnedCard,
   unfinishedTodosFromEvents,
-  type TodoItem,
 } from '../runtime/todos';
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, ChatMessage, ChatMessageFeedbackChange, Conversation, DesignSystemSummary, PreviewComment, Project, ProjectFile, ProjectMetadata, SkillSummary } from '../types';
 import { agentDisplayName } from '../utils/agentLabels';
@@ -112,14 +111,13 @@ import {
 import type { PlaceholderScenario } from './home-hero/placeholderScenarios';
 import { listDesignArtifactCandidates } from './design-files/designArtifacts';
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon, type IconName } from './Icon';
 import { UserActionCard, type UserActionCardTone } from './UserActionCard';
 import { repoConnectCopy } from './design-system-github-evidence';
 import { isRenderableSketchJson, SketchPreview } from './SketchPreview';
 import type { SettingsSection } from './SettingsDialog';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 // Featured starter prompts shown on the empty chat. Clicking one fills
 // the composer (does not auto-send) so users can tweak before sending.
@@ -537,6 +535,7 @@ interface Props {
   // without project context.
   projectKindForTracking?: TrackingProjectKind | null;
   projectFiles: ProjectFile[];
+  activeProjectFileName?: string | null;
   hasActiveDesignSystem?: boolean;
   activeDesignSystem?: DesignSystemSummary | null;
   sendDisabled?: boolean;
@@ -892,6 +891,7 @@ export function ChatPane({
   onSessionModeChange,
   projectKindForTracking = null,
   projectFiles,
+  activeProjectFileName = null,
   hasActiveDesignSystem = false,
   activeDesignSystem = null,
   projectFileNames,
@@ -1264,13 +1264,6 @@ export function ChatPane({
   const [tab, setTab] = useState<Tab>('chat');
   const [showConvList, setShowConvList] = useState(false);
   const [conversationSearch, setConversationSearch] = useState('');
-  // Deleting a conversation takes every message in it and nothing in the
-  // product puts them back, so the "×" on a history row now opens the
-  // super-confirmation gate rather than a browser dialog one stray Enter
-  // answered. Held at pane level so the gate survives the history popover
-  // closing underneath it.
-  const [deleteConversationTarget, setDeleteConversationTarget] =
-    useState<Conversation | null>(null);
   const deferredConversationSearch = useDeferredValue(conversationSearch);
   const [scrolledFromBottom, setScrolledFromBottom] = useState(false);
   // SDF liquid-glass refraction on the jump pill (frosted fallback via CSS).
@@ -2395,6 +2388,7 @@ export function ChatPane({
       designSystemPicker={designSystemPicker}
       projectId={projectId}
       projectFiles={projectFiles}
+      activeProjectFileName={activeProjectFileName}
       sessionMode={sessionMode}
       onSessionModeChange={onSessionModeChange}
       skills={skills}
@@ -2622,7 +2616,7 @@ export function ChatPane({
                         onSelectConversation(c.id);
                         setShowConvList(false);
                       }}
-                      onRequestDelete={() => setDeleteConversationTarget(c)}
+                      onDelete={() => onDeleteConversation(c.id)}
                       t={t}
                     />
                   ))
@@ -3107,30 +3101,6 @@ export function ChatPane({
               )
             : null}
         </>
-      ) : null}
-      {deleteConversationTarget ? (
-        <DestructiveGate
-          action={t('chat.deleteConversation')}
-          // The conversation's own title, not a description of one — this is
-          // the string the user has to be able to check the slider against.
-          target={
-            deleteConversationTarget.title || t('chat.untitledConversation')
-          }
-          items={[
-            t('conv.deleteGateItem', {
-              // The fallback is copy, so it travels as a key: read as a string
-              // it would already be bilingual and end up said twice inside the
-              // bilingual template. A real conversation title is the user's
-              // own text and passes through untouched.
-              title:
-                deleteConversationTarget.title ||
-                tv('chat.untitledConversation'),
-            }),
-          ]}
-          irreversible
-          onConfirm={() => onDeleteConversation(deleteConversationTarget.id)}
-          onClose={() => setDeleteConversationTarget(null)}
-        />
       ) : null}
     </div>
   );
@@ -4629,15 +4599,14 @@ function ConversationRow({
   active,
   messageCount,
   onSelect,
-  onRequestDelete,
+  onDelete,
   t,
 }: {
   conversation: Conversation;
   active: boolean;
   messageCount: number | null;
   onSelect: () => void;
-  /** Ask the pane to open the destructive gate; it owns the actual delete. */
-  onRequestDelete: () => void;
+  onDelete: () => void;
   t: TranslateFn;
 }) {
   const displayTitle =
@@ -4671,7 +4640,11 @@ function ConversationRow({
         title={t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          onRequestDelete();
+          if (
+            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
+          ) {
+            onDelete();
+          }
         }}
       >
         <Icon name="close" size={12} />
@@ -4753,7 +4726,6 @@ function UserMessageImpl({
             <ActiveWorkspaceContextChip
               key={`${item.kind}:${item.id}`}
               item={item}
-              t={t}
               onOpen={onRequestOpenFile}
             />
           ))}
@@ -4958,11 +4930,9 @@ const WORKSPACE_DESIGN_SYSTEM_TAB = '__design_system__';
 
 function ActiveWorkspaceContextChip({
   item,
-  t,
   onOpen,
 }: {
   item: WorkspaceContextItem;
-  t: TranslateFn;
   onOpen?: (name: string) => void;
 }) {
   const target = workspaceContextOpenTarget(item);
@@ -4972,7 +4942,7 @@ function ActiveWorkspaceContextChip({
         <Icon name={workspaceContextIcon(item)} size={12} />
       </span>
       <span className="msg-plugin-chip__label">
-        <span className="msg-plugin-chip__kind">{t('fileViewer.versions.current')}</span>
+        <span className="msg-plugin-chip__kind">Current</span>
         <span className="msg-plugin-chip__title">{item.label}</span>
       </span>
     </>
@@ -4982,7 +4952,7 @@ function ActiveWorkspaceContextChip({
       <div
         className={`msg-plugin-chip msg-plugin-chip--workspace msg-plugin-chip--workspace-${item.kind}`}
         data-testid="msg-workspace-context-chip"
-        title={workspaceContextTitle(item, t)}
+        title={workspaceContextTitle(item)}
       >
         {content}
       </div>
@@ -4993,7 +4963,7 @@ function ActiveWorkspaceContextChip({
       type="button"
       className={`msg-plugin-chip msg-plugin-chip--workspace msg-plugin-chip--workspace-${item.kind} msg-plugin-chip--action`}
       data-testid="msg-workspace-context-chip"
-      title={workspaceContextTitle(item, t)}
+      title={workspaceContextTitle(item)}
       onClick={() => onOpen(target)}
     >
       {content}
@@ -5022,14 +4992,40 @@ function workspaceContextIcon(item: WorkspaceContextItem): IconName {
   return 'file';
 }
 
-function workspaceContextTitle(item: WorkspaceContextItem, t: TranslateFn): string {
+function workspaceContextTitle(item: WorkspaceContextItem): string {
   return [
-    workspaceContextKindLabel(item.kind, t),
+    workspaceContextKindLabel(item.kind),
     item.path ? `path: ${item.path}` : null,
     item.absolutePath ? `absolute: ${item.absolutePath}` : null,
     item.url ? `url: ${item.url}` : null,
     item.title ? `title: ${item.title}` : null,
   ].filter(Boolean).join(' | ');
+}
+
+function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
+  switch (kind) {
+    case 'browser':
+      return 'Browser';
+    case 'design-files':
+      return 'Design files';
+    case 'design-system':
+      return 'Design system';
+    case 'folder':
+      return 'Folder';
+    case 'project':
+      return 'Project';
+    case 'local-code':
+      return 'Local code';
+    case 'terminal':
+      return 'Terminal';
+    case 'side-chat':
+      return 'Side chat';
+    case 'live-artifact':
+      return 'Live artifact';
+    case 'file':
+    default:
+      return 'File';
+  }
 }
 
 function sortChatAttachmentsForDisplay(attachments: ChatAttachment[]): ChatAttachment[] {

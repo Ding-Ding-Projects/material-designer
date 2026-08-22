@@ -13,6 +13,7 @@ import type {
 import { resolveFixedOriginBaseUrl } from './apiProtocols';
 import {
   DEFAULT_ACCENT_COLOR,
+  FORCED_APP_THEME,
   normalizeAccentColor,
   resolveAppTheme,
 } from './appearance';
@@ -21,7 +22,6 @@ import {
   DEFAULT_SUCCESS_SOUND_ID,
 } from '../utils/notifications';
 import { randomUUID } from '../utils/uuid';
-import { isStudioFixtureCaptureStorageLocked } from '../capture/studio-fixture';
 
 const STORAGE_KEY = 'open-design:config';
 const CONFIG_MIGRATION_VERSION = 3;
@@ -91,7 +91,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   skillId: null,
   designSystemId: null,
   onboardingCompleted: false,
-  theme: 'system',
+  theme: FORCED_APP_THEME,
   accentColor: DEFAULT_ACCENT_COLOR,
   mediaProviders: {},
   composio: {},
@@ -692,19 +692,17 @@ export function loadConfig(): AppConfig {
       agentCliEnv: { ...(parsed.agentCliEnv ?? {}) },
       agentCliEnvIntent: { ...(parsed.agentCliEnvIntent ?? {}) },
       accentColor: normalizeAccentColor(parsed.accentColor) ?? DEFAULT_CONFIG.accentColor,
-      // Resolve on read so malformed or obsolete values never reach the
-      // renderer; valid System, Light and Dark choices remain user-owned.
+      // Coerce on read, not just on default: the theme setting is gone, but
+      // 'dark' / 'system' is still on disk in every install that ever used it.
       theme: resolveAppTheme(parsed.theme),
       pet: normalizePet(parsed.pet),
       notifications: normalizeNotifications(parsed.notifications),
       orbit: normalizeOrbit(parsed.orbit),
     };
-    // A malformed theme in a current-version payload still needs one write
-    // back. Returning `system` only in memory would make the same bad value
-    // reappear on every launch and leave the persisted source of truth
-    // non-canonical.
-    let migratedConfig = Object.prototype.hasOwnProperty.call(parsed, 'theme')
-      && parsed.theme !== merged.theme;
+    // A stored `dark` / `system` theme is dead data now that the app ships
+    // light-only. Flag it so the coerced value is written back once and the old
+    // preference stops existing on disk, instead of being re-coerced forever.
+    let migratedConfig = parsed.theme != null && parsed.theme !== FORCED_APP_THEME;
     const parsedMigrationVersion =
       typeof parsed.configMigrationVersion === 'number'
         ? parsed.configMigrationVersion
@@ -975,7 +973,6 @@ export async function fetchMediaProvidersFromDaemon(): Promise<DaemonMediaProvid
 export async function syncComposioConfigToDaemon(
   config: AppConfig['composio'] | undefined,
 ): Promise<boolean> {
-  if (isStudioFixtureCaptureStorageLocked()) return false;
   const apiKey = config?.apiKey ?? '';
   const payload = {
     ...(apiKey.trim() || !config?.apiKeyConfigured ? { apiKey } : {}),
@@ -1024,7 +1021,6 @@ function sanitizeAgentCliEnv(agentCliEnv: AppConfig['agentCliEnv']): AppConfig['
 }
 
 export function saveConfig(config: AppConfig): void {
-  if (isStudioFixtureCaptureStorageLocked()) return;
   const sanitized: AppConfig = {
     ...config,
     agentCliEnv: sanitizeAgentCliEnv(config.agentCliEnv),
@@ -1227,7 +1223,6 @@ export async function syncMediaProvidersToDaemon(
     throwOnError?: boolean;
   },
 ): Promise<void> {
-  if (isStudioFixtureCaptureStorageLocked()) return;
   if (!providers) return;
   try {
     const payload = buildMediaProvidersForDaemonSave(
@@ -1265,7 +1260,6 @@ export async function syncConfigToDaemon(
     allowOnboardingReset?: boolean;
   },
 ): Promise<void> {
-  if (isStudioFixtureCaptureStorageLocked()) return;
   const prefs: AppConfigPrefs = {
     ...(config.onboardingCompleted === true
       ? { onboardingCompleted: true }

@@ -311,12 +311,6 @@
   align-items: center;
   gap: 8px;
 }
-/* Optional visual slot above the message (Toast `media`). The slot owns the
-   spacing only; the node inside brings its own size, radius and fit, so one
-   caller's thumbnail cannot silently restyle another's. */
-.od-toast-media {
-  margin-bottom: 10px;
-}
 .od-toast-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -474,23 +468,14 @@
   white-space: nowrap;
 }
 
-/* Material Design 3 list row (roadmap § 2.4 Wave 4). The same anatomy the
-   Automations page uses: an `outline-variant` hairline over
-   `surface-container-low` at corner-l. This surface and that one are the
-   same feature seen from two places, and they were drawn as two different
-   cards. */
 .routines-card {
-  background: var(--md-sys-color-surface-container-low);
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-l);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.routines-item:hover {
-  background: var(--md-sys-color-surface-container);
 }
 
 .routines-form { margin-top: 4px; }
@@ -737,11 +722,6 @@
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
-/* `.routines-tag` used to live here — a 11px uppercase pill that appeared
-   only when an automation was paused. It is gone because the row now draws
-   `.automation-state-chip` from `styles/home/tasks.css`, the same chip the
-   Automations page uses, so the two surfaces cannot drift into two shapes
-   for one piece of state. */
 .routines-tag {
   font-size: 12px;
   background: var(--bg-muted);
@@ -753,20 +733,7 @@
   font-weight: 600;
 }
 
-.routines-item-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-
-/* The delete action. `btn-danger` was written on this button and is declared
-   nowhere, so the destructive action rendered as the same neutral container
-   as Edit beside it. M3 puts destructive intent in the `error` role, and a
-   text button is the right emphasis for something the destructive gate has
-   to confirm anyway. */
-/* `button.` is not decoration. The delete action also carries `ghost`, and
-   `button.ghost` in `styles/primitives.css` is (0,1,1) — a bare
-   `.routines-item-delete` at (0,1,0) would lose to it and this rule would
-   have changed nothing on screen. Matching the element as well ties the
-   specificity, and this sheet is imported later, so the error colour wins. */
-button.routines-item-delete { color: var(--md-sys-color-error); }
-button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-error); }
+.routines-item-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
 .routines-item-history {
   border-top: 1px solid var(--border);
@@ -1010,14 +977,10 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 /* Project page audit pass: one final rule set for the active project shell.
    Keep the outer panes flat; only controls and repeated items get radius. */
 .workspace-shell {
-  grid-template-rows: 42px minmax(0, 1fr);
-}
-.workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 42px;
-  --workspace-tab-bar-bg: color-mix(in srgb, var(--bg-panel) 82%, var(--bg-subtle));
-  --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 42px;
-  min-height: 42px;
+  /* 52px tab-bar row: 10px above + 32px tab + 10px below, so the tabs get 10px
+     top/bottom breathing room and the row below (sidebar) keeps its own 10px
+     top margin — one consistent 10px rhythm around the strip. */
+  grid-template-rows: 52px minmax(0, 1fr);
 }
 /* ── Project-route tab-strip dock (workspaceTabsDock.ts) ──────────────────
    On the project route the strip portals into .split-chat-tabs-dock at the
@@ -1066,8 +1029,9 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   margin-top: 2px;
   padding: 0;
   border: 0;
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container-high);
+  border-radius: 10px;
+  /* White seat matching the dropdown beside it. */
+  background: #fff;
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 5%, transparent);
   color: var(--text);
   -webkit-app-region: no-drag;
@@ -1115,9 +1079,9 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   height: 36px;
   padding: 0 10px 0 12px;
   border: 0;
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text);
   font-family: inherit;
   font-size: 13px;
   text-align: left;
@@ -1155,8 +1119,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   right: 0;
   padding: 6px;
   border: 1px solid var(--material-separator);
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container-high);
+  border-radius: 12px;
+  background: #fff;
   box-shadow: var(--shadow-lg);
   /* Six 32px rows plus vertical padding and borders. Global border-box sizing
      means the border must be included or the sixth row is slightly clipped. */
@@ -1242,12 +1206,12 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-height: 0;
 }
 .workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 42px;
+  --workspace-tabs-chrome-height: 52px;
   /* Flush with the page below it — the bar shares the app surface. */
   --workspace-tab-bar-bg: var(--bg);
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 42px;
-  min-height: 42px;
+  height: 52px;
+  min-height: 52px;
   padding: 0 8px 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
@@ -1261,26 +1225,23 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   align-items: center;
   padding-top: 0;
 }
-/* THIS is the rule the workspace tab strip actually renders. `styles/shell.css`
-   declares the same anatomy at 0-1-0; this block is 0-2-0 and this stylesheet is
-   imported later, so editing shell.css alone changes nothing a user of the
-   project shell would see. The two are kept in step deliberately — the numbers
-   below are the mockup's 36dp tab and 250px cap, the same as shell.css. */
 .workspace-shell .workspace-tab {
-  width: min(250px, 26vw);
-  height: 36px;
-  min-height: 36px;
-  /* Auto-shrink toward the token-backed minimum while preserving the 36px
-     Material tab height; overflow remains scrollable rather than clipping. */
+  width: 156px;
+  height: 32px;
+  min-height: 32px;
+  /* Auto-shrink in the project shell: tabs sit at 156px when there's room and
+     shrink toward --workspace-tab-min-width as more open, keeping the whole row
+     visible without scrolling for as long as possible. flex-grow 0 stops a lone
+     tab from ballooning; only once every tab hits its min do we fall back to the
+     shared strip's horizontal scroll. */
   min-width: var(--workspace-tab-min-width, 56px);
-  max-width: 250px;
-  flex: 0 1 250px;
+  max-width: 168px;
+  flex: 0 1 156px;
   grid-template-columns: minmax(0, 1fr) 22px;
   align-self: center;
-  border-radius: var(--md-sys-shape-corner-m);
+  border-radius: 12px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--md-sys-color-on-surface-variant);
   box-shadow: none;
 }
 /* Chrome-style hairline separators between tabs, matching #5517: each tab
@@ -1330,20 +1291,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   z-index: 3;
   background: var(--workspace-tab-bar-bg);
 }
-/* User-pinned tabs in the project shell. The anatomy is declared once in
-   `styles/shell.css`; this block exists only because `.workspace-shell
-   .workspace-tab` sets the width at the same specificity and this stylesheet
-   is imported later, so the compact size has to be restated to win — the same
-   reason `.is-pinned` above is declared in both files. Declared before
-   `.is-active` so a pinned tab that is also active still picks up the active
-   highlight. */
-.workspace-shell .workspace-tab.is-user-pinned {
-  flex: 0 0 36px;
-  width: 36px;
-  min-width: 36px;
-  max-width: 36px;
-  grid-template-columns: minmax(0, 1fr);
-}
 /* Active Home tab now shows only the sidebar toggle (no icon + divider), so it
    is a single centered column. */
 .workspace-shell .workspace-tab.is-pinned:has(.workspace-tab__rail-toggle) {
@@ -1363,9 +1310,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   border-radius: 12px;
 }
 .workspace-shell .workspace-tab.is-active {
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+  border-radius: 12px;
+  background: #ffffff;
   border-color: var(--workspace-active-tab-border);
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
@@ -1383,16 +1329,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 }
 .workspace-shell .workspace-tab:not(.is-active):hover,
 .workspace-shell .workspace-tab:not(.is-active):focus-within {
-  /* Restated so hover does not square the shaped corners back off. */
-  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
-  background:
-    linear-gradient(
-      color-mix(in srgb, var(--bg-panel) 78%, transparent),
-      color-mix(in srgb, var(--bg-panel) 78%, transparent)
-    )
-    0 0 / 100% calc(100% - 2px) no-repeat;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 78%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
   border-color: transparent;
   /* No inset stroke ring on hover — the soft fill alone is the affordance;
      a whisper of drop shadow keeps the slight lift. */
@@ -1762,30 +1700,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   color: var(--text-soft);
   font-weight: 500;
 }
-/* The live user bubble. `.msg.user .user-text` in `styles/chat.css` is the
-   rule a reader finds first and is NOT the rule that renders here: this one
-   carries an extra `.app` and therefore outranks it everywhere the chat is
-   actually drawn. Both are written to say the same thing, and
-   `tests/styles/conversation-m3.test.ts` compares them property by
-   property, because the failure mode of letting them drift is an edit to
-   the obvious file that changes nothing on screen.
-
-   What this replaced: a `--selected` fill with white ink and a darkened
-   1px border — a colour outside the M3 role set, hard-coded `#fff`
-   foreground, and a shadow on a surface that does not float. */
 .app .msg.user .user-text {
-  padding: 12px 16px;
-  border: none;
-  border-radius:
-    var(--md-sys-shape-corner-l)
-    var(--md-sys-shape-corner-l)
-    var(--md-sys-shape-corner-xs)
-    var(--md-sys-shape-corner-l);
-  background: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
-  line-height: var(--md-sys-typescale-body-medium-line-height);
-  font-size: var(--md-sys-typescale-body-medium-size);
-  box-shadow: var(--md-sys-elevation-0);
   padding: 8px 12px;
   border: 0;
   border-radius: var(--radius-lg) var(--radius-none) var(--radius-lg) var(--radius-lg);
@@ -1795,7 +1710,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   font-size: 13px;
   box-shadow: none;
 }
-
 .app .msg.user .user-copy-btn {
   color: var(--text-soft);
 }
@@ -1806,27 +1720,9 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 .app .msg.assistant .assistant-flow {
   gap: 14px;
 }
-/* The assistant's answer, as the mirrored tonal bubble. It had NO surface
-   at all — `.msg` sets `background: transparent; border: none` and nothing
-   re-added one — so an assistant turn was loose prose on the page and the
-   conversation had one bubble in it rather than two. The tail is on the
-   left here, which is the whole point of an asymmetric corner.
-
-   Only the prose takes the bubble. Tool cards, status pills and the footer
-   are siblings inside `.assistant-flow` and stay outside it, exactly as the
-   mockup draws them: the bubble is the message, not the turn. `max-width`
-   counts the padding, so it grows by the two 16px insets to keep the
-   measure at the 68 characters it was tuned to. */
 .app .msg.assistant .prose-block {
-  max-width: calc(68ch + 32px);
-  padding: 12px 16px;
-  border-radius:
-    var(--md-sys-shape-corner-l)
-    var(--md-sys-shape-corner-l)
-    var(--md-sys-shape-corner-l)
-    var(--md-sys-shape-corner-xs);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface);
+  max-width: 68ch;
+  color: var(--text);
   font-size: var(--prose-font-size, 15px);
   line-height: var(--prose-line-height, 1.75);
 }
@@ -1952,42 +1848,23 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 .app .task-activity .action-card-body {
   padding: 8px 0;
 }
-/* ----- Tool-call cards (roadmap § 2.4 Wave 5) -------------------------
-   A tool call is a card in the mockup and was nothing at all here: this
-   rule set `border: none; border-radius: 0; background: none` and, being
-   `.app`-prefixed, won over the base rule that was already saying the same
-   thing. Two files agreed the card should not exist. It exists now — a
-   Material Design 3 card at corner-m on `surface-container`, one tone up
-   from the assistant bubble beside it so a run of tool calls reads as a
-   list of cards rather than as indented text.
-
-   `padding: 0` is load-bearing rather than tidy: `.action-card-body >
-   .op-card` in `styles/viewer/code.css` sets `padding: 4px 0` and ties this
-   rule's specificity, so without an explicit reset the card would carry
-   that padding OUTSIDE its own head and the fill would show through above
-   and below the row. */
 .app .op-card {
-  padding: 0;
   border: none;
-  border-radius: var(--md-sys-shape-corner-m);
-  background: var(--md-sys-color-surface-container);
-  box-shadow: var(--md-sys-elevation-0);
-  overflow: hidden;
-  transition: background 160ms var(--md-sys-motion-emphasized);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transition: background 160ms var(--ease-out);
 }
 .app .op-card:hover {
-  background: var(--md-sys-color-surface-container-high);
+  background: none;
 }
-/* The head fills the card, so it owns the card's padding and draws no
-   corner of its own — a second radius inside a clipped card is a corner
-   nobody sees and a hover fill that stops short of the edge. */
 .app .op-card-head {
-  padding: 10px 14px;
-  gap: 8px;
-  border-radius: 0;
+  padding: 4px;
+  gap: 6px;
+  border-radius: var(--radius);
 }
 .app .op-card-head:hover {
-  background: var(--ripple);
+  background: var(--bg-fill-tertiary);
 }
 /* `.app .op-card` above resets border/background to none; re-assert the live
    code box framing inside the app scope so the streaming panel stays boxed. */
@@ -2050,24 +1927,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   gap: 6px;
   padding: 4px 0;
   background: transparent;
-}
-
-/* The typing indicator. The mockup draws it as a tonal pill sitting on the
-   assistant's side of the conversation, and it was a bare line of shimmering
-   text with no surface — indistinguishable from a paragraph that happened to
-   be animating. The pill is `surface-container-high`, the same tone as the
-   assistant bubble it precedes, so the turn reads as one thing arriving.
-   Fully rounded rather than the bubble's asymmetric corner: this is a
-   transient status, not a message with a tail. */
-.app .task-activity-current-thinking {
-  width: fit-content;
-  max-width: 100%;
-  min-height: 40px;
-  gap: 10px;
-  padding: 0 16px;
-  border-radius: var(--md-sys-shape-corner-full);
-  background: var(--md-sys-color-surface-container-high);
-  color: var(--md-sys-color-on-surface-variant);
 }
 .app .task-activity-current-row .op-card-head:hover {
   background: transparent;
@@ -2422,26 +2281,14 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   background: transparent;
   border-radius: var(--radius-lg);
 }
-/* Inert: the composer is portaled out of `.app`. Kept in step with the
-   fixed-layer twin below anyway, so a reader who edits the file the import
-   graph points at is not editing a rule that says something different from
-   the one that renders. */
 .app .composer-shell {
   padding: 7px;
-  border-color: var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-l);
-  background: var(--md-sys-color-surface-container-high);
-  box-shadow: var(--md-sys-elevation-0);
+  border-color: color-mix(in srgb, var(--border) 84%, var(--border-strong));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg-subtle));
+  box-shadow: var(--shadow-sm);
 }
 .chat-composer-fixed-layer .composer-shell {
-  /* Vertical breathing room only. The side inset is applied as a margin on the
-     children below instead of horizontal padding here, so the shell's
-     content-box width — which is what the shared label-collapse @container in
-     chat.css measures — stays full and that breakpoint can remain generic. */
-  padding: 6px 0;
-  border-color: var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-l);
-  box-shadow: var(--md-sys-elevation-0);
   padding: 5px;
   gap: 8px;
   border-color: var(--border-soft);
@@ -2473,11 +2320,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
 }
-/* Focus reads as the primary ring M3 uses everywhere else in this app,
-   rather than a 4%-of-text wash that is invisible on a dark surface. */
 .chat-composer-fixed-layer .composer-shell:focus-within {
-  border-color: var(--md-sys-color-primary);
-  box-shadow: 0 0 0 1px var(--md-sys-color-primary);
   border-color: var(--border-soft);
   box-shadow: none;
 }
@@ -2525,6 +2368,11 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-height: 56px;
   max-height: min(184px, 34vh);
 }
+.app .composer.composer-active-file-mode textarea,
+.chat-composer-fixed-layer .composer.composer-active-file-mode textarea {
+  min-height: clamp(150px, 20vh, 210px);
+  max-height: min(300px, 32vh);
+}
 .app .composer-row {
   min-height: 30px;
   padding-top: 6px;
@@ -2544,16 +2392,16 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
 }
 .app .composer-row .icon-btn,
 .app .composer-import,
-.app .composer-research {
+.app .composer-research,
+.app .composer-send {
   /* radius-sm to match the unified 28px composer-row control system; this is
-     the later/winning stylesheet, so it owns the + radius. Send is NOT in
-     this group any more: it morphs its own corner on hover (Wave 5) and a
-     flat radius here would have overridden both ends of that animation. */
+     the later/winning stylesheet, so it owns the + and Send radius. */
   border-radius: var(--radius-sm);
 }
 .chat-composer-fixed-layer .composer-row .icon-btn,
 .chat-composer-fixed-layer .composer-import,
-.chat-composer-fixed-layer .composer-research {
+.chat-composer-fixed-layer .composer-research,
+.chat-composer-fixed-layer .composer-send {
   border-radius: var(--radius-sm);
 }
 .app .composer-row .icon-btn,
@@ -2567,12 +2415,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-height: 28px;
   box-sizing: border-box;
 }
-/* The send button's compact geometry, and the morph, stated on both twins.
-   The composer is portaled to `document.body`, so the `.app` copy renders
-   nowhere and the `.chat-composer-fixed-layer` copy is what the user sees;
-   they are kept identical apart from the `min-width` floor the shell copy
-   has always carried, because a rule that silently renders nothing is how a
-   fix gets written into the wrong file and reported as done. */
 .app .composer-send {
   width: 36px;
   height: 36px;
@@ -2585,11 +2427,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   color: var(--bg);
   font-size: var(--font-size-14);
   font-weight: 600;
-  border-radius: var(--md-sys-shape-corner-s);
-  box-shadow: var(--md-sys-elevation-0);
-}
-.app .composer-send:hover:not(:disabled) {
-  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: var(--shadow-xs);
 }
 .chat-composer-fixed-layer .composer-send {
@@ -2604,11 +2441,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   color: var(--bg);
   font-size: var(--font-size-14);
   font-weight: 600;
-  border-radius: var(--md-sys-shape-corner-s);
-  box-shadow: var(--md-sys-elevation-0);
-}
-.chat-composer-fixed-layer .composer-send:hover:not(:disabled) {
-  border-radius: var(--md-sys-shape-corner-l);
   box-shadow: var(--shadow-xs);
 }
 .app .composer-send.stop,
@@ -3412,8 +3244,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   background: color-mix(in srgb, var(--text-muted) 5%, transparent);
 }
 .app .handoff-menu-tab {
-  height: 48px;
-  min-height: 48px;
+  height: 28px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -3448,7 +3279,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   gap: 8px;
   flex: 1 1 0;
   min-width: 0;
-  min-height: 48px;
+  min-height: 32px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -3517,8 +3348,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border: 0;
   background: transparent;
   font-size: 12px;
@@ -3583,7 +3413,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   gap: 8px;
   width: auto;
   min-width: 0;
-  min-height: 48px;
+  min-height: 42px;
   padding: 6px 8px;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--bg-panel) 92%, var(--text) 4%);
@@ -3726,15 +3556,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   font-size: 12px;
   color: var(--text-danger, #c0392b);
   padding: 4px 10px 6px;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-.app .handoff-menu-error-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 4px 10px;
-  overflow-wrap: anywhere;
 }
 
 /* -- Project-page design-system picker (project chrome header) -- */
@@ -4300,6 +4121,7 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .staged-preview-trigger:h
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-context-open,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button:hover,
+body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file,
 body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-chip-strip__chip {
   background: transparent;
   border-color: transparent;

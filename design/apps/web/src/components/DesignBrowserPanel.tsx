@@ -77,16 +77,6 @@ import {
 import { Icon } from './Icon';
 import { BoardComposerPopover } from './BoardComposerPopover';
 import { PreviewDrawOverlay } from './PreviewDrawOverlay';
-import { MaterialSymbol, type MaterialSymbolName } from './MaterialSymbol';
-import type { TranslationVars } from '../i18n';
-
-type BrowserHistoryEntry = {
-  iconUrl?: string;
-  title: string;
-  url: string;
-  lastVisitedAt: number;
-  visitCount: number;
-};
 import { RemixIcon } from './RemixIcon';
 import { useProjectCollabContext } from '../collab/collab-context';
 
@@ -106,15 +96,6 @@ type BrowserNavigationEntry = {
   title: string;
   url: string;
 };
-
-function browserViewportIcon(viewport: BrowserViewportId): MaterialSymbolName {
-  if (viewport === 'tablet') return 'tablet';
-  // `mobile`, not `smartphone`. Both are real ligature names in the bundled
-  // face and both draw the identical glyph, but the mapping table publishes
-  // `mobile`, so `MaterialSymbolName` is the set that contains that one.
-  if (viewport === 'mobile') return 'mobile';
-  return 'computer';
-}
 
 type ReferenceSite = {
   label: string;
@@ -182,7 +163,7 @@ function browserUseActionInputKey(action: BrowserUseAction): keyof Dict {
 }
 
 function localizedBrowserUseInput(
-  t: (key: keyof Dict, vars?: TranslationVars) => string,
+  t: (key: keyof Dict, vars?: Record<string, string | number>) => string,
   action: BrowserUseAction,
 ): string {
   const key = browserUseActionInputKey(action);
@@ -2566,7 +2547,7 @@ export function DesignBrowserPanel({
               disabled={isBlank || screenshotSaving}
               onClick={takeScreenshot}
             >
-              <MaterialSymbol name="screenshot" size={15} />
+              <RemixIcon name="screenshot-2-line" size={15} />
             </IconTooltipButton>
           ) : null}
           <IconTooltipButton
@@ -2852,80 +2833,6 @@ function BrowserUseMenu({
           <div className="db-browser-use-empty" role="status">{t('browserUse.empty')}</div>
         ) : null}
       </div>
-    </div>
-  );
-}
-
-function BrowserViewportControls({
-  disabled,
-  onViewport,
-  viewport,
-}: {
-  disabled?: boolean;
-  onViewport: (viewport: BrowserViewportId) => void;
-  viewport: BrowserViewportId;
-}) {
-  const t = useT();
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const activePreset =
-    BROWSER_VIEWPORT_PRESETS.find((preset) => preset.id === viewport) ?? BROWSER_VIEWPORT_PRESETS[0]!;
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div className="db-viewport-switcher" ref={menuRef}>
-      <IconTooltipButton
-        label={browserViewportTitle(t, activePreset.id)}
-        disabled={disabled}
-        className={open ? 'is-active' : ''}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <MaterialSymbol
-          name={browserViewportIcon(activePreset.id)}
-          size={14}
-          className="db-viewport-icon"
-        />
-        <span className="db-viewport-label">{browserViewportLabel(t, activePreset.id)}</span>
-        <MaterialSymbol name="keyboard_arrow_down" size={13} />
-      </IconTooltipButton>
-      {open ? (
-        <div className="db-viewport-menu" role="listbox" aria-label={t('designBrowser.viewportAria')}>
-          {BROWSER_VIEWPORT_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              role="option"
-              aria-selected={preset.id === viewport}
-              className={preset.id === viewport ? 'active' : ''}
-              onClick={() => {
-                onViewport(preset.id);
-                setOpen(false);
-              }}
-            >
-              <span className="db-viewport-menu-label">
-                <MaterialSymbol name={browserViewportIcon(preset.id)} size={14} />
-                <span>{browserViewportLabel(t, preset.id)}</span>
-              </span>
-              {preset.id === viewport ? <Icon name="check" size={13} /> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -52,10 +52,7 @@ import { downloadDesignSystemArchive, downloadProjectArchive } from '../runtime/
 import { useDesignKit } from '../runtime/design-kit';
 import { DesignKitView, HeaderActionsMenu, type DesignKitActionFeedbackTone, type HeaderMenuAction } from './DesignKitView';
 import { designSystemLogoHost, isUserSystem } from './design-system-metadata';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
 import { Toast } from './Toast';
 import type { DesignSystemDetail, DesignSystemSummary, ProjectTemplate, Surface } from '../types';
 import styles from './DesignSystemsTab.module.css';
@@ -126,19 +123,23 @@ function mapStatusToTracking(
   }
 }
 
-// `matches` comes from the search field's own regex controller, so plain text
-// and a pattern run over exactly the same haystack.
 function systemMatchesQuery(
   locale: Locale,
   system: DesignSystemSummary,
-  matches: (text: string) => boolean,
+  query: string,
 ): boolean {
-  const summary = localizeDesignSystemSummary(locale, system);
+  if (!query) return true;
+  const summary = localizeDesignSystemSummary(locale, system).toLowerCase();
   const categoryLabel = localizeDesignSystemCategory(
     locale,
     system.category || 'Uncategorized',
+  ).toLowerCase();
+  return (
+    system.title.toLowerCase().includes(query) ||
+    system.summary.toLowerCase().includes(query) ||
+    summary.includes(query) ||
+    categoryLabel.includes(query)
   );
-  return matches(`${system.title} ${system.summary} ${summary} ${categoryLabel}`);
 }
 
 function setsEqual<T>(a: ReadonlySet<T>, b: ReadonlySet<T>): boolean {
@@ -198,10 +199,6 @@ export function DesignSystemsTab({
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [busyAction, setBusyAction] = useState<{ systemId: string; action: DesignSystemActionKind } | null>(null);
-  // What the super-confirmation gate is currently pointed at, or null when it
-  // is closed. Held here rather than in the detail pane so the gate outlives
-  // whatever the delete does to the pane that opened it.
-  const [deleteTarget, setDeleteTarget] = useState<DesignSystemSummary | null>(null);
   const busyId = busyAction?.systemId ?? null;
   const [actionToast, setActionToast] = useState<{ message: string; tone: DesignKitActionFeedbackTone } | null>(null);
   const notifyAction = (tone: DesignKitActionFeedbackTone, message: string) => {
@@ -285,10 +282,7 @@ export function DesignSystemsTab({
   // sessionStorage exactly once; applied by the effect below once the system
   // actually shows up in the loaded list (which may arrive after a refresh).
   const [pendingFocus, setPendingFocus] = useState<string | null>(() => takeDesignSystemFocus());
-  // This tab's own regex controller. Owned here so the settings dialog's
-  // design-systems field cannot share its mode, flags or parts.
-  const searchRegex = useRegexSearch(filter, setFilter);
-  const q = searchRegex.matches;
+  const q = filter.trim().toLowerCase();
 
   const librarySystems = useMemo(
     () => systems.filter((system) => !isUserSystem(system)),
@@ -747,41 +741,8 @@ export function DesignSystemsTab({
     }
   }
 
-  /**
-   * Open the super-confirmation gate over a design system.
-   *
-   * Deleting one removes its tokens, type scale and palette from this device
-   * and nothing in the product puts them back, so a one-button browser confirm
-   * was the wrong weight — it named the system and asked "?", and one mistimed
-   * Enter answered it.
-   */
-  function requestDeleteSystem(system: DesignSystemSummary): void {
+  async function deleteSystem(system: DesignSystemSummary) {
     if (busyAction) return;
-    setDeleteTarget(system);
-  }
-
-  /**
-   * The `cancelled` analytics signal, fired from the gate's own outcome rather
-   * than from a confirm's return value. `dismissed` deliberately does not fire
-   * it: that outcome means the action had already started, so calling it a
-   * cancellation would put a false event in the funnel.
-   */
-  function trackDeleteCancelled(system: DesignSystemSummary): void {
-    trackDesignSystemStatusResult(analytics.track, {
-      page_name: 'design_systems',
-      area: 'design_system_status',
-      action: 'delete',
-      result: 'cancelled',
-      design_system_id: system.id,
-      status_before: mapStatusToTracking(system.status),
-      status_after: mapStatusToTracking(system.status),
-      is_default_before: system.id === selectedId,
-      is_default_after: system.id === selectedId,
-      duration_ms: 0,
-    });
-  }
-
-  async function deleteSystem(system: DesignSystemSummary): Promise<boolean> {
     const ok = window.confirm(t('dsManager.deleteConfirm', { title: system.title }));
     if (!ok) {
       trackDesignSystemStatusResult(analytics.track, {
@@ -853,10 +814,6 @@ export function DesignSystemsTab({
         duration_ms: Math.round(performance.now() - startedAt),
       });
     }
-    // Reported rather than swallowed: `false` holds the gate open saying the
-    // design system is still there, instead of closing on a delete that the
-    // daemon refused.
-    return succeeded;
   }
 
   function handleMakeDefaultClick(system: DesignSystemSummary): void {
@@ -1072,17 +1029,6 @@ export function DesignSystemsTab({
             className={`ds-top-scope-chip${designSystemCollection === tab.value ? ' is-active' : ''}`}
             onClick={() => setDesignSystemCollection(tab.value)}
           >
-            <Icon name="plus" />
-            {t('dsManager.createAction')}
-          </Button>
-        ) : null}
-
-        <div className={styles.searchWrap}>
-          <SearchGlyph className={styles.searchIcon} />
-          <RegexSearchField
-            search={searchRegex}
-            fieldLabel={t('ds.searchPlaceholder')}
-            testId="design-systems-search"
             <span>{tab.label}</span>
             <span className="ds-top-scope-count" aria-hidden>{tab.count}</span>
           </button>
@@ -1113,7 +1059,7 @@ export function DesignSystemsTab({
             className={styles.search}
             tabIndex={searchExpanded || filter ? 0 : -1}
             placeholder={t('ds.searchPlaceholder')}
-            ariaLabel={t('ds.searchPlaceholder')}
+            value={filter}
             onFocus={() => {
               setSearchExpanded(true);
               if (searchTrackedRef.current) return;
@@ -1124,6 +1070,7 @@ export function DesignSystemsTab({
                 element: 'search_input',
               });
             }}
+            onChange={(e) => setFilter(e.target.value)}
           />
         </div>
       </div>
@@ -1194,22 +1141,6 @@ export function DesignSystemsTab({
         {renderPreview()}
       </section>
       </div>
-      {deleteTarget ? (
-        <DestructiveGate
-          action={t('dsManager.deleteSystemAria', { title: deleteTarget.title })}
-          // The design system's own title, not a description of one — this is
-          // the string the user has to be able to check the slider against.
-          target={deleteTarget.title}
-          items={[t('dsManager.deleteGateItem', { title: deleteTarget.title })]}
-          detail={t('dsManager.deleteGateDetail')}
-          irreversible
-          onConfirm={() => deleteSystem(deleteTarget)}
-          onClose={(outcome) => {
-            if (outcome === 'cancelled') trackDeleteCancelled(deleteTarget);
-            setDeleteTarget(null);
-          }}
-        />
-      ) : null}
     </>
   );
 
@@ -1289,7 +1220,7 @@ export function DesignSystemsTab({
           onEdit={handleEditSystem}
           onMakeDefault={handleMakeDefaultClick}
           onTogglePublished={togglePublished}
-          onDelete={requestDeleteSystem}
+          onDelete={deleteSystem}
           onSystemsRefresh={onSystemsRefresh}
           onActionFeedback={notifyAction}
           onShareToTeam={handleShareToTeam}

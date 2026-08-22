@@ -37,9 +37,6 @@ import { fetchAgents } from '../providers/registry';
 import type { AgentInfo } from '../types';
 import { isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { Icon } from './Icon';
-import { Switch } from './Switch';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
 import { useT } from '../i18n';
 
 type Translate = ReturnType<typeof useT>;
@@ -277,11 +274,14 @@ function categoryOrder(t: Translate): ReadonlyArray<{
   ];
 }
 
-// `matches` is the picker field's own predicate, so plain text and a regex
-// pattern are checked against exactly the same haystack.
-function templateMatchesQuery(tpl: McpTemplate, matches: (text: string) => boolean): boolean {
-  return matches(
-    `${tpl.label} ${tpl.id} ${tpl.description ?? ''} ${tpl.example ?? ''}`,
+function templateMatchesQuery(tpl: McpTemplate, q: string): boolean {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  return (
+    tpl.label.toLowerCase().includes(needle) ||
+    tpl.id.toLowerCase().includes(needle) ||
+    (tpl.description?.toLowerCase().includes(needle) ?? false) ||
+    (tpl.example?.toLowerCase().includes(needle) ?? false)
   );
 }
 
@@ -608,10 +608,6 @@ function PickerPanel({
     return buckets;
   }, [templates]);
 
-  // The picker's own regex controller. It lives here rather than in the parent
-  // so the template filter cannot share state with any other search bar.
-  const searchRegex = useRegexSearch(query, onQueryChange);
-  const matchesSearch = searchRegex.matches;
   const trimmed = query.trim();
   const hasQuery = trimmed.length > 0;
 
@@ -620,7 +616,6 @@ function PickerPanel({
   let visibleTotal = 0;
   const renderGroups = categoryOrder(t).map((cat) => {
     const all = grouped.get(cat.id) ?? [];
-    const matched = all.filter((t) => templateMatchesQuery(t, matchesSearch));
     const matched = all.filter((item) => templateMatchesQuery(item, trimmed));
     visibleTotal += matched.length;
     if (all.length === 0) return null;
@@ -674,13 +669,9 @@ function PickerPanel({
         <span className="hint">
           {t('mcp.pickerHint')}
         </span>
-        <RegexSearchField
-          search={searchRegex}
-          fieldLabel="MCP server templates"
+        <input
+          type="search"
           className="mcp-picker-search"
-          placeholder="Filter by name, transport, capability…"
-          ariaLabel="Filter MCP server templates"
-          testId="mcp-picker-search"
           placeholder={t('mcp.pickerFilterPlaceholder')}
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
@@ -792,20 +783,6 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
       }`}
     >
       <div className="mcp-row-head">
-        {/* The M3 switch (roadmap § 2.4 Wave 4). This row enabled a server
-            with a RAW `<input type="checkbox">` — the browser's own control,
-            styled by nothing, announced as checked/not checked rather than
-            on/off, and the one place in the three integration panels that had
-            no toggle affordance at all. The accessible name is kept verbatim
-            from the checkbox it replaces; it is hard-coded English there and
-            still is here, which is a separate defect and is not this wave's. */}
-        <Switch
-          className="mcp-row-toggle"
-          checked={row.enabled}
-          onChange={(next) => onChange({ enabled: next })}
-          label="Enable this MCP server"
-          title={row.enabled ? 'Enabled' : 'Disabled'}
-        />
         <label className="mcp-row-toggle" title={row.enabled ? t('mcp.enabled') : t('mcp.disabled')}>
           <input
             type="checkbox"
@@ -916,9 +893,6 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
               <McpOAuthControl serverId={row.id} />
             ) : (
               <div className="mcp-oauth-hint hint">
-                <strong>No managed OAuth.</strong> Material Designer will use this
-                server as configured. Add headers below if the server needs a
-                token.
                 <strong>{t('mcp.noManagedOAuth')}</strong>{' '}
                 {t('mcp.noManagedOAuthUseAsConfigured')}
               </div>
@@ -926,8 +900,6 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
           ) : null}
           {isHttpLike && row._isNew && usesManagedOAuth ? (
             <div className="mcp-oauth-hint hint">
-              Save first, then click <strong>Connect</strong> to grant Material Designer
-              access via the provider's OAuth flow.
               {t('mcp.saveFirstThenClick')}{' '}
               <strong>{t('mcp.connect')}</strong>{' '}
               {t('mcp.toGrantOAuthAccess')}
@@ -935,8 +907,6 @@ function McpRow({ row, idx, total, template, onChange, onRemove, onMoveUp, onMov
           ) : null}
           {isHttpLike && row._isNew && !usesManagedOAuth ? (
             <div className="mcp-oauth-hint hint">
-              <strong>No managed OAuth.</strong> Save this server and Material Designer
-              will use it directly.
               <strong>{t('mcp.noManagedOAuth')}</strong>{' '}
               {t('mcp.noManagedOAuthSaveDirect')}
             </div>
@@ -1351,7 +1321,6 @@ function McpOAuthControl({ serverId }: { serverId: string }) {
             <span>
               <strong>{t('mcp.notConnected')}</strong>{' '}
               <span className="hint">
-                Click Connect to grant Material Designer access via the provider's OAuth flow.
                 {t('mcp.clickConnectHint')}
               </span>
             </span>

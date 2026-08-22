@@ -22,7 +22,6 @@ import {
 } from '../analytics/amr-attribution';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
-  trackSettingsAppearanceClick,
   trackByokPreflightBlocked,
   trackSettingsByokModelsFetchResult,
   trackSettingsByokTestResult,
@@ -39,8 +38,8 @@ import {
   trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
-import { FUNNY_LEVELS, LANGUAGE_MODES, LOCALE_LABEL, LOCALES, tv, useI18n } from '../i18n';
-import type { FunnyLanguage, FunnyLevel, LanguageMode, Locale } from '../i18n';
+import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
+import type { Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
 import { AgentDiagnosticRow } from './AgentDiagnosticRow';
@@ -64,7 +63,6 @@ import { amrProfileBadgeLabel } from '../runtime/amr-guidance';
 import { deepSeekHarnessNeedsSetup, isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { ExportDiagnosticsRow } from './ExportDiagnosticsButton';
 import { Icon } from './Icon';
-import { formatShortcut } from './shortcuts/registry';
 import { defaultAgentModelId, effectiveAgentModelChoice } from './agentModelSelection';
 import {
   CUSTOM_MODEL_SENTINEL,
@@ -115,7 +113,6 @@ import type {
   ApiProtocol,
   ApiProtocolConfig,
   AppConfig,
-  AppTheme,
   AppVersionInfo,
   ConnectionTestResponse,
   DesignSystemGenerationJob,
@@ -143,7 +140,6 @@ import { isVisualStabilityMode } from '../utils/visualStability';
 import { byokProviderRequiresApiKey } from '../utils/byokProvider';
 import { XaiOAuthControl } from './XaiOAuthControl';
 import type { MediaProvider } from '../media/models';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { Toast } from './Toast';
 import {
   checkForUpdaterUpdate,
@@ -160,7 +156,6 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
-import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
@@ -185,8 +180,6 @@ import { ByokKeyField } from './byok/ByokKeyField';
 import { ByokModelField } from './byok/ByokModelField';
 import { ByokProviderBaseUrl } from './byok/ByokProviderBaseUrl';
 import { ByokProviderPicker } from './byok/ByokProviderPicker';
-import { openChangelogViewer } from './changelog/open-changelog';
-import { openVersionHistory } from './history/open-history';
 import { byokPreflightBlockReason } from './byok/preflight';
 import {
   blockingByokDraftFields,
@@ -203,27 +196,14 @@ import {
   useCritiqueTheaterEnabled,
 } from './Theater';
 import {
-  ACCENT_SWATCHES,
-  CUSTOM_ACCENT_FALLBACK,
-  DEFAULT_ACCENT_COLOR,
   projectWorkspaceContext,
   projectWorkspaceScopeReady,
   useProjectWorkspaceScope,
 } from '../collab/useProjectWorkspaceScope';
 import {
   applyAppearanceToDocument,
-  normalizeAccentColor,
   resolveAccentColor,
-  type AppearanceTypography,
 } from '../state/appearance';
-import { AppearanceControls } from './appearance/AppearanceControls';
-import { AppearanceRuntime } from './appearance/AppearanceRuntime';
-import { InfiniteColorPicker } from './appearance/InfiniteColorPicker';
-import { RovingRadioGroup } from './appearance/RovingRadioGroup';
-import { formatHex, parseColor, type Rgb, type Rgba } from './appearance/color';
-import { CSS_COLOR_NAMES } from './appearance/colorNames';
-import { BUILT_IN_PRESETS } from './appearance/presets';
-import { useAppearancePreferences } from './appearance/store';
 import { isAutosaveDraftOnlyChange } from '../App';
 import {
   FAILURE_SOUNDS,
@@ -233,37 +213,9 @@ import {
   requestNotificationPermission,
   showCompletionNotification,
 } from '../utils/notifications';
-import {
-  SETTINGS_REVEAL_EVENT,
-  requestSettingsReveal,
-  revealAnchor,
-  takePendingSettingsReveal,
-} from './command-palette/reveal';
-import { SETTINGS_INDEX } from './command-palette/settingsIndex';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
-import {
-  SETTINGS_TABPANEL_ID,
-  SettingsTabStrip,
-  settingsTabId,
-} from './settings/SettingsTabStrip';
-import { SettingsSearchResults } from './settings/SettingsSearchResults';
-import {
-  matchSettingsIndex,
-  settingsHitCountsBySection,
-  settingsHitsElsewhere,
-  type SettingsSearchHit,
-} from './settings/settingsSearchMatch';
-import {
-  SETTINGS_TAB_DEFS,
-  SETTINGS_TABS,
-  writeLastSettingsSection,
-} from './settings/settingsTabs';
-import settingsTabStyles from './settings/SettingsTabs.module.css';
-import settingsPageStyles from './settings/SettingsPage.module.css';
-import type { TranslationVars } from '../i18n';
 
 export type SettingsSection =
+  | 'general'
   | 'execution'
   | 'workspace'
   | 'instructions'
@@ -275,7 +227,6 @@ export type SettingsSection =
   | 'mcpClient'
   | 'language'
   | 'appearance'
-  | 'narrator'
   | 'critiqueTheater'
   | 'notifications'
   | 'pet'
@@ -289,9 +240,37 @@ export type SettingsSection =
   // section. Reconcile follow-up: route library through a dedicated
   // navigate() call so openSettings only owns dialog-bound sections.
   | 'library'
-  /** Virtual source-handoff destination. It opens /handoff and is never a panel. */
-  | 'handoff'
   | 'about';
+
+// Maps a requested section token onto the section that actually owns a nav
+// item. Only tokens whose content is *folded into* another section belong
+// here: language / appearance / notifications / pet / projectLocations /
+// critiqueTheater all render inside General, so a deep link to any of them
+// must land on General and highlight the General nav item. `pet` joined that
+// list when #5517's General page absorbed the pet picker — the composer's
+// "pet settings" entry point (App.openPetSettings) has no other destination,
+// so leaving it unmapped would deep-link into a section that renders nothing.
+//
+// Sections that keep their own render block but no longer have a nav item
+// (workspace, mcpClient, composio, designSystems) must NOT be listed: they
+// stay individually addressable through `initialSection`, and folding them
+// here would silently swallow a deep link into the wrong section.
+// `privacy` and `about` must not be listed either — they own nav items, and
+// mapping them to General used to send deep links to the wrong section with
+// the wrong nav item highlighted.
+function normalizeSettingsSection(section: SettingsSection): SettingsSection {
+  switch (section) {
+    case 'language':
+    case 'appearance':
+    case 'notifications':
+    case 'pet':
+    case 'projectLocations':
+    case 'critiqueTheater':
+      return 'general';
+    default:
+      return section;
+  }
+}
 
 interface ByokProviderPreset {
   id: string;
@@ -307,11 +286,7 @@ interface ByokProviderPreset {
 // sign-in coachmark when the user has not authorized AMR yet).
 export type SettingsHighlight = 'amr' | null;
 
-// This fork's own release page. It must never be upstream's: the About panel
-// shows this link precisely when in-app updating is unavailable, so pointing it
-// at the other product would be a one-click manual route into the build this
-// fork exists to stay separate from.
-const OPEN_DESIGN_RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
+const OPEN_DESIGN_RELEASES_URL = 'https://github.com/nexu-io/open-design/releases';
 
 type AboutUpdatePrimaryAction = 'check' | 'download' | 'install' | 'quit';
 type AboutUpdateTone = 'neutral' | 'success' | 'warning' | 'error';
@@ -475,8 +450,6 @@ interface Props {
   appVersionInfo: AppVersionInfo | null;
   welcome?: boolean;
   initialSection?: SettingsSection;
-  /** Keep App's reopen state aligned when a page tab normalizes its URL. */
-  onSectionChange?: (section: SettingsSection) => void;
   initialHighlight?: SettingsHighlight;
   /** Workspace id persisted on the currently-open project, when any. */
   persistedProjectWorkspaceId?: string | null;
@@ -570,7 +543,7 @@ function codexPathStrings(locale: Locale) {
         `已配置的 Codex 路径启动失败：${configuredPath}。本次测试改用 PATH 中的 Codex CLI：${detectedPath}。建议更新 CODEX_BIN 或清空自定义路径。`,
     };
   }
-  if (locale === 'zh-TW' || locale === 'zh-HK') {
+  if (locale === 'zh-TW') {
     return {
       repairHint: '目前儲存的 Codex 路徑不適合繼續使用。',
       useDetected: '使用偵測到的 Codex',
@@ -1516,27 +1489,6 @@ export function switchApiProtocolConfig(
   );
 }
 
-// Labels for the language-mode segmented control and the two funny-level
-// sliders. Both are typed against `Dict` so a renamed key fails typecheck
-// here rather than rendering the key name back at the user.
-const LANGUAGE_MODE_LABEL_KEYS: Record<LanguageMode, keyof Dict> = {
-  single: 'settings.languageModeSingle',
-  bilingual: 'settings.languageModeBilingual',
-};
-
-const FUNNY_LEVEL_LABEL_KEYS: Record<FunnyLevel, keyof Dict> = {
-  1: 'settings.funnyLevel1',
-  2: 'settings.funnyLevel2',
-  3: 'settings.funnyLevel3',
-  4: 'settings.funnyLevel4',
-  5: 'settings.funnyLevel5',
-};
-
-const FUNNY_LANGUAGE_LABEL_KEYS: Record<FunnyLanguage, keyof Dict> = {
-  'en': 'settings.funnyEnglishLabel',
-  'zh-HK': 'settings.funnyCantoneseLabel',
-};
-
 export function SettingsDialog({
   presentation = 'modal',
   initial,
@@ -1545,8 +1497,7 @@ export function SettingsDialog({
   daemonLive,
   appVersionInfo,
   welcome,
-  initialSection = 'execution',
-  onSectionChange,
+  initialSection = 'general',
   initialHighlight = null,
   persistedProjectWorkspaceId = null,
   onPersist,
@@ -1569,22 +1520,7 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
-  const pageMode = presentation === 'page';
-  const route = useRoute();
-  const settingsRouteKey = route.kind === 'home' && route.view === 'settings'
-    ? route.settingsSection ?? 'settings'
-    : route.kind;
-  const {
-    t,
-    locale,
-    setLocale,
-    languageMode,
-    setLanguageMode,
-    funnyLevels,
-    setFunnyLevel,
-    funnyDisclosureSeen,
-    dismissFunnyDisclosure,
-  } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const analytics = useAnalytics();
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
@@ -1604,8 +1540,8 @@ export function SettingsDialog({
     ReadonlySet<string>
   >(() => new Set());
   const previousInitialRef = useRef(initial);
+  // Accent only — the theme is a constant now that the app ships light-only.
   const lastSavedAppearanceRef = useRef({
-    theme: initial.theme ?? 'system',
     accentColor: resolveAccentColor(initial.accentColor),
   });
 
@@ -1621,10 +1557,9 @@ export function SettingsDialog({
 
   useEffect(() => {
     lastSavedAppearanceRef.current = {
-      theme: initial.theme ?? 'system',
       accentColor: resolveAccentColor(initial.accentColor),
     };
-  }, [initial.theme, initial.accentColor]);
+  }, [initial.accentColor]);
 
   useEffect(() => {
     const previousInitial = previousInitialRef.current;
@@ -1692,95 +1627,7 @@ export function SettingsDialog({
       ? { [initial.apiProtocol ?? 'anthropic']: byokProviderKeyForConfig(initial) }
       : {},
   );
-  // The page's own root, so the surfaces it covers can be taken out of the
-  // keyboard path while it is open — see the `inert` effect below.
-  const settingsPageRef = useRef<HTMLDivElement | null>(null);
-  const localSectionNavigationRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  // The settings surface's own search field.
-  //
-  // The controller is created here and handed to `RegexSearchField`, exactly as
-  // every other wired search bar in the product does it: this field owns its own
-  // mode, flags and compiled pattern, plain text is the default, and regex is an
-  // explicit opt-in made from the builder anchored beside the field.
-  const [settingsQuery, setSettingsQuery] = useState('');
-  const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
-  const settingsSearchActive = settingsQuery.trim().length > 0;
-  const settingsSearchMatches = settingsSearch.matches;
-  // A tab's visible label, which is also a search term: typing "Appearance"
-  // should surface everything on the Appearance tab, not only the row whose
-  // title happens to repeat the word.
-  const settingsSectionLabel = useCallback(
-    (section: SettingsSection): string => {
-      const def = SETTINGS_TAB_DEFS[section];
-      return def ? t(def.titleKey) : section;
-    },
-    [t],
-  );
-  const rawSettingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
-    if (!settingsSearchActive) return [];
-    // `SETTINGS_INDEX` is the command palette's index of what settings
-    // contains. It is reused verbatim rather than mirrored, so the palette and
-    // this field can never disagree about whether a setting exists.
-    const hits = matchSettingsIndex({
-      entries: SETTINGS_INDEX,
-      matches: settingsSearchMatches,
-      translate: t,
-      sectionLabel: settingsSectionLabel,
-      activeSection,
-    });
-    return hits;
-  }, [settingsSearchActive, settingsSearchMatches, t, settingsSectionLabel, activeSection]);
-  // The only typed settings sub-route is `/settings/appearance`. Keep it
-  // truthful while the user moves through the same page's tab strip: entering
-  // Appearance advertises the deep link, while every other visible section
-  // normalizes back to the generic `/settings` page. Modal settings opened
-  // over a project never owns the browser URL, so its existing route remains
-  // untouched.
-  const selectSettingsSection = useCallback((section: SettingsSection) => {
-    if (section === 'handoff') {
-      // Handoff is a real destination, not a settings panel. Close a modal
-      // caller first, then navigate to the dedicated shell view. The parent
-      // close handler restores the opener focus; the page's Back button
-      // returns through the ordinary /settings focus entry point.
-      onClose();
-      navigateRoute({ kind: 'home', view: 'handoff' });
-      return;
-    }
-    setActiveSection(section);
-    onSectionChange?.(section);
-    if (
-      !pageMode
-      || route.kind !== 'home'
-      || route.view !== 'settings'
-    ) return;
-    const targetPath = section === 'appearance' ? '/settings/appearance' : '/settings';
-    localSectionNavigationRef.current = window.location.pathname !== targetPath
-      ? (section === 'appearance' ? 'appearance' : 'settings')
-      : null;
-    navigateRoute(
-      // The route change is caused by the tab itself. The page landmark focus
-      // effect below skips this local transition; external deep links still
-      // focus the page once they arrive.
-      section === 'appearance'
-        ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
-        : { kind: 'home', view: 'settings' },
-    );
-  }, [onClose, onSectionChange, pageMode, route.kind, route.view]);
-  const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
-    if (hit.section === 'handoff') {
-      // Handoff is a destination, not a Settings control. Clear any stale
-      // reveal request before closing so the next Settings visit cannot flash
-      // an anchor from this route.
-      requestSettingsReveal(null);
-      selectSettingsSection(hit.section);
-      return;
-    }
-    selectSettingsSection(hit.section);
-    // The dialog already listens for this and polls for the anchor, so the
-    // control does not have to exist yet at the moment of the click.
-    requestSettingsReveal(hit.entry.id);
-  }, [selectSettingsSection]);
+  const [activeSection, setActiveSection] = useState<SettingsSection>(() => normalizeSettingsSection(initialSection));
   // Workspace region gating (E-frontend, D4.3). One shared read of the workspace
   // context; the Workspace section only renders for a team workspace whose
   // viewer may see workspace settings. Gate on the folded permission bits,
@@ -1805,34 +1652,6 @@ export function SettingsDialog({
     workspaceContext,
   );
   const showWorkspaceSettings = canShowWorkspaceSettings(workspaceContext);
-  // Workspace is a permissioned surface. Do not let the palette advertise a
-  // destination that the current viewer cannot open; the tab strip applies
-  // the same decision below, so both discovery paths stay truthful.
-  const settingsSearchHits = useMemo(
-    () => rawSettingsSearchHits.filter(
-      (hit) => hit.section !== 'workspace' || showWorkspaceSettings,
-    ),
-    [rawSettingsSearchHits, showWorkspaceSettings],
-  );
-  const settingsSearchCounts = useMemo(
-    () => (settingsSearchActive ? settingsHitCountsBySection(settingsSearchHits) : null),
-    [settingsSearchActive, settingsSearchHits],
-  );
-  const settingsSearchElsewhere = useMemo(
-    () => settingsHitsElsewhere(settingsSearchHits, activeSection),
-    [settingsSearchHits, activeSection],
-  );
-  const visibleSettingsTabs = useMemo(
-    () => SETTINGS_TABS.filter((tab) => tab.section !== 'workspace' || showWorkspaceSettings),
-    [showWorkspaceSettings],
-  );
-  useEffect(() => {
-    if (workspaceContextLoading || showWorkspaceSettings || activeSection !== 'workspace') return;
-    // A deep link may name Workspace before its permission snapshot arrives.
-    // Once the snapshot says the viewer cannot see it, route to the first real
-    // tab instead of leaving a selected-but-empty panel behind.
-    selectSettingsSection('execution');
-  }, [activeSection, selectSettingsSection, showWorkspaceSettings, workspaceContextLoading]);
   // All generic AMR upgrade buttons route through public Pricing. While the
   // workspace read is pending, hide the owner-only action to avoid a flash for
   // admins or members.
@@ -2204,7 +2023,7 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(initialSection);
+    setActiveSection(normalizeSettingsSection(initialSection));
   }, [initialSection]);
 
   // settings_view — fires whenever the active section changes (and once on
@@ -2225,52 +2044,6 @@ export function SettingsDialog({
   useEffect(() => {
     const el = settingsContentRef.current;
     if (el) el.scrollTop = 0;
-  }, [activeSection]);
-
-  // Tab persistence. Written here rather than read here: `App.openSettings`
-  // reads it when the caller did not name a section, so a dialog rendered with
-  // an explicit `initialSection` (every test, every "open Settings on Privacy"
-  // call site) still opens exactly where it was told to.
-  useEffect(() => {
-    writeLastSettingsSection(activeSection);
-  }, [activeSection]);
-
-  // Reveal a control the command palette asked for.
-  //
-  // The palette records the anchor before it opens this dialog, because the
-  // control does not exist until the section mounts — so the request is taken
-  // here rather than passed as a prop, and `revealAnchor` polls for the node
-  // instead of assuming one frame is enough. Two entry points, one consumer:
-  // the section effect covers "the dialog was closed and is opening now", the
-  // event covers "the dialog is already open on another section". Whichever
-  // runs first takes the request; the other finds nothing pending.
-  //
-  // The `requestAnimationFrame` is what keeps this from being undone by the
-  // scrollTop reset directly above.
-  useEffect(() => {
-    let cancelled = false;
-    let frame = 0;
-    const consume = () => {
-      const anchor = takePendingSettingsReveal();
-      if (!anchor) return;
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        if (cancelled) return;
-        // Searched from the document, not from `settingsContentRef`: whole-section
-        // entries anchor on that very element, and `querySelector` only ever
-        // looks at descendants — scoping the search would make every section
-        // anchor silently unresolvable.
-        void revealAnchor(anchor);
-      });
-    };
-    consume();
-    window.addEventListener(SETTINGS_REVEAL_EVENT, consume);
-    return () => {
-      cancelled = true;
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener(SETTINGS_REVEAL_EVENT, consume);
-    };
   }, [activeSection]);
 
   // One-shot AMR-card focus from the failed-run nudge: scroll the card into
@@ -3522,7 +3295,6 @@ export function SettingsDialog({
             committedClearedByokProviderKeyRef.current = null;
           }
           lastSavedAppearanceRef.current = {
-            theme: persistedSnapshot.theme ?? 'system',
             accentColor: resolveAccentColor(persistedSnapshot.accentColor),
           };
           // If a newer edit landed while the request was in flight,
@@ -3613,9 +3385,8 @@ export function SettingsDialog({
     };
   }, [onPersist]);
 
-  // Global Escape closes the surface. With no footer button anymore, and no
-  // scrim to click now that this is a page rather than a modal, the two close
-  // affordances are: the top-right X · Escape.
+  // Global Escape closes the dialog. With no footer button anymore the
+  // close affordances are: top-right X · backdrop click · Escape.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
@@ -3624,47 +3395,6 @@ export function SettingsDialog({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  // The page covers the workspace it shares a grid cell with, so the workspace
-  // leaves the keyboard path while it is covered.
-  //
-  // Visually covered is not the same as unreachable: without this, Tab walks
-  // out of the last settings control and into a chat composer nobody can see,
-  // and a screen reader reads a screen that is not on screen. `inert` is the
-  // one attribute that removes focus, pointer events and the accessibility
-  // tree together — `aria-hidden` alone would hide it from assistive tech
-  // while leaving it tabbable, which is the worse half of the two.
-  //
-  // Only siblings, and only the ones not already inert: the shell's title
-  // bar, tab strip and status bar are outside this parent and stay live,
-  // which is the point of the surface being non-blocking at all.
-  useLayoutEffect(() => {
-    const page = settingsPageRef.current;
-    const parent = page?.parentElement;
-    if (!page || !parent) return;
-    const covered = Array.from(parent.children).filter(
-      (element) => element !== page && !element.hasAttribute('inert'),
-    );
-    for (const element of covered) element.setAttribute('inert', '');
-    return () => {
-      for (const element of covered) element.removeAttribute('inert');
-    };
-  }, []);
-
-  // A direct settings URL is a real page navigation, not a modal open. Give
-  // the page root the first focus stop so keyboard and screen-reader users
-  // land on the named surface before the tab strip. A local tab switch keeps
-  // roving focus on the selected tab; only a new route or an external
-  // deep-link focuses the page landmark again.
-  useLayoutEffect(() => {
-    if (!pageMode) return;
-    const localTarget = localSectionNavigationRef.current;
-    localSectionNavigationRef.current = null;
-    if (localTarget !== null && settingsRouteKey === localTarget) {
-      return;
-    }
-    settingsPageRef.current?.focus({ preventScroll: true });
-  }, [pageMode, settingsRouteKey]);
 
   const protocolProviders = useMemo(
     () => KNOWN_PROVIDERS.filter((p) => p.protocol === apiProtocol),
@@ -4096,6 +3826,7 @@ export function SettingsDialog({
   // BYOK content so "Local CLI" only renders once (in the seg-control tab),
   // not twice (heading + tab).
   const sectionHeader: Record<SettingsSection, { title: string; subtitle: string }> = {
+    general: { title: t('settings.general'), subtitle: t('settings.generalHint') },
     execution: { title: t('settings.title'), subtitle: t('settings.subtitle') },
     workspace: { title: t('settings.workspace'), subtitle: t('settings.workspaceHint') },
     instructions: {
@@ -4112,8 +3843,11 @@ export function SettingsDialog({
     integrations: { title: t('settings.mcpServerTitle'), subtitle: t('settings.mcpServerHint') },
     mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
-    appearance: { title: t('settings.appearance'), subtitle: t('settings.appearanceHint') },
-    narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
+    // The theme setting is gone (the app ships light-only), so `appearance` has
+    // no copy of its own. It survives only as a legacy deep-link token that
+    // `normalizeSettingsSection` folds into General, so this entry can never be
+    // the active header — it exists to keep the Record exhaustive.
+    appearance: { title: t('settings.general'), subtitle: t('settings.generalHint') },
     critiqueTheater: {
       title: t('critiqueTheater.settingsNav'),
       subtitle: t('critiqueTheater.settingsNavHint'),
@@ -4133,7 +3867,6 @@ export function SettingsDialog({
     // 'library' is opened via EntryShell route — SettingsDialog doesn't
     // render it but SettingsSection must accept the token (see type def).
     library: { title: '', subtitle: '' },
-    handoff: { title: t('handoff.title'), subtitle: t('handoff.subtitle') },
     about: { title: t('settings.about'), subtitle: t('settings.aboutHint') },
   };
   const activeHeader = sectionHeader[activeSection];
@@ -4438,6 +4171,8 @@ export function SettingsDialog({
   const settingsFullscreenLabel = settingsFullscreen
     ? t('common.exitFullscreen')
     : t('common.fullscreen');
+  const pageMode = presentation === 'page';
+
   const surface = (
       <div
         className={
@@ -4448,14 +4183,12 @@ export function SettingsDialog({
         }
         role={pageMode ? 'region' : 'dialog'}
         aria-modal={pageMode ? undefined : true}
-        aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}
-        ref={pageMode ? settingsPageRef : undefined}
-        tabIndex={pageMode ? -1 : undefined}
+        aria-labelledby="settings-dialog-title"
         onClick={pageMode ? undefined : (e) => e.stopPropagation()}
       >
-        {/* Top-right chrome strip — anchored to the column's corner so the
+        {/* Top-right chrome strip — anchored to the modal corner so the
             autosave indicator and the close button float above the
-            tab-strip/content rhythm without competing with the title.
+            sidebar/content rhythm without competing with the title.
             We use `position: absolute` instead of putting these inside
             `.modal-head` so the welcome variant's tall hero (kicker /
             title / subtitle / pet teaser) keeps its centred reading
@@ -4491,11 +4224,6 @@ export function SettingsDialog({
               </>
             ) : null}
           </div>
-          {/* The fullscreen toggle that used to sit here went with the card
-              it grew: this surface is already the whole content area, so a
-              control offering to make it bigger would have been a button
-              that changes nothing — the decorative-control failure,
-              shipped. */}
           {pageMode ? null : (
             <button
               type="button"
@@ -4541,55 +4269,26 @@ export function SettingsDialog({
         </header>
 
         <div className="modal-body">
-          {/* Browser-style tabs, one per settings section — the same idiom the
-              workspace uses, replacing a seventeen-item scrolling rail that
-              behaved like nothing else in the product. The strip owns the
-              overflow surface and the surface's search field; the panel below
-              is the one `tabpanel` every tab controls. */}
-          <SettingsTabStrip
-            activeSection={activeSection}
-            onSelect={selectSettingsSection}
-            matchCounts={settingsSearchCounts}
-            tabs={visibleSettingsTabs}
-            searchField={
-              <RegexSearchField
-                search={settingsSearch}
-                fieldLabel={t('settings.searchAria')}
-                ariaLabel={t('settings.searchAria')}
-                placeholder={t('settings.searchPlaceholder')}
-                className={settingsTabStyles.searchInput}
-                hostClassName={settingsTabStyles.searchHost}
-                testId="settings-search"
-              />
-            }
-          />
-          {settingsSearchActive ? (
-            <SettingsSearchResults
-              hits={settingsSearchHits}
-              activeSection={activeSection}
-              elsewhere={settingsSearchElsewhere}
-              sectionLabel={settingsSectionLabel}
-              onPick={handleSettingsSearchPick}
+          <button
+            type="button"
+            className="settings-sidebar-toggle"
+            onClick={() => setSettingsSidebarCollapsed((current) => !current)}
+            aria-label={settingsSidebarToggleLabel}
+            aria-pressed={settingsSidebarCollapsed}
+            aria-controls="settings-sidebar"
+            title={settingsSidebarToggleLabel}
+          >
+            <Icon
+              name={settingsSidebarCollapsed ? 'chevron-right' : 'chevron-left'}
+              size={15}
+              strokeWidth={2}
             />
-          ) : null}
-          {/* The reveal anchor every whole-section entry in the palette's
-              settings index points at. Stamped once, from the live section, so
-              nineteen sections cannot drift out of sync one attribute at a
-              time — individual controls carry their own `data-od-setting`
-              below and take precedence when the palette targets one. */}
-          <div
-            className="settings-content"
-            ref={settingsContentRef}
-            id={SETTINGS_TABPANEL_ID}
-            role="tabpanel"
-            // `orbit` and `routines` have panels but no tab — they are opened
-            // from their own surfaces. Pointing at a tab id that does not exist
-            // would be worse than naming the panel by nothing at all.
-            aria-labelledby={
-              SETTINGS_TAB_DEFS[activeSection] ? settingsTabId(activeSection) : undefined
-            }
-            tabIndex={-1}
-            data-od-setting={`section:${activeSection}`}
+          </button>
+          <aside
+            id="settings-sidebar"
+            className="settings-sidebar"
+            aria-label="Settings sections"
+            aria-hidden={settingsSidebarCollapsed ? true : undefined}
           >
             {pageMode ? (
               <div className="settings-page-nav-head">
@@ -4601,10 +4300,99 @@ export function SettingsDialog({
                   <Icon name="arrow-left" size={15} />
                   <span>{t('settings.pageBackToHome')}</span>
                 </button>
-                <h1 id="settings-page-title">{activeHeader.title}</h1>
-                <p className="settings-page-subtitle">{activeHeader.subtitle}</p>
               </div>
             ) : null}
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
+              onClick={() => setActiveSection('execution')}
+              data-testid="settings-nav-execution"
+            >
+              <Icon name="sliders" size={18} />
+              <span>
+                <strong>{t('settings.envConfigure')}</strong>
+                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'general' ? ' active' : ''}`}
+              onClick={() => setActiveSection('general')}
+            >
+              <Icon name="settings" size={18} />
+              <span>
+                <strong>{t('settings.general')}</strong>
+                <small>{t('settings.generalHint')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'instructions' ? ' active' : ''}`}
+              onClick={() => setActiveSection('instructions')}
+            >
+              <Icon name="edit" size={18} />
+              <span>
+                <strong>{t('settings.instructionsTitle')}</strong>
+                <small>{t('settings.instructionsNavSub')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
+              onClick={() => setActiveSection('memory')}
+            >
+              <Icon name="brain" size={18} />
+              <span>
+                <strong>{t('settings.memory')}</strong>
+                <small>{t('settings.memoryHint')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
+              onClick={() => setActiveSection('media')}
+            >
+              <Icon name="image" size={18} />
+              <span>
+                <strong>{t('settings.mediaProviders')}</strong>
+                <small>Image / video / audio</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
+              onClick={() => setActiveSection('integrations')}
+            >
+              <Icon name="puzzle" size={18} />
+              <span>
+                <strong>{t('settings.mcpServerTitle')}</strong>
+                <small>{t('settings.mcpServerHint')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
+              onClick={() => setActiveSection('privacy')}
+            >
+              <Icon name="eye" size={18} />
+              <span>
+                <strong>{t('settings.privacy')}</strong>
+                <small>{t('settings.privacyHint')}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
+              onClick={() => setActiveSection('about')}
+            >
+              <Icon name="settings" size={18} />
+              <span>
+                <strong>{t('settings.about')}</strong>
+                <small>{t('settings.aboutHint')}</small>
+              </span>
+            </button>
+          </aside>
+          <div className="settings-content" ref={settingsContentRef}>
           {activeSection === 'execution' ? (
             <>
               {/* Sticky shell: the 本机 CLI / API 提供商 switch stays pinned
@@ -6047,7 +5835,7 @@ export function SettingsDialog({
               daemonMediaProviders={daemonMediaProviders}
               daemonMediaProvidersFetchState={daemonMediaProvidersFetchState}
               workspaceContext={workspaceContext}
-              onOpenComposioSection={() => selectSettingsSection('composio')}
+              onOpenComposioSection={() => setActiveSection('composio')}
               onLeaveForOrbitProject={(runConfig) => {
                 // Persist any in-flight Orbit edits (toggle / time) before
                 // navigating away so they aren't silently lost. The autosave
@@ -6061,172 +5849,74 @@ export function SettingsDialog({
             />
           ) : null}
 
-          {activeSection === 'language' ? (
-          <section className="settings-section">
-            <div
-              className="settings-language-grid"
-              role="radiogroup"
-              aria-label={t('settings.language')}
-              data-od-setting="language.locale"
-            >
-              {LOCALES.map((code) => {
-                const active = locale === code;
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    className={`settings-language-tile${active ? ' active' : ''}`}
-                    onClick={() => {
-                      // P1 ui_click area=language — record the locale id
-                      // that was picked, regardless of whether it differs
-                      // from the current one (user clicked = signal).
-                      trackSettingsLanguageClick(analytics.track, {
-                        page_name: 'settings',
-                        area: 'language',
-                        element: code,
-                      });
-                      setLocale(code as Locale);
-                    }}
-                  >
-                    <span className="settings-language-tile-text">
-                      <span className="settings-language-tile-title">
-                        {LOCALE_LABEL[code]}
-                      </span>
-                      <span className="settings-language-tile-code">
-                        {code}
-                      </span>
-                    </span>
-                    {active ? <Icon name="check" size={16} /> : null}
-                  </button>
-                );
-              })}
-            </div>
-            {/* One-time disclosure. It fires here rather than at first run
-                because this is the surface that can act on it — the dial it
-                describes is the next thing on the page. Dismissal is
-                persisted, so it is genuinely one-time and not a nag. */}
-            {funnyDisclosureSeen ? null : (
-              <div className="settings-language-disclosure" role="note">
-                <Icon name="sparkles" size={16} aria-hidden="true" />
-                <div className="settings-language-disclosure-text">
-                  <strong>{t('settings.funnyDisclosureTitle')}</strong>
-                  <small className="hint">{t('settings.funnyDisclosureBody')}</small>
-                </div>
-                <Button variant="ghost" onClick={dismissFunnyDisclosure}>
-                  {t('settings.funnyDisclosureDismiss')}
-                </Button>
-              </div>
-            )}
-            <div className="settings-subsection">
-              <div className="field">
-                <span className="field-label">{t('settings.languageModeTitle')}</span>
-                <div
-                  className="seg-control"
-                  role="group"
-                  aria-label={t('settings.languageModeTitle')}
-                  data-od-setting="language.mode"
-                  style={{ '--seg-cols': LANGUAGE_MODES.length } as React.CSSProperties}
-                >
-                  {LANGUAGE_MODES.map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      className={'seg-btn' + (languageMode === mode ? ' active' : '')}
-                      aria-pressed={languageMode === mode}
-                      onClick={() => setLanguageMode(mode)}
+          {/* General is one scrollable page of `settings-general-block`
+              sections, per #5517. Every token that used to address a piece of
+              it (language / appearance / notifications / pet /
+              projectLocations / critiqueTheater) is folded into 'general' by
+              normalizeSettingsSection, so this single guard covers them all —
+              there is no longer a standalone render block for any of them. */}
+          {activeSection === 'general' ? (
+            <section className="settings-section settings-general-section">
+              <div className="settings-general-block">
+                <div className="settings-general-field">
+                  <span className="settings-general-label">{t('settings.language')}</span>
+                  <label className="settings-general-select">
+                    <select
+                      value={locale}
+                      aria-label={t('settings.language')}
+                      onChange={(event) => {
+                        const next = event.target.value as Locale;
+                        // P1 ui_click area=language — record the locale id
+                        // that was picked, regardless of whether it differs
+                        // from the current one (user clicked = signal).
+                        trackSettingsLanguageClick(analytics.track, {
+                          page_name: 'settings',
+                          area: 'language',
+                          element: next,
+                        });
+                        setLocale(next);
+                      }}
                     >
-                      <span className="seg-title">{t(LANGUAGE_MODE_LABEL_KEYS[mode])}</span>
-                    </button>
-                  ))}
+                      {LOCALES.map((code) => (
+                        <option key={code} value={code}>
+                          {LOCALE_LABEL[code]} · {code}
+                        </option>
+                      ))}
+                    </select>
+                    <Icon name="chevron-down" size={14} />
+                  </label>
                 </div>
-                <small className="hint">{t('settings.languageModeHint')}</small>
-                <small className="hint">{t('settings.languageModeBilingualHint')}</small>
               </div>
-            </div>
-            <div className="settings-subsection">
-              <div className="field">
-                <span className="field-label">{t('settings.funnyTitle')}</span>
-                <small className="hint">{t('settings.funnyHint')}</small>
-                {/* One slider per language, persisted independently. Only
-                    English and 廣東話 carry an override dictionary, so only
-                    those two get a slider — a third slider that moved
-                    nothing would be a lie in the shape of a control. */}
-                {(['en', 'zh-HK'] as const).map((language) => {
-                  const level = funnyLevels[language];
-                  const sliderId = `settings-funny-${language}`;
-                  return (
-                    <div
-                      className="settings-funny-row"
-                      key={language}
-                      data-od-setting={
-                        language === 'en' ? 'language.funnyEn' : 'language.funnyZhHk'
-                      }
-                    >
-                      <label className="settings-funny-label" htmlFor={sliderId}>
-                        {t(FUNNY_LANGUAGE_LABEL_KEYS[language])}
-                      </label>
-                      <input
-                        id={sliderId}
-                        type="range"
-                        className="settings-funny-slider"
-                        min={1}
-                        max={5}
-                        step={1}
-                        value={level}
-                        aria-valuetext={t('settings.funnyLevelValue', {
-                          level,
-                          name: tv(FUNNY_LEVEL_LABEL_KEYS[level]),
-                        })}
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          const picked = FUNNY_LEVELS.find((candidate) => candidate === next);
-                          if (picked) setFunnyLevel(language, picked);
-                        }}
-                      />
-                      <output className="settings-funny-value" htmlFor={sliderId}>
-                        {t('settings.funnyLevelValue', {
-                          level,
-                          name: tv(FUNNY_LEVEL_LABEL_KEYS[level]),
-                        })}
-                      </output>
-                    </div>
-                  );
-                })}
-                {/* The invariant, stated where the control is. This string
-                    is deliberately never funny-levelled — it is the promise
-                    the levels are made under. */}
-                <small className="hint">{t('settings.funnyFactsNotice')}</small>
+
+              <div className="settings-general-block">
+                <div className="settings-general-block-head">
+                  <h3>{t('settings.systemPrefsTitle')}</h3>
+                  <p className="hint">{t('settings.systemPrefsHint')}</p>
+                </div>
+                <NotificationsSection cfg={cfg} setCfg={setCfg} />
               </div>
-            </div>
-          </section>
-          ) : null}
-          {activeSection === 'appearance' ? (
-            <AppearanceSection cfg={cfg} setCfg={setCfg} />
-          ) : null}
 
-          {activeSection === 'narrator' ? (
-            <NarratorSettingsPanel />
-          ) : null}
+              <div className="settings-general-block">
+                <div className="settings-general-block-head">
+                  <h3>{t('pet.navTitle')}</h3>
+                </div>
+                <PetSettings cfg={cfg} setCfg={setCfg} />
+              </div>
 
-          {activeSection === 'critiqueTheater' ? (
-            <CritiqueTheaterSection
-              callerWorkspaceContext={workspaceContext}
-              persistedProjectWorkspaceId={persistedProjectWorkspaceId}
-            />
-          ) : null}
+              <div className="settings-general-block">
+                <div className="settings-general-block-head">
+                  <h3>{t('settings.projectLocations')}</h3>
+                </div>
+                <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
+              </div>
 
-          {activeSection === 'notifications' ? (
-            <NotificationsSection cfg={cfg} setCfg={setCfg} />
-          ) : null}
-
-          {activeSection === 'pet' ? (
-            <PetSettings cfg={cfg} setCfg={setCfg} />
-          ) : null}
-
-          {activeSection === 'projectLocations' ? (
-            <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
+              <div className="settings-general-block">
+                <CritiqueTheaterSection
+                  callerWorkspaceContext={workspaceContext}
+                  persistedProjectWorkspaceId={persistedProjectWorkspaceId}
+                />
+              </div>
+            </section>
           ) : null}
 
           {activeSection === 'designSystems' ? (
@@ -6251,7 +5941,6 @@ export function SettingsDialog({
                 </div>
                 <textarea
                   className="custom-instructions-input memory-global-rules-input instructions-rules-input"
-                  data-od-setting="instructions.customInstructions"
                   rows={5}
                   maxLength={5000}
                   placeholder={t('settings.customInstructionsPlaceholder')}
@@ -6269,7 +5958,7 @@ export function SettingsDialog({
 
           {activeSection === 'memory' ? (
             <MemorySection
-              onOpenConnectors={() => selectSettingsSection('composio')}
+              onOpenConnectors={() => setActiveSection('composio')}
               chatAgentId={cfg.mode === 'daemon' ? cfg.agentId ?? null : null}
               chatModel={selectedMemoryChatModel}
             />
@@ -6354,38 +6043,6 @@ export function SettingsDialog({
               ) : (
                 <div className="empty-card">{t('settings.versionUnavailable')}</div>
               )}
-              {/* Directly under the version, because that is the question the
-                  changelog answers: what is in the build I am running. Outside
-                  the `appVersionInfo` branch above so a daemon that cannot
-                  report a version does not also hide the history. */}
-              <div className="settings-about-diagnostics">
-                <div className="settings-about-diagnostics-text">
-                  <h4>{t('changelog.title')}</h4>
-                  <p className="hint">{t('changelog.settingsHint')}</p>
-                </div>
-                <Button
-                  data-testid="settings-open-changelog"
-                  onClick={openChangelogViewer}
-                >
-                  {t('changelog.openButton')}
-                </Button>
-              </div>
-              {/* Beside the changelog because they answer the two halves of the
-                  same question: what changed in the build, and what changed in
-                  *your* records. The panel itself is mounted at the app root;
-                  this only dispatches the event. */}
-              <div className="settings-about-diagnostics">
-                <div className="settings-about-diagnostics-text">
-                  <h4>{t('history.title')}</h4>
-                  <p className="hint">{t('history.settingsHint')}</p>
-                </div>
-                <Button
-                  data-testid="settings-open-version-history"
-                  onClick={() => openVersionHistory()}
-                >
-                  {t('history.openButton')}
-                </Button>
-              </div>
               <div className="settings-about-diagnostics settings-about-silent-updates">
                 <label className="settings-about-toggle">
                   <input
@@ -6525,22 +6182,17 @@ export function SettingsDialog({
   if (pageMode) {
     return (
       <div className="settings-page-shell">
-        <div
-          className={`settings-page ${settingsPageStyles.page}`}
-          data-testid="settings-page"
-        >
-          {surface}
-          {dshSetup ? (
-            <DeepSeekHarnessSetupDialog
-              busy={dshSetup.busy}
-              error={dshSetup.error}
-              onCancel={() => {
-                if (!dshSetup.busy) setDshSetup(null);
-              }}
-              onConfirm={() => void handleConfirmDshSetup()}
-            />
-          ) : null}
-        </div>
+        {surface}
+        {dshSetup ? (
+          <DeepSeekHarnessSetupDialog
+            busy={dshSetup.busy}
+            error={dshSetup.error}
+            onCancel={() => {
+              if (!dshSetup.busy) setDshSetup(null);
+            }}
+            onConfirm={() => void handleConfirmDshSetup()}
+          />
+        ) : null}
       </div>
     );
   }
@@ -7112,7 +6764,7 @@ export function isOrbitRunDisabled(isBusy: boolean, connectedCount: number | nul
 
 function formatRelative(
   iso: string | undefined | null,
-  t: (key: keyof Dict, vars?: TranslationVars) => string,
+  t: (key: keyof Dict, vars?: Record<string, string | number>) => string,
 ): string | null {
   if (!iso) return null;
   const then = new Date(iso).getTime();
@@ -7972,14 +7624,6 @@ function MediaProvidersSection({
   const [visibleApiKeys, setVisibleApiKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  // The provider whose saved credentials the super-confirmation gate is
-  // pointed at, or null when it is closed. Clearing wipes an API key the app
-  // never shows again and cannot re-derive — the user has to go and find it
-  // wherever they originally got it — so a stray click on a row's Clear
-  // button is exactly the accident the gate exists to stop. Issue #737 added
-  // a `confirm()` here for the same reason; this replaces that blocking
-  // browser dialog with the product's own gate.
-  const [clearTarget, setClearTarget] = useState<MediaProvider | null>(null);
   useEffect(() => {
     setVisibleApiKeys((current) => {
       const next = new Set<string>();
@@ -8272,25 +7916,6 @@ function MediaProvidersSection({
                   />
                   <button
                     type="button"
-                    className="ghost"
-                    disabled={!clearable}
-                    onClick={() => {
-                      trackSettingsMediaProvidersClick(analytics.track, {
-                        page_name: 'settings',
-                        area: 'media_providers',
-                        element: 'clear',
-                        providers_id: provider.id,
-                        // The click reports the state at the moment the
-                        // user pressed Clear; the actual clear only lands
-                        // after they confirm the dialog below, but the
-                        // dashboard cares about the intent signal.
-                        is_configured: clearable,
-                      });
-                      // The gate below owns the actual clear. Opening it is
-                      // all this click does, so a mis-aimed pointer changes
-                      // nothing at all.
-                      setClearTarget(provider);
-                    }}
                     className="secret-visibility-button"
                     aria-label={
                       activeApiKeyVisible
@@ -8457,28 +8082,6 @@ function MediaProvidersSection({
           </ul>
         </details>
       ) : null}
-      {clearTarget ? (
-        <DestructiveGate
-          action={t('settings.mediaProviderClearGateAction')}
-          // The provider's own name, not a description of one — this is the
-          // string the user has to be able to check the slider against.
-          target={clearTarget.label}
-          items={[
-            t('settings.mediaProviderClearGateItem', { name: clearTarget.label }),
-          ]}
-          irreversible
-          onConfirm={() => {
-            updateProvider(clearTarget, {
-              apiKey: '',
-              baseUrl: '',
-              model: '',
-              apiKeyConfigured: false,
-              apiKeyTail: '',
-            });
-          }}
-          onClose={() => setClearTarget(null)}
-        />
-      ) : null}
     </section>
   );
 }
@@ -8537,7 +8140,7 @@ interface McpClient {
   buildMethod: (info: McpInstallInfo) => string;
   // Function so per-OS path hints (~/.cursor on POSIX vs
   // %USERPROFILE%\.cursor on Windows) and shortcut differences
-  // (⇧⌘F vs Ctrl+Shift+F) can be rendered correctly.
+  // (⌘⇧P vs Ctrl+Shift+P) can be rendered correctly.
   buildInstruction: (info: McpInstallInfo) => string;
   buildSnippet: (info: McpInstallInfo) => string;
   buildSnippetLang: (info: McpInstallInfo) => 'bash' | 'json' | 'toml';
@@ -8559,7 +8162,7 @@ function homeConfigPath(
 }
 
 function commandPaletteShortcut(platform: McpInstallInfo['platform']): string {
-  return formatShortcut('commandPalette.open', { mac: platform === 'darwin' });
+  return platform === 'darwin' ? '⌘⇧P' : 'Ctrl+Shift+P';
 }
 
 function settingsShortcut(platform: McpInstallInfo['platform']): string {
@@ -8954,9 +8557,7 @@ function IntegrationsSection() {
             aria-expanded={pickerOpen}
           >
             <span className="ds-picker-meta">
-              <span className="ds-picker-title">
-                <span className="ds-picker-title-text">{client.label}</span>
-              </span>
+              <span className="ds-picker-title">{client.label}</span>
               <span className="ds-picker-sub">
                 {info ? client.buildMethod(info) : ''}
               </span>
@@ -8986,9 +8587,7 @@ function IntegrationsSection() {
                       }}
                     >
                       <span className="ds-picker-item-text">
-                        <span className="ds-picker-item-title">
-                          <span className="ds-picker-item-title-text">{c.label}</span>
-                        </span>
+                        <span className="ds-picker-item-title">{c.label}</span>
                         <span
                           style={{
                             fontSize: 11,
@@ -9145,242 +8744,6 @@ function IntegrationsSection() {
   );
 }
 
-const THEMES: Array<{
-  value: AppTheme;
-  labelKey: 'settings.themeSystem' | 'settings.themeLight' | 'settings.themeDark';
-  icon?: 'sun' | 'moon';
-}> = [
-  { value: 'system', labelKey: 'settings.themeSystem' },
-  { value: 'light', labelKey: 'settings.themeLight', icon: 'sun' },
-  { value: 'dark', labelKey: 'settings.themeDark', icon: 'moon' },
-];
-
-/**
- * What the picker's contrast readout measures the accent against.
- *
- * Read from the live token rather than written as a literal, so the ratio
- * follows whatever theme and seed are actually on the document instead of
- * describing whichever one happened to be current when this was written.
- * The fallback is the light `surface-container-low` the token sheet
- * declares, used only where there is no computed style to ask — a server
- * render, or a test environment that does not resolve custom properties.
- */
-const FALLBACK_PANEL_BACKGROUND: Rgb = { r: 0xff, g: 0xf1, b: 0xec };
-
-function readPanelBackground(): Rgb {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return FALLBACK_PANEL_BACKGROUND;
-  }
-  const raw = window
-    .getComputedStyle(document.documentElement)
-    .getPropertyValue('--md-sys-color-surface-container-low')
-    .trim();
-  const parsed = raw ? parseColor(raw, CSS_COLOR_NAMES) : null;
-  return parsed ? { r: parsed.rgba.r, g: parsed.rgba.g, b: parsed.rgba.b } : FALLBACK_PANEL_BACKGROUND;
-}
-
-/**
- * The accent as the picker wants it.
- *
- * The stored accent is either a hex or the M3 `primary` role, and a role is
- * not a colour anything can put a thumb on, so the role resolves to the
- * concrete terracotta the product used before the default became a role —
- * exactly what the old `<input type="color">` opened on. Alpha is always 1
- * because the accent is stored as a six-digit hex.
- */
-function accentToRgba(accent: string): Rgba {
-  const parsed = parseColor(
-    normalizeAccentColor(accent) ?? CUSTOM_ACCENT_FALLBACK,
-    CSS_COLOR_NAMES,
-  );
-  return parsed ? parsed.rgba : { r: 0xc9, g: 0x64, b: 0x42, a: 1 };
-}
-
-/** Field-by-field rather than a stringify, so key order cannot decide it. */
-function sameTypography(a: AppearanceTypography, b: AppearanceTypography): boolean {
-  return (
-    a.fontStackId === b.fontStackId &&
-    a.fontSizePx === b.fontSizePx &&
-    a.fontWeight === b.fontWeight &&
-    a.lineHeight === b.lineHeight &&
-    a.letterSpacingEm === b.letterSpacingEm &&
-    a.opticalSize === b.opticalSize &&
-    a.grade === b.grade &&
-    a.smallCaps === b.smallCaps &&
-    a.glow === b.glow
-  );
-}
-
-function AppearanceSection({
-  cfg,
-  setCfg,
-}: {
-  cfg: AppConfig;
-  setCfg: Dispatch<SetStateAction<AppConfig>>;
-}) {
-  const { t } = useI18n();
-  const analytics = useAnalytics();
-  const current = cfg.theme ?? 'system';
-  const currentAccent = normalizeAccentColor(cfg.accentColor) ?? DEFAULT_ACCENT_COLOR;
-  const accentLabel = t('pet.fieldAccent');
-  const defaultAccentLabel = t('pet.fieldAccentDefault');
-  const customAccentLabel = t('pet.fieldAccentCustom');
-  const presetsLabel = t('appearance.presets');
-  const { preferences, setPreferences } = useAppearancePreferences();
-  const [pickerBackground, setPickerBackground] = useState<Rgb>(FALLBACK_PANEL_BACKGROUND);
-
-  // Apply the draft theme and accent immediately so the user sees a live
-  // preview before hitting Save. SettingsDialog's cleanup reverts both on
-  // cancel; the segmented control is therefore a real persisted setting, not
-  // a decorative readout of the current OS palette.
-  useLayoutEffect(() => {
-    applyAppearanceToDocument({
-      theme: current,
-      accentColor: currentAccent,
-    });
-    setPickerBackground(readPanelBackground());
-  }, [current, currentAccent]);
-
-  const accentRgba = useMemo(() => accentToRgba(currentAccent), [currentAccent]);
-
-  const activePresetId =
-    BUILT_IN_PRESETS.find(
-      (preset) =>
-        preset.theme === current &&
-        preset.accentColor === currentAccent &&
-        preset.preferences.seed === preferences.seed &&
-        preset.preferences.density === preferences.density &&
-        preset.preferences.uiScale === preferences.uiScale &&
-        // Auto-fit is part of the look a preset restores: a preset that
-        // pins 90% is not the same appearance as one whose scale happens
-        // to read 90% because the window is that wide right now.
-        preset.preferences.autoFit === preferences.autoFit &&
-        sameTypography(preset.preferences.typography, preferences.typography),
-    )?.id ?? null;
-
-  const setAccentColor = (color: string) => {
-    // The default swatch is the M3 `primary` role, not a hex, so it never
-    // normalizes — match it first or picking "Default" would fall through to
-    // `c.accentColor` and leave the previous accent in place.
-    const picked = color === DEFAULT_ACCENT_COLOR ? DEFAULT_ACCENT_COLOR : normalizeAccentColor(color);
-    setCfg((c) => ({ ...c, accentColor: picked ?? c.accentColor ?? DEFAULT_ACCENT_COLOR }));
-  };
-
-  return (
-    <section className="settings-section">
-      {/* Renders nothing. It applies the persisted seed, density, UI scale
-          and typography to the document, so a preset picked below is real
-          on screen for as long as this editor is open. */}
-      <AppearanceRuntime />
-      <div
-        className="seg-control"
-        role="group"
-        aria-label={t('settings.appearance')}
-        data-od-setting="appearance.theme"
-        style={{ '--seg-cols': THEMES.length } as React.CSSProperties}
-      >
-        {THEMES.map(({ value, labelKey, icon }) => (
-          <button
-            key={value}
-            type="button"
-            className={'seg-btn' + (current === value ? ' active' : '')}
-            aria-pressed={current === value}
-            onClick={() => {
-              trackSettingsAppearanceClick(analytics.track, {
-                page_name: 'settings',
-                area: 'appearance',
-                element: value,
-              });
-              setCfg((c) => ({ ...c, theme: value }));
-            }}
-          >
-            {icon ? <Icon name={icon} size={14} aria-hidden="true" /> : null}
-            <span className="seg-title">{t(labelKey)}</span>
-          </button>
-        ))}
-      </div>
-      <div className="field">
-        <span className="field-label">{accentLabel}</span>
-        <RovingRadioGroup
-          value={currentAccent}
-          options={ACCENT_SWATCHES}
-          onChange={(color) => {
-            trackSettingsAppearanceClick(analytics.track, {
-              page_name: 'settings',
-              area: 'appearance',
-              element: 'accent_color',
-              color,
-            });
-            setAccentColor(color);
-          }}
-          ariaLabel={accentLabel}
-          className="pet-swatches"
-          groupProps={{ 'data-od-setting': 'appearance.accent' }}
-          optionProps={(color, active) => ({
-            className: `pet-swatch${active ? ' active' : ''}`,
-            style: { background: color },
-            'aria-label': color === DEFAULT_ACCENT_COLOR ? defaultAccentLabel : color,
-          })}
-        >
-          {() => null}
-        </RovingRadioGroup>
-        {/* The swatches above are shortcuts; this is the whole of sRGB.
-            It replaces the old `<input type="color">`, which reached the
-            same space through the operating system's picker but could not
-            show what a colour costs — no typed entry in another notation,
-            no translation table, and no contrast ratio against the surface
-            the accent is about to be drawn on. */}
-        <InfiniteColorPicker
-          value={accentRgba}
-          onChange={(next) => setAccentColor(formatHex(next))}
-          label={customAccentLabel}
-          background={pickerBackground}
-          // The accent is stored as a six-digit hex, so an alpha the user
-          // drags in would be dropped on save. The axis stays live and the
-          // picker says so rather than pretending the control is absent.
-          alphaWillBeDropped
-        />
-      </div>
-      <div className="field">
-        <span className="field-label">{presetsLabel}</span>
-        <div
-          role="group"
-          aria-label={presetsLabel}
-          style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
-        >
-          {BUILT_IN_PRESETS.map((preset) => (
-            <Button
-              key={preset.id}
-              variant={activePresetId === preset.id ? 'subtle' : 'ghost'}
-              aria-pressed={activePresetId === preset.id}
-              onClick={() => {
-                // A preset is one complete look, so it writes through both
-                // halves: theme and accent live in AppConfig, everything
-                // else in the appearance store, which persists and applies
-                // in the same call.
-                setCfg((c) => ({
-                  ...c,
-                  theme: preset.theme,
-                  accentColor: preset.accentColor,
-                }));
-                setPreferences(preset.preferences);
-              }}
-            >
-              {t(preset.nameKey)}
-            </Button>
-          ))}
-        </div>
-      </div>
-      {/* Seed, sizing and typography. They live in their own component
-          beside the store they write to, rather than as another thousand
-          lines here — and unlike theme and accent above, they take effect
-          on the live UI immediately and persist themselves, so they are
-          outside this dialog's draft / Save / revert cycle entirely. */}
-      <AppearanceControls />
-    </section>
-  );
-}
-
 /**
  * Settings surface for the M1 Critique Theater rollout toggle.
  *
@@ -9498,9 +8861,10 @@ function CritiqueTheaterSectionContent({
           <p className="hint">{t('critiqueTheater.settingsNavHint')}</p>
         </div>
       </div>
-      {/* Renders as the same `toggle-row` switch used by the other settings
-          sections. The section keeps its own heading and navigation identity,
-          so the control is never hidden inside another section's layout. */}
+      {/* Renders as the same `toggle-row` switch the rest of General uses, per
+          #5517 — the bare checkbox this replaces floated free of the label
+          because `.settings-general-block` hides the section-head that used to
+          anchor it. The .critique-theater-toggle styles were already shipped. */}
       <button
         type="button"
         className={`toggle-row critique-theater-toggle${enabled ? ' on' : ''}`}
@@ -9648,7 +9012,7 @@ function NotificationsSection({
   return (
     <section className="settings-section">
       <div className="settings-subsection">
-        <div className="settings-notify-card" data-od-setting="notifications.sound">
+        <div className="settings-notify-card">
           <div className="settings-notify-card-header">
             <h4>{t('settings.notifyCompletionSound')}</h4>
             <div className="section-head-actions">
@@ -9734,7 +9098,7 @@ function NotificationsSection({
       </div>
 
       <div className="settings-subsection">
-        <div className="settings-notify-card" data-od-setting="notifications.desktop">
+        <div className="settings-notify-card">
           <div className="settings-notify-card-header">
             <h4>{t('settings.notifyDesktop')}</h4>
             <div className="section-head-actions">

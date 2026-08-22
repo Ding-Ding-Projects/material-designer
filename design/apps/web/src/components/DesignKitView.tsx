@@ -29,7 +29,7 @@ import { createPortal } from 'react-dom';
 import { Button, Textarea } from '@open-design/components';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { DesignSystemEditClickProps } from '@open-design/contracts/analytics';
-import { tv, useT } from '../i18n';
+import { useT } from '../i18n';
 import {
   fetchProjectFileText,
   openExternalUrl,
@@ -1225,7 +1225,7 @@ function DesignKitViewInner({
                 <h3 className={styles.sectionTitle}>{t('brandDetail.logo')}</h3>
                 {editFocusModule === 'logo' ? (
                   <span className={styles.editFocusHint}>
-                    {t('ds.manualEditModuleHint', { module: tv('brandDetail.logo') })}
+                    {t('ds.manualEditModuleHint', { module: t('brandDetail.logo') })}
                   </span>
                 ) : null}
                 {moduleActions(
@@ -1368,8 +1368,8 @@ function DesignKitViewInner({
                         <button
                           className={styles.swatchPicker}
                           type="button"
-                          aria-label={t('ds.editColor', { name: c.name || c.role || tv('ds.colorLabel') })}
-                          title={t('ds.editColor', { name: c.name || c.role || tv('ds.colorLabel') })}
+                          aria-label={t('ds.editColor', { name: c.name || c.role || t('ds.colorLabel') })}
+                          title={t('ds.editColor', { name: c.name || c.role || t('ds.colorLabel') })}
                           onClick={() => openColorEditor(i)}
                         >
                           <Icon name="edit" size={14} />

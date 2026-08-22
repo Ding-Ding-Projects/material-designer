@@ -1,19 +1,3 @@
-// Material Design 3 navigation rail for the entry view.
-//
-// The first slot is the brand logo, followed by the primary destinations
-// users expect to keep in reach: New project, home, Library, projects, brand
-// kit, automations, plugins, and integrations. Footer controls are reserved for
-// lower-frequency support affordances such as the help launcher.
-// Language switching and other account-scoped controls live behind the
-// floating settings cog in the top-right corner of the main content.
-//
-// The rail is persistent, which is what makes it a rail rather than a
-// drawer: it is on screen in both of its states, and the toggle switches
-// between the 88px icon column and the 260px labelled column. It used to
-// switch between shown and hidden, and because a fresh install has no stored
-// preference, the default state rendered no navigation at all.
-
-import { EntryHelpMenu } from './EntryHelpMenu';
 // Team-edition entry navigation rail (Lovart/Manus-style labeled column).
 //
 // Structure — faithfully ported from the design demo
@@ -29,8 +13,7 @@ import { EntryHelpMenu } from './EntryHelpMenu';
 //     workspace tabs bar's pinned Home toggle.
 //   • Billing chip — real plan tier + explicitly scoped USD balance when Vela
 //     billing is available, with upgrade linking out to Vela Web.
-//   • Search box (opens the project search surface via `onOpenSearch`; the
-//     global palette remains exclusively on Ctrl/Cmd+Shift+F).
+//   • Search box (opens the ⌘K project search palette via `onOpenSearch`).
 //   • 最近 (Recents) → home, Community → community.
 //   • Team block (only when `context.workspaceType === 'team'`): an inline team
 //     switcher + the team destinations. In-client views: drafts / all projects /
@@ -76,6 +59,7 @@ import { MessageCenter } from './MessageCenter';
 import type { EntrySettingsSection } from './EntrySettingsMenu';
 import { useI18n } from '../i18n';
 import { useDismissOnOutsideInteraction } from '../hooks/useDismissOnOutsideInteraction';
+import { ENTRY_RAIL_TOGGLE_EVENT } from './entryRailBridge';
 import {
   beginWorkspaceScopedRead,
   notifyTeamProjectsChanged,
@@ -114,13 +98,15 @@ import {
   workspaceAnalyticsDimensions,
 } from '../analytics/workspace';
 import { WorkbenchCampaignBadge } from './WorkbenchCampaignBadge';
-import { isMacPlatform } from '../utils/platform';
-import { formatShortcut } from './shortcuts/registry';
 
 const REPO_URL = 'https://github.com/nexu-io/open-design';
 const GITHUB_HELP_URL = `${REPO_URL}/issues/new`;
 const GITHUB_FEATURE_URL = `${REPO_URL}/pulls`;
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
+// Chinese-locale community entry. Discord is unreachable for most of that
+// audience, so the same social slot points at the Feishu (飞书) group invite.
+const FEISHU_URL =
+  'https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=866kece3-58ba-40fe-9fd4-6dc6a049f69b';
 const X_URL = 'https://x.com/OpenDesignHQ';
 const CONTACT_EMAIL_URL = 'mailto:support@open-design.ai';
 const externalLinkProps = { target: '_blank', rel: 'noreferrer noopener' } as const;
@@ -227,15 +213,8 @@ interface Props {
   /** Opens the project search palette (blurred modal over all projects). */
   onOpenSearch?: () => void;
   newProjectDisabled?: boolean;
-  /**
-   * True when the rail is expanded to its labelled width. False is the
-   * icon-only rail — still on screen, still operable, just narrower.
-   */
+  /** When false the rail is collapsed (hidden off-canvas) on the entry view. */
   open: boolean;
-  /** Narrow the rail back to icons. */
-  onClose: () => void;
-  /** Widen the rail to its labelled form. */
-  onOpen: () => void;
   /** Extra content for the floating top-right cluster, rendered LEFT of the
    *  account module (e.g. the DeepSeek campaign badge). */
   topRightSlot?: ReactNode;
@@ -259,12 +238,9 @@ interface Props {
    * The update-ready host (`UpdaterPopup`), which renders nothing until the
    * updater reports a downloaded, unopened installer.
    *
-   * It rides the floating account module's row IMMEDIATELY AFTER the avatar
-   * chip (`.entry-nav-rail__account-updater`), per product: 升级提醒按钮跟在
-   * 头像后边，不再单独占一行。 Earlier homes — the rail footer (#5517) and a
-   * strip above the identity row — both detached the reminder from the
-   * avatar. The footer stays as the fallback home for the signed-out shell,
-   * which has no account row at all.
+   * It is an independent control immediately after the floating credits/avatar
+   * capsule (`.entry-nav-rail__account-updater`). The footer stays as the
+   * fallback home for the signed-out shell, which has no account capsule.
    */
   updaterSlot?: ReactNode;
   /** Optional notice shown above the footer controls. */
@@ -315,9 +291,6 @@ function NavButton({
       aria-expanded={ariaHasPopup ? Boolean(ariaExpanded) : undefined}
       {...(testId ? { 'data-testid': testId } : {})}
     >
-      {/* One icon and one sighted label. The button's aria-label is the only
-          accessible name; both visual children are explicitly hidden from the
-          accessibility tree so labels never announce twice. */}
       <span className="entry-nav-rail__btn-icon" aria-hidden>{children}</span>
       <span className="entry-nav-rail__btn-label">{label}</span>
     </button>
@@ -810,7 +783,8 @@ export function EntryTopRightCluster({
               The capsule owns the pill material; the segments inside are
               chrome-free click targets. */}
           {context ? (
-            <div className="entry-top-right-account-pill">
+            <>
+              <div className="entry-top-right-account-pill">
           {(billing || balanceLabel) && showCreditsBalance ? (
             <button
               type="button"
@@ -860,19 +834,6 @@ export function EntryTopRightCluster({
                   ) : null}
                 </span>
               </button>
-              {/* Update-ready rocket, riding the same row immediately AFTER the
-                  avatar chip. It is mounted unconditionally so the row's shape
-                  is stable, and it holds no element children until the updater
-                  actually has something to show; `:empty { display: none }` is
-                  what keeps an idle slot from reserving width (plus the row's
-                  6px gap) next to the avatar.
-
-                  The rocket must never be a DESCENDANT of the trigger above:
-                  a button inside the account button would be invalid markup and
-                  would make every rocket click toggle the account menu too. */}
-              <div className="entry-nav-rail__account-updater" data-testid="entry-nav-account-updater">
-                {updaterSlot}
-              </div>
               {accountOpen ? (
                 <>
                   {/* No backdrop here (unlike the team menu): hover-open relies
@@ -995,52 +956,10 @@ export function EntryTopRightCluster({
                     >
                       <Icon name="sparkles" size={15} /> {t('entry.accountFeatureRequest')}
                     </a>
-                    {/* #5517: the Discord/X/mail badges move off the rail footer
-                        into a compact social row inside the account menu. GitHub
-                        left the row for its own top-right cluster chip. */}
-                    <div className="entry-nav-rail__menu-social">
-                      <a
-                        className="entry-nav-rail__menu-social-btn"
-                        role="menuitem"
-                        href={DISCORD_URL}
-                        {...externalLinkProps}
-                        aria-label={t('entry.discordAria')}
-                        title={t('entry.discordAria')}
-                        onClick={() => {
-                          trackAccountAction('discord');
-                          setAccountOpen(false);
-                        }}
-                      >
-                        <Icon name="discord" size={15} />
-                      </a>
-                      <a
-                        className="entry-nav-rail__menu-social-btn"
-                        role="menuitem"
-                        href={X_URL}
-                        {...externalLinkProps}
-                        aria-label="@OpenDesignHQ"
-                        title="@OpenDesignHQ"
-                        onClick={() => {
-                          trackAccountAction('twitter');
-                          setAccountOpen(false);
-                        }}
-                      >
-                        <span className="entry-nav-rail__menu-x" aria-hidden>X</span>
-                      </a>
-                      <a
-                        className="entry-nav-rail__menu-social-btn"
-                        role="menuitem"
-                        href={CONTACT_EMAIL_URL}
-                        aria-label={t('entry.mailAria')}
-                        title={t('entry.mailAria')}
-                        onClick={() => {
-                          trackAccountAction('email');
-                          setAccountOpen(false);
-                        }}
-                      >
-                        <Icon name="mail" size={15} />
-                      </a>
-                    </div>
+                    {/* The Discord/X/mail social row used to sit here (#5517).
+                        It now lives in the nav rail's footer — see
+                        `RailSocialRow` — so the account menu stays a pure list
+                        of account actions. */}
                     <div className="entry-nav-rail__menu-divider" />
                     <button
                       type="button"
@@ -1084,8 +1003,16 @@ export function EntryTopRightCluster({
                   }}
                 />
               ) : null}
-            </div>
-            </div>
+              </div>
+              </div>
+              {/* Update-ready rocket: an independent control immediately after
+                  the credits/avatar capsule. The slot stays mounted so
+                  `:empty { display: none }` can remove it from cluster layout
+                  until an installer has downloaded. */}
+              <div className="entry-nav-rail__account-updater" data-testid="entry-nav-account-updater">
+                {updaterSlot}
+              </div>
+            </>
           ) : null}
         </div>,
         document.body,
@@ -1199,6 +1126,73 @@ export function WorkspaceTopRightAccountCluster({
   );
 }
 
+/**
+ * Community/contact links pinned to the bottom of the nav rail.
+ *
+ * The row's first slot is locale-switched: Chinese UIs get the Feishu group
+ * invite (Discord is effectively unreachable there), every other locale keeps
+ * Discord. X and mail are locale-independent. Analytics keeps reporting these
+ * under `area: 'account_menu'` so the existing funnel stays comparable across
+ * the move out of that menu.
+ */
+function RailSocialRow({
+  page,
+  dimensions,
+}: {
+  page: TrackingWorkspacePage;
+  dimensions: ReturnType<typeof workspaceAnalyticsDimensions>;
+}) {
+  const { t, locale } = useI18n();
+  const analytics = useAnalytics();
+  const isChinese = locale === 'zh-CN' || locale === 'zh-TW';
+  const communityUrl = isChinese ? FEISHU_URL : DISCORD_URL;
+  const communityLabel = isChinese ? t('entry.feishuAria') : t('entry.discordAria');
+
+  function track(element: AccountMenuClickProps['element']) {
+    trackAccountMenuClick(analytics.track, {
+      page_name: page,
+      area: 'account_menu',
+      element,
+      ...dimensions,
+    });
+  }
+
+  return (
+    <div className="entry-nav-rail__social" data-testid="entry-nav-rail-social">
+      <a
+        className="entry-nav-rail__social-btn"
+        href={communityUrl}
+        {...externalLinkProps}
+        aria-label={communityLabel}
+        title={communityLabel}
+        data-testid={isChinese ? 'entry-nav-rail-feishu' : 'entry-nav-rail-discord'}
+        onClick={() => track(isChinese ? 'feishu' : 'discord')}
+      >
+        <Icon name={isChinese ? 'feishu' : 'discord'} size={15} />
+      </a>
+      <a
+        className="entry-nav-rail__social-btn"
+        href={X_URL}
+        {...externalLinkProps}
+        aria-label="@OpenDesignHQ"
+        title="@OpenDesignHQ"
+        onClick={() => track('twitter')}
+      >
+        <span className="entry-nav-rail__menu-x" aria-hidden>X</span>
+      </a>
+      <a
+        className="entry-nav-rail__social-btn"
+        href={CONTACT_EMAIL_URL}
+        aria-label={t('entry.mailAria')}
+        title={t('entry.mailAria')}
+        onClick={() => track('email')}
+      >
+        <Icon name="mail" size={15} />
+      </a>
+    </div>
+  );
+}
+
 export function EntryNavRail({
   view,
   onViewChange,
@@ -1206,8 +1200,6 @@ export function EntryNavRail({
   onOpenSearch,
   newProjectDisabled,
   open,
-  onClose,
-  onOpen,
   topRightSlot,
   context,
   billing,
@@ -1217,13 +1209,11 @@ export function EntryNavRail({
   updaterSlot,
   footerNotice,
 }: Props) {
-  const paletteShortcut = formatShortcut('commandPalette.open', { mac: isMacPlatform() });
   const { t } = useI18n();
   const analytics = useAnalytics();
   const analyticsPage = entryViewToTracking(view);
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const communityLabel = t('pluginsHome.title');
-  const libraryLabel = t('library.title');
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).
@@ -1441,12 +1431,19 @@ export function EntryNavRail({
     onViewChange(next);
   };
 
-  // No `inert` and no `aria-hidden` in either state. Both were correct while
-  // collapsing meant hiding — invisible controls must leave the tab order —
-  // and both are wrong now: the collapsed rail is a visible navigation
-  // landmark, and hiding a visible control from assistive technology while
-  // sighted users can click it is exactly the defect those attributes exist
-  // to prevent elsewhere.
+  // While collapsed the rail is visually hidden but its controls stay mounted;
+  // mark it `inert` so they leave the tab order and pointer flow entirely.
+  const railRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const node = railRef.current;
+    if (!node) return;
+    if (open) {
+      node.removeAttribute('inert');
+    } else {
+      node.setAttribute('inert', '');
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!teamOpen) return;
     void loadWorkspaceDirectory();
@@ -1494,9 +1491,10 @@ export function EntryNavRail({
 
   return (
     <nav
+      ref={railRef}
       className={`entry-nav-rail${open ? ' is-open' : ''}`}
-      data-rail-expanded={open ? 'true' : 'false'}
       aria-label={t('entry.primaryNavAria')}
+      aria-hidden={open ? undefined : true}
     >
       <div className="entry-nav-rail__panel">
       <div className="entry-nav-rail__group">
@@ -1658,28 +1656,19 @@ export function EntryNavRail({
           >
             <Icon name="search" size={14} />
             <span className="entry-nav-rail__search-placeholder">{t('common.search')}</span>
-            <kbd className="entry-nav-rail__search-kbd" aria-hidden>{paletteShortcut}</kbd>
+            <span className="entry-nav-rail__search-kbd" aria-hidden>⌘K</span>
           </button>
-          {/* This used to call `onClose` unconditionally and was always
-              labelled "Collapse sidebar" — in a rail that starts collapsed. So
-              on a fresh profile the first thing a user clicks here sets `false`
-              to `false`: nothing moves, nothing is announced, and the control
-              reads as broken because in that state it is.
-
-              It is a toggle, so it says which way it goes and goes that way.
-              `aria-expanded` carries the state for assistive technology; the
-              label carries the *action*, which is why it flips rather than
-              describing where the rail currently is. */}
           <button
             type="button"
             className="entry-nav-rail__collapse od-tooltip"
-            onClick={open ? onClose : onOpen}
-            aria-label={open ? t('entry.navCollapse') : t('entry.navExpand')}
-            aria-expanded={open}
-            title={open ? t('entry.navCollapse') : t('entry.navExpand')}
-            data-testid="entry-nav-collapse"
-            data-tooltip={open ? t('entry.navCollapse') : t('entry.navExpand')}
+            aria-label={t('entry.navCollapse')}
+            title={t('entry.navCollapse')}
+            data-tooltip={t('entry.navCollapse')}
             data-tooltip-placement="bottom"
+            data-testid="entry-rail-collapse"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
+            }}
           >
             <Icon name="panel-left" size={15} />
           </button>
@@ -1702,15 +1691,6 @@ export function EntryNavRail({
           testId="entry-nav-community"
         >
           <Icon name="globe" size={16} />
-        </NavButton>
-        <NavButton
-          active={view === 'library'}
-          ariaLabel={libraryLabel}
-          label={libraryLabel}
-          onClick={() => selectView('library')}
-          testId="entry-nav-library"
-        >
-          <Icon name="layers-filled" size={16} />
         </NavButton>
 
         {context ? (
@@ -1853,19 +1833,18 @@ export function EntryNavRail({
           </>
         )}
       </div>
-      {/* Skip the footer entirely when it has nothing to show — an empty
-          shell here read as a dead white strip under the account row.
-          `footerUpdaterSlot` is only ever set in the signed-out shell: with a
-          cloud identity the updater host rides the account row instead (see
-          `updaterSlot`), so the footer must not render a second host. */}
-      {footerNotice || footerUpdaterSlot ? (
-        <div className="entry-nav-rail__footer">
-          {footerNotice}
-          {footerUpdaterSlot ? (
-            <div className="entry-rail-actions">{footerUpdaterSlot}</div>
-          ) : null}
-        </div>
-      ) : null}
+      {/* The footer always has the social row to show now, so it no longer
+          collapses to nothing. `footerUpdaterSlot` is only ever set in the
+          signed-out shell: with a cloud identity the updater host rides the
+          account row instead (see `updaterSlot`), so the footer must not
+          render a second host. */}
+      <div className="entry-nav-rail__footer">
+        {footerNotice}
+        {footerUpdaterSlot ? (
+          <div className="entry-rail-actions">{footerUpdaterSlot}</div>
+        ) : null}
+        <RailSocialRow page={analyticsPage} dimensions={workspaceDimensions} />
+      </div>
       </div>
 
       {/* Signed-out message-center panel + unread polling (the rail's bell

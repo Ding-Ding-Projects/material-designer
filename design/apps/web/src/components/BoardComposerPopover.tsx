@@ -8,9 +8,8 @@ import type { PreviewComment, PreviewCommentMember } from '../types';
 import { isImeComposing } from '../utils/imeComposing';
 
 import { Icon } from './Icon';
-import type { TranslationVars } from '../i18n';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 function summarizeMember(member: PreviewCommentMember): string {
   const text = String(member.text || '').trim();
