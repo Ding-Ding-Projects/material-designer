@@ -5274,6 +5274,7 @@ export const en: Dict = {
   'statusBar.densityCompact': 'Compact',
   'statusBar.densityDefault': 'Default',
   'statusBar.densityComfortable': 'Comfortable',
+  'statusBar.version': 'Version {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

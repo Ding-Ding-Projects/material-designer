@@ -5683,6 +5683,7 @@ export const zhTW: Dict = {
   'statusBar.densityCompact': '緊湊',
   'statusBar.densityDefault': '預設',
   'statusBar.densityComfortable': '寬鬆',
+  'statusBar.version': '版本 {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is
   // spelled out in words here too, because it is what makes restoring safe.
   'history.title': '版本紀錄',

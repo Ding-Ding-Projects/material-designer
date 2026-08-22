@@ -1018,10 +1018,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
   height: 42px;
   min-height: 42px;
-  /* 52px tab-bar row: 10px above + 32px tab + 10px below, so the tabs get 10px
-     top/bottom breathing room and the row below (sidebar) keeps its own 10px
-     top margin — one consistent 10px rhythm around the strip. */
-  grid-template-rows: 52px minmax(0, 1fr);
 }
 /* ── Project-route tab-strip dock (workspaceTabsDock.ts) ──────────────────
    On the project route the strip portals into .split-chat-tabs-dock at the
@@ -1070,9 +1066,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   margin-top: 2px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
-  /* White seat matching the dropdown beside it. */
-  background: #fff;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
   box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 5%, transparent);
   color: var(--text);
   -webkit-app-region: no-drag;
@@ -1120,9 +1115,9 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   height: 36px;
   padding: 0 10px 0 12px;
   border: 0;
-  border-radius: 12px;
-  background: #fff;
-  color: var(--text);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   font-family: inherit;
   font-size: 13px;
   text-align: left;
@@ -1160,8 +1155,8 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   right: 0;
   padding: 6px;
   border: 1px solid var(--material-separator);
-  border-radius: 12px;
-  background: #fff;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
   box-shadow: var(--shadow-lg);
   /* Six 32px rows plus vertical padding and borders. Global border-box sizing
      means the border must be included or the sixth row is slightly clipped. */
@@ -1247,12 +1242,12 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-height: 0;
 }
 .workspace-shell .workspace-tabs-chrome.app-chrome-header {
-  --workspace-tabs-chrome-height: 52px;
+  --workspace-tabs-chrome-height: 42px;
   /* Flush with the page below it — the bar shares the app surface. */
   --workspace-tab-bar-bg: var(--bg);
   --workspace-active-tab-border: color-mix(in srgb, var(--border-strong) 38%, transparent);
-  height: 52px;
-  min-height: 52px;
+  height: 42px;
+  min-height: 42px;
   padding: 0 8px 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
@@ -1272,33 +1267,20 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
    project shell would see. The two are kept in step deliberately — the numbers
    below are the mockup's 36dp tab and 250px cap, the same as shell.css. */
 .workspace-shell .workspace-tab {
-  width: 250px;
+  width: min(250px, 26vw);
   height: 36px;
   min-height: 36px;
-  /* Auto-shrink in the project shell: tabs sit at 250px when there's room and
-  width: 156px;
-  height: 32px;
-  min-height: 32px;
-  /* Auto-shrink in the project shell: tabs sit at 156px when there's room and
-     shrink toward --workspace-tab-min-width as more open, keeping the whole row
-     visible without scrolling for as long as possible. flex-grow 0 stops a lone
-     tab from ballooning; only once every tab hits its min do we fall back to the
-     shared strip's horizontal scroll. */
+  /* Auto-shrink toward the token-backed minimum while preserving the 36px
+     Material tab height; overflow remains scrollable rather than clipping. */
   min-width: var(--workspace-tab-min-width, 56px);
   max-width: 250px;
   flex: 0 1 250px;
-  grid-template-columns: minmax(0, 1fr) 26px;
-  /* Hangs from the top of the 42px strip so the shaped bottom corners read as
-     the tab meeting the content area. */
-  align-self: flex-start;
-  border-radius: 0 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s);
-  max-width: 168px;
-  flex: 0 1 156px;
   grid-template-columns: minmax(0, 1fr) 22px;
   align-self: center;
-  border-radius: 12px;
+  border-radius: var(--md-sys-shape-corner-m);
   border: 1px solid transparent;
   background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
   box-shadow: none;
 }
 /* Chrome-style hairline separators between tabs, matching #5517: each tab
@@ -1361,6 +1343,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-width: 36px;
   max-width: 36px;
   grid-template-columns: minmax(0, 1fr);
+}
 /* Active Home tab now shows only the sidebar toggle (no icon + divider), so it
    is a single centered column. */
 .workspace-shell .workspace-tab.is-pinned:has(.workspace-tab__rail-toggle) {
@@ -1380,8 +1363,9 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   border-radius: 12px;
 }
 .workspace-shell .workspace-tab.is-active {
-  border-radius: 12px;
-  background: #ffffff;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
   border-color: var(--workspace-active-tab-border);
   box-shadow:
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
@@ -1408,7 +1392,7 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
     )
     0 0 / 100% calc(100% - 2px) no-repeat;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--bg-panel) 78%, transparent);
+  background: color-mix(in srgb, var(--md-sys-color-surface-container-high) 78%, transparent);
   border-color: transparent;
   /* No inset stroke ring on hover — the soft fill alone is the affordance;
      a whisper of drop shadow keeps the slight lift. */

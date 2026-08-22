@@ -1521,3 +1521,24 @@ the reader has no way to know.
   delete under the explicitly authorized cleanup pass.
 - `git stash list` is empty. Open issue scans for `material-designer` and
   `agent-global-memory` returned zero issues at this final checkpoint.
+
+## Shared shell chrome source lane — 2026-08-21
+
+The isolated `codex/app-shell-chrome` lane repairs the shared renderer shell at
+source level. `shell.css` now assigns explicit title, tab, body and status rows;
+`entry-layout.css` has balanced blocks and token-backed 88px/260px rail widths;
+the rail renders one icon plus one sighted label per destination; the competing
+Ctrl/Cmd+K route is removed; and the status strip includes the localized build
+version. The tab context menu now offers one bounded field-owned searchable
+Move… picker with group colour, member count, a no-group choice and group
+creation.
+
+The source guard is
+`design/apps/web/tests/components/WorkspaceTabsBar.shell-contract.test.ts`.
+Static evidence is limited to `git diff --check` and the pure port verifier; no
+Node, package-manager command, build, type check, test, UI action, runtime or
+capture was run locally. Hosted verification must still cover project and entry
+routes, light/dark themes, narrow layouts, 100/125/150/200% scale, bilingual
+labels, keyboard focus, title-bar controls, tab discovery, the Move… picker and
+the 28px status strip. This lane does not touch Library data,
+installer/release work or the parked dim-sum photo lane.

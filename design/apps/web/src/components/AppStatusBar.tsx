@@ -20,6 +20,8 @@ interface Props {
   daemonLive: boolean;
   config: AppConfig;
   designSystems: DesignSystemSummary[];
+  /** The packaged build version; null while the host bridge is resolving. */
+  version?: string | null;
 }
 
 /**
@@ -41,7 +43,7 @@ function resolveModelLabel(config: AppConfig): string | null {
   return choice && choice !== 'default' ? choice : agentId;
 }
 
-export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
+export function AppStatusBar({ daemonLive, config, designSystems, version }: Props) {
   const t = useT();
   const { preferences } = useAppearancePreferences();
 
@@ -79,6 +81,7 @@ export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
   const designSystemSummary = t('statusBar.designSystem', { name: designSystemLabel });
   const scaleSummary = t('statusBar.uiScale', { percent: scalePercent });
   const densitySummary = t('statusBar.density', { level: densityLabel });
+  const versionSummary = t('statusBar.version', { version: version?.trim() || notSet });
 
   return (
     <footer
@@ -116,6 +119,9 @@ export function AppStatusBar({ daemonLive, config, designSystems }: Props) {
       </span>
       <span className={`${styles.item} ${styles.appearanceItem}`} title={densitySummary}>
         <span className={styles.label}>{densitySummary}</span>
+      </span>
+      <span className={`${styles.item} ${styles.versionItem}`} title={versionSummary}>
+        <span className={styles.label}>{versionSummary}</span>
       </span>
     </footer>
   );
