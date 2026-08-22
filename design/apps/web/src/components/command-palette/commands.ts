@@ -71,6 +71,8 @@ export function paletteRowScope(row: PaletteRow): PaletteScopeId {
 
 export interface PaletteRegistryContext {
   t: PaletteTranslate;
+  /** Permission snapshot for dialog-owned Workspace settings. */
+  workspaceSettingsVisible?: boolean;
   /** Open the settings section this entry lives in and reveal its control. */
   openSettingsEntry: (entry: SettingsIndexEntry) => void;
   /** Navigate the app shell. */
@@ -243,6 +245,7 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     // stale settings anchor as a second visible result; every Library result
     // must navigate through the real `/library` route.
     if (entry.section === 'library') continue;
+    if (entry.section === 'workspace' && ctx.workspaceSettingsVisible === false) continue;
     rows.push({
       kind: 'setting',
       id: `setting:${entry.id}`,

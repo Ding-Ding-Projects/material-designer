@@ -259,6 +259,9 @@ export function InfiniteColorPicker({
   const representations = useMemo(() => translateColor(rgba), [rgba]);
   const contrast = useMemo(() => describeContrast(rgba, background), [rgba, background]);
   const name = colorNameFor(hex);
+  const fieldValueText = `${t('appearance.color.saturation')} ${Math.round(hsva.s)}%, ${t(
+    'appearance.color.brightness',
+  )} ${Math.round(hsva.v)}%, ${formatHex8(rgba)}`;
 
   const copy = useCallback(async (representation: ColorRepresentation) => {
     const ok = await copyToClipboard(representation.value);
@@ -311,9 +314,13 @@ export function InfiniteColorPicker({
         ref={fieldRef}
         className={styles.field}
         style={fieldStyle}
-        role="group"
+        role="slider"
         aria-label={t('appearance.color.fieldLabel')}
-        aria-describedby={`${fieldId}-field-hint`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(hsva.s)}
+        aria-valuetext={fieldValueText}
+        aria-describedby={`${fieldId}-field-hint ${fieldId}-field-value`}
         tabIndex={0}
         onPointerDown={onFieldPointerDown}
         onPointerMove={onFieldPointerMove}
@@ -328,6 +335,9 @@ export function InfiniteColorPicker({
       </div>
       <p className={styles.hint} id={`${fieldId}-field-hint`}>
         {t('appearance.color.fieldHint')}
+      </p>
+      <p className={styles.fieldValue} id={`${fieldId}-field-value`} aria-live="polite">
+        {fieldValueText}
       </p>
 
       <div className={styles.axes}>

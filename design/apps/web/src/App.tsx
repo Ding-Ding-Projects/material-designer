@@ -183,7 +183,11 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
-import { applyAppearanceToDocument } from './state/appearance';
+import {
+  applyAppearanceToDocument,
+  resolveAppTheme,
+  syncAppearanceThemeWithHost,
+} from './state/appearance';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -933,20 +937,6 @@ function AppInner() {
   // Icon fonts whose startup fetch lost a race stay tofu forever without
   // this — see runtime/font-recovery.ts.
   useEffect(() => installFontRecovery(), []);
-  // Observability marker. `apps/web/src/observability/white-screen.ts`
-  // keys its "app actually mounted" success condition on this attribute
-  // because the dynamic-import loading shell (`<div class="od-loading-shell">
-  // Loading Material Designer…</div>`) is itself >MIN_VISIBLE_TEXT and would
-  // Loading OpenDesign…</div>`) is itself >MIN_VISIBLE_TEXT and would
-  // otherwise be mistaken for a real mount. Survives subsequent render
-  // crashes — once App has mounted at least once, it's no longer a white
-  // screen (subsequent failures show up as `$exception`).
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-od-app-mounted', '1');
-      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
-    }
-  }, []);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -970,6 +960,7 @@ function AppInner() {
   const [config, setConfig] = useState<AppConfig>(() => loadConfig());
   const configRef = useRef(config);
   configRef.current = config;
+  const appMountWitnessRef = useRef(false);
   const latestPersistedConfigRef = useRef(config);
   latestPersistedConfigRef.current = config;
   const settingsDraftConfigRef = useRef<AppConfig | null>(null);
@@ -1355,6 +1346,26 @@ function AppInner() {
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
+  const settingsOpenerRef = useRef<HTMLElement | null>(null);
+  const captureSettingsOpener = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const active = document.activeElement;
+    settingsOpenerRef.current = active instanceof HTMLElement
+      && !active.closest('.settings-page, .modal-settings')
+      ? active
+      : null;
+  }, []);
+  const restoreSettingsOpenerFocus = useCallback(() => {
+    const opener = settingsOpenerRef.current;
+    settingsOpenerRef.current = null;
+    if (!opener) return;
+    const restore = () => {
+      if (!opener.isConnected || opener.hasAttribute('disabled')) return;
+      opener.focus({ preventScroll: true });
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
+    else restore();
+  }, []);
   const workspaceProjectView = workspaceProjectListViewForRoute(route);
   // Read-only mirror for the boot effect. The boot pass needs to know which
   // project list to seed, but it must NOT restart when that answer changes:
@@ -1870,14 +1881,47 @@ function AppInner() {
     agents,
   ]);
 
-  // Stamp the app appearance onto the <html> element so CSS variables pick it
-  // up. The theme itself is a constant (light-only), but the accent still comes
-  // from config, and the stamp must be re-applied whenever that changes.
+  // Stamp the app appearance onto the <html> element so CSS variables and
+  // theme-aware consumers pick it up. System is represented by a missing
+  // data-theme attribute; explicit light/dark choices are stamped before the
+  // browser paints and re-applied whenever the persisted config changes.
   // useLayoutEffect (vs useEffect) fires before the browser paints, so no
   // 1-frame flash. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
-    applyAppearanceToDocument({ accentColor: config.accentColor });
-  }, [config.accentColor]);
+    applyAppearanceToDocument({
+      theme: config.theme,
+      accentColor: config.accentColor,
+    });
+  }, [config.theme, config.accentColor]);
+
+  // The desktop runtime's reveal witness is deliberately later than the DOM
+  // paint: the optional native shell must acknowledge the resolved theme
+  // before the hidden window is allowed to claim that the app mounted. A
+  // browser build has no host and completes immediately; a throwing, stale or
+  // timed-out host leaves an explicit failure marker instead of a false green
+  // mount. The local DOM theme has already been applied by the layout effect,
+  // so a host problem never prevents the web surface from styling itself.
+  useEffect(() => {
+    if (appMountWitnessRef.current || typeof document === 'undefined') return undefined;
+    let active = true;
+    const root = document.documentElement;
+    void syncAppearanceThemeWithHost(resolveAppTheme(config.theme)).then((result) => {
+      if (!active) return;
+      if (!result.ok) {
+        root.removeAttribute('data-od-app-mounted');
+        root.setAttribute('data-od-app-mount-failure', '1');
+        console.error('[open-design web] native appearance acknowledgement failed', result.reason);
+        return;
+      }
+      appMountWitnessRef.current = true;
+      root.removeAttribute('data-od-app-mount-failure');
+      root.setAttribute('data-od-app-mounted', '1');
+      document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
+    });
+    return () => {
+      active = false;
+    };
+  }, [config.theme]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
@@ -4702,18 +4746,7 @@ function AppInner() {
     section: SettingsSection = readLastSettingsSection(),
     opts?: { highlight?: SettingsHighlight },
   ) => {
-    if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
-      settingsReturnTargetRef.current = null;
-      setIntegrationInitialTab(
-        section === 'composio'
-          ? 'connectors'
-          : section === 'mcpClient'
-            ? 'mcp'
-            : 'use-everywhere',
-      );
-      navigate({ kind: 'home', view: 'integrations' });
-      return;
-    }
+    captureSettingsOpener();
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4726,8 +4759,12 @@ function AppInner() {
     setSettingsWelcome(false);
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
-    navigate({ kind: 'home', view: 'settings' });
-  }, [identityScopeKey]);
+    navigate(
+      section === 'appearance'
+        ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
+        : { kind: 'home', view: 'settings' },
+    );
+  }, [captureSettingsOpener, identityScopeKey]);
 
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
@@ -4737,6 +4774,7 @@ function AppInner() {
   }, [openSettings]);
 
   const openPetSettings = useCallback(() => {
+    captureSettingsOpener();
     const currentRoute = routeRef.current;
     settingsReturnTargetRef.current =
       currentRoute.kind === 'project' && identityScopeKey !== null
@@ -4750,7 +4788,7 @@ function AppInner() {
     setSettingsInitialSection('pet');
     setSettingsHighlight(null);
     navigate({ kind: 'home', view: 'settings' });
-  }, [identityScopeKey]);
+  }, [captureSettingsOpener, identityScopeKey]);
 
   const openMcpSettings = useCallback(() => {
     setIntegrationInitialTab('mcp');
@@ -4972,6 +5010,7 @@ function AppInner() {
           : { kind: 'home', view: 'home' },
       );
     }
+    restoreSettingsOpenerFocus();
   };
 
   const handleResetOnboarding = useCallback((next: AppConfig) => {
@@ -5007,7 +5046,12 @@ function AppInner() {
       daemonLive={daemonLive}
       appVersionInfo={appVersionInfo}
       welcome={presentation === 'modal' ? settingsWelcome : false}
-      initialSection={settingsInitialSection}
+      initialSection={
+        route.kind === 'home' && route.view === 'settings' && route.settingsSection
+          ? route.settingsSection
+          : settingsInitialSection
+      }
+      onSectionChange={setSettingsInitialSection}
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'
@@ -5558,6 +5602,7 @@ function AppInner() {
             welcome={settingsWelcome}
             initialSection={settingsInitialSection}
             initialHighlight={settingsHighlight}
+            onSectionChange={setSettingsInitialSection}
             composioConfigLoading={composioConfigLoading}
             onPersist={handleConfigPersist}
             onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}
@@ -5580,6 +5625,7 @@ function AppInner() {
               setSettingsOpen(false);
               settingsDraftConfigRef.current = null;
               setSettingsHighlight(null);
+              restoreSettingsOpenerFocus();
             }}
             onRefreshAgents={refreshAgents}
             onAmrLoginStatusChange={handleAmrLoginStatusChange}

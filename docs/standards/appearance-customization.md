@@ -4,11 +4,38 @@
 editor anchored beside the element itself, with a continuous colour picker and a
 word-processor-depth typography editor behind every colour and font value.
 
-**Status: not started in the application.** The token substrate this standard
-stands on landed at commit `dea6b0a` — an MD3 token sheet plus a mapping layer —
-but no appearance editor, no continuous colour picker and no preset system
-exists in the application. The documentation site implements a subset of the
-runtime controls; the details and the gaps are in the status table below.
+**Status: source-implemented, runtime-unverified.** The application now has one
+reachable Appearance settings tab that mounts the real System / Light / Dark
+theme control, accent picker, presets, seed, density, scale and typography controls.
+`/settings/appearance` selects
+that tab from the typed route before the settings surface renders; the ordinary
+`/settings` route still opens the normal first tab. The controls' hosted build,
+restart persistence and installed-renderer behavior remain unverified here.
+
+The current Appearance lane also makes the native theme handoff acknowledged:
+desktop IPC returns a bounded success/failure result, and the hidden startup
+window reports its mounted witness only after the optional host accepts the
+resolved theme. The current host advertises acknowledgement capability version
+1; a legacy fire-and-forget host remains discoverable for unrelated capabilities
+but is reported as incompatible for native-theme readiness rather than being
+claimed as ready. A browser-only build with no host keeps applying the local DOM
+theme; a throwing, rejected or timed-out host produces an explicit startup
+failure instead of a false readiness claim. Renderer recovery resets the
+revealed/revealing/readiness latches and re-runs the acknowledgement before a
+reloaded application becomes visible.
+
+The settings page focuses its labelled region only on initial route entry or an
+external deep link; roving tab focus stays on the selected tab during local
+switches. Workspace, Orbit and Routines are real dialog-owned tabs; Workspace is
+filtered from both the tab strip and palette when its permission snapshot says
+the viewer cannot see it. Library remains owned by the entry route and is not
+advertised as a SettingsDialog tab. Appearance hit areas are source-sized to at
+least 48px even when compact density keeps the visual glyph or track smaller.
+The latest source follow-up also shares one pending native acknowledgement
+between the ordinary preview and startup witness, gives the 2D colour field a
+current S/V/value announcement, and wraps unsupported typography and colour
+translation rows at narrow or bilingual layouts. Hosted build and installed
+interaction evidence remain open.
 
 > [!NOTE]
 > This file owns standard 3. [material-design-3.md](material-design-3.md) owns
@@ -23,7 +50,7 @@ runtime controls; the details and the gaps are in the status table below.
 
 | Control | Requirement |
 | --- | --- |
-| Theme | Light and dark. |
+| Theme | System, light and dark, persisted and applied live. |
 | Density | At least three steps, changing gap, padding and row height. |
 | Accent / seed colour | The whole scheme regenerates from it, not one tinted button. |
 | Font | Family chosen from installed **and** bundled faces, size scale, weight, with a live preview and a fallback that keeps Chinese, Japanese and Korean text legible. |
@@ -128,17 +155,26 @@ is bound to.
 | Requirement | Status |
 | --- | --- |
 | MD3 token layer to customize against | **Implemented** at commit `dea6b0a` — `design/apps/web/src/styles/md3-tokens.css` defines the role set and `tokens.css` became a mapping layer onto it. This is the substrate, not the feature. |
-| Theme light/dark in the application | **Partial upstream.** A theme exists; it is not yet a user-facing MD3 appearance control. |
-| Density control | **Not started** in the application. |
-| Seed colour with scheme regeneration | **Not started** in the application. |
-| Full font control | **Not started, and not designed.** |
+| Theme System / Light / Dark in the application | **Source implemented.** System, Light and Dark are persisted, rendered by the Appearance section and applied live to the document/native shell. The native startup path begins in System and waits for the renderer's validated persisted-theme handoff before revealing the main window. Hosted and installed behavior remain unverified. |
+| Localized theme labels | **Source implemented.** `settings.appearance`, its hint, and the System / Light / Dark labels are typed and present in every supported locale, with explicit translated or safe fallback values. |
+| Roving appearance choices | **Source implemented.** Seed, density, font family, and accent use one shared radio-group primitive with one tab stop and Arrow / Home / End selection and focus behavior. |
+| Direct-page landmark and focus | **Source implemented.** `/settings/appearance` exposes a visible page heading, focuses the `tabIndex=-1` page root on entry, and restores the opener when the page closes. Hosted and installed behavior remain unverified. |
+| Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
+| Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
+| Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
 | Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
-| Infinite colour picker | **Not started, and not designed.** The mockup offers four fixed swatches. |
-| Colour translator | **Not started** in the application. |
-| Word-depth typography editor | **Not started.** The mockup's tab-title card offers bold, italic, underline, one family button, one size button, two alignments and one colour swatch — a small fraction of the requirement. |
-| Named presets, export/import | **Not started, and not designed.** |
-| Per-element and global reset | **Not started.** |
-| Search bar on every appearance control | **Not started** in the application. |
+| Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
+| Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
+| Word-depth typography editor | **Partial source implementation.** The mounted controls cover the shipped supported properties and keep unsupported properties visible with reasons; the full per-element editor remains open. |
+| Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
+| Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
+| Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
+| Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
+| Settings route and panel ownership | **Source implemented.** Appearance is the typed settings sub-route; Workspace, Orbit and Routines are real SettingsDialog tabs with labelled panels. Workspace is removed from the strip and palette when its permission snapshot is not authorized, while Library remains owned by the entry route. |
+| Appearance/settings hit areas | **Source implemented.** Appearance rows, theme and seed choices, picker controls, copy actions, settings tabs, search results, reset actions, regex toggles, overflow and page-back controls carry 48px hit-area floors. Hosted display-scale measurements remain unverified. |
+| Native capability compatibility | **Source implemented.** Acknowledgement capability version 1 distinguishes the current promise-returning theme action from a legacy void setter; the latter cannot satisfy the desktop startup witness and produces a truthful incompatibility result. |
+| Renderer recovery witness | **Source implemented.** Crash-screen recovery clears the visible/readiness latches, re-arms the splash, and runs the same acknowledged theme witness on every reload before revealing the application surface. |
+| Narrow and bilingual appearance rows | **Source implemented.** Unsupported typography rows and colour-translation rows wrap or stack instead of clipping; the 2D colour field exposes live saturation, brightness and RGBA text to assistive technology. |
 
 ### What the documentation site implements
 
@@ -215,10 +251,10 @@ anywhere.
 
 ## Verification
 
-**Nothing in this standard has been verified.** The application builds, installs,
-launches and passes an automated health check, and its unit suites pass — but no
-interactive audit of any appearance surface has been performed, and the feature
-does not exist to audit.
+**The current lane is source-level only.** The real Appearance section is now
+mounted and its focused source contracts are recorded, but the application has
+not been built or interacted with from an installed artifact in this lane. No
+runtime visual or display-scale verdict is claimed.
 
 Conformance requires all of:
 

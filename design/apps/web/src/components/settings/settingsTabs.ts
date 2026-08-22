@@ -39,10 +39,9 @@ export interface SettingsTabDef {
 /**
  * Every `SettingsSection`, exhaustively, mapped to its tab or to `null`.
  *
- * The three `null`s are not oversights:
- *   - `orbit` and `routines` have panels in the dialog but are reached from
- *     their own surfaces, not from settings navigation.
- *   - `library` has no panel at all; the entry shell owns that route.
+ * The one `null` is deliberate: `library` has no panel at all; the entry shell
+ * owns that route. Workspace, Orbit and Routines are dialog-owned panels, so
+ * palette results can select a real tab with a matching labelled panel.
  */
 export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> = {
   execution: {
@@ -50,6 +49,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     icon: 'sliders',
     titleKey: 'settings.envConfigure',
     hintKey: 'settings.subtitle',
+  },
+  workspace: {
+    section: 'workspace',
+    icon: 'users',
+    titleKey: 'settings.workspace',
+    hintKey: 'settings.workspaceHint',
   },
   instructions: {
     section: 'instructions',
@@ -80,6 +85,18 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     icon: 'sliders',
     titleKey: 'connectors.title',
     hintKey: 'settings.connectorsNavHint',
+  },
+  orbit: {
+    section: 'orbit',
+    icon: 'orbit',
+    titleKey: 'settings.orbit.title',
+    hintKey: 'settings.orbit.lede',
+  },
+  routines: {
+    section: 'routines',
+    icon: 'refresh',
+    titleKey: 'routines.title',
+    hintKey: 'routines.subtitle',
   },
   integrations: {
     section: 'integrations',
@@ -147,8 +164,6 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.about',
     hintKey: 'settings.aboutHint',
   },
-  orbit: null,
-  routines: null,
   library: null,
 };
 
@@ -159,11 +174,14 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
  */
 export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
   'execution',
+  'workspace',
   'instructions',
   'memory',
   'media',
   'mcpClient',
   'composio',
+  'orbit',
+  'routines',
   'integrations',
   'language',
   'appearance',
@@ -198,14 +216,11 @@ export function isTabbedSettingsSection(value: unknown): value is SettingsSectio
   return typeof value === 'string' && (SETTINGS_TAB_ORDER as readonly string[]).includes(value);
 }
 
-// `App.openSettings` reroutes these three to the Integrations route rather than
-// opening the dialog on them. Restoring one of them would therefore send a user
-// who just pressed "Settings" somewhere that is not settings, so they are held
-// out of persistence in both directions.
-const NOT_RESTORABLE: readonly string[] = ['composio', 'mcpClient', 'integrations'];
-
 export function isRestorableSettingsSection(value: unknown): value is SettingsSection {
-  return isTabbedSettingsSection(value) && !NOT_RESTORABLE.includes(value);
+  // Every visible tab is owned by SettingsDialog, including the three
+  // integration sections. Explicit callers select a section directly; a bare
+  // Settings open restores whichever visible tab the user last chose.
+  return isTabbedSettingsSection(value);
 }
 
 export const SETTINGS_LAST_SECTION_STORAGE_KEY = 'od.settings.lastSection';

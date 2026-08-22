@@ -6,12 +6,16 @@
 // field wired to the command palette's own settings index.
 
 import { readFileSync } from 'node:fs';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsDialog } from '../../src/components/SettingsDialog';
 import {
+  SETTINGS_SECTION_TOKENS,
+} from '../../src/components/command-palette/settingsIndex';
+import {
   SETTINGS_LAST_SECTION_STORAGE_KEY,
+  SETTINGS_TAB_DEFS,
   SETTINGS_TAB_ORDER,
   readLastSettingsSection,
 } from '../../src/components/settings/settingsTabs';
@@ -42,6 +46,55 @@ const SETTINGS_PAGE_CSS = readFileSync(
   new URL('../../src/components/settings/SettingsPage.module.css', import.meta.url),
   'utf8',
 );
+const SETTINGS_GLOBAL_CSS = readFileSync(
+  new URL('../../src/styles/workspace/mention-home.css', import.meta.url),
+  'utf8',
+);
+const REGEX_SEARCH_CSS = readFileSync(
+  new URL('../../src/components/regex/RegexSearchField.module.css', import.meta.url),
+  'utf8',
+);
+const APPEARANCE_CONTROLS_CSS = readFileSync(
+  new URL('../../src/components/appearance/AppearanceControls.module.css', import.meta.url),
+  'utf8',
+);
+const APPEARANCE_PICKER_CSS = readFileSync(
+  new URL('../../src/components/appearance/InfiniteColorPicker.module.css', import.meta.url),
+  'utf8',
+);
+const SETTINGS_DIALOG_SOURCE = readFileSync(
+  new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
+  'utf8',
+);
+const APP_SOURCE = readFileSync(
+  new URL('../../src/App.tsx', import.meta.url),
+  'utf8',
+);
+
+// Keep this list hand-written: a source guard that discovers only the
+// sections it already sees cannot notice a section disappearing altogether.
+// The named renderer markers also protect the former General children, whose
+// reachability was the defect that prompted this lane.
+const SETTINGS_RENDER_CONTRACTS: ReadonlyArray<readonly [string, string]> = [
+  ['execution', "activeSection === 'execution'"],
+  ['workspace', '<SettingsWorkspaceSection context={workspaceContext} />'],
+  ['instructions', "activeSection === 'instructions'"],
+  ['memory', "activeSection === 'memory'"],
+  ['media', "activeSection === 'media'"],
+  ['mcpClient', "activeSection === 'mcpClient'"],
+  ['composio', "activeSection === 'composio'"],
+  ['integrations', "activeSection === 'integrations'"],
+  ['language', "activeSection === 'language'"],
+  ['appearance', '<AppearanceSection cfg={cfg} setCfg={setCfg} />'],
+  ['narrator', "activeSection === 'narrator'"],
+  ['critiqueTheater', '<CritiqueTheaterSection'],
+  ['notifications', '<NotificationsSection cfg={cfg} setCfg={setCfg} />'],
+  ['pet', '<PetSettings cfg={cfg} setCfg={setCfg} />'],
+  ['designSystems', "activeSection === 'designSystems'"],
+  ['projectLocations', '<ProjectLocationsSection cfg={cfg} setCfg={setCfg}'],
+  ['privacy', "activeSection === 'privacy'"],
+  ['about', "activeSection === 'about'"],
+];
 
 const baseConfig: AppConfig = {
   mode: 'api',
@@ -118,6 +171,21 @@ describe('Settings: the tab strip', () => {
     ]);
   });
 
+  it('records an explicit tab or null ownership decision for every section token', () => {
+    expect(Object.keys(SETTINGS_TAB_DEFS).sort()).toEqual(Object.keys(SETTINGS_SECTION_TOKENS).sort());
+    expect(SETTINGS_TAB_DEFS.workspace).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.orbit).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.routines).not.toBeNull();
+    expect(SETTINGS_TAB_DEFS.library).toBeNull();
+  });
+
+  it('does not advertise a permission-hidden Workspace palette destination', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain('visibleSettingsTabs');
+    expect(SETTINGS_DIALOG_SOURCE).toContain("tab.section !== 'workspace' || showWorkspaceSettings");
+    expect(SETTINGS_DIALOG_SOURCE).toContain('rawSettingsSearchHits.filter');
+    expect(SETTINGS_DIALOG_SOURCE).toContain("selectSettingsSection('execution')");
+  });
+
   it('wires the selected tab to the one panel every tab controls', () => {
     renderSettings();
 
@@ -142,6 +210,20 @@ describe('Settings: the tab strip', () => {
     expect(tab('execution').tabIndex).toBe(-1);
   });
 
+  it('gives each tab a stable hint description and exposes no-match state without dimming the selection', () => {
+    renderSettings();
+
+    const appearance = tab('appearance');
+    expect(appearance.getAttribute('aria-describedby')).toBe('settings-tab-appearance-hint');
+    expect(document.getElementById('settings-tab-appearance-hint')).toBeTruthy();
+
+    typeInSearch('a value that matches no settings label');
+    expect(appearance.getAttribute('aria-selected')).toBe('true');
+    expect(appearance.getAttribute('aria-describedby')).toContain('settings-tab-appearance-no-match');
+    expect(document.getElementById('settings-tab-appearance-no-match')?.textContent)
+      .toBe(en['settings.searchNoMatches']);
+  });
+
   it('switches the panel when a tab is clicked', () => {
     renderSettings();
 
@@ -150,6 +232,74 @@ describe('Settings: the tab strip', () => {
     expect(tab('privacy').getAttribute('aria-selected')).toBe('true');
     expect(tabPanel().getAttribute('data-od-setting')).toBe('section:privacy');
     expect(tabPanel().getAttribute('aria-labelledby')).toBe('settings-tab-privacy');
+  });
+
+  it('normalizes the typed Appearance URL across close, reopen, refresh, and integration tabs', () => {
+    window.history.replaceState(null, '', '/settings/appearance');
+    const onSectionChange = vi.fn();
+    const first = render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="appearance"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(tab('integrations'));
+
+    expect(window.location.pathname).toBe('/settings');
+    expect(onSectionChange).toHaveBeenCalledWith('integrations');
+    expect(tab('integrations').getAttribute('aria-selected')).toBe('true');
+
+    // Closing and reopening uses the section App retained from the callback,
+    // rather than falling back to Appearance or the generic first tab.
+    first.unmount();
+    const reopened = render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="integrations"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+    expect(tab('integrations').getAttribute('aria-selected')).toBe('true');
+
+    // A refresh/remount from the explicit route still selects Appearance,
+    // while the generic route remains the normalized URL for other tabs.
+    reopened.unmount();
+    window.history.replaceState(null, '', '/settings/appearance');
+    render(
+      <SettingsDialog
+        presentation="page"
+        initial={baseConfig}
+        agents={[]}
+        daemonLive
+        appVersionInfo={null}
+        initialSection="appearance"
+        onSectionChange={onSectionChange}
+        onPersist={vi.fn()}
+        onPersistComposioKey={vi.fn()}
+        onClose={vi.fn()}
+        onRefreshAgents={vi.fn()}
+      />,
+    );
+    expect(tab('appearance').getAttribute('aria-selected')).toBe('true');
+    window.history.replaceState(null, '', '/');
   });
 
   it('moves between tabs with the arrow keys, and wraps at the ends', () => {
@@ -226,6 +376,28 @@ describe('Settings: the tab strip', () => {
     expect(menu.style.top).toBe('auto');
     expect(menu.style.bottom).toBe('62px');
     expect(menu.style.maxHeight).toBe('76px');
+  });
+
+  it('keeps active Material roles and adequate targets owned by the current components', () => {
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('.settings-page-shell .settings-nav-item.active');
+    expect(SETTINGS_TABS_CSS).toContain('color: var(--md-sys-color-primary);');
+    expect(SETTINGS_TABS_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_TABS_CSS).toContain('min-width: 48px;');
+    expect(SETTINGS_TABS_CSS).toContain('white-space: normal;');
+    expect(REGEX_SEARCH_CSS).toContain('min-width: 48px;');
+    expect(REGEX_SEARCH_CSS).toContain('min-height: 48px;');
+    expect(APPEARANCE_CONTROLS_CSS).toContain('min-height: 48px;');
+    expect(APPEARANCE_PICKER_CSS).toContain('min-width: 48px;');
+    expect(APPEARANCE_PICKER_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.settings-page-back');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-width: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.settings-content .settings-section button');
+    expect(SETTINGS_GLOBAL_CSS).toContain('min-height: 48px;');
+    expect(SETTINGS_GLOBAL_CSS).toContain('.modal-settings .modal-body');
+    expect(SETTINGS_GLOBAL_CSS).toContain('flex-direction: column;');
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('grid-template-columns: 240px minmax(0, 1fr);');
+    expect(SETTINGS_GLOBAL_CSS).not.toContain('grid-template-columns: 272px minmax(0, 1fr);');
   });
 
   it('keeps a portalled overflow surface above the opaque settings page', () => {
@@ -326,15 +498,76 @@ describe('Settings: the tab strip', () => {
     expect(readLastSettingsSection()).toBe('privacy');
   });
 
-  it('falls back to the first tab when storage holds a section it must not restore', () => {
-    // Connectors / External MCP / MCP server are tabs here but are rerouted to
-    // the Integrations surface by `openSettings`, so restoring one of them
-    // would send a user who pressed "Settings" somewhere that is not settings.
+  it('restores every visible settings tab, including integration sections', () => {
     window.localStorage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, 'composio');
-    expect(readLastSettingsSection()).toBe('execution');
+    expect(readLastSettingsSection()).toBe('composio');
 
     window.localStorage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, 'not-a-section');
     expect(readLastSettingsSection()).toBe('execution');
+  });
+});
+
+describe('Settings: Appearance reachability', () => {
+  it('mounts the real Appearance controls when that tab is selected', () => {
+    renderSettings('appearance');
+
+    expect(tab('appearance').getAttribute('aria-selected')).toBe('true');
+    expect(tabPanel().getAttribute('data-od-setting')).toBe('section:appearance');
+    expect(screen.getByTestId('appearance-ui-scale')).toBeTruthy();
+    expect(screen.getByTestId('appearance-reset')).toBeTruthy();
+  });
+
+  it('keeps the System / Light / Dark theme control live on the Appearance tab', () => {
+    renderSettings('appearance');
+
+    const themeGroup = screen.getByRole('group', { name: en['settings.appearance'] });
+    const controls = within(themeGroup).getAllByRole('button');
+    expect(controls).toHaveLength(3);
+
+    fireEvent.click(within(themeGroup).getByRole('button', { name: en['settings.themeDark'] }));
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    fireEvent.click(within(themeGroup).getByRole('button', { name: en['settings.themeSystem'] }));
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+  });
+
+  it('keeps one authoritative section state and one Appearance metadata entry', () => {
+    expect(SETTINGS_DIALOG_SOURCE.match(/const \[activeSection/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/^\s*appearance:\s*\{/gm) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/<AppearanceSection\s+cfg=/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain('normalizeSettingsSection');
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain('settings-nav-item');
+    expect(SETTINGS_DIALOG_SOURCE.match(/className="settings-content"/g) ?? []).toHaveLength(1);
+    expect(SETTINGS_DIALOG_SOURCE.match(/<SettingsTabStrip\b/g) ?? []).toHaveLength(1);
+    for (const [section, marker] of SETTINGS_RENDER_CONTRACTS) {
+      expect(SETTINGS_DIALOG_SOURCE, `${section} renderer contract`).toContain(marker);
+    }
+  });
+
+  it('lets the typed direct route choose Appearance before the page mounts', () => {
+    expect(APP_SOURCE).toContain("route.settingsSection");
+    expect(APP_SOURCE).toContain("settingsSection: 'appearance'");
+  });
+
+  it('gives the direct page route a visible landmark name, initial focus, and opener restore', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain("id=\"settings-page-title\"");
+    expect(SETTINGS_DIALOG_SOURCE).toContain(
+      "aria-labelledby={pageMode ? 'settings-page-title' : 'settings-dialog-title'}",
+    );
+    expect(SETTINGS_DIALOG_SOURCE).toContain('settingsPageRef.current?.focus({ preventScroll: true });');
+    expect(SETTINGS_DIALOG_SOURCE).toContain('ref={pageMode ? settingsPageRef : undefined}');
+    expect(SETTINGS_PAGE_CSS).toContain('.settings-page-surface:focus-visible');
+    expect(APP_SOURCE).toContain('captureSettingsOpener');
+    expect(APP_SOURCE).toContain('restoreSettingsOpenerFocus');
+  });
+
+  it('keeps integration sections visible and truthful in tab persistence', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'composio'");
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'mcpClient'");
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'integrations'");
+    expect(APP_SOURCE).not.toContain(
+      "section === 'composio' || section === 'mcpClient' || section === 'integrations'",
+    );
   });
 });
 

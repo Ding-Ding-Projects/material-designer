@@ -45,6 +45,7 @@ import {
   type AppearanceTypography,
 } from '../../state/appearance';
 import { DENSITY_LABEL_KEY, FONT_LABEL_KEY, SEED_LABEL_KEY } from './labels';
+import { RovingRadioGroup } from './RovingRadioGroup';
 import { useAppearancePreferences } from './store';
 import {
   TYPEFACE_PREVIEW_SAMPLE,
@@ -117,24 +118,21 @@ export function AppearanceControls() {
       <section className={styles.card} data-od-setting="appearance.seed">
         <h4 className={styles.cardTitle}>{t('appearance.seedLabel')}</h4>
         <p className={styles.cardHint}>{t('appearance.seedHint')}</p>
-        <div className={styles.swatches} role="radiogroup" aria-label={t('appearance.seedLabel')}>
-          {APPEARANCE_SEEDS.map((seed) => {
-            const active = preferences.seed === seed;
-            return (
-              <button
-                key={seed}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={t(SEED_LABEL_KEY[seed])}
-                className={styles.swatch}
-                style={{ background: SEED_SWATCH[seed] }}
-                onClick={() => update({ seed })}
-                data-testid={`appearance-seed-${seed}`}
-              />
-            );
+        <RovingRadioGroup
+          value={preferences.seed}
+          options={APPEARANCE_SEEDS}
+          onChange={(seed) => update({ seed })}
+          ariaLabel={t('appearance.seedLabel')}
+          className={styles.swatches}
+          optionProps={(seed) => ({
+            'aria-label': t(SEED_LABEL_KEY[seed]),
+            className: styles.swatch,
+            style: { background: SEED_SWATCH[seed] },
+            'data-testid': `appearance-seed-${seed}`,
           })}
-        </div>
+        >
+          {() => null}
+        </RovingRadioGroup>
       </section>
 
       {/* ---- Sizing -------------------------------------------------- */}
@@ -175,29 +173,20 @@ export function AppearanceControls() {
 
         <div className={styles.row} data-od-setting="appearance.density">
           <span className={styles.rowLabel}>{t('appearance.densityLabel')}</span>
-          <span
+          <RovingRadioGroup
             className="seg-control"
-            role="radiogroup"
             aria-label={t('appearance.densityLabel')}
+            value={preferences.density}
+            options={APPEARANCE_DENSITIES}
+            onChange={(density) => update({ density })}
             style={{ '--seg-cols': APPEARANCE_DENSITIES.length } as CSSProperties}
-          >
-            {APPEARANCE_DENSITIES.map((density) => {
-              const active = preferences.density === density;
-              return (
-                <button
-                  key={density}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  className={'seg-btn' + (active ? ' active' : '')}
-                  onClick={() => update({ density })}
-                  data-testid={`appearance-density-${density}`}
-                >
-                  <span className="seg-title">{t(DENSITY_LABEL_KEY[density])}</span>
-                </button>
-              );
+            optionProps={(density, active) => ({
+              className: 'seg-btn' + (active ? ' active' : ''),
+              'data-testid': `appearance-density-${density}`,
             })}
-          </span>
+          >
+            {(density) => <span className="seg-title">{t(DENSITY_LABEL_KEY[density])}</span>}
+          </RovingRadioGroup>
         </div>
 
         <label className={styles.switchRow} data-od-setting="appearance.autoFit">
@@ -219,14 +208,19 @@ export function AppearanceControls() {
         <h4 className={styles.cardTitle}>{t('appearance.typography')}</h4>
         <p className={styles.cardHint}>{t('appearance.typographyHint')}</p>
 
-        <div
+        <RovingRadioGroup
           className={styles.faces}
-          role="radiogroup"
           aria-label={t('appearance.fontFamily')}
-          data-od-setting="appearance.fontFamily"
+          value={typography.fontStackId}
+          options={FONT_STACK_IDS}
+          onChange={(fontStackId) => setTypography({ fontStackId })}
+          groupProps={{ 'data-od-setting': 'appearance.fontFamily' }}
+          optionProps={(id) => ({
+            className: styles.face,
+            'data-testid': `appearance-font-${id}`,
+          })}
         >
-          {FONT_STACK_IDS.map((id) => {
-            const active = typography.fontStackId === id;
+          {(id) => {
             const available = isFaceAvailable(id);
             const statusKey: keyof Dict =
               available === true
@@ -235,15 +229,7 @@ export function AppearanceControls() {
                   ? 'appearance.fontNotInstalled'
                   : 'appearance.fontUnknown';
             return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                className={styles.face}
-                onClick={() => setTypography({ fontStackId: id })}
-                data-testid={`appearance-font-${id}`}
-              >
+              <>
                 <span className={styles.faceName}>{t(FONT_LABEL_KEY[id])}</span>
                 {/* Rendered in the stack being offered, and carrying both
                     Latin and CJK, so the CJK tail every stack ends in is
@@ -252,10 +238,10 @@ export function AppearanceControls() {
                   {TYPEFACE_PREVIEW_SAMPLE}
                 </span>
                 <span className={styles.faceStatus}>{t(statusKey)}</span>
-              </button>
+              </>
             );
-          })}
-        </div>
+          }}
+        </RovingRadioGroup>
 
         <div className={styles.row} data-od-setting="appearance.fontSize">
           <span className={styles.rowLabel} id="od-appearance-size-label">

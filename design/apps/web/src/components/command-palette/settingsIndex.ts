@@ -83,6 +83,7 @@ export interface SettingsIndexEntry {
  */
 export const SETTINGS_SECTION_TOKENS: Record<SettingsSection, true> = {
   execution: true,
+  workspace: true,
   instructions: true,
   media: true,
   composio: true,
@@ -120,6 +121,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'settings.title',
     hintKey: 'settings.subtitle',
     keywords: ['execution', 'agent', 'model', 'cli', 'byok', 'api key', 'provider'],
+  },
+  {
+    id: sectionAnchorFor('workspace'),
+    section: 'workspace',
+    titleKey: 'settings.workspace',
+    hintKey: 'settings.workspaceHint',
+    keywords: ['workspace', 'team workspace', 'members', 'workspace settings'],
   },
   {
     id: sectionAnchorFor('instructions'),

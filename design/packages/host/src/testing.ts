@@ -1,6 +1,7 @@
 import {
   OPEN_DESIGN_HOST_GLOBAL,
   OPEN_DESIGN_HOST_VERSION,
+  OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION,
   type OpenDesignHostBridge,
   type OpenDesignHostGlobalScope,
   type OpenDesignHostUpdaterStatusSnapshot,
@@ -42,6 +43,10 @@ function defaultHost(): OpenDesignHostBridge {
   };
   return {
     version: OPEN_DESIGN_HOST_VERSION,
+    appearance: {
+      acknowledgementVersion: OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION,
+      setTheme: async () => ({ ok: true }),
+    },
     browser: {
       clearData: async () => ({ ok: true }),
     },

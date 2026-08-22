@@ -176,6 +176,114 @@ version section when a release carries them.
   local matching 同 result count 都有；hosted tests、built app、runtime
   captures 同 deterministic provider/API fixture 仍然 pending。今個 lane
   無加 photo 或 release asset。
+- **The last obsolete settings grid fallback is gone.** Commit
+  [`00c5be1c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/00c5be1c74b54e62a9b6b651887a7a2dc09f7e92)
+  removes the stale wrapper, sidebar, content and narrow-media grid
+  coordinates so the page, tabs, search and content keep one honest flex flow.
+  Hosted build, installed interaction, display-scale and visual-capture
+  evidence remain unverified.
+
+  Settings 仲有一層舊 grid fallback 藏喺 wrapper 同窄位 rule 入面，`00c5be1c7`
+  清走晒啲死 coordinates，page、tabs、search 同 content 而家由同一條 flex 路
+  帶住。Hosted build、installed interaction、display-scale 同 visual captures
+  仍未驗證。
+
+- **Appearance readiness now distinguishes compatible hosts and re-arms after renderer recovery.** Commit
+  [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
+  adds an explicit acknowledged-theme capability marker, reports legacy
+  fire-and-forget hosts as incompatible for native startup readiness, and
+  requires every reload to earn the acknowledgement again before the window is
+  shown. Settings now gives Workspace, Orbit and Routines real tab ownership,
+  filters unauthorized Workspace discovery, preserves selected-tab contrast,
+  exposes stable hint/no-match descriptions and live two-dimensional colour
+  values, keeps settings wrappers at 48px, and stacks long unsupported or
+  translated rows at narrow widths. Hosted build, installed interaction,
+  display-scale and visual-capture evidence remain unverified.
+
+  Appearance readiness 而家分得清邊個 host 真係識答，renderer recovery reload
+  亦要重新交 acknowledgement 先可以見窗。`31d1683c7` 加 capability marker，
+  舊 fire-and-forget host 唔再扮 native startup ready；Settings 就畀 Workspace、
+  Orbit 同 Routines 真 tab owner，冇權限嘅 Workspace 唔入 discovery，selected
+  tab 唔會變暗，hint/no-match 有穩定描述，2D 顏色有讀數，48px 落腳位同窄位
+  長字換行都補返。Hosted build、installed interaction、display-scale 同 visual
+  captures 仍未驗證。
+
+- **Appearance startup now waits for the native theme to answer before it
+  reveals the window.** Commit
+  [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
+  replaces the fire-and-forget theme message with acknowledged bounded IPC,
+  keeps local DOM styling alive when the optional host throws, and turns a
+  rejection or timeout into an honest recovery surface. The direct Settings
+  page focuses its labelled region, normalizes its typed URL when tabs change,
+  records Workspace's null tab ownership explicitly, wraps full search hints,
+  and gives Appearance, Settings, regex and navigation controls 48px hit areas.
+  Hosted builds, installed interaction and visual captures remain unverified.
+
+  Follow-up [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
+  keeps the bounded readiness receipt in scope across the polling loop, so a
+  deadline cannot accidentally read a missing status and silently reveal the
+  wrong surface.
+
+  Final source follow-up [`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
+  shares the pending native acknowledgement between the startup witness and
+  ordinary theme updates, and adds the close/reopen/refresh lifecycle contract
+  for integration tabs plus a full-size page-back target. Hosted builds,
+  installed interaction, and visual captures remain unverified.
+
+  Appearance 而家要等 native theme 真係答到先開窗，唔再未收工就自己報到。`62e07481d`
+  將 fire-and-forget message 換成有 acknowledgement 同 bounded timeout 嘅 IPC；
+  optional host 掉線都唔會阻住本地 DOM theme，reject 或 timeout 就老實入 recovery
+  surface。Direct Settings page 會 focus labelled region，轉 tab 會正常化 URL，
+  Workspace 嘅 null tab ownership 寫清楚，search hint 會完整換行，Appearance、
+  Settings、regex 同 navigation controls 都有 48px 落腳位。Hosted build、installed
+  interaction 同 visual captures 仍未驗證。
+
+- **Appearance now keeps its full theme and accessibility contract across the
+  application.** Commit
+  [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)
+  adds typed Appearance and System / Light / Dark labels to every supported
+  locale, gives `/settings/appearance` a visible named landmark with initial
+  focus and opener restoration, and replaces the retired global active-tab
+  cascade with component-owned Material roles. Seed, density, font family,
+  and accent choices now share one roving radio-group behavior with arrow,
+  Home, and End navigation; tab and regex targets are touch-sized and long
+  labels wrap instead of hiding. Integration settings tabs are now owned and
+  restored by the Settings surface, malformed current-version themes are
+  persisted back as System, and the native bridge validates all three theme
+  values without a light-only startup override. Hosted builds, installed
+  interaction, and visual captures remain unverified.
+
+  Appearance 而家由頭到尾守住 theme 同 accessibility contract。`3eebe4332`
+  幫所有 locale 加返 typed Appearance 同 System / Light / Dark labels，
+  `/settings/appearance` 有清楚 landmark、入場 focus 同 opener restore，
+  舊 global active-tab cascade 亦交返俾 component 自己用 Material roles。
+  Seed、density、font family 同 accent 共用一套 roving radio 行為，Arrow、
+  Home、End 都行得通；tab 同 regex targets 夠大，長 label 會自動換行，唔再
+  收埋。Integration settings tabs 而家由 Settings surface 自己擁有同 restore，
+  current-version 壞 theme 會寫返 System，native bridge 會驗晒三個 theme
+  value，唔再由 startup light override 搞局。Hosted build、installed
+  interaction 同 visual captures 仍未驗證。
+
+- **Settings Appearance is now a reachable, addressable surface.** Commit
+  [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
+  removes the obsolete General normalization and duplicate navigation markup,
+  gives `/settings/appearance` a typed route that selects Appearance before the
+  first render, and keeps `/settings` on its normal first tab. The real
+  System, Light, and Dark control remains visible, persisted, accessible, and
+  live through the document and native appearance runtime. Language,
+  Notifications, Pet, Project Locations, and Critique remain separate
+  reachable sections. Focused source contracts cover one section owner, one
+  tab-strip owner, direct routing, and the theme semantics; hosted build and
+  installed-renderer evidence remain unverified.
+
+  Settings Appearance 而家有門牌又有真房間。`fbd4cac8d` 拆走過時嘅
+  General normalization 同 duplicate navigation，`/settings/appearance`
+  會喺第一次 render 前揀中 Appearance，而普通 `/settings` 照行原本第一個
+  tab。System、Light、Dark control 仍然睇到、記得住、用鍵盤搵到，仲會即時
+  更新 document 同 native appearance runtime。Language、Notifications、Pet、
+  Project Locations 同 Critique 都各自有路。Focused source contracts 已經
+  鎖住單一 section owner、單一 tab-strip owner、direct route 同 theme 行為；
+  hosted build 同 installed renderer 證據仍未驗證。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

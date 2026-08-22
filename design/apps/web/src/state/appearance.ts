@@ -1,4 +1,5 @@
-import { getOpenDesignHost } from '@open-design/host';
+import { getOpenDesignHost, hasAcknowledgedAppearanceThemeBridge } from '@open-design/host';
+import type { OpenDesignHostActionResult } from '@open-design/host';
 
 import type { AppTheme } from '../types';
 
@@ -76,45 +77,117 @@ function accentVars(accentColor: string): Record<(typeof ACCENT_VARS)[number], s
 }
 
 /**
- * The one appearance OpenDesign ships.
- *
- * Product removed the theme setting: the workspace surfaces have no dark
- * tokens, so a dark app is a broken app. `data-theme` is therefore a constant
- * rather than a preference — and it must always be PRESENT, not merely
- * non-dark. Every dark rule in the app is gated on the attribute being absent
- * (`html:not([data-theme])` in CSS) or falls back to `prefers-color-scheme`
- * when the attribute is missing (`shiki`, `ConnectorLogo`, `SketchEditor`,
- * `TerminalViewer`, `connectorBrandColor`, `MentionNode`). Stamping it
- * unconditionally is what keeps a dark OS from leaking through.
- */
-export const FORCED_APP_THEME = 'light' as const;
-
-/**
- * Coerce any persisted theme to the only one that still exists.
- *
- * Changing the default alone cannot fix an existing install: every user who
- * ever opened the old picker has `'dark'` — or `'system'`, which resolves dark
- * on a dark OS — written to localStorage, and a stored value does not move
- * when the default does. Config reads funnel through here so those installs
- * come back light.
+ * Resolve a persisted theme without allowing malformed values to leak into
+ * the document or the native shell. `system` is represented by the absence of
+ * `data-theme`, which lets the stylesheet's media queries choose the palette.
  */
 export function resolveAppTheme(persisted?: AppTheme | null): AppTheme {
-  return persisted === FORCED_APP_THEME ? persisted : FORCED_APP_THEME;
+  return persisted === 'light' || persisted === 'dark' || persisted === 'system'
+    ? persisted
+    : 'system';
+}
+
+export type AppearanceHostSyncResult =
+  | { ok: true; host: 'desktop' | 'web' }
+  | { ok: false; host: 'desktop'; reason: string };
+
+const APPEARANCE_HOST_ACK_TIMEOUT_MS = 1500;
+const pendingAppearanceThemeSyncs = new Map<
+  AppTheme,
+  Promise<AppearanceHostSyncResult>
+>();
+
+function isSuccessfulHostAction(value: unknown): value is { ok: true } {
+  return typeof value === 'object' && value != null && (value as { ok?: unknown }).ok === true;
+}
+
+/**
+ * Ask the optional native shell to accept the resolved theme.
+ *
+ * The DOM is deliberately handled by `applyAppearanceToDocument` before this
+ * promise is awaited. A browser/web build therefore keeps applying its local
+ * theme even when a malformed or throwing optional host is present. Desktop
+ * startup uses the result as its second half of the mounted witness and gets a
+ * bounded, truthful failure instead of waiting forever on an IPC promise.
+ */
+export function syncAppearanceThemeWithHost(theme: AppTheme): Promise<AppearanceHostSyncResult> {
+  const pending = pendingAppearanceThemeSyncs.get(theme);
+  if (pending) return pending;
+
+  const request = (async (): Promise<AppearanceHostSyncResult> => {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const host = getOpenDesignHost();
+      const appearance = host?.appearance;
+      if (appearance == null) return { ok: true, host: 'web' };
+      if (!hasAcknowledgedAppearanceThemeBridge(host)) {
+        return {
+          ok: false,
+          host: 'desktop',
+          reason: 'native appearance host does not advertise acknowledged theme support',
+        };
+      }
+
+      const result = await Promise.race<OpenDesignHostActionResult | { ok: false; reason: string }>([
+        Promise.resolve().then(() => appearance.setTheme(theme)),
+        new Promise<{ ok: false; reason: string }>((resolve) => {
+          timeout = setTimeout(
+            () => resolve({ ok: false, reason: 'native appearance acknowledgement timed out' }),
+            APPEARANCE_HOST_ACK_TIMEOUT_MS,
+          );
+        }),
+      ]);
+      if (isSuccessfulHostAction(result)) return { ok: true, host: 'desktop' };
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: typeof result.reason === 'string' && result.reason.trim()
+          ? result.reason
+          : 'native appearance host rejected the theme',
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        host: 'desktop',
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    } finally {
+      if (timeout != null) clearTimeout(timeout);
+    }
+  })();
+  pendingAppearanceThemeSyncs.set(theme, request);
+  void request.finally(() => {
+    if (pendingAppearanceThemeSyncs.get(theme) === request) {
+      pendingAppearanceThemeSyncs.delete(theme);
+    }
+  }).catch(() => undefined);
+  return request;
 }
 
 export function applyAppearanceToDocument({
+  theme,
   accentColor,
 }: {
+  theme?: AppTheme;
   accentColor?: string;
 }): void {
   const root = document.documentElement;
-  root.setAttribute('data-theme', FORCED_APP_THEME);
+  const resolvedTheme = resolveAppTheme(theme);
+  if (resolvedTheme === 'light' || resolvedTheme === 'dark') {
+    root.setAttribute('data-theme', resolvedTheme);
+  } else {
+    root.removeAttribute('data-theme');
+  }
   // Desktop shell: keep the native window appearance (the macOS vibrancy
   // glass material) in step with the app theme. Without this the glass
   // follows the OS appearance, so the light app over a dark OS sat on dark
   // glass and read as a muddy gray (#94). Feature-detected — browsers and
   // older host builds have no appearance capability.
-  getOpenDesignHost()?.appearance?.setTheme(FORCED_APP_THEME);
+  // Optional host compatibility must never prevent local DOM styling. The
+  // startup witness calls `syncAppearanceThemeWithHost` separately and waits
+  // for its validated acknowledgement; ordinary theme changes stay best
+  // effort and deliberately cannot create an unhandled rejection.
+  void syncAppearanceThemeWithHost(resolvedTheme);
 
   const normalized = resolveAccentColor(accentColor);
   const vars = accentVars(normalized);

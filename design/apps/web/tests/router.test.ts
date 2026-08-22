@@ -29,6 +29,20 @@ describe('parseRoute / buildPath (issue #1505)', () => {
     expect(parseRoute('')).toEqual({ kind: 'home', view: 'home' });
   });
 
+  it('selects the Appearance settings section from its direct URL', () => {
+    const route: Route = {
+      kind: 'home',
+      view: 'settings',
+      settingsSection: 'appearance',
+    };
+
+    expect(parseRoute('/settings')).toEqual({ kind: 'home', view: 'settings' });
+    expect(parseRoute('/settings/appearance')).toEqual(route);
+    expect(parseRoute('/settings/appearance/')).toEqual(route);
+    expect(buildPath(route)).toBe('/settings/appearance');
+    expect(roundTrip(route)).toEqual(route);
+  });
+
   it('round-trips a bare project route', () => {
     const route: Route = {
       kind: 'project',

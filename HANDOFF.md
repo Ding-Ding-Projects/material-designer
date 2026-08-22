@@ -133,6 +133,129 @@
 > boundary, not replacement DOM. Existing upload, sync, select, preview,
 > project/design-system handoff and destructive confirmation paths remain in
 > place. Photo/release work is explicitly deferred to the owning lane.
+> **Appearance compatibility, recovery, and ownership follow-up — 2026-08-21.**
+> Implementation commit
+> [`31d1683c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/31d1683c72ae532ef5e4ad523bc4c793fc604e0a)
+> carries this source repair.
+> Follow-up [`00c5be1c7`](https://github.com/Ding-Ding-Projects/material-designer/commit/00c5be1c74b54e62a9b6b651887a7a2dc09f7e92)
+> removes the remaining stale settings grid coordinates from the page wrapper,
+> sidebar/content selectors and narrow-media rule.
+> The source lane now marks the acknowledged native theme capability explicitly
+> and treats a legacy fire-and-forget host as incompatible for startup readiness
+> rather than claiming native success. Renderer crash recovery clears its
+> revealed/revealing/readiness latches, re-arms the splash, and requires the
+> native acknowledgement witness again on every reload before the application
+> surface is shown.
+>
+> Settings now uses a real horizontal flex flow rather than the obsolete global
+> two-column grid. Workspace, Orbit and Routines are dialog-owned tabs with
+> truthful labelled panels; Workspace is removed from the tab strip and command
+> palette when its permission snapshot is not authorized, while Library remains
+> owned by the entry route. Local tab switches preserve roving focus; external
+> deep links focus the labelled page landmark. Stable tab hint/no-match
+> descriptions, 48px settings wrappers, live 2D colour values, and narrow or
+> bilingual wrapping for unsupported typography and translation rows are source
+> covered.
+>
+> This follow-up remains static-only in this linked checkout. `git diff --check`
+> and both pure-shell port-verifier forms are the local evidence; hosted source
+> checks, the build, installed interaction, display-scale matrix and visual
+> captures remain pending for the parent integration lane. No push, merge, public
+> publication or cleanup was performed here.
+
+> [!IMPORTANT]
+> **Appearance native-acknowledgement and hit-area checkpoint — 2026-08-21.**
+> Commit
+> [`62e07481d`](https://github.com/Ding-Ding-Projects/material-designer/commit/62e07481dac5bcb6a156fca8fd67e224b06aa458)
+> repairs the remaining source findings in the task-owned Appearance lane. The
+> native theme bridge now uses acknowledged bounded IPC and returns explicit
+> success or failure; the hidden desktop window reveals only after the renderer
+> reports a mount plus a validated native theme acknowledgement. A rejection or
+> timeout becomes a self-contained recovery surface. Browser-only and older
+> hosts keep the local DOM theme path. The labelled Settings region is the
+> focused landmark, switching away from `/settings/appearance` normalizes to
+> `/settings`, and Workspace has an explicit null strip-ownership decision with
+> a matching command-index entry. Appearance rows, seed/font choices, picker
+> fields, copy actions, Settings tabs, regex controls, overflow and page-back
+> controls all carry a 48px hit-area floor; search-result hints wrap instead of
+> disappearing behind a tooltip.
+> Follow-up commit
+> [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
+> keeps the readiness receipt outside the bounded polling loop so a final
+> timeout cannot read an out-of-scope value.
+>
+> Final source follow-up
+> [`f50d3c869`](https://github.com/Ding-Ding-Projects/material-designer/commit/f50d3c8692d3dea50d928ff60595f03d7d2f1ac6)
+> keeps the ordinary theme update and startup witness on one pending bounded
+> acknowledgement, adds the close/reopen/refresh route lifecycle contract for
+> integration tabs, and gives the page-back control a full 48px target.
+>
+> Static evidence at `f50d3c869`: `git diff --check` is clean; the Git Bash
+> verifier reports 12,835 expected upstream files, 13,084 tracked files, 591
+> declarations, and zero missing, byte, mode, object-ID, extra, untracked or
+> stale-notice findings in both human and JSON modes. The focused source tests,
+> hosted build, installed interaction, display-scale matrix and visual captures
+> were not run locally because this lane is restricted to pure-shell/static
+> checks; those remain open for the parent integration lane. This linked
+> checkout remains on `codex/settings-appearance` at the commit above and has
+> not been pushed, merged, removed or cleaned by this lane.
+
+> [!IMPORTANT]
+> **Appearance accessibility and theme-ownership checkpoint — 2026-08-21.**
+> Commit
+> [`3eebe4332`](https://github.com/Ding-Ding-Projects/material-designer/commit/3eebe433208afb1a9b246c875afcfff3ab1c8409)
+> completes the accepted source repair in the Appearance implementation lane. All
+> five Appearance/theme labels are typed and present in all 20 supported locale
+> dictionaries. The direct `/settings/appearance` page now has a visible
+> `h1` landmark, a `tabIndex=-1` root focus stop, and opener restoration where
+> an opener remains connected. The old global `.settings-nav-item.active`
+> cascade is gone; active dark-mode tab styling comes from the SettingsTabs
+> Material roles. Tabs, the overflow action, and each regex affordance meet the
+> minimum target contract, and localized labels wrap in the tab and overflow
+> surfaces.
+>
+> Seed, density, font-family, and accent controls now use one shared roving
+> radio-group primitive with one tab stop and Arrow / Home / End movement.
+> Composio, external MCP, and Integrations remain visible Settings tabs and are
+> now valid persistence targets rather than being silently rerouted by
+> `openSettings`. Current-version malformed themes are written back as
+> `system`. The desktop bridge accepts only `system`, `light`, or `dark`; the
+> startup splash begins in `system`, and the main window remains hidden until
+> the renderer mount/reveal handshake has forwarded the persisted theme.
+>
+> Pure shell evidence at `3eebe4332`: `sh scripts/verify-port.sh` and
+> `sh scripts/verify-port.sh --json` both pass with 12,835 expected upstream
+> files, 13,084 tracked files, 590 declarations, and zero missing, byte, mode,
+> object-ID, extra, untracked, or stale-notice findings. `git diff --check` is
+> clean. The new focused source tests and bridge contracts were added but were
+> not run locally because this lane is restricted to pure-shell/static checks;
+> hosted tests, builds, installed interaction, and visual captures remain open.
+
+> [!IMPORTANT]
+> **Appearance settings reachability checkpoint — 2026-08-21.** Commit
+> [`fbd4cac8d`](https://github.com/Ding-Ding-Projects/material-designer/commit/fbd4cac8d5edd4f958da8b05e17e4c805cb1a007)
+> restores one authoritative SettingsTabStrip owner and one rendered panel
+> for the Appearance section. It removes the obsolete General normalization
+> and duplicate navigation branch, adds the typed `/settings/appearance` route,
+> and leaves `/settings` on its normal first-tab behavior. The real System,
+> Light, and Dark selector now persists through AppConfig and applies live to
+> the document and native appearance runtime. Language, Notifications, Pet,
+> Project Locations, and Critique each retain their own render branch and tab.
+>
+> The same commit adds focused source contracts for route round trips, panel
+> mounting, the System / Light / Dark state transitions, every inventoried tab
+> renderer, duplicate-section rejection, and single-navigation ownership. The
+> pure shell checks are verified at zero gaps: `sh scripts/verify-port.sh` and
+> `sh scripts/verify-port.sh --json` both report 12,835 expected upstream files,
+> 13,080 tracked files, 584 declarations, and zero missing, byte, mode,
+> object-ID, extra, untracked, or stale-notice findings. `git diff --check` is
+> also clean. No local Node, package-manager, Electron, build, typecheck, test,
+> UI, or screenshot command was run in this lane; hosted and installed runtime
+> evidence remains open for the next owner.
+>
+> The linked checkout remains on `codex/settings-appearance` at the commit
+> above and has not been merged, pushed, removed, or cleaned by this lane. The
+> parent integration lane owns the next merge and remote verification.
 
 > [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to

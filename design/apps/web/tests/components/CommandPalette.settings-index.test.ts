@@ -142,6 +142,13 @@ describe('command registry', () => {
     expect(rows.some((row) => row.id === 'command.cycleTheme')).toBe(false);
     expect(rows.some((row) => row.id === 'command.toggleLanguageMode')).toBe(false);
   });
+
+  it('omits permission-hidden Workspace settings while retaining dialog-owned Orbit and Routines', () => {
+    const rows = buildPaletteRows(testContext({ workspaceSettingsVisible: false }));
+    expect(rows.some((row) => row.kind === 'setting' && row.entry.section === 'workspace')).toBe(false);
+    expect(rows.some((row) => row.kind === 'setting' && row.entry.section === 'orbit')).toBe(true);
+    expect(rows.some((row) => row.kind === 'setting' && row.entry.section === 'routines')).toBe(true);
+  });
 });
 
 describe('palette query parsing', () => {

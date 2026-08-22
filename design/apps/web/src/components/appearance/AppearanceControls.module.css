@@ -47,7 +47,9 @@
   align-items: center;
   gap: var(--gap, 16px);
   flex-wrap: wrap;
-  min-height: var(--control-h, 40px);
+  /* Density may tighten visual spacing, but the interactive row remains a
+     48px hit target. The glyph and track can stay smaller inside it. */
+  min-height: 48px;
 }
 
 .row + .row {
@@ -70,9 +72,14 @@
   gap: var(--sp, 8px);
 }
 
+.row :global(.seg-btn) {
+  min-height: 48px;
+}
+
 .slider {
   flex: 1 1 auto;
   min-width: 120px;
+  min-height: 48px;
   width: auto;
   accent-color: var(--md-sys-color-primary);
 }
@@ -105,7 +112,7 @@
   align-items: center;
   gap: var(--sp, 8px);
   margin-top: var(--gap, 16px);
-  min-height: var(--control-h, 40px);
+  min-height: 48px;
   cursor: pointer;
 }
 
@@ -141,9 +148,9 @@
 }
 
 .swatch {
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--md-sys-shape-corner-full);
   /* Transparent rather than absent, so selecting one does not move the
@@ -170,7 +177,7 @@
   gap: var(--gap, 16px);
   flex-wrap: wrap;
   width: 100%;
-  min-height: var(--control-h, 40px);
+  min-height: 48px;
   padding: var(--sp, 8px) var(--control-pad-x, 16px);
   text-align: left;
   justify-content: flex-start;
@@ -235,4 +242,39 @@
 .footer {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Unsupported values stay visible at narrow widths instead of making the
+   badge and its explanation compete with a slider on one line. Bilingual copy
+   and 150/200% display scale reach this layout through the same small
+   viewport, so the rule is width-based rather than locale-specific. */
+@media (max-width: 720px) {
+  .unsupported .row {
+    align-items: flex-start;
+    gap: var(--sp, 8px);
+  }
+
+  .unsupported .rowLabel {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .unsupported .rowControl {
+    flex: 1 1 220px;
+  }
+
+  .unsupported .badge,
+  .unsupported .reason {
+    flex: 1 1 100%;
+  }
+
+  .unsupported .switchRow {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .unsupported .switchLabel {
+    flex: 1 1 calc(100% - 36px);
+    min-width: 0;
+  }
 }

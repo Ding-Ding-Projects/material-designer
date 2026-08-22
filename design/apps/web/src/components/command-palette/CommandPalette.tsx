@@ -88,6 +88,8 @@ import {
 import { quickSwitcherScopeResults, useQuickSwitcherScope } from './quickSwitcherScope';
 import { requestSettingsReveal } from './reveal';
 import type { SettingsControlId, SettingsIndexEntry } from './settingsIndex';
+import { useWorkspaceContext } from '../../collab/useWorkspaceContext';
+import { canShowWorkspaceSettings } from '../../collab/settings-access';
 
 export type PaletteDisplayMode = 'card' | 'full';
 
@@ -219,6 +221,8 @@ export function CommandPalette({
   const listRef = useRef<HTMLDivElement | null>(null);
   const paletteRef = useRef<HTMLDivElement | null>(null);
   const fileScope = useQuickSwitcherScope();
+  const { context: workspaceContext } = useWorkspaceContext();
+  const workspaceSettingsVisible = canShowWorkspaceSettings(workspaceContext);
 
   // The header may hand the palette a plain serialisable seed. Apply it to
   // this field's controller exactly once; subsequent edits belong entirely to
@@ -519,6 +523,7 @@ export function CommandPalette({
     () =>
       buildPaletteRows({
         t,
+        workspaceSettingsVisible,
         openSettingsEntry,
         goTo,
         openInNewTab,
@@ -530,6 +535,7 @@ export function CommandPalette({
       }),
     [
       t,
+      workspaceSettingsVisible,
       openSettingsEntry,
       goTo,
       openInNewTab,

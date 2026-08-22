@@ -13,6 +13,7 @@ export {
   OPEN_DESIGN_HOST_GLOBAL,
   OPEN_DESIGN_HOST_VERSION,
   OPEN_DESIGN_HOST_APPEARANCE_THEMES,
+  OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION,
   OPEN_DESIGN_HOST_CLIENT_TYPES,
   OPEN_DESIGN_HOST_UPDATER_ACTIONS,
   OPEN_DESIGN_HOST_UPDATER_STATES,
@@ -79,6 +80,7 @@ export type {
 // --- detection: locate + validate the injected bridge ---
 export {
   isOpenDesignHostBridge,
+  hasAcknowledgedAppearanceThemeBridge,
   getOpenDesignHost,
   isOpenDesignHostAvailable,
   detectOpenDesignHostClientType,

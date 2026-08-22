@@ -50,6 +50,14 @@
   color: var(--text-muted);
 }
 
+.fieldValue {
+  margin: -4px 0 0;
+  font-family: var(--mono);
+  font-size: var(--md-sys-typescale-label-small-size);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
 .axes {
   display: flex;
   flex-direction: column;
@@ -72,6 +80,7 @@
 .slider {
   width: 100%;
   min-width: 0;
+  min-height: 48px;
   accent-color: var(--accent);
 }
 
@@ -134,6 +143,7 @@
   padding: 6px 8px;
   font-size: var(--md-sys-typescale-body-small-size);
   min-width: 0;
+  min-height: 48px;
 }
 
 .entryInput {
@@ -181,8 +191,10 @@
 }
 
 .swatch {
-  width: 22px;
-  height: 22px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--md-sys-shape-corner-s);
   border: 1px solid var(--border);
@@ -242,7 +254,7 @@
 
 .translation {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(72px, max-content) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 8px;
   padding: 3px 4px;
@@ -269,6 +281,8 @@
 
 .lossBadges {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 4px;
 }
 
@@ -284,8 +298,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--md-sys-shape-corner-s);
@@ -303,4 +319,31 @@
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+@media (max-width: 560px) {
+  .translation {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .translationLabel {
+    flex: 0 0 100%;
+  }
+
+  .translationValue {
+    flex: 1 1 160px;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .translation .lossBadges {
+    flex: 1 1 100%;
+  }
+
+  .translation .copyButton {
+    flex: 0 0 48px;
+  }
 }

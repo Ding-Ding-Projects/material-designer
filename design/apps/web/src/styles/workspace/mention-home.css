@@ -806,9 +806,8 @@
   max-width: none;
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -855,17 +854,15 @@
   overflow: hidden;
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0;
   margin: 0;
   padding: 0;
 }
 .settings-page-shell .modal-body {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 0;
   min-width: 0;
   min-height: 0;
@@ -876,9 +873,6 @@
      through, exactly like the home scroll surface). The reduced-transparency
      and no-backdrop-filter fallbacks restore it to solid --bg. */
   background: var(--veil-page, var(--bg));
-}
-.modal-settings.settings-sidebar-collapsed .modal-body {
-  grid-template-columns: minmax(0, 1fr);
 }
 .modal-head {
   display: flex;
@@ -965,8 +959,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   border-radius: var(--radius-pill);
   border: 1px solid var(--border);
@@ -1365,8 +1361,6 @@
   overscroll-behavior: contain;
 }
 .settings-page-shell .settings-sidebar {
-  grid-column: 1;
-  grid-row: 1;
   gap: 3px;
   /* No right padding: nav items (and search) extend flush to the rail's right
      edge, dropping the 10px gap on the content-facing side. Left keeps 10px so
@@ -1398,14 +1392,29 @@
   align-items: center;
   gap: 8px;
   width: max-content;
-  min-height: 28px;
-  padding: 0 8px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px 12px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
+}
+.settings-page-nav-head h1 {
+  margin: 0;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-headline-small-size, 24px);
+  line-height: var(--md-sys-typescale-headline-small-line-height, 32px);
+  font-weight: 600;
+}
+.settings-page-subtitle {
+  margin: -4px 0 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-body-medium-size, 14px);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 .settings-page-back:hover {
   color: var(--text);
@@ -1428,8 +1437,10 @@
   justify-content: center;
   top: 50%;
   left: 240px;
-  width: 18px;
-  height: 46px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
   padding: 0;
   transform: translate(-50%, -50%);
   border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
@@ -1485,113 +1496,12 @@
     transform: translate(-50%, -50%) !important;
   }
 }
-/* Sidebar items follow the ChatGPT-style settings rhythm: single line,
-   icon + label only, gray pill fill on active. The `<small>` description
-   that ships in the JSX is hidden — the label alone is the navigation
-   handle; the section's own subtitle in the content area carries any
-   intro copy. */
-/* display:grid below beats the UA `[hidden]{display:none}`, so search-filtered
-   items need this to actually hide. */
-.settings-nav-item[hidden] {
-  display: none;
-}
-.settings-nav-item {
-  position: relative;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text);
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 7px 10px;
-  text-align: left;
-  cursor: pointer;
-}
-.settings-nav-item:hover:not(:disabled) {
-  /* Same fill as .active; the :not(:disabled) bumps specificity above the
-     generic `button:hover:not(:disabled)` in primitives.css, which was
-     leaking its bg-subtle fill and border ring onto these pills. */
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  border-color: transparent;
-}
-.settings-page-shell .settings-nav-item {
-  border-radius: var(--radius-large, 8px);
-  /* Selected board breathes a uniform 10px on all four sides. */
-  padding: 10px;
-}
-/* Match the home nav rail (.entry-nav-rail__btn) exactly: unselected label +
-   icon use a muted 52% tone, hover adds a 5% wash, and the selected item is a
-   light-grey card (--bg-subtle) carrying the near-black --selected label/icon. */
-.settings-page-shell .settings-nav-item {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
-}
-.settings-page-shell .settings-nav-item svg,
-.settings-page-shell .settings-nav-item .od-icon {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
-  opacity: 1;
-}
-.settings-page-shell .settings-nav-item:not(.active):hover {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-}
-.settings-page-shell .settings-nav-item.active,
-.settings-page-shell .settings-nav-item.active:hover {
-  background: var(--bg-subtle);
-  color: var(--selected);
-  border-color: transparent;
-}
-.settings-page-shell .settings-nav-item.active strong {
-  color: var(--selected);
-}
-.settings-page-shell .settings-nav-item.active svg,
-.settings-page-shell .settings-nav-item.active .od-icon {
-  color: var(--selected);
-  opacity: 1;
-}
-.settings-nav-item.active,
-.settings-nav-item.active:hover {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-  border-color: transparent;
-  color: var(--text);
-  box-shadow: none;
-}
-.settings-nav-item svg {
-  justify-self: center;
-  opacity: 0.75;
-}
-/* Custom inline-SVG nav glyphs carry .od-icon so they track the font icons:
-   full opacity by default (not the 0.75 above), text-strong when active. */
-.settings-nav-item svg.od-icon {
-  opacity: 1;
-}
-/* Selected item: the filled Remix glyph uses the spec's strongest
-   text/icon tone (#202020 light / #fafafa dark via --text-strong) at full
-   opacity. */
-.settings-nav-item.active .od-icon {
-  opacity: 1;
-  color: var(--text-strong);
-}
-.settings-nav-item span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.settings-nav-item strong {
-  color: currentColor;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.3;
-  overflow-wrap: anywhere;
-}
-.settings-nav-item.active strong {
-  font-weight: 600;
-}
-.settings-nav-item small {
-  display: none;
-}
+/* SettingsTabStrip owns tab anatomy and active-state colors in
+   `components/settings/SettingsTabs.module.css`. The old global
+   `.settings-nav-item.active` selectors were stronger than the tab module and
+   forced a single-palette surface over the Material roles in dark mode. The class
+   remains a compatibility hook for existing locators; it intentionally owns
+   no visual rules here. */
 .settings-content {
   position: relative;
   z-index: 1;
@@ -1612,23 +1522,34 @@
   flex-direction: column;
   gap: 18px;
 }
+
+/* Settings buttons keep the same full hit area at every density. The visual
+   icon or label may remain compact, but its pointer and keyboard wrapper does
+   not shrink below the accessibility floor. */
+.settings-content .settings-section button {
+  min-height: 48px;
+}
+.settings-content .pet-swatch,
+.settings-content .pet-swatch-picker {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+}
 .settings-content:focus-visible {
   /* The tabpanel takes focus programmatically when a tab is activated; the
      ring would otherwise read as a stray highlight on a whole pane. */
   outline: none;
+}
 .settings-content::-webkit-scrollbar {
   display: none;
 }
 .settings-page-shell .settings-content {
-  grid-column: 2;
-  grid-row: 1;
   /* Fixed 12px gutter on both sides that stays 12px at any window width —
      no max-width cap, so stretching the window widens the card, not the gaps.
      `justify-self: center` splits the 24px evenly into 12 + 12. */
   width: calc(100% - 24px);
   max-width: none;
-  justify-self: center;
-  align-self: start;
   /* 12px top + 12px bottom outer margin; height leaves exactly that 24px
      total so the card fills the shell without overflow. */
   margin: 12px 0 12px;
@@ -1702,7 +1623,8 @@
     height: calc(100vh - 12px);
   }
   .modal-settings .modal-body {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
   }
   .settings-page-shell .modal-body {
     display: flex;
@@ -1731,9 +1653,6 @@
     padding: 10px 12px;
     border-right: 0;
     border-bottom: 1px solid var(--border);
-  }
-  .settings-nav-item {
-    min-width: 150px;
   }
 }
 /* Segmented control */
@@ -1769,6 +1688,7 @@
   cursor: pointer;
   text-align: center;
   line-height: 1;
+  min-height: 48px;
   min-width: 0;
 }
 /* The global button:hover paints a border-strong outline + bg-subtle fill; the

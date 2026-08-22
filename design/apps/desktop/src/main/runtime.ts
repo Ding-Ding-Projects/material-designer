@@ -37,6 +37,7 @@ import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
+import { parseDesktopAppearanceTheme } from "./appearance-theme.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
 import type { DesktopUpdater } from "./updater.js";
@@ -308,6 +309,7 @@ const MIN_SPLASH_MS = 2000;
 // strand the user on the splash forever.
 const WEB_MOUNT_POLL_MS = 80;
 const WEB_MOUNT_REVEAL_TIMEOUT_MS = 15000;
+const WEB_MOUNT_EVAL_TIMEOUT_MS = 500;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 const summarizeExpression = (expression: string): Record<string, unknown> => ({
@@ -1532,23 +1534,7 @@ export type SplashWindowHandle = {
 };
 
 /**
- * Pin Electron's native appearance to light.
- *
- * The app has one theme now, so `themeSource` is not a preference to sync — it
- * is a constant. Leaving it at Electron's `system` default lets a dark-mode OS
- * colour everything the web layer does not own: the macOS vibrancy glass
- * (`vibrancy: "under-window"`), native menus and dialogs, and the renderer's
- * own `prefers-color-scheme` before `data-theme` is stamped.
- *
- * Idempotent, so both the splash path and the `od:appearance:set-theme` handler
- * can call it.
- */
-export function pinNativeAppearanceToLight(): void {
-  nativeTheme.themeSource = "light";
-}
-
-/**
- * Create and immediately show the light brand-splash window. The packaged entry
+ * Create and immediately show the neutral brand-splash window. The packaged entry
  * calls this BEFORE awaiting the daemon/web sidecars so the animation masks the
  * whole cold boot (no black no-window gap); the desktop runtime then adopts it
  * via `DesktopRuntimeOptions.splashWindow` + `splashStartedAt` and closes it
@@ -1556,12 +1542,12 @@ export function pinNativeAppearanceToLight(): void {
  * + matching size so the reveal swap reads as a single window, never a flash.
  */
 export function createSplashWindow(): SplashWindowHandle {
-  // Material Designer ships light-only (the theme setting was removed), so pin the
-  // native appearance before the first window exists. Electron defaults
-  // `themeSource` to `system`, which paints the macOS vibrancy glass and the
-  // native chrome dark on a dark-mode Mac — visible on the splash and again in
-  // the gap before the renderer's `od:appearance:set-theme` lands.
-  pinNativeAppearanceToLight();
+  // Keep the splash on Electron's neutral `system` source until the renderer
+  // has loaded the persisted theme and forwarded it through the validated IPC
+  // handler. The main window stays hidden until that renderer mount/reveal
+  // handshake completes, so an explicit Light or Dark choice never flashes
+  // after a hard-coded native Light startup value.
+  nativeTheme.themeSource = "system";
   // Stamp creation time at the instant the window appears (see SplashWindowHandle).
   const startedAt = Date.now();
   const splash = new BrowserWindow({
@@ -2727,18 +2713,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     else petWindow.hide();
   });
 
-  ipcMain.removeAllListeners("od:appearance:set-theme");
-  ipcMain.on("od:appearance:set-theme", (event, theme: unknown) => {
-    if (window.isDestroyed() || event.sender !== window.webContents) return;
-    if (theme !== "light" && theme !== "dark" && theme !== "system") return;
-    // Pin the native appearance to the app theme. The macOS frosted window
-    // (vibrancy: under-window) draws its glass in the SYSTEM appearance by
-    // default, so a light app over a dark OS sat on dark glass and read as a
-    // muddy gray (#94); forcing the native theme keeps the glass material in
-    // step with the app's tokens. The host protocol still carries all three
-    // values as generic infrastructure, but the app ships light-only, so this
-    // is the same value `pinNativeAppearanceToLight` already set at startup.
-    nativeTheme.themeSource = theme;
+  ipcMain.removeHandler("od:appearance:set-theme");
+  ipcMain.handle("od:appearance:set-theme", async (event, theme: unknown) => {
+    if (window.isDestroyed() || event.sender !== window.webContents) {
+      return { ok: false, reason: "appearance theme request came from an unexpected renderer" };
+    }
+    const parsedTheme = parseDesktopAppearanceTheme(theme);
+    if (parsedTheme == null) {
+      return { ok: false, reason: "appearance theme is not System, Light, or Dark" };
+    }
+    // The renderer owns persisted config and forwards its resolved value after
+    // its pre-hydration document stamp. Native menus, dialogs, and glass now
+    // follow the same System / Light / Dark value without a startup override.
+    nativeTheme.themeSource = parsedTheme;
+    return { ok: true };
   });
 
   ipcMain.removeHandler('od:print-pdf');
@@ -2894,7 +2882,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     void persistRendererEntry(entry);
   });
 
-  // The splash window carries the light brand animation. In packaged builds the
+  // The splash window carries the neutral brand animation. In packaged builds the
   // entry hands us one it created BEFORE the sidecars booted (so it overlaps the
   // whole cold start); otherwise we create our own. The main window above stays
   // hidden behind it until the real app has mounted.
@@ -2914,10 +2902,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
   let revealing = false;
+  // `revealed` means that some visible surface is in front of the user; it is
+  // also true for the self-contained recovery screen. Keep the stronger
+  // renderer-ready witness separate so a recovery surface can never be
+  // mistaken for an acknowledged application mount.
+  let rendererSurfaceReady = false;
+  let rendererRecoveryPending = false;
 
-  const revealMainWindow = (): void => {
+  const revealMainWindow = (rendererReady = true): void => {
     if (revealed || window.isDestroyed()) return;
     revealed = true;
+    rendererSurfaceReady = rendererReady;
     showWindowButtons(window);
     window.show();
     window.focus();
@@ -2936,6 +2931,35 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
   };
 
+  /**
+   * A new document must earn the same acknowledged theme witness as the first
+   * document. This resets every latch before loading, recreates the splash if
+   * the prior recovery screen closed it, and hides the main window so a reload
+   * cannot flash an unacknowledged renderer in front of the user.
+   */
+  const resetRevealWitnessForReload = (): void => {
+    const wasRecoveryReload = rendererRecoveryPending;
+    rendererRecoveryPending = false;
+    revealed = false;
+    revealing = false;
+    rendererSurfaceReady = false;
+    if (splash == null || splash.isDestroyed()) {
+      const created = createSplashWindow();
+      splash = created.window;
+      splashStartedAt = created.startedAt;
+    }
+    window.hide();
+    splash.show();
+    splash.focus();
+    // Keep the branch explicit: a crash-screen reload and a normal URL reload
+    // both use the same witness, while the recovery path is visible to the
+    // diagnostics log without changing the readiness contract.
+    if (wasRecoveryReload) {
+      console.info("[open-design desktop] renderer recovery reload re-armed the appearance witness");
+    }
+    setSplashStage(splash, "workspace");
+  };
+
   // Hold the splash until BOTH (a) the web bundle reports it has mounted — it
   // sets `data-od-app-mounted="1"` on first paint of the real UI — so we never
   // reveal the web's own dark "Loading Material Designer…" shell, and (b) the splash
@@ -2949,12 +2973,50 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // the splash status line reflect that final phase while we poll for mount.
     setSplashStage(splash, "workspace");
     const deadline = Date.now() + WEB_MOUNT_REVEAL_TIMEOUT_MS;
+    let readiness: { mounted: boolean; failure: boolean } | null = null;
     while (!stopped && !window.isDestroyed() && Date.now() < deadline) {
-      const mounted = await window.webContents
-        .executeJavaScript(`document.documentElement.getAttribute("data-od-app-mounted") === "1"`, true)
-        .catch(() => false);
-      if (mounted === true) break;
+      readiness = null;
+      let evalTimer: ReturnType<typeof setTimeout> | null = null;
+      try {
+        readiness = await Promise.race([
+          window.webContents
+            .executeJavaScript(
+              `(() => ({
+                mounted: document.documentElement.getAttribute("data-od-app-mounted") === "1",
+                failure: document.documentElement.getAttribute("data-od-app-mount-failure") === "1",
+              }))()`,
+              true,
+            )
+            .then((value) => (value && typeof value === "object"
+              ? {
+                  mounted: (value as { mounted?: unknown }).mounted === true,
+                  failure: (value as { failure?: unknown }).failure === true,
+                }
+              : null))
+            .catch(() => null),
+          new Promise<null>((resolve) => {
+            evalTimer = setTimeout(() => resolve(null), WEB_MOUNT_EVAL_TIMEOUT_MS);
+          }),
+        ]);
+      } finally {
+        if (evalTimer != null) clearTimeout(evalTimer);
+      }
+      if (readiness?.failure === true) {
+        showRendererCrashScreen({
+          reason: "the renderer could not obtain native appearance acknowledgement",
+          exitCode: null,
+        });
+        return;
+      }
+      if (readiness?.mounted === true) break;
       await delay(WEB_MOUNT_POLL_MS);
+    }
+    if (!readiness?.mounted) {
+      showRendererCrashScreen({
+        reason: "the renderer did not report a mounted and theme-ready surface before the startup deadline",
+        exitCode: null,
+      });
+      return;
     }
     // The real UI has mounted behind the splash; the only thing left is the
     // minimum-hold so the brand clip plays through. Advance the counter to its
@@ -2986,6 +3048,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // daemon is still alive on a renderer crash, so the bundle is available).
   const showRendererCrashScreen = (crash: { reason: string; exitCode: number | null }) => {
     if (stopped || window.isDestroyed()) return;
+    // The recovery surface is visible, but it is not a mounted application.
+    // Leave the next reload obligated to clear these latches and re-run the
+    // native acknowledgement witness before the product can be shown again.
+    revealing = false;
+    rendererSurfaceReady = false;
+    rendererRecoveryPending = true;
     // Loading the crash screen resets currentUrl so the next successful reload
     // (after re-arm) is treated as a fresh navigation.
     currentUrl = null;
@@ -3008,7 +3076,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // re-focusing the app during a startup crash loop is sent back to the boot
     // splash instead of this recovery screen. revealMainWindow() no-ops when the
     // app already revealed normally (the common crash-after-boot case).
-    revealMainWindow();
+    revealMainWindow(false);
   };
 
   const markRendererFailed = () => {
@@ -3063,6 +3131,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // failed/blank state (URL unchanged but the page died), so a window
       // restored from the background recovers instead of staying blank.
       if (url != null && (url !== currentUrl || rendererFailed)) {
+        resetRevealWitnessForReload();
         pendingUrl = url;
         // Clear the failure flag BEFORE the load: `did-navigate` (which
         // re-flags an HTTP 5xx error document) fires before `loadURL`'s
@@ -3082,7 +3151,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           await petWindow.loadURL(nextPetUrl);
           currentPetUrl = nextPetUrl;
         }
-        if (!revealed) {
+        if (!rendererSurfaceReady) {
           void revealWhenReady();
         } else {
           showWindowButtons(window);
@@ -3129,7 +3198,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       disposeWindowControls();
       disposeUiScale();
       ipcMain.removeAllListeners("desktop-pet:set-visible");
-      ipcMain.removeAllListeners("od:appearance:set-theme");
+      ipcMain.removeHandler("od:appearance:set-theme");
       for (const channel of UPDATER_IPC_CHANNELS) {
         ipcMain.removeHandler(channel);
       }

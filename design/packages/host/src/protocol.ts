@@ -163,6 +163,16 @@ export const OPEN_DESIGN_HOST_APPEARANCE_THEMES = Object.freeze({
   SYSTEM: "system",
 } as const);
 
+/**
+ * Capability marker for the theme bridge. A host that predates the
+ * acknowledgement contract may still expose `appearance.setTheme`, but a
+ * fire-and-forget function cannot be used as the renderer's startup witness.
+ * Keep this marker separate from the bridge protocol version so older hosts
+ * remain discoverable for unrelated capabilities while the renderer can
+ * truthfully reject an unacknowledged theme handoff.
+ */
+export const OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION = 1 as const;
+
 export type OpenDesignHostAppearanceTheme =
   (typeof OPEN_DESIGN_HOST_APPEARANCE_THEMES)[keyof typeof OPEN_DESIGN_HOST_APPEARANCE_THEMES];
 
@@ -443,7 +453,14 @@ export type OpenDesignHostBridge = {
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
   appearance?: {
-    setTheme(theme: OpenDesignHostAppearanceTheme): void;
+    /**
+     * Apply the renderer's validated theme to the native shell and acknowledge
+     * the result. A promise is intentional: the renderer must not claim its
+     * startup witness until the native side has accepted the value.
+     */
+    setTheme(theme: OpenDesignHostAppearanceTheme): Promise<OpenDesignHostActionResult>;
+    /** Present only when `setTheme` returns an acknowledged action result. */
+    acknowledgementVersion?: typeof OPEN_DESIGN_HOST_APPEARANCE_ACKNOWLEDGEMENT_VERSION;
   };
   browser: {
     clearData(options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult>;

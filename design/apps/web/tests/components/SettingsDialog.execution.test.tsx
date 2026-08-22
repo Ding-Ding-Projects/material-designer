@@ -5048,14 +5048,10 @@ describe('SettingsDialog notifications interactions', () => {
   });
 });
 
-// Was 'SettingsDialog appearance interactions'. The eight theme/accent cases
-// this block opened with are retired: the product removed theme selection
-// outright ("主题设置不要了，因为 workspace 功能不支持暗色主题，要干掉"), which
-// also formally overturns the NON-ALIGNMENT #9 note that had argued for keeping
-// the segmented control as the last "follow system" entry point. The document
-// theme/accent teardown went with them — nothing here writes those any more.
-// What survives is the AMR draft-reconciliation coverage that merely happened
-// to live in this block.
+// Appearance interactions now live in the authoritative Settings → Appearance
+// tab. The cases below retain the AMR draft-reconciliation coverage that shares
+// the same autosave lifecycle, while the focused Appearance suite covers the
+// theme, accent, and live document semantics directly.
 describe('SettingsDialog draft reconciliation', () => {
   afterEach(() => {
     cleanup();
@@ -5204,14 +5200,10 @@ describe('SettingsDialog draft reconciliation', () => {
     );
 
     // Any committed edit will do — this test is about what the draft carries
-    // when it autosaves, not about which control fired it. It used to ride the
-    // Appearance theme control; with theme selection removed, the notifications
-    // completion-sound toggle is the equivalent one-click persisted edit.
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'Completion sound' })).getByRole('button', {
-        name: 'inactive',
-      }),
-    );
+    // when it autosaves, not about which control fired it. Keep the edit on the
+    // authoritative Appearance tab so the route and draft owner stay aligned.
+    fireEvent.click(screen.getByRole('tab', { name: /Appearance/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Dark/i }));
 
     await waitForPersist(
       view.onPersist,
@@ -5406,22 +5398,18 @@ describe('SettingsDialog pets interactions', () => {
     cleanup();
   });
 
-  // #5517 folded the pet picker into General and the nav rail dropped its
-  // standalone "Pets" item. The composer's pet-settings entry point still
-  // deep-links with `initialSection: 'pet'`, so that token must resolve to
-  // General — otherwise the entry point opens a section with no nav item and
-  // nothing rendered.
-  it('lands a pet deep link on the General section with the General nav item active', () => {
+  // The pet picker owns its own visible tab. The composer's pet-settings entry
+  // point deep-links with `initialSection: 'pet'`, so the selected tab and
+  // mounted panel must agree.
+  it('lands a pet deep link on the Pet section with the Pet tab active', () => {
     const { container } = renderSettingsDialog(
       { mode: 'daemon', agentId: 'codex' },
       { initialSection: 'pet' },
     );
 
-    expect(container.querySelector('.settings-general-section')).toBeTruthy();
-    const active = container.querySelector('.settings-nav-item.active');
-    expect(active?.textContent).toContain('General');
-    // The pet block renders inside General, not as its own page.
-    expect(container.querySelector('.settings-general-section .pet-tabs, .settings-general-section [role="tab"]')).toBeTruthy();
+    expect(container.querySelector('[data-od-setting="section:pet"]')).toBeTruthy();
+    expect(container.querySelector('[role="tab"][data-section="pet"][aria-selected="true"]')).toBeTruthy();
+    expect(container.querySelector('.pet-tabs, [data-od-setting="pet"]')).toBeTruthy();
   });
 
   it('renders bundled pets by default and exposes community pets in a separate tab', async () => {
@@ -6405,9 +6393,8 @@ describe('SettingsDialog about interactions', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Appearance/i }));
     fireEvent.click(screen.getByRole('radio', { name: '#059669' }));
     // The invariant under test is the autosave bookkeeping, not the field that
-    // carries it — theme selection was the old vehicle and is gone, so this
-    // reaches for the notifications completion-sound toggle instead.
-    fireEvent.click(screen.getByRole('button', { name: /General/i }));
+    // carries it. Navigate to the authoritative Notifications tab explicitly.
+    fireEvent.click(screen.getByRole('tab', { name: /Notifications/i }));
     fireEvent.click(
       within(screen.getByRole('group', { name: 'Completion sound' })).getByRole('button', {
         name: 'inactive',

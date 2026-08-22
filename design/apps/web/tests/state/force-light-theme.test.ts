@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
 //
-// Product removed the theme setting: the workspace surfaces have no dark
-// tokens, so a dark app is a broken app. Removing the picker is not enough —
-// every install that ever touched it still has `theme: 'dark'` (or `'system'`,
-// which resolves dark on a dark OS) sitting in localStorage, and a stored
-// value does not change just because the default did. These specs pin the
-// upstream coerce-on-read/runtime behavior and the product override at the
-// pre-hydration boundary, where a saved explicit theme must paint as saved.
+// The Appearance settings section owns a persisted System / Light / Dark
+// choice. These specs pin the config normalizer, live document application and
+// pre-hydration boundary so the three values cannot drift between surfaces.
 
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -14,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { applyAppearanceToDocument } from '../../src/state/appearance';
+import { applyAppearanceToDocument, resolveAppTheme } from '../../src/state/appearance';
 import { DEFAULT_CONFIG, loadConfig } from '../../src/state/config';
 import type { AppConfig } from '../../src/types';
 
@@ -55,75 +51,63 @@ function stubSystemPrefersDark(): void {
   );
 }
 
-describe('forced light theme — persisted config', () => {
+describe('appearance theme — persisted config', () => {
   beforeEach(() => {
     store.clear();
   });
 
-  it('defaults a fresh install to the light theme', () => {
-    expect(DEFAULT_CONFIG.theme).toBe('light');
-    expect(loadConfig().theme).toBe('light');
+  it('defaults a fresh install to the system theme', () => {
+    expect(DEFAULT_CONFIG.theme).toBe('system');
+    expect(loadConfig().theme).toBe('system');
   });
 
-  it('coerces an already-persisted dark theme back to light on read', () => {
+  it('preserves a persisted dark theme on read', () => {
     persist({ theme: 'dark', accentColor: '#4F46E5' });
 
     const config = loadConfig();
 
-    expect(config.theme).toBe('light');
-    // Unrelated preferences must survive the coercion.
+    expect(config.theme).toBe('dark');
     expect(config.accentColor).toBe('#4f46e5');
   });
 
-  it('coerces a persisted system theme to light even when the OS prefers dark', () => {
+  it('preserves a persisted system theme when the OS prefers dark', () => {
     stubSystemPrefersDark();
     persist({ theme: 'system' });
 
-    expect(loadConfig().theme).toBe('light');
+    expect(loadConfig().theme).toBe('system');
   });
 
-  it('rewrites the coerced theme back to storage so the dark value stops existing', () => {
-    persist({ theme: 'dark' });
-
-    loadConfig();
-
-    const written = JSON.parse(store.get(STORAGE_KEY) ?? '{}') as Partial<AppConfig>;
-    expect(written.theme).toBe('light');
+  it('preserves a persisted light theme and rejects malformed values', () => {
+    persist({ theme: 'light' });
+    expect(loadConfig().theme).toBe('light');
+    expect(resolveAppTheme('not-a-theme' as unknown as AppConfig['theme'])).toBe('system');
   });
 });
 
-describe('forced light theme — document', () => {
+describe('appearance theme — document', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('data-theme');
   });
 
   it('stamps data-theme=light on the root element', () => {
-    applyAppearanceToDocument({ accentColor: '#059669' });
+    applyAppearanceToDocument({ theme: 'light', accentColor: '#059669' });
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
   });
 
-  it('overwrites a dark data-theme left on the root element', () => {
-    document.documentElement.setAttribute('data-theme', 'dark');
+  it('stamps data-theme=dark on the root element', () => {
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#059669' });
 
-    applyAppearanceToDocument({ accentColor: '#059669' });
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 
-  // Every JS theme reader in apps/web (shiki, ConnectorLogo, SketchEditor,
-  // TerminalViewer, connectorBrandColor…) checks `data-theme` first and only
-  // falls back to `prefers-color-scheme` when the attribute is ABSENT, and
-  // every `@media (prefers-color-scheme: dark)` CSS block is gated on
-  // `html:not([data-theme])` / `html:not([data-theme="light"])`. So the
-  // attribute always being present is what closes the OS-dark leak.
-  it('never leaves the root element without an explicit theme', () => {
+  it('removes data-theme for the system choice so the OS can select the palette', () => {
     stubSystemPrefersDark();
+    document.documentElement.setAttribute('data-theme', 'light');
 
-    applyAppearanceToDocument({ accentColor: '#10B981' });
+    applyAppearanceToDocument({ theme: 'system', accentColor: '#10B981' });
 
-    expect(document.documentElement.hasAttribute('data-theme')).toBe(true);
-    expect(document.documentElement.getAttribute('data-theme')).not.toBe('dark');
+    expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
   });
 });
 

@@ -179,6 +179,95 @@ image was added; deterministic capture-fixture status remains pending until a
 - `apps/web/tests/library-route-and-search.contract.test.ts`
 - `apps/web/tests/router-marketplace.test.ts`
 - `packages/contracts/src/analytics/events/workspace.ts`
+### 2026-08-21 — Make Appearance theme readiness compatible and recoverable
+
+**Reason:** The Appearance follow-up exposed two classes of source-only failure:
+legacy hosts could expose a fire-and-forget theme setter without proving native
+readiness, and renderer recovery could reveal a reloaded document without
+re-running that proof. The same pass repairs the settings flex flow and tab
+ownership, keeps permission-hidden Workspace out of discovery, preserves stable
+tab descriptions and selected-tab contrast, exposes the colour field's live
+two-dimensional value, keeps hit wrappers at 48px, and wraps unsupported or
+translated rows at narrow and bilingual layouts.
+
+**Changed files:**
+
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/appearance/AppearanceControls.module.css`
+- `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
+- `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/settings/settingsTabs.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/src/styles/workspace/mention-home.css`
+- `apps/web/tests/components/AppearanceEditor.test.tsx`
+- `apps/web/tests/components/appearance-follow-up-contract.test.ts`
+- `apps/web/tests/components/CommandPalette.settings-index.test.ts`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+- `apps/web/tests/state/appearance.test.ts`
+- `packages/host/src/detection.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/testing.ts`
+- `packages/host/tests/index.test.ts`
+
+### 2026-08-21 — Acknowledge native Appearance theme application
+
+**Reason:** The native theme bridge previously accepted a fire-and-forget message, so
+the renderer could report a mounted application before the desktop shell had accepted
+the persisted theme. The bridge now returns a bounded action result, the desktop
+startup witness waits for that acknowledgement, and a timeout or rejection becomes an
+honest self-contained startup failure. Browser-only and older hosts keep the local DOM
+theme path. The Appearance settings page also keeps an explicit Workspace ownership
+decision, normalizes its typed route when switching tabs, wraps full search context,
+focuses the labelled page landmark, and keeps all interactive hit areas at 48px.
+
+**Changed files:**
+
+- `packages/host/src/detection.ts`
+
+### 2026-08-21 — Make the Appearance settings route addressable
+
+**Reason:** The Appearance panel was implemented but its section token was normalized into
+an unlisted General section, so the real controls could not be reached from the tab strip or
+from a direct settings URL. The route now carries a typed `appearance` subsection for
+`/settings/appearance`, while `/settings` keeps its ordinary settings entry behavior. The
+Appearance panel is the sole owner of its real controls, including the persisted System,
+Light and Dark theme selector, and the former General children retain their own reachable
+sections instead of being folded into a duplicate navigation branch.
+
+**Changed files:**
+
+- `apps/web/src/router.ts`
+- `apps/web/src/components/EntrySettingsMenu.tsx`
+- `apps/web/src/state/config.ts`
+- `apps/web/src/state/appearance.ts`
+- `apps/web/tests/router.test.ts`
+
+### 2026-08-21 — Complete Appearance accessibility and theme ownership
+
+**Reason:** The reachable Appearance surface still carried stale light-only
+assumptions in its tests and native startup path. This repair gives every
+supported locale explicit Appearance and System / Light / Dark labels, makes
+the direct page name and focus behavior valid, removes the retired global tab
+selector cascade, shares one roving radio-group behavior across appearance
+choices, keeps every visible settings tab restorable, canonicalizes malformed
+current-version themes, and validates the renderer-to-native theme bridge.
+
+**Changed files:**
+
+- `apps/desktop/src/main/appearance-theme.ts`
+- `apps/desktop/tests/main/appearance-theme-bridge.test.ts`
+- `apps/web/src/components/appearance/RovingRadioGroup.tsx`
+- `apps/web/tests/components/appearance/RovingRadioGroup.test.tsx`
+- `apps/web/tests/components/SettingsDialog.search-removed.test.tsx`
+- `apps/web/tests/components/theme-settings-removed.test.tsx`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 

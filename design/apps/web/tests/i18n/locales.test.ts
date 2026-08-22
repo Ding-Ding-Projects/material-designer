@@ -129,6 +129,24 @@ function explicitLocaleKeys(locale: Locale): string[] {
 }
 
 describe('i18n locales', () => {
+  it('ships typed Appearance labels in every supported locale without raw keys', async () => {
+    const keys: Array<keyof Dict> = [
+      'settings.appearance',
+      'settings.appearanceHint',
+      'settings.themeSystem',
+      'settings.themeLight',
+      'settings.themeDark',
+    ];
+
+    for (const locale of LOCALES) {
+      const dict = await loadDict(locale);
+      for (const key of keys) {
+        expect(typeof dict[key], `${locale}.${key}`).toBe('string');
+        expect(dict[key], `${locale}.${key}`).not.toBe(key);
+      }
+    }
+  });
+
   it('enumerates every locale source file in the duplicate-key guard', () => {
     const filesOnDisk = readdirSync(LOCALE_SOURCE_DIRECTORY)
       .filter((fileName) => fileName.endsWith('.ts'))

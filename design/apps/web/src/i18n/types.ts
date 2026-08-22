@@ -376,6 +376,11 @@ export interface Dict {
   'settings.subtitle': string;
   'settings.general': string;
   'settings.generalHint': string;
+  'settings.appearance': string;
+  'settings.appearanceHint': string;
+  'settings.themeSystem': string;
+  'settings.themeLight': string;
+  'settings.themeDark': string;
   'settings.modeAria': string;
   'settings.protocolAria': string;
   'settings.modeDaemon': string;
@@ -1038,9 +1043,8 @@ export interface Dict {
   'settings.mcpCapabilityDefault': string;
   'settings.mcpRunningNote': string;
 
-  // Notifications (settings + system notifications)
-  // `systemPrefs*` heads the System preferences block on Settings → General,
-  // which groups the completion sound and desktop notification rows.
+  // Notifications (settings + system notifications). The rows now live in
+  // the authoritative Notifications tab rather than a shared General block.
   'settings.systemPrefsTitle': string;
   'settings.systemPrefsHint': string;
   'settings.notifications': string;

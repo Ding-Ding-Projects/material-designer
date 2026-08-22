@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ACCENT_SWATCHES,
   CUSTOM_ACCENT_FALLBACK,
@@ -8,8 +8,38 @@ import {
   applyAppearanceToDocument,
   normalizeAccentColor,
   resolveAccentColor,
+  resolveAppTheme,
+  syncAppearanceThemeWithHost,
   uiScaleApplication,
 } from '../../src/state/appearance';
+
+function hostWithThemeSetter(setTheme: (theme: 'light' | 'dark' | 'system') => Promise<unknown> | unknown) {
+  return {
+    version: 2,
+    client: { type: 'desktop', platform: 'win32' },
+    appearance: { acknowledgementVersion: 1, setTheme },
+    shell: { openExternal: vi.fn(), openPath: vi.fn() },
+    browser: { clearData: vi.fn() },
+    capture: { page: vi.fn() },
+    project: {
+      pickAndImport: vi.fn(),
+      pickAndReplaceWorkingDir: vi.fn(),
+    },
+    pdf: { print: vi.fn() },
+    pet: { setVisible: vi.fn() },
+    updater: {
+      check: vi.fn(),
+      'clear-cache': vi.fn(),
+      download: vi.fn(),
+      install: vi.fn(),
+      quit: vi.fn(),
+      setMenuLabels: vi.fn(),
+      status: vi.fn(),
+      subscribe: vi.fn(),
+      subscribeOpenDialog: vi.fn(),
+    },
+  };
+}
 
 describe('accent swatch union', () => {
   it('keeps the Material role default and every distinct product/upstream swatch', () => {
@@ -67,10 +97,11 @@ describe('applyAppearanceToDocument', () => {
     document.documentElement.style.removeProperty('--accent-soft');
     document.documentElement.style.removeProperty('--accent-tint');
     document.documentElement.style.removeProperty('--accent-hover');
+    vi.unstubAllGlobals();
   });
 
-  it('applies the forced light theme and accent variables to the root element', () => {
-    applyAppearanceToDocument({ accentColor: '#4F46E5' });
+  it('applies the explicit light theme and accent variables to the root element', () => {
+    applyAppearanceToDocument({ theme: 'light', accentColor: '#4F46E5' });
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light');
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#4f46e5');
@@ -90,12 +121,10 @@ describe('applyAppearanceToDocument', () => {
     document.documentElement.style.removeProperty('--bg-app');
   });
 
-  it('applies accent variables while forcing a stale dark theme back to light', () => {
-    document.documentElement.setAttribute('data-theme', 'dark');
+  it('applies the explicit dark theme and keeps accent variables in sync', () => {
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#10B981' });
 
-    applyAppearanceToDocument({ accentColor: '#10B981' });
-
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#10b981');
     expect(document.documentElement.style.getPropertyValue('--accent-strong')).toContain('#10b981');
     expect(document.documentElement.style.getPropertyValue('--accent-soft')).toContain('#10b981');
@@ -119,10 +148,54 @@ describe('applyAppearanceToDocument', () => {
   it('falls back to the default accent when no valid accent is configured', () => {
     document.documentElement.style.setProperty('--accent', '#4f46e5');
 
-    applyAppearanceToDocument({ accentColor: 'not-a-color' });
+    applyAppearanceToDocument({ theme: 'system', accentColor: 'not-a-color' });
 
-    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(document.documentElement.getAttribute('data-theme')).toBeNull();
     expect(document.documentElement.style.getPropertyValue('--accent')).toBe(DEFAULT_ACCENT_COLOR);
+  });
+
+  it('resolves only System, Light and Dark theme values', () => {
+    expect(resolveAppTheme('system')).toBe('system');
+    expect(resolveAppTheme('light')).toBe('light');
+    expect(resolveAppTheme('dark')).toBe('dark');
+    expect(resolveAppTheme('invalid' as never)).toBe('system');
+  });
+
+  it('keeps local DOM styling when an optional host throws or rejects', async () => {
+    vi.stubGlobal('__od__', hostWithThemeSetter(() => {
+      throw new Error('host unavailable');
+    }));
+
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#10B981' });
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(document.documentElement.style.getPropertyValue('--accent')).toBe('#10b981');
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toMatchObject({
+      ok: false,
+      host: 'desktop',
+    });
+  });
+
+  it('shares the startup acknowledgement with the ordinary theme update', async () => {
+    const setTheme = vi.fn(async () => ({ ok: true as const }));
+    vi.stubGlobal('__od__', hostWithThemeSetter(setTheme));
+
+    applyAppearanceToDocument({ theme: 'dark', accentColor: '#10B981' });
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toMatchObject({
+      ok: true,
+      host: 'desktop',
+    });
+    expect(setTheme).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a legacy fire-and-forget theme host without claiming native readiness', async () => {
+    vi.stubGlobal('__od__', hostWithThemeSetter(() => undefined));
+
+    await expect(syncAppearanceThemeWithHost('dark')).resolves.toEqual({
+      ok: false,
+      host: 'desktop',
+      reason: 'native appearance host does not advertise acknowledged theme support',
+    });
   });
 });
 
