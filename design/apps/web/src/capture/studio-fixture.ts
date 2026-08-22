@@ -1375,7 +1375,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
   if (path === `${projectPrefix}/folders` && hasExactSearchParams(url, {})) return jsonResponse({ folders: [] });
   if (path === `${projectPrefix}/preview-url`) {
     const file = url.searchParams.get('file');
-    if (!hasExactSearchParams(url, { file: file ?? '' }) || !fileNames.includes(file ?? '')) {
+    if (!hasExactSearchParams(url, { file: file ?? '' }) || !(fileNames as readonly string[]).includes(file ?? '')) {
       return jsonResponse({ error: 'fixture file not found' }, 404);
     }
     return jsonResponse({ url: `${projectPrefix}/preview/${encodeURIComponent(file ?? '')}/` });
