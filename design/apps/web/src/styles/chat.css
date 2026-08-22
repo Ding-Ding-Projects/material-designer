@@ -2162,6 +2162,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .composer-send { transition: none; }
+}
+.composer-send:hover:not(:disabled) {
   background: var(--text);
   border-color: var(--text);
   box-shadow: var(--shadow-sm);
