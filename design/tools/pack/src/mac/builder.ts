@@ -1,14 +1,14 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import type { ToolPackConfig } from "../config.js";
+import type { ToolPackConfig } from "../config/index.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
 import {
   assertNodePtyRuntime,
   resolveNodePtyRuntimeArch,
 } from "../node-pty-runtime.js";
-import { macResources } from "../resources.js";
-import { electronBuilderVersionForAppVersion } from "../versions.js";
+import { macResources } from "../resources/index.js";
+import { electronBuilderVersionForAppVersion } from "../versioning/index.js";
 import { execFileAsync } from "./commands.js";
 import {
   ELECTRON_BUILDER_ASAR,
@@ -53,7 +53,7 @@ async function writeWebStandaloneHookConfig(config: ToolPackConfig, paths: MacPa
         pruneCopiedSharp: true,
         pruneRootNext: true,
         pruneRootSharp: true,
-        macAdhocBundleSign: false,
+        macAdhocBundleSign: !config.signed,
         resourceName: WEB_STANDALONE_RESOURCE_NAME,
         standaloneSourceRoot: join(webRoot, ".next", "standalone"),
         version: 1,
@@ -98,7 +98,7 @@ export async function runElectronBuilder(
     appId: identity.appId,
     artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,
     afterPack: webStandaloneHookConfigPath == null ? undefined : macResources.webStandaloneAfterPackHook,
-    afterSign: undefined,
+    afterSign: config.signed && config.macNotarize ? macResources.notarizeHook : undefined,
     asar: ELECTRON_BUILDER_ASAR,
     buildDependenciesFromSource: false,
     compression: config.macCompression,
@@ -129,13 +129,13 @@ export async function runElectronBuilder(
     mac: {
       category: "public.app-category.developer-tools",
       electronLanguages: MAC_ELECTRON_LANGUAGES,
-      entitlements: undefined,
-      entitlementsInherit: undefined,
+      entitlements: config.signed ? macResources.entitlements : undefined,
+      entitlementsInherit: config.signed ? macResources.entitlementsInherit : undefined,
       gatekeeperAssess: false,
-      hardenedRuntime: false,
+      hardenedRuntime: config.signed,
       icon: macResources.icon,
-      identity: null,
-      notarize: false,
+      identity: config.signed ? undefined : null,
+      notarize: config.macNotarize ? undefined : false,
       target: targets,
     },
     // Register the workspace-invite deeplink scheme so macOS routes
@@ -178,7 +178,7 @@ export async function runElectronBuilder(
     cwd: config.workspaceRoot,
     env: {
       ...process.env,
-      CSC_IDENTITY_AUTO_DISCOVERY: "false",
+      ...(config.signed ? {} : { CSC_IDENTITY_AUTO_DISCOVERY: "false" }),
       ...(webStandaloneHookConfigPath == null ? {} : { [WEB_STANDALONE_HOOK_CONFIG_ENV]: webStandaloneHookConfigPath }),
     },
   });

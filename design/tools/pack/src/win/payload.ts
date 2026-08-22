@@ -9,26 +9,19 @@ import {
   resolveLauncherVersionPaths,
 } from "@open-design/launcher-proto";
 
-import { hashJson, hashPath, type ToolPackCache } from "../cache.js";
-import type { ToolPackConfig } from "../config.js";
-// The packaged executable is named after the product, so this file must not
-// spell it out: a literal here and a constant in the builder is exactly how a
-// payload gets written under one name and validated under another.
-import { PRODUCT_NAME } from "./constants.js";
-import { winResources } from "../resources.js";
-import { electronBuilderVersionForAppVersion } from "../versions.js";
+import { hashJson, hashPath, type ToolPackCache } from "../cache/index.js";
+import type { ToolPackConfig } from "../config/index.js";
+import { winResources } from "../resources/index.js";
+import { electronBuilderVersionForAppVersion } from "../versioning/index.js";
 import {
   resolveToolPackLauncherChannel,
   resolveToolPackLauncherRoot,
-} from "../launcher-layout.js";
+} from "../launcher/layout.js";
 import { readPackagedVersion } from "./manifest.js";
 import { WIN_PAYLOAD_SEVEN_Z_CREATE_ARGS, resolveWinNsisOverlayRequiredPaths } from "./custom-installer.js";
 import type { WinBuiltAppManifest, WinPackTiming, WinPaths } from "./types.js";
 
 const execFileAsync = promisify(execFile);
-const PAYLOAD_EXECUTABLE_NAME = `${PRODUCT_NAME}.exe` as const;
-const PAYLOAD_ENTRY_EXECUTABLE = `payload/${PRODUCT_NAME}.exe` as const;
-
 const WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION = 2;
 const WIN_LAUNCHER_PAYLOAD_ARCHIVE_CACHE_VERSION = 2;
 
@@ -36,7 +29,7 @@ export type WinLauncherPayloadManifest = {
   channel: string;
   entry: {
     cwd: "payload";
-    executable: typeof PAYLOAD_ENTRY_EXECUTABLE;
+    executable: "payload/Open Design.exe";
   };
   namespace: string;
   payloadRoot: "payload";
@@ -54,7 +47,7 @@ export function buildWinLauncherPayloadManifest(input: {
     channel: input.channel,
     entry: {
       cwd: "payload",
-      executable: PAYLOAD_ENTRY_EXECUTABLE,
+      executable: "payload/Open Design.exe",
     },
     namespace: input.namespace,
     payloadRoot: "payload",
@@ -131,7 +124,7 @@ export async function buildWinLauncherPayloadArchive(
     await mkdir(join(overlayRoot, "payload", "resources"), { recursive: true });
     await writeFile(join(overlayRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     if (input.includeExecutable) {
-      await cp(join(builtApp.unpackedRoot, PAYLOAD_EXECUTABLE_NAME), join(overlayRoot, "payload", PAYLOAD_EXECUTABLE_NAME));
+      await cp(join(builtApp.unpackedRoot, "Open Design.exe"), join(overlayRoot, "payload", "Open Design.exe"));
     }
     await writeFile(
       join(overlayRoot, "payload", "resources", "open-design-config.json"),
@@ -335,9 +328,9 @@ export async function validateWinLauncherPayloadArchive(input: {
     requirePayloadManifestValue(manifest.platform, "platform", "win32");
     requirePayloadManifestValue(manifest.payloadRoot, "payloadRoot", "payload");
     requirePayloadManifestValue(manifest.entry?.cwd, "entry.cwd", "payload");
-    requirePayloadManifestValue(manifest.entry?.executable, "entry.executable", PAYLOAD_ENTRY_EXECUTABLE);
+    requirePayloadManifestValue(manifest.entry?.executable, "entry.executable", "payload/Open Design.exe");
 
-    await stat(join(extractRoot, archiveRelativePath(PAYLOAD_ENTRY_EXECUTABLE)));
+    await stat(join(extractRoot, archiveRelativePath("payload/Open Design.exe")));
     await stat(join(extractRoot, archiveRelativePath("payload/resources/open-design-config.json")));
     return { manifest, payloadPath, valid: true };
   } finally {
