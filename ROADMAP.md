@@ -45,13 +45,26 @@ with the project's standards.
       with exact folder-only `FileOk` validation. Built-artifact interaction proof
       remains pending the hosted package containing `cb03705b`.
 
-- [x] **Keep chat context project-wide across tab and file switches.** Commit
+- [~] **Keep chat context project-wide across tab and file switches.** Commits
       [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
       removes implicit primary-file/Design Files preview selection and binds the
       automatic context to the project. Follow-up
       [`d88178c5`](https://github.com/Ding-Ding-Projects/material-designer/commit/d88178c5)
       removes the remaining active-file attachment path; narrower evidence now
-      reaches a send only through an explicit user action.
+      reaches a send only through an explicit user action. Follow-up
+      [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+      repairs source reconciliation, removes the orphaned active-file mode and
+      filters host context admission to `kind === 'project'`; direct source
+      regressions are committed. Follow-up source cleanup removes the stale
+      `FileWorkspace` active-context callback and obsolete active-file style
+      assertions, while preserving the full context collection for explicit
+      `@` selection, quick switching and toolbox actions. The accessibility
+      follow-up keeps the project chip visible in the portalled composer,
+      namespaces combobox/listbox/tab/panel ids per composer, adds roving
+      category-tab keyboarding, exposes toolbox resource state as checked,
+      localizes workspace-kind and Current labels, and announces context
+      deltas through a polite live region. Hosted build/runtime interaction,
+      screen-reader traversal and capture evidence remain pending.
 
 - [ ] **Expose the production Library destination and field-owned search.**
       Source commit [`e4fcbfab1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e4fcbfab1680cde38235d663bb21f499d2d998d0)

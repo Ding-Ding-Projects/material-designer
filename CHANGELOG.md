@@ -313,6 +313,57 @@ version section when a release carries them.
   Project Locations 同 Critique 都各自有路。Focused source contracts 已經
   鎖住單一 section owner、單一 tab-strip owner、direct route 同 theme 行為；
   hosted build 同 installed renderer 證據仍未驗證。
+- **Project context disclosure now survives the portalled composer accessibly.** Commit
+  [`6bcd27b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6bcd27b8339a54cf1e7b06bbff49811ab17285c)
+  keeps the implicit project chip visible in the fixed composer layer while
+  file and browser context remain explicit-only. Each composer now owns a
+  `useId()`-derived combobox/listbox/tab/panel/option namespace; category tabs
+  support roving Left/Right/Home/End navigation, and toolbox resource rows
+  expose their attached state as `menuitemcheckbox`/`aria-checked`. A dedicated
+  polite live region announces localized added, removed and failed context
+  deltas without replaying the whole row. Focused source/component checks are
+  committed; follow-up commit [`0b11bf44`](https://github.com/Ding-Ding-Projects/material-designer/commit/0b11bf440eb585ad4b41261111f7e046233e26cb)
+  routes the final empty design-files and terminal descriptions through the
+  same locale keys. Hosted build, screen-reader traversal, installed
+  interaction and capture evidence remain pending.
+
+  Project context 依家喺 portalled composer 入面都照樣 accessible。`6bcd27b8`
+  令 implicit project chip 唔再畀 fixed layer 收埋，file 同 browser context
+  仍然要明確揀；每個 composer 有自己 `useId()` namespace，category tabs
+  支援 Left/Right/Home/End，toolbox resource row 有真實 checked state，
+  polite live region 只報告 localized delta。Focused source/component checks
+  已提交；follow-up `0b11bf44` 將最後嘅 design-files 同 terminal empty
+  description 都經同一套 locale keys 處理。Hosted build、screen-reader
+  traversal、installed interaction 同 capture 證據仍然 pending。
+
+- **The project-wide composer boundary no longer has a stale file-context hook.**
+  Commit [`5652e6c8`](https://github.com/Ding-Ding-Projects/material-designer/commit/5652e6c88cda2f671abaf6012b876ecdf8af1710)
+  removes `FileWorkspace`'s obsolete active-context callback and active-tab
+  memo/effect, deletes visual tests for the removed active-file chip, and keeps
+  the complete workspace context collection for explicit `@` selection, quick
+  switching and toolbox actions. Hosted build, runtime interaction and capture
+  evidence remain pending.
+
+  Project-wide composer boundary 而家冇殘留 file-context hook。`5652e6c8`
+  清走 `FileWorkspace` 舊 active-context callback 同 active-tab memo/effect，
+  又刪走已經唔存在嘅 active-file chip visual tests；完整 workspace context
+  collection 照樣畀明確 `@` selection、quick switching 同 toolbox actions 用。
+  Hosted build、runtime interaction 同 capture 證據仍然 pending。
+
+- **Project chat context now stays project-wide after source reconciliation.** Commit
+  [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+  removes the orphaned active-file symbols and file-mode styling that could return after
+  a merge, admits only `kind === 'project'` from the host's implicit context, and leaves
+  file/browser context on explicit `@`, toolbox, upload and attachment routes. Direct
+  component regressions cover a file-only active viewer, explicit `@file` selection,
+  folder-imported mounting and viewer-tab stability. Hosted build, runtime interaction
+  and capture evidence remain pending for this local development line.
+
+  Source reconciliation 之後，project chat context 又差啲畀舊 file mode 偷偷返生。
+  `6abc40be3` 清走孤兒 active-file symbols 同 styling，只准 host implicit context
+  入面 `kind === 'project'` 自動上車；file/browser 要靠明確 `@`、toolbox、upload
+  或 attachment。Direct component regression 已寫低，hosted build、runtime
+  interaction 同 capture 證據仍然 pending。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

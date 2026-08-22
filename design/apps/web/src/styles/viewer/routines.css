@@ -2525,11 +2525,6 @@ button.routines-item-delete:hover:not(:disabled) { color: var(--md-sys-color-err
   min-height: 56px;
   max-height: min(184px, 34vh);
 }
-.app .composer.composer-active-file-mode textarea,
-.chat-composer-fixed-layer .composer.composer-active-file-mode textarea {
-  min-height: clamp(150px, 20vh, 210px);
-  max-height: min(300px, 32vh);
-}
 .app .composer-row {
   min-height: 30px;
   padding-top: 6px;
@@ -4294,7 +4289,6 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .staged-preview-trigger:h
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-context-open,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button:hover,
-body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file,
 body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-chip-strip__chip {
   background: transparent;
   border-color: transparent;

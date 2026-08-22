@@ -4,6 +4,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useId,
   useRef,
 } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -165,7 +166,15 @@ export interface LexicalComposerInputProps {
   ): boolean;
   // Optional combobox a11y. When set, the ContentEditable announces the active
   // mention row (id lives in the portaled listbox) without moving DOM focus.
-  comboboxAria?: { activeId: string | null; expanded: boolean };
+  comboboxAria?: {
+    activeId: string | null;
+    expanded: boolean;
+    controlsId?: string;
+  };
+  // Stable per-composer id prefix shared with the portalled mention panel.
+  // Callers should pass the prefix from their own useId() so one page can
+  // host multiple composers without duplicate listbox/option ids.
+  a11yIdPrefix?: string;
   // Read-only mode (team-shared project viewer). Makes the Lexical editor
   // non-editable so the caret/typing is blocked, applies a muted read-only
   // visual state, and hard-stops Enter from firing a send (belt-and-suspenders
@@ -690,11 +699,14 @@ export const LexicalComposerInput = forwardRef<
     popoverOpen,
     onPopoverKey,
     comboboxAria,
+    a11yIdPrefix,
     inputDisabled = false,
     draft,
     title,
     testId = 'chat-composer-input',
   } = props;
+  const generatedA11yId = useId().replace(/:/g, '');
+  const resolvedA11yIdPrefix = a11yIdPrefix ?? `composer-${generatedA11yId}`;
   const editorRef = useRef<LexicalEditor | null>(null);
   // knownEntities can change asynchronously (file/plugin lists). Keep a ref so
   // the imperative handle's setText/insert paths always use the latest set
@@ -818,8 +830,14 @@ export const LexicalComposerInput = forwardRef<
               aria-placeholder={placeholder}
               title={title ?? placeholder}
               role="combobox"
+              aria-haspopup="listbox"
               aria-expanded={comboboxAria?.expanded ? 'true' : 'false'}
-              aria-controls="mention-listbox"
+              {...(comboboxAria?.expanded
+                ? {
+                    'aria-controls':
+                      comboboxAria.controlsId ?? `${resolvedA11yIdPrefix}-mention-listbox`,
+                  }
+                : {})}
               {...(comboboxAria?.activeId
                 ? { 'aria-activedescendant': comboboxAria.activeId }
                 : {})}

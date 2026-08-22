@@ -318,6 +318,69 @@ current-version themes, and validates the renderer-to-native theme bridge.
 - `apps/web/tests/components/appearance/RovingRadioGroup.test.tsx`
 - `apps/web/tests/components/SettingsDialog.search-removed.test.tsx`
 - `apps/web/tests/components/theme-settings-removed.test.tsx`
+### 2026-08-21 — Make project context and portalled composer controls accessible
+
+**Reason:** the portalled composer hid its project context chip, the mention
+categories used fixed ids and mouse-only tab movement, and toolbox resources
+communicated selection only through styling. The repair keeps project context
+visible in the actual fixed layer while file and browser context remain
+explicit-only, gives every composer an instance-owned accessibility namespace,
+adds tabpanel/listbox relationships with roving keyboard tabs, exposes resource
+selection as `menuitemcheckbox`, and announces only localized context deltas in
+a polite live region. A shared workspace-kind helper now localizes the labels
+through existing locale/funny-level paths without altering user paths or names.
+Focused source/component checks cover the negative fixed-id and hardcoded-label
+boundaries, plus the live-region contract. Hosted build, runtime interaction
+and capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/HomeHero.tsx`
+- `apps/web/src/components/QuickSwitcher.tsx`
+- `apps/web/src/components/composer/LexicalComposerInput.tsx`
+- `apps/web/src/components/workspace-context.ts`
+- `apps/web/src/styles/chat.css`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+
+### 2026-08-21 — Remove stale implicit file-context contracts after reconciliation
+
+**Reason:** source reconciliation left `FileWorkspace` with an obsolete callback
+that rebuilt the composer's implicit context from the active file or tab, while
+its visual regression tests still expected a removed active-file chip and CSS
+rule. The workspace now keeps the complete context collection for explicit `@`
+selection, quick switching and toolbox actions, while `ProjectView` remains the
+sole owner of the stable project context. Exact source assertions protect both
+the callback and selector removal. This is source-level work; hosted build,
+runtime interaction and capture evidence remain pending.
+
+**Changed files:**
+
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+- `apps/web/tests/components/FileWorkspace.test.tsx`
+- `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
+
+### 2026-08-21 — Keep automatic composer context project-only after source reconciliation
+
+**Reason:** a later source reconciliation reintroduced an orphaned active-file name and
+the obsolete file-mode styling path into the chat composer. The composer now accepts only
+the host's `project` context implicitly, so changing a visible file or browser tab cannot
+change the next project-wide send. File and browser context remain available through
+explicit `@` selection, toolbox actions, uploads and attachments. Direct component
+regressions cover the file-only active state, explicit file selection, folder-imported
+mounting and stable project context across viewer-tab changes; an exact source check keeps
+the removed identifiers and mode class from returning. This lane contains no hosted build,
+runtime interaction or capture verdict.
+
+**Changed files:**
+
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/styles/chat.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
+- `apps/web/tests/components/ChatComposer.search.test.tsx`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
 

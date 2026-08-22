@@ -332,6 +332,55 @@
 > also removes the separate folder-project path that attached the currently
 > visible file to every send. Explicit file selection remains available through
 > the file controls and `@` picker.
+>
+> **Project-file context repair — 2026-08-21, local development line only.** Commit
+> [`6abc40be3`](https://github.com/Ding-Ding-Projects/material-designer/commit/6abc40be3c24f3f2df20ad323034ab4f894310f6)
+> repairs source reconciliation, which had reintroduced an undeclared
+> active-file symbol and the
+> obsolete file-mode class into `ChatComposer`. The follow-up removes those
+> paths, admits only `kind === 'project'` from the host's implicit context, and
+> keeps file/browser context on explicit `@`, toolbox, upload and attachment
+> routes. Direct component regressions cover file-only active context, explicit
+> file selection, folder-imported mounting and stable project context across
+> viewer-tab changes; an exact source check protects the removal. Hosted
+> build/runtime/capture verification remains pending in this local handoff.
+> **Final file-context boundary cleanup — 2026-08-21, source-only.** The
+> follow-up source review found that `FileWorkspace` still carried an obsolete
+> active-context callback and that workspace visual tests still described the
+> removed active-file chip. The callback, its active-tab memo/effect and the two
+> callback-based tests are removed. The complete `workspaceContexts` collection
+> remains published for explicit `@` selection, quick switching and toolbox
+> actions; `ProjectView` remains the stable project-context owner. Exact source
+> regressions also reject the callback and active-file selector from returning.
+> No hosted build, runtime interaction or capture evidence was run; those gates
+> remain open.
+
+> **Composer accessibility repair — 2026-08-21, source-only.** Commit
+> [`6bcd27b8`](https://github.com/Ding-Ding-Projects/material-designer/commit/6bcd27b8339a54cf1e7b06bbff49811ab17285c)
+> repairs the accepted accessibility findings for the project-wide file-context
+> lane. The body-level portalled composer now keeps the implicit project chip
+> visible; the automatic boundary still admits only `kind === 'project'`, so a
+> visible file or browser tab cannot become implicit context. `useId()` prefixes
+> are threaded through the Lexical combobox, mention tabs/panel/listbox/options
+> and slash list, preventing collisions between two composers. Mention category
+> tabs use roving `tabIndex` and Left/Right/Home/End; the result list keeps
+> Up/Down/Enter. Toolbox file and resource rows expose active state as
+> `menuitemcheckbox` with `aria-checked`. A visually hidden polite live region
+> announces localized added, removed and failed context deltas without replaying
+> the full chip row, and one shared translated workspace-kind helper plus the
+> existing localized Current key covers all call sites while preserving user
+> paths and names. Follow-up commit
+> [`0b11bf44`](https://github.com/Ding-Ding-Projects/material-designer/commit/0b11bf440eb585ad4b41261111f7e046233e26cb)
+> also routes empty design-files and terminal descriptions through those same
+> locale keys.
+>
+> Static evidence: `git diff --check` passed; Git Bash
+> `sh scripts/verify-port.sh` and `sh scripts/verify-port.sh --json` both passed
+> with 12,835 expected upstream files, 13,080 tracked files, 584 declared
+> modifications, and zero gaps. No Node, pnpm, Electron, hosted build, runtime
+> interaction, screen-reader traversal or screenshot capture was run in this
+> lane; those are pending on the supported hosted path.
+>
 > Release [`32438682495`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32438682495)
 > then exposed a workflow-only PowerShell boundary: ordinary tools-pack stderr
 > progress was promoted to a terminating `NativeCommandError` before the native

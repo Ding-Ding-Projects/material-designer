@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -383,9 +384,14 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   ref,
 ) {
   const { locale, t } = useI18n();
+  const composerA11yId = useId().replace(/:/g, '');
   const analytics = useAnalytics();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [mentionTab, setMentionTab] = useState<HomeMentionTab>('all');
+  const mentionTabRefs = useRef(new Map<HomeMentionTab, HTMLButtonElement>());
+  const mentionTabId = (id: HomeMentionTab) => `${composerA11yId}-home-tab-${id}`;
+  const mentionPanelId = `${composerA11yId}-home-panel-${mentionTab}`;
+  const mentionListboxId = `${composerA11yId}-home-listbox`;
   const [hoveredPlugin, setHoveredPlugin] = useState<InstalledPluginRecord | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
@@ -1146,6 +1152,20 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     if (!active) dismissMentionPicker();
   }, [active]);
 
+  function moveMentionTab(direction: 'previous' | 'next' | 'first' | 'last') {
+    const index = tabs.findIndex((item) => item.id === mentionTab);
+    const nextIndex = direction === 'first'
+      ? 0
+      : direction === 'last'
+        ? tabs.length - 1
+        : (index + (direction === 'next' ? 1 : -1) + tabs.length) % tabs.length;
+    const next = tabs[nextIndex];
+    if (!next) return;
+    setMentionTab(next.id);
+    setSelectedIndex(0);
+    mentionTabRefs.current.get(next.id)?.focus();
+  }
+
   // Routes popover navigation keys from the Lexical editor over the visible
   // picker option union. Returns true when consumed so the editor can
   // preventDefault.
@@ -1613,7 +1633,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 key={`ctx-workspace-${item.id}`}
                 className="home-hero__active-chip home-hero__active-chip--context"
                 data-testid={`home-hero-context-workspace-${item.id}`}
-                typeLabel={workspaceContextKindLabel(item.kind)}
+                typeLabel={workspaceContextKindLabel(item.kind, t)}
                 detail={workspaceContextDetailLine(item)}
               >
                 <span className="home-hero__active-icon" aria-hidden>
@@ -1650,6 +1670,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           <div ref={promptEditorRef} className="home-hero__prompt-editor home-hero__lexical">
             <LexicalComposerInput
               ref={editorRef}
+              a11yIdPrefix={composerA11yId}
               testId="home-hero-input"
               draft={prompt}
               // While the carousel animates, blank the editor's own placeholder
@@ -1681,7 +1702,10 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               onPopoverKey={handlePopoverKey}
               comboboxAria={{
                 expanded: pickerOpen,
-                activeId: pickerOpen ? `home-hero-option-${selectedIndex}` : null,
+                activeId: pickerOpen
+                  ? `${composerA11yId}-home-option-${selectedIndex}`
+                  : null,
+                controlsId: `${composerA11yId}-home-listbox`,
               }}
             />
             <PlaceholderCarousel
@@ -1695,24 +1719,51 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         <CaretFloatingLayer caret={caretRect} open={pickerOpen}>
           <div
             ref={mentionPickerRef}
-            id="home-hero-context-picker"
+            id={mentionListboxId}
             className="home-hero__plugin-picker home-hero__plugin-picker--floating"
             role="listbox"
             aria-label={t('homeHero.contextSearchResults')}
             data-testid="home-hero-plugin-picker"
           >
-            <div className="home-hero__mention-tabs" role="tablist" aria-label={t('homeHero.contextSurfaces')}>
+            <div
+              className="home-hero__mention-tabs"
+              role="tablist"
+              aria-label={t('homeHero.contextSurfaces')}
+              aria-orientation="horizontal"
+            >
               {tabs.map((item) => (
                 <button
                   key={item.id}
+                  ref={(node) => {
+                    if (node) mentionTabRefs.current.set(item.id, node);
+                    else mentionTabRefs.current.delete(item.id);
+                  }}
+                  id={mentionTabId(item.id)}
                   type="button"
                   role="tab"
                   aria-selected={mentionTab === item.id}
+                  aria-controls={mentionPanelId}
+                  tabIndex={mentionTab === item.id ? 0 : -1}
                   className={`home-hero__mention-tab${mentionTab === item.id ? ' is-active' : ''}`}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => {
                     setMentionTab(item.id);
                     setSelectedIndex(0);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowRight') {
+                      event.preventDefault();
+                      moveMentionTab('next');
+                    } else if (event.key === 'ArrowLeft') {
+                      event.preventDefault();
+                      moveMentionTab('previous');
+                    } else if (event.key === 'Home') {
+                      event.preventDefault();
+                      moveMentionTab('first');
+                    } else if (event.key === 'End') {
+                      event.preventDefault();
+                      moveMentionTab('last');
+                    }
                   }}
                 >
                   <span>{item.label}</span>
@@ -1720,7 +1771,12 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 </button>
               ))}
             </div>
-            <div className="home-hero__plugin-picker-results">
+            <div
+              className="home-hero__plugin-picker-results"
+              id={mentionPanelId}
+              role="tabpanel"
+              aria-labelledby={mentionTabId(mentionTab)}
+            >
               {visibleLoading && visiblePickerOptions.length === 0 ? (
                 <div className="home-hero__plugin-picker-empty">{t('homeHero.loadingContext')}</div>
               ) : null}
@@ -1742,7 +1798,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                     return (
                       <button
                         key={item.id}
-                        id={`home-hero-option-${optionIndex}`}
+                        id={`${composerA11yId}-home-option-${optionIndex}`}
                         type="button"
                         role="option"
                         aria-selected={optionIndex === selectedIndex}
