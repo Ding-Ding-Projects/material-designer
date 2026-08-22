@@ -398,9 +398,9 @@
 > unready.
 
 > **Folder-browser repair handoff — 2026-08-21.** Commit
-> [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
-> is complete on `codex/folder-browser-final-repair` and is not yet merged or
-> pushed. It removes the two folder-picker compiler blockers, routes the picker
+> [`1fc182710`](https://github.com/Ding-Ding-Projects/material-designer/commit/1fc182710)
+> integrates the repair on the default branch. It removes the two folder-picker
+> compiler blockers, routes the picker
 > title and failure copy through typed locale dictionaries, adds English and
 > Hong Kong Cantonese funny-level overrides, restores the owning window and
 > originating trigger focus, and strengthens source checks for the Explorer

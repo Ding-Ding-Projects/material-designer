@@ -589,7 +589,7 @@ version section when a release carries them.
   launcher 路徑冇改，依然只係 source-level evidence。
 - **The full folder browser now carries localized title and failure copy
   through every desktop and daemon picker boundary.** Commit
-  [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
+  [`1fc182710`](https://github.com/Ding-Ding-Projects/material-designer/commit/1fc182710)
   repairs the duplicate `message` property in `NewProjectPanel`, removes the
   two-argument `HomeView` state-setter calls, keeps cancellation separate from
   failures, restores the owning window and originating trigger focus, and adds

@@ -98,7 +98,7 @@ with the project's standards.
       browser.** The daemon fallback now carries address/breadcrumb navigation,
       search, sidebar locations, folder contents/details and new-folder support,
       with exact folder-only `FileOk` validation. Commit
-      [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
+      [`1fc182710`](https://github.com/Ding-Ding-Projects/material-designer/commit/1fc182710)
       repairs the typed failure/cancel paths, localized title propagation and
       parent/trigger focus restoration. Built-artifact interaction proof remains
       pending the hosted package containing the repaired source.
