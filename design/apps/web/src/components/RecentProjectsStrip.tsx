@@ -6,6 +6,7 @@
 // onOpen / onViewAll) so the strip can be reused later by other
 // surfaces (e.g. an in-project quick-switcher pane).
 
+import type { CSSProperties } from 'react';
 import {
   useCallback,
   useEffect,
@@ -14,7 +15,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
 } from 'react';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 
@@ -26,7 +26,6 @@ import {
   invalidateProjectFilesCache,
 } from '../providers/registry';
 import type { DesignSystemSummary, Project, ProjectDisplayStatus, ProjectFile } from '../types';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { Icon } from './Icon';
 import { InviteDialog } from './InviteDialog';
 import { STATUS_LABEL_KEYS } from './DesignsTab';
@@ -562,7 +561,6 @@ export function RecentProjectsStrip({
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const renameTitleId = useId();
-  const actionsAvailable = Boolean(onDelete || onDuplicate || onRename);
   const confirmTitleId = useId();
   const moveTitleId = useId();
   const bulkMoveTitleId = useId();
@@ -1199,18 +1197,6 @@ export function RecentProjectsStrip({
     });
   }
 
-  /**
-   * Run the delete the gate has authorized.
-   *
-   * Returns the handler's own verdict rather than swallowing it: a `false`
-   * holds the gate open reporting the failure, instead of closing over a
-   * project that is still there. The gate closes itself through `onClose`, so
-   * nothing here clears `confirmTarget` — doing both would unmount the gate
-   * mid-action and lose the outcome.
-   */
-  async function commitDelete(target: Project): Promise<boolean> {
-    if (!onDelete) return false;
-    return (await onDelete(target.id)) !== false;
   async function commitDelete() {
     if (!confirmTarget || !onDelete || deletePending) return;
     const target = confirmTarget;
@@ -2085,25 +2071,7 @@ export function RecentProjectsStrip({
           </DialogFooter>
         </Dialog>
       ) : null}
-      {/* Deleting a project from here destroys exactly what deleting it from
-          the Projects tab destroys — its files, its conversations, its
-          artifacts, and nothing in this product puts them back. This strip used
-          to ask with a single-button confirm, so the route a user takes to the
-          same irreversible operation decided how much ceremony guarded it, and
-          the shortest route had the least. Same gate, same copy, same weight:
-          the keys and the slider now stand in front of the deletion rather than
-          in front of one of the two doors to it. */}
       {confirmTarget ? (
-        <>
-        <DestructiveGate
-          action={t('designs.deleteTitle')}
-          target={confirmTarget.name}
-          items={[t('designs.deleteGateProjectItem', { name: confirmTarget.name })]}
-          detail={t('designs.deleteGateProjectDetail')}
-          irreversible
-          onConfirm={() => commitDelete(confirmTarget)}
-          onClose={() => setConfirmTarget(null)}
-        />
         <Dialog
           className="modal-confirm"
           role="alertdialog"
@@ -2145,7 +2113,6 @@ export function RecentProjectsStrip({
             </button>
           </DialogFooter>
         </Dialog>
-        </>
       ) : null}
       {moveTarget ? (
         <Dialog
