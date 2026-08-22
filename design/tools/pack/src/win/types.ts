@@ -6,10 +6,10 @@ import type {
   DesktopUpdateResult,
   WebStatusSnapshot,
 } from "@open-design/sidecar-proto";
-import type { ToolPackLauncherRuntimeSnapshot } from "../launcher-runtime-snapshot.js";
-import type { ToolPackUpdateCacheLifecycleSnapshot } from "../update-cache-lifecycle-snapshot.js";
-import type { CacheReport } from "../cache.js";
-import type { ToolPackConfig } from "../config.js";
+import type { ToolPackLauncherRuntimeSnapshot } from "../launcher/runtime-snapshot.js";
+import type { ToolPackUpdateCacheLifecycleSnapshot } from "../updates/cache-lifecycle-snapshot.js";
+import type { CacheReport } from "../cache/index.js";
+import type { ToolPackConfig } from "../config/index.js";
 import type { INTERNAL_PACKAGES } from "./constants.js";
 
 export type PackedTarballInfo = {
@@ -115,10 +115,6 @@ export type WinPackResult = {
   cacheReport: CacheReport;
   segments: WinPackTiming[];
   sizeReport: WinSizeReport;
-  squirrelDeltaPackagePaths: string[];
-  squirrelFullPackagePaths: string[];
-  squirrelReleasesPath: string | null;
-  squirrelSetupPath: string | null;
   timings: WinPackTiming[];
   to: ToolPackConfig["to"];
   unpackedPath: string | null;
@@ -143,7 +139,7 @@ export type WinSizeReport = {
     };
     nodeGypRebuild: boolean;
     npmRebuild: boolean;
-    targets: Array<"dir" | "nsis" | "squirrel" | "zip">;
+    targets: Array<"dir" | "nsis" | "zip">;
     webOutputMode: ToolPackConfig["webOutputMode"];
   };
   generatedAt: string;
@@ -217,12 +213,6 @@ export type WinInstallPayloadReport = {
     fileCount: number;
     path: string;
   }>;
-};
-
-export type WinSquirrelInstalledPaths = {
-  installDir: string;
-  installedExePath: string;
-  updateExePath: string;
 };
 
 export type WinLifecycleTiming = {
