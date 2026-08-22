@@ -97,8 +97,11 @@ with the project's standards.
 - [x] **Replace the tree-only Windows folder picker with the full Explorer
       browser.** The daemon fallback now carries address/breadcrumb navigation,
       search, sidebar locations, folder contents/details and new-folder support,
-      with exact folder-only `FileOk` validation. Built-artifact interaction proof
-      remains pending the hosted package containing `cb03705b`.
+      with exact folder-only `FileOk` validation. Commit
+      [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
+      repairs the typed failure/cancel paths, localized title propagation and
+      parent/trigger focus restoration. Built-artifact interaction proof remains
+      pending the hosted package containing the repaired source.
 
 - [~] **Keep chat context project-wide across tab and file switches.** Commits
       [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)

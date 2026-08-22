@@ -1031,7 +1031,7 @@ export const id: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Folder',
+  'workingDirPicker.title': 'Pilih folder kode untuk ditautkan',
   'workingDirPicker.homeTitle': 'Disimpan di penyimpanan lokal — klik untuk memilih folder',
   'workingDirPicker.processing': 'Memproses…',
   'workingDirPicker.select': 'Penyimpanan lokal',

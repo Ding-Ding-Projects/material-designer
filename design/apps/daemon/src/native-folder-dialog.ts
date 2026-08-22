@@ -3,6 +3,12 @@ export interface NativeFolderDialogCommand {
   args: string[];
 }
 
+export const DEFAULT_FOLDER_DIALOG_TITLE = 'Select a code folder to link';
+
+function escapePowerShellSingleQuotedString(value: string): string {
+  return value.replace(/'/g, "''").slice(0, 200);
+}
+
 function errorCode(error: unknown): unknown {
   return error && typeof error === 'object' && 'code' in error
     ? (error as { code?: unknown }).code
@@ -22,10 +28,12 @@ function hardLinuxFolderDialogFailure(error: unknown, stderrText: string): strin
   return null;
 }
 
-const WINDOWS_FOLDER_DIALOG_SCRIPT = [
+function windowsFolderDialogScript(title: string): string {
+  const safeTitle = escapePowerShellSingleQuotedString(title.trim() || DEFAULT_FOLDER_DIALOG_TITLE);
+  return [
   'Add-Type -AssemblyName System.Windows.Forms;',
   '$owner = New-Object System.Windows.Forms.Form;',
-  "$owner.Text = 'OpenDesign';",
+  "$owner.Text = 'Material Designer';",
   '$owner.TopMost = $true;',
   '$owner.ShowInTaskbar = $true;',
   "$owner.StartPosition = 'CenterScreen';",
@@ -37,7 +45,7 @@ const WINDOWS_FOLDER_DIALOG_SCRIPT = [
   // A non-existent sentinel filename lets the user select the directory they
   // are currently browsing without requiring a real file.
   '$dialog = New-Object System.Windows.Forms.OpenFileDialog;',
-  "$dialog.Title = 'Select a code folder to link';",
+  `$dialog.Title = '${safeTitle}';`,
   "$sentinel = '__MATERIAL_DESIGNER_SELECT_FOLDER__';",
   '$script:selectedPath = $null;',
   "$dialog.Filter = 'Folders|*.folder';",
@@ -76,12 +84,13 @@ const WINDOWS_FOLDER_DIALOG_SCRIPT = [
   '  $dialog.Dispose();',
   '  $owner.Dispose();',
   '}',
-].join(' ');
+  ].join(' ');
+}
 
-export function buildWindowsFolderDialogCommand(): NativeFolderDialogCommand {
+export function buildWindowsFolderDialogCommand(title = DEFAULT_FOLDER_DIALOG_TITLE): NativeFolderDialogCommand {
   return {
     command: 'powershell.exe',
-    args: ['-NoProfile', '-Sta', '-Command', WINDOWS_FOLDER_DIALOG_SCRIPT],
+    args: ['-NoProfile', '-Sta', '-Command', windowsFolderDialogScript(title)],
   };
 }
 

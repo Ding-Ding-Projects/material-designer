@@ -112,12 +112,13 @@ export async function pickAndImportHostProject(
 /** Pick and replace a project's working directory through the host. */
 export async function pickAndReplaceHostProjectWorkingDir(
   projectId: string,
+  folderDialogTitle?: string,
   scope: OpenDesignHostGlobalScope = globalThis,
 ): Promise<OpenDesignHostProjectReplaceWorkingDirResult> {
   const host = getOpenDesignHost(scope);
   if (host == null) return unavailable("OpenDesign host is not available");
   try {
-    return await host.project.pickAndReplaceWorkingDir(projectId);
+    return await host.project.pickAndReplaceWorkingDir(projectId, folderDialogTitle);
   } catch (error) {
     return unavailable(error instanceof Error ? error.message : String(error));
   }
@@ -128,6 +129,7 @@ export async function pickAndReplaceHostProjectWorkingDir(
 // this to let the user choose a working directory before the project exists;
 // the token is later spent on POST /api/projects/:id/working-dir.
 export async function pickHostWorkingDir(
+  folderDialogTitle?: string,
   scope: OpenDesignHostGlobalScope = globalThis,
 ): Promise<OpenDesignHostPickWorkingDirResult> {
   const host = getOpenDesignHost(scope);
@@ -136,7 +138,7 @@ export async function pickHostWorkingDir(
     return unavailable("host build does not support pickWorkingDir");
   }
   try {
-    return await host.project.pickWorkingDir();
+    return await host.project.pickWorkingDir(folderDialogTitle);
   } catch (error) {
     return unavailable(error instanceof Error ? error.message : String(error));
   }

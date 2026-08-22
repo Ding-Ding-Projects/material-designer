@@ -770,7 +770,7 @@ export function DesignSystemCreationFlow({
 
   async function handlePickCodeFolder() {
     emitCreateFormClick('browse_folder');
-    const selected = await openFolderDialog();
+    const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
     if (!selected) return;
     setState((curr) => ({
       ...curr,

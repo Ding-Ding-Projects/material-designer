@@ -1031,7 +1031,7 @@ export const ja: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'フォルダ',
+  'workingDirPicker.title': 'リンクするコードフォルダーを選択',
   'workingDirPicker.homeTitle': 'ローカルストレージに保存 — クリックしてフォルダを選択',
   'workingDirPicker.processing': '処理中…',
   'workingDirPicker.select': 'ローカルストレージ',

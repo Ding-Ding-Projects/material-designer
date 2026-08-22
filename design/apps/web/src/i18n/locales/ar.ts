@@ -1031,7 +1031,7 @@ export const ar: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'مجلد',
+  'workingDirPicker.title': 'اختيار مجلد تعليمات برمجية لربطه',
   'workingDirPicker.homeTitle': 'محفوظ في التخزين المحلي — انقر لاختيار مجلد',
   'workingDirPicker.processing': 'جارٍ المعالجة…',
   'workingDirPicker.select': 'التخزين المحلي',

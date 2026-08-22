@@ -587,6 +587,25 @@ version section when a release carries them.
   `capture.renderer_process_gone`，正常 shutdown 就保持安靜；capture 仲會
   override namespace 同 `OD_DATA_DIR`，用自己嘅 user-data namespace。普通
   launcher 路徑冇改，依然只係 source-level evidence。
+- **The full folder browser now carries localized title and failure copy
+  through every desktop and daemon picker boundary.** Commit
+  [`aa8708d1`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa8708d1fc2afdeb8b99787db90809aa9509341a)
+  repairs the duplicate `message` property in `NewProjectPanel`, removes the
+  two-argument `HomeView` state-setter calls, keeps cancellation separate from
+  failures, restores the owning window and originating trigger focus, and adds
+  source regressions for `OpenFileDialog`, the sentinel, path characters,
+  empty/nonempty folders, files, missing folders, and localized titles. The
+  title uses the typed locale dictionary in all shipped locales, with English
+  and Hong Kong Cantonese funny-level overrides. Pure-shell verification is
+  green; hosted typecheck, packaged interaction and installed capture remain
+  unrun in this lane.
+
+  Full folder browser 而家由 renderer、host、preload、main 到 daemon 都帶住
+  localized title 同 failure copy 行，`NewProjectPanel` duplicate `message` 同
+  `HomeView` 兩個參數嘅 state setter 都執返好。Cancel 同 failure 分開，owner
+  window 同原本 trigger 會返 focus，`OpenFileDialog`、sentinel、Unicode、空/非空
+  folder、file、missing path 同 title 都有 source regression。純 shell verifier
+  已綠；hosted typecheck、packaged interaction 同 installed capture 今個 lane 未跑。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

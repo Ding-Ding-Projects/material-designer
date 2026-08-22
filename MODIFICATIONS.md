@@ -5138,6 +5138,60 @@ their separate launch configuration.
 - `tools/pack/src/win/manifest.ts`
 - `tools/pack/tests/win-manifest.test.ts`
 
+### 2026-08-21 — Localized full-folder browser and focus-safe failure paths
+
+**Reason:** the Explorer-style replacement was source-complete but its host
+failure path still carried duplicate TypeScript properties, Home passed two
+arguments to a one-argument state setter, and the native title/error copy was
+not routed through the typed locale dictionaries. The desktop picker now
+passes the localized title through the host/preload/main/daemon boundary,
+restores the owning window and renderer trigger focus after success, cancel or
+failure, and has source checks for the exact dialog, path, and result contracts.
+
+**Changed files:**
+
+- `apps/daemon/src/native-folder-dialog.ts`
+- `apps/daemon/src/routes/media.ts`
+- `apps/daemon/src/server.ts`
+- `apps/daemon/tests/native-folder-dialog.test.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/folder-picker-contract.test.ts`
+- `apps/web/src/components/ChatComposer.tsx`
+- `apps/web/src/components/DesignSystemFlow.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/NewProjectPanel.tsx`
+- `apps/web/src/components/WorkingDirPicker.tsx`
+- `apps/web/src/components/useOpenFolderImport.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/src/state/projects.ts`
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/web/tests/state/projects.test.ts`
+- `packages/host/src/actions.ts`
+- `packages/host/src/protocol.ts`
+
 ### 2026-08-20 — Full Explorer folder browser on Windows
 
 **Reason:** the daemon fallback used WinForms `FolderBrowserDialog`, which is a

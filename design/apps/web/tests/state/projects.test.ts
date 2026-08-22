@@ -2121,6 +2121,22 @@ describe('pickLocalFolderPath', () => {
 
     await expect(pickLocalFolderPath()).rejects.toThrow('cross-origin request rejected');
   });
+
+  it('sends the typed localized title while preserving the selected path', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(
+      JSON.stringify({ path: "C:\\Users\\Ada\\O'Brien\\素材" }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(pickLocalFolderPath({ title: '揀一個要連結嘅程式碼資料夾' }))
+      .resolves.toBe("C:\\Users\\Ada\\O'Brien\\素材");
+    expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: '揀一個要連結嘅程式碼資料夾' }),
+    });
+  });
 });
 
 describe('moveWorkspaceProject error surfaces (recvqzjnshIlOe)', () => {

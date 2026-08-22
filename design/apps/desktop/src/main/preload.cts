@@ -203,12 +203,12 @@ const project = {
     ipcRenderer.invoke('dialog:pick-and-import', init ?? null)
       .then(normalizeProjectImportResult)
       .catch((error: unknown) => importFailure(reasonFromError(error))),
-  pickAndReplaceWorkingDir: (projectId: string): Promise<OpenDesignHostProjectReplaceWorkingDirResult> =>
-    ipcRenderer.invoke('dialog:pick-and-replace-working-dir', { projectId })
+  pickAndReplaceWorkingDir: (projectId: string, folderDialogTitle?: string): Promise<OpenDesignHostProjectReplaceWorkingDirResult> =>
+    ipcRenderer.invoke('dialog:pick-and-replace-working-dir', { projectId, folderDialogTitle })
       .then(normalizeProjectReplaceWorkingDirResult)
       .catch((error: unknown) => replaceWorkingDirFailure(reasonFromError(error))),
-  pickWorkingDir: (): Promise<OpenDesignHostPickWorkingDirResult> =>
-    ipcRenderer.invoke('dialog:pick-working-dir')
+  pickWorkingDir: (folderDialogTitle?: string): Promise<OpenDesignHostPickWorkingDirResult> =>
+    ipcRenderer.invoke('dialog:pick-working-dir', { folderDialogTitle })
       .then(normalizePickWorkingDirResult)
       .catch((error: unknown) => pickWorkingDirFailure(reasonFromError(error))),
 };

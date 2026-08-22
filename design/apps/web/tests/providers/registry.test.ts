@@ -1122,6 +1122,21 @@ describe('openFolderDialog', () => {
     await expect(openFolderDialog({ throwOnError: true }))
       .rejects.toThrow('Could not open folder picker: zenity is not installed');
   });
+
+  it('sends the typed localized title without changing the fail-soft cancel contract', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(
+      JSON.stringify({ path: null }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(openFolderDialog({ title: 'Select a code folder to link' })).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith('/api/dialog/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Select a code folder to link' }),
+    });
+  });
 });
 
 describe('fetchSkillExample', () => {

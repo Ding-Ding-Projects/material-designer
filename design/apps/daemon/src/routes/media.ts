@@ -759,7 +759,8 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       return res.status(403).json({ error: 'cross-origin request rejected' });
     }
     try {
-      const selected = await openNativeFolderDialog();
+      const requestedTitle = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 200) : '';
+      const selected = await openNativeFolderDialog(requestedTitle || undefined);
       res.json({ path: selected });
     } catch (err: any) {
       res

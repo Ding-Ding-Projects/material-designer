@@ -67,6 +67,7 @@ export const zhHK: Dict = {
   'handoff.privacyNote': '匯出用 v1 schema，唔包括私人用戶資料、credentials、機器 path 同執行時 payload。固定登記冊欄位可以忠實匯出 CSV。',
 
   // Common
+  "workingDirPicker.title": "揀一個要連結嘅程式碼資料夾",
   "common.cancel": "算數",
   "common.save": "儲存",
   "common.close": "閂咗佢",

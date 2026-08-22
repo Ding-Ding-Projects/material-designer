@@ -33,23 +33,56 @@ describe('native folder dialog helpers', () => {
   it('uses the full Explorer-style Windows folder browser', () => {
     const script = buildWindowsFolderDialogCommand().args[3] ?? '';
 
-    expect(script).toContain('$dialog = New-Object System.Windows.Forms.OpenFileDialog;');
-    expect(script).not.toContain('FolderBrowserDialog');
-    expect(script).toContain('$dialog.AutoUpgradeEnabled = $true;');
-    expect(script).toContain('$dialog.CheckFileExists = $false;');
-    expect(script).toContain('$dialog.CheckPathExists = $true;');
-    expect(script).toContain('$dialog.ValidateNames = $false;');
-    expect(script).toContain("$dialog.InitialDirectory = [Environment]::GetFolderPath('UserProfile');");
-    expect(script).toContain('$dialog.add_FileOk({');
-    expect(script).toContain('[IO.Directory]::Exists($raw)');
-    expect(script).toContain('[IO.Path]::GetFileName($raw)');
-    expect(script).toContain('[StringComparison]::OrdinalIgnoreCase');
-    expect(script).toContain('$eventArgs.Cancel = $true;');
-    expect(script).toContain('$dialog.ShowDialog($owner)');
-    expect(script).toContain('[IO.Path]::GetDirectoryName($raw)');
-    expect(script).toContain('[IO.Path]::GetFullPath($parent)');
-    expect(script).toContain('$dialog.Dispose();');
-    expect(script).toContain('$owner.Dispose();');
+    expect(script).toMatch(/\$dialog = New-Object System\.Windows\.Forms\.OpenFileDialog;/);
+    expect(script).not.toMatch(/\bFolderBrowserDialog\b/);
+    expect(script).toMatch(/\$owner\.Text = 'Material Designer';/);
+    expect(script).toMatch(/\$dialog\.AutoUpgradeEnabled = \$true;/);
+    expect(script).toMatch(/\$dialog\.CheckFileExists = \$false;/);
+    expect(script).toMatch(/\$dialog\.CheckPathExists = \$true;/);
+    expect(script).toMatch(/\$dialog\.ValidateNames = \$false;/);
+    expect(script).toMatch(/\$dialog\.InitialDirectory = \[Environment\]::GetFolderPath\('UserProfile'\);/);
+    expect(script).toMatch(/\$dialog\.add_FileOk\(\{/);
+    expect(script).toMatch(/\[IO\.Directory\]::Exists\(\$raw\)/);
+    expect(script).toMatch(/\[IO\.Path\]::GetFileName\(\$raw\)/);
+    expect(script).toMatch(/\[StringComparison\]::OrdinalIgnoreCase/);
+    expect(script).toMatch(/\$eventArgs\.Cancel = \$true;/);
+    expect(script).toMatch(/\$dialog\.ShowDialog\(\$owner\)/);
+    expect(script).toMatch(/\[IO\.Path\]::GetDirectoryName\(\$raw\)/);
+    expect(script).toMatch(/\[IO\.Path\]::GetFullPath\(\$parent\)/);
+    expect(script).toMatch(/\$dialog\.Dispose\(\);/);
+    expect(script).toMatch(/\$owner\.Dispose\(\);/);
+  });
+
+  it('keeps the localized title in the native command without allowing script injection', () => {
+    const script = buildWindowsFolderDialogCommand("Choisissez l\'dossier").args[3] ?? '';
+
+    expect(script).toMatch(/\$dialog\.Title = 'Choisissez l''dossier';/);
+    expect(script).not.toMatch(/\$dialog\.Title = .*\$\(/);
+  });
+
+  it.each([
+    'C:\\Users\\Ada\\Code Space',
+    "C:\\Users\\Ada\\O'Brien\\素材",
+    'C:\\Users\\Ada\\Empty',
+    'C:\\Users\\Ada\\Existing',
+  ])('preserves Unicode, spaces, apostrophes, empty-folder and nonempty-folder paths', (path) => {
+    expect(parseFolderDialogStdout(null, `${path}\r\n`)).toBe(path);
+  });
+
+  it('keeps file, missing-folder and invalid-candidate rejection at the FileOk boundary', () => {
+    const script = buildWindowsFolderDialogCommand().args[3] ?? '';
+
+    expect(script).toMatch(/\$candidate = \$null;/);
+    expect(script).toMatch(/if \(\[IO\.Directory\]::Exists\(\$raw\)\)/);
+    expect(script).toMatch(/elseif \(\[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
+    expect(script).toMatch(/if \(\[string\]::IsNullOrWhiteSpace\(\$candidate\) -or -not \[IO\.Directory\]::Exists\(\$candidate\)\)/);
+    expect(script).toMatch(/\$eventArgs\.Cancel = \$true;/);
+  });
+
+  it('keeps cancellation and native failure distinct from a selected path', () => {
+    expect(parseFolderDialogStdout(null, '\r\n')).toBeNull();
+    expect(parseFolderDialogStdout(new Error('native failure'), 'C:\\Users\\Ada\\Code\r\n')).toBeNull();
+    expect(parseFolderDialogStdout(null, 'C:\\Users\\Ada\\Code\r\n')).toBe('C:\\Users\\Ada\\Code');
   });
 
   it('parses a selected folder path from stdout', () => {

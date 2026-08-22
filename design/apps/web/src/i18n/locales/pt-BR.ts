@@ -1031,7 +1031,7 @@ export const ptBR: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Pasta',
+  'workingDirPicker.title': 'Selecionar uma pasta de código para vincular',
   'workingDirPicker.homeTitle': 'Salvo no armazenamento local — clique para escolher uma pasta',
   'workingDirPicker.processing': 'Processando…',
   'workingDirPicker.select': 'Armazenamento local',

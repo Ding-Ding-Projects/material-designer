@@ -1031,7 +1031,7 @@ export const hu: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Mappa',
+  'workingDirPicker.title': 'Kapcsolandó kódmappa kiválasztása',
   'workingDirPicker.homeTitle': 'Helyi tárhelyen mentve – kattints mappa választásához',
   'workingDirPicker.processing': 'Feldolgozás…',
   'workingDirPicker.select': 'Helyi tárhely',

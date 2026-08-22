@@ -1031,7 +1031,7 @@ export const tr: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'Klasör',
+  'workingDirPicker.title': 'Bağlanacak kod klasörünü seçin',
   'workingDirPicker.homeTitle': 'Yerel depolamaya kaydedilir — klasör seçmek için tıklayın',
   'workingDirPicker.processing': 'İşleniyor…',
   'workingDirPicker.select': 'Yerel depolama',

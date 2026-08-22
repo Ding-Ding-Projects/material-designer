@@ -1031,7 +1031,7 @@ export const th: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
-  'workingDirPicker.title': 'โฟลเดอร์',
+  'workingDirPicker.title': 'เลือกโฟลเดอร์โค้ดที่จะเชื่อมโยง',
   'workingDirPicker.homeTitle': 'บันทึกในที่จัดเก็บในเครื่อง — คลิกเพื่อเลือกโฟลเดอร์',
   'workingDirPicker.processing': 'กำลังประมวลผล…',
   'workingDirPicker.select': 'ที่จัดเก็บในเครื่อง',
