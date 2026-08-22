@@ -8295,7 +8295,6 @@ export function ProjectView({
       commentAttachments: ChatCommentAttachment[],
       meta?: ChatSendMeta,
     ): Promise<ChatSendOutcome> => {
-      if (activeConversationId && cloudModelSelected) {
       void handleSend(prompt, attachments, commentAttachments, meta);
     },
     [activeConversationId, cloudModelSelected, handleSend, project.id],
