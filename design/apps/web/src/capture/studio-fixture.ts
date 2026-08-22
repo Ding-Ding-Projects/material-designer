@@ -574,18 +574,6 @@ export function studioFixtureCaptureAppearanceForCurrentLocation(): AppearancePr
   return route ? studioFixtureCaptureAppearanceForRoute(route) : studioFixtureCaptureAppearance;
 }
 
-export function studioFixtureCaptureLanguageState(route: StudioFixtureRoute): {
-  locale: 'en';
-  languageMode: 'single' | 'bilingual';
-  funnyLevels: typeof studioFixtureCaptureFunnyLevels;
-} {
-  return {
-    locale: 'en',
-    languageMode: route.locale === 'bilingual' ? 'bilingual' : 'single',
-    funnyLevels: studioFixtureCaptureFunnyLevels,
-  };
-}
-
 export function studioFixtureRouteFromCurrentLocation(): StudioFixtureRoute | null {
   if (typeof window === 'undefined') return null;
   const route = parseStudioFixtureRoute(window.location);
