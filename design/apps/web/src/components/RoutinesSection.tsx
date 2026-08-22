@@ -10,10 +10,8 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon } from './Icon';
-import { Switch } from './Switch';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { navigate } from '../router';
-import { tv, useT, type TranslationVars } from '../i18n';
+import { useT } from '../i18n';
 import { localizeRunFailureReason } from '../i18n/runErrors';
 import type { Dict } from '../i18n/types';
 import { useAnalytics } from '../analytics/provider';
@@ -24,7 +22,7 @@ import { listProjects } from '../state/projects';
 
 // Shared translator signature: every sub-component in this file is module-scoped,
 // so `t` from `useT()` is threaded down as a prop rather than re-hooked.
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 type ProjectSummary = { id: string; name: string };
 type RoutineWorkspaceScope = {
@@ -183,9 +181,7 @@ function describeSchedule(
       tz,
     });
   }
-  // The weekday name is copy, so it travels as a key: read as a string it
-  // would already be bilingual and be said twice inside the sentence.
-  const day = tv(`routines.weekday.long.${schedule.weekday}` as keyof Dict);
+  const day = t(`routines.weekday.long.${schedule.weekday}`);
   return t('routines.describe.weekly', {
     day,
     time: formatTime12h(schedule.time, t),
@@ -531,10 +527,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [historyTick, setHistoryTick] = useState(0);
-  // Deleting an automation stops it running and removes it from this device
-  // with no restore path, so it goes through the super-confirmation gate
-  // rather than a browser dialog a mistimed Enter answers.
-  const [deleteTarget, setDeleteTarget] = useState<Routine | null>(null);
   const refreshGenerationRef = useRef(0);
 
   const timezones = useMemo(() => {
@@ -708,14 +700,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
     }
   };
 
-  // The delete itself, run by the gate. A failure is rethrown rather than
-  // routed to the section's error banner: the banner sits behind the gate the
-  // user is looking at, and the gate renders the message in place while
-  // keeping itself open over an automation that is demonstrably still there.
-  const remove = async (routine: Routine) => {
-    setBusyId(routine.id);
-    try {
-      const res = await fetch(`/api/routines/${routine.id}`, { method: 'DELETE' });
   const remove = async (routine: Routine) => {
     if (!window.confirm(t('routines.confirmDelete'))) return;
     setBusyId(routine.id);
@@ -730,7 +714,8 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
       }
       if (expandedId === routine.id) setExpandedId(null);
       void refresh();
-      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setBusyId(null);
     }
@@ -885,18 +870,9 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-main">
                     <div className="routines-item-title">
                       <strong>{r.name}</strong>
-                      {/* The same state chip the Automations page draws, from
-                          the same single declaration — one shape, one rule.
-                          Both states are shown now rather than only the paused
-                          one, because a chip that appears and disappears reads
-                          as an alert rather than as the row's state. */}
-                      <span
-                        className={`automation-state-chip${r.enabled ? ' is-active' : ''}`}
-                      >
-                        {r.enabled
-                          ? t('automations.metricActive')
-                          : t('routines.tagPaused')}
-                      </span>
+                      {!r.enabled ? (
+                        <span className="routines-tag">{t('routines.tagPaused')}</span>
+                      ) : null}
                     </div>
                     <div className="routines-item-line">{describeSchedule(r.schedule, t, r.nextRunAt)}</div>
                     <div className="routines-item-meta">
@@ -921,8 +897,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                   <div className="routines-item-actions">
                     <button
                       type="button"
-                      className="btn tonal"
-                      onClick={() => { fireAutomation('run_now'); runNow(r.id); }}
                       className="btn btn-primary"
                       onClick={() => { fireAutomation('run_now'); runNow(r); }}
                       disabled={isBusy}
@@ -944,7 +918,15 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn ghost"
+                      className="btn"
+                      onClick={() => { fireAutomation(r.enabled ? 'pause' : 'resume'); toggleEnabled(r); }}
+                      disabled={isBusy}
+                    >
+                      {r.enabled ? t('routines.pause') : t('routines.resume')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
                       onClick={() => { fireAutomation('history'); setExpandedId(isExpanded ? null : r.id); }}
                       aria-expanded={isExpanded}
                     >
@@ -952,8 +934,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     </button>
                     <button
                       type="button"
-                      className="btn ghost routines-item-delete"
-                      onClick={() => { fireAutomation('delete'); setDeleteTarget(r); }}
                       className="btn btn-ghost btn-danger"
                       onClick={() => { fireAutomation('delete'); remove(r); }}
                       disabled={isBusy}
@@ -961,19 +941,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
                     >
                       {t('routines.delete')}
                     </button>
-                    {/* Pause/resume, as the M3 switch. It replaces a button
-                        whose label flipped between two words, which assistive
-                        technology announces as a button that renamed itself
-                        rather than as a control that is on or off. */}
-                    <Switch
-                      checked={r.enabled}
-                      disabled={isBusy}
-                      label={t('automations.enabledSwitchAria', { name: r.name })}
-                      onChange={() => {
-                        fireAutomation(r.enabled ? 'pause' : 'resume');
-                        toggleEnabled(r);
-                      }}
-                    />
                   </div>
                 </div>
                 {isExpanded ? (
@@ -992,19 +959,6 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
           })}
         </ul>
       )}
-      {deleteTarget ? (
-        <DestructiveGate
-          action={t('routines.deleteTitle')}
-          // The automation's own name, not a description of one — this is the
-          // string the user has to be able to check the slider against.
-          target={deleteTarget.name}
-          items={[t('automations.deleteGateItem', { name: deleteTarget.name })]}
-          detail={t('automations.deleteGateDetail')}
-          irreversible
-          onConfirm={() => remove(deleteTarget)}
-          onClose={() => setDeleteTarget(null)}
-        />
-      ) : null}
     </section>
   );
 }

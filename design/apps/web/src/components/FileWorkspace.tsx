@@ -3,16 +3,15 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
   type DragEvent as ReactDragEvent,
+  type CSSProperties,
   type ReactNode,
 } from 'react';
-import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import { Button } from '@open-design/components';
 import { createPortal } from 'react-dom';
-import { getOpenDesignHost, type OpenDesignHostUpdaterSavePreparation } from '@open-design/host';
 import type { DesignSystemEditClickProps, TrackingArtifactKind, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
 import {
@@ -25,7 +24,6 @@ import {
   trackSketchExportResult,
 } from '../analytics/events';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
-import { DestructiveGate } from './destructive/DestructiveGate';
 import { useI18n, useT, type Locale } from '../i18n';
 import { useStableHandler } from '../lib/use-stable-handler';
 import { useDeckPreviewScale } from '../lib/use-deck-preview-scale';
@@ -113,7 +111,6 @@ import {
   type WorkspaceCollabContext,
   type WorkspaceContextItem,
 } from '@open-design/contracts';
-import { runBulkAction } from './bulk/run';
 import {
   notifyTeamProjectsChanged,
   TEAM_PROJECTS_CHANGED_EVENT,
@@ -157,9 +154,8 @@ import { pluginSubfacetLabel } from './plugins-home/subfacetLabel';
 import { useInView } from './plugins-home/useInView';
 import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
-import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
+import { LibraryPicker } from './LibraryPicker';
 import { QuickSwitcher } from './QuickSwitcher';
-import { publishQuickSwitcherScope } from './command-palette/quickSwitcherScope';
 import { SketchEditor } from './SketchEditor';
 import { SketchEnginePrewarm } from './SketchEnginePrewarm';
 import { useWorkspaceTabsDockRef } from './workspaceTabsDock';
@@ -173,10 +169,9 @@ import {
 } from './sketch-model';
 import { AnimatePresence } from 'motion/react';
 import type { ChatMessage } from '../types';
-import type { TranslationVars } from '../i18n';
 import type { CommentSendResult } from './comment-send-result';
 
-type TranslateFn = (key: keyof Dict, vars?: TranslationVars) => string;
+type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
 function syncInertAttribute(element: HTMLElement | null, inert: boolean): void {
   if (!element) return;
@@ -338,6 +333,7 @@ interface Props {
   onConversationSessionModeChange?: (id: string, mode: ChatSessionMode) => void;
   onNewConversation?: () => void;
   activeConversationChat?: ActiveConversationChatState;
+  onActiveContextChange?: (context: WorkspaceContextItem | null) => void;
   onWorkspaceContextsChange?: (contexts: WorkspaceContextItem[]) => void;
   messages?: ChatMessage[];
   artifactHtml?: string | null;
@@ -462,6 +458,15 @@ const BROWSER_KEEPALIVE_CAP = 3;
 // it again even when `src` is byte-identical, so tab A -> tab B -> tab A used
 // to refetch both artifacts and briefly return to a blank/loading preview.
 const HTML_VIEWER_KEEPALIVE_CAP = 3;
+const RETAINED_VIEWER_INACTIVE_STYLE = {
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  overflow: 'hidden',
+  opacity: 0,
+  pointerEvents: 'none',
+} satisfies CSSProperties;
 const QUICK_SWITCHER_DOCUMENT_CLASS = 'od-quick-switcher-open';
 const SKETCH_AUTOSAVE_DELAY_MS = 800;
 
@@ -1283,8 +1288,6 @@ interface WorkspaceActionToast {
   ttlMs?: number;
 }
 
-type RendererSavePreparationHandler = () => Promise<OpenDesignHostUpdaterSavePreparation>;
-
 export function FileWorkspace({
   projectId,
   projectKind,
@@ -1360,6 +1363,7 @@ export function FileWorkspace({
   onConversationSessionModeChange,
   onNewConversation,
   activeConversationChat,
+  onActiveContextChange,
   onWorkspaceContextsChange,
   messages = [],
   conversationId,
@@ -1444,42 +1448,10 @@ export function FileWorkspace({
   const sketchAutosaveDraftsRef = useRef<Map<string, QueuedSketchAutosave>>(new Map());
   const sketchSceneRevisionRef = useRef<Map<string, number>>(new Map());
   const sketchSaveInFlightRef = useRef<Set<string>>(new Set());
-  const sketchSavePromisesRef = useRef<Map<string, Promise<boolean | undefined>>>(new Map());
   const pendingSketchSavesRef = useRef<Map<string, PendingSketchSave>>(new Map());
-  const rendererSavePreparationHandlersRef = useRef<Set<RendererSavePreparationHandler>>(new Set());
-  const flushPendingSketchAutosavesRef = useRef<() => Promise<OpenDesignHostUpdaterSavePreparation>>(
-    async () => ({ state: 'clean' }),
-  );
-  const registerRendererSavePreparation = useCallback((handler: RendererSavePreparationHandler) => {
-    rendererSavePreparationHandlersRef.current.add(handler);
-    return () => rendererSavePreparationHandlersRef.current.delete(handler);
-  }, []);
-  const flushRendererSavePreparations = useCallback(async (): Promise<OpenDesignHostUpdaterSavePreparation> => {
-    const preparations = await Promise.all([
-      flushPendingSketchAutosavesRef.current(),
-      ...Array.from(rendererSavePreparationHandlersRef.current, async (handler) => {
-        try {
-          return await handler();
-        } catch {
-          return { reason: 'save-failed', state: 'failed' as const };
-        }
-      }),
-    ]);
-    const failed = preparations.find((preparation) => preparation.state === 'failed');
-    if (failed) return failed;
-    return preparations.some((preparation) => preparation.state === 'saved')
-      ? { state: 'saved' }
-      : { state: 'clean' };
-  }, []);
+  const flushPendingSketchAutosavesRef = useRef<() => void>(() => {});
   const sketchPreloadInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [quickSwitcherOpen, setQuickSwitcherOpen] = useState(false);
-  // The file the super-confirmation gate is pointed at, or null when closed.
-  const [deleteFileTarget, setDeleteFileTarget] = useState<string | null>(null);
-  // The tab whose unsaved strokes the discard dialog is asking about. A real
-  // decision, but a recoverable-shaped one, so it gets an ordinary dialog
-  // rather than the gate — see `closeTab`.
-  const [sketchCloseTarget, setSketchCloseTarget] = useState<string | null>(null);
-  const sketchCloseTitleId = useId();
   const [projectFolders, setProjectFolders] = useState<ProjectFolder[]>(EMPTY_PROJECT_FOLDERS);
   // Reset the folder list during render — NOT in an effect — when the project
   // changes. DesignFilesPanel is keyed by `projectId`, so an effect-based reset
@@ -1538,12 +1510,6 @@ export function FileWorkspace({
   const draggedTabNameRef = useRef<string | null>(null);
   const browserTabSequenceRef = useRef(0);
   const openFileRef = useRef<(name: string) => void>(() => {});
-  // Latest openers for the command palette's files-and-tabs scope. See the
-  // `publishQuickSwitcherScope` effect further down for why they live in a ref.
-  const quickSwitcherHandlersRef = useRef<{
-    openFile: (name: string) => void;
-    focusWorkspaceTab: (tabId: string) => void;
-  }>({ openFile: () => {}, focusWorkspaceTab: () => {} });
   const designFilesNavProjectIdRef = useRef(projectId);
   const designFilesNavRef = useRef<DesignFilesNavState>(createDefaultDesignFilesNavState());
   if (designFilesNavProjectIdRef.current !== projectId) {
@@ -1816,37 +1782,20 @@ export function FileWorkspace({
 
   useEffect(() => {
     return () => {
-      void flushRendererSavePreparations();
+      flushPendingSketchAutosavesRef.current();
       sketchSceneRevisionRef.current.clear();
     };
-  }, [flushRendererSavePreparations]);
+  }, []);
 
   useEffect(() => {
-    const flush = () => { void flushRendererSavePreparations(); };
+    const flush = () => flushPendingSketchAutosavesRef.current();
     window.addEventListener('pagehide', flush);
     window.addEventListener('beforeunload', flush);
     return () => {
       window.removeEventListener('pagehide', flush);
       window.removeEventListener('beforeunload', flush);
     };
-  }, [flushRendererSavePreparations]);
-
-  useEffect(() => {
-    const host = getOpenDesignHost();
-    const subscribe = host?.updater.subscribePrepareQuit;
-    const respond = host?.updater.respondPrepareQuit;
-    if (!subscribe || !respond) return;
-
-    return subscribe(({ requestId }) => {
-      void flushRendererSavePreparations()
-        .then((preparation) => respond({ requestId, preparation }))
-        .catch(() => respond({
-          requestId,
-          preparation: { reason: 'renderer-save-preparation-failed', state: 'failed' },
-        }))
-        .catch(() => undefined);
-    });
-  }, [flushRendererSavePreparations]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -2307,26 +2256,7 @@ export function FileWorkspace({
     });
   }
 
-  /**
-   * Close a tab, asking first when that would throw away unsaved strokes.
-   *
-   * Discarding a sketch is a real decision — the strokes are gone and the user
-   * has to make the call before the tab can close — so this one keeps a
-   * dialog rather than becoming a notification. It is NOT routed through the
-   * destructive gate: the sketch is a document the user has been drawing for
-   * the last minute, not an account or a project folder, and putting two keys
-   * and a full-range slider in front of closing a tab is how a gate stops
-   * meaning anything at the point it is actually needed.
-   *
-   * Nothing is touched before the answer comes back — in particular the
-   * terminal kill below moved into `performCloseTab`, so a cancelled close
-   * leaves the tab exactly as it was.
-   */
   function closeTab(name: string) {
-    const sketchEntry = sketches[name];
-    const hasUnsavedStrokes = sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted);
-    if (hasUnsavedStrokes) {
-      setSketchCloseTarget(name);
     if (activeTabRef.current === name && manualEditExitHandlersRef.current.has(name)) {
       afterActiveManualEditSettles(() => performCloseTab(name));
       return;
@@ -2350,6 +2280,8 @@ export function FileWorkspace({
     }
     const sketchEntry = sketches[name];
     const isPending = sketchEntry && !sketchEntry.persisted;
+    const hasUnsavedStrokes = sketchEntry && (sketchEntry.dirty || !sketchEntry.persisted);
+    if (hasUnsavedStrokes && !confirm(t('sketch.closeConfirm'))) return;
     if (isPending) {
       setSketches((curr) => {
         const next = { ...curr };
@@ -2601,22 +2533,6 @@ export function FileWorkspace({
     };
   }, [quickSwitcherOpen]);
 
-  /**
-   * Open the super-confirmation gate over one file.
-   *
-   * Deleting a project file removes it from the folder on disk and nothing in
-   * the product puts it back, so the browser confirm this replaced was the
-   * whole distance between a mis-aimed pointer and a lost file.
-   */
-  function handleDelete(name: string) {
-    setDeleteFileTarget(name);
-  }
-
-  // The delete itself, run by the gate. Reports failure rather than swallowing
-  // it: a `false` leaves the gate open saying the file is still there, instead
-  // of closing on a delete that did not happen.
-  async function runDeleteFile(name: string): Promise<boolean> {
-    const ok = await deleteProjectFile(projectId, name);
   async function handleDelete(name: string) {
     if (viewerOnly) return; // read-only viewer of a team-shared project
     if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
@@ -2647,49 +2563,8 @@ export function FileWorkspace({
         return next;
       });
     }
-    return ok;
   }
 
-  /**
-   * Deletes each file in turn and reports back exactly what happened.
-   *
-   * The report is the point. The panel that calls this renders the outcome
-   * toast from it, so a run that returns nothing is a run the panel can only
-   * describe by guessing — and it guessed success, which turned a cancelled
-   * or half-failed delete into "N done." The three arrays here are what the
-   * user is actually told, so they must stay truthful: `deleted` only holds
-   * files the daemon confirmed gone, and anything left when the run stops
-   * early is `notAttempted` rather than quietly dropped.
-   *
-   * `signal` is checked between files, never mid-request, so the Stop control
-   * ends the run at the next boundary rather than abandoning a delete whose
-   * outcome nobody would then know.
-   */
-  async function handleDeleteMany(
-    names: string[],
-    options?: { onProgress?: (done: number, current: string | null) => void; signal?: { readonly aborted: boolean } },
-  ): Promise<{ deleted: string[]; failed: string[]; notAttempted: string[] }> {
-    if (names.length === 0) return { deleted: [], failed: [], notAttempted: [] };
-    // runBulkAction is the shared sequential runner: it reports progress,
-    // checks the abort signal between items, and — the part a hand-rolled
-    // loop here kept getting wrong — treats a helper that returns `false` as
-    // a failure rather than a success. `deleteProjectFile` is exactly such a
-    // helper, which is why this must not be re-implemented inline.
-    const outcome = await runBulkAction(
-      names.map((name) => ({ id: name, label: name })),
-      (item) => deleteProjectFile(projectId, item.id),
-      {
-        onProgress: (progress) => options?.onProgress?.(progress.done, progress.current),
-        signal: options?.signal,
-      },
-    );
-    const deleted = outcome.succeeded.map((item) => item.id);
-    const failed = outcome.failed.map((failure) => failure.item.id);
-    const notAttempted = outcome.notAttempted.map((item) => item.id);
-    // The bookkeeping below runs on both exits. A stopped run has still really
-    // deleted whatever it got through, so leaving its tabs open and its
-    // autosaved sketches behind would leave the workspace describing files
-    // that no longer exist.
   async function handleDeleteMany(names: string[]) {
     if (viewerOnly) return; // read-only viewer of a team-shared project
     if (names.length === 0) return;
@@ -2724,10 +2599,9 @@ export function FileWorkspace({
         return next;
       });
     }
-    // No alert() here any more. The caller renders one outcome message from
-    // the report below, and it states the failures precisely; a blocking
-    // dialog on top of it said the same thing worse, and twice.
-    return { deleted, failed, notAttempted };
+    if (failed.length > 0) {
+      alert(t('workspace.deleteSelectedFilesPartial', { n: failed.length }));
+    }
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
@@ -2941,25 +2815,12 @@ export function FileWorkspace({
     queueSketchAutosave(name, scene);
   }
 
-  function trackSketchSavePromise(name: string, promise: Promise<boolean | undefined>): Promise<boolean | undefined> {
-    sketchSavePromisesRef.current.set(name, promise);
-    void promise.then(
-      () => {
-        if (sketchSavePromisesRef.current.get(name) === promise) sketchSavePromisesRef.current.delete(name);
-      },
-      () => {
-        if (sketchSavePromisesRef.current.get(name) === promise) sketchSavePromisesRef.current.delete(name);
-      },
-    );
-    return promise;
-  }
-
-  function saveSketch(
+  async function saveSketch(
     name: string,
     sceneOverride?: ExcalidrawSketchScene,
     options: SaveSketchOptions = {},
     revisionOverride?: number,
-  ): Promise<boolean | undefined> | undefined {
+  ): Promise<boolean | undefined> {
     const entry = sketches[name] ?? (sceneOverride ? defaultSketchState(name, sceneOverride) : null);
     if (!entry) return;
     const scene = sceneOverride ?? entry.scene;
@@ -2976,7 +2837,7 @@ export function FileWorkspace({
           },
         }));
       }
-      return trackSketchSavePromise(name, new Promise((resolve) => {
+      return new Promise((resolve) => {
         const pending = pendingSketchSavesRef.current.get(name);
         pendingSketchSavesRef.current.set(name, {
           scene,
@@ -2984,9 +2845,9 @@ export function FileWorkspace({
           options: pending ? mergeSketchSaveOptions(pending.options, options) : options,
           resolvers: [...(pending?.resolvers ?? []), resolve],
         });
-      }));
+      });
     }
-    return trackSketchSavePromise(name, runSketchSave(name, entry, scene, options, revision));
+    return runSketchSave(name, entry, scene, options, revision);
   }
 
   async function runSketchSave(
@@ -3073,16 +2934,6 @@ export function FileWorkspace({
         }));
         result = false;
       }
-    } catch (error) {
-      console.warn('[FileWorkspace] sketch save failed', name, error);
-      setSketches((curr) => ({
-        ...curr,
-        [name]: {
-          ...(curr[name] ?? entry),
-          saving: false,
-        },
-      }));
-      result = false;
     } finally {
       sketchSaveInFlightRef.current.delete(name);
     }
@@ -3090,15 +2941,6 @@ export function FileWorkspace({
     const pending = pendingSketchSavesRef.current.get(name);
     if (pending) {
       pendingSketchSavesRef.current.delete(name);
-      if (result !== true) {
-        // Keep the newest scene available for the next explicit flush instead
-        // of dropping it when an older write rejects. Resolving queued callers
-        // prevents a failed first write from leaving their promises pending
-        // forever, while the draft remains retryable by the updater barrier.
-        sketchAutosaveDraftsRef.current.set(name, pending);
-        for (const resolve of pending.resolvers) resolve(false);
-        return result;
-      }
       const pendingResult = await saveSketch(name, pending.scene, pending.options, pending.revision);
       for (const resolve of pending.resolvers) resolve(pendingResult);
       return pendingResult;
@@ -3141,27 +2983,15 @@ export function FileWorkspace({
     sketchAutosaveDraftsRef.current.delete(name);
   }
 
-  async function flushPendingSketchAutosaves(): Promise<OpenDesignHostUpdaterSavePreparation> {
+  function flushPendingSketchAutosaves() {
     const queued = Array.from(sketchAutosaveDraftsRef.current.entries());
-    const waits = new Set<Promise<boolean | undefined>>();
+    if (queued.length === 0) return;
     for (const [name, draft] of queued) {
       const timer = sketchAutosaveTimersRef.current.get(name);
       if (timer) clearTimeout(timer);
       sketchAutosaveTimersRef.current.delete(name);
       sketchAutosaveDraftsRef.current.delete(name);
-      const pending = saveSketch(name, draft.scene, draft.options, draft.revision);
-      if (pending) waits.add(pending);
-    }
-    for (const pending of sketchSavePromisesRef.current.values()) waits.add(pending);
-    if (waits.size === 0) return { state: 'clean' };
-
-    try {
-      const results = await Promise.all(waits);
-      return results.some((result) => result === false)
-        ? { reason: 'save-failed', state: 'failed' }
-        : { state: 'saved' };
-    } catch {
-      return { reason: 'save-failed', state: 'failed' };
+      void saveSketch(name, draft.scene, draft.options, draft.revision);
     }
   }
   flushPendingSketchAutosavesRef.current = flushPendingSketchAutosaves;
@@ -3221,15 +3051,11 @@ export function FileWorkspace({
   const htmlViewerFileSnapshots = htmlViewerFileSnapshotsRef.current.files;
   for (const candidate of visibleFiles) {
     if (candidate.kind !== 'html') continue;
-    // Hidden viewers keep the last file revision they actually rendered.
-    // Updating mtime under an inactive iframe changes its src and defeats the
-    // keep-alive. Adopt the newest revision exactly when that tab activates.
-    if (
-      candidate.name === activeHtmlViewerFile?.name
-      || !htmlViewerFileSnapshots.has(candidate.name)
-    ) {
-      htmlViewerFileSnapshots.set(candidate.name, candidate);
-    }
+    // Retained viewers stay mounted at the real viewport size, so let them
+    // consume file revisions while inactive. They can finish the one required
+    // navigation behind the active tab; activation then remains a pure
+    // visibility swap instead of combining resize + navigation in one frame.
+    htmlViewerFileSnapshots.set(candidate.name, candidate);
   }
   useEffect(() => {
     setLiveHtmlViewerFileNames([]);
@@ -3570,6 +3396,101 @@ export function FileWorkspace({
     />
   );
 
+  const activeWorkspaceContext = useMemo<WorkspaceContextItem | null>(() => {
+    if (activeTab === DESIGN_SYSTEM_TAB && designSystemProject) {
+      return {
+        id: 'workspace:design-system',
+        kind: 'design-system',
+        label: t('dsManager.tabDesignSystem'),
+        tabId: activeTab,
+      };
+    }
+    if (designFilesTabActive) {
+      // Nothing to reference yet — don't auto-stage an empty "Design files" chip.
+      if (designFilesTabIsEmpty) return null;
+      const trimmedDir = uploadDir.trim();
+      const label = trimmedDir.split('/').filter(Boolean).pop() || t('workspace.designFiles');
+      return {
+        id: trimmedDir ? `folder:${trimmedDir}` : 'workspace:design-files',
+        kind: trimmedDir ? 'folder' : 'design-files',
+        label,
+        tabId: DESIGN_FILES_TAB,
+        ...(trimmedDir ? { path: trimmedDir } : {}),
+        ...(resolvedDir ? { absolutePath: joinDisplayPath(resolvedDir, trimmedDir) } : {}),
+      };
+    }
+    if (isBrowserTabId(activeTab)) {
+      const tab = browserTabs.find((candidate) => candidate.id === activeTab);
+      if (!tab) return null;
+      const url = tab.url?.trim() ?? '';
+      const label = url ? tab.title?.trim() || labelFromUrl(url) : tab.label;
+      return {
+        id: `browser:${tab.id}`,
+        kind: 'browser',
+        label,
+        tabId: tab.id,
+        ...(tab.title ? { title: tab.title } : {}),
+        ...(url ? { url } : {}),
+      };
+    }
+    if (isTerminalTabId(activeTab)) {
+      const terminalId = terminalIdFromTabId(activeTab);
+      return {
+        id: `terminal:${terminalId}`,
+        kind: 'terminal',
+        label: t('workspace.newTerminal'),
+        tabId: activeTab,
+      };
+    }
+    if (isSideChatTabId(activeTab)) {
+      const conversationId = conversationIdFromSideChatTabId(activeTab);
+      const conversation = conversations.find((item) => item.id === conversationId);
+      return {
+        id: `side-chat:${conversationId}`,
+        kind: 'side-chat',
+        label: conversation?.title?.trim() || t('workspace.sideChatDefaultTitle'),
+        tabId: activeTab,
+      };
+    }
+    if (activeLiveArtifact) {
+      return {
+        id: `live-artifact:${activeLiveArtifact.artifactId}`,
+        kind: 'live-artifact',
+        label: activeLiveArtifact.title,
+        tabId: activeLiveArtifact.tabId,
+        path: activeLiveArtifact.slug,
+      };
+    }
+    if (activeFile) {
+      const filePath = activeFile.path ?? activeFile.name;
+      return {
+        id: `file:${filePath}`,
+        kind: 'file',
+        label: filePath.split('/').filter(Boolean).pop() || filePath,
+        tabId: activeTab,
+        path: filePath,
+        ...(resolvedDir ? { absolutePath: joinDisplayPath(resolvedDir, filePath) } : {}),
+      };
+    }
+    return null;
+  }, [
+    activeFile,
+    activeLiveArtifact,
+    activeTab,
+    browserTabs,
+    conversations,
+    designFilesTabIsEmpty,
+    designFilesTabActive,
+    designSystemProject,
+    resolvedDir,
+    t,
+    uploadDir,
+  ]);
+
+  useEffect(() => {
+    onActiveContextChange?.(activeWorkspaceContext);
+  }, [activeWorkspaceContext, onActiveContextChange]);
+
   // Tabs rendered are persisted tabs plus any pending (un-saved) sketches.
   const tabNames = useMemo(() => {
     const seen = new Set(persistedTabs);
@@ -3810,32 +3731,6 @@ export function FileWorkspace({
   useEffect(() => {
     onWorkspaceContextsChange?.(workspaceContexts);
   }, [onWorkspaceContextsChange, workspaceContexts]);
-
-  // Publish this workspace as the command palette's "files and tabs" scope.
-  //
-  // The palette mounts at the app shell, above every route, and has no way to
-  // reach the file list from there; threading it up would mean a prop drilled
-  // through every view that does not care. So the workspace announces itself
-  // while it is mounted and withdraws on unmount, and the palette falls back to
-  // an honest "open a project first" when nothing is published.
-  //
-  // `openFile` and `focusWorkspaceTab` are plain function declarations, re-made
-  // every render, so they go through a ref rather than into the dependency
-  // list: publishing on every render would churn the store (and every palette
-  // subscriber) for no new data, while capturing them once would leave the
-  // palette opening files against a stale snapshot of the workspace.
-  quickSwitcherHandlersRef.current = { openFile, focusWorkspaceTab };
-  useEffect(
-    () =>
-      publishQuickSwitcherScope({
-        projectId,
-        files: visibleFiles,
-        workspaceContexts,
-        openFile: (name) => quickSwitcherHandlersRef.current.openFile(name),
-        openTab: (tabId) => quickSwitcherHandlersRef.current.focusWorkspaceTab(tabId),
-      }),
-    [projectId, visibleFiles, workspaceContexts],
-  );
 
   useEffect(() => {
     const tabBar = tabsBarRef.current;
@@ -4417,16 +4312,13 @@ export function FileWorkspace({
               });
               void handleDelete(name);
             }}
-            onDeleteFiles={(names, options) => {
+            onDeleteFiles={(names) => {
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
                 element: 'delete',
               });
-              // `options` carries the panel's progress callback and its Stop
-              // signal. Dropping it — as this did — left the progress bar
-              // frozen at zero and made the Stop button decorative.
-              return handleDeleteMany(names, options);
+              return handleDeleteMany(names);
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
@@ -4569,32 +4461,6 @@ export function FileWorkspace({
             onRefreshArtifacts={refreshFilesWithoutResult}
           />
         ) : activeFile ? (
-          <FileViewer
-            key={activeFile.name}
-            projectId={projectId}
-            projectKind={projectKind}
-            file={activeFile}
-            filesRefreshKey={filesRefreshKey}
-            isDeck={isDeck}
-            streaming={streaming}
-            commentQueueOnSend={commentQueueOnSend}
-            commentSendDisabled={commentSendDisabled}
-            previewComments={activeFilePreviewComments}
-            onSavePreviewComment={onSavePreviewComment}
-            onRemovePreviewComment={onRemovePreviewComment}
-            onSendBoardCommentAttachments={onSendBoardCommentAttachments}
-            onBrandExtractionStopRequest={
-              activeFile.name === 'brand.html' ? onBrandExtractionStopRequest : undefined
-            }
-            onFileSaved={onRefreshFiles}
-            onRegisterUpdateSavePreparation={registerRendererSavePreparation}
-            onOpenFileReplacing={stableOpenFileReplacing}
-            commentPortalId={commentPortalId}
-            onCommentModeChange={onCommentModeChange}
-            shareRequest={activeFileShareRequest}
-            downloadRequest={activeFileDownloadRequest}
-            slideNavRequest={activeFileSlideNavRequest}
-          />
           null
         ) : (
           <div className="viewer-empty">
@@ -4630,16 +4496,7 @@ export function FileWorkspace({
                 minHeight: 0,
                 ...(workspaceActive
                   ? {}
-                  : {
-                      position: 'absolute',
-                      left: '-100000px',
-                      top: 0,
-                      width: 1,
-                      height: 1,
-                      overflow: 'hidden',
-                      visibility: 'hidden',
-                      pointerEvents: 'none',
-                    }),
+                  : RETAINED_VIEWER_INACTIVE_STYLE),
               }}
             >
               {renderFileViewer(file, workspaceActive)}
@@ -4660,16 +4517,7 @@ export function FileWorkspace({
               minHeight: 0,
               ...(viewerFileActive
                 ? {}
-                : {
-                    position: 'absolute',
-                    left: '-100000px',
-                    top: 0,
-                    width: 1,
-                    height: 1,
-                    overflow: 'hidden',
-                    visibility: 'hidden',
-                    pointerEvents: 'none',
-                  }),
+                : RETAINED_VIEWER_INACTIVE_STYLE),
             }}
           >
             {renderFileViewer(viewerFile, viewerFileActive)}
@@ -4705,7 +4553,7 @@ export function FileWorkspace({
         {!initialMaterializationPending && showLibraryPicker ? (
           <LibraryPicker
             onClose={() => setShowLibraryPicker(false)}
-            onConfirm={async (assets): Promise<LibraryPickerConfirmResult> => {
+            onConfirm={async (assets) => {
               // Copy each picked asset into the project's design files (under the
               // folder currently in view, if any). Apply records a provenance
               // back-link so the registry knows the asset was consumed. For
@@ -4714,8 +4562,6 @@ export function FileWorkspace({
               // lands in Design Files alongside its screenshot.
               const dir = uploadDir || undefined;
               let lastRelPath: string | null = null;
-              const applied: string[] = [];
-              const failed: LibraryPickerConfirmResult['failed'] = [];
               for (const asset of assets) {
                 const res = await applyLibraryAsset(
                   asset.id,
@@ -4724,20 +4570,11 @@ export function FileWorkspace({
                   { includeElement: true },
                   workspaceContext,
                 );
-                if (res?.relPath) {
-                  applied.push(asset.id);
-                  lastRelPath = res.relPath;
-                } else {
-                  failed.push({ assetId: asset.id });
-                }
+                if (res?.relPath) lastRelPath = res.relPath;
                 if (res?.elementRelPath) lastRelPath = res.elementRelPath;
               }
               await onRefreshFiles();
               if (lastRelPath) openFile(lastRelPath);
-              if (failed.length > 0) {
-                setUploadError(`Added ${applied.length} item(s), but ${failed.length} failed.`);
-              }
-              return { applied, failed, skipped: [] };
             }}
           />
         ) : null}
@@ -4760,54 +4597,6 @@ export function FileWorkspace({
           />
         ) : null}
       </AnimatePresence>
-      {deleteFileTarget ? (
-        <DestructiveGate
-          action={t('designFiles.delete')}
-          // The file's own name, not a description of one — this is the string
-          // the user has to be able to check the slider against.
-          target={deleteFileTarget}
-          items={[t('workspace.deleteFileGateItem', { name: deleteFileTarget })]}
-          irreversible
-          onConfirm={() => runDeleteFile(deleteFileTarget)}
-          onClose={() => setDeleteFileTarget(null)}
-        />
-      ) : null}
-      {sketchCloseTarget ? (
-        <Dialog
-          role="alertdialog"
-          className="modal-confirm"
-          onClose={() => setSketchCloseTarget(null)}
-          closeOnEscape
-          ariaLabelledBy={sketchCloseTitleId}
-          data-testid="sketch-close-confirm"
-        >
-          <DialogTitle id={sketchCloseTitleId}>{t('sketch.closeConfirm')}</DialogTitle>
-          <DialogFooter className="row">
-            <button
-              type="button"
-              onClick={() => setSketchCloseTarget(null)}
-              data-testid="sketch-close-cancel"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="button"
-              className="primary"
-              data-testid="sketch-close-discard"
-              onClick={() => {
-                // Read the target before clearing it: `performCloseTab` runs
-                // after the setState above in the same handler, and reading
-                // state there would see the value React has not committed yet.
-                const target = sketchCloseTarget;
-                setSketchCloseTarget(null);
-                performCloseTab(target);
-              }}
-            >
-              {t('sketch.closeDiscard')}
-            </button>
-          </DialogFooter>
-        </Dialog>
-      ) : null}
     </div>
   );
 }
@@ -4899,9 +4688,6 @@ function DesignSystemProjectPanel({
   const [designMdBody, setDesignMdBody] = useState('');
   const [savingDesignMd, setSavingDesignMd] = useState(false);
   const [kitActionBusy, setKitActionBusy] = useState<string | null>(null);
-  // Whether the super-confirmation gate is open over "delete this design
-  // system and its project". See `requestDeleteDesignSystemProject`.
-  const [deleteProjectGateOpen, setDeleteProjectGateOpen] = useState(false);
   // Transient feedback for kit edits (upload / refresh / reset / delete) so an
   // action that previously fired-and-forgot now reports success or failure.
   const [kitToast, setKitToast] = useState<{ message: string; tone: DesignKitActionFeedbackTone } | null>(null);
@@ -5089,20 +4875,6 @@ function DesignSystemProjectPanel({
   // handleDeleteProject, which deletes the project, clears local state and
   // navigates home — so the panel unmounts on success and there's no busy reset
   // to do in the happy path.
-  /**
-   * Open the super-confirmation gate over the design system and its project.
-   *
-   * This takes the registered design system, the whole backing project folder,
-   * and every file, chat and artifact inside it. A browser confirm named the
-   * title and asked "?", and one mistimed Enter answered it.
-   */
-  function requestDeleteDesignSystemProject(): void {
-    if (kitActionBusy || !onDeleteDesignSystemProject) return;
-    setDeleteProjectGateOpen(true);
-  }
-
-  async function deleteDesignSystemProject(): Promise<boolean> {
-    if (!onDeleteDesignSystemProject) return false;
   async function deleteDesignSystemProject() {
     if (kitActionBusy || !onDeleteDesignSystemProject || !editable) return;
     const ok = window.confirm(
@@ -5122,18 +4894,13 @@ function DesignSystemProjectPanel({
       if (!deleted) {
         notifyKit('error', t('ds.actionFailed'));
         setKitActionBusy(null);
-        // Reported rather than swallowed: `false` holds the gate open saying
-        // the design system is still there, instead of closing on a delete
-        // that did not happen.
-        return false;
+        return;
       }
       await deleteDesignSystemDraft(system.id, workspaceContext);
       await onDesignSystemsRefresh?.();
-      return true;
     } catch {
       notifyKit('error', t('ds.actionFailed'));
       setKitActionBusy(null);
-      return false;
     }
   }
 
@@ -5676,8 +5443,6 @@ function DesignSystemProjectPanel({
             id: 'delete',
             label: t('ds.deleteProjectAction', { title: system.title }),
             icon: 'trash' as IconName,
-            onClick: () => requestDeleteDesignSystemProject(),
-            disabled: Boolean(kitActionBusy) || statusBusy || defaultBusy,
             onClick: () => void deleteDesignSystemProject(),
             disabled: !editable || Boolean(kitActionBusy) || statusBusy || defaultBusy,
             loading: kitActionBusy === 'delete',
@@ -5834,19 +5599,6 @@ function DesignSystemProjectPanel({
           progressLabel={t('ds.workspaceLoadingLabel')}
         />
       )}
-      {deleteProjectGateOpen ? (
-        <DestructiveGate
-          action={t('ds.deleteProjectAction', { title: system.title })}
-          // The design system's own title, not a description of one — this is
-          // the string the user has to be able to check the slider against.
-          target={system.title}
-          items={[t('ds.deleteProjectGateItem', { title: system.title })]}
-          detail={t('ds.deleteProjectGateDetail')}
-          irreversible
-          onConfirm={deleteDesignSystemProject}
-          onClose={() => setDeleteProjectGateOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }
@@ -7197,7 +6949,6 @@ function initialPrototypePage(title: string, body = DEFAULT_PROTOTYPE_PAGE_BODY)
   <main>
     <section class="hero">
       <div>
-        <div class="eyebrow">Material Designer</div>
         <div class="eyebrow">OpenDesign</div>
         <h1>${safeTitle}</h1>
         <p>${safeBody}</p>
@@ -7340,7 +7091,6 @@ function initialSlidesPage(title: string, body = DEFAULT_SLIDES_PAGE_BODY): stri
   <div class="deck-shell">
     <main class="deck-stage" id="deck-stage">
       <section class="slide active cover" data-screen-label="01 Cover">
-        <div class="kicker">Material Designer deck</div>
         <div class="kicker">OpenDesign deck</div>
         <h1>${safeTitle}</h1>
         <p class="body">${safeBody}</p>
@@ -7479,7 +7229,6 @@ function initialDocumentPage(title: string, body = DEFAULT_DOCUMENT_PAGE_BODY): 
 </head>
 <body>
   <article>
-    <div class="meta">Material Designer document</div>
     <div class="meta">OpenDesign document</div>
     <h1>${safeTitle}</h1>
     <p>${safeBody}</p>

@@ -5,9 +5,6 @@ import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analyti
 import { useAnalytics } from '../analytics/provider';
 import { useT } from '../i18n';
 import { AgentIcon } from './AgentIcon';
-import { PlanBadge } from './PlanBadge';
-import { MaterialSymbol } from './MaterialSymbol';
-import { orderAgentsWithOpenDesignFirst } from './agentOrdering';
 import { modelProviderIconSrc } from './modelProviderIcon';
 import { RemixIcon } from './RemixIcon';
 import {
@@ -458,9 +455,8 @@ export function AvatarMenu({
         {config.mode === 'daemon' && currentAgent ? (
           <AgentIcon id={currentAgent.id} size={20} />
         ) : (
-          <MaterialSymbol name="link" size={20} />
+          <RemixIcon name="link" size={20} />
         )}
-        <MaterialSymbol name="keyboard_arrow_down" size={14} />
         {triggerModelLabel ? (
           <span className="avatar-agent-trigger__model">
             {triggerModelIconSrc ? (
@@ -486,81 +482,6 @@ export function AvatarMenu({
           aria-label={t('avatar.title')}
           style={popoverStyle}
         >
-          <div className="avatar-popover-head">
-            <span className="who">
-              {config.mode === 'daemon'
-                ? t('avatar.localCli')
-                : apiProtocolLabel(config.apiProtocol)}
-            </span>
-            <span className="where">
-              {config.mode === 'api'
-                ? safeHost(config.baseUrl)
-                : currentAgent
-                  ? `${displayAgentName(currentAgent)}${
-                      currentAgent.id !== 'amr' && currentAgent.version
-                        ? ` · ${currentAgent.version}`
-                        : ''
-                    }${
-                      currentModelLabel && currentModelId !== 'default'
-                        ? ` · ${currentModelLabel}`
-                        : ''
-                    }`
-                  : t('avatar.noAgentSelected')}
-            </span>
-          </div>
-          <button
-            type="button"
-            className={`avatar-item avatar-item--mode${config.mode === 'daemon' ? ' active' : ''}`}
-            aria-current={config.mode === 'daemon' ? 'true' : undefined}
-            onClick={() => {
-              if (config.mode === 'daemon') {
-                setOpen(false);
-                if (!daemonLive) {
-                  onOpenSettings('execution');
-                }
-                return;
-              }
-              onModeChange('daemon');
-              if (!daemonLive) {
-                // No daemon — let user know via settings page rather than
-                // silently failing.
-                setOpen(false);
-                onOpenSettings('execution');
-              }
-            }}
-            disabled={!daemonLive && config.mode !== 'daemon'}
-          >
-            <span className="avatar-item-icon" aria-hidden>
-              <MaterialSymbol name="code_blocks" size={15} />
-            </span>
-            <span>{t('avatar.useLocal')}</span>
-            {!daemonLive ? (
-              <span className="avatar-item-meta">{t('avatar.metaOffline')}</span>
-            ) : null}
-            {config.mode === 'daemon' ? (
-              <span className="avatar-item__check" aria-hidden>
-                <MaterialSymbol name="check" size={15} />
-              </span>
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className={`avatar-item avatar-item--mode${config.mode === 'api' ? ' active' : ''}`}
-            aria-current={config.mode === 'api' ? 'true' : undefined}
-            onClick={() => onModeChange('api')}
-          >
-            <span className="avatar-item-icon" aria-hidden>
-              <MaterialSymbol name="link" size={15} />
-            </span>
-            <span>{t('avatar.useApi')}</span>
-            {config.mode === 'api' ? (
-              <span className="avatar-item__check" aria-hidden>
-                <MaterialSymbol name="check" size={15} />
-              </span>
-            ) : null}
-          </button>
-
-          {config.mode === 'daemon' && installedAgents.length > 0 ? (
           {config.mode === 'daemon' ? (
             <>
               {hasSelectableModels && currentAgent ? (
@@ -716,19 +637,6 @@ export function AvatarMenu({
                     </label>
                   ) : null}
                 </div>
-              ) : null}
-              <button
-                type="button"
-                className="avatar-item"
-                onClick={() => {
-                  onRefreshAgents();
-                }}
-              >
-                <span className="avatar-item-icon" aria-hidden>
-                  <MaterialSymbol name="refresh" size={15} />
-                </span>
-                <span>{t('avatar.rescan')}</span>
-              </button>
               ) : currentModelLabel ? (
                 <div className="avatar-model-section">
                   <div className="avatar-select-row">
@@ -858,7 +766,7 @@ export function AvatarMenu({
             }}
           >
             <span className="avatar-item-icon" aria-hidden>
-              <MaterialSymbol name="settings" size={15} />
+              <RemixIcon name="settings-3-line" size={15} />
             </span>
             <span>{t('inlineSwitcher.openFullSettings')}</span>
           </button>
@@ -874,7 +782,7 @@ export function AvatarMenu({
                 }}
               >
                 <span className="avatar-item-icon" aria-hidden>
-                  <MaterialSymbol name="arrow_back" size={15} />
+                  <RemixIcon name="arrow-left-line" size={15} />
                 </span>
                 <span>{t('avatar.backToProjects')}</span>
               </button>
