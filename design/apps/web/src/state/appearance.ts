@@ -2,6 +2,8 @@ import { getOpenDesignHost } from '@open-design/host';
 
 import type { AppTheme } from '../types';
 
+export const FORCED_APP_THEME = 'light' as const;
+
 const ACCENT_VARS = [
   '--accent',
   '--accent-strong',
@@ -36,15 +38,6 @@ export const CUSTOM_ACCENT_FALLBACK = '#c96442';
 export const ACCENT_SWATCHES = [
   DEFAULT_ACCENT_COLOR,
   CUSTOM_ACCENT_FALLBACK,
-  '#353535',
-  '#202020',
-  '#848484',
-  '#87ea5c',
-  '#0d5400',
-  '#1a74ff',
-  '#ffba12',
-  '#ff7528',
-  '#f04142',
   '#2563eb',
   '#7c3aed',
   '#059669',
@@ -68,22 +61,11 @@ function accentVars(accentColor: string): Record<(typeof ACCENT_VARS)[number], s
   return {
     '--accent': accentColor,
     // Keep these mix ratios in sync with the pre-hydration script in app/layout.tsx.
-    '--accent-strong': `color-mix(in srgb, ${accentColor} 82%, var(--text-strong))`,
-    '--accent-soft': `color-mix(in srgb, ${accentColor} 12%, var(--bg-subtle))`,
-    '--accent-tint': `color-mix(in srgb, ${accentColor} 6%, var(--bg-panel))`,
-    '--accent-hover': `color-mix(in srgb, ${accentColor} 86%, var(--text-strong))`,
+    '--accent-strong': `color-mix(in srgb, ${accentColor} 86%, var(--text-strong))`,
+    '--accent-soft': `color-mix(in srgb, ${accentColor} 22%, var(--bg-panel))`,
+    '--accent-tint': `color-mix(in srgb, ${accentColor} 12%, var(--bg-panel))`,
+    '--accent-hover': `color-mix(in srgb, ${accentColor} 90%, var(--text-strong))`,
   };
-}
-
-/**
- * Resolve a persisted theme without allowing malformed values to leak into
- * the document or the native shell. `system` is represented by the absence of
- * `data-theme`, which lets the stylesheet's media queries choose the palette.
- */
-export function resolveAppTheme(persisted?: AppTheme | null): AppTheme {
-  return persisted === 'light' || persisted === 'dark' || persisted === 'system'
-    ? persisted
-    : 'system';
 }
 
 export function applyAppearanceToDocument({
@@ -94,18 +76,11 @@ export function applyAppearanceToDocument({
   accentColor?: string;
 }): void {
   const root = document.documentElement;
-  const resolvedTheme = resolveAppTheme(theme);
-  if (resolvedTheme === 'light' || resolvedTheme === 'dark') {
-    root.setAttribute('data-theme', resolvedTheme);
+  if (theme === 'light' || theme === 'dark') {
+    root.setAttribute('data-theme', theme);
   } else {
     root.removeAttribute('data-theme');
   }
-  // Desktop shell: keep the native window appearance (the macOS vibrancy
-  // glass material) in step with the app theme. Without this the glass
-  // follows the OS appearance, so the light app over a dark OS sat on dark
-  // glass and read as a muddy gray (#94). Feature-detected — browsers and
-  // older host builds have no appearance capability.
-  getOpenDesignHost()?.appearance?.setTheme(resolvedTheme);
 
   const normalized = resolveAccentColor(accentColor);
   const vars = accentVars(normalized);

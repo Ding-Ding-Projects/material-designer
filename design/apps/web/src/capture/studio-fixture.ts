@@ -262,6 +262,12 @@ export function studioFixtureCaptureLifecycleIsCurrent(
     && current.routeKey === snapshot.routeKey;
 }
 
+export function isStudioFixtureCaptureLifecycleCurrent(
+  snapshot: StudioFixtureCaptureLifecycleSnapshot,
+): boolean {
+  return studioFixtureCaptureLifecycleIsCurrent(snapshot);
+}
+
 function advanceStudioFixtureLifecycle(): void {
   studioFixtureLifecycleGeneration += 1;
 }

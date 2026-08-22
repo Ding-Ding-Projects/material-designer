@@ -23,6 +23,8 @@ import {
 
 export type UpdaterEnvironment = 'desktop' | 'web';
 
+export const DEFAULT_RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';
+
 export type UpdaterDownloadProgress = {
   percent: number | null;
   receivedBytes: number;
@@ -52,6 +54,9 @@ export type UpdaterModel = {
   errorMessage: string | null;
   hasDownloadedInstaller: boolean;
   installerOpened: boolean;
+  platform: string | null;
+  releaseNotesUrl: string | null;
+  requiresRestartToInstall: boolean;
   updateKind: 'installer' | 'payload' | 'unknown';
   promptKey: string | null;
   /**
@@ -102,6 +107,19 @@ function downloadProgressFromStatus(
   };
 }
 
+function releaseNotesUrlFromStatus(
+  status: OpenDesignHostUpdaterStatusSnapshot | null,
+): string | null {
+  const raw = status?.metadata?.releaseNotesUrl;
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function deriveUpdaterModel(
   status: OpenDesignHostUpdaterStatusSnapshot | null,
   options: { hostAvailable?: boolean } = {},
@@ -133,8 +151,11 @@ export function deriveUpdaterModel(
   const installerOpened = status?.installResult != null;
   const artifactType = status?.artifact?.type ?? status?.incoming?.artifact?.type;
   const updateKind = artifactType === 'payload' ? 'payload' : artifactType === 'dmg' || artifactType === 'installer' ? 'installer' : 'unknown';
+  const platform = status?.platform ?? null;
+  const requiresRestartToInstall = platform === 'win32' && updateKind === 'installer';
   const availableVersion = status?.availableVersion ?? null;
   const currentVersion = status?.currentVersion ?? null;
+  const releaseNotesUrl = releaseNotesUrlFromStatus(status);
   const downloadProgress = downloadProgressFromStatus(status);
   const upToDate = state === OPEN_DESIGN_HOST_UPDATER_STATES.NOT_AVAILABLE;
   const promptKey =
@@ -163,6 +184,9 @@ export function deriveUpdaterModel(
     errorMessage: status?.error?.message ?? null,
     hasDownloadedInstaller,
     installerOpened,
+    platform,
+    releaseNotesUrl,
+    requiresRestartToInstall,
     updateKind,
     promptKey,
     reinstall: status?.reinstall ?? null,
