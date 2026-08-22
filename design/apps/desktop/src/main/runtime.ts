@@ -2332,8 +2332,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let captureNetworkOriginObserved: string | null = null;
   let captureFailureSurfacePending = false;
   let presentCaptureFailureSurface: (() => void) | null = null;
-  let revealed = false;
-  let revealing = false;
+  let captureRevealed = false;
+  let captureRevealing = false;
   const deterministicCaptureReadinessError = (): string | null => {
     if (captureRoute == null) return null;
     const currentOrigin = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
@@ -2350,7 +2350,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (captureNetworkOriginObserved == null) captureNetworkOriginObserved = currentOrigin;
     if (!isDeterministicParityCaptureReady(deterministicCaptureReadiness)
       || !captureReceiptInstalled
-      || !revealed) return DETERMINISTIC_PARITY_NOT_READY_REASON;
+      || !captureRevealed) return DETERMINISTIC_PARITY_NOT_READY_REASON;
     return null;
   };
   applyDockIcon();
