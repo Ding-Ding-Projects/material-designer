@@ -77,6 +77,9 @@ describe("deterministic capture boundary source contracts", () => {
     expect(runtime).toContain("capture.network_origin_changed");
     expect(runtime).toContain("capture.network_blocked_after_ready");
     expect(runtime).toContain("capture.network_origin_unverified");
+    expect(sidecars).toContain("capture-network-policy-v2");
+    expect(sidecars).toContain("allowedOriginClass");
+    expect(sidecars).toContain("captureNetworkIsolationReady = false");
   });
 
   it("does not forward migration state, update feeds, or uninstall writes into capture", () => {
@@ -137,6 +140,8 @@ describe("deterministic capture boundary source contracts", () => {
     expect(webPolicy).toContain("isLoopbackHttpUrl");
     expect(daemonPolicy).toContain("capture.network_blocked_external");
     expect(webPolicy).toContain("capture.network_blocked_external");
+    expect(daemonPolicy).toContain("CAPTURE_NETWORK_POLICY_ACKNOWLEDGEMENT");
+    expect(webPolicy).toContain("CAPTURE_NETWORK_POLICY_ACKNOWLEDGEMENT");
   });
 
   it("keeps per-run locking and evidence-retention policy exact", () => {
@@ -149,6 +154,8 @@ describe("deterministic capture boundary source contracts", () => {
     expect(captureRun).toContain('await open(lockPath, "wx")');
     expect(captureRun).toContain("CAPTURE_RUN_RETENTION_POLICY");
     expect(captureRun).toContain('join(root, "retired.json")');
+    expect(captureRun).toContain('CAPTURE_RUN_FAILURE_RETENTION_MARKER');
+    expect(captureRun).toContain('lock?.close()');
     expect(captureRun).not.toContain("rm(");
     expect(captureRun).toContain("lstat");
     expect(captureRun).toContain("retireTask");
@@ -213,6 +220,10 @@ describe("deterministic capture boundary source contracts", () => {
       "capture-fixture-agent",
     ]) expect(boundary).toContain(required);
     expect(boundary).toContain("createCaptureBoundaryMiddleware");
+    expect(boundary).toContain("CAPTURE_READ_ROUTE_INVENTORY");
+    expect(boundary).toContain("capture.unclassified_route_blocked");
+    expect(boundary).toContain("USERPROFILE");
+    expect(boundary).toContain("TMPDIR");
   });
 
   it("refuses capture payload delegation and native side effects", () => {
@@ -241,5 +252,32 @@ describe("deterministic capture boundary source contracts", () => {
     expect(app).toContain("const captureSettled = daemonLive");
     expect(app).toContain("data-od-capture-settled");
     expect(app).toContain("data-od-capture-settled-revision");
+  });
+
+  it("deep-freezes tuple and nested readiness receipt graphs", () => {
+    const route = readFileSync(
+      join(desktopRoot, "src/main/deterministic-parity-route.ts"),
+      "utf8",
+    );
+    const runtime = source("src/main/runtime.ts");
+    expect(route).toContain("deepFreezeDeterministicParityValue");
+    expect(runtime).toContain("deepFreeze(${readinessJson})");
+    expect(runtime).toContain("deepFreezeDeterministicParityValue");
+  });
+
+  it("keeps appearance and downloads capture-fail-closed", () => {
+    const runtime = source("src/main/runtime.ts");
+    expect(runtime).toContain("capture.appearance_mutation_blocked");
+    expect(runtime).toContain("event.preventDefault()");
+    expect(runtime).toContain("item.cancel()");
+    expect(runtime).toContain("capture.download_blocked");
+  });
+
+  it("requires the packaged outer launcher before direct capture bootstrap", () => {
+    const desktop = source("src/main/index.ts");
+    const packaged = readFileSync(join(desktopRoot, "../packaged/src/index.ts"), "utf8");
+    expect(desktop).toContain("capture.packaged_launcher_required");
+    expect(desktop).toContain("capturePackagedLauncher !== true");
+    expect(packaged).toContain("capturePackagedLauncher: deterministicParityRoute != null");
   });
 });

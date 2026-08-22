@@ -79,6 +79,7 @@ sidecars exist.
 - `apps/daemon/tests/capture-network-policy.test.ts`
 - `apps/daemon/src/sidecar/capture-network-policy.ts`
 - `apps/daemon/src/sidecar/index.ts`
+- `apps/daemon/src/sidecar/server.ts`
 - `apps/packaged/tests/protocol.test.ts`
 - `apps/packaged/src/capture-run.ts`
 - `apps/packaged/src/config.ts`
@@ -88,6 +89,7 @@ sidecars exist.
 - `apps/packaged/src/payload-desktop-launch.ts`
 - `apps/web/sidecar/capture-network-policy.ts`
 - `apps/web/sidecar/index.ts`
+- `apps/web/sidecar/server.ts`
 - `apps/web/src/App.tsx`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding

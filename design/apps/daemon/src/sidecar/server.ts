@@ -7,6 +7,7 @@ import {
   SIDECAR_MESSAGES,
   normalizeDaemonSidecarMessage,
   type DaemonStatusSnapshot,
+  type CaptureNetworkPolicyAcknowledgement,
   type DesktopExportArtifactInput,
   type DesktopExportArtifactResult,
   type DesktopExportPdfInput,
@@ -119,7 +120,10 @@ export function mintImportTokenForCli(baseDir: string): MintImportTokenResult {
   };
 }
 
-export async function startDaemonSidecar(runtime: SidecarRuntimeContext<SidecarStamp>): Promise<DaemonSidecarHandle> {
+export async function startDaemonSidecar(
+  runtime: SidecarRuntimeContext<SidecarStamp>,
+  captureNetworkPolicy: CaptureNetworkPolicyAcknowledgement | null = null,
+): Promise<DaemonSidecarHandle> {
   const serverHandle: StartedDaemonRuntime = await startDaemonRuntime({
     desktopPdfExporter: async (input: DesktopExportPdfInput): Promise<DesktopExportPdfResult> => {
       const desktopIpc = resolveAppIpcPath({
@@ -168,6 +172,7 @@ export async function startDaemonSidecar(runtime: SidecarRuntimeContext<SidecarS
   // `isDesktopAuthGateActive()` per request — the value cached here is
   // a startup snapshot only.
   const state: DaemonStatusSnapshot = {
+    captureNetworkPolicy,
     desktopAuthGateActive: isDesktopAuthGateActive(),
     pid: process.pid,
     state: "running",

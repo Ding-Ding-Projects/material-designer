@@ -514,6 +514,7 @@ async function main(): Promise<void> {
 
   const { runDesktopMain } = await import("@open-design/desktop/main");
   await runDesktopMain(runtime, {
+    capturePackagedLauncher: deterministicParityRoute != null,
     captureRoute: deterministicParityRoute,
     captureNetworkOrigin: () => sidecars.currentWebUrl(),
     captureNetworkIsolationReady: sidecars.captureNetworkIsolationReady,

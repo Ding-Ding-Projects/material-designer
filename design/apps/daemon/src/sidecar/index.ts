@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   // Capture runs are local evidence sessions. Install the egress boundary
   // before startup work or route registration can issue a provider request.
   const captureMode = process.env.OD_DESIGN_PARITY_CAPTURE === "1";
-  installCaptureNetworkPolicy();
+  const captureNetworkPolicy = installCaptureNetworkPolicy();
 
   const runtime = bootstrapSidecarRuntime(stamp, process.env, {
     app: APP_KEYS.DAEMON,
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
         console.warn("[packaged desktop handoff] prepare failed", error);
         return null;
       });
-  const server = await startDaemonSidecar(runtime);
+  const server = await startDaemonSidecar(runtime, captureNetworkPolicy);
 
   process.stdout.write(`${JSON.stringify(await server.status(), null, 2)}\n`);
   if (!captureMode && desktopHandoff?.kind === "none") {

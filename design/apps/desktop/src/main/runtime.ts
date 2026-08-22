@@ -59,6 +59,7 @@ import {
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
   deterministicParitySessionPartition,
+  deepFreezeDeterministicParityValue,
   type DeterministicParityRoute,
   type DeterministicParityReadiness,
 } from "./deterministic-parity-route.js";
@@ -726,7 +727,7 @@ async function measureDeterministicCaptureReadiness(
   if (blockedNetworkRequests > 0) reasons.push("capture.network_blocked_requests");
   if (actual.networkPolicy !== route.tuple.network) reasons.push("capture.network_policy_mismatch");
   if (!actual.appMounted) reasons.push("app.not_mounted");
-  return {
+  return deepFreezeDeterministicParityValue({
     version: 2,
     ready: reasons.length === 0,
     routeId: route.id,
@@ -736,7 +737,7 @@ async function measureDeterministicCaptureReadiness(
       blockedNetworkRequests,
     },
     reasons,
-  };
+  });
 }
 
 export function mintImportToken(secret: Buffer, baseDir: string): string {
@@ -2162,8 +2163,20 @@ export function saveAsDialogOptionsForFilename(filename: string): SaveAsDialogOp
   return { title: "Save As", defaultPath: filename, filters, properties: ["dontAddToRecent"] };
 }
 
-function attachDownloadSaveAsDialog(window: BrowserWindow): void {
-  window.webContents.session.on("will-download", (_event, item) => {
+function attachDownloadSaveAsDialog(
+  window: BrowserWindow,
+  options: { captureMode?: boolean; onCaptureDownload?: () => void } = {},
+): void {
+  window.webContents.session.on("will-download", (event, item) => {
+    if (options.captureMode === true) {
+      // Capture must never write a blob/data/loopback download (or any future
+      // extension) before Save As is considered. Cancel at will-download and
+      // invalidate readiness so the evidence cannot be promoted afterwards.
+      event.preventDefault();
+      item.cancel();
+      options.onCaptureDownload?.();
+      return;
+    }
     const options = saveAsDialogOptionsForFilename(item.getFilename());
     if (!options) return;
     item.setSaveDialogOptions(options);
@@ -2669,7 +2682,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     } catch {
       currentUrl = "";
     }
-    return {
+    return deepFreezeDeterministicParityValue({
       version: 2,
       ready: false,
       routeId: captureRoute!.id,
@@ -2709,7 +2722,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         blockedNetworkRequests: blockedCaptureNetworkRequests,
       },
       reasons: [reason],
-    };
+    });
   };
   let detachCaptureDebugger: (() => void) | null = null;
   if (captureRoute) {
@@ -2728,7 +2741,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // the renderer's own button. Push every transition instead of letting the
   // glyph drift out of sync with the window.
   attachWindowMaximizedBroadcast(window);
-  attachDownloadSaveAsDialog(window);
+  attachDownloadSaveAsDialog(window, {
+    captureMode: captureRoute != null,
+    onCaptureDownload: () => invalidateCaptureReadinessRef?.("capture.download_blocked"),
+  });
   const previewFrameNameByRoutingId = new Map<string, string>();
   const previewFrameRoutingKey = (processId: number, routingId: number) =>
     `${processId}:${routingId}`;
@@ -3167,6 +3183,15 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.on("od:appearance:set-theme", (event, theme: unknown) => {
     if (window.isDestroyed() || event.sender !== window.webContents) return;
     if (theme !== "light" && theme !== "dark" && theme !== "system") return;
+    if (captureRoute != null) {
+      // A capture tuple owns its appearance. Even a repeated light value is a
+      // mutation attempt: refuse it, invalidate the receipt, and restore the
+      // native pin so a renderer cannot drift the host appearance underneath
+      // an otherwise identical tuple.
+      invalidateCaptureReadinessRef?.("capture.appearance_mutation_blocked");
+      pinNativeAppearanceToLight();
+      return;
+    }
     // Pin the native appearance to the app theme. The macOS frosted window
     // (vibrancy: under-window) draws its glass in the SYSTEM appearance by
     // default, so a light app over a dark OS sat on dark glass and read as a
@@ -3386,7 +3411,16 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
           delete globalThis.__MATERIAL_DESIGNER_CAPTURE_READINESS__;
         }
         Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_READINESS__", {
-          value: Object.freeze(${readinessJson}),
+          value: (() => {
+            const deepFreeze = (value) => {
+              if (value && typeof value === "object" && !Object.isFrozen(value)) {
+                for (const key of Reflect.ownKeys(value)) deepFreeze(value[key]);
+                Object.freeze(value);
+              }
+              return value;
+            };
+            return deepFreeze(${readinessJson});
+          })(),
           configurable: true,
           writable: false,
         });

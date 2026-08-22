@@ -1,5 +1,14 @@
 /** Capture-only fetch boundary; ordinary sidecar launches are unchanged. */
 
+import type { CaptureNetworkPolicyAcknowledgement } from "@open-design/sidecar-proto";
+
+export const CAPTURE_NETWORK_POLICY_ACKNOWLEDGEMENT = {
+  armed: true,
+  policyVersion: "capture-network-policy-v2",
+  redirectMode: "manual",
+  allowedOriginClass: "loopback-http-no-credentials",
+} as const satisfies CaptureNetworkPolicyAcknowledgement;
+
 function isLoopbackHttpUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
@@ -19,8 +28,8 @@ function isLoopbackHttpUrl(value: string): boolean {
 
 export function installCaptureNetworkPolicy(
   env: NodeJS.ProcessEnv = process.env,
-): void {
-  if (env.OD_DESIGN_PARITY_CAPTURE !== "1") return;
+): CaptureNetworkPolicyAcknowledgement | null {
+  if (env.OD_DESIGN_PARITY_CAPTURE !== "1") return null;
   const originalFetch = globalThis.fetch.bind(globalThis);
   globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
     const rawUrl = typeof input === "string"
@@ -41,4 +50,5 @@ export function installCaptureNetworkPolicy(
     }
     return response;
   }) as typeof fetch;
+  return CAPTURE_NETWORK_POLICY_ACKNOWLEDGEMENT;
 }

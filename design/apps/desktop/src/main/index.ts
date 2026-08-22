@@ -109,6 +109,7 @@ export {
   deterministicParityCaptureSidecarNamespace,
   deterministicParityRouteIds,
   deterministicParitySessionPartition,
+  deepFreezeDeterministicParityValue,
   isDeterministicParityCaptureReady,
   isDeterministicParityNavigationAllowed,
   isDeterministicParityCaptureEnabled,
@@ -222,6 +223,8 @@ export type DesktopMainOptions = {
    * `material-designer://` capture argument.
    */
   captureRoute?: DeterministicParityRoute | null;
+  /** Only the packaged outer launcher may own a capture route. */
+  capturePackagedLauncher?: boolean;
   /** Exact current web-sidecar origin allowed by the capture session. */
   captureNetworkOrigin?: () => string | null;
   /** True only after the sidecars prove capture-aware fixture/network isolation. */
@@ -771,6 +774,14 @@ export async function runDesktopMain(
   runtime: SidecarRuntimeContext<SidecarStamp>,
   options: DesktopMainOptions = {},
 ): Promise<void> {
+  // Refuse direct desktop capture before process filters, Electron readiness,
+  // auth registration, IPC, logs, or a BrowserWindow can be armed. The
+  // packaged outer launcher passes the explicit authority bit below.
+  const requestedCaptureRoute = options.captureRoute
+    ?? parseDeterministicParityRouteArgv(process.argv, process.env);
+  if (requestedCaptureRoute != null && options.capturePackagedLauncher !== true) {
+    throw new Error("capture.packaged_launcher_required: capture must be owned by the packaged outer launcher");
+  }
   // Install the defensive uncaughtException filter BEFORE awaiting
   // app.whenReady, so a setTypeOfService EINVAL thrown by undici during
   // the renderer's first fetch is intercepted rather than surfacing as
@@ -785,12 +796,7 @@ export async function runDesktopMain(
   // `apps/packaged/src/index.ts` has already applied the switch before
   // its own `whenReady`; this call is then a no-op for the switch and
   // only recovers the locale string for the BrowserWindow below.
-  const captureRoute =
-    options.captureRoute
-    ?? parseDeterministicParityRouteArgv(
-      process.argv,
-      process.env,
-    );
+  const captureRoute = requestedCaptureRoute;
   const captureRunId = captureRoute == null
     ? null
     : options.captureRunId ?? createDeterministicParityCaptureRunId();
@@ -1188,6 +1194,10 @@ export async function runDesktopMain(
 }
 
 if (isDirectEntry()) {
+  const directCaptureRoute = parseDeterministicParityRouteArgv(process.argv, process.env);
+  if (directCaptureRoute != null) {
+    throw new Error("capture.packaged_launcher_required: capture must be owned by the packaged outer launcher");
+  }
   const stamp = readProcessStamp(process.argv.slice(2), OPEN_DESIGN_SIDECAR_CONTRACT);
   if (stamp == null) throw new Error("sidecar stamp is required");
 

@@ -3147,14 +3147,19 @@ export async function startServer({
   }
 
   // Warm agent-capability probes (e.g. whether the installed Claude Code
-  // build advertises --include-partial-messages) so the first /api/chat
-  // hits a populated cache even if /api/agents hasn't been called yet.
-  void readAppConfig(RUNTIME_DATA_DIR)
-    .then((config) => {
-      orbitService.configure(config.orbit);
-      return detectAgents(config.agentCliEnv ?? {});
-    })
-    .catch(() => detectAgents().catch(() => {}));
+  // build advertises --include-partial-messages) are ordinary-runtime work.
+  // Capture uses only the deterministic fixture projection exposed by the
+  // capture boundary; probing installed agents, runtimes, versions, models,
+  // auth, companions, or Vela here would make a supposedly fixed tuple depend
+  // on the host before the first request arrives.
+  if (process.env.OD_DESIGN_PARITY_CAPTURE !== "1") {
+    void readAppConfig(RUNTIME_DATA_DIR)
+      .then((config) => {
+        orbitService.configure(config.orbit);
+        return detectAgents(config.agentCliEnv ?? {});
+      })
+      .catch(() => detectAgents().catch(() => {}));
+  }
 
   await recoverStaleLiveArtifactRefreshes({ projectsRoot: PROJECTS_DIR }).catch((error) => {
     console.warn('[od] Failed to recover stale live artifact refreshes:', error);

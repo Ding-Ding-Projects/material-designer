@@ -19,6 +19,17 @@ export const DETERMINISTIC_PARITY_NETWORK = "disabled";
 export const DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT = "design-parity-captures";
 const DETERMINISTIC_PARITY_CAPTURE_RUN_ID_PATTERN = /^run-[0-9a-f]{32}$/;
 
+/** Freeze the tuple graph, not only its outer record. */
+export function deepFreezeDeterministicParityValue<T>(value: T): T {
+  if (value != null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const key of Reflect.ownKeys(value as object)) {
+      deepFreezeDeterministicParityValue((value as Record<PropertyKey, unknown>)[key]);
+    }
+    Object.freeze(value);
+  }
+  return value;
+}
+
 const QUERY_KEYS = [
   "state",
   "theme",
@@ -356,7 +367,7 @@ export function resolveDeterministicParityRoute(
     );
   }
 
-  return {
+  return deepFreezeDeterministicParityValue({
     id: definition.id,
     tuple,
     browserPath: definition.browserPath,
@@ -366,7 +377,7 @@ export function resolveDeterministicParityRoute(
       screen: tuple.screen,
       state: tuple.state,
     },
-  };
+  });
 }
 
 /**

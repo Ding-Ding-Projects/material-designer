@@ -12,6 +12,7 @@ import {
  */
 export const CAPTURE_RUN_RETENTION_POLICY =
   "retain-evidence-until-explicit-review-cleanup" as const;
+export const CAPTURE_RUN_FAILURE_RETENTION_MARKER = "failed.json" as const;
 
 export type DeterministicParityCaptureRunLease = {
   readonly routeId: string;
@@ -79,25 +80,45 @@ export async function acquireDeterministicParityCaptureRun(input: {
   }
   await assertNoReparseComponents(captureRoot);
   await assertNoReparseComponents(root);
+  const now = input.now ?? (() => new Date().toISOString());
+  let rootCreated = false;
+  let lock: Awaited<ReturnType<typeof open>> | null = null;
+  const lockPath = join(root, "active.lock");
   try {
     await mkdir(root);
+    rootCreated = true;
+    await assertNoReparseComponents(root);
+    lock = await open(lockPath, "wx");
+    await lock.writeFile(JSON.stringify({
+      pid: input.pid ?? process.pid,
+      routeId: input.routeId,
+      runId,
+      startedAt: now(),
+    }), "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") {
       throw new Error("capture.run_namespace_collision: capture run identity is already present");
     }
+    await lock?.close().catch(() => undefined);
+    // Preserve only the exact run root that failed. Never retire, overwrite,
+    // or remove a sibling run: failure evidence is part of the run's audit
+    // trail and a later reviewer can decide when it is safe to clean up.
+    if (rootCreated) {
+      await writeFile(
+        join(root, CAPTURE_RUN_FAILURE_RETENTION_MARKER),
+        JSON.stringify({
+          policy: CAPTURE_RUN_RETENTION_POLICY,
+          failedAt: now(),
+          routeId: input.routeId,
+          runId,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+        { encoding: "utf8", flag: "wx" },
+      ).catch(() => undefined);
+    }
     throw error;
   }
-  await assertNoReparseComponents(root);
-
-  const lockPath = join(root, "active.lock");
-  const lock = await open(lockPath, "wx");
-  const now = input.now ?? (() => new Date().toISOString());
-  await lock.writeFile(JSON.stringify({
-    pid: input.pid ?? process.pid,
-    routeId: input.routeId,
-    runId,
-    startedAt: now(),
-  }), "utf8");
+  if (lock == null) throw new Error("capture.run_lock_unavailable: lock handle was not opened");
   let retired = false;
   let retireTask: Promise<void> | null = null;
   return {
@@ -110,7 +131,7 @@ export async function acquireDeterministicParityCaptureRun(input: {
       if (retired) return;
       retired = true;
       retireTask = (async () => {
-        await lock.close();
+        await lock!.close();
         try {
           await writeFile(
             join(root, "retired.json"),

@@ -11,13 +11,13 @@ async function main(): Promise<void> {
 
   // Keep the web sidecar local during deterministic evidence capture. Its
   // normal daemon proxy remains available because loopback is allowlisted.
-  installCaptureNetworkPolicy();
+  const captureNetworkPolicy = installCaptureNetworkPolicy();
 
   const runtime = bootstrapSidecarRuntime(stamp, process.env, {
     app: APP_KEYS.WEB,
     contract: OPEN_DESIGN_SIDECAR_CONTRACT,
   });
-  const server = await startWebSidecar(runtime);
+  const server = await startWebSidecar(runtime, captureNetworkPolicy);
 
   process.stdout.write(`${JSON.stringify(await server.status(), null, 2)}\n`);
   await server.waitUntilStopped();

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CAPTURE_ENV_INVENTORY,
   CAPTURE_HANDLER_INVENTORY,
+  CAPTURE_READ_ROUTE_INVENTORY,
   CAPTURE_PROCESS_INVENTORY,
   createCaptureBoundaryMiddleware,
 } from "../src/capture-boundary.js";
@@ -42,6 +43,7 @@ function request(method: string, path: string, query: Record<string, string> = {
 describe("deterministic capture process boundary", () => {
   it("keeps an explicit handler/process/env inventory", () => {
     expect(CAPTURE_HANDLER_INVENTORY.length).toBeGreaterThan(0);
+    expect(CAPTURE_READ_ROUTE_INVENTORY.length).toBeGreaterThan(0);
     expect(CAPTURE_PROCESS_INVENTORY.length).toBeGreaterThan(0);
     expect(CAPTURE_ENV_INVENTORY).toEqual(expect.arrayContaining([
       "HOME",
@@ -50,6 +52,11 @@ describe("deterministic capture process boundary", () => {
       "OPENCODE_TEST_HOME",
       "VP_HOME",
       "TMPDIR",
+      "TMP",
+      "TEMP",
+      "USERPROFILE",
+      "APPDATA",
+      "LOCALAPPDATA",
       "OD_DESIGN_PARITY_CAPTURE",
     ]));
   });
@@ -101,5 +108,24 @@ describe("deterministic capture process boundary", () => {
     const res = responseDouble();
     middleware(request("POST", "/runs") as never, res as never, next as never);
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses an unclassified API route instead of falling through", () => {
+    const middleware = createCaptureBoundaryMiddleware({ OD_DESIGN_PARITY_CAPTURE: "1" });
+    const next = vi.fn();
+    const res = responseDouble();
+    middleware(request("GET", "/unclassified-live-read") as never, res as never, next as never);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(503);
+    expect((res.body as { error: string }).error).toBe("capture.unclassified_route_blocked");
+  });
+
+  it("projects an inventoried read from fixtures without reaching the registrar", () => {
+    const middleware = createCaptureBoundaryMiddleware({ OD_DESIGN_PARITY_CAPTURE: "1" });
+    const next = vi.fn();
+    const res = responseDouble();
+    middleware(request("GET", "/projects") as never, res as never, next as never);
+    expect(next).not.toHaveBeenCalled();
+    expect((res.body as { source: string }).source).toBe("capture-provider");
   });
 });

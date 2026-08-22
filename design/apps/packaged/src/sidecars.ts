@@ -14,6 +14,7 @@ import {
   type DaemonStatusSnapshot,
   type RegisterWebUrlResult,
   type SidecarStamp,
+  type CaptureNetworkPolicyAcknowledgement,
   type WebStatusSnapshot,
 } from "@open-design/sidecar-proto";
 import {
@@ -133,8 +134,21 @@ export type PackagedSidecarHandle = {
   daemon: DaemonStatusSnapshot;
   web: WebStatusSnapshot;
   /** True only after capture-aware daemon and web policies are armed. */
-  captureNetworkIsolationReady: boolean;
+  readonly captureNetworkIsolationReady: boolean;
 };
+
+const EXPECTED_CAPTURE_NETWORK_POLICY_ACK: CaptureNetworkPolicyAcknowledgement = {
+  armed: true,
+  policyVersion: "capture-network-policy-v2",
+  redirectMode: "manual",
+  allowedOriginClass: "loopback-http-no-credentials",
+};
+
+export function isExactCaptureNetworkPolicyAcknowledgement(
+  value: unknown,
+): value is CaptureNetworkPolicyAcknowledgement {
+  return JSON.stringify(value) === JSON.stringify(EXPECTED_CAPTURE_NETWORK_POLICY_ACK);
+}
 
 type ManagedSidecarChild = {
   app: AppKey;
@@ -997,6 +1011,7 @@ export async function startPackagedSidecars(
 
   const children: ManagedSidecarChild[] = [];
   let webSupervisor: { close(): Promise<void> } | null = null;
+  let captureNetworkIsolationReady = false;
 
   const daemonSidecarEntry =
     options.daemonSidecarEntry ?? resolveSidecarEntry("@open-design/daemon", "sidecar");
@@ -1067,7 +1082,8 @@ export async function startPackagedSidecars(
     );
     const daemonStatus = await waitForStatus<DaemonStatusSnapshot>(
       daemon.ipcPath,
-      (status) => status.url != null,
+      (status) => status.url != null
+        && (!options.captureMode || isExactCaptureNetworkPolicyAcknowledgement(status.captureNetworkPolicy)),
       resolveDaemonStatusTimeoutMs(process.env, process.platform, options.captureMode === true),
       // Race the IPC polling against the daemon child's exit. Without
       // this, a daemon that throws at startup (LegacyMigrationError on
@@ -1093,7 +1109,9 @@ export async function startPackagedSidecars(
       hasExited: (web) => web.child.exitCode !== null || web.child.signalCode !== null,
       onExit: (web, listener) => web.child.once("exit", listener),
       registerUrl: async (url) => await registerPackagedWebUrl(daemon.ipcPath, url),
-      spawn: async () => await spawnSidecarChild({
+      spawn: async () => {
+        if (options.captureMode) captureNetworkIsolationReady = false;
+        return await spawnSidecarChild({
         app: APP_KEYS.WEB,
         entryPath: webSidecarEntry,
         env: {
@@ -1114,16 +1132,24 @@ export async function startPackagedSidecars(
         runtime,
         captureMode: options.captureMode,
         captureRunRoot: options.captureRunRoot,
-      }),
+        });
+      },
       waitUntilReady: async (web) => await waitForStatus<WebStatusSnapshot>(
         web.ipcPath,
-        (candidate) => candidate.url != null,
+        (candidate) => candidate.url != null
+          && (!options.captureMode || isExactCaptureNetworkPolicyAcknowledgement(candidate.captureNetworkPolicy)),
         // Web has no legacy-migration path, so it uses the plain platform
         // baseline (still widened on win32, where AV scanning can also slow the
         // web sidecar's first bind) rather than resolveDaemonStatusTimeoutMs.
         baseStatusTimeoutMs(),
         { child: web.child, logPath: logPathFor(paths, APP_KEYS.WEB) },
-      ),
+      ).then((status) => {
+        if (options.captureMode && !isExactCaptureNetworkPolicyAcknowledgement(status.captureNetworkPolicy)) {
+          throw new Error("capture.network_policy_ack_unresolved");
+        }
+        captureNetworkIsolationReady = options.captureMode === true;
+        return status;
+      }),
     });
     webSupervisor = supervisor;
 
@@ -1141,7 +1167,9 @@ export async function startPackagedSidecars(
       // startup, and this return occurs only after both status handshakes.
       // The packaged runtime still observes the renderer's exact loopback
       // origin and invalidates readiness on any later drift or blocked request.
-      captureNetworkIsolationReady: options.captureMode === true && options.captureRunRoot != null,
+      get captureNetworkIsolationReady() {
+        return captureNetworkIsolationReady && options.captureRunRoot != null;
+      },
       currentWebUrl: supervisor.currentUrl,
       async close() {
         await supervisor.close();
