@@ -1108,7 +1108,7 @@ function AppInner() {
       ? createStudioFixtureSafeConfig()
       : loadConfig();
   });
-  const setConfig = useCallback<
+  const setConfig = useCallback(
     (next: AppConfig | ((current: AppConfig) => AppConfig)) => {
       if (isStudioFixtureCaptureStorageLocked()) return;
       setConfigState(next);
