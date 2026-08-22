@@ -2588,7 +2588,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // emitting recovery-attempt events.
   let rendererRecoveryAttempts = 0;
 
-  let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
+
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   // The floating pet is a separate BrowserWindow on the default session. It
@@ -2625,7 +2625,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
-      ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute, captureRunId!) } : {}),
+      ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute!, captureRunId!) } : {}),
       preload: preloadPath,
       sandbox: true,
       // The design-browser webview is a real network/profile surface. It is
@@ -3180,7 +3180,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
     if (captureRoute != null) {
       invalidateCaptureReadinessRef?.("capture.appearance_mutation_blocked");
-      pinNativeAppearanceToLight();
+      nativeTheme.themeSource = "light";
       return { ok: false, reason: "capture.appearance_mutation_blocked" };
     }
     const parsedTheme = parseDesktopAppearanceTheme(theme);
