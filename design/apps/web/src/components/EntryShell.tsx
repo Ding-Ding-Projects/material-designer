@@ -350,6 +350,18 @@ function defaultPluginInputsForCreate(
   const kind = input.metadata.kind;
   const projectName = input.name.trim();
 
+  if (input.metadata.intent === 'desktop-app' && pluginId === 'od-new-generation') {
+    return {
+      artifactKind: 'desktop application',
+      audience: 'desktop application users',
+      topic: projectName || 'the desktop application brief',
+      scaffold: 'the generated Electron desktop scaffold',
+      wireup: input.metadata.desktopWireup?.enabled === true
+        ? 'wire the scaffold through the existing first-run run path'
+        : 'leave the scaffold ready for a later explicit wire-up',
+    };
+  }
+
   if (pluginId === 'example-web-prototype') {
     return {
       artifactKind: input.metadata.includeLandingPage
@@ -2145,6 +2157,9 @@ export function EntryShell({
         mediaProviders={config.mediaProviders}
         connectors={connectors}
         connectorsLoading={connectorsLoading}
+        agents={agents}
+        selectedAgentId={config.agentId}
+        onAgentChange={onAgentChange}
         loading={skillsLoading}
         onCreate={handleCreate}
         onImportClaudeDesign={onImportClaudeDesign}

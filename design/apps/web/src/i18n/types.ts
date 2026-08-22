@@ -2471,6 +2471,16 @@ export interface Dict {
   'newproj.dsNoneTitle': string;
   'newproj.dsNoneSub': string;
   'newproj.dsEmpty': string;
+  'newproj.dsResults': string;
+  'newproj.desktopAgentLabel': string;
+  'newproj.desktopAgentSearch': string;
+  'newproj.desktopAgentResults': string;
+  'newproj.desktopAgentEmpty': string;
+  'newproj.desktopAgentMissing': string;
+  'newproj.desktopAgentUnavailable': string;
+  'newproj.desktopWireupToggle': string;
+  'newproj.desktopWireupNotStarted': string;
+  'newproj.desktopWireupPromptLabel': string;
   'newproj.dsFootSingular': string;
   'newproj.dsFootPlural': string;
   'newproj.dsFootClear': string;

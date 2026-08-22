@@ -153,6 +153,22 @@ function formatElevenLabsVoiceOptionsErrorForPrompt(
 type ProjectMetadata = {
   kind?: string;
   intent?: string | null;
+  entryFile?: string | null;
+  desktopScaffold?: {
+    revision?: number | null;
+    framework?: string | null;
+    platform?: string | null;
+    entryFile?: string | null;
+    rendererFile?: string | null;
+    packagingTarget?: string | null;
+    codeSigning?: string | null;
+  } | null;
+  desktopWireup?: {
+    enabled?: boolean | null;
+    status?: string | null;
+    agentId?: string | null;
+    prompt?: string | null;
+  } | null;
   fidelity?: string | null;
   speakerNotes?: boolean | null;
   slideCount?: string | null;
@@ -1632,6 +1648,24 @@ function renderMetadataBlock(
     );
     lines.push(
       '- **connector-source rule**: if the user names a connector/source (for example Notion) and daemon connector tools are available, list connectors before asking where the data comes from. When the named connector is `connected`, use its read-only tools and ask follow-up questions only for missing topic/page/database details, multiple equally plausible matches, or an unconnected/missing connector.',
+    );
+  }
+  if (metadata.intent === 'desktop-app') {
+    const scaffold = metadata.desktopScaffold;
+    const wireup = metadata.desktopWireup;
+    lines.push(
+      '- **intent**: desktop-app — the user explicitly created a desktop application project. Work from the generated `desktop/` scaffold and the project source entry; do not collapse this into a browser-only prototype or a metadata-only platform label.',
+    );
+    lines.push(
+      `- **desktop scaffold**: ${scaffold?.framework ?? 'electron'} on ${scaffold?.platform ?? 'windows'}, revision ${scaffold?.revision ?? 1}, entry ${scaffold?.entryFile ?? metadata.entryFile ?? 'index.html'}, renderer bootstrap ${scaffold?.rendererFile ?? 'desktop/src/renderer.js'}, packaging target ${scaffold?.packagingTarget ?? 'squirrel-windows'}, code signing ${scaffold?.codeSigning ?? 'disabled'}.`,
+    );
+    lines.push(
+      '- **desktop security boundary**: preserve context isolation, sandboxing, disabled Node integration, disabled webviews, blocked network and out-of-root local-file requests, denied secondary windows, and the narrow typed preload bridge. Do not add arbitrary shell, filesystem, environment, credential, or untyped IPC access.',
+    );
+    lines.push(
+      wireup?.enabled
+        ? `- **agent wire-up**: the user asked the currently selected agent${wireup.agentId ? ` (${wireup.agentId})` : ''} to wire this scaffold. Use the existing first-run run path and its truthful queued/running/completed/cancelled/failed state; do not invent a second agent protocol.`
+        : '- **agent wire-up**: not requested yet. Leave the scaffold ready for a later explicit run and do not claim the application is wired.',
     );
   }
   if (metadata.kind === 'brand') {

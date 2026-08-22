@@ -28,6 +28,16 @@ with the project's standards.
       website action now requests the complete project root, while reserved
       generated paths, non-HTML scaffold inputs, network/out-of-root requests,
       secondary windows and case-only extraction collisions fail closed.
+- [ ] **Create desktop application projects in place and offer selected-agent
+      wire-up.** Source commits
+      [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)
+      and the current repair add a nonce-claimed empty-directory publication,
+      complete nine-role validation, startup reconciliation, project-id-stable
+      package identity, canonical path checks, an exclusive Windows target,
+      authoritative selected-agent validation, prompt parity, and a portalled
+      48px localized picker with live result/no-match status. Source checks and
+      port verification remain the only local evidence; hosted source tests,
+      installed-runtime proof, and visual captures remain pending.
 - [x] **Repair Download routing and narrow action geometry at source level.** A
       queued Markdown Download opens its real export menu, and narrow action
       rows compact labelled controls while retaining accessible names. Hosted

@@ -11,7 +11,7 @@ import {
   NewProjectPanel,
 } from '../../src/components/NewProjectPanel';
 import { openFolderDialog } from '../../src/providers/registry';
-import type { DesignSystemSummary, ProjectTemplate, SkillSummary } from '../../src/types';
+import type { AgentInfo, DesignSystemSummary, ProjectTemplate, SkillSummary } from '../../src/types';
 
 vi.mock('@open-design/host', async () => {
   const actual = await vi.importActual<typeof import('@open-design/host')>('@open-design/host');
@@ -261,6 +261,84 @@ describe('NewProjectPanel design system defaults', () => {
     expect(screen.getByRole('listbox', { name: 'Target platforms' }).getAttribute('aria-multiselectable')).toBe(
       'true',
     );
+  });
+
+  it('creates a real desktop-app intent and queues wire-up through the selected agent', () => {
+    const onCreate = vi.fn();
+    const agent = {
+      id: 'local-agent',
+      name: 'Local Agent',
+      bin: 'local-agent',
+      available: true,
+    } satisfies AgentInfo;
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId={null}
+        templates={[]}
+        promptTemplates={[]}
+        onCreate={onCreate}
+        agents={[agent]}
+        selectedAgentId="local-agent"
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('new-project-name'), {
+      target: { value: 'Orders desktop' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Responsive web/i }));
+    fireEvent.click(screen.getByRole('option', { name: /Desktop app/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Wire up after creation/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /Wire-up brief/i }), {
+      target: { value: 'Wire the orders workflow and preserve the local security boundary.' },
+    });
+    fireEvent.click(screen.getByTestId('create-project'));
+
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({
+      autoSendFirstMessage: true,
+      conversationMode: 'design',
+      pendingPrompt: 'Wire the orders workflow and preserve the local security boundary.',
+      metadata: expect.objectContaining({
+        intent: 'desktop-app',
+        platform: 'desktop-app',
+        platformTargets: ['desktop-app'],
+        desktopWireup: expect.objectContaining({
+          enabled: true,
+          status: 'not_started',
+          agentId: 'local-agent',
+        }),
+      }),
+    }));
+  });
+
+  it('keeps desktop application selection exclusive and does not silently select an agent', () => {
+    const onCreate = vi.fn();
+    const otherAgent = {
+      id: 'other-agent',
+      name: 'Other Agent',
+      bin: 'other-agent',
+      available: true,
+    } satisfies AgentInfo;
+    render(
+      <NewProjectPanel
+        skills={skills}
+        designSystems={designSystems}
+        defaultDesignSystemId={null}
+        templates={[]}
+        promptTemplates={[]}
+        onCreate={onCreate}
+        agents={[otherAgent]}
+        selectedAgentId="missing-agent"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Responsive web/i }));
+    fireEvent.click(screen.getByRole('option', { name: /Desktop app/i }));
+    expect(screen.getByRole('button', { name: /Other Agent/i })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /Wire up after creation/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Desktop application/i }));
+    expect(screen.getByRole('option', { name: /Responsive web/i })).toBeDisabled();
   });
 
   it('clears design system metadata when freeform is selected in multi mode', () => {

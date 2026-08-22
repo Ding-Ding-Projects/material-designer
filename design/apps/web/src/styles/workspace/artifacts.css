@@ -3567,6 +3567,27 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-subtle);
 }
 .newproj-section { display: flex; flex-direction: column; gap: 6px; }
+
+/* New-project controls keep a 48px interaction wrapper even when the visual
+   glyph or label is compact. The wrapper is the target users can reliably hit
+   at high display scales and in bilingual mode. */
+.newproj-section .ds-picker-trigger,
+.newproj-section .ds-picker-item,
+.newproj-section .compact-toggle,
+.newproj-section .desktop-agent-trigger {
+  min-height: 48px !important;
+}
+.newproj-section .compact-toggle { padding-block: 8px; }
+.newproj-working-dir-clear,
+.new-project-modal__close {
+  width: 48px;
+  height: 48px;
+}
+.desktop-agent-picker { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.desktop-agent-trigger { justify-content: space-between; }
+.desktop-agent-popover { overflow: hidden; }
+.desktop-agent-popover .ds-picker-list { max-height: none; flex: 1 1 auto; min-height: 0; }
+.ds-picker-results { margin: 0; padding: 4px 12px; color: var(--text-muted); font-size: 12px; }
 /* -------- "Start from" rail (blank-first scenario templates) --------
    Horizontal card rail on the prototype/deck tabs. The Blank card is
    always first and selected by default; template cards reroute create

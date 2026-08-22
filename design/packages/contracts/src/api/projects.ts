@@ -30,6 +30,13 @@ export type ProjectPlatform =
   | 'tablet'
   | 'desktop-app';
 
+/** One authoritative first-run brief for the desktop scaffold wire-up. */
+export function desktopWireupPrompt(projectName: string): string {
+  const label = String(projectName ?? '').trim().replace(/[\r\n\u0000]/g, ' ').slice(0, 120)
+    || 'this project';
+  return `Wire up the desktop application scaffold for "${label}" using the selected local agent. Preserve the generated desktop security boundary, then build the real application in the project files.`;
+}
+
 export type AudioKind = 'music' | 'speech' | 'sfx';
 
 export type ProjectDisplayStatus =
@@ -127,7 +134,7 @@ export interface ProjectMetadata {
   // `other`. `webgl-experience` and `worker-visualizer`: the powered-preview
   // GPU / off-main-thread scenario cards — analytics-only discriminators for the
   // powered-artifact chips.
-  intent?: 'live-artifact' | 'web-clone' | 'document' | 'webgl-experience' | 'worker-visualizer';
+  intent?: 'live-artifact' | 'web-clone' | 'document' | 'webgl-experience' | 'worker-visualizer' | 'desktop-app';
   fidelity?: 'wireframe' | 'high-fidelity';
   speakerNotes?: boolean;
   slideCount?: string;
@@ -148,6 +155,10 @@ export interface ProjectMetadata {
   nameSource?: 'generated' | 'prompt' | 'agent' | 'user';
   /** Concrete delivery surfaces the artifact must account for. `responsive` is a web breakpoint target, not a native app expansion. */
   platformTargets?: ProjectPlatform[];
+  /** Daemon-owned source scaffold state for an explicitly created desktop app. */
+  desktopScaffold?: DesktopScaffoldState;
+  /** User's guided choice to have the selected agent wire the scaffold. */
+  desktopWireup?: DesktopWireupState;
   inspirationDesignSystemIds?: string[];
   importedFrom?: 'claude-design' | 'folder' | string;
   entryFile?: string;
@@ -244,6 +255,37 @@ export interface ProjectMetadata {
   // real hub content lands on disk. See the daemon's
   // collab/shared-project-placeholder.ts for the invariant.
   sharedProjectPlaceholderAt?: number;
+}
+
+export interface DesktopWireupState {
+  enabled: boolean;
+  status: 'not_started' | 'queued' | 'running' | 'completed' | 'cancelled' | 'failed';
+  agentId?: string;
+  prompt?: string;
+}
+
+export interface DesktopScaffoldState {
+  schemaVersion: 1;
+  revision: number;
+  framework: 'electron';
+  platform: 'windows';
+  mode: 'scaffold-only';
+  sourceRoot: '..';
+  entryFile: string;
+  rendererFile: string;
+  files: {
+    entry: string;
+    styles: string;
+    script: string;
+    package: string;
+    main: string;
+    preload: string;
+    renderer: string;
+    config: string;
+    readme: string;
+  };
+  packagingTarget: 'squirrel-windows';
+  codeSigning: 'disabled';
 }
 
 export interface Project {

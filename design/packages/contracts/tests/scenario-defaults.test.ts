@@ -48,6 +48,13 @@ describe('defaultScenarioPluginIdForKind', () => {
     expect(defaultScenarioPluginIdForProjectMetadata(undefined)).toBeNull();
   });
 
+  it('routes an explicit desktop-app intent through the existing generation scenario', () => {
+    expect(defaultScenarioPluginIdForProjectMetadata({
+      kind: 'prototype',
+      intent: 'desktop-app',
+    })).toBe('od-new-generation');
+  });
+
   it('exposes the hidden free-form Home fallback plugin separately from kind defaults', () => {
     expect(DEFAULT_UNSELECTED_SCENARIO_PLUGIN_ID).toBe('od-default');
     expect(DEFAULT_SCENARIO_PLUGIN_BY_KIND.other).toBe('od-new-generation');

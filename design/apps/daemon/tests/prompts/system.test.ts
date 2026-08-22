@@ -91,6 +91,30 @@ describe('composeSystemPrompt — activeStageBlocks splice (spec §23.4)', () =>
 });
 
 describe('composeSystemPrompt', () => {
+  it('describes an explicit desktop application scaffold and existing wire-up path', () => {
+    const prompt = composeSystemPrompt({
+      metadata: {
+        kind: 'prototype',
+        intent: 'desktop-app',
+        entryFile: 'index.html',
+        desktopScaffold: {
+          revision: 1,
+          framework: 'electron',
+          platform: 'windows',
+          entryFile: 'index.html',
+          rendererFile: 'src/renderer.js',
+          packagingTarget: 'squirrel-windows',
+          codeSigning: 'disabled',
+        },
+        desktopWireup: { enabled: true, status: 'not_started', agentId: 'selected-agent' },
+      } as any,
+    });
+    expect(prompt).toContain('intent**: desktop-app');
+    expect(prompt).toContain('selected-agent');
+    expect(prompt).toContain('existing first-run run path');
+    expect(prompt).toContain('narrow typed preload bridge');
+  });
+
   it('injects Chinese quick brief guidance when the UI locale is zh-CN', () => {
     const prompt = composeSystemPrompt({ locale: 'zh-CN' });
 

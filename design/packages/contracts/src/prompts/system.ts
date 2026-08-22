@@ -678,6 +678,26 @@ function intentLines(
   metadata: ProjectMetadata,
 ): string[] {
   const out: string[] = [];
+  if (metadata.intent === 'desktop-app') {
+    const scaffold = metadata.desktopScaffold;
+    const wireup = metadata.desktopWireup;
+    out.push(
+      '- **intent**: desktop-app — the user explicitly created a desktop application project. Work from the generated `desktop/` scaffold and the project source entry; do not collapse this into a browser-only prototype or a metadata-only platform label.',
+    );
+    out.push(
+      `- **desktop scaffold**: ${scaffold?.framework ?? 'electron'} on ${scaffold?.platform ?? 'windows'}, revision ${scaffold?.revision ?? 1}, entry ${scaffold?.entryFile ?? metadata.entryFile ?? 'index.html'}, renderer bootstrap ${scaffold?.rendererFile ?? 'desktop/src/renderer.js'}, packaging target ${scaffold?.packagingTarget ?? 'squirrel-windows'}, code signing ${scaffold?.codeSigning ?? 'disabled'}.`,
+    );
+    out.push(
+      '- **desktop security boundary**: preserve context isolation, sandboxing, disabled Node integration, disabled webviews, blocked network and out-of-root local-file requests, denied secondary windows, and the narrow typed preload bridge. Do not add arbitrary shell, filesystem, environment, credential, or untyped IPC access.',
+    );
+    if (wireup?.enabled) {
+      out.push(
+        `- **agent wire-up**: the user asked the currently selected agent${wireup.agentId ? ` (${wireup.agentId})` : ''} to wire this scaffold. Use the existing first-run run path and its truthful queued/running/completed/cancelled/failed state; do not invent a second agent protocol.`,
+      );
+    } else {
+      out.push('- **agent wire-up**: not requested yet. Leave the scaffold ready for a later explicit run and do not claim the application is wired.');
+    }
+  }
   if (metadata.intent === 'live-artifact') {
     out.push(
       '- **intent**: live-artifact — the user chose New live artifact. The first output should be a live artifact/dashboard/report, not a one-off static mockup. Prefer the `live-artifact` skill workflow when available, keep source data compact, and register through the daemon live-artifact tool path once that wrapper/tooling is available.',
