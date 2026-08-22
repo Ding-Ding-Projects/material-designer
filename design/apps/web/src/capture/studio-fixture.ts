@@ -1547,7 +1547,7 @@ function isLoopbackHttpUrl(url: URL): boolean {
     && (port === null || (Number.isInteger(port) && port > 0 && port <= 65_535));
 }
 
-function isExactRendererOrigin(url: URL, current: Location): boolean {
+function isExactRendererOrigin(url: URL, current: Pick<Location, 'href'>): boolean {
   let currentUrl: URL;
   try {
     currentUrl = new URL(current.href);
