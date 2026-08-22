@@ -1394,7 +1394,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
     ) return textResponse('fixture raw query is not declared', 'text/plain', 404);
     const file = knownFixtureFilePath(path, `${projectPrefix}/raw/`);
     if (!file) return textResponse('fixture file not found', 'text/plain', 404);
-    const text = studioFixtureFileText[file];
+    const text = studioFixtureFileText[file] ?? '';
     const mime = file.endsWith('.html') ? 'text/html' : file.endsWith('.md') ? 'text/markdown' : 'application/json';
     return textResponse(text, mime);
   }
@@ -1416,7 +1416,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
     if (limit === null || limit <= 0 || cacheBust === null) {
       return jsonResponse({ error: { code: 'BAD_QUERY', message: 'Fixture text-preview bounds are invalid.' } }, 400);
     }
-    const text = studioFixtureFileText[file];
+    const text = studioFixtureFileText[file] ?? '';
     const truncated = text.length > limit;
     return jsonResponse({
       text: truncated ? text.slice(0, limit) : text,
@@ -1431,7 +1431,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
   if (path.startsWith(`${projectPrefix}/preview/`)) {
     const file = knownFixtureFileWithSuffix(path, `${projectPrefix}/preview/`, '/');
     if (!file) return textResponse('fixture file not found', 'text/plain', 404);
-    return textResponse(studioFixtureFileText[file], file.endsWith('.html') ? 'text/html' : 'text/plain');
+    return textResponse(studioFixtureFileText[file] ?? '', file.endsWith('.html') ? 'text/html' : 'text/plain');
   }
   if (path === '/api/live-artifacts') {
     if (!hasExactSearchParams(url, { projectId: STUDIO_FIXTURE_PROJECT_ID })) {
@@ -1456,7 +1456,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
       !hasExactSearchParams(url, expected)
       || (variant !== null && variant !== 'rendered' && variant !== 'template' && variant !== 'rendered-source')
     ) return textResponse('fixture preview scope not found', 'text/plain', 404);
-    return textResponse(studioFixtureFileText[STUDIO_FIXTURE_ACTIVE_FILE], 'text/html');
+    return textResponse(studioFixtureFileText[STUDIO_FIXTURE_ACTIVE_FILE] ?? '', 'text/html');
   }
   if (path === `/api/live-artifacts/${STUDIO_FIXTURE_ARTIFACT_ID}/refreshes`) {
     if (!hasExactSearchParams(url, { projectId: STUDIO_FIXTURE_PROJECT_ID })) {
@@ -1517,7 +1517,7 @@ function fixtureResponse(url: URL, method: string, tabsState: { current: Project
     return jsonResponse({
       file: studioFixtureFiles.find((candidate) => candidate.name === file),
       version: studioFixtureVersion,
-      content: studioFixtureFileText[file],
+      content: studioFixtureFileText[file] ?? '',
     });
   }
   return jsonResponse({ error: { code: 'FIXTURE_HANDLER_MISSING', message: 'Declared fixture handler is missing.' } }, 500);
