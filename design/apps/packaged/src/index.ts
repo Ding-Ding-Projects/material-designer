@@ -18,15 +18,26 @@ import {
 import {
   applyLoopbackConnectionLimitSwitch,
   applyOsLocaleSwitch,
+  createDeterministicParityCaptureRunId,
   createSplashWindow,
+  deterministicParityChromiumLocale,
+  deterministicParityCaptureSidecarNamespace,
+  DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT,
+  deterministicParitySessionPartition,
+  parseDeterministicParityRouteArgv,
   setSplashStage,
+  type DeterministicParityRoute,
 } from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
 import { spawn, spawnSync } from "node:child_process";
 import { basename, dirname, join } from "node:path";
-import { app, dialog } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 
 import { readPackagedConfig } from "./config.js";
+import {
+  acquireDeterministicParityCaptureRun,
+  type DeterministicParityCaptureRunLease,
+} from "./capture-run.js";
 import {
   claimPackagedDownloadAttribution,
   discoverPackagedDownloadAttribution,
@@ -59,13 +70,45 @@ import { resolvePackagedNamespacePaths } from "./paths.js";
 import { createObsoleteInstalledOuterRetirement } from "./obsolete-installed-outer.js";
 import { findPackagedDeeplinkArg, launchPackagedPayloadDesktop } from "./payload-desktop-launch.js";
 import { packagedEntryUrl, registerOdProtocol } from "./protocol.js";
-import { startPackagedSidecars } from "./sidecars.js";
+import { startPackagedSidecars, type PackagedSidecarHandle } from "./sidecars.js";
+import type { PackagedDesktopIdentityHandle } from "./identity.js";
 import { reportStartupFailure, resolveStartupDistinctId } from "./startup-telemetry.js";
 import { resolvePackagedWindowTitle } from "./window-title.js";
 import { syncWindowsUninstallDisplayVersion } from "./windows-lifecycle.js";
 
 let packagedLogger: PackagedDesktopLogger | null = null;
 const secondInstanceHandoff = createPackagedSecondInstanceHandoff();
+let activeCaptureRunLease: DeterministicParityCaptureRunLease | null = null;
+let activeCaptureMode = false;
+let activeCaptureSidecars: PackagedSidecarHandle | null = null;
+let activeCaptureIdentity: PackagedDesktopIdentityHandle | null = null;
+let activeCaptureProtocolDisposer: (() => void) | null = null;
+let activeCaptureSplash: BrowserWindow | null = null;
+let captureCleanupTask: Promise<void> | null = null;
+
+/** Idempotent outer cleanup for both normal shutdown and startup failures. */
+async function cleanupCaptureResources(): Promise<void> {
+  if (captureCleanupTask != null) return await captureCleanupTask;
+  captureCleanupTask = (async () => {
+    activeCaptureProtocolDisposer?.();
+    activeCaptureProtocolDisposer = null;
+    if (activeCaptureSidecars != null) {
+      await activeCaptureSidecars.close().catch(() => undefined);
+    }
+    activeCaptureSidecars = null;
+    if (activeCaptureIdentity != null) {
+      await activeCaptureIdentity.close().catch(() => undefined);
+    }
+    activeCaptureIdentity = null;
+    if (activeCaptureSplash != null && !activeCaptureSplash.isDestroyed()) {
+      activeCaptureSplash.close();
+    }
+    activeCaptureSplash = null;
+    await activeCaptureRunLease?.retire().catch(() => undefined);
+    activeCaptureRunLease = null;
+  })();
+  return await captureCleanupTask;
+}
 
 // Telemetry context for the fatal-exit path. Populated once config + launcher
 // runtime are resolved so the `main().catch` below can report a startup failure
@@ -208,8 +251,40 @@ async function main(): Promise<void> {
   // `app.whenReady()`; no-op on other platforms.
   app.setAppUserModelId("io.ding-ding.material-designer");
 
-  const config = await readPackagedConfig();
   const headlessRequest = parsePackagedHeadlessRequest(process.argv.slice(1));
+  // A normalized parity route is accepted only in the explicit developer /
+  // capture mode. Unknown, malformed, or semantically unresolved rows fail
+  // before sidecars or a renderer can start; normal launches have no route.
+  const deterministicParityRoute: DeterministicParityRoute | null =
+    headlessRequest.headless
+      ? null
+      : parseDeterministicParityRouteArgv(process.argv, process.env);
+  activeCaptureMode = deterministicParityRoute != null;
+  const captureRunId = deterministicParityRoute == null
+    ? null
+    : createDeterministicParityCaptureRunId();
+  if (deterministicParityRoute != null) {
+    // Capture has a unique per-launch lease beneath a forced root, so an
+    // ordinary instance or a stale run cannot reuse its profile, sidecars,
+    // logs, protocol state, identity, or single-instance handoff. The route id
+    // remains the tuple identity; captureRunId is storage identity only.
+    activeCaptureRunLease = await acquireDeterministicParityCaptureRun({
+      captureRoot: join(app.getPath("userData"), DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT),
+      routeId: deterministicParityRoute.id,
+      runId: captureRunId!,
+    });
+    app.setPath(
+      "userData",
+      activeCaptureRunLease.root,
+    );
+  }
+  const loadedConfig = await readPackagedConfig({ captureMode: deterministicParityRoute != null });
+  const config = deterministicParityRoute == null
+    ? loadedConfig
+    : {
+        ...loadedConfig,
+        namespaceBaseRoot: join(app.getPath("userData"), "namespaces"),
+      };
   if (headlessRequest.headless) {
     const { runPackagedHeadless } = await import("./headless-runtime.js");
     await runPackagedHeadless(config, headlessRequest);
@@ -221,7 +296,18 @@ async function main(): Promise<void> {
   // renderer's `navigator.language` follow the OS instead of Chromium's
   // en-US default. runDesktopMain (called later) calls the same helper
   // again to recover the resolved locale string for the BrowserWindow.
-  applyOsLocaleSwitch(app);
+  if (deterministicParityRoute) {
+    app.commandLine.appendSwitch(
+      "force-device-scale-factor",
+      String(deterministicParityRoute.tuple.scale),
+    );
+    app.commandLine.appendSwitch(
+      "lang",
+      deterministicParityChromiumLocale(deterministicParityRoute.tuple),
+    );
+  } else {
+    applyOsLocaleSwitch(app);
+  }
   // Must also land before whenReady — see the helper's docblock for the
   // connection-pool deadlock it prevents (electron/electron#47097).
   applyLoopbackConnectionLimitSwitch(app);
@@ -235,20 +321,30 @@ async function main(): Promise<void> {
   const handoffResume = parseLauncherHandoffResumeArgs(process.argv.slice(1));
   const delegated = parseLauncherDelegatedArgs(process.argv.slice(1));
   const argvStamp = readProcessStamp(process.argv.slice(1), OPEN_DESIGN_SIDECAR_CONTRACT);
-  const namespace = argvStamp?.namespace ?? config.namespace;
+  const namespace = deterministicParityRoute != null
+    ? deterministicParityCaptureSidecarNamespace(deterministicParityRoute, captureRunId!)
+    : argvStamp?.namespace ?? config.namespace;
   const namespaceConfig = namespace === config.namespace ? config : { ...config, namespace };
-  const initialPaths = resolvePackagedNamespacePaths(namespaceConfig, namespace, process.env);
+  const namespaceEnvironment = deterministicParityRoute == null
+    ? process.env
+    : { ...process.env, OD_DATA_DIR: undefined };
+  const initialPaths = resolvePackagedNamespacePaths(namespaceConfig, namespace, namespaceEnvironment);
   if (!await waitForLauncherAfterQuit(afterQuit, initialPaths)) {
     app.exit(1);
     return;
   }
-  const existingDesktop = await inspectExistingDesktopForLauncher(namespace, {
-    deeplinkUrl: findPackagedDeeplinkArg(process.argv),
-    incomingVersion: namespaceConfig.appVersion,
-    logger: console,
-    paths: initialPaths,
-  });
-  if (exitPackagedLauncherForExistingDesktop(existingDesktop, (code) => app.exit(code))) {
+  const existingDesktop = deterministicParityRoute == null
+    ? await inspectExistingDesktopForLauncher(namespace, {
+        deeplinkUrl: findPackagedDeeplinkArg(process.argv),
+        incomingVersion: namespaceConfig.appVersion,
+        logger: console,
+        paths: initialPaths,
+      })
+    : null;
+  if (
+    deterministicParityRoute == null
+    && exitPackagedLauncherForExistingDesktop(existingDesktop, (code) => app.exit(code))
+  ) {
     return;
   }
   const stamp = argvStamp ?? createPackagedDesktopStamp(namespace);
@@ -256,6 +352,9 @@ async function main(): Promise<void> {
     delegated,
     resume: handoffResume,
   });
+  if (deterministicParityRoute != null && launcherRuntime.source === "payload" && !launcherRuntime.payloadDesktopProcess) {
+    throw new Error("capture.payload_delegation_blocked: capture must not delegate to a second payload desktop");
+  }
   if (await launchPackagedPayloadDesktop(launcherRuntime, stamp)) {
     app.exit(0);
     return;
@@ -266,31 +365,34 @@ async function main(): Promise<void> {
     installedLaunchPath: launcherRuntime.installedLaunchPath,
   });
 
-  // Arm fatal-exit telemetry now that we know the channel key/version. The
-  // startPackagedSidecars call below is THE failure this covers (daemon/web
-  // dying before reporting status, e.g. issue #4638's missing better-sqlite3).
-  startupTelemetryContext = {
-    posthogKey: activeConfig.posthogKey,
-    posthogHost: activeConfig.posthogHost,
-    appVersion: activeConfig.appVersion,
-    namespace,
-    source: SIDECAR_SOURCES.PACKAGED,
-    // Pass installationRoot explicitly: OD_INSTALLATION_DIR is only set in the
-    // daemon child env, not this parent process (see startup-telemetry.ts).
-    installationRoot: paths.installationRoot,
-    // Absolute path where the daemon's better-sqlite3 binding ships in the
-    // packaged bundle (`Contents/Resources/app/node_modules/...` — layout
-    // verified against the shipped 0.13.0 DMG). The fatal-exit report probes
-    // this to record whether the .node actually exists on the crashing machine.
-    nativeModulePath: join(
-      app.getAppPath(),
-      "node_modules",
-      "better-sqlite3",
-      "build",
-      "Release",
-      "better_sqlite3.node",
-    ),
-  };
+  // Arm fatal-exit telemetry for ordinary launches only. Capture launches
+  // must not make a main-process network call on startup failure.
+  if (deterministicParityRoute == null) {
+    startupTelemetryContext = {
+      posthogKey: activeConfig.posthogKey,
+      posthogHost: activeConfig.posthogHost,
+      appVersion: activeConfig.appVersion,
+      namespace,
+      source: SIDECAR_SOURCES.PACKAGED,
+      // Pass installationRoot explicitly: OD_INSTALLATION_DIR is only set in the
+      // daemon child env, not this parent process (see startup-telemetry.ts).
+      installationRoot: paths.installationRoot,
+      // Absolute path where the daemon's better-sqlite3 binding ships in the
+      // packaged bundle (`Contents/Resources/app/node_modules/...` — layout
+      // verified against the shipped 0.13.0 DMG). The fatal-exit report probes
+      // this to record whether the .node actually exists on the crashing machine.
+      nativeModulePath: join(
+        app.getAppPath(),
+        "node_modules",
+        "better-sqlite3",
+        "build",
+        "Release",
+        "better_sqlite3.node",
+      ),
+    };
+  } else {
+    startupTelemetryContext = null;
+  }
 
   await ensurePackagedNamespacePaths(paths);
   stabilizePackagedWorkingDirectory(paths);
@@ -300,23 +402,28 @@ async function main(): Promise<void> {
   });
   packagedLogger = createPackagedDesktopLogger(paths);
   attachPackagedDesktopProcessLogging({ logger: packagedLogger, paths, stamp });
-  const retireObsoleteInstalledOuter = createObsoleteInstalledOuterRetirement({
-    currentExecutablePath: process.execPath,
-    currentPid: process.pid,
-    installedLaunchPath: launcherRuntime.installedLaunchPath,
-    logger: packagedLogger,
-    payloadDesktopProcess: launcherRuntime.payloadDesktopProcess,
-    payloadExecutablePath: launcherRuntime.desktopExecutablePath,
-    platform: process.platform,
-  });
+  const retireObsoleteInstalledOuter = deterministicParityRoute != null
+    ? async () => undefined
+    : createObsoleteInstalledOuterRetirement({
+        currentExecutablePath: process.execPath,
+        currentPid: process.pid,
+        installedLaunchPath: launcherRuntime.installedLaunchPath,
+        logger: packagedLogger,
+        payloadDesktopProcess: launcherRuntime.payloadDesktopProcess,
+        payloadExecutablePath: launcherRuntime.desktopExecutablePath,
+        platform: process.platform,
+      });
   applyPackagedElectronPathOverrides(paths);
-  applyPackagedUpdaterEnv(activeConfig.updateMetadataUrl);
-  if (!claimPackagedSingleInstanceLock(app, (argv) => {
-    secondInstanceHandoff.handle(findPackagedDeeplinkArg(argv));
-  })) {
-    return;
+  if (deterministicParityRoute == null) applyPackagedUpdaterEnv(activeConfig.updateMetadataUrl);
+  if (deterministicParityRoute == null) {
+    if (!claimPackagedSingleInstanceLock(app, (argv) => {
+      secondInstanceHandoff.handle(findPackagedDeeplinkArg(argv));
+    })) {
+      return;
+    }
   }
   const identity = await writePackagedDesktopIdentity({ paths, stamp });
+  if (deterministicParityRoute != null) activeCaptureIdentity = identity;
   await app.whenReady();
 
   // Show the brand splash IMMEDIATELY, before we await the daemon/web sidecars
@@ -327,6 +434,7 @@ async function main(): Promise<void> {
   // creation timestamp so the runtime's minimum-hold timer counts from here —
   // BEFORE the sidecar boot below — rather than re-adding the delay afterwards.
   const splash = createSplashWindow();
+  if (deterministicParityRoute != null) activeCaptureSplash = splash.window;
 
   applyLaunchEnv(paths.runtimeRoot, stamp);
 
@@ -338,18 +446,18 @@ async function main(): Promise<void> {
 
   const sidecars = await startPackagedSidecars(runtime, paths, {
     appVersion: activeConfig.appVersion,
-    amrProfile: activeConfig.amrProfile,
+    amrProfile: deterministicParityRoute == null ? activeConfig.amrProfile : null,
     daemonCliEntry: activeConfig.daemonCliEntry,
     daemonSidecarEntry: activeConfig.daemonSidecarEntry,
     electronNodeCommand: launcherRuntime.electronNodeCommand,
-    mcpBootstrapArgs: mcpBootstrap.args,
-    mcpBootstrapCommand: mcpBootstrap.command,
+    mcpBootstrapArgs: deterministicParityRoute == null ? mcpBootstrap.args : [],
+    mcpBootstrapCommand: deterministicParityRoute == null ? mcpBootstrap.command : null,
     nodeCommand: activeConfig.nodeCommand,
-    telemetryRelayUrl: activeConfig.telemetryRelayUrl,
-    posthogKey: activeConfig.posthogKey,
-    posthogHost: activeConfig.posthogHost,
-    velaWebUrl: activeConfig.velaWebUrl,
-    velaWebUrls: activeConfig.velaWebUrls,
+    telemetryRelayUrl: deterministicParityRoute == null ? activeConfig.telemetryRelayUrl : null,
+    posthogKey: deterministicParityRoute == null ? activeConfig.posthogKey : null,
+    posthogHost: deterministicParityRoute == null ? activeConfig.posthogHost : null,
+    velaWebUrl: deterministicParityRoute == null ? activeConfig.velaWebUrl : null,
+    velaWebUrls: deterministicParityRoute == null ? activeConfig.velaWebUrls : {},
     // PR #974 round-5 (lefarcen P2): the Electron entry runs desktop
     // main alongside the daemon, so the import-folder gate must be
     // pinned ON from request 0. See `apps/packaged/src/headless-runtime.ts`
@@ -358,6 +466,8 @@ async function main(): Promise<void> {
     webSidecarEntry: activeConfig.webSidecarEntry,
     webStandaloneRoot: activeConfig.webStandaloneRoot,
     webOutputMode: activeConfig.webOutputMode,
+    captureMode: deterministicParityRoute != null,
+    captureRunRoot: deterministicParityRoute == null ? null : activeCaptureRunLease?.root ?? null,
     // Surface each sidecar boot phase on the splash status line so a slow
     // cold start (Defender scans, native module loads) never reads as a hang.
     // Both the "spawning" and "ready" edges are mapped so the step counter
@@ -374,7 +484,8 @@ async function main(): Promise<void> {
       setSplashStage(splash.window, stage);
     },
   });
-  if (sidecars.daemon.url) {
+  if (deterministicParityRoute != null) activeCaptureSidecars = sidecars;
+  if (sidecars.daemon.url && deterministicParityRoute == null) {
     void claimPackagedDownloadAttribution({
       attribution: downloadAttribution,
       daemonUrl: sidecars.daemon.url,
@@ -389,25 +500,58 @@ async function main(): Promise<void> {
   // Resolve the web sidecar address per request instead of freezing it here.
   // The restart supervisor may bind a fresh ephemeral port, while a temporary
   // lack of a target should surface as the protocol layer's structured 503.
-  registerOdProtocol(() => sidecars.currentWebUrl());
+  const disposeOdProtocol = registerOdProtocol(
+    () => sidecars.currentWebUrl(),
+    deterministicParityRoute == null
+      ? undefined
+      : deterministicParitySessionPartition(deterministicParityRoute, captureRunId!),
+    {
+      blockRedirects: deterministicParityRoute != null,
+      requireLoopbackOrigin: deterministicParityRoute != null,
+    },
+  );
+  if (deterministicParityRoute != null) activeCaptureProtocolDisposer = disposeOdProtocol;
 
   const { runDesktopMain } = await import("@open-design/desktop/main");
   await runDesktopMain(runtime, {
+    capturePackagedLauncher: deterministicParityRoute != null,
+    captureRoute: deterministicParityRoute,
+    captureNetworkOrigin: () => sidecars.currentWebUrl(),
+    captureNetworkIsolationReady: sidecars.captureNetworkIsolationReady,
+    captureRunId,
     splashWindow: splash.window,
     splashStartedAt: splash.startedAt,
     async beforeShutdown() {
+      if (deterministicParityRoute != null) {
+        await cleanupCaptureResources();
+        return;
+      }
       try {
         await retireObsoleteInstalledOuter();
       } finally {
         try {
-          await sidecars.close();
+          disposeOdProtocol();
         } finally {
-          await identity.close();
+          try {
+            await sidecars.close();
+          } finally {
+            try {
+              await identity.close();
+            } finally {
+              if (activeCaptureRunLease != null) {
+                try {
+                  await activeCaptureRunLease.retire();
+                } finally {
+                  activeCaptureRunLease = null;
+                }
+              }
+            }
+          }
         }
       }
     },
     async discoverWebUrl() {
-      return packagedEntryUrl();
+      return deterministicParityRoute?.browserUrl ?? packagedEntryUrl();
     },
     // Round-7 (lefarcen P2 @ runtime.ts:336): packaged main-process
     // fetch targets the daemon sidecar's real http URL — never the
@@ -426,16 +570,20 @@ async function main(): Promise<void> {
       void confirmPackagedLauncherRuntime(launcherRuntime).catch((error: unknown) => {
         packagedLogger?.warn("failed to confirm packaged launcher runtime", { error });
       });
-      void syncWindowsUninstallDisplayVersion({
-        namespace,
-        version: launcherRuntime.config.appVersion,
-      }).catch((error: unknown) => {
-        packagedLogger?.warn("failed to sync Windows uninstall registry version", { error });
-      });
-      secondInstanceHandoff.attach({
-        dispatchDeeplink: controls.dispatchInviteDeeplink,
-        show: controls.show,
-      });
+      if (deterministicParityRoute == null) {
+        void syncWindowsUninstallDisplayVersion({
+          namespace,
+          version: launcherRuntime.config.appVersion,
+        }).catch((error: unknown) => {
+          packagedLogger?.warn("failed to sync Windows uninstall registry version", { error });
+        });
+      }
+      if (deterministicParityRoute == null) {
+        secondInstanceHandoff.attach({
+          dispatchDeeplink: controls.dispatchInviteDeeplink,
+          show: controls.show,
+        });
+      }
     },
     preloadPath: join(app.getAppPath(), "preload.cjs"),
     update: {
@@ -452,7 +600,7 @@ async function main(): Promise<void> {
 
 async function handleMainError(error: unknown): Promise<void> {
   const isPathAccess = error instanceof PackagedPathAccessError;
-  if (isPathAccess) {
+  if (isPathAccess && !activeCaptureMode) {
     try {
       dialog.showErrorBox(error.title, error.message);
     } catch {
@@ -461,6 +609,17 @@ async function handleMainError(error: unknown): Promise<void> {
   }
   packagedLogger?.error("packaged runtime failed", { error });
   console.error("packaged runtime failed", error);
+  if (activeCaptureMode) {
+    await cleanupCaptureResources();
+  } else if (activeCaptureRunLease != null) {
+    try {
+      await activeCaptureRunLease.retire();
+    } catch (retireError) {
+      console.error("capture run retirement failed", retireError);
+    } finally {
+      activeCaptureRunLease = null;
+    }
+  }
   // Best-effort crash telemetry on the way out. This is the ONLY new behavior
   // on the failure path; the happy path never reaches here. reportStartupFailure
   // self-caps its runtime (Promise.race timeout) and swallows all errors, so it

@@ -30,6 +30,54 @@ yet been captured.
   validates route protocols and query keys, checks immutable reference assets,
   rejects reused or escaping evidence targets, and uses stable failure codes in
   its structural negative mode.
+- `design/apps/desktop/src/main/deterministic-parity-route.ts`, a pure,
+  developer/capture-only parser for the normalized v2 tuple. Packaged startup
+  passes only an explicitly enabled `material-designer://` argument through the
+  Squirrel outer launcher, maps semantically owned rows to the real `od://app`
+  router, and rejects unresolved rows with stable blocker codes rather than
+  pretending that a similar page is the reference screen.
+- `design/apps/desktop/src/main/runtime.ts`, which installs the frozen clock,
+  seeded random source, motion policy and locale context before the real
+  renderer's first document, bounds the capture viewport/device scale, blocks
+  external network requests in an isolated capture session, suppresses the
+  separate pet window, allows only the exact accepted `od://` route through
+  both main-frame navigation events, rejects capture-mode external navigation,
+  uses a forced capture root with a unique per-launch run lease, separate
+  storage identity, evidence-retention retirement marker, and no ordinary
+  existing-window or single-instance handoff. The run id is embedded in the
+  sidecar namespace, stamps, IPC paths and renderer partition; lexical root
+  checks lstat existing components and retirement is serialized and idempotent.
+  Capture sidecars clear telemetry, provider, update, and proxy egress
+  environment; both sidecars force manual redirects, reject non-loopback or
+  credentialed final origins, and direct Vela requests refuse external capture
+  traffic. Readiness stays false until that network audit is explicitly proven.
+  A ready receipt is invalidated by renderer loss, failed main-frame load or an
+  HTTP error document, which returns the hidden content to the capture-failure
+  splash. It records a typed readiness receipt
+  only after the canonical route
+  URL/search, actual theme, viewport, device scale, bundled fonts,
+  renderer-owned route witness, capture-settled witness, route-specific
+  component invariant, mount state and capture network proof agree across a
+  bounded stability interval and final route recheck. Every readiness
+  evaluation and renderer operation has a main-process timeout. Screenshot,
+  click, eval, capture-page and export RPCs share one predicate requiring a
+  ready receipt, an installed receipt witness, and a revealed window; all
+  refuse before that predicate is true. The capture prelude exposes a
+  non-writable run id and does not mutate ordinary user localStorage.
+  Capture also installs an explicit handler/process/environment inventory:
+  agent detection and run/chat launch, Vela, connector, MCP, terminal and
+  browser-session child paths receive fixture status or a structured refusal;
+  the legacy payload handoff, native menus, diagnostics, invite protocol,
+  folder/path/PDF/update side effects and standalone Next mode are disabled.
+  Pre-readiness renderer loss and any other unready result keep live content
+  hidden and show a self-contained capture-failure splash. The fixture/provider
+  is intentionally absent today, and the sidecar boundary is source-only until
+  hosted runtime proof, so the receipt remains `ready: false` until those
+  product seams exist.
+- `design/apps/packaged/src/protocol.ts`, which registers the packaged `od://`
+  proxy on that same capture session, validates the exact loopback sidecar
+  origin, blocks redirects in capture mode, preserves normal launch redirect
+  behaviour, and returns an idempotent disposer for teardown.
 
 The reference application now consumes that registry directly. It freezes the
 clock, randomness and motion before page scripts execute, uses committed local
@@ -42,9 +90,29 @@ reports readiness.
 
 The inventory is structurally complete and all ten rows are currently marked
 `pending`. That is deliberate: source code and route strings do not prove
-visual parity. The installed application does not yet implement the declared
-`material-designer://` tuple resolver, so the default verifier stops at that
-route boundary before accepting capture evidence.
+visual parity. The installed application now contains the strict tuple resolver
+and capture startup context, but the default verifier still stops before capture
+evidence. Only six rows currently have semantically identical production paths,
+and none is runtime-ready for parity evidence yet: the real renderer witness
+proves the route component, but ordinary daemon-backed data is detected and no
+capture fixture/provider exists; the sidecar boundary is source-only until
+hosted runtime proof.
+Unexpected blocked requests also fail readiness. This is deliberate
+fail-closed foundation status, not a visual-parity verdict. The runtime refuses
+raw capture operations while that predicate is unready; no live-daemon screen
+can be interacted with or promoted into parity evidence. Every capture run has a
+unique lease beneath the forced capture root; the exact run is retired by a
+marker while its evidence bytes remain retained for review, and a duplicate run
+identity is rejected rather than reused.
+The remaining rows are intentionally unresolved: `route.studio_unresolved` (no
+production Studio route), `route.library_hidden` (the Library component is
+hidden by its product feature flag), `route.settings_appearance_unresolved`
+(the Settings page does not yet accept the appearance state from this route),
+and `route.handoff_unresolved` (handoff is currently project/file-scoped rather
+than a standalone destination). These are product-route blockers, not permission
+to inject DOM or to label a different page as parity evidence. Dark presentation
+is also fail-closed as `route.theme_dark_unresolved` because the product's
+appearance state is currently light-only.
 
 A row becomes verified only after the checked-in reference and real installed
 Squirrel application are launched through the approved hidden-desktop route at

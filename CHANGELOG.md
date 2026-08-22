@@ -449,6 +449,144 @@ version section when a release carries them.
   evidence folder。`32506068934` 就係今次催生呢招嘅 run：`tools-pack` 回傳
   code `1` 之後跣低，但 nested build log 無保留。Packer root cause 同 hosted
   repair 仍然未驗證，要等 replacement run；temporary dim-sum photo skip 原封不動。
+- **Deterministic capture now owns every route boundary and its run evidence.**
+  Commit [`2ba8718da`](https://github.com/Ding-Ding-Projects/material-designer/commit/2ba8718da04fafc941fdab78a1df1528b9764fc6)
+  gives each capture launch a validated per-run namespace, lexical reparse-point
+  checks, an exclusive lease, and serialized evidence-preserving retirement.
+  Capture sidecars receive empty per-run profile roots, refuse external-capable
+  agent/provider launches, force the bundled server configuration, and skip
+  legacy migration, update, telemetry, native-menu, diagnostics, invite,
+  folder, path, PDF, webview, and payload-delegation side effects. Renderer
+  capture, click, evaluation, export, and slide operations now require the
+  ready receipt, revealed window, and stable credential-free loopback origin;
+  bounded operation timeouts invalidate that receipt. Sidecar fetches use
+  manual redirects and reject every redirect or non-loopback final origin. The
+  prelude installs a non-writable run identifier before application code and
+  does not rewrite ordinary profile storage. This commit contains source and
+  static-contract evidence only; no local build, runtime, visual capture, or
+  hosted desktop IPC proof was performed.
+
+  Deterministic capture 而家由每次 launch 自己保管 route boundary 同 evidence。
+  Commit `2ba8718da` 畀每次 capture 有 validated per-run namespace、reparse-point
+  檢查、exclusive lease，同埋會保留 evidence 嘅 serialized retirement。Sidecar
+  用每次 run 嘅空 profile roots，agent/provider launch 一律拒絕，configuration
+  只准 bundled server，legacy migration、update、telemetry、native menu、
+  diagnostics、invite、folder、path、PDF、webview 同 payload delegation 都唔
+  偷渡。Renderer capture、click、eval、export 同 slide 一定要 ready receipt、
+  revealed window 同穩定、無 credential 嘅 loopback origin；timeout 就令 receipt
+  失效。Sidecar fetch 手動處理 redirect，redirect 或非 loopback final origin
+  一律打回頭。Prelude 喺 application code 前裝好 non-writable run id，亦唔會
+  改普通 profile storage。呢個 commit 只有 source 同 static-contract evidence，
+  未做 local build、runtime、visual capture 或 hosted desktop IPC proof。
+
+- **Deterministic capture now keeps storage, networking, and failure state in one
+  honest box.** Commit
+  [`b612563`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e)
+  gives each launch a cryptographically unique exclusive lease, suppresses
+  migration and uninstall-registry side effects, disables update feeds and
+  schedulers, and installs loopback-only fetch boundaries in both sidecars.
+  Direct Vela requests are refused during capture. Renderer loss, failed
+  main-frame loads, and HTTP error documents invalidate a previously ready
+  receipt and return to the self-contained failure splash. This is source-level
+  evidence only; no build, runtime, or visual capture was run in this lane.
+
+  Deterministic capture 而家將 storage、network 同 failure state 放入同一個
+  誠實盒仔。Commit `b612563` 為每次 launch 開 cryptographically unique
+  exclusive lease，唔畀 migration 同 uninstall-registry side effect 偷渡，關閉
+  update feed 同 scheduler，兩個 sidecar 只准 loopback fetch；capture 入面嘅
+  direct Vela request 一律拒絕。Renderer o咗、main-frame load 失敗或者 HTTP
+  error document，之前嘅 ready receipt 會失效，再返去 self-contained failure
+  splash。呢個 lane 只有 source-level evidence，未跑 build、runtime 或 visual
+  capture。
+
+- **The desktop now carries a strict, developer-only parity-route foundation.**
+  Commit [`bf8736ac2`](https://github.com/Ding-Ding-Projects/material-designer/commit/bf8736ac2a8ab514e43d5ac7d9f60b43362c3fab)
+  validates the normalized v2 `material-designer://` tuple, rejects missing or
+  duplicate route arguments, maps only six semantically owned rows to the real
+  `od://app` router, forwards capture mode through the packaged outer launcher,
+  and applies frozen time, randomness, motion, locale, viewport and device-scale
+  controls before the renderer's first document. Capture uses an isolated
+  in-memory session, blocks requests outside the exact loopback sidecar origin,
+  rejects external navigation, blocks redirects, suppresses the separate pet
+  window, and exposes a typed terminal readiness record that checks the canonical
+  URL/search, actual pathname/theme/viewport/device scale, bundled fonts,
+  renderer-owned route witness, route component invariant, fixture source and
+  network isolation proof. The fixture/provider and capture-aware sidecar seams
+  are not implemented, so the six rows remain foundation-only and no parity
+  evidence is claimed. Dark presentation and the four semantically unresolved
+  rows remain fail-closed with stable blocker codes.
+
+  Desktop 而家有 strict、只限 developer/capture 嘅 parity route foundation。
+  `bf8736ac2` 會驗證 normalized v2 `material-designer://` tuple，冇 route
+  或重複 route argument 都即刻拒絕，只有六個真係有對應 destination 嘅 row
+  先去真正 `od://app` router，packaged outer launcher 亦會傳埋 capture mode；
+  clock、random、motion、locale、viewport 同 device scale 喺第一個 document
+  前已經鎖定。Capture 用獨立 in-memory session，只准 exact loopback sidecar
+  origin、唔畀 external navigation、唔跟 redirect、唔開 pet window，再用 typed
+  terminal readiness record 對 canonical URL/search、actual pathname/theme、
+  viewport、device scale、bundled fonts、renderer-owned route witness、real
+  component invariant、fixture source 同 network isolation proof 逐樣核對。
+  Fixture/provider 同 capture-aware sidecar seam 仲未有，所以六個 row 仍然只
+  係 foundation，未有 parity evidence 就唔會扮完成。Dark 同四個未有 semantic
+  route 仍然 fail-closed。
+
+- **Deterministic capture now closes the remaining navigation and evidence
+  escape hatches.** Commit
+  [`b1d8affc9`](https://github.com/Ding-Ding-Projects/material-designer/commit/b1d8affc9517e652b494e734e75dd7eaf19ed900)
+  allows only the exact accepted `od://` route through both main-frame
+  navigation events, rejects every other scheme and redirect, refuses
+  screenshot/capture RPCs until readiness is true, blocks click interaction
+  while unready, and limits eval to four exact readiness-receipt inspection
+  expressions. Capture proxy validation now rejects empty or malformed
+  `Response.url` values and preserves ordinary redirect-following behavior.
+  These are source-level contracts only; no built-artifact or visual parity
+  evidence is claimed.
+
+  Deterministic capture 而家封埋最後幾個 navigation 同 evidence 逃生門。
+  Commit `b1d8affc9` 令兩個 main-frame navigation event 都只准 exact accepted
+  `od://` route，其他 scheme 同 redirect 一律拒絕；readiness 未真係 ready
+  之前，screenshot/capture RPC 唔會出圖，click 唔會郁，eval 只准四種 exact
+  readiness-receipt inspection expression。Capture proxy 見到空或者爛嘅
+  `Response.url` 都會拒絕，普通 redirect-following 行為就保持不變。呢啲係
+  source-level contract，未有 built artifact 或 visual parity evidence，唔會扮
+  verify 完成。
+
+- **Capture readiness now has bounded failure and isolation semantics.** Commit
+  [`484ff023c`](https://github.com/Ding-Ding-Projects/material-designer/commit/484ff023c3f8151dd3d58cf40d496e59110b5787)
+  forwards the sidecar origin and isolation proof through desktop startup,
+  applies main-process timeouts to every readiness evaluation, requires a
+  renderer-owned settled witness after configuration, onboarding and cloud
+  identity decisions, and rechecks the route across a bounded stability
+  interval. Renderer loss before readiness produces a terminal `ready: false`
+  receipt with `capture.renderer_process_gone`; unready capture keeps live
+  content hidden behind a self-contained failure splash. Capture also receives
+  a separate user-data namespace and bypasses ordinary existing-window and
+  single-instance handoff. This remains source-level evidence only.
+
+  Capture readiness 而家有 bounded failure 同 isolation semantics。`484ff023c`
+  令 sidecar origin 同 isolation proof 真係由 desktop startup 傳到 runtime；
+  每個 readiness evaluation 都有 main-process timeout，configuration、
+  onboarding 同 cloud identity 決定完成後要有 renderer-owned settled witness，
+  再隔一段穩定時間重查 route。Readiness 前 renderer 結束會記低
+  `ready: false` 同 `capture.renderer_process_gone`；未 ready 嘅 capture 只留喺
+  self-contained failure splash 後面，唔會露出 live content。Capture 仲有獨立
+  user-data namespace，唔會畀普通 existing-window 或 single-instance handoff
+  搶走。依然只係 source-level evidence。
+
+- **Capture failure receipts survive renderer teardown and configured data roots
+  cannot collapse the isolation boundary.** Commit
+  [`82cbc4e9`](https://github.com/Ding-Ding-Projects/material-designer/commit/82cbc4e936ec0788f8c3f2c15c0b957d6eb1ab15)
+  records `capture.renderer_process_gone` even when the renderer's web contents
+  are already destroyed, while intentional shutdown stays quiet. Capture also
+  overrides configured namespace and `OD_DATA_DIR` roots with its own
+  user-data namespace. The ordinary launcher path is unchanged; this remains
+  source-level evidence only.
+
+  Capture failure receipt 而家就算 renderer web contents 已經收埋都保得住，
+  configured data root 亦唔可以打穿 isolation boundary。`82cbc4e9` 會記低
+  `capture.renderer_process_gone`，正常 shutdown 就保持安靜；capture 仲會
+  override namespace 同 `OD_DATA_DIR`，用自己嘅 user-data namespace。普通
+  launcher 路徑冇改，依然只係 source-level evidence。
 
 - **Website and desktop-agent handoff downloads now fail closed instead of
   quietly exporting the wrong thing.** Commit

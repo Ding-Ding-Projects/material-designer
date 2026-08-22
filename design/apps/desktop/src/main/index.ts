@@ -67,6 +67,12 @@ import {
   registerDesktopDiagnosticsIpc,
 } from "./diagnostics.js";
 import { notifyDesktopExternalShow } from "./external-show.js";
+import {
+  createDeterministicParityCaptureRunId,
+  deterministicParityChromiumLocale,
+  parseDeterministicParityRouteArgv,
+  type DeterministicParityRoute,
+} from "./deterministic-parity-route.js";
 
 // Re-export pure URL-policy helpers so the packaged workspace's
 // vitest can pin their behaviour without spinning up a full Electron
@@ -84,6 +90,37 @@ export {
   type SplashBootStage,
   type SplashStageSurface,
 } from "./runtime.js";
+
+export {
+  DETERMINISTIC_PARITY_CAPTURE_ENV,
+  DETERMINISTIC_PARITY_CAPTURE_FLAG,
+  DETERMINISTIC_PARITY_FONTS,
+  DETERMINISTIC_PARITY_FIXTURE_REVISION,
+  DETERMINISTIC_PARITY_NETWORK,
+  DETERMINISTIC_PARITY_NOT_READY_REASON,
+  DETERMINISTIC_PARITY_CAPTURE_ROOT_SEGMENT,
+  DETERMINISTIC_PARITY_PROTOCOL,
+  DETERMINISTIC_PARITY_RANDOM_SEED,
+  DETERMINISTIC_PARITY_TIME,
+  DeterministicParityRouteError,
+  deterministicParityChromiumLocale,
+  createDeterministicParityCaptureRunId,
+  deterministicParityCaptureRunNamespace,
+  deterministicParityCaptureSidecarNamespace,
+  deterministicParityRouteIds,
+  deterministicParitySessionPartition,
+  deepFreezeDeterministicParityValue,
+  isDeterministicParityCaptureReady,
+  isDeterministicParityNavigationAllowed,
+  isDeterministicParityCaptureEnabled,
+  isDeterministicParityReadinessInspectionExpression,
+  parseDeterministicParityRouteArgv,
+  resolveDeterministicParityRoute,
+  validateDeterministicParityCaptureRunId,
+  type DeterministicParityRoute,
+  type DeterministicParityReadiness,
+  type DeterministicParityTuple,
+} from "./deterministic-parity-route.js";
 
 // Re-export the path-validation helpers for the same reason (#974).
 // shell.openPath is privileged main-process behaviour; pinning the
@@ -180,6 +217,20 @@ export type DesktopMainOptions = {
   discoverDaemonUrl?: () => Promise<string | null>;
   /** Stable installed launcher used for Windows opendesign:// registration. */
   inviteProtocolClientPath?: string | null;
+  /**
+   * Developer-only deterministic design-parity route. Normal launches leave
+   * this unset; the packaged entry passes it only after validating an explicit
+   * `material-designer://` capture argument.
+   */
+  captureRoute?: DeterministicParityRoute | null;
+  /** Only the packaged outer launcher may own a capture route. */
+  capturePackagedLauncher?: boolean;
+  /** Exact current web-sidecar origin allowed by the capture session. */
+  captureNetworkOrigin?: () => string | null;
+  /** True only after the sidecars prove capture-aware fixture/network isolation. */
+  captureNetworkIsolationReady?: boolean;
+  /** Unique per-launch capture storage identity; separate from route identity. */
+  captureRunId?: string | null;
   preloadPath?: string;
   windowTitle?: string;
   onDesktopReady?: (controls: {
@@ -723,6 +774,14 @@ export async function runDesktopMain(
   runtime: SidecarRuntimeContext<SidecarStamp>,
   options: DesktopMainOptions = {},
 ): Promise<void> {
+  // Refuse direct desktop capture before process filters, Electron readiness,
+  // auth registration, IPC, logs, or a BrowserWindow can be armed. The
+  // packaged outer launcher passes the explicit authority bit below.
+  const requestedCaptureRoute = options.captureRoute
+    ?? parseDeterministicParityRouteArgv(process.argv, process.env);
+  if (requestedCaptureRoute != null && options.capturePackagedLauncher !== true) {
+    throw new Error("capture.packaged_launcher_required: capture must be owned by the packaged outer launcher");
+  }
   // Install the defensive uncaughtException filter BEFORE awaiting
   // app.whenReady, so a setTypeOfService EINVAL thrown by undici during
   // the renderer's first fetch is intercepted rather than surfacing as
@@ -737,7 +796,20 @@ export async function runDesktopMain(
   // `apps/packaged/src/index.ts` has already applied the switch before
   // its own `whenReady`; this call is then a no-op for the switch and
   // only recovers the locale string for the BrowserWindow below.
-  const osLocale = applyOsLocaleSwitch(app);
+  const captureRoute = requestedCaptureRoute;
+  const captureRunId = captureRoute == null
+    ? null
+    : options.captureRunId ?? createDeterministicParityCaptureRunId();
+  // The packaged entry normally applies this switch before `whenReady()`. A
+  // tools-dev invocation may enter here directly, so keep the same route
+  // self-contained and apply it before Chromium creates its first session.
+  const osLocale = captureRoute
+    ? deterministicParityChromiumLocale(captureRoute.tuple)
+    : applyOsLocaleSwitch(app);
+  if (captureRoute && !options.captureRoute) {
+    app.commandLine.appendSwitch("force-device-scale-factor", String(captureRoute.tuple.scale));
+    app.commandLine.appendSwitch("lang", osLocale);
+  }
   // Same dev-vs-packaged split as the locale switch above: dev lands the
   // switch here, packaged has already applied it pre-whenReady.
   applyLoopbackConnectionLimitSwitch(app);
@@ -783,6 +855,19 @@ export async function runDesktopMain(
       namespace: runtime.namespace,
       runtimeBase: runtime.base,
       source: runtime.source,
+      // Capture routes are local evidence sessions, never update clients.
+      // Clear inherited feed and automatic-action variables before config
+      // resolution so no updater request or scheduler can start.
+      env: captureRoute == null
+        ? process.env
+        : {
+            ...process.env,
+            OD_UPDATE_ENABLED: "0",
+            OD_UPDATE_AUTO_CHECK: "0",
+            OD_UPDATE_AUTO_DOWNLOAD: "0",
+            OD_UPDATE_AUTO_OPEN: "0",
+            OD_UPDATE_METADATA_URL: undefined,
+          },
     },
     { openPath: (path) => shell.openPath(path) },
   );
@@ -960,17 +1045,22 @@ export async function runDesktopMain(
   });
   console.info("[open-design desktop] desktop IPC server listening", { ipc: runtime.ipc });
 
-  const menuController = installDesktopMenu(runtime, {
-    ...options,
-    onOpenUpdateDialog: () => {
-      if (desktop == null) {
-        pendingUpdateDialogRequest = true;
-        return;
-      }
-      desktop.openUpdateDialog({ source: "mac-app-menu" });
-    },
-    updater,
-  });
+  const menuController: DesktopMenuController = captureRoute == null
+    ? installDesktopMenu(runtime, {
+        ...options,
+        onOpenUpdateDialog: () => {
+          if (desktop == null) {
+            pendingUpdateDialogRequest = true;
+            return;
+          }
+          desktop.openUpdateDialog({ source: "mac-app-menu" });
+        },
+        updater,
+      })
+    : {
+        dispose: () => undefined,
+        setUpdateLabels: () => undefined,
+      };
   disposeMenu = menuController.dispose;
 
   console.info("[open-design desktop] creating desktop runtime");
@@ -997,6 +1087,10 @@ export async function runDesktopMain(
     requestQuit: shutdownAndExit,
     splashWindow: options.splashWindow,
     splashStartedAt: options.splashStartedAt,
+    captureRoute,
+    captureNetworkOrigin: options.captureNetworkOrigin,
+    captureNetworkIsolationReady: options.captureNetworkIsolationReady,
+    captureRunId,
     updater,
     windowTitle: options.windowTitle,
   });
@@ -1031,40 +1125,46 @@ export async function runDesktopMain(
   // GPU / utility child-process crashes: the window keeps running but degraded
   // (a GPU-process crash is a common cause of a window that then goes blank or
   // vanishes), and the child can't report itself. `clean-exit` is normal teardown.
-  attachDesktopChildProcessCrashReporter(
-    app,
-    (event, properties) => reportDesktopObservabilityEvent(discoverDaemonBaseUrl, event, properties),
-  );
-  removeDiagnosticsIpc = registerDesktopDiagnosticsIpc({
-    discoverDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
-  });
-  // Route opendesign:// team-invite deeplinks to the daemon (desktop wake-up).
-  registerInviteDeeplink({
-    resolveDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
-    focus: () => focusDesktopForDeeplink(desktop),
-    onCompleted: (outcome) => {
-      console.info("[open-design desktop] invite deeplink continuation completed", outcome);
-    },
-    protocolClientPath: options.inviteProtocolClientPath,
-  });
-  const discoverUpdaterAppConfigBaseUrl = resolveDaemonBaseUrl(runtime, options);
-  updateScheduler = createDesktopUpdaterScheduler(updater, {
-    backoffInitialMs: updater.config.checkBackoffInitialMs,
-    backoffMaxMs: updater.config.checkBackoffMaxMs,
-    initialDelayMs: updater.config.checkInitialDelayMs,
-    intervalMs: updater.config.checkIntervalMs,
-    startupSilentPayloadUpdate: {
-      isEnabled: async () => {
-        const baseUrl = await discoverUpdaterAppConfigBaseUrl();
-        const config = await readAppConfigFromDaemon(baseUrl);
-        return config.allowSilentUpdates === true;
+  if (captureRoute == null) {
+    attachDesktopChildProcessCrashReporter(
+      app,
+      (event, properties) => reportDesktopObservabilityEvent(discoverDaemonBaseUrl, event, properties),
+    );
+    removeDiagnosticsIpc = registerDesktopDiagnosticsIpc({
+      discoverDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
+    });
+    // Route opendesign:// team-invite deeplinks to the daemon (desktop wake-up).
+    registerInviteDeeplink({
+      resolveDaemonBaseUrl: resolveDaemonBaseUrl(runtime, options),
+      focus: () => focusDesktopForDeeplink(desktop),
+      onCompleted: (outcome) => {
+        console.info("[open-design desktop] invite deeplink continuation completed", outcome);
       },
-      requestQuit: shutdownAndExit,
-    },
-  });
-  if (updater.shouldAutoCheck()) updateScheduler.start();
+      protocolClientPath: options.inviteProtocolClientPath,
+    });
+  } else {
+    removeDiagnosticsIpc = () => undefined;
+  }
+  const discoverUpdaterAppConfigBaseUrl = resolveDaemonBaseUrl(runtime, options);
+  if (captureRoute == null) {
+    updateScheduler = createDesktopUpdaterScheduler(updater, {
+      backoffInitialMs: updater.config.checkBackoffInitialMs,
+      backoffMaxMs: updater.config.checkBackoffMaxMs,
+      initialDelayMs: updater.config.checkInitialDelayMs,
+      intervalMs: updater.config.checkIntervalMs,
+      startupSilentPayloadUpdate: {
+        isEnabled: async () => {
+          const baseUrl = await discoverUpdaterAppConfigBaseUrl();
+          const config = await readAppConfigFromDaemon(baseUrl);
+          return config.allowSilentUpdates === true;
+        },
+        requestQuit: shutdownAndExit,
+      },
+    });
+    if (updater.shouldAutoCheck()) updateScheduler.start();
+  }
 
-  attachParentMonitor(shutdown);
+  if (captureRoute == null) attachParentMonitor(shutdown);
 
   app.on("before-quit", (event) => {
     if (shuttingDown) return;
@@ -1094,6 +1194,10 @@ export async function runDesktopMain(
 }
 
 if (isDirectEntry()) {
+  const directCaptureRoute = parseDeterministicParityRouteArgv(process.argv, process.env);
+  if (directCaptureRoute != null) {
+    throw new Error("capture.packaged_launcher_required: capture must be owned by the packaged outer launcher");
+  }
   const stamp = readProcessStamp(process.argv.slice(2), OPEN_DESIGN_SIDECAR_CONTRACT);
   if (stamp == null) throw new Error("sidecar stamp is required");
 

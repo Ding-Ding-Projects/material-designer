@@ -150,6 +150,28 @@ export interface RegisterVelaRoutesDeps {
   onCredentialStateObserved?: () => void;
 }
 
+function registerCaptureVelaRoutes(app: Express): void {
+  const fixture = {
+    source: "capture-provider",
+    fixtureRevision: "material-designer-m3-v2",
+  };
+  app.get("/api/amr/models", (_req, res) => {
+    res.json({ models: [], ...fixture });
+  });
+  app.get("/api/integrations/vela/status", (_req, res) => {
+    res.json({
+      loggedIn: false,
+      sessionState: "signed_out",
+      account: null,
+      consoleOrigin: null,
+      ...fixture,
+    });
+  });
+  app.all("/api/integrations/vela/*splat", (_req, res) => {
+    res.status(503).json({ error: "capture.external_runtime_blocked", ...fixture });
+  });
+}
+
 interface AmrModelProbe {
   launchPath: string;
   env: NodeJS.ProcessEnv;
@@ -252,6 +274,10 @@ export function pipeProxyStreamWithGuard(
 }
 
 function proxyAmrApiRequest(req: Request, res: Response): void {
+  if (process.env.OD_DESIGN_PARITY_CAPTURE === '1') {
+    res.status(503).json({ error: 'capture.network_blocked_external' });
+    return;
+  }
   const suffix = req.originalUrl.slice(AMR_API_PROXY_PREFIX.length);
   if (!suffix.startsWith('/api/v1/')) {
     res.status(404).json({ error: 'unknown_amr_api_proxy_path' });
@@ -350,6 +376,10 @@ function proxyVelaMessageCenterRequest(
   context: { apiUrl: string; controlKey?: string },
   proxyPrefix = VELA_MESSAGE_CENTER_PREFIX,
 ): void {
+  if (process.env.OD_DESIGN_PARITY_CAPTURE === '1') {
+    res.status(503).json({ error: 'capture.network_blocked_external' });
+    return;
+  }
   const suffix = req.originalUrl.slice(proxyPrefix.length);
   const parsedSuffix = new URL(suffix, 'http://message-center.local');
   if (!isAllowedMessageCenterRequest(req.method, parsedSuffix.pathname)) {
@@ -405,6 +435,10 @@ function proxyVelaMessageCenterRequest(
 
 export function registerVelaRoutes(app: Express, deps: RegisterVelaRoutesDeps): void {
   const env = deps.env ?? process.env;
+  if (env.OD_DESIGN_PARITY_CAPTURE === "1") {
+    registerCaptureVelaRoutes(app);
+    return;
+  }
   const onCredentialStateObserved =
     deps.onCredentialStateObserved ?? (() => undefined);
   const { RUNTIME_DATA_DIR } = deps.paths;

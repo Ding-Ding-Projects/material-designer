@@ -156,6 +156,19 @@ export class SidecarContractError extends Error {
 
 export type ServiceRuntimeState = "idle" | "running" | "starting" | "stopped" | "unknown";
 
+/**
+ * Capture-only network policy receipt. Both packaged sidecars must report the
+ * exact same acknowledgement before a parity window can become ready. Keep
+ * this in the sidecar protocol so a status response cannot silently invent a
+ * local boolean that the other process never armed.
+ */
+export type CaptureNetworkPolicyAcknowledgement = {
+  armed: true;
+  policyVersion: "capture-network-policy-v2";
+  redirectMode: "manual";
+  allowedOriginClass: "loopback-http-no-credentials";
+};
+
 export type DaemonStatusSnapshot = {
   pid?: number | null;
   state: ServiceRuntimeState;
@@ -174,6 +187,7 @@ export type DaemonStatusSnapshot = {
    * moment the STATUS request was answered.
    */
   desktopAuthGateActive: boolean;
+  captureNetworkPolicy?: CaptureNetworkPolicyAcknowledgement | null;
 };
 
 export type WebStatusSnapshot = {
@@ -181,6 +195,7 @@ export type WebStatusSnapshot = {
   state: ServiceRuntimeState;
   updatedAt?: string;
   url: string | null;
+  captureNetworkPolicy?: CaptureNetworkPolicyAcknowledgement | null;
 };
 
 export type DesktopRuntimeState = "idle" | "running" | "unknown";

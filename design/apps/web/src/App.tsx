@@ -164,7 +164,7 @@ import {
   createPluginUseHandoff,
   stashHomePromptHandoff,
 } from './components/home-hero/plugin-authoring';
-import { goBack, navigate, useRoute, type Route } from './router';
+import { buildPath, goBack, navigate, useRoute, type Route } from './router';
 import {
   fetchDaemonConfig,
   DEFAULT_CONFIG,
@@ -1343,6 +1343,26 @@ function AppInner() {
   // can't overwrite the saved state with `''` before hydration lands.
   const [composioConfigLoading, setComposioConfigLoading] = useState(true);
   const route = useRoute();
+  // Capture readiness consumes this renderer-owned witness rather than the
+  // desktop prelude's requested tuple markers. The route path/state come from
+  // the actual web router, while the fixture source records whether ordinary
+  // daemon-backed data is in use. The capture provider is intentionally not
+  // implemented yet, so parity remains unready until that source is explicit.
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const rendererState = route.kind === 'home' ? route.view : route.kind;
+    root.setAttribute('data-od-renderer-route-path', buildPath(route));
+    root.setAttribute('data-od-renderer-route-state', rendererState);
+    root.setAttribute('data-od-fixture-source', daemonLive ? 'live-daemon' : 'unavailable');
+    root.setAttribute('data-od-fixture-revision', 'live');
+    return () => {
+      root.removeAttribute('data-od-renderer-route-path');
+      root.removeAttribute('data-od-renderer-route-state');
+      root.removeAttribute('data-od-fixture-source');
+      root.removeAttribute('data-od-fixture-revision');
+    };
+  }, [daemonLive, route]);
   const routeRef = useRef(route);
   routeRef.current = route;
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
@@ -1677,6 +1697,34 @@ function AppInner() {
   // globals effect below reads it; the sync effects live next to the
   // other AMR plumbing further down.
   const [amrLoginStatus, setAmrLoginStatus] = useState<VelaLoginStatus | null>(null);
+  // A deterministic capture may not settle until daemon configuration,
+  // onboarding, and cloud-identity decisions have all completed. This witness
+  // is renderer-owned and is intentionally absent while any decision is still
+  // pending; the desktop capture receipt requires it to remain stable while
+  // it rechecks the route.
+  const captureSettled = daemonLive
+    && daemonConfigLoaded
+    && daemonAppConfigReady
+    && config.onboardingCompleted === true
+    && amrLoginStatus !== null;
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    if (!captureSettled) {
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+      return undefined;
+    }
+    root.setAttribute('data-od-capture-settled', '1');
+    root.setAttribute('data-od-capture-settled-route', buildPath(route));
+    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
+    return () => {
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+    };
+  }, [captureSettled, route]);
   // Inline AMR auth can invalidate the caller identity and intentionally tear
   // down ProjectView before the login poll reports success. Keep only the
   // exact failed-turn continuation above that authorization lifetime; the

@@ -47,6 +47,47 @@ with the project's standards.
       rows compact labelled controls while retaining accessible names. Hosted
       interaction and high-scale capture evidence remains pending.
 
+- [~] **Add the production deterministic parity-route foundation.** The real
+      desktop entry now parses the exact v2 `material-designer://` tuple only in
+      explicit developer/capture mode, rejects missing or duplicate route
+      arguments, maps six semantically owned destinations to the existing web
+      router, applies frozen clock/random/motion and locale controls before
+      first render, isolates capture protocol handling, allows only the exact
+      accepted `od://` route through main-frame navigation and redirects,
+      blocks external navigation, uses a forced capture root with a unique
+      per-launch run lease and no ordinary existing-window/single-instance
+      handoff, embeds the run id in sidecar namespaces/stamps/IPC paths, and
+      records a terminal readiness receipt against the canonical URL/search,
+      renderer-owned route witness, capture-settled witness, route component
+      invariant and fixture/network proof. Readiness evaluations are
+      main-process time-bounded and recheck the route across a bounded stability
+      interval. Screenshot/click/eval/capture-page/export RPCs refuse before a
+      ready+receipt-installed+revealed predicate, and renderer operations have
+      bounded timeouts that invalidate the receipt. The prelude exposes a
+      non-writable run id without mutating ordinary localStorage. Capture
+      sidecars clear telemetry, provider, update, and proxy egress inputs;
+      both sidecars force manual redirects and credential-free loopback final
+      origins. A hand-written capture process/handler/env inventory serves
+      fixture status and refuses agent, run/chat, Vela, connector, MCP,
+      terminal and browser-session launches; native menus, diagnostics,
+      invite/path/PDF/update side effects, legacy handoff and standalone Next
+      are disabled.
+      Readiness remains false until that audit is proven, and renderer loss,
+      failed main-frame load or an HTTP error document invalidates a previously
+      ready receipt and returns to the failure splash. A retired run keeps its
+      evidence bytes under an explicit retention marker, and same-run namespace
+      collisions are rejected.
+      The six mapped rows remain
+      foundation-only because the renderer still reports ordinary daemon data
+      and no capture fixture/provider exists; the sidecar boundary is source
+      only until hosted runtime proof. Studio,
+      Library, Settings Appearance and standalone Handoff remain explicit
+      unresolved blockers; dark presentation is also blocked because the
+      product is light-only: `route.theme_dark_unresolved`,
+      `route.studio_unresolved`, `route.library_hidden`,
+      `route.settings_appearance_unresolved` and `route.handoff_unresolved`.
+      Hosted runtime proof and the four product-owned destinations remain open.
+
 - [x] **Repair installed Squirrel startup identity and runtime roots.** Commit
       [`cb03705b`](https://github.com/Ding-Ding-Projects/material-designer/commit/cb03705b)
       removes the CI host's absolute namespace root from installed config and

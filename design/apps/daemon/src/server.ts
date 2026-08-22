@@ -997,6 +997,7 @@ import {
   parseHostHeader,
 } from './origin-validation.js';
 import { registerLibraryRoutes } from './routes/library.js';
+import { createCaptureBoundaryMiddleware } from './capture-boundary.js';
 import {
   libraryExtensionAllowedOrigins,
   seedLibraryExtensionOrigins,
@@ -2579,6 +2580,7 @@ export async function startServer({
   runtime = null,
   staticDir = STATIC_DIR,
 }: StartServerOptions = {}) {
+  const captureMode = process.env.OD_DESIGN_PARITY_CAPTURE === "1";
   host = normalizeDaemonBindHost(host);
   let resolvedPort = port;
   let daemonShuttingDown = false;
@@ -2629,6 +2631,10 @@ export async function startServer({
   // (registered before the global parser so it claims the body first).
   app.use('/api/brands/:id/extract-from-html', express.json({ limit: '32mb' }));
   app.use(express.json({ limit: '4mb' }));
+  // Deterministic parity capture gets fixture status and structured refusal
+  // for every process-launching/provider route before any registrar can call
+  // detection, spawn, OAuth, connector, terminal, or chat code.
+  app.use('/api', createCaptureBoundaryMiddleware(process.env));
   const projectPreviewScopes = createProjectPreviewScopeRegistry();
 
   // Plan §3.K1 — API-token middleware.
@@ -2929,7 +2935,7 @@ export async function startServer({
   configureConnectorCredentialStore(new FileConnectorCredentialStore(RUNTIME_DATA_DIR));
   configureComposioConfigStore(RUNTIME_DATA_DIR);
   composioConnectorProvider.configureCatalogCache(RUNTIME_DATA_DIR);
-  composioConnectorProvider.startCatalogRefreshLoop();
+  if (!captureMode) composioConnectorProvider.startCatalogRefreshLoop();
 
   // RoutineService persistence is a thin adapter over the SQLite helpers.
   // Routines are stored as DB rows; the service holds in-memory timers and
@@ -3143,14 +3149,19 @@ export async function startServer({
   }
 
   // Warm agent-capability probes (e.g. whether the installed Claude Code
-  // build advertises --include-partial-messages) so the first /api/chat
-  // hits a populated cache even if /api/agents hasn't been called yet.
-  void readAppConfig(RUNTIME_DATA_DIR)
-    .then((config) => {
-      orbitService.configure(config.orbit);
-      return detectAgents(config.agentCliEnv ?? {});
-    })
-    .catch(() => detectAgents().catch(() => {}));
+  // build advertises --include-partial-messages) are ordinary-runtime work.
+  // Capture uses only the deterministic fixture projection exposed by the
+  // capture boundary; probing installed agents, runtimes, versions, models,
+  // auth, companions, or Vela here would make a supposedly fixed tuple depend
+  // on the host before the first request arrives.
+  if (process.env.OD_DESIGN_PARITY_CAPTURE !== "1") {
+    void readAppConfig(RUNTIME_DATA_DIR)
+      .then((config) => {
+        orbitService.configure(config.orbit);
+        return detectAgents(config.agentCliEnv ?? {});
+      })
+      .catch(() => detectAgents().catch(() => {}));
+  }
 
   await reconcileDesktopScaffoldClaims(
     PROJECTS_DIR,
@@ -7139,7 +7150,8 @@ export async function startServer({
   // resource set change" digest in Vela's `/api/v1/collab/sync-digest`, so
   // this re-reads on its own cadence. The coordinator derives a stable
   // id+version signature after materialization and suppresses unchanged emits.
-  const teamResourcesPollTimer = setInterval(() => {
+  let teamResourcesPollTimer: ReturnType<typeof setInterval> | null = null;
+  if (!captureMode) teamResourcesPollTimer = setInterval(() => {
     const rememberedLeases = rememberedTeamResourceScopes.activeWorkspaceLeases();
     const rememberedLeasesByWorkspace = new Map(
       rememberedLeases.map((lease) => [lease.workspaceId, lease]),
@@ -7167,7 +7179,7 @@ export async function startServer({
        );
     }
   }, 15_000);
-  teamResourcesPollTimer.unref?.();
+  teamResourcesPollTimer?.unref?.();
 
   registerMemoryRoutes(app, {
     http: { createSseResponse, requireLocalDaemonRequest },
@@ -14846,7 +14858,7 @@ export async function startServer({
       discardUnstarted,
     };
   });
-  routineService.start();
+  if (!captureMode) routineService.start();
 
   assertServerContextSatisfiesRoutes({
     db,
@@ -14960,7 +14972,7 @@ export async function startServer({
       // Closes the record watchers and lets the pending snapshot finish; a
       // rejection here must not derail shutdown.
       void historyService?.stop().catch(() => undefined);
-      clearInterval(teamResourcesPollTimer);
+      if (teamResourcesPollTimer != null) clearInterval(teamResourcesPollTimer);
       workspaceHubSubscriptions?.dispose();
       hubEventRefreshes.dispose();
       workspaceDirectoryRefreshes.dispose();

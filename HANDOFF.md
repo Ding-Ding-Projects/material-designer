@@ -341,6 +341,63 @@
 > 同 48px target。Port verifier 人讀同 JSON 都係 0 gaps；hosted source tests、
 > build、installed runtime 同 visual captures 仍然未證實。
 
+> **Production parity route foundation — 2026-08-21.** The isolated route lane
+> adds a strict v2 `material-designer://` tuple parser and wires it through the
+> packaged Electron startup only when `OD_DESIGN_PARITY_CAPTURE=1` or
+> `--design-parity-capture` is explicit. Six inventoried destinations map to
+> the real web router (`/`, `/projects`, `/design-systems`, `/automations`,
+> `/plugins`, `/integrations`). The route prelude freezes time, randomness and
+> motion, applies the capture locale/language context before the first
+> document. Capture uses an isolated in-memory renderer session with the local
+> `od://` proxy, suppresses the separate pet window, allows only the exact
+> accepted `od://` route through both main-frame navigation events, rejects
+> capture-mode external navigation, uses a forced capture root with a unique
+> validated per-launch run identity and exclusive lease, bypasses ordinary
+> existing-window or single-instance handoff, blocks requests outside the exact
+> current loopback sidecar origin, and returns an idempotent protocol disposer.
+> The route id remains tuple identity only; the exact run id is embedded in
+> sidecar namespaces, stamps, IPC paths and the renderer partition. Lexical
+> no-follow checks inspect existing components, retirement is serialized and
+> idempotent, and a same-run collision is rejected.
+> Readiness now compares the canonical URL and full query, actual
+> theme/viewport/device scale/fonts, a renderer-owned route witness,
+> route-specific component/ARIA invariant, renderer-owned capture-settled
+> witness and fixture/network isolation proofs. Every readiness evaluation is
+> main-process time-bounded, and the route is rechecked across a bounded
+> stability interval. Screenshot, click, eval, capture-page and export RPCs
+> share a ready+receipt-installed+revealed predicate and bounded renderer
+> timeouts; pre-readiness operations refuse and a timeout invalidates the
+> receipt. The prelude exposes a non-writable run id and does not mutate
+> ordinary localStorage. Pre-readiness renderer loss and every other unready result keep the live window hidden and show a
+> self-contained capture-failure splash. Because the capture provider/fixture
+> is not implemented and the network boundary has no hosted runtime proof, the
+> six reachable rows remain foundation-only with a terminal `ready: false`
+> receipt; ordinary daemon data
+> is explicitly detected rather than accepted as fixture data. Capture startup
+> clears startup telemetry, provider, update and proxy egress inputs; both
+> sidecars force manual redirects and reject credentialed/non-loopback final
+> origins. A hand-written handler/process/env inventory serves fixture agent
+> and provider status, refuses detection/run/chat/Vela/connector/MCP/terminal
+> launches, and disables native menus, diagnostics, invite/path/PDF/update
+> side effects, legacy handoff and standalone Next. Readiness remains false
+> until that network audit is proven. A ready capture also invalidates its receipt and
+> returns to the failure splash on renderer loss, failed main-frame load or an
+> HTTP error document.
+>
+> Four rows remain intentionally fail-closed and are not claimed as reachable:
+> dark presentation is also blocked as `route.theme_dark_unresolved` because
+> the product is light-only. The destination blockers are
+> `route.studio_unresolved` (no production Studio destination),
+> `route.library_hidden` (the product flag hides Library),
+> `route.settings_appearance_unresolved` (the Settings page does not yet
+> accept the appearance state from the route), and
+> `route.handoff_unresolved` (handoff is project/file-scoped). Source-level
+> route contracts were added but no local Node, build, test, Electron, UI or
+> capture command was run. Hosted build/runtime proof and the remaining product
+> route work are still required; the parity verifier remains intentionally
+> unready.
+
+> [!IMPORTANT]
 > **Session closeout — 2026-08-21.** The default branch and remote now point to
 > [`aa0673659`](https://github.com/Ding-Ding-Projects/material-designer/commit/aa067365901a1a24eeb420fe9d34143ce562bbcf).
 > This session advanced the Open Design baseline from `517f39acd` to

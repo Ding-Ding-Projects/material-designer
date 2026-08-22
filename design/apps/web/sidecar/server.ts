@@ -21,6 +21,7 @@ import {
   normalizeWebSidecarMessage,
   type SidecarStamp,
   type WebStatusSnapshot,
+  type CaptureNetworkPolicyAcknowledgement,
 } from "@open-design/sidecar-proto";
 import {
   createJsonIpcServer,
@@ -934,9 +935,11 @@ async function createWebSidecarHandle(
   httpServer: HttpServer,
   closeRuntime: () => Promise<void> | void,
   isRuntimeRunning?: () => boolean,
+  captureNetworkPolicy: CaptureNetworkPolicyAcknowledgement | null = null,
 ): Promise<WebSidecarHandle> {
   const port = await listen(httpServer, parsePort(process.env[WEB_PORT_ENV]));
   const state: WebStatusSnapshot = {
+    captureNetworkPolicy,
     pid: process.pid,
     state: "running",
     updatedAt: new Date().toISOString(),
@@ -1031,6 +1034,7 @@ export function createDaemonProxyHandler(
 async function startRegularNextSidecar(
   runtime: SidecarRuntimeContext<SidecarStamp>,
   webRoot: string,
+  captureNetworkPolicy: CaptureNetworkPolicyAcknowledgement | null,
 ): Promise<WebSidecarHandle> {
   const dev = process.env.OD_WEB_PROD !== "1" && runtime.mode === "dev";
   const app = createNextApp({ dev, dir: webRoot, ...resolveNextBundlerOptions(dev) });
@@ -1042,12 +1046,13 @@ async function startRegularNextSidecar(
 
   return await createWebSidecarHandle(runtime, httpServer, async () => {
     await app.close?.();
-  });
+  }, undefined, captureNetworkPolicy);
 }
 
 async function startStandaloneNextSidecar(
   runtime: SidecarRuntimeContext<SidecarStamp>,
   webRoot: string | null,
+  captureNetworkPolicy: CaptureNetworkPolicyAcknowledgement | null,
 ): Promise<WebSidecarHandle> {
   const daemonOrigin = resolveDaemonOrigin();
   const backend = await startStandaloneBackend(webRoot);
@@ -1067,19 +1072,22 @@ async function startStandaloneNextSidecar(
   }));
 
   try {
-    return await createWebSidecarHandle(runtime, httpServer, backend.stop, backend.isRunning);
+    return await createWebSidecarHandle(runtime, httpServer, backend.stop, backend.isRunning, captureNetworkPolicy);
   } catch (error) {
     await backend.stop().catch(() => undefined);
     throw error;
   }
 }
 
-export async function startWebSidecar(runtime: SidecarRuntimeContext<SidecarStamp>): Promise<WebSidecarHandle> {
+export async function startWebSidecar(
+  runtime: SidecarRuntimeContext<SidecarStamp>,
+  captureNetworkPolicy: CaptureNetworkPolicyAcknowledgement | null = null,
+): Promise<WebSidecarHandle> {
   if (shouldUseStandaloneOutput(runtime)) {
     const webRoot = resolveConfiguredStandaloneRoot() == null ? resolveWebRoot() : null;
-    return await startStandaloneNextSidecar(runtime, webRoot);
+    return await startStandaloneNextSidecar(runtime, webRoot, captureNetworkPolicy);
   }
 
   const webRoot = resolveWebRoot();
-  return await startRegularNextSidecar(runtime, webRoot);
+  return await startRegularNextSidecar(runtime, webRoot, captureNetworkPolicy);
 }

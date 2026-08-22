@@ -54,6 +54,17 @@ import {
   attachWindowMaximizedBroadcast,
   registerWindowControlHandlers,
 } from "./window-controls.js";
+import {
+  createDeterministicParityCaptureRunId,
+  DETERMINISTIC_PARITY_NOT_READY_REASON,
+  isDeterministicParityCaptureReady,
+  isDeterministicParityNavigationAllowed,
+  deterministicParitySessionPartition,
+  deepFreezeDeterministicParityValue,
+  type DeterministicParityRoute,
+  type DeterministicParityReadiness,
+} from "./deterministic-parity-route.js";
+import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -312,6 +323,39 @@ const WEB_MOUNT_REVEAL_TIMEOUT_MS = 15000;
 const WEB_MOUNT_EVAL_TIMEOUT_MS = 500;
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const CAPTURE_READINESS_EVALUATION_TIMEOUT_MS = 2_500;
+const CAPTURE_RENDERER_OPERATION_TIMEOUT_MS = 10_000;
+const CAPTURE_SETTLED_STABILITY_INTERVAL_MS = 250;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  const timeout = new Promise<T>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer != null) clearTimeout(timer);
+  });
+}
+
+function validatedCaptureLoopbackOrigin(value: string | null): string | null {
+  if (value == null || value.length === 0) return null;
+  try {
+    const parsed = new URL(value);
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+      || parsed.username.length > 0
+      || parsed.password.length > 0
+      || parsed.hostname !== "127.0.0.1"
+        && parsed.hostname !== "localhost"
+        && parsed.hostname !== "::1"
+        && parsed.hostname !== "[::1]"
+      || parsed.port.length === 0
+    ) return null;
+    return parsed.origin;
+  } catch {
+    return null;
+  }
+}
 const summarizeExpression = (expression: string): Record<string, unknown> => ({
   expressionLength: expression.length,
   expressionPreview: expression.length > 120 ? `${expression.slice(0, 120)}...` : expression,
@@ -391,6 +435,7 @@ export type DesktopStatusSnapshot = {
   updatedAt?: string;
   url?: string | null;
   windowVisible?: boolean;
+  deterministicParity?: DeterministicParityReadiness | null;
 };
 
 export type DesktopRuntime = {
@@ -488,10 +533,214 @@ export type DesktopRuntimeOptions = {
    */
   onRevealed?: () => void;
   onUpdateMenuLabels?: (labels: OpenDesignHostUpdaterMenuLabels) => void;
+  /** Developer-only normalized design-parity route. */
+  captureRoute?: DeterministicParityRoute | null;
+  /** Unique per-launch capture storage identity; never part of tuple identity. */
+  captureRunId?: string | null;
+  /** Exact current web-sidecar origin allowed by the capture session. */
+  captureNetworkOrigin?: () => string | null;
+  /** True only after the sidecars prove capture-aware fixture/network isolation. */
+  captureNetworkIsolationReady?: boolean;
 };
 
 const DESKTOP_IMPORT_TOKEN_HEADER = "x-od-desktop-import-token";
 const DESKTOP_IMPORT_TOKEN_TTL_MS = 60_000;
+
+async function installDeterministicCapturePrelude(
+  window: BrowserWindow,
+  route: DeterministicParityRoute,
+  runId: string,
+): Promise<() => void> {
+  window.webContents.debugger.attach("1.3");
+  try {
+    await window.webContents.debugger.sendCommand("Page.addScriptToEvaluateOnNewDocument", {
+      source: deterministicCapturePrelude(route, runId),
+    });
+  } catch (error) {
+    try {
+      window.webContents.debugger.detach();
+    } catch {
+      // Preserve the original installation error; teardown remains best-effort.
+    }
+    throw error;
+  }
+  let detached = false;
+  return () => {
+    if (detached) return;
+    detached = true;
+    try {
+      window.webContents.debugger.detach();
+    } catch {
+      // Teardown is idempotent: Electron may detach the debugger with the
+      // renderer before the runtime close path reaches this disposer.
+    }
+  };
+}
+
+const DETERMINISTIC_ROUTE_INVARIANTS: Record<string, string> = {
+  home: '[data-testid="entry-view-home"][data-active="true"]',
+  projects: '[data-testid="entry-view-projects"][data-active="true"]',
+  "design-systems": '[data-testid="entry-view-design-systems"][data-active="true"]',
+  automations: '[data-testid="entry-view-tasks"][data-active="true"]',
+  plugins: '[data-testid="entry-view-plugins"][data-active="true"]',
+  integrations: 'section.integrations-view[aria-labelledby="integrations-title"]',
+};
+
+const DETERMINISTIC_RENDERER_STATES: Record<string, string> = {
+  home: "home",
+  projects: "projects",
+  "design-systems": "design-systems",
+  automations: "tasks",
+  plugins: "plugins",
+  integrations: "integrations",
+};
+
+const DETERMINISTIC_PATH_SEMANTICS: Record<string, { screen: string; state: string }> = {
+  "/": { screen: "home", state: "default" },
+  "/projects": { screen: "projects", state: "default" },
+  "/design-systems": { screen: "design-systems", state: "default" },
+  "/automations": { screen: "automations", state: "default" },
+  "/plugins": { screen: "plugins", state: "default" },
+  "/integrations": { screen: "integrations", state: "default" },
+};
+
+async function measureDeterministicCaptureReadiness(
+  window: BrowserWindow,
+  route: DeterministicParityRoute,
+  blockedNetworkRequests: number,
+  networkOrigin: string | null,
+  networkIsolationReady: boolean,
+): Promise<DeterministicParityReadiness> {
+  const invariantSelector = DETERMINISTIC_ROUTE_INVARIANTS[route.tuple.screen] ?? "";
+  const readinessExpression = `(async () => {
+    await document.fonts.ready;
+    const root = document.documentElement;
+    const currentUrl = new URL(window.location.href);
+    const invariant = ${JSON.stringify(invariantSelector)};
+    const invariantElement = invariant ? document.querySelector(invariant) : null;
+    return {
+      href: currentUrl.href,
+      search: currentUrl.search,
+      pathname: currentUrl.pathname,
+      theme: root.getAttribute("data-theme"),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      devicePixelRatio: window.devicePixelRatio,
+      fonts: {
+        robotoFlex: document.fonts.check('16px "Roboto Flex"'),
+        robotoMono: document.fonts.check('16px "Roboto Mono"'),
+        materialSymbolsRounded: document.fonts.check('16px "Material Symbols Rounded"'),
+      },
+      rendererWitness: {
+        routePath: root.getAttribute("data-od-renderer-route-path"),
+        routeState: root.getAttribute("data-od-renderer-route-state"),
+        fixtureSource: root.getAttribute("data-od-fixture-source"),
+        fixtureRevision: root.getAttribute("data-od-fixture-revision"),
+      },
+      captureSettledWitness: {
+        settled: root.getAttribute("data-od-capture-settled") === "1",
+        routePath: root.getAttribute("data-od-capture-settled-route"),
+        revision: root.getAttribute("data-od-capture-settled-revision"),
+      },
+      routeInvariant: {
+        selector: invariant,
+        present: Boolean(invariantElement)
+          && (invariantElement.getAttribute("data-active") ?? "true") === "true",
+      },
+      appMounted: root.getAttribute("data-od-app-mounted") === "1",
+    };
+  })()`;
+  const readActual = (): Promise<DeterministicParityReadiness["actual"]> =>
+    withTimeout(
+      window.webContents.executeJavaScript(readinessExpression, true) as Promise<DeterministicParityReadiness["actual"]>,
+      CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+      "capture.readiness_evaluation_timeout",
+    );
+  const first = await readActual();
+  await delay(CAPTURE_SETTLED_STABILITY_INTERVAL_MS);
+  const actual = await readActual();
+  const reasons: string[] = [];
+  const stabilityChanged = first.href !== actual.href
+    || first.search !== actual.search
+    || first.theme !== actual.theme
+    || JSON.stringify(first.rendererWitness) !== JSON.stringify(actual.rendererWitness)
+    || JSON.stringify(first.captureSettledWitness) !== JSON.stringify(actual.captureSettledWitness)
+    || JSON.stringify(first.routeInvariant) !== JSON.stringify(actual.routeInvariant);
+  if (stabilityChanged) reasons.push("capture.settled_unstable");
+  const expectedUrl = new URL(route.browserUrl);
+  let actualUrl: URL | null = null;
+  try {
+    actualUrl = new URL(actual.href);
+  } catch {
+    reasons.push("route.url_invalid");
+  }
+  if (actual.href !== expectedUrl.href) reasons.push("route.url_mismatch");
+  if (actual.search !== expectedUrl.search) reasons.push("route.search_mismatch");
+  if (actual.pathname !== route.browserPath) reasons.push("route.pathname_mismatch");
+  if (actual.theme !== route.tuple.theme) reasons.push("tuple.theme_mismatch");
+  if (actual.viewport.width !== route.tuple.viewport.width || actual.viewport.height !== route.tuple.viewport.height) {
+    reasons.push("tuple.viewport_mismatch");
+  }
+  if (actual.devicePixelRatio !== route.tuple.scale) reasons.push("tuple.scale_mismatch");
+  if (!actual.fonts.robotoFlex || !actual.fonts.robotoMono || !actual.fonts.materialSymbolsRounded) {
+    reasons.push("tuple.fonts_unavailable");
+  }
+  const pathSemantic = actualUrl == null ? null : DETERMINISTIC_PATH_SEMANTICS[actualUrl.pathname] ?? null;
+  const actualSemanticState = {
+    screen: pathSemantic?.screen ?? null,
+    state: actualUrl?.searchParams.get("state") ?? null,
+    browserPath: actualUrl?.pathname ?? null,
+  };
+  actual.semanticState = actualSemanticState;
+  if (
+    actualSemanticState.screen !== route.semanticState.screen
+    || actualSemanticState.state !== route.semanticState.state
+    || actualSemanticState.browserPath !== route.semanticState.browserPath
+  ) reasons.push("route.semantic_state_mismatch");
+  const expectedRendererState = DETERMINISTIC_RENDERER_STATES[route.tuple.screen] ?? null;
+  if (
+    actual.rendererWitness.routePath !== route.browserPath
+    || actual.rendererWitness.routeState !== expectedRendererState
+  ) reasons.push("route.renderer_witness_unresolved");
+  if (actual.rendererWitness.fixtureSource === "live-daemon") {
+    reasons.push("fixture.live_data_detected");
+  }
+  if (
+    actual.rendererWitness.fixtureSource !== "capture-provider"
+    || actual.rendererWitness.fixtureRevision !== route.tuple.fixtureRevision
+  ) reasons.push("fixture.provider_unresolved");
+  if (!actual.captureSettledWitness.settled) reasons.push("capture.settled_witness_unresolved");
+  if (actual.captureSettledWitness.routePath !== route.browserPath) {
+    reasons.push("capture.settled_route_mismatch");
+  }
+  if (actual.captureSettledWitness.revision !== "capture-settled-v1") {
+    reasons.push("capture.settled_revision_mismatch");
+  }
+  if (!actual.routeInvariant.present) reasons.push("route.component_invariant_mismatch");
+  actual.networkPolicy = networkIsolationReady ? route.tuple.network : null;
+  actual.networkOrigin = networkOrigin;
+  actual.networkIsolationReady = networkIsolationReady;
+  const validatedNetworkOrigin = validatedCaptureLoopbackOrigin(networkOrigin);
+  if (validatedNetworkOrigin == null) reasons.push("capture.network_origin_unverified");
+  if (!networkIsolationReady) {
+    reasons.push("capture.network_isolation_unresolved");
+    reasons.push("capture.network_audit_unresolved");
+  }
+  if (networkOrigin == null) reasons.push("capture.network_origin_unresolved");
+  if (blockedNetworkRequests > 0) reasons.push("capture.network_blocked_requests");
+  if (actual.networkPolicy !== route.tuple.network) reasons.push("capture.network_policy_mismatch");
+  if (!actual.appMounted) reasons.push("app.not_mounted");
+  return deepFreezeDeterministicParityValue({
+    version: 2,
+    ready: reasons.length === 0,
+    routeId: route.id,
+    requestedTuple: route.tuple,
+    actual: {
+      ...actual,
+      blockedNetworkRequests,
+    },
+    reasons,
+  });
+}
 
 export function mintImportToken(secret: Buffer, baseDir: string): string {
   const nonce = randomBytes(16).toString("base64url");
@@ -1411,7 +1660,8 @@ export type SplashBootStage =
   | "interface"
   | "interfaceReady"
   | "workspace"
-  | "finishing";
+  | "finishing"
+  | "captureFailed";
 
 /**
  * Canonical boot order. The index in this array drives the "N/total" step
@@ -1428,6 +1678,7 @@ const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
   "interfaceReady",
   "workspace",
   "finishing",
+  "captureFailed",
 ];
 
 const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
@@ -1438,6 +1689,7 @@ const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
   interfaceReady: "Interface ready",
   workspace: "Opening your workspace",
   finishing: "Almost ready",
+  captureFailed: "Capture failed; no application content shown",
 };
 
 const SPLASH_STAGE_TOTAL = SPLASH_STAGE_SEQUENCE.length;
@@ -1897,8 +2149,20 @@ export function saveAsDialogOptionsForFilename(filename: string): SaveAsDialogOp
   return { title: "Save As", defaultPath: filename, filters, properties: ["dontAddToRecent"] };
 }
 
-function attachDownloadSaveAsDialog(window: BrowserWindow): void {
-  window.webContents.session.on("will-download", (_event, item) => {
+function attachDownloadSaveAsDialog(
+  window: BrowserWindow,
+  options: { captureMode?: boolean; onCaptureDownload?: () => void } = {},
+): void {
+  window.webContents.session.on("will-download", (event, item) => {
+    if (options.captureMode === true) {
+      // Capture must never write a blob/data/loopback download (or any future
+      // extension) before Save As is considered. Cancel at will-download and
+      // invalidate readiness so the evidence cannot be promoted afterwards.
+      event.preventDefault();
+      item.cancel();
+      options.onCaptureDownload?.();
+      return;
+    }
     const options = saveAsDialogOptionsForFilename(item.getFilename());
     if (!options) return;
     item.setSaveDialogOptions(options);
@@ -2048,6 +2312,39 @@ async function showDirectoryPickerForSender(
 
 export async function createDesktopRuntime(options: DesktopRuntimeOptions): Promise<DesktopRuntime> {
   const preloadPath = options.preloadPath ?? join(dirname(fileURLToPath(import.meta.url)), "preload.cjs");
+  const captureRoute = options.captureRoute ?? null;
+  const captureRunId = captureRoute == null
+    ? null
+    : options.captureRunId ?? createDeterministicParityCaptureRunId();
+  const captureNetworkOrigin = options.captureNetworkOrigin ?? (() => null);
+  const captureNetworkIsolationReady = options.captureNetworkIsolationReady === true;
+  let deterministicCaptureReadiness: DeterministicParityReadiness | null = null;
+  let captureReceiptInstalled = false;
+  let invalidateCaptureReadinessRef: ((reason: string) => void) | null = null;
+  let captureNetworkOriginObserved: string | null = null;
+  let captureFailureSurfacePending = false;
+  let presentCaptureFailureSurface: (() => void) | null = null;
+  let revealed = false;
+  let revealing = false;
+  const deterministicCaptureReadinessError = (): string | null => {
+    if (captureRoute == null) return null;
+    const currentOrigin = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
+    if (currentOrigin == null) {
+      if (deterministicCaptureReadiness?.ready === true) {
+        invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+      }
+      return "deterministic parity capture network origin is not verified";
+    }
+    if (captureNetworkOriginObserved != null && captureNetworkOriginObserved !== currentOrigin) {
+      invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+      return "deterministic parity capture network origin changed";
+    }
+    if (captureNetworkOriginObserved == null) captureNetworkOriginObserved = currentOrigin;
+    if (!isDeterministicParityCaptureReady(deterministicCaptureReadiness)
+      || !captureReceiptInstalled
+      || !revealed) return DETERMINISTIC_PARITY_NOT_READY_REASON;
+    return null;
+  };
   applyDockIcon();
 
   // ipcMain.handle() registers a handler in an internal map that is *not*
@@ -2066,6 +2363,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     ipcMain.removeHandler(channel);
   }
   ipcMain.handle("shell:open-external", async (_event, url: string) => {
+    if (captureRoute != null) return false;
     // http(s) as before, plus a mailto strictly to our support address (the
     // crash screen's "Email us"); no other scheme opens.
     if (isSupportMailtoUrl(url)) return openFirstPartyMailto(url);
@@ -2094,6 +2392,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
+      if (captureRoute != null) {
+        return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
+      }
       // Defensive failsafe for non-production runtimes (test harnesses
       // that construct createDesktopRuntime without a secret). Round-5
       // production wiring in runDesktopMain ALWAYS passes the per-process
@@ -2146,6 +2447,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle(
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string }) => {
+      if (captureRoute != null) {
+        return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
+      }
       if (options.desktopAuthSecret == null) {
         return { ok: false, reason: "desktop auth secret not registered" };
       }
@@ -2183,6 +2487,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // exists. Main remains the single source of filesystem paths crossing into
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event) => {
+    if (captureRoute != null) {
+      return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
+    }
     if (options.desktopAuthSecret == null) {
       return { ok: false, reason: "desktop auth secret not registered" };
     }
@@ -2221,6 +2528,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // openPath(projectId) for projects whose resolvedDir came from that
   // trusted flow."
   ipcMain.handle("shell:open-path", async (_event, projectId: string) => {
+    if (captureRoute != null) return "capture.side_effect_blocked: opening a filesystem path is unavailable";
     // Round-7 (lefarcen P2): same packaged od:// → daemon URL pivot as
     // the dialog:pick-and-import handler above.
     const apiBaseUrl =
@@ -2272,18 +2580,29 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // emitting recovery-attempt events.
   let rendererRecoveryAttempts = 0;
 
+  let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
+
   const consoleEntries: DesktopConsoleEntry[] = [];
-  const petWindow = createDesktopPetWindow(preloadPath, options.osLocale);
+  // The floating pet is a separate BrowserWindow on the default session. It
+  // is deliberately absent during parity capture so it cannot load a sibling
+  // session, change focus, or add an unlisted surface to the tuple evidence.
+  const petWindow = captureRoute == null
+    ? createDesktopPetWindow(preloadPath, options.osLocale)
+    : null;
   const windowTitle = options.windowTitle ?? "Material Designer";
+  let blockedCaptureNetworkRequests = 0;
+  const captureSession = captureRoute
+    ? session.fromPartition(deterministicParitySessionPartition(captureRoute, captureRunId!))
+    : null;
   const window = new BrowserWindow({
-    height: 900,
+    height: captureRoute?.tuple.viewport.height ?? 900,
     icon: resolveDesktopIconPath(),
     // Below this size the project page's left/right split (chat
     // composer + designs panel + preview pane) overlaps and the top
     // navigation clips, so prevent Electron from honoring user drags
     // that would shrink the window past the usable breakpoint.
-    minHeight: 600,
-    minWidth: 900,
+    minHeight: captureRoute?.tuple.viewport.height ?? 600,
+    minWidth: captureRoute?.tuple.viewport.width ?? 900,
     // Starts hidden: the splash window is what the user sees while the real web
     // app loads in here. We reveal this window only once the app has actually
     // mounted (see `revealWhenReady` below), so there is never a flash of the
@@ -2291,18 +2610,115 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     show: false,
     title: windowTitle,
     autoHideMenuBar: true,
+    ...(captureRoute ? { useContentSize: true } : {}),
     ...PLATFORM_WINDOW_CHROME,
     webPreferences: {
       additionalArguments: osLocaleAdditionalArguments(options.osLocale),
       backgroundThrottling: false,
       contextIsolation: true,
       nodeIntegration: false,
+      ...(captureSession ? { partition: deterministicParitySessionPartition(captureRoute, captureRunId!) } : {}),
       preload: preloadPath,
       sandbox: true,
-      webviewTag: true,
+      // The design-browser webview is a real network/profile surface. It is
+      // deliberately unavailable during deterministic capture; the capture
+      // renderer must remain a single nonpersistent guest with one policy.
+      webviewTag: captureRoute == null,
     },
-    width: 1280,
+    width: captureRoute?.tuple.viewport.width ?? 1280,
   });
+  const captureNetworkFilter = {
+    urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"],
+  };
+  const captureNetworkHandler = (
+    details: { url: string },
+    callback: (response: { cancel?: boolean }) => void,
+  ): void => {
+    let allowCurrentSidecar = false;
+    const configuredOrigin = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
+    try {
+      const parsed = new URL(details.url);
+      if (configuredOrigin != null) {
+        if (captureNetworkOriginObserved != null && captureNetworkOriginObserved !== configuredOrigin) {
+          invalidateCaptureReadinessRef?.("capture.network_origin_changed");
+        }
+        captureNetworkOriginObserved ??= configuredOrigin;
+        allowCurrentSidecar = parsed.origin === configuredOrigin;
+      } else {
+        invalidateCaptureReadinessRef?.("capture.network_origin_unverified");
+      }
+    } catch {
+      invalidateCaptureReadinessRef?.("capture.network_request_url_invalid");
+      allowCurrentSidecar = false;
+    }
+    if (allowCurrentSidecar) {
+      callback({});
+      return;
+    }
+    blockedCaptureNetworkRequests += 1;
+    if (deterministicCaptureReadiness?.ready === true) {
+      invalidateCaptureReadinessRef?.("capture.network_blocked_after_ready");
+    }
+    callback({ cancel: true });
+  };
+  const createCaptureFailureReadiness = (reason: string): DeterministicParityReadiness => {
+    let currentUrl = "";
+    try {
+      if (!window.webContents.isDestroyed()) currentUrl = window.webContents.getURL();
+    } catch {
+      currentUrl = "";
+    }
+    return deepFreezeDeterministicParityValue({
+      version: 2,
+      ready: false,
+      routeId: captureRoute!.id,
+      requestedTuple: captureRoute!.tuple,
+      actual: {
+        href: currentUrl,
+        search: "",
+        pathname: "",
+        theme: null,
+        viewport: { width: 0, height: 0 },
+        devicePixelRatio: 0,
+        fonts: {
+          robotoFlex: false,
+          robotoMono: false,
+          materialSymbolsRounded: false,
+        },
+        semanticState: { screen: null, state: null, browserPath: null },
+        rendererWitness: {
+          routePath: null,
+          routeState: null,
+          fixtureSource: null,
+          fixtureRevision: null,
+        },
+        captureSettledWitness: {
+          settled: false,
+          routePath: null,
+          revision: null,
+        },
+        routeInvariant: {
+          selector: DETERMINISTIC_ROUTE_INVARIANTS[captureRoute!.tuple.screen] ?? "",
+          present: false,
+        },
+        networkPolicy: null,
+        networkOrigin: captureNetworkOrigin(),
+        networkIsolationReady: false,
+        appMounted: false,
+        blockedNetworkRequests: blockedCaptureNetworkRequests,
+      },
+      reasons: [reason],
+    });
+  };
+  let detachCaptureDebugger: (() => void) | null = null;
+  if (captureRoute) {
+    detachCaptureDebugger = await installDeterministicCapturePrelude(window, captureRoute, captureRunId!);
+    // The packaged renderer normally talks to its local web sidecar through
+    // `od://`. In capture mode, deny every direct request except the exact
+    // current loopback sidecar origin supplied by the packaged launcher. The
+    // ordinary app has no handler installed and is therefore unaffected.
+    captureSession?.webRequest.onBeforeRequest(captureNetworkFilter, captureNetworkHandler);
+  }
   installWindowChromeCssHook(window);
   showWindowButtons(window);
   // The custom title bar has to know whether to draw "maximize" or "restore",
@@ -2311,7 +2727,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // the renderer's own button. Push every transition instead of letting the
   // glyph drift out of sync with the window.
   attachWindowMaximizedBroadcast(window);
-  attachDownloadSaveAsDialog(window);
+  attachDownloadSaveAsDialog(window, {
+    captureMode: captureRoute != null,
+    onCaptureDownload: () => invalidateCaptureReadinessRef?.("capture.download_blocked"),
+  });
   const previewFrameNameByRoutingId = new Map<string, string>();
   const previewFrameRoutingKey = (processId: number, routingId: number) =>
     `${processId}:${routingId}`;
@@ -2431,6 +2850,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       reason: details.reason,
       url: gone ? null : window.webContents.getURL(),
     });
+    if (captureRoute != null && !stopped) {
+      invalidateCaptureReadiness("capture.renderer_process_gone");
+      console.error("[open-design desktop] deterministic parity capture renderer failed", {
+        reason: "capture.renderer_process_gone",
+        routeId: captureRoute.id,
+      });
+      return;
+    }
     // During app quit / teardown the window is already destroyed; skip all
     // crash-loop bookkeeping, telemetry, and recovery (mirrors the getURL guard
     // above — a clean teardown must not look like a crash).
@@ -2478,7 +2905,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // cancel (a new load started), so ignore it and sub-frame failures; anything
   // else means the load to the web server failed and needs a retry.
   window.webContents.on("did-fail-load", (_event, errorCode, _description, _url, isMainFrame) => {
-    if (isMainFrame && errorCode !== -3) markRendererFailed();
+    if (!isMainFrame || errorCode === -3) return;
+    if (captureRoute != null) {
+      invalidateCaptureReadiness("capture.did_fail_load");
+      return;
+    }
+    markRendererFailed();
   });
   // `did-fail-load` never fires for an HTTP error *document* — a 5xx response
   // with a body is a successful load to Electron — so a 502 page (e.g. the
@@ -2492,6 +2924,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       httpResponseCode,
       url,
     });
+    if (captureRoute != null) {
+      invalidateCaptureReadiness("capture.http_error_document");
+      return;
+    }
     markRendererFailed();
   });
 
@@ -2556,6 +2992,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     return request;
   };
   window.webContents.on("will-attach-webview", (event, webPreferences, params) => {
+    if (captureRoute != null) {
+      event.preventDefault();
+      return;
+    }
     const src = typeof params.src === "string" ? params.src : "";
     const partition = typeof params.partition === "string" ? params.partition : "";
     if (!isAllowedEmbeddedBrowserUrl(src) || partition !== DESIGN_BROWSER_PARTITION) {
@@ -2574,6 +3014,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // `loadURL("file:///etc/passwd")` after the first http(s) load and exfiltrate
   // its pixels through the host capture bridge.
   window.webContents.on("did-attach-webview", (_event, guestWebContents) => {
+    if (captureRoute != null) return;
     const blockDisallowed = (navEvent: Electron.Event, url: string): void => {
       if (!isAllowedEmbeddedBrowserUrl(url)) {
         navEvent.preventDefault();
@@ -2585,6 +3026,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("browser:clear-data", async (event, rawOptions: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) {
+      return { ok: false, reason: "capture.side_effect_blocked: browser profile clearing is unavailable" };
+    }
     const optionsRecord = rawOptions != null && typeof rawOptions === "object"
       ? rawOptions as { cookies?: unknown; storage?: unknown }
       : {};
@@ -2617,30 +3061,35 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:status", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.status() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:check", async (event, updaterOptions: unknown) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.checkForUpdates(checkOptionsFromHost(updaterOptions)) ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:clear-cache", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.clearCache() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:download", async (event) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const status = await (options.updater?.downloadUpdate() ?? unavailableUpdaterStatus());
     sendUpdaterStatus(status);
     return status;
   });
   ipcMain.handle("od:update:install", async (event, updaterOptions: unknown) => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return unavailableUpdaterStatus();
     const blocked = await guardedUpdaterStatus(updaterOptions);
     if (blocked != null) {
       // Preflight denials travel only on the IPC response. The updater store
@@ -2655,6 +3104,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:prepare-quit:response", async (event, rawResponse: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: update quit preparation is unavailable" };
     const response = parseUpdateRendererSavePreparationResponse(rawResponse);
     if (response == null) return { ok: false, reason: "invalid renderer save preparation response" };
     const pending = pendingRendererSavePreparations.get(response.requestId);
@@ -2666,6 +3116,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:quit", async (event, updaterOptions: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: update quit is unavailable" };
     const blocked = await guardedUpdaterStatus(updaterOptions);
     if (blocked?.error != null) {
       return { details: blocked.error.details, ok: false, reason: blocked.error.code };
@@ -2690,6 +3141,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:update:set-menu-labels", async (event, rawLabels: unknown): Promise<OpenDesignHostActionResult> => {
     requireMainWindowSender(event);
+    if (captureRoute != null) return { ok: false, reason: "capture.side_effect_blocked: native menu labels are unavailable" };
     const labels = parseDesktopUpdateMenuLabels(rawLabels);
     if (labels == null) return { ok: false, reason: "invalid updater menu labels" };
     options.onUpdateMenuLabels?.(labels);
@@ -2708,7 +3160,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   ipcMain.removeAllListeners("desktop-pet:set-visible");
   ipcMain.on("desktop-pet:set-visible", (event, visible: unknown) => {
-    if (petWindow.isDestroyed() || event.sender !== petWindow.webContents) return;
+    if (petWindow == null || petWindow.isDestroyed() || event.sender !== petWindow.webContents) return;
     if (visible) petWindow.showInactive();
     else petWindow.hide();
   });
@@ -2717,6 +3169,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle("od:appearance:set-theme", async (event, theme: unknown) => {
     if (window.isDestroyed() || event.sender !== window.webContents) {
       return { ok: false, reason: "appearance theme request came from an unexpected renderer" };
+    }
+    if (captureRoute != null) {
+      invalidateCaptureReadinessRef?.("capture.appearance_mutation_blocked");
+      pinNativeAppearanceToLight();
+      return { ok: false, reason: "capture.appearance_mutation_blocked" };
     }
     const parsedTheme = parseDesktopAppearanceTheme(theme);
     if (parsedTheme == null) {
@@ -2731,6 +3188,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   ipcMain.removeHandler('od:print-pdf');
   ipcMain.handle('od:print-pdf', async (_event, html: unknown, nonce: unknown, options: unknown): Promise<void> => {
+    if (captureRoute != null) {
+      throw new Error("capture.side_effect_blocked: PDF dialog/export is unavailable during parity capture");
+    }
     if (typeof html !== 'string') {
       throw new Error('Invalid print payload: expected HTML string');
     }
@@ -2761,9 +3221,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
     try {
       const clip = parseCaptureClip(rawOptions);
-      const image = clip
-        ? await window.webContents.capturePage(clip)
-        : await window.webContents.capturePage();
+      const image = await runRendererOperation("capture_page", () =>
+        clip ? window.webContents.capturePage(clip) : window.webContents.capturePage(),
+      );
       const size = image.getSize();
       return { ok: true, dataUrl: image.toDataURL(), w: size.width, h: size.height };
     } catch (error) {
@@ -2775,6 +3235,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   window.on("blur", () => showWindowButtons(window));
 
   window.webContents.setWindowOpenHandler(({ url }) => {
+    if (captureRoute != null) return { action: "deny" };
     if (isAllowedChildWindowUrl(url)) return { action: "allow" };
     if (isHttpUrl(url)) void shell.openExternal(url);
     else if (isFirstPartyMailtoUrl(url)) void openFirstPartyMailto(url);
@@ -2782,6 +3243,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
 
   window.webContents.on("will-navigate", (event, url) => {
+    if (captureRoute != null) {
+      if (isDeterministicParityNavigationAllowed(captureRoute, url)) return;
+      event.preventDefault();
+      return;
+    }
     // A `mailto:` never belongs in this window. Hand it to the local mail
     // client and cancel the navigation, otherwise Electron drops it and the
     // user sees the page sit there unchanged. `openFirstPartyMailto` also
@@ -2799,6 +3265,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (currentOrigin === nextOrigin) return;
     event.preventDefault();
     void shell.openExternal(url);
+  });
+
+  window.webContents.on("will-redirect", (event, url) => {
+    if (captureRoute == null) return;
+    if (isDeterministicParityNavigationAllowed(captureRoute, url)) return;
+    event.preventDefault();
   });
 
   if (process.platform === "darwin") {
@@ -2898,6 +3370,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     splash = created.window;
     splashStartedAt = created.startedAt;
   }
+  presentCaptureFailureSurface = () => {
+    if (captureRoute == null || splash == null || splash.isDestroyed()) return;
+    setSplashStage(splash, "captureFailed");
+    splash.show();
+    splash.focus();
+  };
+  if (captureFailureSurfacePending) presentCaptureFailureSurface();
 
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
@@ -2909,8 +3388,99 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   let rendererSurfaceReady = false;
   let rendererRecoveryPending = false;
 
-  const revealMainWindow = (rendererReady = true): void => {
+  const installCaptureReadinessReceipt = async (): Promise<boolean> => {
+    if (captureRoute == null || deterministicCaptureReadiness == null) return true;
+    const readinessJson = JSON.stringify(deterministicCaptureReadiness);
+    try {
+      await withTimeout(
+        window.webContents.executeJavaScript(`(() => {
+        const root = document.documentElement;
+        root.dataset.odParityReady = ${deterministicCaptureReadiness.ready ? '"1"' : '"0"'};
+        root.dataset.odParityActualPath = window.location.pathname;
+        root.dataset.odParityActualUrl = window.location.href;
+        root.dataset.odParityBlockedNetworkRequests = ${blockedCaptureNetworkRequests};
+        root.dataset.odParityReceiptVersion = "2";
+        root.dataset.odParityReadinessReasons = ${JSON.stringify(deterministicCaptureReadiness.reasons.join(","))};
+        if ("__MATERIAL_DESIGNER_CAPTURE_READINESS__" in globalThis) {
+          delete globalThis.__MATERIAL_DESIGNER_CAPTURE_READINESS__;
+        }
+        Object.defineProperty(globalThis, "__MATERIAL_DESIGNER_CAPTURE_READINESS__", {
+          value: (() => {
+            const deepFreeze = (value) => {
+              if (value && typeof value === "object" && !Object.isFrozen(value)) {
+                for (const key of Reflect.ownKeys(value)) deepFreeze(value[key]);
+                Object.freeze(value);
+              }
+              return value;
+            };
+            return deepFreeze(${readinessJson});
+          })(),
+          configurable: true,
+          writable: false,
+        });
+        return true;
+      })()`, true),
+        CAPTURE_READINESS_EVALUATION_TIMEOUT_MS,
+        "capture.readiness_receipt_timeout",
+      );
+      captureReceiptInstalled = true;
+      return true;
+    } catch (error) {
+      console.error("[open-design desktop] deterministic parity readiness receipt installation failed", {
+        error: error instanceof Error ? error.message : String(error),
+        routeId: captureRoute.id,
+      });
+      return false;
+    }
+  };
+
+  const invalidateCaptureReadiness = (reason: string): void => {
+    if (captureRoute == null || stopped) return;
+    captureReceiptInstalled = false;
+    deterministicCaptureReadiness = createCaptureFailureReadiness(reason);
+    captureFailureSurfacePending = true;
+    revealing = false;
+    revealed = false;
+    if (!window.isDestroyed()) window.hide();
+    presentCaptureFailureSurface?.();
+    void installCaptureReadinessReceipt();
+  };
+  invalidateCaptureReadinessRef = invalidateCaptureReadiness;
+
+  const runRendererOperation = async <T>(
+    name: string,
+    operation: () => Promise<T>,
+  ): Promise<T> => {
+    const readinessError = deterministicCaptureReadinessError();
+    if (readinessError != null) throw new Error(readinessError);
+    try {
+      return captureRoute == null
+        ? await operation()
+        : await withTimeout(
+            operation(),
+            CAPTURE_RENDERER_OPERATION_TIMEOUT_MS,
+            `capture.${name}_timeout`,
+          );
+    } catch (error) {
+      if (
+        captureRoute != null
+        && error instanceof Error
+        && error.message === `capture.${name}_timeout`
+      ) {
+        invalidateCaptureReadiness(`capture.${name}_timeout`);
+      }
+      throw error;
+    }
+  };
+
+  const revealMainWindow = async (rendererReady = true): Promise<void> => {
     if (revealed || window.isDestroyed()) return;
+    if (captureRoute && deterministicCaptureReadiness != null) {
+      if (!await installCaptureReadinessReceipt()) {
+        invalidateCaptureReadiness("capture.readiness_receipt_install_failed");
+        return;
+      }
+    }
     revealed = true;
     rendererSurfaceReady = rendererReady;
     showWindowButtons(window);
@@ -2922,12 +3492,23 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       pendingUpdateDialogRequest = null;
     }
     if (splash != null && !splash.isDestroyed()) splash.close();
+    if (captureRoute && deterministicCaptureReadiness != null) {
+      console.info("[open-design desktop] deterministic parity route ready", {
+        blockedNetworkRequests: blockedCaptureNetworkRequests,
+        routeId: captureRoute.id,
+        requestedPath: captureRoute.browserPath,
+        semanticState: captureRoute.semanticState,
+        readiness: deterministicCaptureReadiness,
+      });
+    }
     // The app is now truly up (mounted + shown). Fire once — revealed guards
     // re-entry — so callers can mark "reached running".
-    try {
-      options.onRevealed?.();
-    } catch {
-      // A callback fault must not break reveal.
+    if (!captureRoute || deterministicCaptureReadiness?.ready === true) {
+      try {
+        options.onRevealed?.();
+      } catch {
+        // A callback fault must not break reveal.
+      }
     }
   };
 
@@ -2968,6 +3549,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // signal never arrives.
   const revealWhenReady = async (): Promise<void> => {
     if (revealing || revealed) return;
+    if (captureRoute != null && deterministicCaptureReadiness?.ready === false) {
+      captureFailureSurfacePending = true;
+      presentCaptureFailureSurface?.();
+      return;
+    }
     revealing = true;
     // The web bundle is loading in the hidden main window from here on; let
     // the splash status line reflect that final phase while we poll for mount.
@@ -3018,6 +3604,40 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       });
       return;
     }
+    if (captureRoute) {
+      try {
+        deterministicCaptureReadiness = await measureDeterministicCaptureReadiness(
+          window,
+          captureRoute,
+          blockedCaptureNetworkRequests,
+          captureNetworkOrigin(),
+          captureNetworkIsolationReady,
+        );
+        captureNetworkOriginObserved = validatedCaptureLoopbackOrigin(captureNetworkOrigin());
+      } catch (error) {
+        console.error("[open-design desktop] deterministic parity readiness measurement failed", {
+          error: error instanceof Error ? error.message : String(error),
+          routeId: captureRoute.id,
+        });
+        deterministicCaptureReadiness = createCaptureFailureReadiness(
+          error instanceof Error && error.message === "capture.readiness_evaluation_timeout"
+            ? "capture.readiness_evaluation_timeout"
+            : "capture.readiness_measurement_failed",
+        );
+        captureFailureSurfacePending = true;
+        presentCaptureFailureSurface?.();
+        return;
+      }
+      if (!deterministicCaptureReadiness.ready) {
+        console.error("[open-design desktop] deterministic parity route remains unready", {
+          readiness: deterministicCaptureReadiness,
+          routeId: captureRoute.id,
+        });
+        captureFailureSurfacePending = true;
+        presentCaptureFailureSurface?.();
+        return;
+      }
+    }
     // The real UI has mounted behind the splash; the only thing left is the
     // minimum-hold so the brand clip plays through. Advance the counter to its
     // final step so the user sees the boot reach completion, not stall at
@@ -3025,7 +3645,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     setSplashStage(splash, "finishing");
     const remaining = MIN_SPLASH_MS - (Date.now() - splashStartedAt);
     if (remaining > 0) await delay(remaining);
-    revealMainWindow();
+    await revealMainWindow();
   };
 
   const schedule = (delayMs: number) => {
@@ -3076,7 +3696,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // re-focusing the app during a startup crash loop is sent back to the boot
     // splash instead of this recovery screen. revealMainWindow() no-ops when the
     // app already revealed normally (the common crash-after-boot case).
-    revealMainWindow(false);
+    void revealMainWindow(false);
   };
 
   const markRendererFailed = () => {
@@ -3147,7 +3767,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         currentUrl = url;
         pendingUrl = null;
         const nextPetUrl = desktopPetUrl(url);
-        if (!petWindow.isDestroyed() && nextPetUrl !== currentPetUrl) {
+        if (petWindow != null && !petWindow.isDestroyed() && nextPetUrl !== currentPetUrl) {
           await petWindow.loadURL(nextPetUrl);
           currentPetUrl = nextPetUrl;
         }
@@ -3178,15 +3798,19 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     async click(input) {
       if (window.isDestroyed()) return { clicked: false, found: false };
       const selector = JSON.stringify(input.selector);
-      return await window.webContents.executeJavaScript(
-        `(() => {
-          const element = document.querySelector(${selector});
-          if (!element) return { found: false, clicked: false };
-          if (typeof element.click === "function") element.click();
-          return { found: true, clicked: true };
-        })()`,
-        true,
-      );
+      try {
+        return await runRendererOperation("click", () => window.webContents.executeJavaScript(
+          `(() => {
+            const element = document.querySelector(${selector});
+            if (!element) return { found: false, clicked: false };
+            if (typeof element.click === "function") element.click();
+            return { found: true, clicked: true };
+          })()`,
+          true,
+        ));
+      } catch {
+        return { clicked: false, found: false };
+      }
     },
     async close() {
       stopped = true;
@@ -3204,14 +3828,19 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
       ipcMain.removeHandler("browser:clear-data");
       if (splash != null && !splash.isDestroyed()) splash.close();
-      if (!petWindow.isDestroyed()) petWindow.close();
+      if (petWindow != null && !petWindow.isDestroyed()) petWindow.close();
+      detachCaptureDebugger?.();
+      detachCaptureDebugger = null;
       if (!window.isDestroyed()) window.close();
+      if (captureSession) captureSession.webRequest.onBeforeRequest(captureNetworkFilter, null);
     },
     console() {
       return { entries: [...consoleEntries] };
     },
     async eval(input) {
       if (window.isDestroyed()) return { error: "desktop window is destroyed", ok: false };
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return { error: readinessError, ok: false };
       const startedAt = Date.now();
       console.info("[open-design desktop] eval executeJavaScript start", {
         ...summarizeExpression(input.expression),
@@ -3219,7 +3848,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         webContentsUrl: window.webContents.getURL(),
       });
       try {
-        const value = await window.webContents.executeJavaScript(input.expression, true);
+        const value = await runRendererOperation("eval", () =>
+          window.webContents.executeJavaScript(input.expression, true),
+        );
         console.info("[open-design desktop] eval executeJavaScript success", {
           durationMs: Date.now() - startedAt,
           statusUrl: resolveDesktopStatusUrl(currentUrl, pendingUrl),
@@ -3238,10 +3869,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
     exportArtifact(input) {
-      return exportArtifactFromHtml(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("export_artifact", () => exportArtifactFromHtml(input));
     },
     exportPdf(input) {
-      return exportPdfFromHtml(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("export_pdf", () => exportPdfFromHtml(input));
     },
     openUpdateDialog(request) {
       if (window.isDestroyed()) return;
@@ -3254,12 +3889,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       window.focus();
     },
     renderSlides(input) {
-      return renderDeckSlides(input);
+      const readinessError = deterministicCaptureReadinessError();
+      if (readinessError != null) return Promise.reject(new Error(readinessError));
+      return runRendererOperation("render_slides", () => renderDeckSlides(input));
     },
     async screenshot(input) {
       if (window.isDestroyed()) throw new Error("desktop window is destroyed");
       const outputPath = normalizeScreenshotPath(input.path);
-      const image = await window.webContents.capturePage();
+      const image = await runRendererOperation("screenshot", () => window.webContents.capturePage());
       await mkdir(dirname(outputPath), { recursive: true });
       await writeFile(outputPath, image.toPNG());
       return { path: outputPath };
@@ -3285,13 +3922,23 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       ensureWindowVisible(window);
     },
     status() {
+      const captureOperational = captureRoute == null
+        || (
+          deterministicCaptureReadiness?.ready === true
+          && captureReceiptInstalled
+          && revealed
+          && deterministicCaptureReadinessError() == null
+        );
       return {
         pid: process.pid,
-        state: window.isDestroyed() ? "unknown" : "running",
+        state: window.isDestroyed() || !captureOperational
+          ? "unknown"
+          : "running",
         title: window.isDestroyed() ? null : window.getTitle(),
         updatedAt: new Date().toISOString(),
         url: resolveDesktopStatusUrl(currentUrl, pendingUrl),
         windowVisible: !window.isDestroyed() && window.isVisible(),
+        deterministicParity: deterministicCaptureReadiness,
       };
     },
   };
