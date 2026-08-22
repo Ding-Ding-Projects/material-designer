@@ -12,14 +12,7 @@ import {
 import { SIDECAR_DEFAULTS } from "@open-design/sidecar-proto";
 import { releaseChannelFromNamespace, releaseChannelFromVersion } from "@open-design/release";
 
-// The payload archive name has to match the one resolveWinPaths/resolveMacPaths
-// build from their own platform constant, or validate-payload looks for a file
-// nobody wrote. Import the constants rather than repeating the literal, which is
-// how the two drifted apart in the first place.
-import { PRODUCT_NAME as MAC_PRODUCT_NAME } from "./mac/constants.js";
-import { PRODUCT_NAME as WIN_PRODUCT_NAME } from "./win/constants.js";
-
-import type { ToolPackConfig, ToolPackPlatform } from "./config.js";
+import type { ToolPackConfig, ToolPackPlatform } from "../config/index.js";
 
 export type ToolPackLauncherLayout = {
   channel: LauncherChannel;
@@ -88,7 +81,7 @@ export function resolveToolPackLauncherPayloadLayout(
   const archivePath = join(
     config.roots.output.namespaceRoot,
     "payload",
-    `${config.platform === "win" ? WIN_PRODUCT_NAME : MAC_PRODUCT_NAME}-${namespaceToken}-payload.${payloadArchiveExtension(config.platform)}`,
+    `Open Design-${namespaceToken}-payload.${payloadArchiveExtension(config.platform)}`,
   );
   return {
     archivePath,
