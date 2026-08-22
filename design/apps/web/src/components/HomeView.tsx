@@ -3206,22 +3206,6 @@ export function HomeView({
                 onOpenProject(projectId);
               })();
             }}
-            onFigmaUrl={async (url, notes) => {
-              const reshapePrompt = `Migrate the Figma file at ${url} into a responsive webpage using its design system.${notes ? ` ${notes}` : ''}`;
-              try {
-                const { project } = await createProject({
-                  name: 'Imported from Figma',
-                  skillId: null,
-                  designSystemId: null,
-                  pendingPrompt: reshapePrompt,
-                });
-                setFigmaModalOpen(false);
-                onOpenProject(project.id);
-              } catch {
-                // Keep the modal mounted so FigmaImportModal can show a
-                // localized error and let the user retry the same URL.
-                throw new Error(t('dsCreate.figmaProjectUnavailable'));
-              }
             onFigmaUrl={(url, notes) => {
               void (async () => {
                 const reshapePrompt = `Migrate the Figma file at ${url} into a responsive webpage using its design system.${notes ? ` ${notes}` : ''}`;
