@@ -1973,7 +1973,7 @@ the reader has no way to know.
   `412e1fc7` removes the uncalled `squirrel.ts` module and `693f6439` removes the
   duplicate/orphan lifecycle imports. The current lifecycle keeps the newer
   ignored-stdio/process-tree implementation that addresses the documented smoke
-  deadlock risk. After the final dew, the now-ancestor remote branch is safe to
+  deadlock risk. After the final push, the now-ancestor remote branch is safe to
   delete under the explicitly authorized cleanup pass.
 - `git stash list` is empty. Open issue scans for `material-designer` and
   `agent-global-memory` returned zero issues at this final checkpoint.
