@@ -13,6 +13,7 @@ export const PREVIEW_OBSERVABILITY_PROTOCOL_VERSION = 1;
 export const PREVIEW_OBSERVABILITY_BRIDGE_MARKER = 'data-od-preview-observability';
 export const PREVIEW_WHITE_SCREEN_TIMEOUT_MS = 5_000;
 export const PREVIEW_WHITE_SCREEN_CONFIRMATION_MS = 1_500;
+export const PREVIEW_OBSERVABILITY_HOST_STATE_MESSAGE_TYPE = 'od:preview-observability-host-state';
 
 export type PreviewObservabilityEvent =
   | 'runtime_error'
@@ -316,4 +317,8 @@ export function buildPreviewObservabilityBridge(): string {
   setTimeout(scheduleWhiteScreenCheckWhenEligible, WHITE_SCREEN_TIMEOUT * 2);
 })();
 </script>`;
+}
+
+export function buildPreviewBaseHrefBridge(): string {
+  return `<script data-od-preview-base-href>(function(){var b=document.querySelector('base[href]');if(b)return;var h=window.location.href.replace(/[?#].*$/,'');document.head.insertAdjacentHTML('afterbegin','<base href="'+h+'">')})();</script>`;
 }

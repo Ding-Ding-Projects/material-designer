@@ -2,6 +2,8 @@ import { getOpenDesignHost } from '@open-design/host';
 
 import type { AppTheme } from '../types';
 
+export const FORCED_APP_THEME = 'light' as const;
+
 const ACCENT_VARS = [
   '--accent',
   '--accent-strong',
