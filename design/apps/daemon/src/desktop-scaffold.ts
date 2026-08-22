@@ -442,8 +442,7 @@ export async function claimDesktopProjectDirectory(
     await mkdir(projectDir, { recursive: false });
   } catch (error) {
     if ((error as { code?: unknown })?.code === 'EEXIST') {
-      const collision = new Error('desktop project directory already exists');
-      collision.code = 'EEXIST';
+      const collision = Object.assign(new Error('desktop project directory already exists'), { code: 'EEXIST' });
       throw collision;
     }
     throw error;
@@ -577,8 +576,7 @@ export async function materializeDesktopScaffoldProject(input: {
       await mkdir(path.dirname(target), { recursive: true });
       try {
         await lstat(target);
-        const collision = new Error(`desktop scaffold path appeared during creation: ${safePath}`);
-        collision.code = 'EEXIST';
+        const collision = Object.assign(new Error(`desktop scaffold path appeared during creation: ${safePath}`), { code: 'EEXIST' });
         throw collision;
       } catch (error) {
         if ((error as { code?: unknown })?.code !== 'ENOENT') throw error;
@@ -619,7 +617,7 @@ export async function removeDesktopScaffoldClaim(
   try {
     root = await realpath(projectDir);
   } catch (error) {
-    if (error?.code === 'ENOENT') return false;
+    if ((error as { code?: unknown })?.code === 'ENOENT') return false;
     throw error;
   }
   const marker = path.join(root, DESKTOP_SCAFFOLD_CLAIM_FILENAME);
@@ -627,7 +625,7 @@ export async function removeDesktopScaffoldClaim(
   try {
     claim = JSON.parse(await readFile(marker, 'utf8')) as DesktopScaffoldClaim;
   } catch (error) {
-    if (error?.code === 'ENOENT') return false;
+    if ((error as { code?: unknown })?.code === 'ENOENT') return false;
     throw error;
   }
   if (claim.schemaVersion !== 1 || claim.ownerNonce !== ownerNonce) return false;
