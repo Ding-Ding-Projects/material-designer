@@ -8,7 +8,6 @@ import '../src/styles/home/index.css';
 
 export const metadata: Metadata = {
   title: 'Material Designer',
-  title: 'OpenDesign',
   icons: {
     icon: '/app-icon.png',
     apple: '/app-icon.png',
