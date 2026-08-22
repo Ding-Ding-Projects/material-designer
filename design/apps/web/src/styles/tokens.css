@@ -231,6 +231,8 @@
   --code-header-bg: var(--md-sys-color-surface-container-high);
   --code-body-bg: var(--md-sys-color-surface-container);
   --code-font-size: var(--md-sys-typescale-body-small-size);
+
+  /* Corner-radius scale — the only radii UI should reach for (Shape
      Consistency Lock). xs for inline code / micro-chips, sm for controls,
      base for cards/menus, md for medium containers, lg for large surfaces,
      pill for fully-rounded interactive. Off-scale values (7px, 9px, 10px
