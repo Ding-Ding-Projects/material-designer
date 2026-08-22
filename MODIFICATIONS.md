@@ -29,6 +29,57 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-21 — Remove the artifact-upgrade upsell dialog entirely
+
+**Reason:** The AMR artifact-upgrade surface was a nagging promotional gate:
+it interrupted chat sends with a limited-time discount dialog, planted an
+"upgrade" card in the home recommendation slot, and shipped countdown pressure
+across every locale. The user asked for it removed completely. This change
+deletes the gate, dialog, home card, runtime helper, all wiring through App,
+ProjectView, EntryView, EntryShell and HomeView, every locale string, and the
+feature's own tests. Chat sends now proceed directly with no upsell step.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/AmrArtifactUpgradeDialog.module.css`
+- `apps/web/src/components/AmrArtifactUpgradeDialog.tsx`
+- `apps/web/src/components/AmrArtifactUpgradeGate.tsx`
+- `apps/web/src/components/AmrArtifactUpgradeHomeCard.module.css`
+- `apps/web/src/components/AmrArtifactUpgradeHomeCard.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryView.tsx`
+- `apps/web/src/components/HomeView.tsx`
+- `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/runtime/amr-artifact-upgrade.ts`
+- `apps/web/tests/components/AmrArtifactUpgradeDialog.test.tsx`
+- `apps/web/tests/components/AmrArtifactUpgradeGate.test.tsx`
+- `apps/web/tests/components/AmrArtifactUpgradeHomeCard.test.tsx`
+- `apps/web/tests/components/App.amr-plan-tier.test.tsx`
+- `apps/web/tests/components/App.update-dialog.test.tsx`
+- `apps/web/tests/runtime/amr-artifact-upgrade.test.ts`
+- `e2e/ui/amr-artifact-upgrade-gate.test.ts`
+
 ### 2026-08-21 — Close Library partial-delete, snapshot, picker, and accessibility gaps
 
 **Reason:** The production Library route still had several source-level gaps at
