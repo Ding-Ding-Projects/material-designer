@@ -208,6 +208,7 @@ import {
   type PluginShareProjectOutcome,
 } from '../state/projects';
 import { TasksView } from './TasksView';
+import { HandoffView } from './handoff/HandoffView';
 import {
   API_KEY_PLACEHOLDERS,
   API_PROTOCOL_TABS,
@@ -1946,6 +1947,11 @@ export function EntryShell({
                 onOpenProject={onOpenProject}
                 onDesignSystemsRefresh={onDesignSystemsRefresh}
               />
+            </div>
+            <div data-testid="entry-view-handoff" data-active={view === 'handoff' ? 'true' : 'false'} {...inactiveViewProps(view === 'handoff')}>
+              {view === 'handoff' ? (
+                <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings' })} />
+              ) : null}
             </div>
             {view === 'integrations' ? (
               <IntegrationsView

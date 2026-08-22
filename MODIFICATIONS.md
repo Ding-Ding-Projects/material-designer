@@ -74,6 +74,14 @@ localized version segment to the status strip, and replaces the tab context
 menu's unbounded group list with a bounded field-owned searchable picker. The
 source guard records the negative regression for row ownership and CSS balance;
 hosted build and visual evidence remain pending.
+### 2026-08-21 — Add the source handoff registry route
+
+**Reason:** The design-reference work needed a genuine, read-only `/handoff`
+surface that agents can address and export without reusing the existing website
+archive or conversation handoff. The source registry is intentionally explicit:
+18 Material Design 3 token mappings and 12 component owners, two independent
+regex fields, keyboard/range selection, faithful exports and a negative contract
+guard. Runtime parity and installed captures remain unverified.
 
 **Changed files:**
 
@@ -216,6 +224,48 @@ translated rows at narrow and bilingual layouts.
 - `packages/host/src/protocol.ts`
 - `packages/host/src/testing.ts`
 - `packages/host/tests/index.test.ts`
+- `apps/web/src/router.ts`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/components/settings/settingsTabs.ts`
+- `apps/web/src/components/handoff/HandoffView.module.css`
+- `apps/web/src/components/handoff/HandoffView.tsx`
+- `apps/web/src/components/handoff/export.ts`
+- `apps/web/src/components/handoff/registry.ts`
+- `apps/web/src/components/handoff/selection.ts`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/handoff/HandoffView.test.tsx`
+- `apps/web/tests/components/handoff/contract.test.ts`
+- `apps/web/tests/components/handoff/export.test.ts`
+- `apps/web/tests/components/handoff/registry.test.ts`
+- `apps/web/tests/components/settings-handoff.test.ts`
+- `apps/web/tests/router-handoff.test.ts`
 
 ### 2026-08-21 — Acknowledge native Appearance theme application
 

@@ -1665,3 +1665,38 @@ routes, light/dark themes, narrow layouts, 100/125/150/200% scale, bilingual
 labels, keyboard focus, title-bar controls, tab discovery, the Move… picker and
 the 28px status strip. This lane does not touch Library data,
 installer/release work or the parked dim-sum photo lane.
+> [!IMPORTANT]
+> **Design handoff registry source checkpoint — 2026-08-21.** The linked
+> `codex/handoff-tokens` lane adds a genuine `/handoff` home view rather than
+> reusing the existing website export, conversation handoff or installer path.
+> `registry.ts` contains exactly 18 Material Design 3 token-to-application
+> variable mappings and exactly 12 component owners, each with source paths,
+> status and evidence. The view has independent token/component regex fields,
+> read-only click/Shift/keyboard selection, select-this-list/all-matches/inverse
+> actions, and faithful JSON/Markdown/CSV export with private-data omission.
+> Settings, its search results and the command palette route the virtual section
+> to `/handoff`; it is excluded from last-settings persistence. Back to Settings
+> returns to the ordinary settings-page focus entry point.
+>
+> Static source evidence is the committed
+> `scripts/verify-handoff-contract.mjs` guard and its negative mode. No Node,
+> pnpm, Electron, hosted build, installed interaction or visual parity capture
+> was run in this lane. The parent integration lane must run the pure-shell port
+> verifier and then arrange hosted build/capture proof before claiming runtime
+> parity.
+
+> [!IMPORTANT]
+> **Handoff completion repair source checkpoint — 2026-08-21.** The repair
+> commit corrects the case-sensitive component-owner paths to
+> `packages/components/src/button.tsx` and
+> `packages/components/src/form-controls.tsx`, and the contract now resolves
+> every referenced path against the exact tracked Git index. The registry
+> schema is validated before rendering/export; token source paths are searchable
+> and present in JSON, Markdown and CSV; Markdown escapes table/code content;
+> CSV neutralizes formula-like values; and object URLs are revoked only after
+> the deferred download task. Selection uses a semantic list with native
+> checkboxes, visible Shift ranges, filtered Select all matches, hidden-selection
+> preserving inverse, and Arrow/Home/End movement. Invalid regex state is
+> localized, persistent while the builder is closed, and connected through
+> `aria-invalid`, `aria-describedby` and a live status. Hosted build, installed
+> interaction and visual parity remain unverified.

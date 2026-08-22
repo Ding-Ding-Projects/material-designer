@@ -31,6 +31,41 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'handoff.title': string;
+  'handoff.tabHint': string;
+  'handoff.eyebrow': string;
+  'handoff.subtitle': string;
+  'handoff.statusNote': string;
+  'handoff.backToSettings': string;
+  'handoff.exportAria': string;
+  'handoff.exportLabel': string;
+  'handoff.copySelected': string;
+  'handoff.copyAll': string;
+  'handoff.downloadSucceeded': string;
+  'handoff.downloadFailed': string;
+  'handoff.regexInvalid': string;
+  'handoff.statusImplemented': string;
+  'handoff.statusPartial': string;
+  'handoff.statusUnverified': string;
+  'handoff.exportSelected': string;
+  'handoff.exportAll': string;
+  'handoff.tokensTitle': string;
+  'handoff.tokensDescription': string;
+  'handoff.componentsTitle': string;
+  'handoff.componentsDescription': string;
+  'handoff.selectionCount': string;
+  'handoff.searchAria': string;
+  'handoff.searchPlaceholder': string;
+  'handoff.bulkAria': string;
+  'handoff.selectThisList': string;
+  'handoff.selectAllMatches': string;
+  'handoff.invertSelection': string;
+  'handoff.clearSelection': string;
+  'handoff.noMatches': string;
+  'handoff.selectRow': string;
+  'handoff.swatchAria': string;
+  'handoff.privacyNote': string;
+
   // Workspace invite acceptance (C lane)
   'invite.header.eyebrow': string;
   'invite.loading': string;

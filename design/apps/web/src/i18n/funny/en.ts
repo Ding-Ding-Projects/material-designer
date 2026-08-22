@@ -19,6 +19,11 @@ import type { FunnyOverrides } from '../types';
  * "permanently". That part is on whoever writes the line.
  */
 export const EN_FUNNY: FunnyOverrides = {
+  'handoff.downloadSucceeded': { 3: 'Handoff export downloaded', 5: 'The registry has left the building' },
+  'handoff.downloadFailed': { 3: 'Handoff export could not be downloaded', 5: 'The download declined its little trip' },
+  'handoff.statusImplemented': { 3: 'Implemented', 5: 'Implemented, with paperwork' },
+  'handoff.statusPartial': { 3: 'Partial', 5: 'Partly cooked' },
+  'handoff.statusUnverified': { 3: 'Unverified', 5: 'Still waiting for the real app to testify' },
   // ---------------------------------------------------------------------
   // Common actions and states
   // ---------------------------------------------------------------------

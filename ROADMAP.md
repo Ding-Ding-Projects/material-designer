@@ -118,6 +118,24 @@ wrapping are source-covered. Follow-up
 removes the final stale settings grid coordinates. Hosted build, installed
 interaction, display-scale and visual-capture evidence remains open.
 
+**2026-08-21 Handoff registry source lane.** The dedicated `/handoff` route and
+virtual Settings/palette destination now expose exactly 18 token mappings and
+12 component-owner records from the checked-in source tree. The surface has
+two independent field-owned regex builders, read-only range selection and
+faithful JSON/Markdown/CSV export. Source contract checks are recorded in
+`scripts/verify-handoff-contract.mjs`; hosted build, installed interaction and
+visual parity captures remain open.
+
+**2026-08-21 Handoff completion repair source lane.** The registry now resolves
+case-sensitive component paths (`button.tsx` and `form-controls.tsx`), validates
+the exact runtime schema before rendering/export, includes visible token source
+paths in search and all export formats, neutralizes CSV formulas, and defers
+download URL revocation. Selection is now a semantic list with native checkboxes:
+visible Shift ranges, filtered Select all matches, hidden-selection-preserving
+inverse, and Arrow/Home/End movement. Invalid regex state is localized and
+announced while the builder is closed. Hosted build, installed interaction and
+visual parity captures remain open.
+
 > [!IMPORTANT]
 > **Read this before the checkboxes below — several of them are behind the
 > tree.** Sections written before 2026-08-04 describe Phases 3 and 4 as

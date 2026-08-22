@@ -207,6 +207,35 @@ version section when a release carries them.
   tab 唔會變暗，hint/no-match 有穩定描述，2D 顏色有讀數，48px 落腳位同窄位
   長字換行都補返。Hosted build、installed interaction、display-scale 同 visual
   captures 仍未驗證。
+- **Repaired the handoff registry evidence contract.** Commit
+  [`99fadb043`](https://github.com/Ding-Ding-Projects/material-designer/commit/99fadb043158fe8885bce8b26fa9f8f6d306318d)
+  corrects the case-sensitive component paths, validates the exact registry
+  schema before rendering/export, includes every visible source field in JSON,
+  Markdown and CSV, neutralizes formula-like CSV values, defers download URL
+  revocation, and reports localized copy/download/invalid-pattern outcomes.
+  Selection now uses native checkboxes in a semantic list with visible range
+  and filtered-match semantics, hidden selections preserved during inversion,
+  and Arrow/Home/End movement. Hosted runtime and visual parity remain
+  unverified.
+
+  **廣東話：** 交接登記冊修理完成：大小寫路徑唔再撞牆，schema 先驗證再
+  畫，三種匯出格式唔再漏 source 欄位，CSV 公式唔可以扮資料，下載 URL
+  等完先收返。揀選而家用原生 checkbox 同真 list，filter 同鍵盤都行得；
+  hosted runtime 同 visual parity 仲未驗證。
+
+- **Added a real source handoff registry destination.** Commit
+  [`2f3ded458`](https://github.com/Ding-Ding-Projects/material-designer/commit/2f3ded4588a6f3573d78df09ef865fdfcea3053f)
+  adds `/handoff`, a virtual Settings/search/palette route, exactly 18
+  Material Design 3 token mappings, exactly 12 component owners, two
+  independent anchored regex searches, keyboard/range selection and faithful
+  JSON/Markdown/CSV exports. The source contract deliberately complains when a
+  row or route disappears, because an inventory that only sees what remains is
+  a very polite ghost. Runtime and visual parity capture remain unverified.
+
+  **廣東話：** 交接登記冊而家有真地址：18 個 token 對應、12 個元件負責人、
+  兩個各自有主見嘅 regex search，同埋可以拎走嘅 JSON/Markdown/CSV。個
+  contract script 會喺資料或者 route 走失時即刻黑面，唔會俾空表扮冇事；
+  runtime 同 visual capture 仲要等 hosted proof。
 
 - **Appearance startup now waits for the native theme to answer before it
   reveals the window.** Commit
