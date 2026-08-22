@@ -9,6 +9,7 @@ import {
   buildProjectArchive,
   createBatchArchiveStream,
   createProjectArchiveStream,
+  validateProjectArchiveBuffer,
 } from '../src/projects.js';
 
 async function collectStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -49,7 +50,7 @@ describe('buildProjectArchive', () => {
       .filter((entry) => !entry.dir)
       .map((entry) => entry.name)
       .sort();
-    expect(fileEntries).toEqual(['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'frames/phone.html', 'index.html', 'src/app.css']);
+    expect(fileEntries).toEqual(['DESIGN-HANDOFF.md', 'DESIGN-MANIFEST.json', 'EXPORT-MANIFEST.json', 'frames/phone.html', 'index.html', 'src/app.css']);
   });
 
   it('exposes a consumable stream with the same archive contents', async () => {
@@ -67,6 +68,7 @@ describe('buildProjectArchive', () => {
     expect(fileEntries).toEqual([
       'DESIGN-HANDOFF.md',
       'DESIGN-MANIFEST.json',
+      'EXPORT-MANIFEST.json',
       'frames/phone.html',
       'index.html',
       'src/app.css',
@@ -229,6 +231,28 @@ describe('buildProjectArchive', () => {
     await expect(buildProjectArchive(projectsRoot, projectId, 'empty')).rejects.toThrow(/empty/);
   });
 
+  it('can prepare a project-level handoff for an empty project without inventing a file', async () => {
+    const dir = path.join(projectsRoot, projectId, 'empty-project');
+    await mkdir(dir, { recursive: true });
+    const { buffer } = await buildProjectArchive(
+      projectsRoot,
+      projectId,
+      'empty-project',
+      undefined,
+      { target: 'project', allowEmptyRoot: true },
+    );
+    const zip = await JSZip.loadAsync(buffer);
+    expect(Object.keys(zip.files)).toEqual(expect.arrayContaining([
+      'DESIGN-HANDOFF.md',
+      'DESIGN-MANIFEST.json',
+      'EXPORT-MANIFEST.json',
+    ]));
+    expect(Object.values(zip.files).filter((entry) => !entry.dir)).toHaveLength(3);
+    const manifest = JSON.parse(await zip.file('DESIGN-MANIFEST.json')?.async('string') || '{}');
+    expect(manifest.entryFile).toBeNull();
+    expect(manifest.screens).toEqual([]);
+  });
+
   it('throws ENOENT with "does not exist" when the archive root is missing', async () => {
     // Distinct from the "empty directory" case so callers — and on-call
     // engineers reading logs — can tell a deleted project from a project
@@ -289,6 +313,45 @@ describe('buildProjectArchive', () => {
       category: 'tablet',
       mustAvoidHorizontalScroll: true,
     });
+  });
+
+  it('adds a deterministic export manifest with byte lengths, hashes, and omissions', async () => {
+    const dir = path.join(projectsRoot, projectId, 'policy');
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'README.md'), 'Path: C:\\Users\\someone\\Documents\\private\\project');
+    await writeFile(path.join(dir, '.env'), 'TOKEN=must-not-leave');
+    await writeFile(path.join(dir, 'PERSONAL_VOCABULARY.json'), '{"private":"value"}');
+
+    const first = await buildProjectArchive(projectsRoot, projectId, 'policy');
+    const second = await buildProjectArchive(projectsRoot, projectId, 'policy');
+    expect(first.buffer.equals(second.buffer)).toBe(true);
+    const zip = await JSZip.loadAsync(first.buffer);
+    expect(zip.file('.env')).toBeNull();
+    expect(zip.file('PERSONAL_VOCABULARY.json')).toBeNull();
+    const manifest = JSON.parse(await zip.file('EXPORT-MANIFEST.json')?.async('string') || '{}');
+    expect(manifest.schema).toBe('open-design.project-export-manifest.v1');
+    expect(manifest.archive.digestScope).toContain('complete ZIP byte stream');
+    expect(manifest.files).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'README.md', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    ]));
+    expect(manifest.generated).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: 'DESIGN-HANDOFF.md', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+      expect.objectContaining({ path: 'DESIGN-MANIFEST.json', bytes: expect.any(Number), sha256: expect.stringMatching(/^[a-f0-9]{64}$/) }),
+    ]));
+    expect(manifest.excludedEntries).toEqual([
+      { path: 'EXPORT-MANIFEST.json', reason: 'self-referential archive manifest hash' },
+    ]);
+    expect(manifest.omissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '.env' }),
+      expect.objectContaining({ path: 'PERSONAL_VOCABULARY.json' }),
+      expect.objectContaining({ path: 'README.md', field: 'content', reason: 'local absolute path redacted' }),
+    ]));
+    expect(await zip.file('README.md')?.async('string')).toContain('[REDACTED:local-path]');
+  });
+
+  it('refuses non-ZIP bytes before a staged export can be written', async () => {
+    await expect(validateProjectArchiveBuffer(Buffer.from('<html>not an archive</html>')))
+      .rejects.toThrow(/not a ZIP/);
   });
 
   it('does not classify plain home.html as a landing page in daemon archive manifests', async () => {

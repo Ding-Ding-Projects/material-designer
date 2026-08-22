@@ -381,6 +381,34 @@ version section when a release carries them.
   入面 `kind === 'project'` 自動上車；file/browser 要靠明確 `@`、toolbox、upload
   或 attachment。Direct component regression 已寫低，hosted build、runtime
   interaction 同 capture 證據仍然 pending。
+- **Complete project ZIP handoffs are now deterministic for fixed inputs and editor-ready.**
+  Commit [79238c736](https://github.com/Ding-Ding-Projects/material-designer/commit/79238c73656eb914c41571b14dc2f7114195ec6e)
+  adds a project-root prepare/stage/download route and a project-level action
+  that remains available without an active file, including for an empty project.
+  The ZIP uses fixed timestamps and locale-independent ordering, records
+  per-entry byte lengths and SHA-256 values in EXPORT-MANIFEST.json, and
+  records sensitive omissions and bounded local-path redactions. The browser
+  validates the content type, receipt length/digest, central directory and
+  required manifests before saving, with progress and cancellation states.
+  The staged archive opens through the existing editor route at its actual path
+  and containing workspace root. A missing saved editor preference is no longer
+  silently replaced by another available editor. The desktop scaffold remains a
+  separately named export target.
+
+  The source-level checks and Git Bash port verifier are green; local Node,
+  pnpm, Electron, build, and test commands were not run. Hosted build, installed
+  download, and real editor-process proof remain pending.
+
+  **完整 project ZIP handoff 而家唔使先揀 file。** 79238c736 加咗 project-root
+  prepare/stage/download route，empty project 都可以拎到一個有 handoff 同
+  manifest 嘅 ZIP。Archive 用固定 timestamp、locale-independent order、逐檔
+  bytes/hash 同 omission ledger；browser 會先驗 content type、receipt、
+  central directory 同 required manifests，仲有 progress 同 cancel。開 editor
+  會用真實 staged path 同 workspace root，揀咗邊個 editor 就係邊個，唔會
+  無聲無息換另一個。Desktop scaffold 仍然係另一個清楚命名嘅 target。
+  Source checks 同 port verifier 係 green；hosted build、installed download
+  同真 editor process proof 仲未做。
+
 - **Desktop application creation now materializes a real editable scaffold and
   an optional selected-agent handoff.** Commit
   [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)

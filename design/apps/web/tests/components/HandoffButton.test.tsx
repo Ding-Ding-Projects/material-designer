@@ -83,6 +83,21 @@ describe('HandoffButton i18n', () => {
     expect(cursorRow.getAttribute('aria-current')).toBeNull();
   });
 
+  it('does not silently replace a missing preferred editor on the primary action', async () => {
+    window.localStorage.setItem('open-design:preferred-editor', 'cursor');
+    stubEditors([{ id: 'finder', label: 'Finder', available: true }]);
+
+    renderLocalized('en');
+
+    const trigger = await screen.findByTestId('handoff-trigger');
+    expect(trigger.getAttribute('title')).toBe('Hand off');
+    fireEvent.click(trigger);
+    // The stored choice remains authoritative; the available Finder is only
+    // reachable through the explicit chooser, never as a surprise launch.
+    expect(screen.queryByText('Finder')).toBeNull();
+    expect(screen.queryByTestId('handoff-menu-item-finder')).toBeNull();
+  });
+
   it('localizes the unavailable editor section', async () => {
     stubEditors([
       { id: 'finder', label: 'Finder', available: true },

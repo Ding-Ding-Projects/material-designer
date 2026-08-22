@@ -2293,13 +2293,19 @@ export async function deleteLiveArtifact(
   }
 }
 
-async function readApiErrorBody(resp: Response): Promise<{ message: string; code?: string }> {
+async function readApiErrorBody(resp: Response): Promise<{ message: string; code?: string; details?: Record<string, unknown> }> {
   try {
     const json = (await resp.json()) as { error?: { code?: string; message?: string } | string; message?: string };
-    const message = typeof json.error === 'string' ? json.error : json.error?.message ?? json.message;
+    const errorObject = typeof json.error === 'object' && json.error !== null
+      ? json.error as { code?: string; message?: string; details?: unknown }
+      : null;
+    const message = typeof json.error === 'string' ? json.error : errorObject?.message ?? json.message;
     return {
       message: typeof message === 'string' && message.length > 0 ? message : `Request failed (${resp.status}).`,
-      ...(typeof json.error === 'object' && typeof json.error?.code === 'string' ? { code: json.error.code } : {}),
+      ...(typeof errorObject?.code === 'string' ? { code: errorObject.code } : {}),
+      ...(errorObject?.details && typeof errorObject.details === 'object'
+        ? { details: errorObject.details as Record<string, unknown> }
+        : {}),
     };
   } catch {
     return { message: `Request failed (${resp.status}).` };
@@ -3239,9 +3245,40 @@ export async function openProjectInEditor(
   );
   if (!resp.ok) {
     const body = await readApiErrorBody(resp);
-    throw new Error(body.message);
+    const error = new Error(body.message) as Error & { code?: string; details?: Record<string, unknown> };
+    error.code = body.code;
+    error.details = body.details;
+    throw error;
   }
   return (await resp.json()) as import('@open-design/contracts').OpenProjectInEditorResponse;
+}
+
+/** Open an exported file while preserving the daemon's selected editor. */
+export async function openPathInEditor(
+  exportedPath: string,
+  editorId?: import('@open-design/contracts').HostEditorId,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<import('@open-design/contracts').EditorOpenResponse> {
+  const resp = await fetch('/api/editor/open', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}),
+    },
+    body: JSON.stringify({
+      path: exportedPath,
+      openWorkspaceRoot: true,
+      ...(editorId ? { editorId } : {}),
+    }),
+  });
+  if (!resp.ok) {
+    const body = await readApiErrorBody(resp);
+    const error = new Error(body.message) as Error & { code?: string; details?: Record<string, unknown> };
+    error.code = body.code;
+    error.details = body.details;
+    throw error;
+  }
+  return (await resp.json()) as import('@open-design/contracts').EditorOpenResponse;
 }
 
 export async function fetchDesignSystemPreview(

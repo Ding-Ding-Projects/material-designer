@@ -1650,6 +1650,13 @@ installed build.
       rather than truncating quietly. Archives with the full range of
       compression options and encrypted headers where offered, never presenting
       an encrypted archive as protected while leaving filenames in the clear.
+      **Source checkpoint:** the project-level complete-tree ZIP now has a
+      separate action that works without an active file, including an empty
+      project; deterministic timestamps/order for fixed source/project/build
+      inputs, an omission ledger,
+      per-entry lengths/hashes, staged receipt/digest validation, and exact
+      editor handoff are implemented. Hosted build and installed proof remain
+      open.
 - [ ] **4.6 Bulk actions on every list.** Multi-select by pointer, range and
       keyboard; a select-all that says plainly whether it means this page or
       every match; inverse selection; the full action set rather than a token
@@ -1662,6 +1669,9 @@ installed build.
       editor in one action from the export or from the record it came from,
       opening a folder as a workspace root rather than a single file with no
       context.
+      **Source checkpoint:** an exported project's staged path now opens through
+      the existing editor route; a missing stored preference is never silently
+      replaced by another available editor. Hosted process proof remains open.
 - [ ] **4.8 Spoken narrator.** Optional, off by default, English / Cantonese /
       both with both strictly serialised. Debounced with a per-category
       cooldown, one utterance at a time through a serialised queue, superseded

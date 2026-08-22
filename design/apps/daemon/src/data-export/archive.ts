@@ -23,6 +23,9 @@ import {
   buildSevenZipSwitches,
   redactSevenZipSwitches,
   sanitizeDataExportArchiveEntryPath,
+  exportPathCollisionKey,
+  compareExportPaths,
+  PROJECT_EXPORT_LIMITS,
   type SevenZipArchiveOptions,
 } from '@open-design/contracts';
 
@@ -50,8 +53,12 @@ export class DataExportArchiveError extends Error {
 export function assertSafeArchiveEntries(
   entries: readonly DataExportArchiveEntry[],
 ): Array<{ path: string; content: string | Buffer }> {
+  if (entries.length > PROJECT_EXPORT_LIMITS.maxEntries) {
+    throw new DataExportArchiveError('UNSAFE_PATH', 'archive has too many entries');
+  }
   const seen = new Set<string>();
-  return entries.map((entry) => {
+  let totalBytes = 0;
+  const safeEntries = entries.map((entry) => {
     const safe = sanitizeDataExportArchiveEntryPath(entry.path);
     if (safe === null) {
       throw new DataExportArchiveError(
@@ -59,15 +66,24 @@ export function assertSafeArchiveEntries(
         `archive entry path is not safe to extract: ${JSON.stringify(entry.path)}`,
       );
     }
-    if (seen.has(safe)) {
+    const collisionKey = exportPathCollisionKey(safe);
+    if (!collisionKey) {
+      throw new DataExportArchiveError('UNSAFE_PATH', `archive entry path is not safe to extract: ${JSON.stringify(entry.path)}`);
+    }
+    const contentBytes = typeof entry.content === 'string' ? Buffer.byteLength(entry.content, 'utf8') : entry.content.byteLength;
+    if (contentBytes > PROJECT_EXPORT_LIMITS.maxEntryBytes || (totalBytes += contentBytes) > PROJECT_EXPORT_LIMITS.maxUncompressedBytes) {
+      throw new DataExportArchiveError('ARCHIVE_FAILED', 'archive content exceeds the supported size limit');
+    }
+    if (seen.has(collisionKey)) {
       throw new DataExportArchiveError(
         'UNSAFE_PATH',
         `duplicate archive entry path: ${safe}`,
       );
     }
-    seen.add(safe);
+    seen.add(collisionKey);
     return { path: safe, content: entry.content };
   });
+  return safeEntries.sort((left, right) => compareExportPaths(left.path, right.path));
 }
 
 // ---------------------------------------------------------------------------

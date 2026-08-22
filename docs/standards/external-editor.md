@@ -64,10 +64,10 @@ missing.
 | Detection | **Implemented upstream**, at request time rather than cached: each entry's command shim is probed on the executable search path. On Windows the probe also tries the executable, command and batch suffixes; on macOS and Linux it adds the common install directories a login shell would have, and on macOS it falls back to probing for an application bundle by name. |
 | Choose an editor | **Implemented upstream.** The daemon exposes the resolved list, and the interface renders it. |
 | **Add** an editor the catalogue does not know | **Not started.** The catalogue is fixed. |
-| Persist the choice | **Not verified.** |
+| Persist the choice | **Implemented upstream; preference-boundary regression added.** A missing stored preference is not replaced by an available editor on the primary action; the chooser remains the explicit recovery path. Hosted persistence proof remains pending. |
 | Open a project in the chosen editor | **Implemented upstream.** A detached spawn with the project's resolved directory as the single argument — which is the form that opens a folder as a workspace root. |
 | Open a folder as a workspace root | **Implemented in shape**, per the line above. Not observed running. |
-| **Open an export** in an editor | **Not started.** The integration is project-level. There is no route from an export, or from the record it came from, into an editor. |
+| **Open an export** in an editor | **Implemented in source.** The complete project ZIP prepare receipt carries its exact staged path and the result surface opens that path through the editor route, using its containing folder as the workspace root. Hosted process proof remains pending. |
 | Detect per-user, machine-wide, insiders and portable installs | **Not met on Windows.** The Windows probe covers the executable search path only; the extra directory list is empty on that platform, so an editor installed without its shim on the path is reported as absent. |
 | Degrade with a clear message, and offer the download | **Not verified.** |
 

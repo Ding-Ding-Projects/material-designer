@@ -178,8 +178,11 @@ must be offered with its cost stated — see
 
 ## Verification
 
-**Nothing has been verified.** No long operation has been observed running from a
-build in this repository.
+**Source verification only for the project ZIP lane.** No Node, pnpm, Electron,
+build, or test command was run locally. The project ZIP action has a single-flight
+handler, bounded stream reader, byte progress, Cancel action, and distinct
+cancelled receipt state in source. Hosted built-artifact timing and cancellation
+proof remain pending.
 
 Conformance requires all of:
 

@@ -258,7 +258,50 @@
 > parent integration lane owns the next merge and remote verification.
 
 > [!IMPORTANT]
-> **Desktop project-creation lane — source handoff, 2026-08-21.** Commits
+> **Complete project ZIP and editor handoff — source checkpoint, 2026-08-21.**
+> Commit [79238c736](https://github.com/Ding-Ding-Projects/material-designer/commit/79238c73656eb914c41571b14dc2f7114195ec6e)
+> adds a project-level complete-tree ZIP action beside the workspace tabs. It
+> does not depend on an active file and prepares an empty project with generated
+> handoff/manifests rather than inventing a source file. The daemon stages a
+> bounded-lifetime archive under its data root and returns a receipt containing
+> filename, byte length, SHA-256, expiry, download URL, digest scope, and the
+> exact staged path used by the editor handoff.
+>
+> The archive uses fixed timestamps and locale-independent ordering. Its
+> EXPORT-MANIFEST.json records per-entry byte lengths and SHA-256 values plus
+> an omission ledger. Credential, token, private-key, cache and personal-
+> vocabulary paths are omitted; bounded text files have local absolute paths
+> redacted. The browser streams the staged response, reports byte progress,
+> supports cancellation, validates ZIP structure/content type/required
+> manifests/receipt length/digest, and only then saves the file. The desktop
+> scaffold remains a separately named target.
+>
+> The exact staged archive path opens through the existing /api/editor/open
+> route with its containing folder as the workspace root. A missing saved editor
+> preference stays visible in the chooser and is never silently replaced by a
+> different available editor.
+>
+> git diff --check, sh scripts/verify-port.sh, and
+> sh scripts/verify-port.sh --json ran through Git Bash and are green: 12,835
+> expected files, 13,082 tracked files, 599 declared modifications, and zero
+> gaps. No Node, pnpm, Electron, build, or test command was run locally.
+> Hosted source checks, built-artifact interaction, installed ZIP download, and
+> real VS Code/editor process proof remain open. This work remains local-only and was
+> not pushed or merged, per the desktop-app-only handoff scope.
+>
+> **廣東話摘要。** 79238c736 加咗 project-level complete-tree ZIP action，唔使
+> 依賴 active file，empty project 都會有 handoff/manifests。Daemon 會喺自己
+> data root 暫存有限時效嘅 archive，receipt 會講 filename、bytes、SHA-256、
+> expiry、download URL、digest scope 同真實 staged path。ZIP 固定 timestamp
+> 同排序，逐檔 hash，敏感 path 入 omission ledger，text 入面嘅 local absolute
+> path 會 redact；browser 先 stream、報 progress、可以 cancel，再驗 ZIP
+> structure、content type、manifest、length 同 digest，驗完先 save。Editor
+> 用真 staged path 加 containing workspace root；揀咗嘅 preference 唔會偷偷
+> 換 editor。Source checks 同 port verifier green，hosted/build/installed/
+> real editor proof 仲 pending；呢條 work 只係 local，未 push 或 merge。
+
+> [!IMPORTANT]
+> **Desktop project-creation lane — source handoff, 2026-08-21.** Commit
 > [`be3d96c1e`](https://github.com/Ding-Ding-Projects/material-designer/commit/be3d96c1e170b317241777c7decf3012aa286ae9)
 > and [`1e68b5090`](https://github.com/Ding-Ding-Projects/material-designer/commit/1e68b50909da8734c765d354d4e086c0bdd1ccfb)
 > add an explicit `desktop-app` project intent, a shared versioned scaffold

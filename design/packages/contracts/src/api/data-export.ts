@@ -20,6 +20,8 @@
 //   2. An archive never claims protection it does not have. A 7z archive with a
 //      password but visible filenames is a `blocking` warning, not a default.
 
+import { canonicalExportPath, PROJECT_EXPORT_LIMITS } from './export-safety.js';
+
 /**
  * Bumped whenever the envelope or a dataset's field list changes shape. Written
  * into every self-describing export and into the archive manifest, so a file
@@ -1308,7 +1310,8 @@ export function sanitizeDataExportArchiveEntryPath(raw: unknown): string | null 
     if (code < 0x20 || code === 0x7f) return null;
   }
 
-  const unified = value.replace(/\\/g, '/');
+  const unified = canonicalExportPath(value);
+  if (!unified) return null;
   // A drive-relative or drive-absolute Windows path, or a UNC share.
   if (/^[A-Za-z]:/.test(unified)) return null;
   if (unified.startsWith('//')) return null;
@@ -1317,7 +1320,7 @@ export function sanitizeDataExportArchiveEntryPath(raw: unknown): string | null 
   // asked for, so it is refused instead.
   if (unified.startsWith('/')) return null;
 
-  const segments = unified.split('/').filter((segment) => segment.length > 0 && segment !== '.');
+  const segments = unified.split('/').filter((segment) => segment.length > 0);
   if (segments.length === 0) return null;
 
   for (const segment of segments) {
@@ -1331,7 +1334,7 @@ export function sanitizeDataExportArchiveEntryPath(raw: unknown): string | null 
   }
 
   const joined = segments.join('/');
-  if (joined.length > DATA_EXPORT_MAX_ENTRY_PATH_LENGTH) return null;
+  if (joined.length > Math.min(DATA_EXPORT_MAX_ENTRY_PATH_LENGTH, PROJECT_EXPORT_LIMITS.maxPathLength)) return null;
   return joined;
 }
 

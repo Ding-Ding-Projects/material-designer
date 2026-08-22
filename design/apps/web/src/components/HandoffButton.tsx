@@ -8,12 +8,13 @@ import type {
   HostEditor,
   HostEditorId,
   HostEditorsResponse,
+  WorkspaceCollabContext,
 } from '@open-design/contracts';
 import {
   handoffTargetIdToTracking,
   type TrackingArtifactKind,
 } from '@open-design/contracts/analytics';
-import { fetchHostEditors, openProjectInEditor } from '../providers/registry';
+import { fetchHostEditors, openPathInEditor, openProjectInEditor } from '../providers/registry';
 import { useAnalytics } from '../analytics/provider';
 import { trackHandoffClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -22,10 +23,23 @@ import { Icon } from './Icon';
 import { EditorIcon } from './EditorIcon';
 import { AgentIcon } from './AgentIcon';
 import { useProjectCollabContext } from '../collab/collab-context';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
 
 const PREFERRED_EDITOR_KEY = 'open-design:preferred-editor';
 const PREFERRED_FRAMEWORK_KEY = 'open-design:handoff-framework';
 const PROJECT_PATH_COPY_ID = 'project-path';
+let activeHandoffAction = false;
+
+function claimHandoffAction(): boolean {
+  if (activeHandoffAction) return false;
+  activeHandoffAction = true;
+  return true;
+}
+
+function releaseHandoffAction(): void {
+  activeHandoffAction = false;
+}
 
 type HandoffTab = 'editor' | 'cli';
 type FrameworkId = 'react' | 'vue' | 'svelte' | 'solid' | 'next' | 'vanilla';
@@ -108,6 +122,10 @@ interface Props {
   projectId: string;
   projectName?: string;
   projectDir?: string | null;
+  /** When set, the editor chooser opens this exported path instead of the project root. */
+  targetPath?: string | null;
+  /** Project-scoped identity forwarded by export handoff callers. */
+  workspaceContext?: WorkspaceCollabContext | null;
   agents?: AgentInfo[];
   // Active artifact context, so handoff clicks carry the same artifact_id /
   // artifact_kind dimensions as the rest of the artifact_header funnel.
@@ -334,6 +352,8 @@ export function HandoffButton({
   projectId,
   projectName,
   projectDir,
+  targetPath,
+  workspaceContext: workspaceContextProp,
   agents,
   artifactId,
   artifactKind,
@@ -342,7 +362,8 @@ export function HandoffButton({
 }: Props) {
   const t = useT();
   const analytics = useAnalytics();
-  const { workspaceContext } = useProjectCollabContext();
+  const { workspaceContext: inheritedWorkspaceContext } = useProjectCollabContext();
+  const workspaceContext = workspaceContextProp ?? inheritedWorkspaceContext;
   // One-liner so every hand-off interaction emits the same
   // `ui_click` / `area=handoff` shape; callers pass only what varies. The
   // active-artifact context is attached to every event so handoff slices line
@@ -371,8 +392,25 @@ export function HandoffButton({
   const [frameworkId, setFrameworkId] = useState(readPreferredFramework);
   const [activeTab, setActiveTab] = useState<HandoffTab>('editor');
   const [error, setError] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [editorQuery, setEditorQuery] = useState('');
+  const editorSearch = useRegexSearch(editorQuery, setEditorQuery);
+  const [cliQuery, setCliQuery] = useState('');
+  const cliSearch = useRegexSearch(cliQuery, setCliQuery);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const copiedTimerRef = useRef<number | null>(null);
+  const originFocusRef = useRef<HTMLElement | null>(null);
+
+  function rememberOriginFocus(): void {
+    originFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+  }
+
+  function restoreOriginFocus(): void {
+    originFocusRef.current?.focus();
+    originFocusRef.current = null;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -427,21 +465,32 @@ export function HandoffButton({
     };
   }, []);
 
-  const available = editors.filter((e) => e.available);
-  const unavailable = editors.filter((e) => !e.available);
+  const filteredEditors = editors.filter((editor) =>
+    editorSearch.matches(`${editor.label} ${editor.id}`),
+  );
+  const available = filteredEditors.filter((e) => e.available);
+  const unavailable = filteredEditors.filter((e) => !e.available);
   const preferred = readPreferred();
-  const primary =
-    available.find((e) => e.id === preferred) ?? available[0] ?? null;
+  // A stored preference is an explicit user choice. If that exact editor is
+  // missing, keep the preference visible through the chooser and do not
+  // silently launch a different available editor. With no preference at all,
+  // VS Code/the first detected editor remains the initial suggestion.
+  const primary = preferred
+    ? available.find((e) => e.id === preferred) ?? null
+    : available[0] ?? null;
   const primaryTitle = primary
     ? t('handoff.openInTarget', { target: primary.label })
     : t('handoff.action');
   const cliTargets = useMemo(() => mergeCliTargets(agents), [agents]);
-  const availableCliTargets = cliTargets.filter((cli) => cli.available);
-  const unavailableCliTargets = cliTargets.filter((cli) => !cli.available);
+  const filteredCliTargets = cliTargets.filter((cli) => cliSearch.matches(`${cli.name} ${cli.id}`));
+  const availableCliTargets = filteredCliTargets.filter((cli) => cli.available);
+  const unavailableCliTargets = filteredCliTargets.filter((cli) => !cli.available);
   const selectedFramework =
     FRAMEWORKS.find((framework) => framework.id === frameworkId) ?? DEFAULT_FRAMEWORK;
 
   async function launch(editor: HostEditor) {
+    if (!claimHandoffAction()) return;
+    rememberOriginFocus();
     fireHandoff({
       element: 'open_editor',
       target_id: handoffTargetIdToTracking(editor.id),
@@ -454,14 +503,30 @@ export function HandoffButton({
       // genuinely can't find it.
     }
     setError(null);
+    setDownloadUrl(null);
     setBusy(editor.id);
     writePreferred(editor.id);
     try {
-      await openProjectInEditor(projectId, editor.id, workspaceContext);
+      if (targetPath) {
+        await openPathInEditor(targetPath, editor.id, workspaceContext);
+      } else {
+        await openProjectInEditor(projectId, editor.id, workspaceContext);
+      }
       setOpen(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const code = typeof err === 'object' && err !== null && 'code' in err
+        ? (err as { code?: string }).code
+        : undefined;
+      const msg = code === 'EDITOR_NOT_FOUND'
+        ? t('handoff.notInstalled')
+        : code === 'EDITOR_LAUNCH_FAILED'
+          ? t('fileViewer.exportFailed')
+          : err instanceof Error ? err.message : String(err);
       setError(msg);
+      const details = typeof err === 'object' && err !== null && 'details' in err
+        ? (err as { details?: { downloadUrl?: unknown } }).details
+        : undefined;
+      setDownloadUrl(typeof details?.downloadUrl === 'string' ? details.downloadUrl : null);
       setOpen(true);
       setActiveTab('editor');
       // Fallback: if Finder is the user's pick and the daemon spawn
@@ -475,10 +540,14 @@ export function HandoffButton({
       }
     } finally {
       setBusy(null);
+      releaseHandoffAction();
+      restoreOriginFocus();
     }
   }
 
   async function copyCliPrompt(cli: CliTarget) {
+    if (!claimHandoffAction()) return;
+    rememberOriginFocus();
     fireHandoff({
       element: 'copy_cli_prompt',
       target_id: handoffTargetIdToTracking(cli.id),
@@ -488,9 +557,12 @@ export function HandoffButton({
     });
     if (!projectDir) {
       setError(t('handoff.projectPathUnavailable'));
+      releaseHandoffAction();
+      restoreOriginFocus();
       return;
     }
     setError(null);
+    setDownloadUrl(null);
     setCopyBusy(cli.id);
     const cliName = cliDisplayName(cli);
     const frameworkPrompt = frameworkPromptLabel(selectedFramework.id, t);
@@ -530,16 +602,23 @@ export function HandoffButton({
       }, 1800);
     } finally {
       setCopyBusy(null);
+      releaseHandoffAction();
+      restoreOriginFocus();
     }
   }
 
   async function copyProjectPath() {
+    if (!claimHandoffAction()) return;
+    rememberOriginFocus();
     fireHandoff({ element: 'copy_path' });
     if (!projectDir) {
       setError(t('handoff.projectPathUnavailable'));
+      releaseHandoffAction();
+      restoreOriginFocus();
       return;
     }
     setError(null);
+    setDownloadUrl(null);
     setCopyBusy(PROJECT_PATH_COPY_ID);
     try {
       const copied = await copyToClipboard(projectDir);
@@ -557,6 +636,8 @@ export function HandoffButton({
       }, 1800);
     } finally {
       setCopyBusy(null);
+      releaseHandoffAction();
+      restoreOriginFocus();
     }
   }
 
@@ -579,7 +660,7 @@ export function HandoffButton({
   // No available editors — render a Finder/Explorer/File-Manager single-button
   // fallback so the surface is never blank, including the true zero-editor
   // response where the daemon reports `editors: []`.
-  if (available.length === 0) {
+  if (editors.length === 0) {
     const fallbackLabel = platform === 'win32' ? 'Explorer' : platform === 'linux' ? 'File Manager' : 'Finder';
     const fallbackId: HostEditorId =
       platform === 'win32' ? 'explorer' : platform === 'linux' ? 'file-manager' : 'finder';
@@ -597,6 +678,8 @@ export function HandoffButton({
           data-tooltip-placement="bottom"
           disabled={busy === fallbackId}
           onClick={() => {
+            if (!claimHandoffAction()) return;
+            rememberOriginFocus();
             // The fallback opens the project folder in the OS file manager.
             // finder / explorer / file-manager are real entries in the daemon's
             // open-in catalogue (open / explorer / xdg-open), so this performs a
@@ -610,12 +693,26 @@ export function HandoffButton({
             });
             setError(null);
             setBusy(fallbackId);
-            void openProjectInEditor(projectId, fallbackId, workspaceContext)
+            const open = targetPath
+              ? openPathInEditor(targetPath, fallbackId, workspaceContext)
+              : openProjectInEditor(projectId, fallbackId, workspaceContext);
+            void open
               .catch((err) => {
-                setError(err instanceof Error ? err.message : String(err));
+                const code = typeof err === 'object' && err !== null && 'code' in err
+                  ? (err as { code?: string }).code
+                  : undefined;
+                setError(code === 'EDITOR_NOT_FOUND' ? t('handoff.notInstalled') : err instanceof Error ? err.message : String(err));
+                const details = typeof err === 'object' && err !== null && 'details' in err
+                  ? (err as { details?: { downloadUrl?: unknown } }).details
+                  : undefined;
+                setDownloadUrl(typeof details?.downloadUrl === 'string' ? details.downloadUrl : null);
                 onRequestRevealInFinder?.();
               })
-              .finally(() => setBusy(null));
+              .finally(() => {
+                setBusy(null);
+                releaseHandoffAction();
+                restoreOriginFocus();
+              });
           }}
         >
           {busy === fallbackId ? (
@@ -769,6 +866,14 @@ export function HandoffButton({
           </div>
           {activeTab === 'editor' ? (
             <section className="handoff-menu-block" role="tabpanel">
+              <RegexSearchField
+                search={editorSearch}
+                fieldLabel={t('handoff.editorSection')}
+                ariaLabel={t('common.search')}
+                placeholder={t('common.searchEllipsis')}
+                testId="handoff-editor-search"
+                hostClassName="handoff-editor-search"
+              />
               <div className="handoff-target-group">
                 <div className="handoff-target-group-title">{t('common.installed')}</div>
                 <div className="handoff-target-rail handoff-editor-rail">
@@ -791,6 +896,7 @@ export function HandoffButton({
                       <Icon className="handoff-target-arrow" name="chevron-right" size={14} />
                     </button>
                   ))}
+                  {available.length === 0 ? <p className="handoff-menu-empty">{t('common.none')}</p> : null}
                 </div>
               </div>
               {unavailable.length > 0 ? (
@@ -821,6 +927,14 @@ export function HandoffButton({
             </section>
           ) : (
             <section className="handoff-menu-block" role="tabpanel">
+              <RegexSearchField
+                search={cliSearch}
+                fieldLabel={t('handoff.cliSection')}
+                ariaLabel={t('common.search')}
+                placeholder={t('common.searchEllipsis')}
+                testId="handoff-cli-search"
+                hostClassName="handoff-cli-search"
+              />
               <div className="handoff-framework-block" role="group" aria-label={t('handoff.framework')}>
                 <span className="handoff-framework-label">{t('handoff.framework')}</span>
                 <div className="handoff-framework-grid">
@@ -912,7 +1026,12 @@ export function HandoffButton({
           {error ? (
             <>
               <div className="handoff-menu-divider" />
-              <div className="handoff-menu-error">{error}</div>
+              <div className="handoff-menu-error" role="alert" aria-live="polite">{error}</div>
+              {downloadUrl ? (
+                <a className="handoff-menu-error-link" href={downloadUrl} target="_blank" rel="noreferrer">
+                  {t('updater.manualDownload')}
+                </a>
+              ) : null}
             </>
           ) : null}
         </div>

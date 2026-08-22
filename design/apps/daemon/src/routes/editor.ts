@@ -188,7 +188,7 @@ export function registerEditorRoutes(app: Express, ctx: RegisterEditorRoutesDeps
       if (requestedPath) {
         pathKind = await classifyPath(requestedPath);
         if (pathKind === 'missing') {
-          return sendApiError(res, 404, 'FILE_NOT_FOUND', `path does not exist: ${requestedPath}`);
+          return sendApiError(res, 404, 'FILE_NOT_FOUND', 'requested editor path does not exist');
         }
       }
 
@@ -261,7 +261,7 @@ export function registerEditorRoutes(app: Express, ctx: RegisterEditorRoutesDeps
           res,
           500,
           'EDITOR_LAUNCH_FAILED',
-          `Failed to launch ${editor.label}: ${launch.error}`,
+          `Could not launch ${editor.label}. Try the editor chooser again or use its download link.`,
         );
       }
 
@@ -275,8 +275,8 @@ export function registerEditorRoutes(app: Express, ctx: RegisterEditorRoutesDeps
         ...(launchTarget.file !== undefined ? { file: launchTarget.file } : {}),
       };
       res.json(responseBody);
-    } catch (err) {
-      sendApiError(res, 500, 'INTERNAL_ERROR', String(err));
+    } catch {
+      sendApiError(res, 500, 'INTERNAL_ERROR', 'editor handoff could not be completed');
     }
   });
 }

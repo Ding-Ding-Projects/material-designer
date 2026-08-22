@@ -13,6 +13,8 @@
 
 import {
   DATA_EXPORT_FORMAT_DESCRIPTORS,
+  markdownCodeFence,
+  markdownTableCell,
   type DataExportEnvelope,
   type DataExportFieldDescriptor,
   type DataExportFormat,
@@ -373,19 +375,13 @@ export function toDelimitedDocument(
 // Markdown
 // ---------------------------------------------------------------------------
 
-function markdownTableCell(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
-}
-
 /**
  * A fence long enough that nothing inside the block can close it early. Without
  * this, a message containing a triple backtick would truncate its own block —
  * exactly the silent truncation this feature is not allowed to do.
  */
 function codeFenceFor(body: string): string {
-  let longest = 0;
-  for (const run of body.match(/`+/g) ?? []) longest = Math.max(longest, run.length);
-  return '`'.repeat(Math.max(3, longest + 1));
+  return markdownCodeFence(body);
 }
 
 /** Long text and nested values cannot live in a table cell without mangling. */
