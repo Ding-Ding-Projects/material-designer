@@ -155,7 +155,7 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
             </button>
           </div>
         </>
-      ) : null}
+      )}
       {deleteGateOpen ? (
         <DestructiveGate
           action={t('settings.privacyDataDeletion')}

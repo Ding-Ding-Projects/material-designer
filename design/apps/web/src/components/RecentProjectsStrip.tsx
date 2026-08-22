@@ -2094,6 +2094,7 @@ export function RecentProjectsStrip({
           the keys and the slider now stand in front of the deletion rather than
           in front of one of the two doors to it. */}
       {confirmTarget ? (
+        <>
         <DestructiveGate
           action={t('designs.deleteTitle')}
           target={confirmTarget.name}
@@ -2144,6 +2145,7 @@ export function RecentProjectsStrip({
             </button>
           </DialogFooter>
         </Dialog>
+        </>
       ) : null}
       {moveTarget ? (
         <Dialog
