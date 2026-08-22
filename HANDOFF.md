@@ -39,6 +39,17 @@
 > both `Claude Fable 5 <noreply@anthropic.com>`, and it contains no private
 > session vocabulary. Correcting that immutable message would require an
 > explicitly authorized history rewrite; none was performed.
+
+> [!NOTE]
+> **Red release-run repair — 2026-08-22.** Run
+> [32540802392](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32540802392)
+> failed during daemon TypeScript compilation. Commit
+> [`cfc92832f`](https://github.com/Ding-Ding-Projects/material-designer/commit/cfc92832f5f2d319622c7e6097a85f7b2bbe63cf)
+> fixes the reported strict typing errors. Replacement
+> [Verify](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32544029789),
+> [Release](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32544029776),
+> and [Pages](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32544029814)
+> runs are queued and remain unverified.
 >
 > **Studio lifecycle repair checkpoint — source-only.** This follow-up adds
 > generation-scoped capture leases, stateless reserved-route refusal

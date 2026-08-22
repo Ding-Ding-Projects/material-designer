@@ -45,6 +45,12 @@ version section when a release carries them.
 
 ### Changed
 
+- **The daemon release compile errors are fixed.** Commit
+  [`cfc92832f`](https://github.com/Ding-Ding-Projects/material-designer/commit/cfc92832f5f2d319622c7e6097a85f7b2bbe63cf)
+  repairs strict typing in scaffold identity, filesystem-error handling, and
+  library cursor narrowing after failed run `32540802392`. Replacement Verify,
+  Release, and Pages runs are queued; no green result is claimed yet.
+
 - **Library partial-operation boundaries now stay honest.** Commit
   [`a881a525f`](https://github.com/Ding-Ding-Projects/material-designer/commit/a881a525f)
   replaces mutable HTTP offsets with a point-in-time keyset snapshot, shares
