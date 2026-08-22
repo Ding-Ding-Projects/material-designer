@@ -160,9 +160,9 @@ function decodeLibraryCursor(value: unknown): LibraryListCursor | null | undefin
       || parsed.id.length > 256
     ) return null;
     return {
-      snapshotAt: parsed.snapshotAt,
+      snapshotAt: parsed.snapshotAt as number,
       archivedDate: parsed.archivedDate,
-      createdAt: parsed.createdAt,
+      createdAt: parsed.createdAt as number,
       id: parsed.id,
     };
   } catch {

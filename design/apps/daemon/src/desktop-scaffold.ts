@@ -202,9 +202,9 @@ export function createDesktopScaffoldFiles(input: DesktopScaffoldBuildInput): De
     // Package identity is immutable project identity, never the renameable
     // display label. A renamed project must keep its installed data and update
     // channel instead of becoming a second application.
-    name: stableDesktopPackageName(projectId),
+    name: stableDesktopPackageName(input.projectId),
     productName: label,
-    applicationId: `com.materialdesigner.project.${stableDesktopPackageName(projectId)}`,
+    applicationId: `com.materialdesigner.project.${stableDesktopPackageName(input.projectId)}`,
     version: '0.0.0',
     private: true,
     type: 'commonjs',
@@ -365,7 +365,7 @@ export function assertDesktopScaffoldCollisions(
 ): void {
   const existingPaths = new Set(entries.map((entry) => exportPathCollisionKey(String(entry.relPath ?? entry.name ?? ''))).filter(Boolean));
   const generated = Object.values(DESKTOP_SCAFFOLD_FILE_ROLES);
-  const collisions = generated.filter((name) => existingPaths.has(exportPathCollisionKey(name)));
+  const collisions: string[] = generated.filter((name) => existingPaths.has(exportPathCollisionKey(name)));
   if (existingPaths.has(exportPathCollisionKey('desktop'))) collisions.unshift('desktop');
   if (collisions.length > 0) {
     const err = new Error(`desktop scaffold path already exists: ${collisions.join(', ')}`);
@@ -415,7 +415,7 @@ async function assertRealPathComponents(root: string, target: string): Promise<v
     try {
       info = await lstat(cursor);
     } catch (error) {
-      if (error?.code === 'ENOENT') continue;
+      if ((error as { code?: unknown })?.code === 'ENOENT') continue;
       throw error;
     }
     if (info.isSymbolicLink()) throw new Error('desktop scaffold path contains a symlink or reparse point');
@@ -441,7 +441,7 @@ export async function claimDesktopProjectDirectory(
   try {
     await mkdir(projectDir, { recursive: false });
   } catch (error) {
-    if (error?.code === 'EEXIST') {
+    if ((error as { code?: unknown })?.code === 'EEXIST') {
       const collision = new Error('desktop project directory already exists');
       collision.code = 'EEXIST';
       throw collision;
@@ -581,7 +581,7 @@ export async function materializeDesktopScaffoldProject(input: {
         collision.code = 'EEXIST';
         throw collision;
       } catch (error) {
-        if (error?.code !== 'ENOENT') throw error;
+        if ((error as { code?: unknown })?.code !== 'ENOENT') throw error;
       }
       const temporary = `${target}.${ownerNonce}.tmp`;
       await writeFile(temporary, file.body, { encoding: 'utf8', flag: 'wx' });

@@ -3739,7 +3739,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       const desktopApplicationSelected =
         projectMetadataBase &&
         typeof projectMetadataBase === 'object' &&
-        projectMetadataBase.intent === 'desktop-app';
+        (projectMetadataBase as { intent?: unknown }).intent === 'desktop-app';
       const failDesktopCreate = async (status: number, code: string, message: string) => {
         if (externalProjectDir) {
           await rm(externalProjectDir, { recursive: true, force: true }).catch(() => {});

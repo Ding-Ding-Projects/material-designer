@@ -418,7 +418,7 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
     if (
       typeof filter.afterArchivedDate !== 'string'
       || !Number.isSafeInteger(filter.afterCreatedAt)
-      || filter.afterCreatedAt < 0
+      || (filter.afterCreatedAt as number) < 0
       || typeof filter.afterId !== 'string'
       || !filter.afterId
     ) {
@@ -437,8 +437,8 @@ export function listLibraryAssets(db: SqliteDb, filter: LibraryAssetFilter = {})
     args.push(
       filter.afterArchivedDate,
       filter.afterArchivedDate,
-      filter.afterCreatedAt,
-      filter.afterCreatedAt,
+      filter.afterCreatedAt as number,
+      filter.afterCreatedAt as number,
       filter.afterId,
     );
   }

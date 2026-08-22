@@ -820,7 +820,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       res.setHeader('X-OD-Archive-SHA256', staged.sha256);
       res.setHeader('X-OD-Archive-Target', staged.target);
       const stream = fs.createReadStream(staged.filePath);
-      stream.once('error', (error) => res.destroy(error));
+      stream.once('error', (error: Error) => res.destroy(error));
       res.once('close', () => stream.destroy());
       stream.pipe(res);
     } catch (err: any) {
