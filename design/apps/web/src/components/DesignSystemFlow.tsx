@@ -83,7 +83,7 @@ import { DesignSystemAssetDropzone } from './DesignSystemAssetDropzone';
 import { BrandPickerModal } from './BrandPickerModal';
 import { DesignSystemCreateHero } from './DesignSystemCreateHero';
 import { DesignSystemPicker } from './DesignSystemPicker';
-import { LibraryPicker, type LibraryPickerConfirmResult } from './LibraryPicker';
+import { LibraryPicker } from './LibraryPicker';
 import { notifyConnectorsChanged } from './connectors-events';
 import { connectorAuthSnapshotChanged } from './connectors-state';
 import { FileWorkspace, type FileRefreshResult } from './FileWorkspace';
@@ -770,7 +770,7 @@ export function DesignSystemCreationFlow({
 
   async function handlePickCodeFolder() {
     emitCreateFormClick('browse_folder');
-    const selected = await openFolderDialog({ title: t('workingDirPicker.title') });
+    const selected = await openFolderDialog();
     if (!selected) return;
     setState((curr) => ({
       ...curr,
@@ -841,25 +841,16 @@ export function DesignSystemCreationFlow({
   // browser File and stage it like any other asset, so generation uploads them
   // through the same path. No project exists yet at setup time, so we seed File
   // objects (fetchLibraryAssetAsFile) rather than apply-into-project.
-  async function addAssetsFromLibrary(assets: LibraryAsset[]): Promise<LibraryPickerConfirmResult> {
-    if (assets.length === 0) return { applied: [], failed: [], skipped: [] };
+  async function addAssetsFromLibrary(assets: LibraryAsset[]) {
+    if (assets.length === 0) return;
     const finish = beginSourceProcessing();
-    const failed: LibraryPickerConfirmResult['failed'] = [];
     try {
       const fetched = await Promise.all(assets.map((asset) => fetchLibraryAssetAsFile(asset)));
       const files = fetched.filter((file): file is File => file !== null);
       mergeAssetFiles(files);
-      fetched.forEach((file, index) => {
-        if (!file) failed.push({ assetId: assets[index].id });
-      });
       if (files.length < assets.length) {
         setVisibleError(t('dsCreate.libraryPartiallyAdded', { added: files.length, total: assets.length }));
       }
-      return {
-        applied: assets.filter((asset) => !failed.some((item) => item.assetId === asset.id)).map((asset) => asset.id),
-        failed,
-        skipped: [],
-      };
     } finally {
       finish();
     }
@@ -1029,8 +1020,6 @@ export function DesignSystemCreationFlow({
     return (
       <div className="ds-setup-shell ds-setup-shell--center">
         <div className="ds-setup-center-card">
-          <h1>Material Designer will extract your design system.</h1>
-          <p>You'll land in a project that fills in live — logo, palette, typography, imagery — as it measures your brand. Keep the tab open.</p>
           <h1>{t('dsCreate.confirmTitle')}</h1>
           <p>{t('dsCreate.confirmBody')}</p>
           <div className="ds-setup-actions">
@@ -2412,7 +2401,6 @@ export function DesignSystemDetailView({
         conversationId = fresh.id;
       }
       if (config.mode !== 'daemon' || !config.agentId) {
-        setChatError('Pick a local agent first, then ask Material Designer to update this design system.');
         setChatError(t('dsFlow.pickLocalAgentFirst'));
         return;
       }
@@ -2923,11 +2911,6 @@ export function DesignSystemDetailView({
               <p>
                 {generationActive
                   ? activeJob?.kind === 'token-contract-rebuild'
-                    ? 'Material Designer is preparing a token contract rebuild for review. The active contract stays unchanged until you accept it.'
-                    : activeJob?.kind === 'revision'
-                      ? 'Material Designer is applying your feedback. You can keep reviewing while the updated draft is prepared.'
-                      : 'Material Designer is still working, but you can start giving feedback on the work so far.'
-                  : 'Material Designer is ready for review. Give feedback on the work so far, then publish when it is useful for future projects.'}
                     ? t('dsFlow.publishCardTokenRebuild')
                     : activeJob?.kind === 'revision'
                       ? t('dsFlow.publishCardRevision')
@@ -3451,7 +3434,6 @@ function WorkspaceActivityCard({
         <span>
           <strong>
             {status === 'running'
-              ? 'Material Designer is updating this system'
               ? t('dsFlow.activityRunningTitle')
               : status === 'failed'
                 ? t('dsFlow.activityFailedTitle')
@@ -3690,10 +3672,6 @@ function GenerationStatusCard({ job }: { job: DesignSystemGenerationJob }) {
           <strong>
             {active
               ? job.kind === 'token-contract-rebuild'
-                ? 'Material Designer is rebuilding tokens'
-                : job.kind === 'revision'
-                  ? 'Material Designer is revising'
-                  : 'Material Designer is still working'
                 ? t('dsFlow.jobRebuildingTokens')
                 : job.kind === 'revision'
                   ? t('dsFlow.jobRevising')

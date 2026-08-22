@@ -1,5 +1,6 @@
 import {
   type DragEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -8,78 +9,27 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  getWorkspaceTabsDock,
+  subscribeWorkspaceTabsDock,
+} from './workspaceTabsDock';
 import { useT } from '../i18n';
 import { buildPath, navigate, type EntryHomeView, type Route } from '../router';
 import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
-import { NotificationCenter } from './notifications/NotificationCenter';
-import styles from './WorkspaceTabsBar.module.css';
-import {
-  compileBulkCloseMatcher,
-  planBulkClose,
-  type BulkCloseDirection,
-  type BulkCloseMatchMode,
-} from './workspace-tabs/bulkClose';
-import {
-  isTabPinned,
-  orderTabsWithPinnedFirst,
-  parseStoredWorkspaceTabsPayload,
-  reconcilePinnedTabIds,
-  serializeWorkspaceTabsPayload,
-  togglePinnedTabId,
-} from './workspace-tabs/tabPinning';
-import {
-  assignTabToGroup,
-  createTabGroup,
-  findTabGroup,
-  groupIdForTab,
-  moveTabGroup,
-  nextTabGroupColor,
-  orderTabsByGroupMembership,
-  partitionTabsByGroup,
-  reconcileTabGroupMembership,
-  removeTabGroup,
-  renameTabGroup,
-  setTabGroupColor,
-  tabGroupDisplayName,
-  toggleTabGroupCollapsed,
-  type TabGroupColor,
-  type TabGroupMembership,
-  type WorkspaceTabGroup,
-} from './workspace-tabs/tabGroups';
-import {
-  reconcileTabGroupDecorations,
-  resetTabGroupDecoration,
-  setTabGroupDecorationProperty,
-  tabGroupDecorationFor,
-  tabGroupDecorationStyle,
-  type TabGroupDecoration,
-  type TabGroupDecorationProperty,
-  type TabGroupDecorations,
-} from './workspace-tabs/groupAppearance';
-import { TabGroupAppearanceEditor } from './workspace-tabs/TabGroupAppearanceEditor';
-import { WorkspaceTabDiscovery } from './workspace-tabs/WorkspaceTabDiscovery';
-import { RegexSearchField } from './regex/RegexSearchField';
-import { useRegexSearch } from './regex/useRegexSearch';
-import {
-  createWorkspaceTabWindowId,
-  publishWorkspaceTabWindowSnapshot,
-  removeWorkspaceTabWindowSnapshot,
-  WORKSPACE_TAB_WINDOW_HEARTBEAT_MS,
-} from './workspace-tabs/windowRegistry';
 import {
   HOME_APPLY_TEMPLATE_EVENT,
   orderedCreateChips,
   type HomeHeroChip,
 } from './home-hero/chips';
-import { homeHeroChipLabel } from './home-hero/chip-labels';
-import { useGlideIndicator } from '../hooks/useGlideIndicator';
-import { useLiquidGlass } from '../hooks/useLiquidGlass';
 import {
   ENTRY_RAIL_STATE_EVENT,
   ENTRY_RAIL_TOGGLE_EVENT,
   readStoredRailOpen,
 } from './entryRailBridge';
+import { homeHeroChipLabel } from './home-hero/chip-labels';
+import { useGlideIndicator } from '../hooks/useGlideIndicator';
+import { useLiquidGlass } from '../hooks/useLiquidGlass';
 
 type WorkspaceChromeTab =
   | {
@@ -109,23 +59,6 @@ type WorkspaceChromeTab =
 interface WorkspaceTabsState {
   tabs: WorkspaceChromeTab[];
   activeTabId: string;
-  /**
-   * Ids the user pinned, in pin order. Optional so the many `{ tabs, activeTabId }`
-   * literals in this file stay valid; `normalizeTabsState` always returns it
-   * reconciled against the tabs that actually exist, so every value that leaves
-   * that function has one.
-   */
-  pinnedTabIds?: readonly string[];
-  /**
-   * Tab groups, in the order they appear in the strip. Optional for the same
-   * reason `pinnedTabIds` is: the many `{ tabs, activeTabId }` literals in this
-   * file stay valid, and `normalizeTabsState` always returns a reconciled value.
-   */
-  groups?: readonly WorkspaceTabGroup[];
-  /** `tabId -> groupId`. A tab with no entry is ungrouped. */
-  groupMembership?: TabGroupMembership;
-  /** Per-group appearance overrides, keyed by group id. */
-  groupDecorations?: TabGroupDecorations;
 }
 
 interface PersistedWorkspaceTabsSnapshot {
@@ -185,15 +118,6 @@ interface Props {
 }
 
 const STORAGE_KEY = 'open-design:workspace-tabs:v1';
-/**
- * The id of the element every tab controls.
- *
- * `aria-controls` has to point at something that exists, so the shell's body —
- * the element that actually holds the active tab's content — carries this id
- * and `role="tabpanel"`. Exported so `App.tsx` sets the same string rather than
- * a copy of it that can drift.
- */
-export const WORKSPACE_TAB_PANEL_ID = 'workspace-tab-panel';
 const OPEN_WORKSPACE_TAB_EVENT = 'open-design:workspace-tabs:open';
 const REMOVE_WORKSPACE_PROJECT_TABS_EVENT = 'open-design:workspace-tabs:remove-project';
 const MAX_PERSISTED_TAB_SCOPES = 12;
@@ -414,44 +338,9 @@ function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
     if (wasActive) activeTabId = id;
     return id === tab.id ? tab : { ...tab, id };
   });
-
-  // Pins last, and after the id rewrite above, so a pin can never point at an
-  // id that was just regenerated. Reconciling here rather than only on load is
-  // what makes a stored pin list survive a tab being closed in another window,
-  // a project disappearing, or a hand-edited payload.
-  const pinnedTabIds = reconcilePinnedTabIds(state.pinnedTabIds, tabs.map((tab) => tab.id));
-  const pinnedFirst = orderTabsWithPinnedFirst(tabs, pinnedTabIds, (tab) => tab.kind === 'entry');
-
-  // Groups last, and after the id rewrite above, for the same reason the pins
-  // are: a membership entry can never point at an id that was just regenerated.
-  // Groups themselves survive whether or not anything is in them — an emptied
-  // group is still a group the user named and coloured, and removing it is an
-  // explicit act, never a side effect of dragging its last tab out.
-  const groups = state.groups ?? [];
-  const groupMembership = reconcileTabGroupMembership(
-    state.groupMembership,
-    groups,
-    pinnedFirst.map((tab) => tab.id),
-  );
-  const groupDecorations = reconcileTabGroupDecorations(
-    state.groupDecorations,
-    groups.map((group) => group.id),
-  );
-  // A pinned or permanent tab lives in the sticky region, which sits outside
-  // every group, so grouping only reorders the flowing remainder.
-  const ordered = orderTabsByGroupMembership(
-    pinnedFirst,
-    groups,
-    groupMembership,
-    (tab) => tab.kind === 'entry' || isTabPinned(pinnedTabIds, tab.id),
-  );
   return {
-    tabs: ordered,
-    activeTabId: activeTabId || ordered[0]!.id,
-    pinnedTabIds,
-    groups,
-    groupMembership,
-    groupDecorations,
+    tabs,
+    activeTabId: activeTabId || tabs[0]!.id,
   };
 }
 
@@ -514,20 +403,13 @@ function pulseTabDragHaptic(durationMs = TAB_DRAG_HAPTIC_MS) {
 
 function reviveTabsState(value: unknown): WorkspaceTabsState | null {
   if (value === null || typeof value !== 'object') return null;
-  const stored = parseStoredWorkspaceTabsPayload(JSON.stringify(value));
-  if (!stored) return null;
-  const tabs = stored.tabs
-    .map(reviveTab)
-    .filter((tab): tab is WorkspaceChromeTab => tab !== null);
+  const record = value as Record<string, unknown>;
+  const tabs = Array.isArray(record.tabs)
+    ? record.tabs.map(reviveTab).filter((tab): tab is WorkspaceChromeTab => tab !== null)
+    : [];
   if (tabs.length === 0) return null;
-  return normalizeTabsState({
-    tabs,
-    activeTabId: stored.activeTabId || tabs[0]!.id,
-    pinnedTabIds: stored.pinnedTabIds,
-    groups: stored.groups,
-    groupMembership: stored.groupMembership,
-    groupDecorations: stored.groupDecorations,
-  });
+  const activeTabId = typeof record.activeTabId === 'string' ? record.activeTabId : '';
+  return normalizeTabsState({ tabs, activeTabId: activeTabId || tabs[0]!.id });
 }
 
 function readPersistedTabsStore(): PersistedWorkspaceTabsStore {
@@ -670,7 +552,6 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     }
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
-      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -705,7 +586,6 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
     if (currentActive && currentActive.kind === 'entry') {
       const nextTab = tabFromRoute(route, timestamp);
       return normalizeTabsState({
-        ...current,
         tabs: [...current.tabs, nextTab],
         activeTabId: nextTab.id,
       });
@@ -715,7 +595,6 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   if (!currentActive) {
     const nextTab = tabFromRoute(route, timestamp);
     return normalizeTabsState({
-      ...current,
       tabs: [...current.tabs, nextTab],
       activeTabId: nextTab.id,
     });
@@ -729,7 +608,7 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
   const nextTabs = current.tabs.map((tab) =>
     tab.id === currentActive.id ? replacement : tab,
   );
-  return normalizeTabsState({ ...current, tabs: nextTabs, activeTabId: replacement.id });
+  return normalizeTabsState({ tabs: nextTabs, activeTabId: replacement.id });
 }
 
 function accountBucketForScope(scopeKey: string): string {
@@ -767,30 +646,6 @@ function shouldRehomeAuthorizedProjectAfterSignIn({
   );
 }
 
-interface TabContextMenuState {
-  tabId: string;
-  x: number;
-  y: number;
-}
-
-/** Shift+right-click never reaches this: it opens the appearance editor
- *  directly, so this state only ever describes the full menu. */
-interface GroupContextMenuState {
-  groupId: string;
-  x: number;
-  y: number;
-}
-
-interface GroupAppearanceTarget {
-  groupId: string;
-  anchor: DOMRect;
-}
-
-const HOVER_PREVIEW_DELAY_MS = 380;
-const TAB_CONTEXT_MENU_WIDTH = 208;
-const GROUP_CONTEXT_MENU_WIDTH = 232;
-/** Rows a bulk-close preview shows before it says "and N more". */
-const BULK_CLOSE_PREVIEW_LIMIT = 12;
 
 /** Corner home glyph (per product: the brand tile gave way to a plain home
  *  icon). `currentColor` so it follows the button's muted/hover ink. */
@@ -802,114 +657,6 @@ function ChromeHomeGlyph() {
   );
 }
 
-interface TabGroupMovePickerProps {
-  groups: readonly WorkspaceTabGroup[];
-  membership: TabGroupMembership;
-  currentGroupId: string | null;
-  onMove: (groupId: string | null) => void;
-  onCreate: () => void;
-  onClose: () => void;
-  anchor: { x: number; y: number };
-}
-
-/**
- * The tab context menu has one Move… entry, never one menu row per group.
- * This bounded picker owns its own plain-text/regex field and reports the
- * group's visible name, colour and member count before the move is committed.
- */
-function TabGroupMovePicker({
-  groups,
-  membership,
-  currentGroupId,
-  onMove,
-  onCreate,
-  onClose,
-  anchor,
-}: TabGroupMovePickerProps) {
-  const t = useT();
-  const [query, setQuery] = useState('');
-  const search = useRegexSearch(query, setQuery);
-  const memberCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    Object.values(membership).forEach((groupId) => {
-      if (groupId) counts.set(groupId, (counts.get(groupId) ?? 0) + 1);
-    });
-    return counts;
-  }, [membership]);
-  const filteredGroups = useMemo(
-    () => groups.filter((group) => search.matches(tabGroupDisplayName(group, t('workspaceTabs.groupUntitled')))),
-    [groups, search, t],
-  );
-
-  return createPortal(
-    <div
-      className={styles.groupMovePicker}
-      role="dialog"
-      aria-label={t('workspaceTabs.groupMoveTabHeading')}
-      style={{ left: Math.min(anchor.x, window.innerWidth - 332), top: Math.min(anchor.y, window.innerHeight - 540) }}
-    >
-      <div className={styles.groupMovePickerHeader}>
-        <strong>{t('workspaceTabs.groupMoveTabHeading')}</strong>
-        <button type="button" className={styles.contextMenuClose} aria-label={t('common.close')} onClick={onClose}>
-          <Icon name="close" size={14} aria-hidden />
-        </button>
-      </div>
-      <RegexSearchField
-        search={search}
-        fieldLabel={t('workspaceTabs.groupMoveTabHeading')}
-        ariaLabel={t('common.search')}
-        placeholder={t('common.search')}
-        hostClassName={styles.groupMovePickerSearch}
-        testId="workspace-tabs-group-move-search"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            onClose();
-          }
-        }}
-      />
-      <div className={styles.groupMovePickerList} role="listbox" aria-label={t('workspaceTabs.groupMoveTabHeading')}>
-        <button
-          type="button"
-          role="option"
-          aria-selected={currentGroupId === null}
-          className={styles.contextMenuItem}
-          onClick={() => onMove(null)}
-        >
-          <Icon name="minus" size={13} aria-hidden />
-          <span>{t('workspaceTabs.groupNone')}</span>
-        </button>
-        {filteredGroups.map((group) => {
-          const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
-          return (
-            <button
-              type="button"
-              role="option"
-              aria-selected={currentGroupId === group.id}
-              className={styles.contextMenuItem}
-              key={group.id}
-              onClick={() => onMove(group.id)}
-            >
-              <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
-              <span className={styles.groupMovePickerName}>{name}</span>
-              <span className={styles.groupMovePickerCount}>{memberCounts.get(group.id) ?? 0}</span>
-            </button>
-          );
-        })}
-        {groups.length === 0 ? <p className={styles.contextMenuNote}>{t('workspaceTabs.groupNoneYet')}</p> : null}
-        {groups.length > 0 && filteredGroups.length === 0 ? (
-          <p className={styles.contextMenuNote}>{t('homeHero.footer.noMatches')}</p>
-        ) : null}
-      </div>
-      <button type="button" className={styles.contextMenuItem} onClick={onCreate}>
-        <Icon name="plus" size={13} aria-hidden />
-        <span>{t('workspaceTabs.groupNewFromTab')}</span>
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
 export function WorkspaceTabsBar({
   route,
   projects,
@@ -918,8 +665,6 @@ export function WorkspaceTabsBar({
   identityScopeKey,
 }: Props) {
   const t = useT();
-  const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
-  const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
   const [persistedTabsStore] = useState(readPersistedTabsStore);
   const [state, setState] = useState<WorkspaceTabsState>(
     () => initialTabsState(route, persistedTabsStore, identityScopeKey),
@@ -939,6 +684,17 @@ export function WorkspaceTabsBar({
   // #5517 corner fan: the "+" button opens a corner-anchored radial menu of
   // template wedges instead of immediately spawning a home tab.
   const [radialMenu, setRadialMenu] = useState<{ x: number; y: number } | null>(null);
+  // Docked-mode white dropdown (project route): open state of its tab list.
+  const [dockMenuOpen, setDockMenuOpen] = useState(false);
+  // Most-recently-activated tab ids, newest first — the dropdown lists tabs
+  // in this order (最近打开的在前). Session-local: falls back to strip order
+  // for tabs never activated since launch.
+  const tabMruRef = useRef<string[]>([]);
+  useEffect(() => {
+    const id = state.activeTabId;
+    if (!id) return;
+    tabMruRef.current = [id, ...tabMruRef.current.filter((x) => x !== id)].slice(0, 50);
+  }, [state.activeTabId]);
   const [radialHoverId, setRadialHoverId] = useState<string | null>(null);
   useEffect(() => {
     if (!radialMenu) setRadialHoverId(null);
@@ -958,18 +714,7 @@ export function WorkspaceTabsBar({
     };
   }, [radialMenu]);
   const [tabsOverflowing, setTabsOverflowing] = useState(false);
-  const [tabContextMenu, setTabContextMenu] = useState<TabContextMenuState | null>(null);
-  const [bulkCloseOpen, setBulkCloseOpen] = useState(false);
-  const [bulkCloseQuery, setBulkCloseQuery] = useState('');
-  const [bulkCloseMode, setBulkCloseMode] = useState<BulkCloseMatchMode>('text');
-  const [bulkCloseCaseSensitive, setBulkCloseCaseSensitive] = useState(false);
-  const [bulkCloseIncludePinned, setBulkCloseIncludePinned] = useState(false);
-  const [bulkCloseDirection, setBulkCloseDirection] = useState<BulkCloseDirection>('containing');
   const stripRef = useRef<HTMLDivElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const popoverRef = useRef<HTMLDivElement | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement | null>(null);
-  const hoverTimerRef = useRef<number | null>(null);
   const previousOnboardingCompletedRef = useRef(onboardingCompleted);
   const resetEntryToHomeAfterOnboardingRef = useRef(false);
   const dragSuppressClickRef = useRef(false);
@@ -977,25 +722,6 @@ export function WorkspaceTabsBar({
   const dragHapticTargetRef = useRef<string | null>(null);
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<TabDragTarget | null>(null);
-  const [groupContextMenu, setGroupContextMenu] = useState<GroupContextMenuState | null>(null);
-  const [groupMoveTabId, setGroupMoveTabId] = useState<string | null>(null);
-  const [groupMoveAnchor, setGroupMoveAnchor] = useState<{ x: number; y: number } | null>(null);
-  const [groupAppearanceTarget, setGroupAppearanceTarget] =
-    useState<GroupAppearanceTarget | null>(null);
-  /**
-   * A tab a discovery search asked to show while its group is collapsed.
-   *
-   * It is deliberately NOT `toggleTabGroupCollapsed`. The collapsed state is a
-   * preference the user set; a search result is permission to see one tab, not
-   * permission to throw that preference away. So the strip renders exactly this
-   * tab out of an otherwise still-collapsed group, and the group is still
-   * collapsed the moment the reveal is cleared.
-   */
-  const [revealedTabId, setRevealedTabId] = useState<string | null>(null);
-  const groupContextMenuRef = useRef<HTMLDivElement | null>(null);
-  /** This window's publisher id for the master search. See `windowRegistry`. */
-  const windowIdRef = useRef<string>('');
-  if (!windowIdRef.current) windowIdRef.current = createWorkspaceTabWindowId();
   // recvq5eKj2kdF0: `projects` is the Home view's own fetch (recent/drafts,
   // capped) — navigating Home refetches and REPLACES it (App.tsx's
   // reconcileFetchedProjects), which drops any project that is open in a
@@ -1096,9 +822,11 @@ export function WorkspaceTabsBar({
   // both the "+" button and the Cmd/Ctrl+T shortcut from one place.
   const onboardingActive = route.kind === 'home' && route.view === 'onboarding';
 
-  // The pinned Home tab is also the project-wide rail affordance. EntryShell
-  // owns the actual width; this sibling only mirrors its state and sends the
-  // shared toggle event, so the control stays available on project routes.
+  // Mirror of EntryShell's entry nav-rail open state, only used to reflect it
+  // on the pinned Home tab's sidebar toggle (aria-expanded). EntryShell owns
+  // the state and broadcasts changes as a window event because it renders in a
+  // sibling React tree; the localStorage seed covers the frames before the
+  // first broadcast arrives.
   const [entryRailOpen, setEntryRailOpen] = useState<boolean>(readStoredRailOpen);
   useEffect(() => {
     const onRailState = (event: Event) => {
@@ -1113,6 +841,20 @@ export function WorkspaceTabsBar({
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   );
+
+  // Project-route dock (workspaceTabsDock.ts): when ProjectView registers a
+  // dock element at the top of the chat column, the strip portals there and
+  // the full-width chrome row collapses (`is-docked` + the :has() row rule in
+  // routines.css). Whenever no dock exists — home/marketplace, focus mode —
+  // the strip renders in the chrome row as before.
+  const [tabsDockEl, setTabsDockEl] = useState<HTMLElement | null>(() => getWorkspaceTabsDock());
+  useEffect(
+    () => subscribeWorkspaceTabsDock(() => setTabsDockEl(getWorkspaceTabsDock())),
+    [],
+  );
+  useEffect(() => {
+    if (!tabsDockEl) setDockMenuOpen(false);
+  }, [tabsDockEl]);
 
   // Refresh the fallback cache from whatever this fetch actually returned,
   // before `displayTabFor` below reads it — same render pass, so a tab
@@ -1130,82 +872,6 @@ export function WorkspaceTabsBar({
     () => new Map(displayTabs.map((tab) => [tab.id, tab])),
     [displayTabs],
   );
-  // The strip's regions. `normalizeTabsState` has already ordered `state.tabs`
-  // as permanent → pinned → grouped (in group order) → ungrouped, so these are
-  // partitions, not sorts: the sticky container simply takes the leading run,
-  // and every group's members are already contiguous.
-  const stickyTabs = useMemo(
-    () => state.tabs.filter(
-      (tab) => tab.kind === 'entry' || isTabPinned(state.pinnedTabIds, tab.id),
-    ),
-    [state.tabs, state.pinnedTabIds],
-  );
-  const flowTabs = useMemo(
-    () => state.tabs.filter(
-      (tab) => tab.kind !== 'entry' && !isTabPinned(state.pinnedTabIds, tab.id),
-    ),
-    [state.tabs, state.pinnedTabIds],
-  );
-
-  const groups = useMemo(() => state.groups ?? [], [state.groups]);
-  const groupPartition = useMemo(
-    () => partitionTabsByGroup(flowTabs, groups, state.groupMembership),
-    [flowTabs, groups, state.groupMembership],
-  );
-
-  /** Tabs that are visible in the strip right now, in strip order. Roving focus
-   *  walks exactly this list, so a tab hidden inside a collapsed group is
-   *  skipped rather than being a focus stop nobody can see. */
-  const focusableTabIds = useMemo(() => {
-    const ids = stickyTabs.map((tab) => tab.id);
-    for (const section of groupPartition.sections) {
-      if (!section.group.collapsed) {
-        ids.push(...section.tabs.map((tab) => tab.id));
-        continue;
-      }
-      // A revealed tab is shown out of a collapsed group without expanding it,
-      // so it is focusable while it is on screen.
-      ids.push(...section.tabs.filter((tab) => tab.id === revealedTabId).map((tab) => tab.id));
-    }
-    ids.push(...groupPartition.ungrouped.map((tab) => tab.id));
-    return ids;
-  }, [stickyTabs, groupPartition, revealedTabId]);
-
-  // ---- bulk close ----------------------------------------------------------
-  // One matcher, two directions. `planBulkClose` is where the negation lives,
-  // so "containing" and "not containing" cannot end up with different casing,
-  // different flags, or a different idea of which tabs were even considered.
-  const bulkCloseCandidates = useMemo(
-    () => displayTabs.map((display) => ({
-      id: display.id,
-      // The visible label, and only the visible label. A bulk close that
-      // matched on hidden data would be unreviewable by construction.
-      label: display.title,
-      pinned: isTabPinned(state.pinnedTabIds, display.id),
-      permanent: display.tab.kind === 'entry',
-      display,
-    })),
-    [displayTabs, state.pinnedTabIds],
-  );
-
-  const bulkCloseMatcher = useMemo(
-    () => compileBulkCloseMatcher({
-      query: bulkCloseQuery,
-      mode: bulkCloseMode,
-      caseSensitive: bulkCloseCaseSensitive,
-    }),
-    [bulkCloseQuery, bulkCloseMode, bulkCloseCaseSensitive],
-  );
-
-  const bulkClosePlan = useMemo(
-    () => (bulkCloseMatcher.ok
-      ? planBulkClose(bulkCloseCandidates, bulkCloseMatcher, bulkCloseDirection, {
-          includePinned: bulkCloseIncludePinned,
-        })
-      : null),
-    [bulkCloseCandidates, bulkCloseMatcher, bulkCloseDirection, bulkCloseIncludePinned],
-  );
-
   useEffect(() => {
     if (identityScopeKey === null) return;
     const pendingScopeRoute = pendingScopeRouteRef.current;
@@ -1472,7 +1138,6 @@ export function WorkspaceTabsBar({
         }
         const nextTab = tabFromRoute(nextRoute);
         return normalizeTabsState({
-          ...normalized,
           tabs: [...normalized.tabs, nextTab],
           activeTabId: nextTab.id,
         });
@@ -1559,128 +1224,6 @@ export function WorkspaceTabsBar({
   }, [state.activeTabId, state.tabs.length]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, serializeWorkspaceTabsPayload(state));
-    } catch {
-      // Best-effort browser chrome state. Navigation itself remains URL-driven.
-    }
-  }, [state]);
-
-  // Publish this window's strip for the master search in every OTHER window.
-  // Republished on every state change and on a heartbeat, so a window that is
-  // idle but alive never ages past the TTL and vanishes from a search that is
-  // looking straight at it. Removed on unmount, so an orderly close is instant
-  // rather than waiting the TTL out.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const windowId = windowIdRef.current;
-    const publish = () => {
-      publishWorkspaceTabWindowSnapshot(window.localStorage, {
-        windowId,
-        stripId: 'workspace',
-        updatedAt: Date.now(),
-        tabs: displayTabs.map((display) => {
-          const group = findTabGroup(groups, groupIdForTab(state.groupMembership, display.id));
-          return {
-            id: display.id,
-            title: display.title,
-            meta: display.meta,
-            pinned: isTabPinned(state.pinnedTabIds, display.id),
-            active: display.id === state.activeTabId,
-            groupId: group?.id ?? null,
-            groupName: group ? group.name : null,
-            groupCollapsed: group?.collapsed === true,
-          };
-        }),
-      });
-    };
-    publish();
-    const timer = window.setInterval(publish, WORKSPACE_TAB_WINDOW_HEARTBEAT_MS);
-    return () => window.clearInterval(timer);
-  }, [displayTabs, groups, state.groupMembership, state.pinnedTabIds, state.activeTabId]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const windowId = windowIdRef.current;
-    const drop = () => removeWorkspaceTabWindowSnapshot(window.localStorage, windowId);
-    window.addEventListener('pagehide', drop);
-    return () => {
-      window.removeEventListener('pagehide', drop);
-      drop();
-    };
-  }, []);
-
-  // A revealed tab is a temporary window into a collapsed group. Clear it once
-  // the group is no longer collapsed, or once the tab is gone, so the strip
-  // never keeps a stale exception around.
-  useEffect(() => {
-    if (!revealedTabId) return;
-    const group = findTabGroup(groups, groupIdForTab(state.groupMembership, revealedTabId));
-    const stillHidden = group !== null && group.collapsed
-      && state.tabs.some((tab) => tab.id === revealedTabId);
-    if (!stillHidden) setRevealedTabId(null);
-  }, [revealedTabId, groups, state.groupMembership, state.tabs]);
-
-  // The group context menu dismisses on exactly the same events as the tab one.
-  useEffect(() => {
-    if (!groupContextMenu) return;
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (groupContextMenuRef.current?.contains(target)) return;
-      setGroupContextMenu(null);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setGroupContextMenu(null);
-    }
-    const dismiss = () => setGroupContextMenu(null);
-    document.addEventListener('mousedown', onPointerDown, true);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', dismiss);
-    window.addEventListener('blur', dismiss);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown, true);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', dismiss);
-      window.removeEventListener('blur', dismiss);
-    };
-  }, [groupContextMenu]);
-
-  useEffect(() => {
-    if (!groupContextMenu) return;
-    const frame = window.requestAnimationFrame(() => {
-      groupContextMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [groupContextMenu]);
-
-  useEffect(() => {
-    if (!tabsMenuOpen) return;
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      const insideTrigger = menuRef.current?.contains(target) ?? false;
-      // The popover is rendered through a portal into document.body to
-      // escape the `contain: layout` containment block on
-      // `.workspace-tabs-strip` (which would otherwise resolve our
-      // fixed positioning against the strip instead of the viewport).
-      // The portaled node is outside menuRef's subtree, so we also have
-      // to count clicks inside it as "inside the menu".
-      const insidePopover = popoverRef.current?.contains(target) ?? false;
-      if (!insideTrigger && !insidePopover) {
-        setTabsMenuOpen(false);
-      }
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setTabsMenuOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onPointerDown, true);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown, true);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [tabsMenuOpen]);
     const pending = pendingScopeStateRef.current;
     if (pending) {
       // Effects from the render that observed a NEW scope still close over the
@@ -1696,43 +1239,6 @@ export function WorkspaceTabsBar({
       state,
     );
   }, [state, identityScopeKey, persistedTabsStore]);
-
-  // The tab context menu dismisses on Escape, on any outside press, and on a
-  // scroll or resize — it is positioned from a pointer event, so leaving it
-  // anchored to a coordinate the layout has moved out from under would leave it
-  // floating over unrelated chrome.
-  useEffect(() => {
-    if (!tabContextMenu) return;
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node;
-      if (contextMenuRef.current?.contains(target)) return;
-      setTabContextMenu(null);
-    }
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setTabContextMenu(null);
-    }
-    const dismiss = () => setTabContextMenu(null);
-    document.addEventListener('mousedown', onPointerDown, true);
-    document.addEventListener('keydown', onKeyDown);
-    window.addEventListener('resize', dismiss);
-    window.addEventListener('blur', dismiss);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown, true);
-      document.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('resize', dismiss);
-      window.removeEventListener('blur', dismiss);
-    };
-  }, [tabContextMenu]);
-
-  // Move focus into the menu when it opens so it is operable from the keyboard
-  // the moment it appears, and not only by pointer.
-  useEffect(() => {
-    if (!tabContextMenu) return;
-    const frame = window.requestAnimationFrame(() => {
-      contextMenuRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [tabContextMenu]);
 
   useEffect(() => {
     function onWorkspaceTabShortcut(event: KeyboardEvent) {
@@ -1798,21 +1304,6 @@ export function WorkspaceTabsBar({
   }, [state]);
 
   function activateTab(tab: WorkspaceChromeTab) {
-    // Spread the normalized state rather than rebuilding two of its three
-    // fields: dropping `pinnedTabIds` here would unpin the workspace every time
-    // the user changed tab.
-    setState((current) => {
-      const normalized = normalizeTabsState(current);
-      return {
-        ...normalized,
-        tabs: normalized.tabs.map((item) =>
-          item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
-        ),
-        activeTabId: tab.id,
-      };
-    });
-    setTabsMenuOpen(false);
-    dismissHoverPreview();
     setState((current) => ({
       tabs: normalizeTabsState(current).tabs.map((item) =>
         item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
@@ -1956,7 +1447,6 @@ export function WorkspaceTabsBar({
     } else {
       const tab = createEntryTab('home');
       setState({
-        ...normalized,
         tabs: [...normalized.tabs, tab],
         activeTabId: tab.id,
       });
@@ -1984,7 +1474,7 @@ export function WorkspaceTabsBar({
     } else {
       const replacement = nextTabs[Math.min(closingIndex, nextTabs.length - 1)] ?? nextTabs[0]!;
       nextRoute = routeForTab(replacement);
-      nextState = { ...normalized, tabs: nextTabs, activeTabId: replacement.id };
+      nextState = { tabs: nextTabs, activeTabId: replacement.id };
     }
     setState(nextState);
     if (nextRoute) navigate(nextRoute);
@@ -1994,69 +1484,32 @@ export function WorkspaceTabsBar({
     setState((current) => {
       const normalized = normalizeTabsState(current);
       const tabs = reorderTabsById(normalized.tabs, sourceId, targetId, edge);
-      // A drop onto a tab in another group moves the dragged tab into that
-      // group — including into no group, when the target is ungrouped. Done
-      // here rather than in `handleStripDrop` so the live drag-over preview and
-      // the committed drop cannot disagree about where the tab lands.
-      const targetGroupId = groupIdForTab(normalized.groupMembership, targetId);
-      const sourceGroupId = groupIdForTab(normalized.groupMembership, sourceId);
-      const groupChanged = targetGroupId !== sourceGroupId;
-      if (tabs === normalized.tabs && !groupChanged) return normalized;
+      if (tabs === normalized.tabs) return normalized;
       // Re-normalize so the Home tab is re-pinned to the leftmost slot even when
       // a drop would otherwise have placed a tab before it. Home is the one
       // permanent, non-closable tab and must always sit first.
-      return normalizeTabsState({
-        ...normalized,
-        tabs,
-        groupMembership: groupChanged
-          ? assignTabToGroup(normalized.groupMembership, sourceId, targetGroupId)
-          : normalized.groupMembership,
-      });
+      return normalizeTabsState({ ...normalized, tabs });
     });
-  }
-
-  /** Drop onto a group header: the tab joins that group and lands at its end. */
-  function dropTabIntoGroup(sourceId: string, groupId: string | null) {
-    dismissHoverPreview();
-    updateGroups((current) => ({
-      groupMembership: assignTabToGroup(current.groupMembership, sourceId, groupId),
-    }));
   }
 
   function findTabDropTarget(event: DragEvent<HTMLElement>, sourceId: string): TabDragTarget | null {
     const strip = stripRef.current;
     if (!strip) return null;
 
-    // A drag may only reorder WITHIN its own region. The strip has three, in
-    // this order: the permanent entry tab, the pinned tabs, then the rest. A
-    // target in another region is skipped rather than coerced, so the live drop
-    // indicator says exactly what the drop will do — `normalizeTabsState` would
-    // re-sort a cross-region drop straight back, and an indicator that promises
-    // a move which then does not happen is worse than no indicator.
-    //
-    // This also subsumes the old "never drop before the entry tab" rule: the
-    // entry tab is the only member of its region, so nothing can target it.
-    const regionOf = (tabId: string): 'permanent' | 'pinned' | 'flow' => {
-      if (state.tabs.find((tab) => tab.id === tabId)?.kind === 'entry') return 'permanent';
-      return isTabPinned(state.pinnedTabIds, tabId) ? 'pinned' : 'flow';
-    };
-    const sourceRegion = regionOf(sourceId);
-    // Within the flowing region, a drop onto a tab in ANOTHER group is allowed
-    // and means what it looks like: the dragged tab joins that group. This is
-    // the pointer half of "move tabs into, out of and between groups" — the
-    // keyboard half is the tab context menu. The pinned and permanent regions
-    // stay closed, because `normalizeTabsState` would re-sort a cross-region
-    // drop straight back and an indicator that promises a move which then does
-    // not happen is worse than no indicator.
-    const sameRegion = (tabId: string) => regionOf(tabId) === sourceRegion;
+    // The single entry tab is pinned leftmost: never expose a drop target that
+    // would place another tab before it. Coerce any 'before entry' edge to
+    // 'after entry' so the live drag indicator and persisted order keep it first.
+    const entryTabId = state.tabs.find((tab) => tab.kind === 'entry')?.id;
+    const resolveTarget = (target: TabDragTarget): TabDragTarget =>
+      target.tabId === entryTabId && target.edge === 'before'
+        ? { tabId: target.tabId, edge: 'after' }
+        : target;
 
     const eventTarget = event.target;
     if (eventTarget instanceof HTMLElement) {
       const tabElement = eventTarget.closest<HTMLElement>('[data-workspace-tab-id]');
       if (tabElement && strip.contains(tabElement)) {
         const tabId = tabElement.dataset.workspaceTabId;
-        if (tabId && tabId !== sourceId && sameRegion(tabId)) {
-          return { tabId, edge: tabDropEdgeFromElement(event, tabElement) };
         if (tabId && tabId !== sourceId) {
           return resolveTarget({ tabId, edge: tabDropEdgeFromElement(event, strip, tabElement) });
         }
@@ -2066,10 +1519,6 @@ export function WorkspaceTabsBar({
     let lastTarget: TabDragTarget | null = null;
     for (const tabElement of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
       const tabId = tabElement.dataset.workspaceTabId;
-      if (!tabId || tabId === sourceId || !sameRegion(tabId)) continue;
-      const rect = tabElement.getBoundingClientRect();
-      if (event.clientX <= rect.left + rect.width / 2) return { tabId, edge: 'before' };
-      if (event.clientX <= rect.right) return { tabId, edge: 'after' };
       if (!tabId || tabId === sourceId) continue;
       const span = tabLayoutSpan(strip, tabElement);
       if (event.clientX <= span.mid) return resolveTarget({ tabId, edge: 'before' });
@@ -2077,171 +1526,6 @@ export function WorkspaceTabsBar({
       lastTarget = { tabId, edge: 'after' };
     }
     return lastTarget;
-  }
-
-  function setTabPinned(tabId: string, pinned: boolean) {
-    setState((current) => {
-      const normalized = normalizeTabsState(current);
-      const tab = normalized.tabs.find((item) => item.id === tabId);
-      // The entry tab is already permanent and already leftmost; pinning it
-      // would put it in a second region and duplicate its own guarantee.
-      if (!tab || tab.kind === 'entry') return normalized;
-      const pinnedTabIds = togglePinnedTabId(normalized.pinnedTabIds ?? [], tabId, pinned);
-      if (pinnedTabIds === normalized.pinnedTabIds) return normalized;
-      return normalizeTabsState({ ...normalized, pinnedTabIds });
-    });
-    dismissHoverPreview();
-    setTabContextMenu(null);
-  }
-
-  // ---- groups --------------------------------------------------------------
-  // Every mutation goes through `normalizeTabsState`, which is what reconciles
-  // membership against the tabs that actually exist and re-orders the strip so
-  // each group's members stay contiguous. None of them ever closes a tab: a
-  // group that is removed releases its tabs, it does not take them with it.
-
-  function updateGroups(
-    change: (current: WorkspaceTabsState) => Partial<WorkspaceTabsState>,
-  ) {
-    setState((current) => {
-      const normalized = normalizeTabsState(current);
-      return normalizeTabsState({ ...normalized, ...change(normalized) });
-    });
-  }
-
-  function createGroupWithTabs(tabIds: readonly string[] = []) {
-    const id = `group:${nowId()}`;
-    updateGroups((current) => {
-      const existing = current.groups ?? [];
-      const group = createTabGroup({ id, color: nextTabGroupColor(existing) });
-      let membership = current.groupMembership ?? {};
-      for (const tabId of tabIds) membership = assignTabToGroup(membership, tabId, id);
-      return { groups: [...existing, group], groupMembership: membership };
-    });
-    return id;
-  }
-
-  function renameGroup(groupId: string, name: string) {
-    updateGroups((current) => ({ groups: renameTabGroup(current.groups ?? [], groupId, name) }));
-  }
-
-  function recolorGroup(groupId: string, color: TabGroupColor) {
-    updateGroups((current) => ({ groups: setTabGroupColor(current.groups ?? [], groupId, color) }));
-  }
-
-  function toggleGroupCollapsed(groupId: string, next?: boolean) {
-    updateGroups((current) => ({
-      groups: toggleTabGroupCollapsed(current.groups ?? [], groupId, next),
-    }));
-  }
-
-  function reorderGroup(groupId: string, offset: number) {
-    updateGroups((current) => ({ groups: moveTabGroup(current.groups ?? [], groupId, offset) }));
-  }
-
-  function deleteGroup(groupId: string) {
-    updateGroups((current) => {
-      // `removeTabGroup` names its second field `membership`; the state's field is
-      // `groupMembership`. Mapping it explicitly rather than spreading is what
-      // stops the rename from being a silent no-op.
-      const next = removeTabGroup(current.groups ?? [], current.groupMembership, groupId);
-      return { groups: next.groups, groupMembership: next.membership };
-    });
-    setGroupContextMenu(null);
-    setGroupAppearanceTarget((target) => (target?.groupId === groupId ? null : target));
-  }
-
-  function moveTabToGroup(tabId: string, groupId: string | null) {
-    updateGroups((current) => ({
-      groupMembership: assignTabToGroup(current.groupMembership, tabId, groupId),
-    }));
-    setTabContextMenu(null);
-  }
-
-  function changeGroupDecoration<K extends TabGroupDecorationProperty>(
-    groupId: string,
-    property: K,
-    value: TabGroupDecoration[K] | undefined,
-  ) {
-    updateGroups((current) => ({
-      groupDecorations: setTabGroupDecorationProperty(
-        current.groupDecorations,
-        groupId,
-        property,
-        value,
-      ),
-    }));
-  }
-
-  function resetGroupDecoration(groupId: string) {
-    updateGroups((current) => ({
-      groupDecorations: resetTabGroupDecoration(current.groupDecorations, groupId),
-    }));
-  }
-
-  /**
-   * Roving focus across the strip.
-   *
-   * Exactly one tab is in the tab order at a time (the active one), and the
-   * arrow keys move focus between the tabs that are actually on screen —
-   * `focusableTabIds` skips anything inside a collapsed group, because a focus
-   * stop the user cannot see is worse than no focus stop at all. Home and End
-   * jump to the ends, which is what a `tablist` is expected to do.
-   */
-  function handleTabKeyDown(tabId: string, event: React.KeyboardEvent<HTMLElement>) {
-    const ids = focusableTabIds;
-    const index = ids.indexOf(tabId);
-    if (index < 0) return;
-    let nextIndex: number | null = null;
-    if (event.key === 'ArrowRight') nextIndex = (index + 1) % ids.length;
-    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + ids.length) % ids.length;
-    else if (event.key === 'Home') nextIndex = 0;
-    else if (event.key === 'End') nextIndex = ids.length - 1;
-    if (nextIndex === null) return;
-    event.preventDefault();
-    const nextId = ids[nextIndex];
-    if (!nextId) return;
-    // Found by walking rather than by building a selector: a tab id is
-    // generated text, and one stray quote in an attribute selector throws
-    // rather than missing.
-    const strip = stripRef.current;
-    if (strip) {
-      for (const element of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
-        if (element.dataset.workspaceTabId !== nextId) continue;
-        element.querySelector<HTMLElement>('.workspace-tab__main')?.focus();
-        break;
-      }
-    }
-    const nextTab = state.tabs.find((tab) => tab.id === nextId);
-    if (nextTab) activateTab(nextTab);
-  }
-
-  /**
-   * Close a reviewed set of tabs in one gesture.
-   *
-   * Sequential `closeTab` calls would each read `state` — the render-time
-   * snapshot, not the accumulating result — so the second call would resurrect
-   * the tab the first removed. This computes the whole next state once.
-   */
-  function closeTabs(tabIds: readonly string[]) {
-    const doomed = new Set(tabIds);
-    if (doomed.size === 0) return;
-    dismissHoverPreview();
-    const normalized = normalizeTabsState(state);
-    const survivors = normalized.tabs.filter(
-      (tab) => tab.kind === 'entry' || !doomed.has(tab.id),
-    );
-    if (survivors.length === normalized.tabs.length) return;
-    const activeSurvives = survivors.some((tab) => tab.id === normalized.activeTabId);
-    const replacement = activeSurvives
-      ? survivors.find((tab) => tab.id === normalized.activeTabId)!
-      : survivors[survivors.length - 1]!;
-    setState(normalizeTabsState({
-      ...normalized,
-      tabs: survivors,
-      activeTabId: replacement.id,
-    }));
-    if (!activeSurvives) navigate(routeForTab(replacement));
   }
 
   function handleTabDragStart(tabId: string, event: DragEvent<HTMLDivElement>) {
@@ -2313,781 +1597,275 @@ export function WorkspaceTabsBar({
     }, 0);
   }
 
-  function openTabContextMenu(tabId: string, event: React.MouseEvent) {
-    event.preventDefault();
-    dismissHoverPreview();
-    setTabContextMenu({ tabId, x: event.clientX, y: event.clientY });
-  }
+  const dockPortal = (node: ReactNode) =>
+    tabsDockEl ? createPortal(node, tabsDockEl) : node;
 
-  /**
-   * Right-click on a group header.
-   *
-   * Plain right-click opens the full group menu, which carries **Edit group
-   * appearance…** among the rest. Shift+right-click skips the menu and opens
-   * that editor directly, anchored at the pointer — the platform can tell the
-   * modifier apart here, so the shortcut exists; the menu item is what makes it
-   * reachable when it cannot.
-   */
-  function openGroupContextMenu(groupId: string, event: React.MouseEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    dismissHoverPreview();
-    if (event.shiftKey) {
-      setGroupContextMenu(null);
-      setGroupAppearanceTarget({
-        groupId,
-        anchor: event.currentTarget instanceof HTMLElement
-          ? event.currentTarget.getBoundingClientRect()
-          : new DOMRect(event.clientX, event.clientY, 0, 0),
-      });
-      return;
-    }
-    setGroupContextMenu({ groupId, x: event.clientX, y: event.clientY });
-  }
-
-  function renderTabContextMenu(menu: TabContextMenuState) {
-    const tab = state.tabs.find((item) => item.id === menu.tabId);
-    if (!tab) return null;
-    const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
-    const pinned = isTabPinned(state.pinnedTabIds, tab.id);
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+  // Docked (project-route) presentation: one white dropdown spanning the chat
+  // column instead of the pill strip. The strip still renders (hidden by CSS)
+  // so its measurement/drag hooks keep their DOM.
+  const dockDropdownNode = (() => {
+    if (!tabsDockEl) return null;
+    const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId) ?? state.tabs[0];
+    if (!activeTab) return null;
+    const activeDisplay =
+      displayTabById.get(activeTab.id)
+        ?? displayTabFor(activeTab, projectById, t, knownProjectNamesRef.current);
+    const isEntryActive = activeTab.kind === 'entry';
+    // Most recently opened first. The active tab ranks first even before the
+    // MRU effect has run for it; never-activated tabs keep strip order after.
+    const mru = tabMruRef.current;
+    const mruRank = (tab: WorkspaceChromeTab): number => {
+      if (tab.id === state.activeTabId) return -1;
+      const index = mru.indexOf(tab.id);
+      return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+    };
+    const projectTabs = state.tabs
+      .filter((tab) => tab.kind !== 'entry')
+      .sort((a, b) => mruRank(a) - mruRank(b));
     return (
-      <div
-        className={styles.contextMenu}
-        style={{
-          left: Math.max(4, Math.min(viewportWidth - TAB_CONTEXT_MENU_WIDTH - 4, menu.x)),
-          top: Math.max(4, Math.min(viewportHeight - 160, menu.y)),
-          width: TAB_CONTEXT_MENU_WIDTH,
-        }}
-        role="menu"
-        aria-label={display.title}
-        ref={contextMenuRef}
-      >
-        {tab.kind === 'entry' ? (
-          <p className={styles.contextMenuNote}>{t('workspaceTabs.permanentTab')}</p>
-        ) : (
-          <>
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.contextMenuItem}
-              onClick={() => setTabPinned(tab.id, !pinned)}
-            >
-              <Icon name="star" size={13} aria-hidden />
-              <span>{pinned ? t('workspaceTabs.unpin') : t('workspaceTabs.pin')}</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.contextMenuItem}
-              onClick={() => {
-                setTabContextMenu(null);
-                closeTab(tab.id);
-              }}
-            >
-              <Icon name="close" size={13} aria-hidden />
-              <span>{t('common.close')}</span>
-            </button>
-          </>
-        )}
+      <div className="workspace-tabs-dropdown" data-testid="workspace-tabs-dropdown">
         <button
           type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          onClick={() => {
-            setTabContextMenu(null);
-            setTabsMenuOpen(true);
-            setBulkCloseOpen(true);
-          }}
+          className="workspace-tabs-dropdown__trigger"
+          aria-haspopup="listbox"
+          aria-expanded={dockMenuOpen}
+          onClick={() => setDockMenuOpen((v) => !v)}
+          data-testid="workspace-tabs-dropdown-trigger"
         >
-          <Icon name="search" size={13} aria-hidden />
-          <span>{t('workspaceTabs.bulkCloseTitle')}</span>
-        </button>
-        {tab.kind === 'entry' ? null : (
-          <>
-            <p className={styles.contextMenuNote}>{t('workspaceTabs.groupMoveTabHeading')}</p>
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.contextMenuItem}
-              onClick={() => {
-                setTabContextMenu(null);
-                setGroupMoveTabId(tab.id);
-                setGroupMoveAnchor({ x: menu.x, y: menu.y });
-              }}
-            >
-              <Icon name="folder" size={13} aria-hidden />
-              <span>{t('workspaceTabs.groupMoveTabHeading')}…</span>
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.contextMenuItem}
-              onClick={() => {
-                setTabContextMenu(null);
-                createGroupWithTabs([tab.id]);
-              }}
-            >
-              <Icon name="plus" size={13} aria-hidden />
-              <span>{t('workspaceTabs.groupNewFromTab')}</span>
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  function renderGroupContextMenu(menu: GroupContextMenuState) {
-    const group = groups.find((item) => item.id === menu.groupId);
-    if (!group) return null;
-    const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
-    const index = groups.findIndex((item) => item.id === group.id);
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
-    return (
-      <div
-        className={styles.contextMenu}
-        style={{
-          left: Math.max(4, Math.min(viewportWidth - GROUP_CONTEXT_MENU_WIDTH - 4, menu.x)),
-          top: Math.max(4, Math.min(viewportHeight - 200, menu.y)),
-          width: GROUP_CONTEXT_MENU_WIDTH,
-        }}
-        role="menu"
-        aria-label={name}
-        ref={groupContextMenuRef}
-      >
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          onClick={() => {
-            setGroupContextMenu(null);
-            toggleGroupCollapsed(group.id);
-          }}
-        >
-          <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={13} aria-hidden />
-          <span>
-            {group.collapsed
-              ? t('workspaceTabs.groupExpand')
-              : t('workspaceTabs.groupCollapse')}
+          <span className="workspace-tabs-dropdown__icon" aria-hidden>
+            <Icon name={isEntryActive ? 'home' : activeDisplay.icon} size={14} />
           </span>
+          <span className="workspace-tabs-dropdown__label">{activeDisplay.title}</span>
+          <Icon name="chevron-down" size={14} />
         </button>
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          disabled={index <= 0}
-          onClick={() => reorderGroup(group.id, -1)}
-        >
-          <Icon name="chevron-left" size={13} aria-hidden />
-          <span>{t('workspaceTabs.groupMoveEarlier')}</span>
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          disabled={index >= groups.length - 1}
-          onClick={() => reorderGroup(group.id, 1)}
-        >
-          <Icon name="chevron-right" size={13} aria-hidden />
-          <span>{t('workspaceTabs.groupMoveLater')}</span>
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          onClick={() => {
-            setGroupContextMenu(null);
-            setTabsMenuOpen(true);
-          }}
-        >
-          <Icon name="search" size={13} aria-hidden />
-          <span>{t('workspaceTabs.searchGroupsHeading')}</span>
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          onClick={() => {
-            setGroupContextMenu(null);
-            setGroupAppearanceTarget({
-              groupId: group.id,
-              anchor: new DOMRect(menu.x, menu.y, 0, 0),
-            });
-          }}
-        >
-          <Icon name="palette" size={13} aria-hidden />
-          <span>{t('workspaceTabs.groupEditAppearance')}</span>
-        </button>
-        <button
-          type="button"
-          role="menuitem"
-          className={styles.contextMenuItem}
-          onClick={() => deleteGroup(group.id)}
-        >
-          <Icon name="close" size={13} aria-hidden />
-          <span>{t('workspaceTabs.groupRemove')}</span>
-        </button>
-      </div>
-    );
-  }
-
-  /**
-   * Close-by-text, with its review step.
-   *
-   * The panel never runs on an empty query or a pattern that does not compile —
-   * both would be a way to close the whole workspace by pressing a button twice
-   * — and the button says exactly how many tabs it will close, next to a list of
-   * which ones. Anything the predicate selected but the plan refuses to close
-   * (a pinned tab, the permanent entry tab) is named underneath rather than
-   * quietly dropped, so the count and the outcome cannot disagree.
-   */
-  function renderBulkClosePanel() {
-    const plan = bulkClosePlan;
-    const previewRows = plan ? plan.close.slice(0, BULK_CLOSE_PREVIEW_LIMIT) : [];
-    const hiddenCount = plan ? plan.close.length - previewRows.length : 0;
-    const pinnedExcluded = plan
-      ? plan.excluded.filter((entry) => entry.reason === 'pinned').length
-      : 0;
-    const permanentExcluded = plan
-      ? plan.excluded.filter((entry) => entry.reason === 'permanent').length
-      : 0;
-    const canRun = plan !== null && plan.close.length > 0;
-
-    let status: string;
-    if (!bulkCloseMatcher.ok) {
-      status = bulkCloseMatcher.reason === 'empty'
-        ? t('workspaceTabs.bulkCloseEmptyQuery')
-        : bulkCloseMatcher.reason === 'tooLong'
-          ? t('workspaceTabs.bulkCloseTooLong')
-          : t('workspaceTabs.bulkCloseInvalidPattern', {
-              detail: bulkCloseMatcher.detail ?? '',
-            });
-    } else if (!plan || plan.close.length === 0) {
-      status = t('workspaceTabs.bulkCloseNoMatches');
-    } else {
-      status = t('workspaceTabs.bulkClosePreview', { count: plan.close.length });
-    }
-
-    return (
-      <div className={styles.bulkClose}>
-        <button
-          type="button"
-          className={styles.bulkCloseToggle}
-          aria-expanded={bulkCloseOpen}
-          onClick={() => setBulkCloseOpen((open) => !open)}
-        >
-          <Icon name={bulkCloseOpen ? 'chevron-down' : 'chevron-right'} size={13} aria-hidden />
-          <span>{t('workspaceTabs.bulkCloseTitle')}</span>
-        </button>
-        {bulkCloseOpen ? (
-          <div className={styles.bulkCloseBody}>
-            <input
-              className={styles.bulkCloseInput}
-              value={bulkCloseQuery}
-              onChange={(event) => setBulkCloseQuery(event.target.value)}
-              placeholder={t('workspaceTabs.bulkCloseQueryLabel')}
-              aria-label={t('workspaceTabs.bulkCloseQueryLabel')}
-              aria-describedby="workspace-tabs-bulk-close-status"
-              spellCheck={false}
-            />
-            <div className={styles.bulkCloseRow} role="group" aria-label={t('workspaceTabs.matchMode')}>
-              {(['text', 'regex'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  className={`${styles.bulkCloseChip}${bulkCloseMode === mode ? ` ${styles.bulkCloseChipActive}` : ''}`}
-                  aria-pressed={bulkCloseMode === mode}
-                  onClick={() => setBulkCloseMode(mode)}
-                >
-                  {mode === 'text'
-                    ? t('workspaceTabs.bulkCloseModeText')
-                    : t('workspaceTabs.bulkCloseModeRegex')}
-                </button>
-              ))}
-              <button
-                type="button"
-                className={`${styles.bulkCloseChip}${bulkCloseCaseSensitive ? ` ${styles.bulkCloseChipActive}` : ''}`}
-                aria-pressed={bulkCloseCaseSensitive}
-                onClick={() => setBulkCloseCaseSensitive((value) => !value)}
-              >
-                {t('workspaceTabs.bulkCloseCaseSensitive')}
-              </button>
-              <button
-                type="button"
-                className={`${styles.bulkCloseChip}${bulkCloseIncludePinned ? ` ${styles.bulkCloseChipActive}` : ''}`}
-                aria-pressed={bulkCloseIncludePinned}
-                onClick={() => setBulkCloseIncludePinned((value) => !value)}
-              >
-                {t('workspaceTabs.bulkCloseIncludePinned')}
-              </button>
-            </div>
+        {dockMenuOpen ? (
+          <>
             <div
-              className={styles.bulkCloseRow}
-              role="group"
-              aria-label={t('workspaceTabs.bulkCloseTitle')}
-            >
-              {(['containing', 'notContaining'] as const).map((direction) => (
-                <button
-                  key={direction}
-                  type="button"
-                  className={`${styles.bulkCloseChip}${bulkCloseDirection === direction ? ` ${styles.bulkCloseChipActive}` : ''}`}
-                  aria-pressed={bulkCloseDirection === direction}
-                  onClick={() => setBulkCloseDirection(direction)}
-                >
-                  {direction === 'containing'
-                    ? t('workspaceTabs.bulkCloseContaining')
-                    : t('workspaceTabs.bulkCloseNotContaining')}
-                </button>
-              ))}
+              className="workspace-tabs-dropdown__backdrop"
+              onClick={() => setDockMenuOpen(false)}
+            />
+            <div className="workspace-tabs-dropdown__menu" role="listbox">
+              {projectTabs.map((tab) => {
+                const display =
+                  displayTabById.get(tab.id)
+                    ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
+                const active = tab.id === state.activeTabId;
+                return (
+                  <div
+                    key={tab.id}
+                    className={`workspace-tabs-dropdown__row${active ? ' is-active' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="workspace-tabs-dropdown__row-main"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => {
+                        setDockMenuOpen(false);
+                        openTab(tab);
+                      }}
+                    >
+                      <Icon name={display.icon} size={14} />
+                      <span className="workspace-tabs-dropdown__row-label">{display.title}</span>
+                      {active ? <Icon name="check" size={14} /> : null}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-            <p
-              className={styles.bulkCloseStatus}
-              id="workspace-tabs-bulk-close-status"
-              aria-live="polite"
-            >
-              {status}
-            </p>
-            {previewRows.length > 0 ? (
-              <ul className={styles.bulkClosePreview}>
-                {previewRows.map((candidate) => (
-                  <li key={candidate.id}>{candidate.label}</li>
-                ))}
-                {hiddenCount > 0 ? (
-                  <li className={styles.bulkCloseMore}>
-                    {t('workspaceTabs.bulkCloseMore', { count: hiddenCount })}
-                  </li>
-                ) : null}
-              </ul>
-            ) : null}
-            {pinnedExcluded > 0 ? (
-              <p className={styles.bulkCloseExcluded}>
-                {t('workspaceTabs.bulkCloseExcludedPinned', { count: pinnedExcluded })}
-              </p>
-            ) : null}
-            {permanentExcluded > 0 ? (
-              <p className={styles.bulkCloseExcluded}>
-                {t('workspaceTabs.bulkCloseExcludedPermanent', { count: permanentExcluded })}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              className={styles.bulkCloseConfirm}
-              disabled={!canRun}
-              onClick={() => {
-                if (!plan) return;
-                closeTabs(plan.close.map((candidate) => candidate.id));
-                setBulkCloseQuery('');
-              }}
-            >
-              {t('workspaceTabs.bulkCloseConfirm', { count: plan?.close.length ?? 0 })}
-            </button>
-          </div>
+          </>
         ) : null}
       </div>
     );
-  }
-
-  /**
-   * One tab. Extracted from the strip's map so the pinned region and the
-   * scrolling region render the same element rather than two drifting copies —
-   * the difference between them is `userPinned`, and nothing else.
-   */
-  function renderTab(tab: WorkspaceChromeTab, userPinned: boolean) {
-    const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
-    const active = tab.id === state.activeTabId;
-    // The single entry tab is permanent and pinned leftmost: it cannot be
-    // closed or dragged out of the first slot, whatever section it shows.
-    const isPinned = tab.kind === 'entry';
-    const dragOverClass =
-      dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
-        ? ` is-drag-over-${dragOverTarget.edge}`
-        : '';
-    // A user-pinned tab renders compact — icon only — so a row of them costs
-    // little of the strip. The full name is still the button's accessible name
-    // and its tooltip, so nothing is lost to anyone reading it with the
-    // keyboard, a screen reader or a pointer.
-    const compactClass = userPinned ? ' is-user-pinned' : '';
-    return (
-      <div
-        key={tab.id}
-        className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}${compactClass}`}
-        data-workspace-tab-id={tab.id}
-        data-workspace-tab-pinned={userPinned ? 'true' : undefined}
-        // Read by `.groupSection [data-workspace-tab-revealed='true']` in the
-        // module stylesheet, which is what visibly marks a tab that a search
-        // pulled out of a still-collapsed group.
-        data-workspace-tab-revealed={revealedTabId === tab.id ? 'true' : undefined}
-        // `role="presentation"` here and `role="tab"` on the button below. The
-        // tab is the thing that takes focus, so it has to BE the focusable
-        // element; a `role="tab"` wrapper around a button gives the tablist a
-        // tab that focus never lands on and a button the tablist does not know
-        // about. The close control stays outside the tab role for the same
-        // reason — a `tab` must not own another interactive element.
-        role="presentation"
-        draggable={!isPinned && state.tabs.length > 1}
-        onDragStart={(event) => handleTabDragStart(tab.id, event)}
-        onDragEnd={handleTabDragEnd}
-        onContextMenu={(event) => openTabContextMenu(tab.id, event)}
-        onMouseEnter={(event) => scheduleHoverPreview(tab.id, event.currentTarget)}
-        onMouseLeave={dismissHoverPreview}
-      >
-        {isPinned && active && tab.view === 'home' ? (
-          <button
-            type="button"
-            className="workspace-tab__rail-toggle od-tooltip"
-            aria-label={entryRailOpen ? t('entry.navHome') : t('entry.navExpand')}
-            aria-expanded={entryRailOpen}
-            title={entryRailOpen ? t('entry.navHome') : t('entry.navExpand')}
-            data-tooltip={entryRailOpen ? undefined : t('entry.navExpand')}
-            data-tooltip-placement="bottom"
-            data-testid="workspace-home-rail-toggle"
-            onClick={() => {
-              if (!entryRailOpen) {
-                window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-              }
-            }}
-          >
-            <ChromeHomeGlyph />
-          </button>
-        ) : isPinned && active ? (
-          <button
-            type="button"
-            className="workspace-tab__rail-toggle od-tooltip"
-            aria-label={t('entry.navHome')}
-            title={t('entry.navHome')}
-            data-tooltip={t('entry.navHome')}
-            data-tooltip-placement="bottom"
-            data-testid="workspace-home-nav"
-            onClick={() => openTab(tab)}
-          >
-            <ChromeHomeGlyph />
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              className="workspace-tab__main od-tooltip"
-              id={`workspace-tab-${tab.id}`}
-              role="tab"
-              aria-selected={active}
-              aria-controls={WORKSPACE_TAB_PANEL_ID}
-              aria-describedby={hoverPreview?.tabId === tab.id ? 'workspace-tab-preview' : undefined}
-              tabIndex={active ? 0 : -1}
-              onKeyDown={(event) => handleTabKeyDown(tab.id, event)}
-              onClick={() => openTab(tab)}
-              aria-label={userPinned ? display.title : undefined}
-              title={display.title}
-              data-tooltip={userPinned ? display.title : undefined}
-              data-tooltip-placement="bottom"
-              onFocus={(event) => scheduleHoverPreview(tab.id, event.currentTarget.parentElement ?? event.currentTarget)}
-              onBlur={dismissHoverPreview}
-            >
-              <span className="workspace-tab__icon" aria-hidden>
-                <Icon name={display.icon} size={14} />
-              </span>
-              <span className="workspace-tab__label">{display.title}</span>
-            </button>
-          </>
-        )}
-        {isPinned || userPinned ? null : (
-          <button
-            type="button"
-            className="workspace-tab__close od-tooltip"
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            data-tooltip={t('common.close')}
-            data-tooltip-placement="bottom"
-            onClick={() => closeTab(tab.id)}
-          >
-            <Icon name="close" size={10} />
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  /**
-   * One group: its header, then its members.
-   *
-   * The header is a `presentation` wrapper around a real button, exactly as a
-   * tab is, so the tablist's children stay tabs and the header is still a
-   * first-class keyboard control. Its decoration arrives as custom properties
-   * on the wrapper — `WorkspaceTabsBar.module.css` reads every one of them with
-   * a fallback, so an unset property follows the theme rather than a snapshot
-   * of it, and a decorated group still announces its real name and state.
-   */
-  function renderGroupSection(section: { group: WorkspaceTabGroup; tabs: WorkspaceChromeTab[] }) {
-    const { group } = section;
-    const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
-    const decoration = tabGroupDecorationFor(state.groupDecorations, group.id);
-    const visibleTabs = group.collapsed
-      ? section.tabs.filter((tab) => tab.id === revealedTabId)
-      : section.tabs;
-    return (
-      <div
-        key={group.id}
-        className={styles.groupSection}
-        data-tab-group-id={group.id}
-        data-tab-group-color={group.color}
-        data-tab-group-collapsed={group.collapsed ? 'true' : undefined}
-        style={tabGroupDecorationStyle(decoration)}
-        role="presentation"
-        onDragOver={(event) => {
-          if (!draggingTabIdRef.current) return;
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-        }}
-        onDrop={(event) => {
-          const sourceId = draggingTabIdRef.current ?? event.dataTransfer.getData('text/plain');
-          if (!sourceId) return;
-          event.preventDefault();
-          event.stopPropagation();
-          dropTabIntoGroup(sourceId, group.id);
-          draggingTabIdRef.current = null;
-          setDragOverTarget(null);
-          setDraggingTabId(null);
-        }}
-      >
-        <button
-          type="button"
-          className={styles.groupHeader}
-          aria-expanded={!group.collapsed}
-          // One accessible name, built from the parts a reader needs: which
-          // group, and how many tabs are in it. The count is in the name rather
-          // than in a separate visually-hidden node so it cannot be announced
-          // twice.
-          aria-label={`${name} — ${t('workspaceTabs.groupTabCount', { count: section.tabs.length })}`}
-          // Sighted-user affordance only. A group name is capped in the strip
-          // and truncates exactly as a tab label does; bilingual mode makes
-          // that the common case rather than the edge one.
-          title={name}
-          onClick={() => toggleGroupCollapsed(group.id)}
-          onContextMenu={(event) => openGroupContextMenu(group.id, event)}
-        >
-          {decoration.badge ? (
-            <span className={styles.groupBadge} aria-hidden>
-              {decoration.badge}
-            </span>
-          ) : (
-            <span className={styles.groupDot} data-tab-group-color={group.color} aria-hidden />
-          )}
-          <span className={styles.groupLabel}>{name}</span>
-          <span className={styles.groupCount} aria-hidden>
-            {section.tabs.length}
-          </span>
-          <Icon name={group.collapsed ? 'chevron-right' : 'chevron-down'} size={11} aria-hidden />
-        </button>
-        {visibleTabs.map((tab) => renderTab(tab, false))}
-      </div>
-    );
-  }
+  })();
 
   return (
-    <header className="app-chrome-header workspace-tabs-chrome" aria-label={t('workspaceTabs.searchStripHeading')}>
+    <header
+      className={`app-chrome-header workspace-tabs-chrome${tabsDockEl ? ' is-docked' : ''}`}
+      aria-label="Workspace tabs"
+    >
       <div className="app-chrome-traffic-space workspace-tabs-traffic" aria-hidden />
+      {/* Docked mode: the chrome row keeps only the brand-logo button (the
+          floating account cluster rides fixed at the window's top-right on
+          its own); the strip renders in the chat column's dock, level with
+          the workspace 设计文件 row. The strip's own pinned entry tab hides
+          inside the dock (CSS) — this button is its chrome-row stand-in.
+          In chat the logo means 回到首页. */}
+      {tabsDockEl && state.tabs[0] ? (
+        <button
+          type="button"
+          className="workspace-tabs-home-chrome od-tooltip"
+          aria-label={t('entry.navHome')}
+          title={t('entry.navHome')}
+          data-tooltip={t('entry.navHome')}
+          data-tooltip-placement="bottom"
+          data-testid="workspace-home-chrome"
+          onClick={() => openTab(state.tabs[0]!)}
+        >
+          <ChromeHomeGlyph />
+        </button>
+      ) : null}
+      {dockPortal(
+      <>
+      {dockDropdownNode}
       <div
         className={`workspace-tabs-strip${tabsOverflowing ? ' is-overflowing' : ''}`}
         role="tablist"
-        aria-label={t('workspaceTabs.searchStripHeading')}
+        aria-label="Open workspaces"
         ref={stripRef}
         onDragOver={handleStripDragOver}
         onDrop={handleStripDrop}
         onDragLeave={handleStripDragLeave}
       >
-        {/* Two regions. The pinned one is a sticky container so its tabs stay
-            on screen once the rest overflow into horizontal scroll — the same
-            guarantee the permanent entry tab always had, extended to the tabs
-            the user asked to keep. It is `role="presentation"` so the tablist
-            still owns the tabs directly in the accessibility tree.
-
-            Everything else renders in place: the strip scrolls horizontally
-            when the tabs exceed the available chrome width. Previous behaviour
-            sliced to `visibleChromeTabs(...)` and squeezed the rest behind a
-            "+N more" chip, which squished the entire chrome horizontally. The
-            search-tabs popover still acts as a keyboard surface for finding a
-            tab that's scrolled out of view. */}
-        <div className={styles.pinnedRegion} role="presentation">
-          {stickyTabs.map((tab) => renderTab(tab, tab.kind !== 'entry'))}
+        {/* Render every open tab — the strip itself scrolls horizontally
+            when the tabs exceed the available chrome width. Previous
+            behaviour sliced to `visibleChromeTabs(...)` and squeezed
+            the rest behind a "+N more" chip, which squished the entire
+            chrome horizontally. The search-tabs popover still acts as
+            a keyboard surface for finding a tab that's scrolled out of
+            view. */}
+        {/* Liquid-glass active-tab pill: positioned by useGlideIndicator in
+            the strip's content coordinates, painted by the __pill (frosted
+            everywhere, SDF refraction on Chromium via useLiquidGlass). First
+            child so `.workspace-tab + .workspace-tab` sibling selectors and
+            [data-workspace-tab-id] queries stay untouched. */}
+        <div className="workspace-tabs-glide" ref={glideRef} aria-hidden="true">
+          <div
+            className="workspace-tabs-glide__pill od-glass-refract"
+            ref={setGlidePillRef}
+          />
         </div>
-        {/* Grouped tabs first, in group order, each behind its own header;
-            then everything the user has not filed. `normalizeTabsState` has
-            already made each group's members contiguous in `state.tabs`, so
-            this renders the strip in exactly the order the payload stores. */}
-        {groupPartition.sections.map((section) => renderGroupSection(section))}
-        {groupPartition.ungrouped.map((tab) => renderTab(tab, false))}
-        <button
-          type="button"
-          className="workspace-tabs-new-btn od-tooltip"
-          onClick={createNewTab}
-          title={t('workspace.newTab')}
-          data-tooltip={t('workspace.newTab')}
-          data-tooltip-placement="bottom"
-          aria-label={t('workspace.newTab')}
-          data-testid="workspace-tabs-new-tab"
-          disabled={onboardingActive}
-        >
-          <Icon name="plus" size={14} />
-        </button>
-      </div>
-      {/* Its own actions group, deliberately NOT inside `menuRef`. That ref is
-          the tab-search popover's "clicks in here are not outside" test, so a
-          bell nested in it would leave the tab search open underneath the
-          notification panel — two fixed popovers stacked in the same corner.
-          Outside it, pressing either one closes the other.
-
-          Rendered unconditionally, unlike the tab search beside it. The chrome
-          hides most of itself during onboarding, but a notification centre that
-          disappears is the exact failure this feature exists to fix: a
-          first-run error would be announced by a toast that expires with
-          nowhere to look it up afterwards. */}
-      <div className="workspace-tabs-actions">
-        <NotificationCenter />
-      </div>
-      <div className="workspace-tabs-actions" ref={menuRef}>
-        {onboardingActive ? null : (
-        <button
-          type="button"
-          className={`workspace-tabs-icon-btn od-tooltip${tabsMenuOpen ? ' is-active' : ''}`}
-          onClick={() => setTabsMenuOpen((open) => !open)}
-          title={t('workspaceTabs.searchStripHeading')}
-          data-tooltip={t('workspaceTabs.searchStripHeading')}
-          data-tooltip-placement="bottom"
-          aria-label={t('workspaceTabs.searchStripHeading')}
-          aria-haspopup="dialog"
-          aria-expanded={tabsMenuOpen}
-        >
-          <Icon name="search" size={15} />
-        </button>
-        )}
-        {tabsMenuOpen && !onboardingActive && typeof document !== 'undefined'
-          ? createPortal(
-              <div
-                className="workspace-tabs-popover"
-                role="dialog"
-                aria-label={t('workspaceTabs.searchStripHeading')}
-                ref={popoverRef}
-              >
-                {/* All four discovery searches, each with its own controller
-                    and therefore its own anchored builder. See the header
-                    comment in `WorkspaceTabDiscovery.tsx` for why a single
-                    field with a scope selector is a different feature. */}
-                <WorkspaceTabDiscovery
-                  tabs={displayTabs.map((display) => ({
-                    id: display.id,
-                    title: display.title,
-                    meta: display.meta,
-                    pinned: isTabPinned(state.pinnedTabIds, display.id),
-                    permanent: display.tab.kind === 'entry',
-                    active: display.id === state.activeTabId,
-                    groupId: groupIdForTab(state.groupMembership, display.id),
-                  }))}
-                  groups={groups}
-                  windowId={windowIdRef.current}
-                  onActivate={(tabId) => {
-                    const tab = state.tabs.find((item) => item.id === tabId);
-                    if (tab) openTab(tab);
+        {/* Every tab always renders a strip row — rows are the state/
+            measurement/drag DOM the tab machinery (and its tests) rely on.
+            The chrome row VISUALLY shows only the pinned Home tab (per
+            product: 顶部只保留 home 和头像/积分): undocked project rows are
+            hidden by CSS (routines.css), the same way the docked strip hides
+            behind the chat-column dropdown. */}
+        {state.tabs.map((tab) => {
+          const display =
+            displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
+          const active = tab.id === state.activeTabId;
+          // The single entry tab is permanent and pinned leftmost: it cannot be
+          // closed or dragged out of the first slot, whatever section it shows.
+          const isPinned = tab.kind === 'entry';
+          const dragOverClass =
+            dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
+              ? ` is-drag-over-${dragOverTarget.edge}`
+              : '';
+          return (
+            <div
+              key={tab.id}
+              className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
+              data-workspace-tab-id={tab.id}
+              role="tab"
+              aria-selected={active}
+              draggable={!isPinned && state.tabs.length > 1}
+              onDragStart={(event) => handleTabDragStart(tab.id, event)}
+              onDragEnd={handleTabDragEnd}
+            >
+              {isPinned && active && tab.view === 'home' ? (
+                /* Home view: the pinned tab is the brand-logo button. The
+                   COLLAPSE control moved into the rail (after its search box),
+                   so the logo only re-opens a collapsed rail — with the rail
+                   open it is inert (you are already home, nothing to expand). */
+                <button
+                  type="button"
+                  className={`workspace-tab__rail-toggle od-tooltip${entryRailOpen ? ' is-inert' : ''}`}
+                  aria-label={entryRailOpen ? t('entry.navHome') : t('entry.navExpand')}
+                  aria-expanded={entryRailOpen}
+                  title={entryRailOpen ? undefined : t('entry.navExpand')}
+                  data-tooltip={entryRailOpen ? undefined : t('entry.navExpand')}
+                  data-tooltip-placement="bottom"
+                  data-testid="workspace-home-rail-toggle"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!entryRailOpen) {
+                      window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
+                    }
                   }}
-                  onClose={closeTab}
-                  onTogglePin={(tabId) =>
-                    setTabPinned(tabId, !isTabPinned(state.pinnedTabIds, tabId))}
-                  onReveal={(tabId) => setRevealedTabId(tabId)}
-                  onCreateGroup={() => createGroupWithTabs()}
-                  onRenameGroup={renameGroup}
-                  onSetGroupColor={recolorGroup}
-                  onToggleCollapsed={(groupId) => toggleGroupCollapsed(groupId)}
-                  onMoveGroup={reorderGroup}
-                  onRemoveGroup={deleteGroup}
-                  onAssignTab={moveTabToGroup}
-                  onEditGroupAppearance={(groupId, anchor) =>
-                    setGroupAppearanceTarget({ groupId, anchor })}
-                />
-                {renderBulkClosePanel()}
-              </div>,
-              document.body,
-            )
-          : null}
-      </div>
-      {tabContextMenu && typeof document !== 'undefined'
-        ? createPortal(renderTabContextMenu(tabContextMenu), document.body)
-        : null}
-      {groupContextMenu && typeof document !== 'undefined'
-        ? createPortal(renderGroupContextMenu(groupContextMenu), document.body)
-        : null}
-      {groupAppearanceTarget && findTabGroup(groups, groupAppearanceTarget.groupId) ? (
-        <TabGroupAppearanceEditor
-          group={findTabGroup(groups, groupAppearanceTarget.groupId)!}
-          decoration={tabGroupDecorationFor(
-            state.groupDecorations,
-            groupAppearanceTarget.groupId,
-          )}
-          anchor={groupAppearanceTarget.anchor}
-          onChange={(property, value) =>
-            changeGroupDecoration(groupAppearanceTarget.groupId, property, value)}
-          onResetAll={() => resetGroupDecoration(groupAppearanceTarget.groupId)}
-          onClose={() => setGroupAppearanceTarget(null)}
-        />
-      ) : null}
-      {groupMoveTabId ? (
-        <TabGroupMovePicker
-          groups={groups}
-          membership={state.groupMembership ?? {}}
-          currentGroupId={groupIdForTab(state.groupMembership, groupMoveTabId)}
-          onMove={(groupId) => {
-            moveTabToGroup(groupMoveTabId, groupId);
-            setGroupMoveTabId(null);
-            setGroupMoveAnchor(null);
-          }}
-          onCreate={() => {
-            createGroupWithTabs([groupMoveTabId]);
-            setGroupMoveTabId(null);
-            setGroupMoveAnchor(null);
-          }}
-          onClose={() => {
-            setGroupMoveTabId(null);
-            setGroupMoveAnchor(null);
-          }}
-          anchor={groupMoveAnchor ?? { x: 12, y: 12 }}
-        />
-      ) : null}
-      {hoverPreview && typeof document !== 'undefined' && !tabsMenuOpen
-        ? createPortal(
-            (() => {
-              const previewTab = state.tabs.find((tab) => tab.id === hoverPreview.tabId);
-              if (!previewTab) return null;
-              const previewDisplay = displayTabById.get(previewTab.id)
-                ?? displayTabFor(previewTab, projectById, t, knownProjectNamesRef.current);
-              const previewDetail = describePreviewDetail(previewTab, projectById);
-              const previewWidth = Math.max(220, Math.round(hoverPreview.anchorWidth));
-              const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-              const left = Math.max(
-                0,
-                Math.min(viewportWidth - previewWidth, hoverPreview.anchorLeft),
-              );
-              return (
-                <div
-                  id="workspace-tab-preview"
-                  className="workspace-tab-preview"
-                  role="tooltip"
-                  style={{ left, top: hoverPreview.anchorBottom + 6, width: previewWidth }}
                 >
-                  <div className="workspace-tab-preview__icon" aria-hidden>
-                    <Icon name={previewDisplay.icon} size={16} />
-                  </div>
-                  <div className="workspace-tab-preview__text">
-                    <div className="workspace-tab-preview__title">{previewDisplay.title}</div>
-                    <div className="workspace-tab-preview__meta">{previewDisplay.meta}</div>
-                    {previewDetail ? (
-                      <div className="workspace-tab-preview__detail">{previewDetail}</div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })(),
-            document.body,
-          )
-        : null}
+                  <ChromeHomeGlyph />
+                  {/* Collapsed-rail hover swaps the logo for the expand-sidebar
+                      glyph, so the button telegraphs its one action. CSS keys
+                      the swap off :not(.is-inert):hover. */}
+                  <svg
+                    className="workspace-chrome-logo-swap"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden
+                  >
+                    <path d="M5 5H13V19H5V5ZM19 19H15V5H19V19ZM4 3C3.44772 3 3 3.44772 3 4V20C3 20.5523 3.44772 21 4 21H20C20.5523 21 21 20.5523 21 20V4C21 3.44772 20.5523 3 20 3H4ZM11 12L7 8.5V15.5L11 12Z" />
+                  </svg>
+                </button>
+              ) : isPinned && active ? (
+                /* Any other entry section (settings / all-projects / community /
+                   design-systems …): the logo reads as Home; clicking returns
+                   home. */
+                <button
+                  type="button"
+                  className="workspace-tab__rail-toggle od-tooltip"
+                  aria-label={t('entry.navHome')}
+                  title={t('entry.navHome')}
+                  data-tooltip={t('entry.navHome')}
+                  data-tooltip-placement="bottom"
+                  data-testid="workspace-home-nav"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openTab(tab);
+                  }}
+                >
+                  <ChromeHomeGlyph />
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="workspace-tab__main"
+                    onClick={() => openTab(tab)}
+                  >
+                    <span className="workspace-tab__icon" aria-hidden>
+                      {/* The pinned entry tab remembers its last section
+                          (settings / community / …), but clicking it always
+                          lands on home (openTab), so it must read as the Home
+                          button — the brand logo — not the remembered
+                          section's icon. */}
+                      {isPinned ? (
+                        <ChromeHomeGlyph />
+                      ) : (
+                        <Icon name={display.icon} size={14} />
+                      )}
+                    </span>
+                    <span className="workspace-tab__label">{display.title}</span>
+                  </button>
+                  {isPinned ? null : (
+                    <button
+                      type="button"
+                      className="workspace-tab__close od-tooltip"
+                      aria-label={t('common.close')}
+                      title={t('common.close')}
+                      data-tooltip={t('common.close')}
+                      data-tooltip-placement="bottom"
+                      onClick={() => closeTab(tab.id)}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+        {/* #5517 drops the top-right "+"; new tab stays reachable through
+            ⌘/Ctrl+T. That "+" was the ONLY caller of openRadialMenu, so the
+            radial template menu below is now unreachable — its state and
+            markup stay, as the reference keeps them.
+
+            The tab-search button (and its popover) was removed per request
+            (2026-07-24); a tab scrolled out of view is reached by scrolling
+            the strip or cycling with Ctrl+Tab / ⌘1-9. */}
+      </div>
+      </>,
+      )}
       {radialMenu ? createPortal(
         <div className="workspace-radial-layer" onMouseDown={() => setRadialMenu(null)}>
           <div
@@ -3201,7 +1979,6 @@ function displayTabFor(
     members: t('entry.navMembers'),
     board: t('entry.navBoard'),
     'workspace-settings': t('entry.navWorkspaceSettings'),
-    handoff: t('handoff.title'),
     settings: t('settings.title'),
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
@@ -3220,7 +1997,6 @@ function displayTabFor(
     members: 'users',
     board: 'kanban',
     'workspace-settings': 'settings',
-    handoff: 'layers-filled',
     settings: 'settings',
   };
   return {

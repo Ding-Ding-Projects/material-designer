@@ -1,11 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackSettingsPrivacyClick } from '../analytics/events';
-import { tv, useT } from '../i18n';
-import { DestructiveGate } from './destructive/DestructiveGate';
+import { useT } from '../i18n';
 import { Icon } from './Icon';
-import { notify } from './notifications/notificationStore';
 import type { AppConfig, TelemetryConfig } from '../types';
 
 interface Props {
@@ -25,12 +22,6 @@ function generateInstallationId(): string {
 export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
   const t = useT();
   const analytics = useAnalytics();
-  // Delete my data used to fire straight off the click. It rotates the
-  // anonymous id — the old one is overwritten, not archived — and turns both
-  // sharing switches off, so it is exactly the kind of action the
-  // super-confirmation gate exists for: irreversible, and easy to hit by
-  // accident on the way to the field above it.
-  const [deleteGateOpen, setDeleteGateOpen] = useState(false);
   const telemetry: TelemetryConfig = cfg.telemetry ?? {};
   // `privacyDecisionAt` gates the consent surface. installationId is only
   // the anonymous reporting id and can be rotated by Delete my data without
@@ -92,7 +83,6 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
         <>
           <div className="settings-privacy-toggles">
             <ToggleRow
-              anchor="privacy.metrics"
               label={t('settings.privacyMetrics')}
               hint={t('settings.privacyMetricsHint')}
               checked={telemetry.metrics === true}
@@ -146,7 +136,7 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
                   area: 'privacy',
                   element: 'delete_my_data',
                 });
-                setDeleteGateOpen(true);
+                deleteMyData();
               }}
               style={{ alignSelf: 'flex-start', marginTop: 12, paddingLeft: 0 }}
             >
@@ -155,33 +145,6 @@ export function PrivacySection({ cfg, setCfg }: Props): JSX.Element {
             </button>
           </div>
         </>
-      )}
-      {deleteGateOpen ? (
-        <DestructiveGate
-          action={t('settings.privacyDataDeletion')}
-          // The real id, not a description of one. The user has to be able to
-          // read the value that is about to be thrown away.
-          target={cfg.installationId ?? t('settings.privacyOptedOut')}
-          items={[
-            t('privacy.deleteGateIdItem', {
-              // An installation id is a literal value; the opted-out
-              // stand-in is copy, so it travels as a key.
-              id: cfg.installationId ?? tv('settings.privacyOptedOut'),
-            }),
-            t('privacy.deleteGateSharingItem'),
-          ]}
-          detail={t('settings.privacyDataDeletionHint')}
-          irreversible
-          onConfirm={() => {
-            deleteMyData();
-            notify({
-              severity: 'success',
-              title: t('privacy.deleteGateDone'),
-            });
-          }}
-          onClose={() => setDeleteGateOpen(false)}
-        />
-      ) : null}
       )}
     </section>
   );
@@ -192,25 +155,18 @@ interface ToggleRowProps {
   hint: string;
   checked: boolean;
   onChange: (next: boolean) => void;
-  /**
-   * Reveal target for the command palette's settings index. Optional because
-   * only the rows the index names need one — an unindexed toggle stamping an
-   * anchor nothing points at would be dead weight.
-   */
-  anchor?: string;
 }
 
 // Reuses .toggle-row (label + hint + iOS-style switch) — same control
 // NewProjectPanel uses for "speaker notes" / "animations" toggles, so the
 // Privacy panel reads as native to the rest of the app.
-function ToggleRow({ label, hint, checked, onChange, anchor }: ToggleRowProps): JSX.Element {
+function ToggleRow({ label, hint, checked, onChange }: ToggleRowProps): JSX.Element {
   return (
     <button
       type="button"
       className={`toggle-row${checked ? ' on' : ''}`}
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
-      data-od-setting={anchor}
     >
       <div className="toggle-row-text">
         <span className="toggle-row-label">{label}</span>

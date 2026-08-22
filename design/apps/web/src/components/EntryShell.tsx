@@ -34,7 +34,6 @@ import type { OpenDesignHostProjectImportSuccess } from '@open-design/host';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackHomeNavClick,
-  trackHomeToolbarClick,
   trackOnboardingClick,
   trackOnboardingCompleteResult,
   trackOnboardingRuntimeScanResult,
@@ -93,7 +92,6 @@ import { DesignsTab } from './DesignsTab';
 import { DesignSystemsTab } from './DesignSystemsTab';
 import { BrandsTab } from './BrandsTab';
 import { EntryNavRail, type EntryView as EntryViewKind } from './EntryNavRail';
-import { EntryTopbarSearch } from './EntryTopbarSearch';
 import {
   buildProjectSearchCatalog,
   ProjectSearchModal,
@@ -183,13 +181,7 @@ import {
   recordOptimisticProjectOwnership,
   type OptimisticProjectOwnershipWitnesses,
 } from '../collab/optimistic-project-ownership';
-import {
-  getModelCapabilityTag,
-  getModelCostTier,
-  MODEL_CAPABILITY_TAG_LABEL_KEYS,
-  MODEL_COST_TIER_LABEL_KEYS,
-  type ModelCapabilityTag,
-} from './modelCapabilityTags';
+import type { ModelCapabilityTag } from './modelCapabilityTags';
 import { LanguageMenu } from './LanguageMenu';
 import { IntegrationsView, type IntegrationTab } from './IntegrationsView';
 import { InlineModelSwitcher } from './InlineModelSwitcher';
@@ -199,7 +191,6 @@ import { ExtensionsMarketplace } from './PluginsView';
 import type { CreateInput, CreateTab, ImportClaudeDesignOutcome } from './NewProjectPanel';
 import type { PluginLoopSubmit } from './PluginLoopHome';
 import {
-  createProject,
   duplicatePluginAsProject,
   patchProject,
   ProjectCreateError,
@@ -208,7 +199,6 @@ import {
   type PluginShareProjectOutcome,
 } from '../state/projects';
 import { TasksView } from './TasksView';
-import { HandoffView } from './handoff/HandoffView';
 import {
   API_KEY_PLACEHOLDERS,
   API_PROTOCOL_TABS,
@@ -247,32 +237,12 @@ import {
   RAIL_OPEN_STORAGE_KEY,
   readStoredRailOpen,
 } from './entryRailBridge';
-import { enterpriseUrl } from './enterpriseUrl';
 import { resolveByokModelPreference } from './byok/validation';
 import onboardingSourceStyles from './OnboardingModelSource.module.css';
 
-// Persist the entry nav-rail expanded/collapsed state so it survives both a
+// Persist the entry nav-rail open/collapsed state so it survives both a
 // home -> project -> home navigation (EntryShell unmounts on the project
 // route) and a full reload. Without this the rail always reset to its
-// collapsed default on return.
-//
-// The key and its two values are deliberately unchanged, because their
-// meaning maps one-for-one onto the rail's new anatomy: `false` used to mean
-// "hidden" and now means the 88px icon rail, `true` used to mean "docked" and
-// now means the 260px labelled rail. Somebody who folded the rail away last
-// week wanted less navigation, not none, and gets the narrow rail — which is
-// what a Material Design 3 rail does when you collapse it. Renaming the key
-// would have thrown that preference away to express the same thing.
-const RAIL_OPEN_STORAGE_KEY = 'od.entry.railOpen';
-
-function readStoredRailOpen(): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    return window.localStorage.getItem(RAIL_OPEN_STORAGE_KEY) === 'true';
-  } catch {
-    return false;
-  }
-}
 // collapsed default on return. The storage key, the rail toggle/state window
 // events, and the seed reader live in `entryRailBridge` so the pinned Home
 // tab's sidebar toggle (WorkspaceTabsBar, a sibling React tree) can share
@@ -310,13 +280,6 @@ type OnboardingAgentTestState =
 const ONBOARDING_BYOK_AUTO_FETCH_DELAY_MS = 300;
 const ONBOARDING_BYOK_AUTO_TEST_DELAY_MS = 500;
 
-const ONBOARDING_AMR_MODEL_OPTIONS: NonNullable<AgentInfo['models']> = [
-  { id: 'claude-opus-4.8', label: 'Claude Opus 4.8' },
-  { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-  { id: 'glm-5.1', label: 'GLM 5.1' },
-];
-
 type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   metadata?: CreateInput['metadata'];
   pendingPrompt?: string;
@@ -349,18 +312,6 @@ function defaultPluginInputsForCreate(
 ): Record<string, unknown> | null {
   const kind = input.metadata.kind;
   const projectName = input.name.trim();
-
-  if (input.metadata.intent === 'desktop-app' && pluginId === 'od-new-generation') {
-    return {
-      artifactKind: 'desktop application',
-      audience: 'desktop application users',
-      topic: projectName || 'the desktop application brief',
-      scaffold: 'the generated Electron desktop scaffold',
-      wireup: input.metadata.desktopWireup?.enabled === true
-        ? 'wire the scaffold through the existing first-run run path'
-        : 'leave the scaffold ready for a later explicit wire-up',
-    };
-  }
 
   if (pluginId === 'example-web-prototype') {
     return {
@@ -536,6 +487,7 @@ interface Props {
   onCompleteOnboarding: () => void;
   onSignedOut?: () => void | Promise<void>;
   onAmrLoginStatusChange?: (status: VelaLoginStatus | null) => void;
+  artifactUpgradeSlot?: ReactNode;
 }
 
 // Map an EntryNavRail view id to the existing analytics `element` enum on
@@ -621,7 +573,6 @@ export function EntryShell({
   onSkillsChanged,
   onRefreshAgents,
   onCreateProject,
-  onCreatePluginShareProject,
   onImportClaudeDesign,
   onImportFolder,
   onImportFolderResponse,
@@ -641,6 +592,7 @@ export function EntryShell({
   onCompleteOnboarding,
   onSignedOut,
   onAmrLoginStatusChange,
+  artifactUpgradeSlot,
 }: Props) {
   const { t } = useI18n();
   // Each entry sub-view (home / projects / design-systems) is its own
@@ -1128,16 +1080,6 @@ export function EntryShell({
       resolve: (decision: AmrLowBalanceDecision) => void;
     } | null
   >(null);
-  useEffect(() => {
-    if (view !== 'design-systems') return;
-    void onDesignSystemsRefresh?.();
-  }, [onDesignSystemsRefresh, view]);
-  // The entry nav rail starts collapsed — meaning the 88px icon rail, which
-  // is on screen and operable, not absent. The panel toggle in the topbar
-  // widens it to 260px so the destinations carry their labels, and the rail's
-  // own control narrows it again. That state is persisted (localStorage) so
-  // it survives a home -> project -> home round trip (EntryShell unmounts on
-  // the project route) and a reload, instead of snapping back.
   // The entry nav rail is collapsed by default (Manus-style) so the entry
   // view opens clean and full-width; the panel toggle in the topbar opens it
   // as an overlay that dismisses on selection / backdrop click / Escape.
@@ -1147,8 +1089,9 @@ export function EntryShell({
   const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
   const [projectSearchOpen, setProjectSearchOpen] = useState(false);
 
-  // The global Ctrl/Cmd+Shift+F binding is owned by App.tsx. This shell only
-  // keeps the rail toggle shortcut local so there is one palette route.
+  // ⌘K / Ctrl+K opens the project search palette — same as clicking the rail
+  // search box. ⌘B / Ctrl+B toggles the nav rail — same as the pinned Home
+  // tab's sidebar toggle.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -1161,6 +1104,11 @@ export function EntryShell({
           )
         )
       ) {
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && (event.key === 'k' || event.key === 'K')) {
+        event.preventDefault();
+        setProjectSearchOpen(true);
         return;
       }
       const primary = isMacPlatform()
@@ -1647,6 +1595,9 @@ export function EntryShell({
     <div className="entry-shell entry-shell--no-header">
       <div
         className={`entry${railOpen ? ' entry--rail-open' : ''}`}
+        // The team/local shell is a labeled Manus-style rail, so widen the rail
+        // track (the base 56px icon-rail clips the labels + team affordances).
+        style={{ ['--entry-rail-width' as string]: '236px' }}
       >
         <EntryNavRail
           view={view}
@@ -1661,8 +1612,6 @@ export function EntryShell({
           }}
           onOpenSearch={() => setProjectSearchOpen(true)}
           open={railOpen}
-          onClose={() => setRailOpen(false)}
-          onOpen={() => setRailOpen(true)}
           topRightSlot={
             topRightCampaignKind ? (
               <WorkbenchCampaignBadge
@@ -1698,103 +1647,6 @@ export function EntryShell({
           />
         ) : null}
         <main className="entry-main entry-main--scroll" ref={entryMainScrollRef}>
-          <div className="entry-main__topbar">
-            {/* The label names the action, not the current state, so it has to
-                flip with the rail. It read "Expand sidebar" in both states,
-                which told a screen-reader user the button would widen a rail
-                that was already wide. `aria-expanded` says where the rail is;
-                the label says where the button takes it. */}
-            <button
-              type="button"
-              className="entry-rail-toggle"
-              onClick={() => setRailOpen((prev) => !prev)}
-              aria-label={railOpen ? t('entry.navCollapse') : t('entry.navExpand')}
-              title={railOpen ? t('entry.navCollapse') : t('entry.navExpand')}
-              aria-expanded={railOpen}
-              data-testid="entry-rail-toggle"
-            >
-              <Icon name="panel-left" size={20} />
-            </button>
-            {/* The mockup's header search, ahead of the chip cluster. It is the
-                command palette's typeable entry point rather than a fourth
-                search over collections that each already have one — see the
-                header comment in `EntryTopbarSearch.tsx`. */}
-            <EntryTopbarSearch />
-            <div className="entry-main__topbar-chips entry-main__topbar-chips--icon-only">
-              <GithubStarBadge />
-              <a
-                className="entry-workspace-chip od-tooltip"
-                href={enterpriseUrl(uiLocale)}
-                target="_blank"
-                rel="noreferrer noopener"
-                onClick={() => {
-                  trackHomeToolbarClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'toolbar',
-                    element: 'workspace_teams',
-                  });
-                }}
-                data-tooltip={t('entry.workspaceTeamsTitle')}
-                data-tooltip-placement="bottom"
-                aria-label={t('entry.workspaceTeamsAria')}
-                data-testid="entry-workspace-teams"
-              >
-                <Icon
-                  name="sparkles"
-                  size={14}
-                  className="entry-workspace-chip__icon"
-                />
-                <span className="entry-workspace-chip__label">
-                  {t('entry.workspaceTeamsLabel')}
-                </span>
-              </a>
-              <a
-                className="entry-discord-badge od-tooltip"
-                href={DISCORD_URL}
-                aria-label={discordAriaLabel}
-                data-tooltip={discordAriaLabel}
-                data-tooltip-placement="bottom"
-                data-testid="entry-discord-badge"
-              >
-                <Icon name="discord" size={14} className="entry-discord-badge__icon" />
-                <span className="entry-discord-badge__label">{t('entry.discordLabel')}</span>
-                {discordOnlineLabel ? (
-                  <>
-                    <span className="entry-discord-badge__sep" aria-hidden>
-                      ·
-                    </span>
-                    <span className="entry-discord-badge__online">
-                      {discordOnlineLabel}
-                    </span>
-                  </>
-                ) : null}
-              </a>
-              {view === 'home' ? null : executionSwitcher}
-              <button
-                type="button"
-                className="use-everywhere-chip od-tooltip"
-                onClick={() => {
-                  trackHomeToolbarClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'toolbar',
-                    element: 'use_everywhere',
-                  });
-                  openIntegrationTab('use-everywhere');
-                }}
-                data-tooltip={t('entry.useEverywhereTitle')}
-                data-tooltip-placement="bottom"
-                aria-label={t('entry.useEverywhereAria')}
-                data-testid="entry-use-everywhere-button"
-              >
-                <span className="use-everywhere-chip__icon" aria-hidden>
-                  <Icon name="hammer" size={13} />
-                </span>
-                <span className="use-everywhere-chip__label">
-                  {t('entry.useEverywhereTitle')}
-                </span>
-              </button>
-            </div>
-          </div>
           {/* #5517: no entry topbar. The rail toggle is the pinned Home tab in
               the workspace tabs bar (entryRailBridge), the updater popup host
               lives in the rail footer, and everything below is fixed-position
@@ -1862,6 +1714,7 @@ export function EntryShell({
                 connectors={connectors}
                 promptTemplates={promptTemplates}
                 executionSwitcher={view === 'home' ? homeExecutionSwitcher : undefined}
+                artifactUpgradeSlot={artifactUpgradeSlot}
                 deepSeekV4FlashCampaignAudience={homeCampaignModalAudience}
                 onDeepSeekV4FlashCampaignUseNow={applyDeepSeekCampaignModel}
                 deepSeekV4FlashCampaignMetricsConsent={config.telemetry?.metrics === true}
@@ -1956,11 +1809,6 @@ export function EntryShell({
                 onOpenProject={onOpenProject}
                 onDesignSystemsRefresh={onDesignSystemsRefresh}
               />
-            </div>
-            <div data-testid="entry-view-handoff" data-active={view === 'handoff' ? 'true' : 'false'} {...inactiveViewProps(view === 'handoff')}>
-              {view === 'handoff' ? (
-                <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings' })} />
-              ) : null}
             </div>
             {view === 'integrations' ? (
               <IntegrationsView
@@ -2154,9 +2002,6 @@ export function EntryShell({
         mediaProviders={config.mediaProviders}
         connectors={connectors}
         connectorsLoading={connectorsLoading}
-        agents={agents}
-        selectedAgentId={config.agentId}
-        onAgentChange={onAgentChange}
         loading={skillsLoading}
         onCreate={handleCreate}
         onImportClaudeDesign={onImportClaudeDesign}
@@ -2353,14 +2198,31 @@ function OnboardingView({
       : { status: 'idle' as const };
   const canTestAgent = Boolean(selectedAgent) && daemonLive;
   const runtimeSetupStep = step === 2;
-  const byokConnectionVerified =
-    visibleProviderTestState.status === 'done' && visibleProviderTestState.result.ok;
-  const localConnectionVerified =
-    visibleAgentTestState.status === 'done' && visibleAgentTestState.result.ok;
+  const localRuntimeConfigured = selectedAgent?.available === true;
+  const byokRuntimeConfigured = canTestProvider;
   const connectStepRuntimeReady =
-    (runtime === 'local' && selectedAgent !== null && localConnectionVerified) ||
-    (runtime === 'byok' && byokConnectionVerified);
+    (runtime === 'local' && localRuntimeConfigured) ||
+    (runtime === 'byok' && byokRuntimeConfigured);
+  const connectStepTestRunning =
+    (runtime === 'local' && visibleAgentTestState.status === 'running') ||
+    (runtime === 'byok' && visibleProviderTestState.status === 'running');
   const connectStepBlocked = runtimeSetupStep && !connectStepRuntimeReady;
+  // What the user is looking at RIGHT NOW. `handlePrimaryAction` awaits a
+  // validation round trip before it persists anything, and its closure is
+  // frozen at click time — so the continuation cannot ask this question of its
+  // own variables. See `continueAttemptStillCurrent`.
+  const onboardingIntentRef = useRef({
+    step,
+    runtime,
+    agentTestInputKey,
+    providerTestInputKey,
+  });
+  onboardingIntentRef.current = {
+    step,
+    runtime,
+    agentTestInputKey,
+    providerTestInputKey,
+  };
   const connectGateReason: 'no_runtime' | 'local_agent_unavailable' | 'byok_unverified' | null =
     !runtimeSetupStep
       ? null
@@ -2827,9 +2689,42 @@ function OnboardingView({
     setRuntime('byok');
     setStep(2);
   }
+  /**
+   * Whether the Continue attempt that started against `startedInputKey` still
+   * describes what the user is looking at.
+   *
+   * A validation round trip can outlive the intent that started it: Back stays
+   * enabled while the test is in flight, and the inputs being validated stay
+   * editable. Persisting a late result regardless would write a configuration
+   * the user already walked away from and finish onboarding under them — so
+   * the attempt must still be on the runtime setup step, on the same runtime,
+   * and against the same inputs it validated.
+   *
+   * `inputKey` already guards what gets DISPLAYED (`visibleAgentTestState` /
+   * `visibleProviderTestState` fall back to idle once it drifts); this applies
+   * the same rule to what gets PERSISTED.
+   */
+  function continueAttemptStillCurrent(
+    startedRuntime: 'local' | 'byok',
+    startedInputKey: string,
+  ): boolean {
+    const now = onboardingIntentRef.current;
+    if (now.step !== 2 || now.runtime !== startedRuntime) return false;
+    return startedRuntime === 'local'
+      ? now.agentTestInputKey === startedInputKey
+      : now.providerTestInputKey === startedInputKey;
+  }
+
   async function handlePrimaryAction() {
-    if (connectStepBlocked) return;
+    if (connectStepBlocked || connectStepTestRunning) return;
     if (runtime === 'local' && selectedAgent) {
+      const startedInputKey = agentTestInputKey;
+      const testResult =
+        visibleAgentTestState.status === 'done' && visibleAgentTestState.result.ok
+          ? visibleAgentTestState.result
+          : await testAgentInline();
+      if (!testResult?.ok) return;
+      if (!continueAttemptStillCurrent('local', startedInputKey)) return;
       await onConfigPersist({
         ...config,
         mode: 'daemon',
@@ -2840,6 +2735,13 @@ function OnboardingView({
       return;
     }
     if (runtime === 'byok') {
+      const startedInputKey = providerTestInputKey;
+      const testResult =
+        visibleProviderTestState.status === 'done' && visibleProviderTestState.result.ok
+          ? visibleProviderTestState.result
+          : await testProviderInline();
+      if (!testResult?.ok) return;
+      if (!continueAttemptStillCurrent('byok', startedInputKey)) return;
       await onConfigPersist({ ...config, mode: 'api' });
       emitOnboardingClick('continue', 'continue', { runtime_type: 'byok' });
       completeStreamlinedOnboarding('byok');
@@ -3179,8 +3081,8 @@ function OnboardingView({
     }
   }
 
-  async function testProviderInline() {
-    if (!canTestProvider || providerTestState.status === 'running') return;
+  async function testProviderInline(): Promise<ConnectionTestResponse | null> {
+    if (!canTestProvider || providerTestState.status === 'running') return null;
     const inputKey = providerTestInputKey;
     providerAutoTestKeyRef.current = inputKey;
     setProviderTestState({ status: 'running', inputKey });
@@ -3196,23 +3098,22 @@ function OnboardingView({
             : undefined,
       });
       setProviderTestState({ status: 'done', inputKey, result });
+      return result;
     } catch (error) {
-      setProviderTestState({
-        status: 'done',
-        inputKey,
-        result: {
-          ok: false,
-          kind: 'unknown',
-          latencyMs: 0,
-          model: config.model,
-          detail: error instanceof Error ? error.message : 'Test request failed',
-        },
-      });
+      const result: ConnectionTestResponse = {
+        ok: false,
+        kind: 'unknown',
+        latencyMs: 0,
+        model: config.model,
+        detail: error instanceof Error ? error.message : 'Test request failed',
+      };
+      setProviderTestState({ status: 'done', inputKey, result });
+      return result;
     }
   }
 
-  async function testAgentInline() {
-    if (!selectedAgent || !canTestAgent || agentTestState.status === 'running') return;
+  async function testAgentInline(): Promise<ConnectionTestResponse | null> {
+    if (!selectedAgent || !canTestAgent || agentTestState.status === 'running') return null;
     const inputKey = agentTestInputKey;
     const agent = selectedAgent;
     const model = selectedAgentTestModel;
@@ -3226,19 +3127,18 @@ function OnboardingView({
         agentCliEnv: config.agentCliEnv ?? {},
       });
       setAgentTestState({ status: 'done', inputKey, result });
+      return result;
     } catch (error) {
-      setAgentTestState({
-        status: 'done',
-        inputKey,
-        result: {
-          ok: false,
-          kind: 'unknown',
-          latencyMs: 0,
-          model: model || 'default',
-          agentName: agent.name,
-          detail: error instanceof Error ? error.message : 'Test request failed',
-        },
-      });
+      const result: ConnectionTestResponse = {
+        ok: false,
+        kind: 'unknown',
+        latencyMs: 0,
+        model: model || 'default',
+        agentName: agent.name,
+        detail: error instanceof Error ? error.message : 'Test request failed',
+      };
+      setAgentTestState({ status: 'done', inputKey, result });
+      return result;
     }
   }
 
@@ -3378,71 +3278,6 @@ function OnboardingView({
         className="onboarding-view onboarding-view--cloud"
         aria-label={t('settings.welcomeTitle')}
       >
-        <div className="onboarding-cloud__topbar">
-          <LanguageMenu compact placement="down" align="end" />
-          <button
-            type="button"
-            className="onboarding-cloud__theme"
-            aria-label={resolvedDark ? t('settings.themeLight') : t('settings.themeDark')}
-            title={resolvedDark ? t('settings.themeLight') : t('settings.themeDark')}
-            onClick={() => onThemeChange(resolvedDark ? 'light' : 'dark')}
-          >
-            <Icon name={themeIcon} size={25} />
-          </button>
-        </div>
-        <div className="onboarding-cloud__center">
-          <span
-            className="onboarding-cloud__logo od-brand-glyph"
-            role="img"
-            aria-label="Material Designer"
-          />
-          <h1 className="onboarding-cloud__title">{t('settings.onboardingCloudTitle')}</h1>
-          <p className="onboarding-cloud__body">{t('settings.onboardingCloudBody')}</p>
-          <button
-            type="button"
-            className="onboarding-cloud__primary"
-            onClick={() => {
-              if (amrStatusResolving) return;
-              if (amrSignedIn) {
-                recordAmrEntry(analytics.track, 'onboarding_amr_card', new Date(), {
-                  metricsConsent: config.telemetry?.metrics === true,
-                });
-                setRuntime('amr');
-                onModeChange('daemon');
-                onAgentChange('amr');
-                recordAmrEntry(
-                  analytics.track,
-                  'onboarding_amr_sign_in_continue',
-                  new Date(),
-                  {
-                    metricsConsent: config.telemetry?.metrics === true,
-                    reuseExistingFrom: ['onboarding_amr_card'],
-                  },
-                );
-                setStep((current) => current + 1);
-                return;
-              }
-              void handleCloudSignIn();
-            }}
-            disabled={cloudBusy || amrLoginCancelPending || amrStatusResolving}
-            aria-busy={cloudBusy || amrStatusResolving ? true : undefined}
-          >
-            <Icon name="orbit" size={17} />
-            <span>
-              {cloudBusy
-                ? t('settings.amrSigningIn')
-                : amrStatusResolving
-                  ? t('common.loading')
-                  : amrSignedIn
-                    ? t('settings.onboardingCloudContinue')
-                    : t('settings.onboardingCloudSignIn')}
-            </span>
-          </button>
-          {amrLoginError ? (
-            <span className="onboarding-cloud__error" role="alert">
-              {amrLoginError}
-            </span>
-          ) : null}
         <div className="onboarding-cloud__pane">
           <div className="onboarding-cloud__center">
             <h1 className="onboarding-cloud__title">{t('settings.onboardingCloudTitle')}</h1>
@@ -3788,7 +3623,7 @@ function OnboardingView({
               type="button"
               className={`onboarding-view__primary${connectGateTooltip ? ' od-tooltip' : ''}`}
               onClick={handlePrimaryAction}
-              disabled={amrLoginPending || amrLoginCancelPending}
+              disabled={amrLoginPending || amrLoginCancelPending || connectStepTestRunning}
               aria-disabled={connectStepBlocked || undefined}
               data-tooltip={connectGateTooltip ?? undefined}
               data-tooltip-placement="top"
@@ -3945,105 +3780,6 @@ function OnboardingCliSetupPanel({
       ) : null}
     </div>
   );
-}
-
-function OnboardingAmrModelSelect({
-  models,
-  modelsSource,
-  selectedModel,
-  onSelectModel,
-}: {
-  models: NonNullable<AgentInfo['models']>;
-  modelsSource: AgentInfo['modelsSource'];
-  selectedModel: string;
-  onSelectModel: (model: string) => void;
-}) {
-  const t = useT();
-  const modelSource = modelsSource ?? 'fallback';
-  const displayModels = models.map((model) => {
-    const capability = onboardingModelCapabilityLabel(t, model);
-    const cost = onboardingModelCostLabel(t, model);
-    return {
-      value: model.id,
-      label: formatOnboardingAmrModelLabel(model),
-      tag: capability?.label,
-      tagKind: capability?.kind,
-      meta: cost?.label,
-    };
-  });
-  const modelSourceLabel = t('settings.onboardingAmrModelSourceLabel');
-  return (
-    <div
-      className="onboarding-view__model-picker"
-      onClick={(event) => event.stopPropagation()}
-    >
-      <OnboardingDropdown
-        label={`${t('settings.modelPicker')} · ${modelSourceLabel}`}
-        placeholder={t('settings.modelSourceFallback')}
-        value={selectedModel}
-        options={displayModels}
-        onChange={onSelectModel}
-        searchable
-        searchPlaceholder={t('newproj.modelSearch')}
-        sourceTone={modelSource}
-      />
-    </div>
-  );
-}
-
-function formatOnboardingAmrModelLabel(
-  model: NonNullable<AgentInfo['models']>[number],
-): string {
-  const label = model.label?.trim();
-  if (label && label !== model.id && !/^[a-z0-9._-]+$/.test(label)) {
-    return label;
-  }
-  return model.id
-    .split('-')
-    .filter(Boolean)
-    .map(formatModelToken)
-    .join(' ');
-}
-
-function formatModelToken(token: string): string {
-  const lower = token.toLowerCase();
-  const known: Record<string, string> = {
-    claude: 'Claude',
-    opus: 'Opus',
-    sonnet: 'Sonnet',
-    haiku: 'Haiku',
-    deepseek: 'DeepSeek',
-    gemini: 'Gemini',
-    glm: 'GLM',
-    gpt: 'GPT',
-    oss: 'OSS',
-    kimi: 'Kimi',
-    minimax: 'MiniMax',
-    mimo: 'MiMo',
-    qwen3: 'Qwen3',
-    seed: 'Seed',
-  };
-  if (known[lower]) return known[lower];
-  if (/^v\d/i.test(token)) return token.toUpperCase();
-  if (/^\d+b$/i.test(token) || /^a\d+b$/i.test(token)) return token.toUpperCase();
-  if (/^\d+(\.\d+)*$/.test(token)) return token;
-  return token.charAt(0).toUpperCase() + token.slice(1);
-}
-
-function onboardingModelCapabilityLabel(
-  t: ReturnType<typeof useT>,
-  model: Pick<NonNullable<AgentInfo['models']>[number], 'id' | 'metadata'>,
-): { label: string; kind: ModelCapabilityTag } | undefined {
-  const tag = getModelCapabilityTag(model);
-  return tag ? { label: t(MODEL_CAPABILITY_TAG_LABEL_KEYS[tag]), kind: tag } : undefined;
-}
-
-function onboardingModelCostLabel(
-  t: ReturnType<typeof useT>,
-  model: Pick<NonNullable<AgentInfo['models']>[number], 'id' | 'metadata'>,
-): { label: string } | undefined {
-  const tier = getModelCostTier(model);
-  return tier ? { label: t(MODEL_COST_TIER_LABEL_KEYS[tier]) } : undefined;
 }
 
 function OnboardingByokSetupPanel({
@@ -4458,10 +4194,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
   const [resolvedPlacement, setResolvedPlacement] = useState(placement);
   const [menuMaxHeight, setMenuMaxHeight] = useState(240);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const dropdownIdRef = useRef(`onboarding-dropdown-${Math.random().toString(36).slice(2)}`);
-  const labelId = `${dropdownIdRef.current}-label`;
-  const triggerValueId = `${dropdownIdRef.current}-value`;
   const selectedValues = Array.isArray(value)
     ? value
     : value || allowEmptyValue
@@ -4487,12 +4220,6 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
         )
       : options;
   const emptyMessage = searchable ? t('homeHero.footer.noMatches') : t('settings.fetchModelsEmpty');
-
-  const closeDropdown = useCallback((restoreFocus = false) => {
-    setOpen(false);
-    setQuery('');
-    if (restoreFocus) triggerRef.current?.focus();
-  }, []);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -4528,14 +4255,13 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        closeDropdown();
+        setOpen(false);
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDropdown(true);
+        setOpen(false);
       }
     }
 
@@ -4545,7 +4271,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [closeDropdown, open]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -4556,7 +4282,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
   useEffect(() => {
     function handlePeerOpen(event: Event) {
       if ((event as CustomEvent<string>).detail !== dropdownIdRef.current) {
-        closeDropdown();
+        setOpen(false);
       }
     }
 
@@ -4564,7 +4290,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
     return () => {
       window.removeEventListener(ONBOARDING_DROPDOWN_OPEN_EVENT, handlePeerOpen);
     };
-  }, [closeDropdown]);
+  }, []);
 
   function toggleOpen() {
     setOpen((current) => {
@@ -4588,27 +4314,25 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
       ref={rootRef}
     >
       <span
-        id={labelId}
         className="onboarding-view__select-label"
         data-source-tone={sourceTone || undefined}
       >
         {label}
       </span>
       <button
-        ref={triggerRef}
         type="button"
         className={`onboarding-view__select-trigger${open ? ' is-open' : ''}${
           hasValue ? ' has-value' : ''
         }`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-labelledby={`${labelId} ${triggerValueId}`}
+        aria-label={triggerLabel}
         aria-describedby={selectedTagDescriptionId}
-        title={`${label}: ${triggerLabel}`}
+        title={triggerLabel}
         onClick={toggleOpen}
       >
         <span className="onboarding-view__select-trigger-value">
-          <span id={triggerValueId}>{triggerLabel}</span>
+          <span>{triggerLabel}</span>
           {selectedTag ? (
             <span
               className="onboarding-view__select-badge"
@@ -4682,7 +4406,7 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
                       return;
                     }
                     props.onChange(option.value);
-                    closeDropdown(true);
+                    setOpen(false);
                   }}
                 >
                   <span className="onboarding-view__select-option-content">
@@ -4716,212 +4440,6 @@ export function OnboardingDropdown(props: OnboardingDropdownProps) {
             ) : null}
           </div>
         </div>
-      ) : null}
-    </div>
-  );
-}
-
-// Placeholder for the AMR cloud card shown while AMR availability is still
-// being probed (the cold-start detection stream / one-shot re-probe). It
-// mirrors the real card's footprint exactly — same featured/amr grid, same
-// 246px min-height — so resolving to the real card causes no layout jump.
-// The AMR brand (icon + name) is known up-front and rendered solid; only the
-// version meta, benefit list, and model picker — the parts that depend on the
-// probe result — shimmer. Non-interactive and announced via role="status".
-function OnboardingAmrCloudSkeleton() {
-  const t = useT();
-  return (
-    <div className="onboarding-view__amr-cloud-card">
-      <div
-        className="onboarding-view__card onboarding-view__card--featured onboarding-view__card--amr onboarding-view__card--benefit-aside onboarding-view__card--skeleton"
-        role="status"
-        aria-busy="true"
-        aria-label={t('common.loading')}
-      >
-        <span className="onboarding-view__identity">
-          <span className="onboarding-view__icon onboarding-view__icon--asset">
-            <AgentIcon id="amr" size={52} className="onboarding-view__agent-logo" />
-          </span>
-          <span className="onboarding-view__card-copy">
-            <span className="onboarding-view__card-top">
-              <strong>{t('settings.amrCloud')}</strong>
-            </span>
-            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--meta" />
-          </span>
-        </span>
-        <span className="onboarding-view__benefit-aside" aria-hidden="true">
-          <span className="onboarding-view__benefit-stack onboarding-view__benefit-stack--skeleton">
-            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
-            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
-            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
-            <span className="onboarding-view__skeleton-line onboarding-view__skeleton-line--benefit" />
-          </span>
-        </span>
-        <span className="onboarding-view__card-model" aria-hidden="true">
-          <span className="onboarding-view__skeleton-model">
-            <span className="onboarding-view__skeleton-model-label" />
-            <span className="onboarding-view__skeleton-model-bar" />
-          </span>
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function OnboardingChoiceCard({
-  icon,
-  agentIconId,
-  title,
-  body,
-  benefits,
-  upcomingLabel,
-  upcomingBenefits,
-  benefitPlacement = 'copy',
-  metaLabel,
-  modelSlot,
-  actionLabel,
-  selected,
-  badge,
-  statusSlot,
-  featured,
-  variant,
-  onClick,
-}: {
-  icon: 'orbit' | 'hammer' | 'sliders' | 'github' | 'upload' | 'sparkles';
-  agentIconId?: string;
-  title: string;
-  body: string;
-  benefits?: string[];
-  upcomingLabel?: string;
-  upcomingBenefits?: string[];
-  benefitPlacement?: 'copy' | 'aside';
-  metaLabel?: string;
-  modelSlot?: ReactNode;
-  actionLabel?: string;
-  selected: boolean;
-  badge?: string;
-  statusSlot?: ReactNode;
-  featured?: boolean;
-  variant?: 'amr';
-  onClick: () => void;
-}) {
-  function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    onClick();
-  }
-
-  const hasBenefits =
-    (benefits && benefits.length > 0) ||
-    (upcomingBenefits && upcomingBenefits.length > 0);
-  const benefitStack = hasBenefits ? (
-    <span className="onboarding-view__benefit-stack">
-      {benefits && benefits.length > 0 ? (
-        <span className="onboarding-view__benefits">
-          {benefits.map((item, index) => (
-            <span
-              key={item}
-              className={`onboarding-view__benefit${
-                index >= 2 ? ' onboarding-view__benefit--hero' : ''
-              }`}
-            >
-              {item}
-            </span>
-          ))}
-        </span>
-      ) : null}
-      {upcomingBenefits && upcomingBenefits.length > 0 ? (
-        <span className="onboarding-view__upcoming-benefits">
-          {upcomingLabel ? (
-            <span className="onboarding-view__upcoming-label">{upcomingLabel}</span>
-          ) : null}
-          {upcomingBenefits.map((item) => (
-            <span key={item} className="onboarding-view__benefit onboarding-view__benefit--upcoming">
-              {item}
-            </span>
-          ))}
-        </span>
-      ) : null}
-    </span>
-  ) : null;
-  const modelUnderLogo = variant === 'amr' && modelSlot;
-  const iconNode = (
-    <span
-      className={
-        'onboarding-view__icon' +
-        (agentIconId ? ' onboarding-view__icon--asset' : '')
-      }
-    >
-      {agentIconId ? (
-        <AgentIcon
-          id={agentIconId}
-          size={featured ? 52 : 40}
-          className="onboarding-view__agent-logo"
-        />
-      ) : (
-        <Icon name={icon} size={18} />
-      )}
-    </span>
-  );
-  const copyNode = (
-    <span className="onboarding-view__card-copy">
-      <span className="onboarding-view__card-top">
-        <strong>{title}</strong>
-        {badge ? <span className="onboarding-view__badge">{badge}</span> : null}
-      </span>
-      {metaLabel ? <span className="onboarding-view__card-meta">{metaLabel}</span> : null}
-      {modelUnderLogo ? null : modelSlot}
-      {benefitPlacement === 'copy' && benefitStack ? (
-        benefitStack
-      ) : !modelSlot ? (
-        <small>{body}</small>
-      ) : null}
-    </span>
-  );
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      className={`onboarding-view__card${selected ? ' is-selected' : ''}${
-        featured ? ' onboarding-view__card--featured' : ''
-      }${variant ? ` onboarding-view__card--${variant}` : ''}${
-        benefitPlacement === 'aside' ? ' onboarding-view__card--benefit-aside' : ''
-      }`}
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      aria-pressed={selected}
-    >
-      {variant === 'amr' ? (
-        <span className="onboarding-view__identity">
-          {iconNode}
-          {copyNode}
-        </span>
-      ) : (
-        <>
-          {iconNode}
-          {copyNode}
-        </>
-      )}
-      {modelUnderLogo ? (
-        <span className="onboarding-view__card-model">
-          {modelSlot}
-        </span>
-      ) : null}
-      {benefitPlacement === 'aside' && benefitStack ? (
-        <span className="onboarding-view__benefit-aside">{benefitStack}</span>
-      ) : null}
-      {statusSlot ? (
-        <span className="onboarding-view__card-status">
-          {statusSlot}
-        </span>
-      ) : null}
-      {actionLabel ? <span className="onboarding-view__card-action">{actionLabel}</span> : null}
-      {selected ? (
-        <span className="onboarding-view__check">
-          <Icon name="check" size={14} />
-        </span>
       ) : null}
     </div>
   );
