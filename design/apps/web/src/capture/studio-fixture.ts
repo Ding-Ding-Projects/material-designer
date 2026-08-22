@@ -960,7 +960,7 @@ export function studioFixtureArtifactPreviewUrl(
   const boundedReloadKey = Number.isSafeInteger(reloadKey) && reloadKey >= 0 && reloadKey <= 100_000
     ? reloadKey
     : 0;
-  return `data:text/html;charset=utf-8,${encodeURIComponent(studioFixtureFileText[STUDIO_FIXTURE_ACTIVE_FILE])}#fixture-reload=${boundedReloadKey}`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(studioFixtureFileText[STUDIO_FIXTURE_ACTIVE_FILE] ?? '')}#fixture-reload=${boundedReloadKey}`;
 }
 
 export function studioFixtureProjectRoute(route: StudioFixtureRoute) {
