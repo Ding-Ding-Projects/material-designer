@@ -17,6 +17,7 @@ const LANDING_LOCALE_BY_APP_LOCALE: Record<Locale, string> = {
   de: 'de',
   'zh-CN': 'zh',
   'zh-TW': 'zh',
+  'zh-HK': 'zh',
   'pt-BR': 'pt-br',
   'es-ES': 'es',
   ru: 'ru',

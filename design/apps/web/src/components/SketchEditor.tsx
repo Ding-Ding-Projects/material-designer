@@ -669,6 +669,7 @@ function excalidrawLangCode(locale: Locale): string {
     'de': 'de-DE',
     'zh-CN': 'zh-CN',
     'zh-TW': 'zh-TW',
+    'zh-HK': 'zh-HK',
     'pt-BR': 'pt-BR',
     'es-ES': 'es-ES',
     'ru': 'ru-RU',
@@ -933,6 +934,7 @@ const ZH_TW_SKETCH_TEXT_OVERRIDES: Record<string, string> = {
 
 function sketchTextOverrides(locale: Locale): Record<string, string> | null {
   if (locale === 'zh-CN') return ZH_CN_SKETCH_TEXT_OVERRIDES;
+  if (locale === 'zh-HK') return ZH_TW_SKETCH_TEXT_OVERRIDES;
   if (locale === 'zh-TW') return ZH_TW_SKETCH_TEXT_OVERRIDES;
   return null;
 }
