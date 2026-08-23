@@ -21,7 +21,7 @@ export interface RovingRadioGroupProps<T extends string> {
   ariaLabel: string;
   className?: string;
   style?: CSSProperties;
-  groupProps?: Omit<HTMLAttributes<HTMLDivElement>, 'role' | 'aria-label' | 'onKeyDown'>;
+  groupProps?: Omit<HTMLAttributes<HTMLDivElement>, 'role' | 'aria-label' | 'onKeyDown'> & { 'data-od-setting'?: string };
   optionProps?: (option: T, active: boolean) => RovingRadioOptionProps;
   children: (option: T, active: boolean) => ReactNode;
 }
