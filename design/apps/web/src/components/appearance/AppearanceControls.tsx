@@ -175,7 +175,7 @@ export function AppearanceControls() {
           <span className={styles.rowLabel}>{t('appearance.densityLabel')}</span>
           <RovingRadioGroup
             className="seg-control"
-            aria-label={t('appearance.densityLabel')}
+            ariaLabel={t('appearance.densityLabel')}
             value={preferences.density}
             options={APPEARANCE_DENSITIES}
             onChange={(density) => update({ density })}
@@ -208,9 +208,9 @@ export function AppearanceControls() {
         <h4 className={styles.cardTitle}>{t('appearance.typography')}</h4>
         <p className={styles.cardHint}>{t('appearance.typographyHint')}</p>
 
-        <RovingRadioGroup
-          className={styles.faces}
-          aria-label={t('appearance.fontFamily')}
+          <RovingRadioGroup
+            className={styles.faces}
+            ariaLabel={t('appearance.fontFamily')}
           value={typography.fontStackId}
           options={FONT_STACK_IDS}
           onChange={(fontStackId) => setTypography({ fontStackId })}
