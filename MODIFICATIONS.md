@@ -649,10 +649,12 @@ separate.
 - `apps/web/src/lib/history/export.ts`
 - `apps/web/src/components/ProjectArchiveAction.tsx`
 - `apps/web/src/components/ProjectView.tsx`
+- `apps/web/src/runtime/exports.ts`
 - `apps/web/src/styles/design-system-flow.css`
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/components/HandoffButton.test.tsx`
 - `apps/web/tests/components/ProjectArchiveAction.test.tsx`
+- `apps/web/tests/runtime/exports.test.ts`
 - `apps/web/tests/runtime/ProjectArchiveZipValidation.test.ts`
 ### 2026-08-21 — Add a fail-closed deterministic production parity route
 

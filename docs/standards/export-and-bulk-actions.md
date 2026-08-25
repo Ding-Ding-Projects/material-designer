@@ -58,6 +58,15 @@ paths. The archive digest is reported in the receipt over the complete ZIP byte
 stream, while the manifest deliberately records the scope rather than its own
 digest to avoid a self-referential hash.
 
+The browser-side contract deliberately differs from the older active-file ZIP
+helper. It first requests the staged receipt, validates its project, target,
+token, byte length, digest, exact same-origin download path and editor path,
+then streams the staged bytes under the caller's cancellation signal. The
+download is offered only after the received length and SHA-256 match the
+receipt. A malformed receipt, changed stream, mismatched response metadata or
+cancelled transfer returns a distinct non-success result and never substitutes
+a one-file archive under the complete-project label.
+
 ## Behaviour
 
 ### Export is a property of every surface, not a feature of one

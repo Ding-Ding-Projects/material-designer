@@ -59,8 +59,13 @@ with the project's standards.
       translator type. Release run `32810605256` then exposed an unsafe handoff
       export projection from a broad string record into the narrower token row.
       Both token and component projections now pass through the exact runtime
-      schema validators, but a replacement hosted build is still required, so
-      this item is not complete.
+      schema validators. Release run `32811211274` then reached the project
+      archive action and found that its complete-project staged export API was
+      missing from the browser runtime. The browser contract now prepares and
+      validates the receipt, streams with progress and cancellation, verifies
+      byte length and SHA-256, and refuses to substitute the older one-file ZIP
+      fallback. A replacement hosted build is still required, so this item is
+      not complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `05f5b33ef` / v0.20.3 development,

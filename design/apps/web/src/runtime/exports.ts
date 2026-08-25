@@ -19,7 +19,13 @@ import {
   isOpenDesignHostAvailable,
   printHostPdf,
 } from '@open-design/host';
-import type { WorkspaceCollabContext } from '@open-design/contracts';
+import {
+  PROJECT_EXPORT_RECEIPT_SCHEMA,
+  PROJECT_EXPORT_LIMITS,
+  type ProjectExportReceipt,
+  type ProjectExportTarget,
+  type WorkspaceCollabContext,
+} from '@open-design/contracts';
 import {
   workspaceProjectHeaders,
   workspaceResourceUrl,
@@ -1230,6 +1236,175 @@ export async function downloadProjectArchive(opts: {
   } catch (err) {
     console.warn('[downloadProjectArchive] failed:', err);
     return false;
+  }
+}
+
+export type ProjectArchiveReceipt = ProjectExportReceipt;
+
+export type ProjectArchiveResult =
+  | { ok: true; receipt: ProjectArchiveReceipt }
+  | { ok: false; cancelled: true; bytesReceived: number }
+  | { ok: false; cancelled: false; error: string; bytesReceived: number };
+
+function projectArchiveErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'project export could not be prepared';
+}
+
+async function projectArchiveResponseError(response: Response, fallback: string): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.error?.message === 'string' && body.error.message.trim()) {
+      return body.error.message;
+    }
+  } catch {
+    // Keep the bounded status-based fallback for non-JSON responses.
+  }
+  return `${fallback} (${response.status})`;
+}
+
+function isProjectArchiveReceipt(
+  value: unknown,
+  projectId: string,
+  target: ProjectExportTarget,
+): value is ProjectArchiveReceipt {
+  if (!value || typeof value !== 'object') return false;
+  const receipt = value as Partial<ProjectArchiveReceipt>;
+  const expectedDownloadUrl = typeof receipt.token === 'string'
+    ? `/api/projects/${encodeURIComponent(projectId)}/archive/staged/${encodeURIComponent(receipt.token)}?target=${encodeURIComponent(target)}`
+    : '';
+  return receipt.schema === PROJECT_EXPORT_RECEIPT_SCHEMA
+    && receipt.projectId === projectId
+    && receipt.target === target
+    && typeof receipt.token === 'string'
+    && /^[A-Za-z0-9_-]{1,120}$/.test(receipt.token)
+    && typeof receipt.filename === 'string'
+    && receipt.filename.length > 0
+    && receipt.filename.length <= 240
+    && Number.isSafeInteger(receipt.bytes)
+    && Number(receipt.bytes) >= 0
+    && Number(receipt.bytes) <= PROJECT_EXPORT_LIMITS.maxArchiveBytes
+    && typeof receipt.sha256 === 'string'
+    && /^[a-f0-9]{64}$/.test(receipt.sha256)
+    && typeof receipt.editorPath === 'string'
+    && receipt.editorPath.length > 0
+    && receipt.editorPath.length <= 4_096
+    && receipt.downloadUrl === expectedDownloadUrl
+    && Number.isSafeInteger(receipt.expiresAt)
+    && Number(receipt.expiresAt) > 0
+    && typeof receipt.archiveDigestScope === 'string'
+    && receipt.archiveDigestScope.length > 0;
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Prepare, stream, validate, and download a complete project handoff archive.
+ * Unlike exportProjectAsZip, this contract never substitutes a single-file ZIP:
+ * the returned receipt names the exact staged artifact opened by editor handoff.
+ */
+export async function exportProjectArchive(opts: {
+  projectId: string;
+  target: ProjectExportTarget;
+  fallbackTitle: string;
+  workspaceContext?: WorkspaceCollabContext | null;
+  signal?: AbortSignal;
+  onProgress?: (progress: {
+    bytesReceived: number;
+    totalBytes: number | null;
+    phase: string;
+  }) => void;
+}): Promise<ProjectArchiveResult> {
+  let bytesReceived = 0;
+  const headers = {
+    'content-type': 'application/json',
+    ...(opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : {}),
+  };
+  try {
+    opts.onProgress?.({ bytesReceived: 0, totalBytes: null, phase: 'Preparing archive' });
+    const prepare = await fetch(`/api/projects/${encodeURIComponent(opts.projectId)}/archive/prepare`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ target: opts.target }),
+      signal: opts.signal,
+    });
+    if (!prepare.ok) {
+      throw new Error(await projectArchiveResponseError(prepare, 'archive prepare request failed'));
+    }
+    const candidate: unknown = await prepare.json();
+    if (!isProjectArchiveReceipt(candidate, opts.projectId, opts.target)) {
+      throw new Error('archive prepare response did not contain a valid receipt');
+    }
+    const receipt = candidate;
+    const download = await fetch(receipt.downloadUrl, {
+      headers: opts.workspaceContext ? workspaceProjectHeaders(opts.workspaceContext) : undefined,
+      signal: opts.signal,
+    });
+    if (!download.ok) {
+      throw new Error(await projectArchiveResponseError(download, 'archive download request failed'));
+    }
+    const reader = download.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    if (reader) {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        if (next.value.byteLength > 0) {
+          chunks.push(next.value);
+          bytesReceived += next.value.byteLength;
+          if (bytesReceived > receipt.bytes || bytesReceived > PROJECT_EXPORT_LIMITS.maxArchiveBytes) {
+            await reader.cancel();
+            throw new Error('archive stream exceeded its receipt byte length');
+          }
+          opts.onProgress?.({
+            bytesReceived,
+            totalBytes: receipt.bytes,
+            phase: 'Downloading archive',
+          });
+        }
+      }
+    } else {
+      const bytes = new Uint8Array(await download.arrayBuffer());
+      chunks.push(bytes);
+      bytesReceived = bytes.byteLength;
+      opts.onProgress?.({ bytesReceived, totalBytes: receipt.bytes, phase: 'Downloading archive' });
+    }
+    if (bytesReceived !== receipt.bytes) {
+      throw new Error(`archive byte length did not match its receipt (${bytesReceived}/${receipt.bytes})`);
+    }
+    const bytes = new Uint8Array(bytesReceived);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    if (await sha256Hex(bytes) !== receipt.sha256) {
+      throw new Error('archive SHA-256 did not match its receipt');
+    }
+    const headerDigest = download.headers.get('x-od-archive-sha256');
+    if (headerDigest !== null && headerDigest !== receipt.sha256) {
+      throw new Error('archive response digest did not match its receipt');
+    }
+    const headerTarget = download.headers.get('x-od-archive-target');
+    if (headerTarget !== null && headerTarget !== receipt.target) {
+      throw new Error('archive response target did not match its receipt');
+    }
+    triggerDownload(new Blob([bytes], { type: 'application/zip' }), receipt.filename || `${safeFilename(opts.fallbackTitle, 'project')}.zip`);
+    return { ok: true, receipt };
+  } catch (error) {
+    if (opts.signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+      return { ok: false, cancelled: true, bytesReceived };
+    }
+    return {
+      ok: false,
+      cancelled: false,
+      error: projectArchiveErrorMessage(error),
+      bytesReceived,
+    };
   }
 }
 

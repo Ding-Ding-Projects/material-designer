@@ -45,6 +45,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **Complete project archive downloads are wired to their staged receipt contract.**
+  Release run `32811211274` found that the project-level action imported a
+  missing client API even though the daemon prepare and staged-download routes
+  already existed. The client now prepares the requested website or desktop
+  target, validates the exact receipt, streams with progress and cancellation,
+  verifies byte length and SHA-256, and downloads only the verified bytes. It
+  does not rename the call to the older active-file ZIP helper, whose one-file
+  fallback and void result cannot satisfy the complete-project or editor-handoff
+  contract. Focused regressions cover the successful two-request flow and a
+  changed stream that must fail closed. Replacement hosted verification remains
+  pending.
+
+  **Complete project archive download 而家真係接返 staged receipt contract。**
+  Release run `32811211274` 捉到 project-level action 叫咗一個根本未 export
+  嘅 client API，但 daemon prepare 同 staged-download routes 其實已經喺度等。
+  Client 依家會 prepare 指定 website 或 desktop target、驗清 exact receipt、
+  帶 progress 同 cancellation streaming，再核對 byte length 同 SHA-256，啱晒
+  先畀下載。佢唔會求其改名借用舊 active-file ZIP helper，因為嗰條路會單檔
+  fallback 又冇 result，扮唔到 complete-project 同 editor handoff。Focused
+  regressions 守住成功兩段 request 同 stream 被換包時必須截停；replacement
+  hosted verification 仲未完成。
+
 - **Handoff exports now validate their projected row shape before use.** The
   hosted release type-check rejected a broad string record being asserted into
   the narrower token-mapping contract. Token and component projections now

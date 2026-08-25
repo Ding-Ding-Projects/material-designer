@@ -20,6 +20,7 @@ import {
   exportProjectAsPdf,
   exportProjectAsPptx,
   exportProjectAsZip,
+  exportProjectArchive,
   openSandboxedPreviewInNewTab,
   prepareImageExportTarget,
   planDeckImageCapture,
@@ -1025,6 +1026,102 @@ describe('binary project/design-system downloads', () => {
     expect(fetch).toHaveBeenCalledWith('/api/projects/project%20123/archive');
     expect(capturedFilename).toBe('Project.zip');
     expect(await capturedBlob!.text()).toContain('project-zip');
+  });
+
+  it('prepares, streams, validates, and downloads the exact staged project archive', async () => {
+    const archive = new TextEncoder().encode('PK\u0003\u0004complete-project');
+    const digest = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', archive)),
+      (byte) => byte.toString(16).padStart(2, '0'),
+    ).join('');
+    const receipt = {
+      schema: 'open-design.project-export-receipt.v1',
+      target: 'project',
+      projectId: 'project 123',
+      token: 'receipt-token',
+      filename: 'complete-project.zip',
+      bytes: archive.byteLength,
+      sha256: digest,
+      editorPath: 'C:/app-data/exports/complete-project.zip',
+      downloadUrl: '/api/projects/project%20123/archive/staged/receipt-token?target=project',
+      expiresAt: Date.now() + 60_000,
+      archiveDigestScope: 'complete ZIP byte stream, including EXPORT-MANIFEST.json',
+    } as const;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/archive/prepare')) return Response.json(receipt);
+      return new Response(archive, {
+        status: 200,
+        headers: {
+          'content-type': 'application/zip',
+          'x-od-archive-sha256': digest,
+          'x-od-archive-target': 'project',
+        },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const progress = vi.fn();
+
+    const result = await exportProjectArchive({
+      projectId: 'project 123',
+      target: 'project',
+      fallbackTitle: 'Project 123',
+      onProgress: progress,
+    });
+
+    expect(result).toEqual({ ok: true, receipt });
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/projects/project%20123/archive/prepare', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ target: 'project' }),
+      signal: undefined,
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, receipt.downloadUrl, {
+      headers: undefined,
+      signal: undefined,
+    });
+    expect(progress).toHaveBeenLastCalledWith({
+      bytesReceived: archive.byteLength,
+      totalBytes: archive.byteLength,
+      phase: 'Downloading archive',
+    });
+    expect(capturedFilename).toBe('complete-project.zip');
+    expect(new Uint8Array(await capturedBlob!.arrayBuffer())).toEqual(archive);
+  });
+
+  it('fails closed when a staged archive does not match its receipt digest', async () => {
+    const archive = new TextEncoder().encode('PK\u0003\u0004changed-project');
+    const receipt = {
+      schema: 'open-design.project-export-receipt.v1',
+      target: 'project',
+      projectId: 'project-1',
+      token: 'receipt-token',
+      filename: 'project.zip',
+      bytes: archive.byteLength,
+      sha256: '0'.repeat(64),
+      editorPath: 'C:/app-data/exports/project.zip',
+      downloadUrl: '/api/projects/project-1/archive/staged/receipt-token?target=project',
+      expiresAt: Date.now() + 60_000,
+      archiveDigestScope: 'complete ZIP byte stream, including EXPORT-MANIFEST.json',
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (
+      url.endsWith('/archive/prepare')
+        ? Response.json(receipt)
+        : new Response(archive, { status: 200 })
+    )));
+
+    const result = await exportProjectArchive({
+      projectId: 'project-1',
+      target: 'project',
+      fallbackTitle: 'Project',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      cancelled: false,
+      error: 'archive SHA-256 did not match its receipt',
+      bytesReceived: archive.byteLength,
+    });
+    expect(capturedBlob).toBeUndefined();
   });
 
   it('passes an optional root when downloading a project subfolder archive', async () => {
