@@ -6,7 +6,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { BrowserWindow, app, dialog, ipcMain, nativeImage, nativeTheme, screen, session, shell, webFrameMain } from "electron";
+import { BrowserWindow, app, dialog, ipcMain, nativeImage, nativeTheme, safeStorage, screen, session, shell, webFrameMain } from "electron";
 import type { WebFrameMain } from "electron";
 import {
   DESKTOP_UPDATE_CHANNELS,
@@ -29,6 +29,11 @@ import type {
   OpenDesignHostUpdaterMenuLabels,
   OpenDesignHostUpdaterOpenDialogRequest,
   OpenDesignHostUpdaterSavePreparation,
+  OpenDesignSettingsToyLockTarget,
+  OpenDesignToyLockConfigureRequest,
+  OpenDesignToyLockVerifyRequest,
+  OpenDesignToyLockBeginTotpEnrollmentRequest,
+  OpenDesignToyLockConfirmTotpEnrollmentRequest,
 } from "@open-design/host";
 
 import { renderDeckSlides } from "./deck-capture.js";
@@ -64,9 +69,18 @@ import {
   type DeterministicParityReadiness,
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
+import { SettingsToyLockStore } from "./toy-lock-store.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
+const TOY_LOCK_IPC_CHANNELS = Object.freeze([
+  "od:toy-locks:begin-totp-enrollment",
+  "od:toy-locks:confirm-totp-enrollment",
+  "od:toy-locks:configure",
+  "od:toy-locks:list",
+  "od:toy-locks:remove",
+  "od:toy-locks:verify",
+] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
 let previewNavigationFailureEventSequence = 0;
 
@@ -2381,6 +2395,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeHandler("shell:open-external");
   ipcMain.removeHandler("shell:open-path");
   ipcMain.removeHandler("browser:clear-data");
+  for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
   }
@@ -2959,10 +2974,52 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   };
   const unsubscribeUpdater = options.updater?.subscribe(() => sendUpdaterStatus()) ?? (() => undefined);
   const requireMainWindowSender = (event: Electron.IpcMainInvokeEvent): void => {
-    if (event.sender !== window.webContents) {
+    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) {
       throw new Error("host IPC is only available to the main Material Designer window");
     }
   };
+  const toyLockStore = new SettingsToyLockStore({
+    directory: join(app.getPath("userData"), "toy-locks"),
+    osProtection: {
+      isAvailable: () => safeStorage.isEncryptionAvailable(),
+      protect: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.encryptString(value);
+      },
+      unprotect: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.decryptString(value);
+      },
+    },
+  });
+  ipcMain.handle("od:toy-locks:list", async (event) => {
+    requireMainWindowSender(event);
+    return toyLockStore.list();
+  });
+  ipcMain.handle("od:toy-locks:begin-totp-enrollment", async (event, request: OpenDesignToyLockBeginTotpEnrollmentRequest) => {
+    requireMainWindowSender(event);
+    return toyLockStore.beginTotpEnrollment(request);
+  });
+  ipcMain.handle("od:toy-locks:confirm-totp-enrollment", async (event, request: OpenDesignToyLockConfirmTotpEnrollmentRequest) => {
+    requireMainWindowSender(event);
+    return toyLockStore.confirmTotpEnrollment(request);
+  });
+  ipcMain.handle("od:toy-locks:configure", async (event, request: OpenDesignToyLockConfigureRequest) => {
+    requireMainWindowSender(event);
+    return toyLockStore.configure(request);
+  });
+  ipcMain.handle("od:toy-locks:remove", async (
+    event,
+    targetId: OpenDesignSettingsToyLockTarget,
+    expectedRevision: number,
+  ) => {
+    requireMainWindowSender(event);
+    return toyLockStore.remove(targetId, expectedRevision);
+  });
+  ipcMain.handle("od:toy-locks:verify", async (event, request: OpenDesignToyLockVerifyRequest) => {
+    requireMainWindowSender(event);
+    return toyLockStore.verify(request);
+  });
   const discoverUpdateDaemonBaseUrl = async (): Promise<string> => {
     const daemonUrl = await options.discoverDaemonUrl?.();
     const baseUrl = daemonUrl ?? await options.discoverUrl();
@@ -3849,6 +3906,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         ipcMain.removeHandler(channel);
       }
       ipcMain.removeHandler("browser:clear-data");
+      for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
       if (splash != null && !splash.isDestroyed()) splash.close();
       if (petWindow != null && !petWindow.isDestroyed()) petWindow.close();
       detachCaptureDebugger?.();

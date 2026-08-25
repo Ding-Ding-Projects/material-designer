@@ -306,6 +306,33 @@ wiring, app-wide mounting, and packaged proof remain unimplemented.
 - `apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`
 - `apps/web/tests/security/toy-lock-core.test.ts`
 
+### 2026-08-25 - Add the persistent Settings toy-lock host boundary
+
+**Reason:** Settings-tab toy locks need a main-process-owned credential and
+attempt-state boundary before a visible configuration surface can safely create
+them. This change adds an exact target and policy protocol, an optional narrow
+preload namespace, exact main-window main-frame validation, and a bounded
+versioned store. One protected credential envelope contains every independent
+salted resource-bounded asynchronous scrypt digest, salt, and TOTP secret.
+Non-secret metadata stays separate and publishes through recoverable
+generations; two-step TOTP enrollment requires a current code before activation.
+Attempts and cooldowns survive restart, concurrent mutations are bounded, stale revisions and
+unknown targets fail closed, and no secret material or local path crosses the
+bridge. The live renderer remains deliberately unwired until the configuration
+and pairing surfaces exist.
+
+**Changed files:**
+
+- `packages/host/src/protocol.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/detection.ts`
+- `packages/host/tests/index.test.ts`
+- `apps/desktop/src/main/toy-lock-store.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/tests/main/toy-lock-store.test.ts`
+- `apps/desktop/tests/main/toy-lock-host-boundary.test.ts`
+
 ### 2026-08-21 — Remove the artifact-upgrade upsell dialog entirely
 
 **Reason:** The AMR artifact-upgrade surface was a nagging promotional gate:

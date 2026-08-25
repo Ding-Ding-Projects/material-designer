@@ -28,8 +28,16 @@
       that strip with permission-filtered tabs, controlled empty lock state, and
       a verifier that refuses every external lock until a credential backend
       exists. Ordinary unlocked navigation is real, but users cannot configure a
-      lock yet. Credential persistence, lock-configuration menus, persistent
-      attempt budgets, TOTP pairing, per-element wiring, app-wide coverage,
+      lock yet. The desktop host now owns a bounded, versioned persistent store
+      for all 22 Settings targets, salted resource-bounded PIN/password hashes,
+      one fully operating-system-protected credential envelope containing every
+      scrypt digest, salt, and TOTP secret; strict two-step confirmed TOTP
+      enrollment; stale revision rejection; and recoverable generation-published
+      attempt/cooldown state behind a narrow optional main-frame-only bridge.
+      Asynchronous scrypt is bounded globally and per target. The live dialog deliberately does
+      not consume this bridge until configuration and pairing surfaces exist.
+      Lock-configuration menus, QR/manual TOTP pairing, central interception of
+      alternate Settings routes, per-element wiring, app-wide coverage,
       packaged interaction, accessibility runtime verification, and screenshot
       evidence remain open.
   - [ ] Expand the documentation site's representative toy lock to every

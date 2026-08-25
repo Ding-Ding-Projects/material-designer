@@ -450,6 +450,102 @@ export type OpenDesignHostUiScale = {
   set(factor: number): void;
 };
 
+export const OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS = Object.freeze([
+  "execution", "general", "workspace", "instructions", "memory", "media",
+  "mcpClient", "composio", "orbit", "routines", "integrations", "language",
+  "appearance", "narrator", "critiqueTheater", "notifications", "pet",
+  "designSystems", "projectLocations", "privacy", "handoff", "about",
+] as const);
+
+export type OpenDesignSettingsToyLockTarget =
+  (typeof OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS)[number];
+
+export const OPEN_DESIGN_TOY_LOCK_POLICIES = Object.freeze([
+  "pin", "password", "pin-password", "password-totp", "pin-totp",
+  "password-pin-totp",
+] as const);
+
+export type OpenDesignToyLockPolicy =
+  (typeof OPEN_DESIGN_TOY_LOCK_POLICIES)[number];
+
+export type OpenDesignToyLockMetadata = {
+  cooldownUntilMs: number | null;
+  maximumAttempts: number;
+  policy: OpenDesignToyLockPolicy;
+  remainingAttempts: number;
+  revision: number;
+  targetId: OpenDesignSettingsToyLockTarget;
+};
+
+export type OpenDesignToyLockFailureCode =
+  | "busy"
+  | "clock-invalid"
+  | "cooldown-active"
+  | "enrollment-expired"
+  | "enrollment-mismatch"
+  | "enrollment-not-found"
+  | "invalid-input"
+  | "not-configured"
+  | "os-protection-unavailable"
+  | "operation-failed"
+  | "persistence-failed"
+  | "protection-failed"
+  | "stale-revision"
+  | "store-corrupt"
+  | "target-refused";
+
+export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<string, never>> =
+  | ({ ok: true } & T)
+  | { code: OpenDesignToyLockFailureCode; ok: false };
+
+export type OpenDesignToyLockConfigureRequest = {
+  expectedRevision: number | null;
+  factors: { password?: string; pin?: string; totpSecretBase32?: string };
+  maximumAttempts?: number;
+  policy: OpenDesignToyLockPolicy;
+  targetId: OpenDesignSettingsToyLockTarget;
+};
+
+export type OpenDesignToyLockVerifyRequest = {
+  factors: { password?: string; pin?: string; totp?: string };
+  revision: number;
+  targetId: OpenDesignSettingsToyLockTarget;
+};
+
+export type OpenDesignToyLockBeginTotpEnrollmentRequest = {
+  expectedRevision: number | null;
+  factors: { password?: string; pin?: string; totpSecretBase32: string };
+  maximumAttempts?: number;
+  policy: Extract<OpenDesignToyLockPolicy, "password-totp" | "pin-totp" | "password-pin-totp">;
+  targetId: OpenDesignSettingsToyLockTarget;
+};
+
+export type OpenDesignToyLockConfirmTotpEnrollmentRequest = {
+  code: string;
+  enrollmentId: string;
+  targetId: OpenDesignSettingsToyLockTarget;
+};
+
+export type OpenDesignHostToyLocks = {
+  beginTotpEnrollment(request: OpenDesignToyLockBeginTotpEnrollmentRequest): Promise<OpenDesignToyLockResult<{
+    enrollmentId: string;
+    expiresAtMs: number;
+  }>>;
+  confirmTotpEnrollment(request: OpenDesignToyLockConfirmTotpEnrollmentRequest): Promise<OpenDesignToyLockResult<{
+    lock: OpenDesignToyLockMetadata;
+  }>>;
+  configure(request: OpenDesignToyLockConfigureRequest): Promise<OpenDesignToyLockResult<{ lock: OpenDesignToyLockMetadata }>>;
+  list(): Promise<OpenDesignToyLockResult<{
+    locks: OpenDesignToyLockMetadata[];
+    protectionAvailable: boolean;
+  }>>;
+  remove(targetId: OpenDesignSettingsToyLockTarget, expectedRevision: number): Promise<OpenDesignToyLockResult>;
+  verify(request: OpenDesignToyLockVerifyRequest): Promise<OpenDesignToyLockResult<{
+    lock: OpenDesignToyLockMetadata;
+    matched: boolean;
+  }>>;
+};
+
 export type OpenDesignHostBridge = {
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
@@ -498,6 +594,8 @@ export type OpenDesignHostBridge = {
   // and falls back to scaling the document itself; see `OpenDesignHostUiScale`
   // for why that fallback is a worse answer than this one.
   uiScale?: OpenDesignHostUiScale;
+  /** Optional on desktop hosts predating persistent Settings-tab toy locks. */
+  toyLocks?: OpenDesignHostToyLocks;
   updater: {
     check(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     "clear-cache"(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;

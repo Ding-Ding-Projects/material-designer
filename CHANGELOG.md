@@ -66,6 +66,33 @@ version section when a release carries them.
   證明五種故意整壞會轉紅、還原先轉綠。真 `64e427cd` package 已提供 inspected
   before capture；hosted tests、replacement package 同同一 tuple 嘅 after
   capture 仍然 pending。
+- **Settings-tab toy locks now have a persistent main-process credential boundary.**
+  A bounded versioned store covers the exact Settings target allowlist and six
+  factor policies, persists non-secret lock metadata separately from one fully
+  operating-system-protected credential envelope containing salted
+  resource-bounded asynchronous scrypt hashes and TOTP bytes, verifies the
+  fixed SHA-1/six-digit/30-second RFC 6238 profile in the main process, and
+  publishes failed-attempt budgets and cooldowns through recoverable
+  generations. Two-step expiring TOTP enrollment cannot activate before a
+  current code succeeds. The
+  optional preload namespace returns structured non-secret results only and
+  every handler requires the main window's exact main frame. Unknown targets,
+  stale revisions, oversized input, corrupt state, and unavailable operating-
+  system protection fail closed. The live Settings configuration and pairing
+  surfaces remain open, so this does not yet make user-configured locks
+  available or prove packaged interaction.
+
+  **Settings tab toy lock 而家有 main process 自己揸實嘅 persistent credential
+  boundary。** Bounded versioned store 逐個認住 exact Settings target allowlist
+  同六種 factor policy，non-secret metadata 同 salted resource-bounded
+  credential envelope 連 PIN/password hash、salt 同 TOTP bytes 一齊交畀
+  operating-system protection；RFC 6238 喺 main process 驗，failed-attempt budget 同 cooldown 過 restart、撞正 concurrent
+  request 都唔會突然回春。Optional preload namespace 只回 structured
+  non-secret result，每個 handler 仲要認得 main window exact main frame。Unknown
+  target、stale revision、oversized input、corrupt state 同 operating-system
+  protection unavailable 全部 fail closed。Live Settings configuration 同
+  pairing surface 仲未起好，所以今次冇扮 user-configured lock 已經用得，亦冇
+  聲稱 packaged interaction 已驗證。
 
 - **All strict locale catalogues now carry the two library and status-bar keys
   exposed by Release run `32818518506`.** Seventeen directly declared

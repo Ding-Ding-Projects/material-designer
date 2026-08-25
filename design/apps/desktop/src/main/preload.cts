@@ -22,6 +22,7 @@ import type {
   OpenDesignHostUpdaterStatusListener,
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
+  OpenDesignHostToyLocks,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -410,6 +411,19 @@ const uiScale = {
   },
 };
 
+const toyLocks: OpenDesignHostToyLocks = {
+  beginTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:begin-totp-enrollment', request),
+  confirmTotpEnrollment: (request) => ipcRenderer.invoke('od:toy-locks:confirm-totp-enrollment', request),
+  configure: (request) => ipcRenderer.invoke('od:toy-locks:configure', request),
+  list: () => ipcRenderer.invoke('od:toy-locks:list'),
+  remove: (targetId, expectedRevision) => ipcRenderer.invoke(
+    'od:toy-locks:remove',
+    targetId,
+    expectedRevision,
+  ),
+  verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -457,6 +471,7 @@ const hostBridge = {
       ipcRenderer.send('desktop-pet:set-visible', Boolean(visible)),
   },
   uiScale,
+  toyLocks,
   updater,
   // win32 only: every other platform keeps its native title bar, so the
   // namespace is absent there and the renderer feature-detects rather than

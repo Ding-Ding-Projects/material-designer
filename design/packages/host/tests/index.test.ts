@@ -105,6 +105,27 @@ describe("open-design host contract", () => {
       ...createMockOpenDesignHost(),
       updater: updaterWithoutClearCache,
     })).toBe(false);
+    expect(isOpenDesignHostBridge({
+      ...createMockOpenDesignHost(),
+      toyLocks: { list: async () => ({ locks: [], ok: true }) },
+    })).toBe(false);
+  });
+
+  it("keeps the Settings toy-lock namespace optional for older hosts", () => {
+    const olderHost = createMockOpenDesignHost();
+    expect(olderHost.toyLocks).toBeUndefined();
+    expect(isOpenDesignHostBridge(olderHost)).toBe(true);
+    expect(isOpenDesignHostBridge({
+      ...olderHost,
+      toyLocks: {
+        beginTotpEnrollment: async () => ({ code: "invalid-input", ok: false }),
+        confirmTotpEnrollment: async () => ({ code: "enrollment-not-found", ok: false }),
+        configure: async () => ({ code: "target-refused", ok: false }),
+        list: async () => ({ locks: [], ok: true, protectionAvailable: true }),
+        remove: async () => ({ ok: true }),
+        verify: async () => ({ code: "not-configured", ok: false }),
+      },
+    })).toBe(true);
   });
 
   it("reads the bridge through the package-owned global accessor", () => {

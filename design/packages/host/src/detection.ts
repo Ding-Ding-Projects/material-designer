@@ -46,6 +46,20 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const toyLocks = value.toyLocks;
+  if (
+    toyLocks != null
+    && (!isRecord(toyLocks)
+      || !hasFunction(toyLocks, "beginTotpEnrollment")
+      || !hasFunction(toyLocks, "confirmTotpEnrollment")
+      || !hasFunction(toyLocks, "configure")
+      || !hasFunction(toyLocks, "list")
+      || !hasFunction(toyLocks, "remove")
+      || !hasFunction(toyLocks, "verify"))
+  ) {
+    return false;
+  }
+
   const shell = value.shell;
   if (!isRecord(shell) || !hasFunction(shell, "openExternal") || !hasFunction(shell, "openPath")) return false;
 
