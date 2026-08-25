@@ -131,7 +131,14 @@ checks, but Actions does not run them and they never gate publication.
 Squirrel.Windows target and fails closed unless the build returns `Setup.exe`,
 `RELEASES`, full/delta `.nupkg` packages and the local icon asset. Code signing
 is prohibited; the workflow clears signer inputs and keeps electron-builder's
-signing controls false.
+signing controls false. The Windows builder also disables executable resource
+editing through electron-builder and excludes executable targets from its
+Squirrel signing route. This is distinct from the product's later package
+validation: the failure in Release `32831335767` was `rcedit-x64.exe` unable to
+commit resource changes, not an Authenticode signing command. The builder maps
+its output parent to a temporary unused drive only while electron-builder runs,
+then removes it in `finally`; a cache-version boundary prevents older unpacked
+output from masking this producer path.
 
 **10 — Build and verify the installer.** Cleanup, then a Squirrel-only packaging build
 with an explicit output directory, cache directory, namespace, application version

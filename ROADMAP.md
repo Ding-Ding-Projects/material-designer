@@ -1,5 +1,17 @@
 # Roadmap
 
+- [~] **Restore the unsigned Squirrel executable producer after hosted rcedit
+      failure.** Release `32831335767` failed at `rcedit-x64.exe` with `Fatal
+      error: Unable to commit changes`; it was not an Authenticode signing
+      invocation. The source restoration accidentally removed the project-owned
+      `signAndEditExecutable`, executable exclusion, and short-output mapping
+      controls while their source contracts remained. The producer and cache
+      boundary are restored and a focused PowerShell validator proves four
+      exact producer removals red then restored green.
+      A replacement hosted package must prove no signer process is observed,
+      the Squirrel artifacts remain unsigned, and packaging completes before
+      this can be ticked.
+
 - [ ] **Replace the packaged startup splash's upstream identity.** The real
       `64e427cd` full Squirrel package exposed the upstream mark, name, and
       tagline before the application opened. Source now renders the canonical

@@ -29,6 +29,24 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
+
+**Reason:** Release run `32831335767` reached electron-builder with a fresh
+packaged-app cache entry and invoked `rcedit-x64.exe` to mutate the application
+executable's metadata and icon. That process failed with `Fatal error: Unable
+to commit changes`. The preceding electron-builder `signing with signtool.exe`
+diagnostics describe its executable-processing route, but the failing command
+was rcedit, not an Authenticode signing command. A previous upstream-import
+restoration had removed the project-owned unsigned controls and short output
+mapping while the focused source contracts still required them. Restore the
+schema-supported `signAndEditExecutable: false`, executable exclusion,
+update-verification setting, and temporary drive mapping. The cache version
+advances so a prior unpacked executable cannot mask the repaired producer.
+
+**Changed files:**
+
+- `tools/pack/src/win/builder.ts`
+
 ### 2026-08-25 - Replace the packaged startup splash's upstream identity
 
 **Reason:** the real full Squirrel package built from `64e427cd` showed the
