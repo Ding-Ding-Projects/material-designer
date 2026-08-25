@@ -29,11 +29,11 @@ const TARGETS = new Set<string>(OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS);
 const POLICIES = new Set<string>(OPEN_DESIGN_TOY_LOCK_POLICIES);
 const TOTP_POLICIES = new Set<OpenDesignToyLockPolicy>(["password-totp", "pin-totp", "password-pin-totp"]);
 const POLICY_FACTORS: Readonly<Record<OpenDesignToyLockPolicy, readonly ("pin" | "password" | "totp")[]>> = Object.freeze({
-  "pin": Object.freeze(["pin"]), "password": Object.freeze(["password"]),
-  "pin-password": Object.freeze(["pin", "password"]),
-  "password-totp": Object.freeze(["password", "totp"]),
-  "pin-totp": Object.freeze(["pin", "totp"]),
-  "password-pin-totp": Object.freeze(["password", "pin", "totp"]),
+  "pin": Object.freeze(["pin"] as const), "password": Object.freeze(["password"] as const),
+  "pin-password": Object.freeze(["pin", "password"] as const),
+  "password-totp": Object.freeze(["password", "totp"] as const),
+  "pin-totp": Object.freeze(["pin", "totp"] as const),
+  "password-pin-totp": Object.freeze(["password", "pin", "totp"] as const),
 });
 
 type StoreFailure = Extract<OpenDesignToyLockResult, { ok: false }>;
@@ -277,9 +277,10 @@ export class SettingsToyLockStore {
     if (!isRecord(metadataValue) || !hasOnlyKeys(metadataValue, ["generation", "locks", "version"]) || metadataValue.version !== STORE_VERSION || metadataValue.generation !== generation || !Array.isArray(metadataValue.locks) || !metadataValue.locks.every(validMetadata)
       || !isRecord(envelopeValue) || !hasOnlyKeys(envelopeValue, ["credentials", "generation", "version"]) || envelopeValue.version !== STORE_VERSION || envelopeValue.generation !== generation || !isRecord(envelopeValue.credentials)) return null;
     const locks = metadataValue.locks as OpenDesignToyLockMetadata[]; if (locks.length > OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS.length || new Set(locks.map((lock) => lock.targetId)).size !== locks.length) return null;
-    const keys = Object.keys(envelopeValue.credentials); if (keys.length !== locks.length || keys.some((key) => !isTarget(key) || !validCredential(envelopeValue.credentials[key]))) return null;
-    if (locks.some((lock) => { const record = envelopeValue.credentials[lock.targetId] as CredentialRecord; const required = POLICY_FACTORS[lock.policy]; return Object.keys(record).length !== required.length || required.some((factor) => record[factor] == null); })) return null;
-    return { envelope: { credentials: envelopeValue.credentials as Record<string, CredentialRecord>, generation, version: STORE_VERSION }, metadata: { generation, locks: locks.map((lock) => ({ ...lock })), version: STORE_VERSION } };
+    const credentials = envelopeValue.credentials as Record<string, unknown>;
+    const keys = Object.keys(credentials); if (keys.length !== locks.length || keys.some((key) => !isTarget(key) || !validCredential(credentials[key]))) return null;
+    if (locks.some((lock) => { const record = credentials[lock.targetId] as CredentialRecord; const required = POLICY_FACTORS[lock.policy]; return Object.keys(record).length !== required.length || required.some((factor) => record[factor] == null); })) return null;
+    return { envelope: { credentials: credentials as Record<string, CredentialRecord>, generation, version: STORE_VERSION }, metadata: { generation, locks: locks.map((lock) => ({ ...lock })), version: STORE_VERSION } };
   }
   async #readPointer(name: "current" | "previous"): Promise<PointerDocument | null | false> {
     const bytes = await this.#readBounded(join(this.#directory, `${name}.json`)); if (bytes == null) return null;
@@ -288,13 +289,13 @@ export class SettingsToyLockStore {
   }
   async #load(): Promise<{ ok: true; snapshot: Snapshot } | StoreFailure> {
     const pointer = await this.#readPointer("current");
-    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: { ...restored, pointer: backup } }; } return failure("store-corrupt"); }
+    if (pointer === false) { const backup = await this.#readPointer("previous"); if (backup !== null && backup !== false) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: { ...restored, pointer: backup } }; } return failure("store-corrupt"); }
     if (pointer == null) { const backup = await this.#readPointer("previous"); if (backup === false) return failure("store-corrupt"); if (backup != null) { const restored = await this.#readGeneration(backup.current); return restored == null ? failure("store-corrupt") : { ok: true, snapshot: { ...restored, pointer: backup } }; }
       const generation = "000000000000000000000000"; return { ok: true, snapshot: { envelope: { credentials: {}, generation, version: STORE_VERSION }, metadata: { generation, locks: [], version: STORE_VERSION }, pointer: { current: generation, previous: null, version: STORE_VERSION } } }; }
     if (!this.#protection.isAvailable()) return failure("os-protection-unavailable");
     const current = await this.#readGeneration(pointer.current); if (current != null) return { ok: true, snapshot: { ...current, pointer } };
     const backupPointer = await this.#readPointer("previous");
-    const fallbackGeneration = pointer.previous ?? (backupPointer && backupPointer !== false ? backupPointer.current : null); if (fallbackGeneration == null) return failure("store-corrupt");
+    const fallbackGeneration = pointer.previous ?? (backupPointer !== null && backupPointer !== false ? backupPointer.current : null); if (fallbackGeneration == null) return failure("store-corrupt");
     const fallback = await this.#readGeneration(fallbackGeneration); return fallback == null ? failure("store-corrupt") : { ok: true, snapshot: { ...fallback, pointer: { current: fallbackGeneration, previous: null, version: STORE_VERSION } } };
   }
   async #commit(snapshot: Snapshot, next: OpenDesignToyLockMetadata, credential: CredentialRecord): Promise<StoreFailure | { ok: true }> {

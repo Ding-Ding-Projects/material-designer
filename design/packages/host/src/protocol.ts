@@ -494,7 +494,7 @@ export type OpenDesignToyLockFailureCode =
   | "store-corrupt"
   | "target-refused";
 
-export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<string, never>> =
+export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<never, never>> =
   | ({ ok: true } & T)
   | { code: OpenDesignToyLockFailureCode; ok: false };
 
