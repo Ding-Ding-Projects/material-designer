@@ -171,7 +171,7 @@ import { AnimatePresence } from 'motion/react';
 import type { ChatMessage } from '../types';
 import type { CommentSendResult } from './comment-send-result';
 
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = ReturnType<typeof useT>;
 
 function syncInertAttribute(element: HTMLElement | null, inert: boolean): void {
   if (!element) return;

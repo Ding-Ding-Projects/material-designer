@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Keep FileWorkspace translation variables recursive
+
+**Reason:** The Create-page subcategory label helper accepts the application's
+real translator, whose interpolation variables may contain deferred translated
+values. `FileWorkspace` had narrowed its local translator alias to plain strings
+and numbers, so the hosted release type-check rejected the otherwise valid
+helper call. The alias now derives from `useT`, and a focused source regression
+prevents the narrower signature from returning.
+
+**Changed files:**
+
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/tests/components/FileWorkspace.translation-contract.test.ts`
+
 ### 2026-08-25 - Complete Feishu community-link analytics typing
 
 **Reason:** The Chinese entry navigation rail reports its locale-specific

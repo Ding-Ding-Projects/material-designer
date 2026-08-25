@@ -45,6 +45,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Create-page subcategory labels now use the complete translation contract.**
+  The hosted release type-check found that `FileWorkspace` narrowed
+  interpolation variables to plain strings and numbers before passing its
+  translator to the shared subcategory resolver. The local alias now derives
+  from the canonical `useT` return type, preserving deferred translated values;
+  a focused source regression prevents the narrow signature from returning.
+  Hosted replacement verification and installed interaction remain pending.
+
+  **Create page 個 subcategory label 而家食得晒完整 translation contract。**
+  Hosted release typecheck 捉到 `FileWorkspace` 自己收窄咗 interpolation
+  variables，只准 string 同 number，搞到 shared resolver 明明識食全餐都畀個
+  窄門口卡住。Local alias 而家直接跟 canonical `useT` return type，deferred
+  translated values 唔使再扮普通字串；focused source regression 亦會守住個門口，
+  唔畀舊窄 signature 偷返嚟。Hosted replacement verification 同 installed
+  interaction 仲未完成。
+
 - **FileViewer menu arrow navigation is safe when filtering leaves no actions.**
   The strict release typecheck exposed an indexed fallback that could be absent.
   Relative focus now treats that fallback as optional, keeping an empty menu as
