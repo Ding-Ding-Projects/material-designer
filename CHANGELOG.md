@@ -54,9 +54,22 @@ version section when a release carries them.
 - **Desktop toy locks now have a bounded policy core.** The source defines the
   exact six PIN, password, and TOTP combinations, routes keypad and manual PIN
   entry through one validator and attempt budget, and intercepts locked-target
-  activation without invoking the protected action. This is source-only
-  foundation work: credential storage, pairing, visible per-element controls,
-  packaged interaction, and capture evidence remain unimplemented.
+  activation without invoking the protected action. A reusable anchored,
+  non-modal prompt now renders those policies in order, provides keypad and
+  manual PIN entry, shows factor and attempt progress, supports English, Hong
+  Kong Cantonese and bilingual copy, preserves cancellation and focus, and
+  emits authorization only after every configured factor passes. This remains
+  source-only foundation work: credential storage, pairing, app-wide
+  per-element wiring, packaged interaction, and capture evidence remain
+  unimplemented.
+
+- **The documentation site now demonstrates one real browser-local toy lock.**
+  Its protected example intercepts activation until the configured factors
+  match, exposes all six policies, shares one persisted attempt budget between
+  keypad and manual PIN entry, stores only PIN/password digests, and keeps its
+  non-extractable TOTP key in IndexedDB. This is deliberately one representative
+  action, not every-element coverage, and deployed interaction and capture
+  evidence remain outstanding.
 
 - **UI interaction evidence now has a fail-closed foundation.** A hand-written inventory covers the Windows desktop application and documentation site independently, retains every mandatory absent target, and imports the existing ten design-parity destinations without mistaking discovery for completeness. Versioned schemas define immediate post-click capture receipts, and the PowerShell validator plus deliberate negative regression reject missing whole rows, missing interaction fields, and invented evidence. This is evidence infrastructure only: no feature status was upgraded and no capture was fabricated.
 

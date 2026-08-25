@@ -6,9 +6,20 @@
       The desktop renderer now has a pure core for the exact six factor policies,
       shared keypad/manual PIN normalization, one bounded attempt budget, and
       locked-target activation interception that never invokes the protected
-      action. Credential persistence, TOTP pairing, per-element menu wiring,
-      visible keypad and authentication surfaces, localization, accessibility,
-      packaged interaction, and capture evidence remain open.
+      action. A reusable anchored non-modal prompt now renders all six policies,
+      provides access-control keypad and manual PIN paths, shows factor progress
+      and attempts, localizes its copy in English, Hong Kong Cantonese and
+      bilingual modes, preserves cancel/focus behavior, and emits authorization
+      only after every configured factor passes. Credential persistence, TOTP
+      pairing, per-element menu wiring, app-wide mounting, packaged interaction,
+      accessibility runtime verification, and capture evidence remain open.
+  - [ ] Expand the documentation site's representative toy lock to every
+        rendered element and complete deployed interaction evidence.
+        One browser-local protected example now covers the exact six policies,
+        persistent attempts, shared keypad/manual PIN validation, digest-only
+        PIN/password storage, and a non-extractable IndexedDB TOTP key. Complete
+        localization, every-element context menus, and real capture receipts
+        remain open.
 
 > [!IMPORTANT]
 > **Release-shutdown status — 2026-08-21.** The integrated `main` and `origin/main`

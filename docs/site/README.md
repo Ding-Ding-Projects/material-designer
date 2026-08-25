@@ -54,6 +54,7 @@ a site nobody previews before publishing.
 | `site/assets/js/tabs.js` | The tab strip: rendering, reordering, pinning, the overflow surface, the searchable tab list, persistence and the ARIA relationships. |
 | `site/assets/js/regex.js` | The pattern builder, mounted as a popover **anchored beside one specific field**, one instance per field. |
 | `site/assets/js/ui.js` | Toasts, the notification centre, the command palette, and the dim sum draw on load. |
+| `site/assets/js/toy-locks.js` | The representative site-local toy lock: exact six-policy registry, protected-action interception, anchored authentication prompt, shared keypad/manual PIN path, browser-local attempt budget, and fail-closed non-extractable TOTP key storage. |
 | `site/assets/js/main.js` | The wiring, and the only module the page loads directly. It introduces the modules above to each other and to the markup, and deliberately holds no feature logic of its own — so a reader asking how the regex builder works goes to `regex.js` rather than finding half the answer here. |
 | `site/.nojekyll` | Disables the publisher's default templating so paths beginning with `_` are served as they are. |
 
@@ -74,6 +75,23 @@ Recorded here rather than left as a silent gap, as
 | Tab-discovery searches **2, 3 and 4** (inside a group, across group names, across every open tab) | Not applicable for the same reason — there are no groups to search inside of and no second window to search across. Search **1**, over the current strip, is required and present. |
 
 Every other standard applies in full and is tracked in that standard's own file.
+
+## Site-local toy-lock boundary
+
+The Settings surface includes one real protected example action. Activating its
+unavailable-looking control opens an anchored authentication prompt and cannot
+run the protected action until every factor in the selected policy matches. The
+six available policies are PIN, password, PIN plus password, password plus TOTP,
+PIN plus TOTP, and password plus PIN plus TOTP. The access-control keypad and
+manual PIN field share one validator and one persistent five-attempt budget.
+
+This is deliberately a playful browser-local speed bump, not encryption or an
+access-control boundary. Clearing this site's browser storage removes the lock.
+PINs and passwords are not retained as plaintext. TOTP uses a non-extractable
+Web Crypto key stored by IndexedDB, and TOTP policies fail closed when that
+browser facility is unavailable. The implementation is representative rather
+than universal: every-element coverage and deployed interaction evidence remain
+open and are recorded as partial in the UI-drive inventory.
 
 ## Suggested reading
 

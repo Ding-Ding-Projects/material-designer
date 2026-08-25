@@ -16,6 +16,7 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -559,6 +560,7 @@ function start() {
   wireSettingsSearch();
   wirePalette();
   wireResets();
+  initToyLocks({ notify: ui.notify });
   paintTokenSwatches();
 
   if (regex.setRegexTranslator) regex.setRegexTranslator((k, f) => label(k, f));

@@ -2492,6 +2492,67 @@ mark {
   display: none;
 }
 
+/* ---- Site-local toy locks ----------------------------------------------- */
+.toy-lock-actions {
+  flex-wrap: wrap;
+}
+
+[data-toy-lock-target][aria-disabled="true"] {
+  opacity: 0.58;
+  cursor: not-allowed;
+  filter: saturate(0.35);
+}
+
+.toy-lock-prompt {
+  position: absolute;
+  width: min(28rem, calc(100vw - 2rem));
+}
+
+.toy-lock-disclosure {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  font-weight: 650;
+}
+
+.toy-lock-field {
+  display: grid;
+  gap: 0.35rem;
+  margin-block: 0.625rem;
+  color: var(--md-sys-color-on-surface);
+  font-size: var(--md-sys-typescale-label-large-size);
+}
+
+.toy-lock-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(3rem, 1fr));
+  gap: 0.5rem;
+  margin-block: 0.625rem;
+}
+
+.toy-lock-keypad button {
+  min-height: 3rem;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+.toy-lock-protected-content {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--md-sys-color-primary);
+  border-radius: var(--md-sys-shape-corner-m);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
 /* ---- Seed swatches -------------------------------------------------------
    Convenience chips over the continuous picker, never a replacement for it. */
 .swatch-grid {

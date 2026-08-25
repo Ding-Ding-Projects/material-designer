@@ -1625,6 +1625,9 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       <button type="button" class="md-btn md-btn--text" data-jump-to="settings-appearance">
         <span class="i18n-text" data-i18n="settings.appearance.heading" data-i18n-inline>Appearance</span>
       </button>
+      <button type="button" class="md-btn md-btn--text" data-jump-to="settings-toy-locks">
+        <span>Toy locks</span>
+      </button>
       <button type="button" class="md-btn md-btn--text" data-jump-to="settings-reset">
         <span class="i18n-text" data-i18n="se.reset.heading" data-i18n-inline>Reset</span>
       </button>
@@ -1748,6 +1751,63 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         <p class="settings-group__sub" data-i18n="se.appearance.help">Changes apply to the live page as you make them, and survive a reload. The seed colour accepts any colour at all, not just the four presets.</p>
         <div data-appearance-controls></div>
         <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="se.appearance.derived">A custom seed derives its dependent colour roles rather than tinting one button, so the whole page moves with it and stays readable in both themes. The translator shows the contrast the derived primary will actually have.</p>
+      </section>
+
+      <!-- ---------- Site-local toy locks ---------- -->
+      <section class="settings-group" id="settings-toy-locks" aria-labelledby="se-toy-lock-title" data-toy-lock-setup>
+        <h3 class="settings-group__title" id="se-toy-lock-title">Toy locks</h3>
+        <p class="settings-group__sub">Configure a browser-local speed bump for the protected example. This is for fun only, not security or encryption. Clear this site's browser storage to recover.</p>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="toy-lock-policy">Authentication policy</label>
+            <span class="setting-row__desc">Exactly one of six policies applies to this example.</span>
+          </div>
+          <div class="setting-row__control">
+            <select class="md-select" id="toy-lock-policy" data-toy-policy-select></select>
+          </div>
+        </div>
+
+        <div class="setting-row" data-setting-unit data-toy-factor="pin">
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="toy-lock-pin">PIN</label>
+            <span class="setting-row__desc">Use 4 to 12 digits. The authentication keypad and manual field share one normalization and attempt budget.</span>
+          </div>
+          <div class="setting-row__control"><input class="md-input" id="toy-lock-pin" data-toy-setup-pin type="password" inputmode="numeric" autocomplete="new-password"></div>
+        </div>
+
+        <div class="setting-row" data-setting-unit data-toy-factor="password">
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="toy-lock-password">Password</label>
+            <span class="setting-row__desc">Stored as a browser-local digest for this playful example.</span>
+          </div>
+          <div class="setting-row__control"><input class="md-input" id="toy-lock-password" data-toy-setup-password type="password" autocomplete="new-password"></div>
+        </div>
+
+        <div class="setting-row" data-setting-unit data-toy-factor="totp">
+          <div class="setting-row__text">
+            <label class="setting-row__label" for="toy-lock-totp">TOTP base32 secret</label>
+            <span class="setting-row__desc">Use a local authenticator. Nothing is sent anywhere.</span>
+          </div>
+          <div class="setting-row__control"><input class="md-input" id="toy-lock-totp" data-toy-setup-totp type="password" autocomplete="off"></div>
+        </div>
+
+        <div class="setting-row" data-setting-unit>
+          <div class="setting-row__text">
+            <span class="setting-row__label">Protected example</span>
+            <span class="setting-row__desc">The button looks unavailable while locked, but activation opens the anchored authentication prompt instead of silently doing nothing.</span>
+          </div>
+          <div class="setting-row__control toy-lock-actions">
+            <button type="button" class="md-btn md-btn--outlined" data-toy-save>Save local toy lock</button>
+            <button type="button" class="md-btn md-btn--filled" data-toy-lock-target aria-disabled="true" aria-label="Open protected example, locked" data-toy-locked="true">Open protected example</button>
+          </div>
+        </div>
+        <p class="md-body-small" data-toy-setup-status role="status" aria-live="polite">Create the local toy lock before trying the protected example.</p>
+        <p class="md-body-small" data-toy-action-status role="status" aria-live="polite"></p>
+        <aside class="toy-lock-protected-content" data-toy-protected-content hidden>
+          <strong>Protected example opened.</strong>
+          <span>The authenticated action revealed this browser-local content.</span>
+        </aside>
       </section>
 
       <!-- ---------- Reset ---------- -->

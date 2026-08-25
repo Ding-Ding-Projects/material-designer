@@ -29,20 +29,26 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
-### 2026-08-24 — Add the desktop toy-lock policy core
+### 2026-08-24 — Add the desktop toy-lock policy core and authentication prompt
 
 **Reason:** The desktop renderer needs one bounded, reusable authorization core
 before visible per-element lock controls can be wired safely. The new pure
 TypeScript module defines the six supported factor policies, normalizes keypad
 and manual PIN entry through one validator, maintains one bounded attempt
 budget, and intercepts activation of locked targets without invoking their
-protected action. Focused source tests pin those boundaries. Credential storage,
-QR registration, context menus, and visible lock or unlock surfaces remain
-unimplemented.
+protected action. A reusable anchored non-modal component renders those policies,
+provides the two PIN entry paths, exposes factor and attempt progress, preserves
+cancel and focus behavior across asynchronous verification, and calls its final
+authorization callback only after every required factor passes. Focused source
+tests pin those boundaries. Credential storage, QR registration, context-menu
+wiring, app-wide mounting, and packaged proof remain unimplemented.
 
 **Changed files:**
 
 - `apps/web/src/security/toy-lock-core.ts`
+- `apps/web/src/components/ToyLockAuthenticationPopover.module.css`
+- `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
+- `apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`
 - `apps/web/tests/security/toy-lock-core.test.ts`
 
 ### 2026-08-21 — Remove the artifact-upgrade upsell dialog entirely
@@ -4384,7 +4390,10 @@ hard: the draw is spent once per launch whether it wins or loses, so no
 remount, route change or development double-invoke can re-roll it; and it is
 only offered once the daemon config has hydrated, onboarding and the privacy
 disclosure are done, no app-level error toast is up, and no update is in
-flight. There is no setting that turns it off — what makes that polite is that
+flight. The media slot preserves the visual node's own accessible name and
+styling, while the toast contributes only an ordered wrapper and spacing; a
+text-only toast creates no empty media wrapper. There is no setting that turns
+it off — what makes that polite is that
 it never gates startup, never takes focus and never delays the app becoming
 usable.
 
