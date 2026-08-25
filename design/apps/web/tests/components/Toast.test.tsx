@@ -21,6 +21,26 @@ describe('Toast', () => {
     expect(screen.getByText('Account cap until 2026-06-01')).not.toBeNull();
   });
 
+  it('renders optional media with its accessible name before the message', () => {
+    const { container } = render(
+      <Toast
+        message="Shrimp dumpling · 蝦餃"
+        media={<img alt="Shrimp dumpling in a bamboo steamer" src="/dim-sum/har-gow.png" />}
+      />,
+    );
+
+    const media = container.querySelector('.od-toast-media');
+    expect(media?.querySelector('img')).toBe(
+      screen.getByRole('img', { name: 'Shrimp dumpling in a bamboo steamer' }),
+    );
+    expect(media?.nextElementSibling).toHaveClass('od-toast-body');
+  });
+
+  it('does not add a media wrapper for existing text-only uses', () => {
+    const { container } = render(<Toast message="Folder opened." />);
+    expect(container.querySelector('.od-toast-media')).toBeNull();
+  });
+
   it('renders the code body in a <pre> when copy fails so users can manually copy the prompt', () => {
     const prompt = '# Continue in CLI — Acme\n\nWorking directory:\n/Users/me/projects/acme\n';
     render(<Toast message="Clipboard unavailable. Copy this prompt manually." code={prompt} />);

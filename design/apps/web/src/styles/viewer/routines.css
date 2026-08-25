@@ -311,6 +311,11 @@
   align-items: center;
   gap: 8px;
 }
+/* Optional visual slot above the message. The slot owns spacing only; its
+   caller owns the visual's size, shape, fit and accessible description. */
+.od-toast-media {
+  margin-bottom: 10px;
+}
 .od-toast-icon {
   display: inline-flex;
   flex: 0 0 auto;
