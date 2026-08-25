@@ -2130,7 +2130,9 @@ export function SettingsDialog({
   useEffect(() => {
     const reveal = (anchor: string | null) => {
       if (!anchor) return;
-      revealAnchor(anchor, settingsContentRef.current);
+      const root = settingsContentRef.current;
+      if (!root) return;
+      revealAnchor(anchor, { root });
     };
     reveal(takePendingSettingsReveal());
     const handleReveal = (event: Event) => {

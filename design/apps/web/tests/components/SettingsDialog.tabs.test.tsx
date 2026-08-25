@@ -177,6 +177,15 @@ describe('Settings: the tab strip', () => {
     );
   });
 
+  it('scopes command-palette reveals through the options contract', () => {
+    expect(SETTINGS_DIALOG_SOURCE).toContain('const root = settingsContentRef.current;');
+    expect(SETTINGS_DIALOG_SOURCE).toContain('if (!root) return;');
+    expect(SETTINGS_DIALOG_SOURCE).toContain('revealAnchor(anchor, { root });');
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain(
+      'revealAnchor(anchor, settingsContentRef.current)',
+    );
+  });
+
   it('presents every section as a tab in one labelled tablist', () => {
     renderSettings();
 
