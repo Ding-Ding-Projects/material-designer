@@ -57,6 +57,9 @@ interface CapturedRequest {
   url: string;
   /** Present only when the request carried `x-od-confirm-token`. */
   confirmToken?: string;
+  /** Present only when the request carried an explicit workspace scope. */
+  workspaceId?: string;
+  workspaceMemberId?: string;
 }
 
 interface StubServer {
@@ -73,10 +76,14 @@ async function startStubServer(): Promise<StubServer> {
     req.on('end', () => {
       const url = req.url ?? '';
       const token = req.headers['x-od-confirm-token'];
+      const workspaceId = req.headers['x-od-workspace-id'];
+      const workspaceMemberId = req.headers['x-od-workspace-member-id'];
       requests.push({
         method: req.method ?? '',
         url,
         ...(typeof token === 'string' ? { confirmToken: token } : {}),
+        ...(typeof workspaceId === 'string' ? { workspaceId } : {}),
+        ...(typeof workspaceMemberId === 'string' ? { workspaceMemberId } : {}),
       });
       res.statusCode = 200;
       res.setHeader('content-type', 'application/json');
@@ -255,6 +262,37 @@ describe('od delete confirmation gate', () => {
       });
     });
   }
+
+  it.each([
+    {
+      name: 'project delete confirmation handshake',
+      args: ['project', 'delete', 'proj-1'],
+      expected: [
+        { method: 'POST', url: '/api/projects/proj-1/confirm-delete' },
+        { method: 'DELETE', url: '/api/projects/proj-1', confirmToken: STUB_TOKEN },
+      ],
+    },
+    {
+      name: 'file delete request',
+      args: ['files', 'delete', 'proj-1', 'index.html'],
+      expected: [{ method: 'DELETE', url: '/api/projects/proj-1/files/index.html' }],
+    },
+  ])('carries workspace scope through the $name', async ({ args, expected }) => {
+    const result = await runCli([
+      ...args,
+      '--daemon-url', stub.baseUrl,
+      '--workspace', 'workspace-1',
+      '--workspace-member', 'member-1',
+      '--confirm',
+    ]);
+
+    expect(result.code).toBe(0);
+    expect(stub.requests).toEqual(expected.map((request) => ({
+      ...request,
+      workspaceId: 'workspace-1',
+      workspaceMemberId: 'member-1',
+    })));
+  });
 
   // `od library rm` is the one destructive verb that shipped without
   // `--confirm`, so arming the refusal today would break every script already

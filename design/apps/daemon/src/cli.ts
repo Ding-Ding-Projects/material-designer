@@ -2780,10 +2780,18 @@ function requireDeleteConfirmation({ confirmed, json, label, target, command }) 
 // Returns the DELETE's response for the caller to handle exactly as before. Any
 // failure on the mint leg exits through the same structured-error path a failed
 // DELETE would have, so a caller's error branch keeps working unchanged.
-async function confirmedDeleteRequest(base, resourcePath, fallbackCode = 'daemon-not-running') {
+async function confirmedDeleteRequest(
+  base,
+  resourcePath,
+  fallbackCode = 'daemon-not-running',
+  requestHeaders = {},
+) {
   let mint;
   try {
-    mint = await fetch(`${base}${resourcePath}/confirm-delete`, { method: 'POST' });
+    mint = await fetch(`${base}${resourcePath}/confirm-delete`, {
+      method:  'POST',
+      headers: requestHeaders,
+    });
   } catch (err) {
     surfaceFetchError(err, base);
     process.exit(3);
@@ -2805,7 +2813,7 @@ async function confirmedDeleteRequest(base, resourcePath, fallbackCode = 'daemon
   try {
     return await fetch(`${base}${resourcePath}`, {
       method:  'DELETE',
-      headers: { [CONFIRM_DELETE_HEADER]: token },
+      headers: { ...requestHeaders, [CONFIRM_DELETE_HEADER]: token },
     });
   } catch (err) {
     surfaceFetchError(err, base);
@@ -7917,11 +7925,8 @@ Common options:
         base,
         `/api/projects/${encodeURIComponent(id)}`,
         'project-not-found',
+        workspaceHeaders,
       );
-      const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: workspaceHeaders,
-      });
       if (!resp.ok) return structuredHttpFailure(resp, 'project-not-found');
       console.log(`[project] deleted ${id}`);
       return;
@@ -8854,7 +8859,6 @@ Common options:
         target:    `file "${name}" from project "${id}"`,
         command:   `od files delete ${id} ${name} --confirm`,
       });
-      const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}/files/${encodeURIComponent(name)}`, { method: 'DELETE' });
       const resp = await fetch(
         `${base}/api/projects/${encodeURIComponent(id)}/files/${encodeURIComponent(name)}`,
         { method: 'DELETE', headers: workspaceHeaders },
