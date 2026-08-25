@@ -127,7 +127,6 @@ export function ProjectArchiveAction({
             projectName={projectName}
             projectDir={projectDir}
             targetPath={receipt.editorPath}
-            workspaceContext={workspaceContext}
             embedded
           />
         </div>

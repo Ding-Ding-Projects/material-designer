@@ -58,6 +58,12 @@ paths. The archive digest is reported in the receipt over the complete ZIP byte
 stream, while the manifest deliberately records the scope rather than its own
 digest to avoid a self-referential hash.
 
+The receipt's editor action sends that exact staged path to the dedicated
+external-editor route. It does not use the older project handoff route, because
+that route resolves and opens the project's working directory rather than the
+validated ZIP named by the receipt. If the exact path cannot be opened, the
+surface reports the refusal and does not silently substitute the project folder.
+
 The browser-side contract deliberately differs from the older active-file ZIP
 helper. It first requests the staged receipt, validates its project, target,
 token, byte length, digest, exact same-origin download path and editor path,

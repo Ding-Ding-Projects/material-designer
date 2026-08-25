@@ -3280,6 +3280,29 @@ export async function openProjectInEditor(
   return (await resp.json()) as import('@open-design/contracts').OpenProjectInEditorResponse;
 }
 
+/**
+ * Open one exact exported file in the selected external editor.
+ *
+ * This intentionally uses the dedicated editor route instead of the legacy
+ * project `open-in` route. The latter resolves a project working directory and
+ * would therefore open the wrong target for a staged export receipt.
+ */
+export async function openPathInExternalEditor(
+  targetPath: string,
+  editorId: import('@open-design/contracts').HostEditorId,
+): Promise<import('@open-design/contracts').EditorOpenResponse> {
+  const resp = await fetch('/api/editor/open', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: targetPath, editorId }),
+  });
+  if (!resp.ok) {
+    const body = await readApiErrorBody(resp);
+    throw new Error(body.message);
+  }
+  return (await resp.json()) as import('@open-design/contracts').EditorOpenResponse;
+}
+
 export async function fetchDesignSystemPreview(
   id: string,
   workspaceContext?: WorkspaceCollabContext | null,

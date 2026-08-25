@@ -13,7 +13,11 @@ import {
   handoffTargetIdToTracking,
   type TrackingArtifactKind,
 } from '@open-design/contracts/analytics';
-import { fetchHostEditors, openProjectInEditor } from '../providers/registry';
+import {
+  fetchHostEditors,
+  openPathInExternalEditor,
+  openProjectInEditor,
+} from '../providers/registry';
 import { useAnalytics } from '../analytics/provider';
 import { trackHandoffClick } from '../analytics/events';
 import { useT } from '../i18n';
@@ -108,6 +112,8 @@ interface Props {
   projectId: string;
   projectName?: string;
   projectDir?: string | null;
+  /** Exact staged export file to open instead of the project directory. */
+  targetPath?: string | null;
   agents?: AgentInfo[];
   // Active artifact context, so handoff clicks carry the same artifact_id /
   // artifact_kind dimensions as the rest of the artifact_header funnel.
@@ -334,6 +340,7 @@ export function HandoffButton({
   projectId,
   projectName,
   projectDir,
+  targetPath,
   agents,
   artifactId,
   artifactKind,
@@ -457,7 +464,11 @@ export function HandoffButton({
     setBusy(editor.id);
     writePreferred(editor.id);
     try {
-      await openProjectInEditor(projectId, editor.id, workspaceContext);
+      if (targetPath) {
+        await openPathInExternalEditor(targetPath, editor.id);
+      } else {
+        await openProjectInEditor(projectId, editor.id, workspaceContext);
+      }
       setOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -466,7 +477,7 @@ export function HandoffButton({
       setActiveTab('editor');
       // Fallback: if Finder is the user's pick and the daemon spawn
       // failed, try the renderer-side reveal-in-finder bridge.
-      if (editor.id === 'finder' && onRequestRevealInFinder) {
+      if (!targetPath && editor.id === 'finder' && onRequestRevealInFinder) {
         try {
           onRequestRevealInFinder();
         } catch {
@@ -610,10 +621,13 @@ export function HandoffButton({
             });
             setError(null);
             setBusy(fallbackId);
-            void openProjectInEditor(projectId, fallbackId, workspaceContext)
+            const launch = targetPath
+              ? openPathInExternalEditor(targetPath, fallbackId)
+              : openProjectInEditor(projectId, fallbackId, workspaceContext);
+            void launch
               .catch((err) => {
                 setError(err instanceof Error ? err.message : String(err));
-                onRequestRevealInFinder?.();
+                if (!targetPath) onRequestRevealInFinder?.();
               })
               .finally(() => setBusy(null));
           }}

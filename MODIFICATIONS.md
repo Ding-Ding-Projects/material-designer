@@ -5428,6 +5428,21 @@ instead of the operating system's.
 - `apps/desktop/src/main/preload.cts`
 -->
 
+### 2026-08-25 — Open the exact staged project archive in the external editor
+
+**Reason:** the project archive receipt already named the exact validated ZIP
+staged by the daemon, but the reusable handoff control accepted only a project
+identifier and therefore opened the project working directory. The control now
+accepts the receipt path and sends it to the dedicated external-editor route;
+an editor refusal is reported without silently substituting the project folder.
+
+**Changed files:**
+
+- `apps/web/src/components/ProjectArchiveAction.tsx`
+- `apps/web/src/components/HandoffButton.tsx`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/HandoffButton.export-path.test.tsx`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
