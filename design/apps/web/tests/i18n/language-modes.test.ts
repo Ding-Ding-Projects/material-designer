@@ -1,5 +1,6 @@
+import { renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { composeBilingual, keepsTheFacts, secondaryLocaleFor } from '../../src/i18n';
+import { composeBilingual, keepsTheFacts, secondaryLocaleFor, useI18n } from '../../src/i18n';
 import { EN_FUNNY } from '../../src/i18n/funny/en';
 import { ZH_HK_FUNNY } from '../../src/i18n/funny/zh-HK';
 import { en } from '../../src/i18n/locales/en';
@@ -7,6 +8,17 @@ import { zhHK } from '../../src/i18n/locales/zh-HK';
 import type { Dict, FunnyOverrides } from '../../src/i18n/types';
 
 const OVERRIDE_LEVELS: Array<2 | 3 | 4 | 5> = [2, 3, 4, 5];
+const EXPECTED_CONTEXT_FIELDS = [
+  'dismissFunnyDisclosure',
+  'funnyDisclosureSeen',
+  'funnyLevels',
+  'languageMode',
+  'locale',
+  'setFunnyLevel',
+  'setLanguageMode',
+  'setLocale',
+  't',
+] as const;
 
 function assertOverridesKeepTheFacts(label: string, overrides: FunnyOverrides, base: Dict): void {
   for (const key of Object.keys(overrides) as Array<keyof Dict>) {
@@ -59,6 +71,32 @@ describe('bilingual mode', () => {
     expect(composeBilingual('{n}m', '{n}分')).toBe('{n}m');
     expect(composeBilingual('{count}', '{count} 個')).toBe('{count}');
     expect(composeBilingual('⤢', '⤢ 全螢幕')).toBe('⤢');
+  });
+});
+
+describe('provider-less i18n fallback', () => {
+  it('covers the complete context contract with neutral shipped semantics', () => {
+    const { result } = renderHook(() => useI18n());
+
+    expect(Object.keys(result.current).sort()).toEqual(EXPECTED_CONTEXT_FIELDS);
+    expect(result.current.locale).toBe('en');
+    expect(result.current.languageMode).toBe('single');
+    expect(result.current.funnyLevels).toEqual({ en: 1, 'zh-HK': 1 });
+    expect(result.current.funnyDisclosureSeen).toBe(true);
+    expect(result.current.t('common.cancel')).toBe('Cancel');
+  });
+
+  it('keeps the singleton and inert setters stable across renders', () => {
+    const first = renderHook(() => useI18n());
+    const second = renderHook(() => useI18n());
+
+    expect(second.result.current).toBe(first.result.current);
+    expect(() => first.result.current.setLocale('zh-HK')).not.toThrow();
+    expect(() => first.result.current.setLanguageMode('bilingual')).not.toThrow();
+    expect(() => first.result.current.setFunnyLevel('en', 5)).not.toThrow();
+    expect(() => first.result.current.dismissFunnyDisclosure()).not.toThrow();
+    expect(first.result.current.languageMode).toBe('single');
+    expect(first.result.current.funnyLevels).toEqual({ en: 1, 'zh-HK': 1 });
   });
 });
 

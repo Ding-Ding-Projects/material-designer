@@ -323,14 +323,17 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 const FALLBACK_I18N: I18nContextValue = {
   locale: 'en',
   setLocale: () => { },
-  t: (key, vars) => {
-    const raw = en[key] ?? key;
-    if (!vars) return raw;
-    return raw.replace(/\{(\w+)\}/g, (_, n: string) => {
-      const v = vars[n];
-      return v == null ? `{${n}}` : String(v);
-    });
-  },
+  t: (key, vars) => renderInLanguage((k) => en[k] ?? k, key, vars),
+  // A provider-less render is a test harness or an isolated component, so
+  // it receives the same neutral shipped defaults as a fresh provider. The
+  // disclosure is treated as already seen because an isolated component
+  // cannot persist that decision and must not show first-run copy on its own.
+  languageMode: DEFAULT_LANGUAGE_MODE,
+  setLanguageMode: () => { },
+  funnyLevels: { ...DEFAULT_FUNNY_LEVELS },
+  setFunnyLevel: () => { },
+  funnyDisclosureSeen: true,
+  dismissFunnyDisclosure: () => { },
 };
 
 interface ProviderProps {
@@ -489,27 +492,6 @@ export function I18nProvider({ initial, children }: ProviderProps) {
 }
 
 export function useI18n(): I18nContextValue {
-  const ctx = useContext(I18nContext);
-  if (!ctx) {
-    // Fall back to a stand-alone English translator when no provider is
-    // mounted (e.g. an isolated test). This keeps the API safe to call
-    // without requiring every callsite to wrap in a provider.
-    return {
-      locale: 'en',
-      setLocale: () => { },
-      t: (key, vars) => renderInLanguage((k) => en[k] ?? k, key, vars),
-      // A provider-less render is a test harness or an isolated component,
-      // so it gets the neutral base copy in one language and is told the
-      // disclosure has already been shown — nothing here should nag.
-      languageMode: 'single',
-      setLanguageMode: () => { },
-      funnyLevels: { ...DEFAULT_FUNNY_LEVELS },
-      setFunnyLevel: () => { },
-      funnyDisclosureSeen: true,
-      dismissFunnyDisclosure: () => { },
-    };
-  }
-  return ctx;
   // Falling back keeps the API safe to call without requiring every callsite
   // to wrap in a provider. See FALLBACK_I18N on why it is a shared singleton.
   return useContext(I18nContext) ?? FALLBACK_I18N;
