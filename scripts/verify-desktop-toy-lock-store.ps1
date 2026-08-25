@@ -19,7 +19,7 @@ function Extract-Array([string]$Text, [string]$Name) {
 function Extract-Policies([string]$Text) {
     $match = [regex]::Match($Text, 'const POLICY_FACTORS:[^=]+ = Object\.freeze\(\{(?<body>[\s\S]*?)\}\);')
     if (-not $match.Success) { throw 'Exact POLICY_FACTORS declaration missing' }
-    $rows = [regex]::Matches($match.Groups['body'].Value, '"(?<policy>[^"]+)"\s*:\s*Object\.freeze\(\[(?<factors>[^\]]*)\]\)')
+    $rows = [regex]::Matches($match.Groups['body'].Value, '"(?<policy>[^"]+)"\s*:\s*Object\.freeze\(\[(?<factors>[^\]]*)\]\s*(?:as const)?\)')
     $result = [ordered]@{}
     foreach ($row in $rows) {
         if ($result.Contains($row.Groups['policy'].Value)) { throw "Duplicate policy: $($row.Groups['policy'].Value)" }
@@ -42,6 +42,7 @@ function Test-Contract([hashtable]$Sources) {
     $policies = Extract-Policies $store
     Assert-Exact @($policies.Keys) @($expectedPolicies.Keys) 'Policy inventory'
     foreach ($policy in $expectedPolicies.Keys) { Assert-Exact @($policies[$policy]) @($expectedPolicies[$policy]) "Factors for $policy" }
+    if (-not [regex]::IsMatch($protocol, 'export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<never, never>> =')) { throw 'Empty toy-lock success result must remain type-correct' }
     $channels = @('begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','verify')
     $toyLockBlock = [regex]::Match($preload, 'const toyLocks: OpenDesignHostToyLocks = \{(?<body>[\s\S]*?)\n\};')
     if (-not $toyLockBlock.Success) { throw 'Exact preload toyLocks block missing' }
@@ -73,6 +74,12 @@ function Test-Contract([hashtable]$Sources) {
         'credentials\.\$\{generation\}\.bin', 'metadata\.\$\{generation\}\.json',
         'join\(this\.#directory, "previous\.json"\)', 'join\(this\.#directory, "current\.json"\)',
         'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);'
+        '"pin": Object\.freeze\(\["pin"\] as const\)',
+        '"password": Object\.freeze\(\["password"\] as const\)',
+        '"pin-password": Object\.freeze\(\["pin", "password"\] as const\)',
+        '"password-totp": Object\.freeze\(\["password", "totp"\] as const\)',
+        '"pin-totp": Object\.freeze\(\["pin", "totp"\] as const\)',
+        '"password-pin-totp": Object\.freeze\(\["password", "pin", "totp"\] as const\)'
     )
     foreach ($pattern in $requiredPatterns) { if (-not [regex]::IsMatch($store, $pattern)) { throw "Structural invariant missing: $pattern" } }
     if ([regex]::IsMatch($store, 'scryptSync|FileConnectorCredentialStore')) { throw 'Forbidden synchronous or plaintext credential path present' }
@@ -90,8 +97,9 @@ if ($SelfTest) {
         @{ part='protocol'; old='"general", '; new='"general", "never-target", ' },
         @{ part='protocol'; old='"general", '; new='"general", "general", ' },
         @{ part='protocol'; old='"execution", "general"'; new='"general", "execution"' },
-        @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"])'; new='"pin-password": Object.freeze(["password", "pin"])' },
-        @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"])'; new='"pin-password": Object.freeze(["pin", "password"]), "pin-password": Object.freeze(["pin", "password"])' },
+        @{ part='protocol'; old='Record<never, never>'; new='Record<string, never>' },
+        @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["password", "pin"] as const)' },
+        @{ part='store'; old='"pin-password": Object.freeze(["pin", "password"] as const)'; new='"pin-password": Object.freeze(["pin", "password"] as const), "pin-password": Object.freeze(["pin", "password"] as const)' },
         @{ part='store'; old='scrypt(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {'; new='scryptRemoved(value, salt, HASH_BYTES, SCRYPT_OPTIONS, (error, derivedKey) => {' },
         @{ part='store'; old='Number.isSafeInteger(value) && value >= 0'; new='Number.isFinite(value) && value >= 0' },
         @{ part='store'; old='if (lock == null) return failure("not-configured"); if (lock.revision !== request.revision) return failure("stale-revision");'; new='if (lock == null) return failure("not-configured");' },
