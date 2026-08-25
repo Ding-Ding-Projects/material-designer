@@ -45,6 +45,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **The packaged startup splash now introduces Material Designer instead of
+  replaying the upstream product video.** The pre-sidecar surface uses the
+  existing shipped vector mark, the Material Designer display name, and the
+  factual description "A local-first design workspace" while retaining live
+  boot stages and monotonic progress. Accessible names are explicit and reduced
+  motion stops the dots and transitions. A PowerShell source guard inventories
+  every startup identity source, compares the inlined vector path with the
+  canonical SVG, refuses the retired video, and turns red under five deliberate
+  regressions before returning green. The real `64e427cd` package supplies the
+  inspected before capture. Hosted tests, a replacement package, and an
+  equivalent after capture remain pending.
+
+  **Packaged startup splash 終於識得自己叫 Material Designer，唔再播住隔籬
+  舖頭條片扮返工。** Pre-sidecar surface 用返已 shipped 嘅 vector mark、Material
+  Designer display name，同埋老實 copy "A local-first design workspace"；boot
+  stage 同 progress bar 繼續郁得有根有據。Accessible name 齊晒，reduced motion
+  亦會叫啲 dots 同 transition 坐定定。PowerShell source guard 手寫列晒所有
+  startup identity source，對正 canonical SVG path，拒絕退休 video，仲逐個
+  證明五種故意整壞會轉紅、還原先轉綠。真 `64e427cd` package 已提供 inspected
+  before capture；hosted tests、replacement package 同同一 tuple 嘅 after
+  capture 仍然 pending。
+
 - **All strict locale catalogues now carry the two library and status-bar keys
   exposed by Release run `32818518506`.** Seventeen directly declared
   catalogues now define `libraryPicker.kindFilter` and a localized

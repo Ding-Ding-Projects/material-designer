@@ -143,11 +143,14 @@ that pins the preload's exposed surface, so the two copies cannot drift silently
 
 ### Startup and the splash window
 
-The shell creates a splash window and starts its brand animation **before**
-awaiting the daemon and web sidecars, so the animation overlaps the boot rather
-than being added to it. Boot phases are surfaced as a muted status line under the
-logo. A stage update fired before the load finishes is armed for in advance, so it
-cannot be missed.
+The shell creates a splash window **before** awaiting the daemon and web
+sidecars. The self-contained surface renders the canonical project mark, the
+Material Designer display name, and factual local-first description without a
+file, server, or network dependency. Boot phases remain visible as a muted
+status line and monotonic progress bar under the identity. A stage update fired
+before the load finishes is armed for in advance, so it cannot be missed. The
+full identity contract and capture evidence are recorded in
+[packaged-startup-identity.md](packaged-startup-identity.md).
 
 The shell also carries crash handling that most of the product never sees: renderer
 crash-loop detection, uncaught-exception reporting, and crash diagnostics.
