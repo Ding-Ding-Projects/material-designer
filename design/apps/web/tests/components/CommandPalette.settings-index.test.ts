@@ -28,6 +28,18 @@ import {
 // worse than one that never claimed to list everything.
 
 describe('settings index coverage', () => {
+  it('keeps the live General section in the exhaustive palette index', () => {
+    expect(SETTINGS_SECTION_TOKENS.general).toBe(true);
+    expect(settingsIndexForSection('general')).toEqual([
+      expect.objectContaining({
+        id: sectionAnchorFor('general'),
+        section: 'general',
+        titleKey: 'settings.general',
+        hintKey: 'settings.generalHint',
+      }),
+    ]);
+  });
+
   it('gives every settings section token at least one index entry', () => {
     const missing = settingsSectionTokens().filter(
       (section) => settingsIndexForSection(section).length === 0,

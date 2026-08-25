@@ -61,6 +61,7 @@ each has its own article because each guards a distinct failure.
 | [desktop-project-creation.md](desktop-project-creation.md) | Exclusive Windows desktop application creation, nonce-claimed versioned source scaffolds, selected-agent wire-up, prompt parity, and the shared canonical-path security boundary used by in-place and ZIP creation. |
 | [export-surface-inventory.md](export-surface-inventory.md) | Hand-written inventory of project, file, data, design-system, diagnostics, history and editor export surfaces with their source/runtime evidence boundary. |
 | [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
+| [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

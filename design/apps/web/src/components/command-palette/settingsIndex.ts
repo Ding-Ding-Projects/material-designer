@@ -82,6 +82,7 @@ export interface SettingsIndexEntry {
  * token that no longer exists.
  */
 export const SETTINGS_SECTION_TOKENS: Record<SettingsSection, true> = {
+  general: true,
   execution: true,
   workspace: true,
   instructions: true,
@@ -116,6 +117,13 @@ export function sectionAnchorFor(section: SettingsSection): string {
 }
 
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
+  {
+    id: sectionAnchorFor('general'),
+    section: 'general',
+    titleKey: 'settings.general',
+    hintKey: 'settings.generalHint',
+    keywords: ['general', 'language', 'notifications', 'pet', 'project locations', 'critique theater'],
+  },
   {
     id: sectionAnchorFor('execution'),
     section: 'execution',

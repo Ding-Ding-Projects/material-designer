@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **General Settings is exhaustive in the command-palette index again.** The
+  live `general` section now appears in both `SETTINGS_SECTION_TOKENS` and the
+  searchable index with its real anchor and localized title keys. This repairs
+  the TypeScript failure from Release run `32805851678`; a replacement hosted
+  build is still required before Squirrel packaging is considered verified.
+
+- **Desktop toy locks now have a bounded policy core.** The source defines the
+  exact six PIN, password, and TOTP combinations, routes keypad and manual PIN
+  entry through one validator and attempt budget, and intercepts locked-target
+  activation without invoking the protected action. This is source-only
+  foundation work: credential storage, pairing, visible per-element controls,
+  packaged interaction, and capture evidence remain unimplemented.
+
 - **UI interaction evidence now has a fail-closed foundation.** A hand-written inventory covers the Windows desktop application and documentation site independently, retains every mandatory absent target, and imports the existing ten design-parity destinations without mistaking discovery for completeness. Versioned schemas define immediate post-click capture receipts, and the PowerShell validator plus deliberate negative regression reject missing whole rows, missing interaction fields, and invented evidence. This is evidence infrastructure only: no feature status was upgraded and no capture was fabricated.
 
 - **Settings keeps the dedicated design-handoff destination wired as a virtual

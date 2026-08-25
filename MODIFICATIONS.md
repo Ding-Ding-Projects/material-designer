@@ -29,6 +29,22 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-24 — Add the desktop toy-lock policy core
+
+**Reason:** The desktop renderer needs one bounded, reusable authorization core
+before visible per-element lock controls can be wired safely. The new pure
+TypeScript module defines the six supported factor policies, normalizes keypad
+and manual PIN entry through one validator, maintains one bounded attempt
+budget, and intercepts activation of locked targets without invoking their
+protected action. Focused source tests pin those boundaries. Credential storage,
+QR registration, context menus, and visible lock or unlock surfaces remain
+unimplemented.
+
+**Changed files:**
+
+- `apps/web/src/security/toy-lock-core.ts`
+- `apps/web/tests/security/toy-lock-core.test.ts`
+
 ### 2026-08-21 — Remove the artifact-upgrade upsell dialog entirely
 
 **Reason:** The AMR artifact-upgrade surface was a nagging promotional gate:
