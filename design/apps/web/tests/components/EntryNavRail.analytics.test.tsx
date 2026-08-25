@@ -71,4 +71,27 @@ describe('EntryNavRail analytics', () => {
       element: 'settings',
     }), undefined);
   });
+
+  it('tracks the Chinese community destination as Feishu', () => {
+    render(
+      <I18nProvider initial="zh-CN">
+        <EntryNavRail
+          view="home"
+          onViewChange={() => {}}
+          onNewProject={() => {}}
+          onOpenSearch={() => {}}
+          onOpenSettings={() => {}}
+          open
+          context={null}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('entry-nav-rail-feishu'));
+
+    expect(analytics.track).toHaveBeenCalledWith('ui_click', expect.objectContaining({
+      area: 'account_menu',
+      element: 'feishu',
+    }), undefined);
+  });
 });

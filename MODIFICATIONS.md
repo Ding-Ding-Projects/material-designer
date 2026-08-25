@@ -29,6 +29,19 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Complete Feishu community-link analytics typing
+
+**Reason:** The Chinese entry navigation rail reports its locale-specific
+community link as `feishu`, but the shared account-menu analytics contract
+accepted only the non-Chinese `discord` value. The mismatch stopped the hosted
+release type-check. The contract now represents both real destinations, and a
+focused interaction regression verifies the Chinese rail emits `feishu`.
+
+**Changed files:**
+
+- `apps/web/tests/components/EntryNavRail.analytics.test.tsx`
+- `packages/contracts/src/analytics/events/workspace.ts`
+
 ### 2026-08-25 - Localize the Chinese Feishu community label
 
 **Reason:** The entry navigation rail intentionally sends Simplified and

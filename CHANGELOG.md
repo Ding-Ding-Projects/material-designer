@@ -45,6 +45,13 @@ version section when a release carries them.
 
 ### Changed
 
+- **Chinese community-link analytics now use a typed Feishu destination.** The
+  locale-sensitive navigation rail already emitted `feishu`, but the shared
+  account-menu analytics contract accepted only `discord`, which stopped the
+  hosted release type-check. The contract now covers both destinations, with a
+  focused interaction regression for the Chinese rail. Hosted verification is
+  still required before the replacement package is considered verified.
+
 - **Chinese community links now have the correct accessible name.** The entry
   navigation rail already sent Simplified and Traditional Chinese interfaces
   to the OpenDesign Feishu group, but its new translation key was absent from
