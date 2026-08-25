@@ -3431,11 +3431,14 @@ argument, which is exactly what the reported failure said.
 The mock now memoises per property name, matching the real library. Five cases
 in the connectors suite shared the racy shape and all now query at click time
 rather than holding a node across an await — belt and braces, since the mock
-fix alone closes the window.
+fix alone closes the window. A focused regression now pins the single cache
+declaration and proves that intrinsic and custom proxy properties each retain
+one stable identity, including a duplicate-declaration fixture that turns red.
 
 **Changed files:**
 
 - `apps/web/tests/helpers/motion-mock.tsx`
+- `apps/web/tests/helpers/motion-mock.test.ts`
 - `apps/web/tests/components/App.connectors.test.tsx`
 
 ### 2026-08-04 — Move the destructive-action check out of the interfaces and into the handler
