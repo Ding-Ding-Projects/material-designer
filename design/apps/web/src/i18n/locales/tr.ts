@@ -174,6 +174,7 @@ export const tr: Dict = {
   'designFiles.library.title': 'Kitaplıktan içe aktar',
   'libraryPicker.title': 'Kitaplıktan içe aktar',
   'libraryPicker.searchPlaceholder': 'Kitaplıkta ara…',
+  'libraryPicker.kindFilter': 'Kitaplık varlıklarını türe göre filtrele',
   'libraryPicker.empty': 'Kitaplığınızda henüz öğe yok',
   'libraryPicker.allKinds': 'Tümü',
   'libraryPicker.add': 'İçe aktar',
@@ -5259,6 +5260,7 @@ export const tr: Dict = {
   'statusBar.densityCompact': 'Sıkışık',
   'statusBar.densityDefault': 'Varsayılan',
   'statusBar.densityComfortable': 'Rahat',
+  'statusBar.version': 'Sürüm {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

@@ -174,6 +174,7 @@ export const ko: Dict = {
   'designFiles.library.title': '라이브러리에서 가져오기',
   'libraryPicker.title': '라이브러리에서 가져오기',
   'libraryPicker.searchPlaceholder': '라이브러리 검색…',
+  'libraryPicker.kindFilter': '종류별 라이브러리 에셋 필터',
   'libraryPicker.empty': '라이브러리에 아직 에셋이 없습니다',
   'libraryPicker.allKinds': '전체',
   'libraryPicker.add': '가져오기',
@@ -5259,6 +5260,7 @@ export const ko: Dict = {
   'statusBar.densityCompact': '조밀',
   'statusBar.densityDefault': '기본',
   'statusBar.densityComfortable': '여유',
+  'statusBar.version': '버전 {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

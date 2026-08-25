@@ -174,6 +174,7 @@ export const esES: Dict = {
   'designFiles.library.title': 'Importar de la biblioteca',
   'libraryPicker.title': 'Importar de la biblioteca',
   'libraryPicker.searchPlaceholder': 'Buscar en la biblioteca…',
+  'libraryPicker.kindFilter': 'Filtrar los recursos de la biblioteca por tipo',
   'libraryPicker.empty': 'Aún no hay recursos en tu biblioteca',
   'libraryPicker.allKinds': 'Todos',
   'libraryPicker.add': 'Importar',
@@ -5259,6 +5260,7 @@ export const esES: Dict = {
   'statusBar.densityCompact': 'Compacta',
   'statusBar.densityDefault': 'Predeterminada',
   'statusBar.densityComfortable': 'Cómoda',
+  'statusBar.version': 'Versión {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is stated in
   // words here too, because it is what makes restoring safe to try.
   'history.title': 'Historial de versiones',

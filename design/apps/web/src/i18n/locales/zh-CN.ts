@@ -182,6 +182,7 @@ export const zhCN: Dict = {
   "designFiles.library.title": "从资源库导入",
   "libraryPicker.title": "从资源库导入",
   "libraryPicker.searchPlaceholder": "搜索资源库…",
+  "libraryPicker.kindFilter": "按类型筛选资源库内容",
   "libraryPicker.empty": "资源库暂无内容",
   "libraryPicker.allKinds": "全部",
   "libraryPicker.add": "导入",
@@ -5676,6 +5677,7 @@ export const zhCN: Dict = {
   'statusBar.densityCompact': '紧凑',
   'statusBar.densityDefault': '默认',
   'statusBar.densityComfortable': '宽松',
+  'statusBar.version': '版本 {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is
   // spelled out in words here too, because it is what makes restoring safe.
   'history.title': '版本历史',

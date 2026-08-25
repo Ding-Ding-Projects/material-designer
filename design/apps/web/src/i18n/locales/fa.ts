@@ -174,6 +174,7 @@ export const fa: Dict = {
   'designFiles.library.title': 'وارد کردن از کتابخانه',
   'libraryPicker.title': 'وارد کردن از کتابخانه',
   'libraryPicker.searchPlaceholder': 'جست‌وجو در کتابخانه…',
+  'libraryPicker.kindFilter': 'فیلتر موارد کتابخانه بر اساس نوع',
   'libraryPicker.empty': 'هنوز موردی در کتابخانه شما نیست',
   'libraryPicker.allKinds': 'همه',
   'libraryPicker.add': 'وارد کردن',
@@ -5254,6 +5255,7 @@ export const fa: Dict = {
   'statusBar.densityCompact': 'فشرده',
   'statusBar.densityDefault': 'پیش‌فرض',
   'statusBar.densityComfortable': 'راحت',
+  'statusBar.version': 'نسخه {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is stated in
   // words here too, because it is what makes restoring safe to try.
   'history.title': 'تاریخچهٔ نسخه‌ها',

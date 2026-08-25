@@ -174,6 +174,7 @@ export const hu: Dict = {
   'designFiles.library.title': 'Importálás a könyvtárból',
   'libraryPicker.title': 'Importálás a könyvtárból',
   'libraryPicker.searchPlaceholder': 'Keresés a könyvtárban…',
+  'libraryPicker.kindFilter': 'Könyvtári elemek szűrése típus szerint',
   'libraryPicker.empty': 'Még nincsenek elemek a könyvtáradban',
   'libraryPicker.allKinds': 'Összes',
   'libraryPicker.add': 'Importálás',
@@ -5259,6 +5260,7 @@ export const hu: Dict = {
   'statusBar.densityCompact': 'Kompakt',
   'statusBar.densityDefault': 'Alapértelmezett',
   'statusBar.densityComfortable': 'Kényelmes',
+  'statusBar.version': 'Verzió {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

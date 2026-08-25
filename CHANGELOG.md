@@ -45,6 +45,27 @@ version section when a release carries them.
 
 ### Changed
 
+- **All strict locale catalogues now carry the two library and status-bar keys
+  exposed by Release run `32818518506`.** Seventeen directly declared
+  catalogues now define `libraryPicker.kindFilter` and a localized
+  `statusBar.version` that preserves the canonical `{version}` placeholder.
+  English and Traditional Chinese already defined both keys, while Hong Kong
+  Chinese continues to inherit them from Traditional Chinese. The focused
+  locale completeness contract keeps a hand-written inventory of all 20 locale
+  files, checks exact key coverage and placeholder parity, and proves deliberate
+  removal of either the kind-filter key or the version placeholder turns the
+  contract red. Hosted replacement verification remains pending.
+
+  **Release run `32818518506` 捉到嘅兩個 locale 缺口，而家喺全部 strict
+  catalogue 都補齊。** 十七個直接宣告嘅 catalogue 已加入
+  `libraryPicker.kindFilter`，亦有本地化 `statusBar.version`，canonical
+  `{version}` placeholder 一粒都冇跌。English 同 Traditional Chinese 本身已經
+  有齊兩個 key，Hong Kong Chinese 就繼續由 Traditional Chinese 繼承。Focused
+  locale completeness contract 手寫列明全部 20 個 locale file，逐個核對 exact
+  key coverage 同 placeholder parity，仲證明刻意拎走 kind-filter key 或
+  `{version}` placeholder 都會即刻轉紅。Hosted replacement verification 仍然
+  pending。
+
 - **Handoff workspace tabs now have exhaustive localized title and icon
   mappings.** Release run `32814288407` found that the new Handoff route was
   absent from both `WorkspaceTabsBar` display registries. The tab now uses the

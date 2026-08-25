@@ -174,6 +174,7 @@ export const th: Dict = {
   'designFiles.library.title': 'นำเข้าจากไลบรารี',
   'libraryPicker.title': 'นำเข้าจากไลบรารี',
   'libraryPicker.searchPlaceholder': 'ค้นหาในไลบรารี…',
+  'libraryPicker.kindFilter': 'กรองแอสเซ็ตในไลบรารีตามประเภท',
   'libraryPicker.empty': 'ยังไม่มีสินทรัพย์ในไลบรารีของคุณ',
   'libraryPicker.allKinds': 'ทั้งหมด',
   'libraryPicker.add': 'นำเข้า',
@@ -5259,6 +5260,7 @@ export const th: Dict = {
   'statusBar.densityCompact': 'กระชับ',
   'statusBar.densityDefault': 'ค่าเริ่มต้น',
   'statusBar.densityComfortable': 'โปร่ง',
+  'statusBar.version': 'เวอร์ชัน {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

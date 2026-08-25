@@ -174,6 +174,7 @@ export const ja: Dict = {
   'designFiles.library.title': 'ライブラリからインポート',
   'libraryPicker.title': 'ライブラリからインポート',
   'libraryPicker.searchPlaceholder': 'ライブラリを検索…',
+  'libraryPicker.kindFilter': '種類でライブラリアセットを絞り込む',
   'libraryPicker.empty': 'ライブラリにアセットがまだありません',
   'libraryPicker.allKinds': 'すべて',
   'libraryPicker.add': 'インポート',
@@ -5259,6 +5260,7 @@ export const ja: Dict = {
   'statusBar.densityCompact': 'コンパクト',
   'statusBar.densityDefault': '標準',
   'statusBar.densityComfortable': 'ゆったり',
+  'statusBar.version': 'バージョン {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

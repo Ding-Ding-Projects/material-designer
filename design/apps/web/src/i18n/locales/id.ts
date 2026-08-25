@@ -174,6 +174,7 @@ export const id: Dict = {
   'designFiles.library.title': 'Impor dari pustaka',
   'libraryPicker.title': 'Impor dari pustaka',
   'libraryPicker.searchPlaceholder': 'Cari di pustaka…',
+  'libraryPicker.kindFilter': 'Filter aset pustaka berdasarkan jenis',
   'libraryPicker.empty': 'Belum ada aset di pustaka Anda',
   'libraryPicker.allKinds': 'Semua',
   'libraryPicker.add': 'Impor',
@@ -5259,6 +5260,7 @@ export const id: Dict = {
   'statusBar.densityCompact': 'Rapat',
   'statusBar.densityDefault': 'Bawaan',
   'statusBar.densityComfortable': 'Longgar',
+  'statusBar.version': 'Versi {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.

@@ -86,14 +86,27 @@ with the project's standards.
       `layers-filled` icon, while a focused contract compares title and icon
       coverage against every `EntryHomeView` and proves deliberate row removal
       turns red. Hosted replacement verification is still required, so this
-      item is not complete.
+      item is not complete. Release run `32818518506` then reached the strict
+      locale catalogues and found `libraryPicker.kindFilter` and
+      `statusBar.version` absent from 17 directly declared locales. All 17 now
+      define localized values while preserving the canonical `{version}`
+      placeholder. The focused completeness contract hand-writes all 20 locale
+      files, checks exact key coverage and placeholder parity, and proves
+      deliberate removal of either required key shape turns red. Hosted
+      replacement verification remains pending.
 
       **廣東話進度：** Replacement hosted build 行到 `32814288407`，捉到
       Handoff route 喺兩本 exhaustive workspace-tab display registry 都冇位，
       好似名牌同張櫈一齊放假。Source 而家用返 canonical `handoff.title` 同
       `layers-filled`，focused contract 亦會逐個 `EntryHomeView` 對齊 title 同
       icon，刻意拎走一行就即刻轉紅。Replacement hosted verification 仲未有，
-      所以呢項仍然未完成。
+      所以呢項仍然未完成。Release run `32818518506` 跟住行到 strict locale
+      catalogue，發現 17 個直接宣告嘅 locale 缺少
+      `libraryPicker.kindFilter` 同 `statusBar.version`。而家 17 個都補返本地化
+      value，canonical `{version}` placeholder 亦完整保留。Focused completeness
+      contract 手寫列明全部 20 個 locale file，核對 exact key coverage 同
+      placeholder parity，仲證明刻意拎走任何一個 required key shape 都會轉紅。
+      Hosted replacement verification 仍然 pending。
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `05f5b33ef` / v0.20.3 development,

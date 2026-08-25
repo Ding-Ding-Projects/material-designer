@@ -174,6 +174,7 @@ export const uk: Dict = {
   'designFiles.library.title': 'Імпортувати з бібліотеки',
   'libraryPicker.title': 'Імпортувати з бібліотеки',
   'libraryPicker.searchPlaceholder': 'Пошук у бібліотеці…',
+  'libraryPicker.kindFilter': 'Фільтрувати ресурси бібліотеки за типом',
   'libraryPicker.empty': 'У вашій бібліотеці поки немає ресурсів',
   'libraryPicker.allKinds': 'Усі',
   'libraryPicker.add': 'Імпортувати',
@@ -5259,6 +5260,7 @@ export const uk: Dict = {
   'statusBar.densityCompact': 'Компактна',
   'statusBar.densityDefault': 'Звичайна',
   'statusBar.densityComfortable': 'Просторна',
+  'statusBar.version': 'Версія {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is
   // spelled out in words here too, because it is what makes restoring safe.
   'history.title': 'Історія версій',

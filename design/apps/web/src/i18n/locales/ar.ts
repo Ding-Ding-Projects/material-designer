@@ -174,6 +174,7 @@ export const ar: Dict = {
   'designFiles.library.title': 'استيراد من المكتبة',
   'libraryPicker.title': 'استيراد من المكتبة',
   'libraryPicker.searchPlaceholder': 'البحث في المكتبة…',
+  'libraryPicker.kindFilter': 'تصفية عناصر المكتبة حسب النوع',
   'libraryPicker.empty': 'لا توجد عناصر في مكتبتك بعد',
   'libraryPicker.allKinds': 'الكل',
   'libraryPicker.add': 'استيراد',
@@ -5259,6 +5260,7 @@ export const ar: Dict = {
   'statusBar.densityCompact': 'مضغوطة',
   'statusBar.densityDefault': 'افتراضية',
   'statusBar.densityComfortable': 'مريحة',
+  'statusBar.version': 'الإصدار {version}',
   // Local version history (roadmap 4.4). The append-only guarantee is stated in
   // words here too, because it is what makes restoring safe to try.
   'history.title': 'سجل الإصدارات',

@@ -37,6 +37,11 @@ const LOCALE_SOURCE_FILES = [
 
 const LOCALE_SOURCE_DIRECTORY = new URL('../../src/i18n/locales/', import.meta.url);
 
+const RELEASE_BLOCKING_LOCALE_KEYS = [
+  'libraryPicker.kindFilter',
+  'statusBar.version',
+] as const satisfies ReadonlyArray<keyof Dict>;
+
 function localeDictionaryObject(sourceFile: ts.SourceFile): ts.ObjectLiteralExpression {
   const dictionaries: ts.ObjectLiteralExpression[] = [];
 
@@ -112,6 +117,30 @@ function placeholders(value: string): string[] {
   return names.sort();
 }
 
+function releaseBlockingLocaleKeyViolations(dict: Partial<Dict>): string[] {
+  const violations: string[] = [];
+
+  for (const key of RELEASE_BLOCKING_LOCALE_KEYS) {
+    const value = dict[key];
+    if (typeof value !== 'string') {
+      violations.push(`${key}: missing`);
+      continue;
+    }
+
+    const actualPlaceholders = placeholders(value);
+    const expectedPlaceholders = placeholders(en[key]);
+    if (actualPlaceholders.join('\0') !== expectedPlaceholders.join('\0')) {
+      violations.push(
+        `${key}: placeholders ${JSON.stringify(actualPlaceholders)} must equal ${JSON.stringify(
+          expectedPlaceholders,
+        )}`,
+      );
+    }
+  }
+
+  return violations;
+}
+
 async function loadDict(locale: Locale): Promise<Dict> {
   const module = await import(`../../src/i18n/locales/${locale}.ts`);
   const dict = Object.values(module).find((value): value is Dict => {
@@ -177,6 +206,33 @@ describe('i18n locales', () => {
     }
 
     expect(duplicatesByFile).toEqual({});
+  });
+
+  it('keeps the release-blocking library filter and version keys complete in every hand-written locale file', async () => {
+    const violationsByFile: Record<string, string[]> = {};
+
+    for (const fileName of LOCALE_SOURCE_FILES) {
+      const locale = fileName.replace(/[.]ts$/, '') as Locale;
+      const violations = releaseBlockingLocaleKeyViolations(await loadDict(locale));
+      if (violations.length > 0) violationsByFile[fileName] = violations;
+    }
+
+    expect(violationsByFile).toEqual({});
+  });
+
+  it('fails closed when a release-blocking locale key disappears or loses its placeholder', () => {
+    const missingKey: Partial<Dict> = { ...en };
+    delete missingKey['libraryPicker.kindFilter'];
+
+    expect(releaseBlockingLocaleKeyViolations(missingKey)).toEqual([
+      'libraryPicker.kindFilter: missing',
+    ]);
+    expect(
+      releaseBlockingLocaleKeyViolations({
+        ...en,
+        'statusBar.version': 'Version',
+      }),
+    ).toEqual(['statusBar.version: placeholders [] must equal ["version"]']);
   });
 
   it('resolves the initial locale from browser language preferences', () => {

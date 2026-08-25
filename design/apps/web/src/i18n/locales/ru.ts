@@ -174,6 +174,7 @@ export const ru: Dict = {
   'designFiles.library.title': 'Импортировать из библиотеки',
   'libraryPicker.title': 'Импортировать из библиотеки',
   'libraryPicker.searchPlaceholder': 'Поиск в библиотеке…',
+  'libraryPicker.kindFilter': 'Фильтровать ресурсы библиотеки по типу',
   'libraryPicker.empty': 'В вашей библиотеке пока нет ресурсов',
   'libraryPicker.allKinds': 'Все',
   'libraryPicker.add': 'Импорт',
@@ -5259,6 +5260,7 @@ export const ru: Dict = {
   'statusBar.densityCompact': 'Компактная',
   'statusBar.densityDefault': 'Обычная',
   'statusBar.densityComfortable': 'Просторная',
+  'statusBar.version': 'Версия {version}',
   // Local version history (roadmap 4.4). Every string here has to survive
   // being read by someone deciding whether to restore something, so the
   // append-only guarantee is stated in words rather than implied by a button.
