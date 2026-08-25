@@ -144,6 +144,17 @@ describe("materializeCachedUnpackedForInstaller", () => {
 });
 
 describe("Windows pack artifact boundaries", () => {
+  it("supplies the assembled app root to the strict Hyperframes after-pack contract", async () => {
+    const builderSource = await readFile(new URL("../src/win/builder.ts", import.meta.url), "utf8");
+
+    expect(builderSource).toContain("hyperframesRuntimeSourceRoot: string,");
+    expect(builderSource).toMatch(/^\s*hyperframesRuntimeSourceRoot,$/m);
+    expect(builderSource).toContain("writeWebStandaloneHookConfig(config, paths, projectDir)");
+    expect(builderSource.indexOf("hyperframesRuntimeSourceRoot,")).toBeLessThan(
+      builderSource.indexOf("writeWebStandaloneHookConfig(config, paths, projectDir)"),
+    );
+  });
+
   it("uses direct Squirrel output and exposes its machine-readable artifacts", async () => {
     const builderSource = await readFile(new URL("../src/win/builder.ts", import.meta.url), "utf8");
     const buildSource = await readFile(new URL("../src/win/build.ts", import.meta.url), "utf8");
