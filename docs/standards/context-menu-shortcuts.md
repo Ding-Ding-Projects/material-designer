@@ -103,6 +103,11 @@ inventory row, exact owner token, nested-widget exclusion, one-version-origin
 boundary, geometry rule or primitive wiring is removed, and checks the
 direct-label wrapping declarations.
 
+The focused `apps/web/tests/components/FileViewerMenuSearch.focus.test.ts`
+regression also proves that relative arrow navigation is a no-op when filtering
+leaves zero enabled actions, and that populated menus move forward, backward and
+across both wrap boundaries.
+
 ## Why a menu needs a search
 
 The objection is fair: a context menu is short, and a search field in a short
@@ -212,6 +217,8 @@ Conformance requires all of:
       tokens, a nested-widget-safe action registry, measured placement and
       trigger focus restoration at source level; installed-build proof remains
       open
+- [x] relative arrow navigation is empty-list safe and retains forward, backward
+      and wrapped focus movement in the focused source regression
 - [ ] filtering preserving action semantics, hierarchy and ordering in the
       built artifact
 - [x] the inventoried FileViewer search offers plain text by default and the

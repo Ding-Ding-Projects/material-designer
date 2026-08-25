@@ -102,11 +102,15 @@ function isOwnedTrigger(target: EventTarget | null, triggerRef?: TriggerRef): bo
   return Boolean(trigger && target instanceof Node && trigger.contains(target));
 }
 
-function focusRelativeMenuItem(actions: MenuAction[], current: EventTarget | null, delta: number) {
+export function focusRelativeMenuItem(
+  actions: ReadonlyArray<{ element: HTMLElement }>,
+  current: EventTarget | null,
+  delta: number,
+) {
   if (actions.length === 0) return;
   const index = Math.max(0, actions.findIndex((action) => action.element === current));
   const next = actions[(index + delta + actions.length) % actions.length] ?? actions[0];
-  next.element.focus();
+  next?.element.focus();
 }
 
 function focusBoundaryMenuItem(actions: MenuAction[], last: boolean) {

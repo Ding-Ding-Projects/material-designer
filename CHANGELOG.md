@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **FileViewer menu arrow navigation is safe when filtering leaves no actions.**
+  The strict release typecheck exposed an indexed fallback that could be absent.
+  Relative focus now treats that fallback as optional, keeping an empty menu as
+  a no-op while preserving forward, backward and wrapped movement for populated
+  menus. A focused regression covers both paths. This is source-level evidence;
+  installed keyboard interaction remains unverified.
+
+  **FileViewer menu 篩到一粒 action 都冇時，方向鍵而家唔會踩空。** 嚴格 release
+  typecheck 捉到 indexed fallback 可能唔存在；relative focus 而家會老實當佢係
+  optional，空 menu 就乖乖 no-op，有 action 時 forward、backward 同頭尾 wrap
+  照常行。Focused regression 兩邊都有守住。呢個只係 source-level evidence，
+  installed keyboard interaction 仲未驗證。
+
 - **Chinese community-link analytics now use a typed Feishu destination.** The
   locale-sensitive navigation rail already emitted `feishu`, but the shared
   account-menu analytics contract accepted only `discord`, which stopped the

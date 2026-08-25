@@ -722,6 +722,21 @@ geometry has been verified here.
 - `apps/web/tests/components/FileViewer.menu-contract.test.ts`
 - `apps/web/tests/components/file-viewer-version-download.test.tsx`
 
+### 2026-08-25 - Keep empty FileViewer menu navigation type-safe
+
+**Reason:** The release typecheck correctly rejected relative keyboard navigation
+because an indexed action can be absent under strict unchecked-index access, even
+after the runtime empty-list return. The focus helper now treats the fallback as
+optional, so an empty filtered menu remains a safe no-op while non-empty menus
+retain forward, backward and wrapped arrow navigation. A focused regression covers
+both the zero-action and populated-action paths. This is source-level evidence;
+installed keyboard interaction remains unverified.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewerMenuSearch.tsx`
+- `apps/web/tests/components/FileViewerMenuSearch.focus.test.ts`
+
 ### 2026-08-21 — Make FileViewer menus searchable, focusable, and wrap-safe
 
 **Reason:** FileViewer's Download, Share, Present, Zoom, toolbar and version menus

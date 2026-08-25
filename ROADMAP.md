@@ -1825,6 +1825,9 @@ installed build.
       and version-menu checks query the portalled owner directly. The focused
       source contract binds every inventory row to its own JSX block and watches
       structural red-then-green mutations for these boundaries. Runtime proof
+      remains open. The 2026-08-25 release typecheck follow-up makes an empty
+      filtered action list an explicit no-op and adds focused coverage for zero,
+      forward, backward and wrapped focus movement; installed keyboard proof
       remains open.
       The full requirement remains: every context menu — tab, group, appearance,
       application and overflow — carries its own keyboard-accessible search field
