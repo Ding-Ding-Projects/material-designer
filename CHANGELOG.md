@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **Handoff exports now validate their projected row shape before use.** The
+  hosted release type-check rejected a broad string record being asserted into
+  the narrower token-mapping contract. Token and component projections now
+  cross the registry's exact runtime validators, with focused valid and
+  incomplete-row regressions. Hosted replacement verification and installed
+  interaction remain pending.
+
+  **Handoff export 而家會驗清 projected row 個 shape 先畀佢過。** Hosted release
+  typecheck 捉到 broad string record 靠 assertion 扮成窄身 token mapping，件衫
+  明明唔啱碼仲想攝入去。Token 同 component projection 而家要經 registry 個
+  exact runtime validator；focused regression 會放完整 row 過關，缺欄 row 就
+  即刻截停。Hosted replacement verification 同 installed interaction 仲未完成。
+
 - **Create-page subcategory labels now use the complete translation contract.**
   The hosted release type-check found that `FileWorkspace` narrowed
   interpolation variables to plain strings and numbers before passing its

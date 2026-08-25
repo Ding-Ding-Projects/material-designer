@@ -5,6 +5,8 @@ import {
   HANDOFF_COMPONENT_OWNERS,
   HANDOFF_TOKEN_MAPPINGS,
   handoffRegistryIsExact,
+  requireHandoffComponentOwner,
+  requireHandoffTokenMapping,
 } from '../../../src/components/handoff/registry';
 import {
   EMPTY_HANDOFF_SELECTION,
@@ -33,6 +35,22 @@ describe('handoff registry', () => {
       .toBe('packages/components/src/button.tsx');
     expect(HANDOFF_COMPONENT_OWNERS.find((row) => row.id === 'text-field-primitive')?.sourcePath)
       .toBe('packages/components/src/form-controls.tsx');
+  });
+
+  it('accepts complete projected rows and rejects incomplete export shapes', () => {
+    expect(requireHandoffTokenMapping({ ...HANDOFF_TOKEN_MAPPINGS[0] }))
+      .toEqual(HANDOFF_TOKEN_MAPPINGS[0]);
+    expect(requireHandoffComponentOwner({ ...HANDOFF_COMPONENT_OWNERS[0] }))
+      .toEqual(HANDOFF_COMPONENT_OWNERS[0]);
+
+    const incompleteToken: Record<string, unknown> = { ...HANDOFF_TOKEN_MAPPINGS[0] };
+    const incompleteComponent: Record<string, unknown> = { ...HANDOFF_COMPONENT_OWNERS[0] };
+    delete incompleteToken.evidence;
+    delete incompleteComponent.sourcePath;
+    expect(() => requireHandoffTokenMapping(incompleteToken))
+      .toThrow('Projected handoff token row does not match the export schema');
+    expect(() => requireHandoffComponentOwner(incompleteComponent))
+      .toThrow('Projected handoff component row does not match the export schema');
   });
 });
 

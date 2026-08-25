@@ -56,8 +56,11 @@ with the project's standards.
       `32810010322` then exposed a second recovered-type mismatch: the Create-page
       workspace narrowed translation interpolation variables before calling its
       shared subcategory resolver. That alias now derives from the canonical
-      translator type, but a replacement hosted build is still required, so this
-      item is not complete.
+      translator type. Release run `32810605256` then exposed an unsafe handoff
+      export projection from a broad string record into the narrower token row.
+      Both token and component projections now pass through the exact runtime
+      schema validators, but a replacement hosted build is still required, so
+      this item is not complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `05f5b33ef` / v0.20.3 development,

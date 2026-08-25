@@ -350,6 +350,20 @@ export function isValidHandoffComponentOwner(value: unknown): value is HandoffCo
     && row.evidence.length > 0;
 }
 
+export function requireHandoffTokenMapping(value: unknown): HandoffTokenMapping {
+  if (!isValidHandoffTokenMapping(value)) {
+    throw new Error('Projected handoff token row does not match the export schema');
+  }
+  return value;
+}
+
+export function requireHandoffComponentOwner(value: unknown): HandoffComponentOwner {
+  if (!isValidHandoffComponentOwner(value)) {
+    throw new Error('Projected handoff component row does not match the export schema');
+  }
+  return value;
+}
+
 export function assertHandoffRegistry(): void {
   if (HANDOFF_TOKEN_MAPPINGS.length !== 18 || HANDOFF_COMPONENT_OWNERS.length !== 12) {
     throw new Error('Handoff registry row counts drifted from the documented contract');

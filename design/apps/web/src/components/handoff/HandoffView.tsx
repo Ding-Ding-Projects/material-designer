@@ -21,6 +21,8 @@ import {
   HANDOFF_EXPORT_SCHEMA,
   HANDOFF_TOKEN_EXPORT_FIELDS,
   HANDOFF_TOKEN_MAPPINGS,
+  requireHandoffComponentOwner,
+  requireHandoffTokenMapping,
   type HandoffComponentOwner,
   type HandoffStatus,
   type HandoffTokenMapping,
@@ -70,13 +72,15 @@ function canonicalRows(rows: readonly HandoffRow[]): HandoffRow[] {
   assertHandoffRegistry();
   return rows.map((row) => {
     if ('md3Token' in row) {
-      const projected: Record<string, string> = {};
-      for (const field of HANDOFF_TOKEN_EXPORT_FIELDS) projected[field] = row[field];
-      return projected as HandoffTokenMapping;
+      const projected = Object.fromEntries(
+        HANDOFF_TOKEN_EXPORT_FIELDS.map((field) => [field, row[field]]),
+      );
+      return requireHandoffTokenMapping(projected);
     }
-    const projected: Record<string, string> = {};
-    for (const field of HANDOFF_COMPONENT_EXPORT_FIELDS) projected[field] = row[field];
-    return projected as HandoffComponentOwner;
+    const projected = Object.fromEntries(
+      HANDOFF_COMPONENT_EXPORT_FIELDS.map((field) => [field, row[field]]),
+    );
+    return requireHandoffComponentOwner(projected);
   });
 }
 

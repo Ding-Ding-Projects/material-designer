@@ -442,6 +442,9 @@ ownership, keeps permission-hidden Workspace out of discovery, preserves stable
 tab descriptions and selected-tab contrast, exposes the colour field's live
 two-dimensional value, keeps hit wrappers at 48px, and wraps unsupported or
 translated rows at narrow and bilingual layouts.
+The handoff export projection now passes through the registry's exact runtime
+validators instead of asserting a broad string record into a narrower schema;
+focused regressions prove complete rows pass and incomplete rows fail closed.
 
 **Changed files:**
 
