@@ -50,6 +50,12 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
     titleKey: 'settings.envConfigure',
     hintKey: 'settings.subtitle',
   },
+  general: {
+    section: 'general',
+    icon: 'settings',
+    titleKey: 'settings.general',
+    hintKey: 'settings.generalHint',
+  },
   workspace: {
     section: 'workspace',
     icon: 'users',
@@ -180,6 +186,7 @@ export const SETTINGS_TAB_DEFS: Record<SettingsSection, SettingsTabDef | null> =
  */
 export const SETTINGS_TAB_ORDER: readonly SettingsSection[] = [
   'execution',
+  'general',
   'workspace',
   'instructions',
   'memory',

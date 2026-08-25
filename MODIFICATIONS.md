@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Restore General Settings tab ownership
+
+**Reason:** Release run `32813607828` reached the exhaustive settings-tab
+registry and found that the live General section had no ownership decision.
+General is a real dialog-owned panel and navigation destination, so the tab
+registry now gives it one definition and one ordered position. A focused
+regression ties the definition to the live panel marker and rejects duplicate
+General tab entries.
+
+**Changed files:**
+
+- `apps/web/src/components/settings/settingsTabs.ts`
+- `apps/web/tests/components/SettingsDialog.tabs.test.tsx`
+
 ### 2026-08-25 - Keep Routines translation variables recursive
 
 **Reason:** The Routines failure-label helper accepts the application's canonical

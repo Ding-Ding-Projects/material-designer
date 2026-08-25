@@ -45,6 +45,19 @@ version section when a release carries them.
 
 ### Changed
 
+- **General Settings now owns exactly one tab definition.** Release run
+  `32813607828` found that the exhaustive settings-tab registry omitted the
+  live General panel. The registry now maps General to its localized label and
+  existing panel, places it once beside Execution, and carries a focused
+  regression that rejects a missing or duplicate General tab. Hosted
+  replacement verification and installed interaction remain pending.
+
+  **General Settings 而家名正言順有一個 tab definition。** Release run
+  `32813607828` 捉到 exhaustive settings-tab registry 漏咗 live General panel，
+  好似全班點名偏偏唔叫班長。Registry 而家用返 localized label 接住現有 panel，
+  喺 Execution 隔籬只排一次；focused regression 會捉實 missing 同 duplicate
+  General tab。Hosted replacement verification 同 installed interaction 仲未完成。
+
 - **Routine failure labels now use the complete translation contract.** Release
   run `32812909723` found that `RoutinesSection` narrowed interpolation variables
   to plain strings and numbers before passing its translator to the shared run

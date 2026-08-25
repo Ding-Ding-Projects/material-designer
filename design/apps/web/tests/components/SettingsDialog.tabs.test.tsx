@@ -77,6 +77,7 @@ const APP_SOURCE = readFileSync(
 // reachability was the defect that prompted this lane.
 const SETTINGS_RENDER_CONTRACTS: ReadonlyArray<readonly [string, string]> = [
   ['execution', "activeSection === 'execution'"],
+  ['general', "activeSection === 'general'"],
   ['workspace', '<SettingsWorkspaceSection context={workspaceContext} />'],
   ['instructions', "activeSection === 'instructions'"],
   ['memory', "activeSection === 'memory'"],
@@ -173,6 +174,9 @@ describe('Settings: the tab strip', () => {
 
   it('records an explicit tab or null ownership decision for every section token', () => {
     expect(Object.keys(SETTINGS_TAB_DEFS).sort()).toEqual(Object.keys(SETTINGS_SECTION_TOKENS).sort());
+    expect(SETTINGS_TAB_DEFS.general?.section).toBe('general');
+    expect(SETTINGS_TAB_ORDER.filter((section) => section === 'general')).toEqual(['general']);
+    expect(SETTINGS_DIALOG_SOURCE).toContain("activeSection === 'general'");
     expect(SETTINGS_TAB_DEFS.workspace).not.toBeNull();
     expect(SETTINGS_TAB_DEFS.orbit).not.toBeNull();
     expect(SETTINGS_TAB_DEFS.routines).not.toBeNull();

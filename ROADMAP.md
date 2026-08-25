@@ -67,7 +67,11 @@ with the project's standards.
       fallback. Release run `32812909723` then found the same recovered narrow
       translation alias in the Routines failure-label path. That alias now
       derives from the canonical translator type, with a focused source
-      regression preventing the narrow signature from returning. A replacement
+      regression preventing the narrow signature from returning. Release run
+      `32813607828` then reached the exhaustive settings-tab registry and found
+      that its live General panel had no tab definition. General now owns one
+      localized definition and one ordered position, with a focused regression
+      guarding both live-panel ownership and duplicate entries. A replacement
       hosted build is still required, so this item is not complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
