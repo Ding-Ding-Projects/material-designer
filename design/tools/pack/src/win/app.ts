@@ -276,6 +276,7 @@ async function writeAssembledAppEntrypoints(
     paths.assembledPackageJsonPath,
     `${JSON.stringify(
       {
+        author: { name: PRODUCT_NAME },
         dependencies: options.dependencies ?? createAssembledAppDependencies(config, paths, packedTarballs),
         description: "Open Design packaged runtime",
         main: "./main.cjs",

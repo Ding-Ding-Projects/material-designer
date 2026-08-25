@@ -156,6 +156,7 @@ describe("Windows pack artifact boundaries", () => {
   });
 
   it("uses direct Squirrel output and exposes its machine-readable artifacts", async () => {
+    const appSource = await readFile(new URL("../src/win/app.ts", import.meta.url), "utf8");
     const builderSource = await readFile(new URL("../src/win/builder.ts", import.meta.url), "utf8");
     const buildSource = await readFile(new URL("../src/win/build.ts", import.meta.url), "utf8");
     const constantsSource = await readFile(new URL("../src/win/constants.ts", import.meta.url), "utf8");
@@ -164,8 +165,10 @@ describe("Windows pack artifact boundaries", () => {
     const typeSource = await readFile(new URL("../src/win/types.ts", import.meta.url), "utf8");
 
     expect(builderSource).toContain("squirrelWindows:");
-    expect(builderSource).toContain("author: { name: PRODUCT_NAME },");
-    expect(builderSource).not.toContain("\n    author: PRODUCT_NAME,");
+    expect(appSource).toMatch(/^\s*author: \{ name: PRODUCT_NAME \},$/m);
+    expect(appSource).not.toMatch(/^\s*author: PRODUCT_NAME,$/m);
+    expect(builderSource).toMatch(/^\s*author: \{ name: PRODUCT_NAME \},$/m);
+    expect(builderSource).not.toMatch(/^\s*author: PRODUCT_NAME,$/m);
     expect(builderSource).toContain("forceCodeSigning: false");
     expect(builderSource).toContain("signAndEditExecutable: false");
     expect(builderSource).toContain('signExts: ["!exe"],');

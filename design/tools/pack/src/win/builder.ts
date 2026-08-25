@@ -190,7 +190,7 @@ async function runElectronBuilderRaw(
     electronVersion: config.electronVersion,
     executableName: PRODUCT_NAME,
     extraMetadata: {
-      author: PRODUCT_NAME,
+      author: { name: PRODUCT_NAME },
       main: "./main.cjs",
       name: SQUIRREL_PACKAGE_NAME,
       productName: PRODUCT_NAME,

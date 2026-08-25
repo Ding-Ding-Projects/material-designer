@@ -1223,18 +1223,22 @@ the `NotSigned` release gate.
 - `tools/pack/src/win/builder.ts`
 - `tools/pack/tests/win-builder.test.ts`
 
-### 2026-08-07 — Keep Squirrel author metadata inside the application package
+### 2026-08-25 — Keep Squirrel author metadata inside every application manifest
 
 **Reason:** Release run `31159842997` reached the Windows packer and electron-builder
 26.8.1 rejected the generated top-level `author` field because it is not a valid
-builder option. Squirrel.Windows obtains its required `Authors` value from
-`appInfo.companyName`, which is derived from the application package's author object.
-The builder now keeps `{ name: PRODUCT_NAME }` inside `extraMetadata`, and the
-focused source contract rejects the invalid root form.
+builder option. A later assembled application manifest omitted `author` entirely,
+so NuGet rejected the Squirrel package with `Authors is required.` before an
+installer could be produced. Squirrel.Windows obtains its required `Authors`
+value from `appInfo.companyName`, which is derived from the application package's
+author object. The assembled manifest and the builder's `extraMetadata` now both
+keep `{ name: PRODUCT_NAME }`, and the focused source contract rejects both the
+missing producer field and the invalid string form.
 
 **Changed files:**
 
 - `tools/pack/src/win/builder.ts`
+- `tools/pack/src/win/app.ts`
 - `tools/pack/tests/win-builder.test.ts`
 
 ### 2026-08-07 — Keep the Squirrel artifact contract test aligned with its helper
