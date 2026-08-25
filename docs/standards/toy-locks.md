@@ -40,6 +40,15 @@ or replaced prompt invalidates an in-flight verifier result, so a late response
 cannot authorize the old target. English, Hong Kong Cantonese, and bilingual
 copy are present for this component.
 
+`design/apps/web/src/components/settings/SettingsTabStrip.tsx` now accepts
+controlled per-tab lock policy data and a host-owned factor verifier. Every tab
+rendered by that strip, including an overflow-menu entry, stays focusable and
+activation-capable while locked. Pointer and keyboard activation are intercepted
+before the original section-selection callback can run. The original callback is
+retained and invoked exactly once only after the configured policy succeeds.
+Cancellation leaves the section unchanged and returns focus to the originating
+tab or overflow action. The strip does not define, store, or infer credentials.
+
 The host supplies `verifyFactor`. Password and TOTP verification are interfaces,
 not credential implementations: this source does not persist secrets, hash
 passwords, access a credential vault, register TOTP, or pair QR/manual secrets.
@@ -47,9 +56,15 @@ Verifier rejection is a visible retryable state and does not silently spend an
 attempt. The visible budget is component-local in this slice and resets when a
 new prompt mounts; persistent per-lock budgets still belong to the missing host
 integration. Switching between keypad and manual entry inside one prompt does
-not reset it. Per-element context-menu commands, app-wide mounting, credential
-persistence, pairing, packaged interaction, and captures remain absent.
-Consequently the complete feature remains unshipped.
+not reset it. `SettingsDialog` now mounts `SettingsTabStrip` as its live section
+navigation owner, supplies permission-filtered tabs, and routes ordinary
+unlocked selection through one controlled callback. The host currently supplies
+an empty lock map and a verifier that always refuses any externally introduced
+lock. This makes unlocked navigation real without pretending a user-configured
+lock can exist before the credential boundary does. Credential persistence,
+lock-configuration context menus, persistent attempt budgets, TOTP pairing,
+every-element coverage, packaged interaction, and screenshots remain absent.
+Consequently the complete feature remains partial and unshipped.
 
 The documentation site now carries one bounded browser-local implementation in
 `site/assets/js/toy-locks.js`. Its Settings surface exposes all six policies, a
@@ -86,7 +101,10 @@ lockable and the built deployed page has complete interaction and capture proof.
 
 The focused source suites are
 `design/apps/web/tests/security/toy-lock-core.test.ts` and
-`design/apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`.
+`design/apps/web/tests/components/ToyLockAuthenticationPopover.test.tsx`, plus
+`design/apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx` for direct,
+keyboard, overflow, cancellation, focus-return, manual-PIN, and six-policy tab
+activation paths.
 Project policy requires
 Node-based checks to run in continuous integration, so this implementation lane
 does not claim a local test verdict. The byte-verbatim port verifier remains the

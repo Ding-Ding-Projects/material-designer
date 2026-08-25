@@ -214,6 +214,35 @@ import {
   requestNotificationPermission,
   showCompletionNotification,
 } from '../utils/notifications';
+import {
+  SETTINGS_REVEAL_EVENT,
+  requestSettingsReveal,
+  revealAnchor,
+  takePendingSettingsReveal,
+} from './command-palette/reveal';
+import { SETTINGS_INDEX } from './command-palette/settingsIndex';
+import { RegexSearchField } from './regex/RegexSearchField';
+import { useRegexSearch } from './regex/useRegexSearch';
+import {
+  SETTINGS_TABPANEL_ID,
+  SettingsTabStrip,
+  settingsTabId,
+  type SettingsTabToyLock,
+} from './settings/SettingsTabStrip';
+import { SettingsSearchResults } from './settings/SettingsSearchResults';
+import {
+  matchSettingsIndex,
+  settingsHitCountsBySection,
+  settingsHitsElsewhere,
+  type SettingsSearchHit,
+} from './settings/settingsSearchMatch';
+import {
+  SETTINGS_TAB_DEFS,
+  SETTINGS_TABS,
+  writeLastSettingsSection,
+} from './settings/settingsTabs';
+import settingsTabStyles from './settings/SettingsTabs.module.css';
+import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
 
 export type SettingsSection =
   | 'general'
@@ -264,18 +293,14 @@ export type SettingsSection =
 // `privacy` and `about` must not be listed either — they own nav items, and
 // mapping them to General used to send deep links to the wrong section with
 // the wrong nav item highlighted.
-function normalizeSettingsSection(section: SettingsSection): SettingsSection {
-  switch (section) {
-    case 'language':
-    case 'appearance':
-    case 'notifications':
-    case 'pet':
-    case 'projectLocations':
-    case 'critiqueTheater':
-      return 'general';
-    default:
-      return section;
-  }
+const SETTINGS_TAB_TOY_LOCKS: ReadonlyMap<SettingsSection, SettingsTabToyLock> = new Map();
+
+// Settings does not own a credential backend yet. Keep every tab unlocked and
+// fail closed if controlled lock data is introduced before a real verifier is wired.
+function verifySettingsTabToyLockFactor(
+  _request: ToyLockVerificationRequest,
+): boolean {
+  return false;
 }
 
 interface ByokProviderPreset {
@@ -456,6 +481,7 @@ interface Props {
   appVersionInfo: AppVersionInfo | null;
   welcome?: boolean;
   initialSection?: SettingsSection;
+  onSectionChange?: (section: SettingsSection) => void;
   initialHighlight?: SettingsHighlight;
   /** Workspace id persisted on the currently-open project, when any. */
   persistedProjectWorkspaceId?: string | null;
@@ -1504,6 +1530,7 @@ export function SettingsDialog({
   appVersionInfo,
   welcome,
   initialSection = 'general',
+  onSectionChange,
   initialHighlight = null,
   persistedProjectWorkspaceId = null,
   onPersist,
@@ -1527,6 +1554,8 @@ export function SettingsDialog({
   onDraftChange,
 }: Props) {
   const { t, locale, setLocale } = useI18n();
+  const route = useRoute();
+  const pageMode = presentation === 'page';
   const analytics = useAnalytics();
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
@@ -1633,7 +1662,47 @@ export function SettingsDialog({
       ? { [initial.apiProtocol ?? 'anthropic']: byokProviderKeyForConfig(initial) }
       : {},
   );
-  const [activeSection, setActiveSection] = useState<SettingsSection>(() => normalizeSettingsSection(initialSection));
+  const localSectionNavigationRef = useRef<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  const [settingsQuery, setSettingsQuery] = useState('');
+  const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
+  const settingsSearchActive = settingsQuery.trim().length > 0;
+  const settingsSearchMatches = settingsSearch.matches;
+  const settingsSectionLabel = useCallback(
+    (section: SettingsSection): string => {
+      const def = SETTINGS_TAB_DEFS[section];
+      return def ? t(def.titleKey) : section;
+    },
+    [t],
+  );
+  const rawSettingsSearchHits = useMemo<SettingsSearchHit[]>(() => {
+    if (!settingsSearchActive) return [];
+    return matchSettingsIndex({
+      entries: SETTINGS_INDEX,
+      matches: settingsSearchMatches,
+      translate: t,
+      sectionLabel: settingsSectionLabel,
+      activeSection,
+    });
+  }, [activeSection, settingsSearchActive, settingsSearchMatches, settingsSectionLabel, t]);
+  const selectSettingsSection = useCallback((section: SettingsSection) => {
+    setActiveSection(section);
+    onSectionChange?.(section);
+    if (!pageMode || route.kind !== 'home' || route.view !== 'settings') return;
+    const targetPath = section === 'appearance' ? '/settings/appearance' : '/settings';
+    localSectionNavigationRef.current = window.location.pathname !== targetPath
+      ? (section === 'appearance' ? 'appearance' : 'settings')
+      : null;
+    navigateRoute(
+      section === 'appearance'
+        ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
+        : { kind: 'home', view: 'settings' },
+    );
+  }, [onSectionChange, pageMode, route.kind, route.view]);
+  const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
+    selectSettingsSection(hit.section);
+    requestSettingsReveal(hit.entry.id);
+  }, [selectSettingsSection]);
   // Workspace region gating (E-frontend, D4.3). One shared read of the workspace
   // context; the Workspace section only renders for a team workspace whose
   // viewer may see workspace settings. Gate on the folded permission bits,
@@ -1658,6 +1727,28 @@ export function SettingsDialog({
     workspaceContext,
   );
   const showWorkspaceSettings = canShowWorkspaceSettings(workspaceContext);
+  const settingsSearchHits = useMemo(
+    () => rawSettingsSearchHits.filter(
+      (hit) => hit.section !== 'workspace' || showWorkspaceSettings,
+    ),
+    [rawSettingsSearchHits, showWorkspaceSettings],
+  );
+  const settingsSearchCounts = useMemo(
+    () => (settingsSearchActive ? settingsHitCountsBySection(settingsSearchHits) : null),
+    [settingsSearchActive, settingsSearchHits],
+  );
+  const settingsSearchElsewhere = useMemo(
+    () => settingsHitsElsewhere(settingsSearchHits, activeSection),
+    [activeSection, settingsSearchHits],
+  );
+  const visibleSettingsTabs = useMemo(
+    () => SETTINGS_TABS.filter((tab) => tab.section !== 'workspace' || showWorkspaceSettings),
+    [showWorkspaceSettings],
+  );
+  useEffect(() => {
+    if (workspaceContextLoading || showWorkspaceSettings || activeSection !== 'workspace') return;
+    selectSettingsSection('execution');
+  }, [activeSection, selectSettingsSection, showWorkspaceSettings, workspaceContextLoading]);
   // All generic AMR upgrade buttons route through public Pricing. While the
   // workspace read is pending, hide the owner-only action to avoid a flash for
   // admins or members.
@@ -1665,7 +1756,6 @@ export function SettingsDialog({
     workspaceContextLoading
       ? null
       : workspaceUpgradeUrl(workspaceContext, workspaceBilling, { fallbackProfile: profile });
-  const [settingsSidebarCollapsed, setSettingsSidebarCollapsed] = useState(false);
   const [settingsFullscreen, setSettingsFullscreen] = useState(true);
   // Scroll the right-hand content pane back to the top whenever the user
   // picks a different settings section. Without this, switching from a
@@ -2029,8 +2119,25 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(normalizeSettingsSection(initialSection));
+    setActiveSection(initialSection);
   }, [initialSection]);
+
+  useEffect(() => {
+    writeLastSettingsSection(activeSection);
+  }, [activeSection]);
+
+  useEffect(() => {
+    const reveal = (anchor: string | null) => {
+      if (!anchor) return;
+      revealAnchor(anchor, settingsContentRef.current);
+    };
+    reveal(takePendingSettingsReveal());
+    const handleReveal = (event: Event) => {
+      reveal((event as CustomEvent<{ anchor?: string }>).detail?.anchor ?? null);
+    };
+    window.addEventListener(SETTINGS_REVEAL_EVENT, handleReveal);
+    return () => window.removeEventListener(SETTINGS_REVEAL_EVENT, handleReveal);
+  }, [activeSection]);
 
   // settings_view — fires whenever the active section changes (and once on
   // mount). Keying the fire on a section+section-string lets us dedupe
@@ -4174,20 +4281,14 @@ export function SettingsDialog({
     );
   };
 
-  const settingsSidebarToggleLabel = settingsSidebarCollapsed
-    ? 'Expand settings sidebar'
-    : 'Collapse settings sidebar';
   const settingsFullscreenLabel = settingsFullscreen
     ? t('common.exitFullscreen')
     : t('common.fullscreen');
-  const pageMode = presentation === 'page';
-
   const surface = (
       <div
         className={
           'modal modal-settings' +
           (pageMode ? ' settings-page-surface' : '') +
-          (settingsSidebarCollapsed ? ' settings-sidebar-collapsed' : '') +
           (!pageMode && settingsFullscreen ? ' settings-fullscreen' : '')
         }
         role={pageMode ? 'region' : 'dialog'}
@@ -4278,26 +4379,44 @@ export function SettingsDialog({
         </header>
 
         <div className="modal-body">
-          <button
-            type="button"
-            className="settings-sidebar-toggle"
-            onClick={() => setSettingsSidebarCollapsed((current) => !current)}
-            aria-label={settingsSidebarToggleLabel}
-            aria-pressed={settingsSidebarCollapsed}
-            aria-controls="settings-sidebar"
-            title={settingsSidebarToggleLabel}
-          >
-            <Icon
-              name={settingsSidebarCollapsed ? 'chevron-right' : 'chevron-left'}
-              size={15}
-              strokeWidth={2}
+          <SettingsTabStrip
+            activeSection={activeSection}
+            onSelect={selectSettingsSection}
+            matchCounts={settingsSearchCounts}
+            tabs={visibleSettingsTabs}
+            toyLocks={SETTINGS_TAB_TOY_LOCKS}
+            verifyToyLockFactor={verifySettingsTabToyLockFactor}
+            searchField={
+              <RegexSearchField
+                search={settingsSearch}
+                fieldLabel={t('settings.searchAria')}
+                ariaLabel={t('settings.searchAria')}
+                placeholder={t('settings.searchPlaceholder')}
+                className={settingsTabStyles.searchInput}
+                hostClassName={settingsTabStyles.searchHost}
+                testId="settings-search"
+              />
+            }
+          />
+          {settingsSearchActive ? (
+            <SettingsSearchResults
+              hits={settingsSearchHits}
+              activeSection={activeSection}
+              elsewhere={settingsSearchElsewhere}
+              sectionLabel={settingsSectionLabel}
+              onPick={handleSettingsSearchPick}
             />
-          </button>
-          <aside
-            id="settings-sidebar"
-            className="settings-sidebar"
-            aria-label="Settings sections"
-            aria-hidden={settingsSidebarCollapsed ? true : undefined}
+          ) : null}
+          <div
+            className="settings-content"
+            ref={settingsContentRef}
+            id={SETTINGS_TABPANEL_ID}
+            role="tabpanel"
+            aria-labelledby={
+              SETTINGS_TAB_DEFS[activeSection] ? settingsTabId(activeSection) : undefined
+            }
+            tabIndex={-1}
+            data-od-setting={`section:${activeSection}`}
           >
             {pageMode ? (
               <div className="settings-page-nav-head">
@@ -4309,99 +4428,10 @@ export function SettingsDialog({
                   <Icon name="arrow-left" size={15} />
                   <span>{t('settings.pageBackToHome')}</span>
                 </button>
+                <h1 id="settings-page-title">{activeHeader.title}</h1>
+                <p className="settings-page-subtitle">{activeHeader.subtitle}</p>
               </div>
             ) : null}
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'execution' ? ' active' : ''}`}
-              onClick={() => setActiveSection('execution')}
-              data-testid="settings-nav-execution"
-            >
-              <Icon name="sliders" size={18} />
-              <span>
-                <strong>{t('settings.envConfigure')}</strong>
-                <small>{`${t('settings.localCli')} / ${t('settings.modeApiMeta')}`}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'general' ? ' active' : ''}`}
-              onClick={() => setActiveSection('general')}
-            >
-              <Icon name="settings" size={18} />
-              <span>
-                <strong>{t('settings.general')}</strong>
-                <small>{t('settings.generalHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'instructions' ? ' active' : ''}`}
-              onClick={() => setActiveSection('instructions')}
-            >
-              <Icon name="edit" size={18} />
-              <span>
-                <strong>{t('settings.instructionsTitle')}</strong>
-                <small>{t('settings.instructionsNavSub')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'memory' ? ' active' : ''}`}
-              onClick={() => setActiveSection('memory')}
-            >
-              <Icon name="brain" size={18} />
-              <span>
-                <strong>{t('settings.memory')}</strong>
-                <small>{t('settings.memoryHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'media' ? ' active' : ''}`}
-              onClick={() => setActiveSection('media')}
-            >
-              <Icon name="image" size={18} />
-              <span>
-                <strong>{t('settings.mediaProviders')}</strong>
-                <small>Image / video / audio</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
-              onClick={() => setActiveSection('integrations')}
-            >
-              <Icon name="puzzle" size={18} />
-              <span>
-                <strong>{t('settings.mcpServerTitle')}</strong>
-                <small>{t('settings.mcpServerHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
-              onClick={() => setActiveSection('privacy')}
-            >
-              <Icon name="eye" size={18} />
-              <span>
-                <strong>{t('settings.privacy')}</strong>
-                <small>{t('settings.privacyHint')}</small>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`settings-nav-item${activeSection === 'about' ? ' active' : ''}`}
-              onClick={() => setActiveSection('about')}
-            >
-              <Icon name="settings" size={18} />
-              <span>
-                <strong>{t('settings.about')}</strong>
-                <small>{t('settings.aboutHint')}</small>
-              </span>
-            </button>
-          </aside>
-          <div className="settings-content" ref={settingsContentRef}>
           {activeSection === 'execution' ? (
             <>
               {/* Sticky shell: the 本机 CLI / API 提供商 switch stays pinned

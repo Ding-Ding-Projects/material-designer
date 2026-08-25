@@ -10,9 +10,17 @@
       provides access-control keypad and manual PIN paths, shows factor progress
       and attempts, localizes its copy in English, Hong Kong Cantonese and
       bilingual modes, preserves cancel/focus behavior, and emits authorization
-      only after every configured factor passes. Credential persistence, TOTP
-      pairing, per-element menu wiring, app-wide mounting, packaged interaction,
-      accessibility runtime verification, and capture evidence remain open.
+      only after every configured factor passes. The reusable Settings tab strip
+      now intercepts pointer, keyboard, and overflow activation for controlled
+      locked tabs, keeps them activation-capable, and defers the original section
+      action until authentication succeeds. The live Settings dialog now mounts
+      that strip with permission-filtered tabs, controlled empty lock state, and
+      a verifier that refuses every external lock until a credential backend
+      exists. Ordinary unlocked navigation is real, but users cannot configure a
+      lock yet. Credential persistence, lock-configuration menus, persistent
+      attempt budgets, TOTP pairing, per-element wiring, app-wide coverage,
+      packaged interaction, accessibility runtime verification, and screenshot
+      evidence remain open.
   - [ ] Expand the documentation site's representative toy lock to every
         rendered element and complete deployed interaction evidence.
         One browser-local protected example now covers the exact six policies,
@@ -72,7 +80,20 @@ with the project's standards.
       that its live General panel had no tab definition. General now owns one
       localized definition and one ordered position, with a focused regression
       guarding both live-panel ownership and duplicate entries. A replacement
-      hosted build is still required, so this item is not complete.
+      hosted build then reached run `32814288407` and found the Handoff route
+      missing from both exhaustive workspace-tab display registries. The source
+      now maps that route to the canonical `handoff.title` label and
+      `layers-filled` icon, while a focused contract compares title and icon
+      coverage against every `EntryHomeView` and proves deliberate row removal
+      turns red. Hosted replacement verification is still required, so this
+      item is not complete.
+
+      **廣東話進度：** Replacement hosted build 行到 `32814288407`，捉到
+      Handoff route 喺兩本 exhaustive workspace-tab display registry 都冇位，
+      好似名牌同張櫈一齊放假。Source 而家用返 canonical `handoff.title` 同
+      `layers-filled`，focused contract 亦會逐個 `EntryHomeView` 對齊 title 同
+      icon，刻意拎走一行就即刻轉紅。Replacement hosted verification 仲未有，
+      所以呢項仍然未完成。
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `05f5b33ef` / v0.20.3 development,

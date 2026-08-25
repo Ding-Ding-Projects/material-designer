@@ -45,6 +45,49 @@ version section when a release carries them.
 
 ### Changed
 
+- **Handoff workspace tabs now have exhaustive localized title and icon
+  mappings.** Release run `32814288407` found that the new Handoff route was
+  absent from both `WorkspaceTabsBar` display registries. The tab now uses the
+  canonical `handoff.title` label and `layers-filled` icon. A focused source
+  contract compares both registries against every `EntryHomeView` and proves a
+  deliberately removed Handoff row turns red. Hosted replacement verification
+  and installed interaction remain pending.
+
+  **Handoff workspace tab 而家 title 同 icon 都齊腳。** Release run
+  `32814288407` 捉到新 Handoff route 喺 `WorkspaceTabsBar` 兩本 display
+  registry 都冇名，好似返工打咗卡但座位同名牌一齊失蹤。Tab 而家用返
+  canonical `handoff.title` label 同 `layers-filled` icon；focused source
+  contract 會逐個 `EntryHomeView` 對齊兩本 registry，仲證明刻意拎走 Handoff
+  row 就會即刻轉紅。Hosted replacement verification 同 installed interaction
+  仲未完成。
+
+- **The reusable Settings tab strip now preserves locked actions until authentication.**
+  Controlled locks keep direct tabs and overflow entries focusable and activatable,
+  but intercept pointer and keyboard selection before the original section action
+  runs. The anchored prompt supports all six existing policies, both PIN entry
+  paths, cancellation, and focus return; the original action runs exactly once
+  only after every required factor succeeds. The live Settings dialog now mounts
+  the strip with permission-filtered tabs, controlled empty lock state, and a
+  verifier that refuses every external lock until a credential backend exists.
+  Ordinary unlocked navigation is live, but no user-configured lock can exist
+  yet. Credential persistence, lock-configuration menus, persistent attempt
+  budgets, TOTP pairing, every-element coverage, packaged interaction, and
+  screenshots remain absent. Focused source tests are committed for continuous
+  integration; no local runtime or packaged interaction verdict is claimed.
+
+  **Reusable Settings tab strip 而家會等 authentication 過晒關，先至放行 locked
+  action。** Direct tabs 同 overflow entries 仍然可以 focus 同 activate，但 pointer
+  或 keyboard selection 未過關之前，原本 section action 一步都唔會郁，唔會偷偷
+  搶閘。Anchored prompt 接住現有六種 policy、兩條 PIN entry 路、cancel 同 focus
+  return；所有 required factors 成功後，原 action 先啱啱好行一次。Live Settings
+  dialog 而家真係 mount 咗呢條 strip，用 permission-filtered tabs、controlled empty
+  lock state，同埋一個見到 external lock 就一定拒絕嘅 verifier。普通 unlocked
+  navigation 已經真係郁得，但 user-configured lock 暫時仲未可以存在。Credential
+  persistence、lock-configuration menus、persistent attempt budgets、TOTP pairing、
+  every-element coverage、packaged interaction 同 screenshots 仍然未有。Focused
+  source tests 已交畀 continuous integration，今次冇聲稱 local runtime 或 packaged
+  interaction 已驗證。
+
 - **General Settings now owns exactly one tab definition.** Release run
   `32813607828` found that the exhaustive settings-tab registry omitted the
   live General panel. The registry now maps General to its localized label and

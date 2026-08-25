@@ -27,10 +27,19 @@ import {
 import { createPortal } from 'react-dom';
 
 import { useT } from '../../i18n';
+import {
+  createAttemptBudget,
+  interceptLockedActivation,
+  type ToyLockPolicy,
+} from '../../security/toy-lock-core';
 import { Icon } from '../Icon';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import type { SettingsSection } from '../SettingsDialog';
+import {
+  ToyLockAuthenticationPopover,
+  type ToyLockVerificationRequest,
+} from '../ToyLockAuthenticationPopover';
 import { SETTINGS_TABS, type SettingsTabDef } from './settingsTabs';
 import styles from './SettingsTabs.module.css';
 
@@ -65,7 +74,35 @@ export interface SettingsTabStripProps {
   /** The surface's search field. Rendered in the strip row, beside the tabs. */
   searchField: ReactNode;
   tabs?: readonly SettingsTabDef[];
+  /**
+   * Controlled lock state for the tabs this strip renders. Credential storage
+   * stays with the host. A locked tab remains focusable and activation-capable
+   * so it can open authentication without running the protected selection.
+   */
+  toyLocks?: ReadonlyMap<SettingsSection, SettingsTabToyLock>;
+  /** Factor verification supplied by the credential-owning host. */
+  verifyToyLockFactor?: (
+    request: ToyLockVerificationRequest,
+  ) => boolean | Promise<boolean>;
 }
+
+export interface SettingsTabToyLock {
+  readonly locked: boolean;
+  readonly policy: ToyLockPolicy;
+}
+
+interface PendingTabAuthentication {
+  readonly section: SettingsSection;
+  readonly targetId: string;
+  readonly targetLabel: string;
+  readonly policy: ToyLockPolicy;
+  readonly anchor: HTMLButtonElement;
+  readonly closeOverflowOnSuccess: boolean;
+  readonly focusTabOnSuccess: boolean;
+}
+
+const EMPTY_SETTINGS_TAB_TOY_LOCKS: ReadonlyMap<SettingsSection, SettingsTabToyLock> = new Map();
+const REFUSE_UNCONFIGURED_TOY_LOCK_FACTOR = () => false;
 
 function sameSections(a: ReadonlySet<SettingsSection>, b: ReadonlySet<SettingsSection>): boolean {
   if (a.size !== b.size) return false;
@@ -79,6 +116,8 @@ export function SettingsTabStrip({
   matchCounts,
   searchField,
   tabs = SETTINGS_TABS,
+  toyLocks = EMPTY_SETTINGS_TAB_TOY_LOCKS,
+  verifyToyLockFactor = REFUSE_UNCONFIGURED_TOY_LOCK_FACTOR,
 }: SettingsTabStripProps) {
   const t = useT();
   const menuId = useId();
@@ -92,6 +131,8 @@ export function SettingsTabStrip({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
+  const [pendingAuthentication, setPendingAuthentication] =
+    useState<PendingTabAuthentication | null>(null);
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
 
   const filteredTabs = tabs.filter((tab) =>
@@ -196,14 +237,17 @@ export function SettingsTabStrip({
       return Boolean(menuRef.current?.contains(target) || overflowRef.current?.contains(target));
     };
     const onPointerDown = (event: MouseEvent) => {
-      if (!isInside(event.target)) {
+      // An overflow-triggered authentication prompt is portalled outside the
+      // menu. Keep its originating item mounted until the prompt completes or
+      // is cancelled so focus restoration always has a live target.
+      if (!pendingAuthentication && !isInside(event.target)) {
         setMenuOpen(false);
         setMenuQuery('');
       }
     };
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [menuOpen]);
+  }, [menuOpen, pendingAuthentication]);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -241,13 +285,60 @@ export function SettingsTabStrip({
     (last ? items[items.length - 1] : items[0])?.focus();
   }, []);
 
+  const completeTabSelection = useCallback((
+    section: SettingsSection,
+    closeOverflowOnSuccess: boolean,
+    focusTabOnSuccess: boolean,
+  ) => {
+    if (closeOverflowOnSuccess) closeMenu();
+    onSelect(section);
+    if (focusTabOnSuccess) {
+      // The authentication popover returns focus to its own anchor after this
+      // callback. Defer the final tab focus so an overflow item that is removed
+      // by closeMenu cannot win that race and strand focus on the document.
+      queueMicrotask(() => tabNodes.current.get(section)?.focus?.());
+    }
+  }, [closeMenu, onSelect]);
+
+  const requestTabSelection = useCallback((
+    tab: SettingsTabDef,
+    anchor: HTMLButtonElement,
+    closeOverflowOnSuccess: boolean,
+    focusTabOnSuccess: boolean,
+  ) => {
+    const lock = toyLocks.get(tab.section);
+    const targetId = settingsTabId(tab.section);
+    const result = interceptLockedActivation(
+      {
+        targetId,
+        policy: lock?.policy ?? 'password',
+        locked: lock?.locked ?? false,
+      },
+      createAttemptBudget(),
+      () => completeTabSelection(tab.section, closeOverflowOnSuccess, focusTabOnSuccess),
+    );
+
+    if (result.kind !== 'authentication-required') return;
+    setPendingAuthentication({
+      section: tab.section,
+      targetId,
+      targetLabel: t(tab.titleKey),
+      policy: result.policy,
+      anchor,
+      closeOverflowOnSuccess,
+      focusTabOnSuccess,
+    });
+  }, [completeTabSelection, t, toyLocks]);
+
   const focusTab = useCallback(
     (section: SettingsSection) => {
-      onSelect(section);
+      const tab = tabs.find((candidate) => candidate.section === section);
       const node = tabNodes.current.get(section);
-      node?.focus?.();
+      if (!tab || !node) return;
+      node.focus?.();
+      requestTabSelection(tab, node, false, true);
     },
-    [onSelect],
+    [requestTabSelection, tabs],
   );
 
   const onTablistKeyDown = useCallback(
@@ -294,6 +385,8 @@ export function SettingsTabStrip({
       >
         {tabs.map((tab) => {
           const active = tab.section === activeSection;
+          const lock = toyLocks.get(tab.section);
+          const locked = lock?.locked ?? false;
           const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
           // Never dim the selected tab: it remains the user's current context
           // even when the query matches nothing inside it. The no-match state
@@ -312,16 +405,20 @@ export function SettingsTabStrip({
               role="tab"
               id={tabId}
               aria-selected={active}
+              aria-disabled={locked || undefined}
               aria-controls={SETTINGS_TABPANEL_ID}
               aria-describedby={count === 0 ? `${hintId} ${noMatchId}` : hintId}
               tabIndex={active ? 0 : -1}
               data-section={tab.section}
+              data-toy-lock-policy={locked ? lock?.policy : undefined}
               // `settings-nav-item` is retained deliberately: it is what the
               // existing settings e2e locators and hover-contrast guard match.
               className={`settings-nav-item ${styles.tab}${active ? ` active ${styles.tabActive}` : ''}${
                 dimmed ? ` ${styles.tabNoMatch}` : ''
               }`}
-              onClick={() => onSelect(tab.section)}
+              onClick={(event) => {
+                requestTabSelection(tab, event.currentTarget, false, false);
+              }}
               // The tab's accessible name is its title alone. The hint below is
               // `aria-hidden` and repeated here as the tooltip, because a hint
               // folded into the name makes the tab match text it does not
@@ -333,6 +430,7 @@ export function SettingsTabStrip({
               title={t(tab.hintKey)}
             >
               <Icon name={tab.icon} size={16} />
+              {locked ? <Icon name="lock" size={14} /> : null}
               <span className={styles.tabLabel}>
                 <strong>{t(tab.titleKey)}</strong>
               </span>
@@ -439,19 +537,24 @@ export function SettingsTabStrip({
               ) : null}
               {filteredTabs.map((tab) => {
                 const active = tab.section === activeSection;
+                const lock = toyLocks.get(tab.section);
+                const locked = lock?.locked ?? false;
                 const count = matchCounts ? (matchCounts.get(tab.section) ?? 0) : null;
                 return (
                   <button
                     key={tab.section}
                     type="button"
                     role="menuitem"
+                    aria-disabled={locked || undefined}
+                    data-section={tab.section}
+                    data-toy-lock-policy={locked ? lock?.policy : undefined}
                     className={`${styles.menuItem}${active ? ` ${styles.menuItemActive}` : ''}`}
-                    onClick={() => {
-                      closeMenu();
-                      focusTab(tab.section);
+                    onClick={(event) => {
+                      requestTabSelection(tab, event.currentTarget, true, true);
                     }}
                   >
                     <Icon name={tab.icon} size={15} />
+                    {locked ? <Icon name="lock" size={13} /> : null}
                     <span className={styles.menuItemLabel}>{t(tab.titleKey)}</span>
                     {count !== null && count > 0 ? (
                       <span className={styles.menuItemMarker}>{count}</span>
@@ -464,6 +567,29 @@ export function SettingsTabStrip({
                 );
               })}
             </div>,
+            document.body,
+          )
+        : null}
+
+      {pendingAuthentication && typeof document !== 'undefined'
+        ? createPortal(
+            <ToyLockAuthenticationPopover
+              targetId={pendingAuthentication.targetId}
+              targetLabel={pendingAuthentication.targetLabel}
+              policy={pendingAuthentication.policy}
+              anchor={pendingAuthentication.anchor}
+              verifyFactor={verifyToyLockFactor}
+              onAuthenticated={() => {
+                const completed = pendingAuthentication;
+                setPendingAuthentication(null);
+                completeTabSelection(
+                  completed.section,
+                  completed.closeOverflowOnSuccess,
+                  completed.focusTabOnSuccess,
+                );
+              }}
+              onCancel={() => setPendingAuthentication(null)}
+            />,
             document.body,
           )
         : null}

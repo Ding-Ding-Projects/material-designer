@@ -229,6 +229,41 @@ committed project change could be overwritten.
 - `tools/release/package.json`
 
 
+### 2026-08-25 - Intercept controlled Settings-tab locks before selection
+
+**Reason:** The reusable Settings tab strip now keeps locked direct and overflow
+entries activation-capable while intercepting their protected section action. It
+opens the existing anchored authentication prompt for the configured six-policy
+contract, invokes the original action only after successful authentication, and
+restores focus on completion or cancellation. Focused source tests cover direct,
+keyboard, overflow, manual-PIN, cancellation, focus-return, and every-policy
+paths. The live Settings dialog now mounts the strip with permission-filtered
+tabs, its anchored search field, and one controlled selection callback. Because
+Settings does not own a credential backend yet, it supplies an empty lock map
+and a verifier that always refuses any externally introduced lock instead of
+silently accepting it.
+
+**Changed files:**
+
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx`
+
+### 2026-08-25 - Complete Handoff workspace-tab title and icon mappings
+
+**Reason:** Release run `32814288407` reached the exhaustive workspace-tab
+display mappings and found that the Handoff route had neither a title row nor
+an icon row. The tab display now uses the existing `handoff.title` localization
+key and the existing `layers-filled` Handoff icon. A focused source contract
+derives every `EntryHomeView` from the router, requires exact title and icon
+coverage, and proves deliberate Handoff-row removal turns the contract red.
+Hosted replacement verification and installed interaction remain pending.
+
+**Changed files:**
+
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/tests/components/WorkspaceTabsBar.entry-titles.test.ts`
+
 ### 2026-08-24 — Add the desktop toy-lock policy core and authentication prompt
 
 **Reason:** The desktop renderer needs one bounded, reusable authorization core
