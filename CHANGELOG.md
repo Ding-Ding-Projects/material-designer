@@ -45,6 +45,33 @@ version section when a release carries them.
 
 ### Changed
 
+- **Windows Squirrel packaging again refuses executable signing and rcedit
+  mutation at the producer.** Release
+  [`32831335767`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32831335767)
+  failed when `rcedit-x64.exe`, not an Authenticode signing command, could not
+  commit the app executable's resource changes. The upstream-import restoration
+  had accidentally removed the project's supported unsigned controls and the
+  temporary short output mapping while source contracts still required both.
+  The builder again uses `signAndEditExecutable: false`, excludes executable
+  targets, disables update signature verification, and isolates Squirrel's
+  output through a temporary drive mapping. Its cache boundary advances so a
+  previous unpacked executable cannot hide the repaired path. A focused
+  PowerShell validator checks these exact producer controls and proves four
+  deliberate removals turn red before the restored fixture returns green.
+  Hosted packaging evidence remains pending.
+
+  **Windows Squirrel 打包又收返條界，唔畀 executable signing 同 rcedit
+  mutation 偷雞走入嚟。** Release
+  [`32831335767`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32831335767)
+  係 `rcedit-x64.exe` 改 app executable resource 時跌低，唔係 Authenticode
+  signing command。上游 import restoration 好似搬屋漏咗條電線，將原本
+  unsigned controls 同短 output mapping 一齊抹走，明明 source contract 仲睇
+  住。依家 builder 恢復 `signAndEditExecutable: false`、排除 executable
+  target、關閉 update signature verification，同埋暫時用 drive mapping 縮短
+  Squirrel output。Cache boundary 亦向前行，舊 unpacked executable 冇得再
+  扮無事。Focused PowerShell validator 逐條 producer control 睇實，仲試咗四種
+  故意拆線，全部轉紅，還原先轉綠；hosted packaging evidence 仲係 pending。
+
 - **The packaged startup splash now introduces Material Designer instead of
   replaying the upstream product video.** The pre-sidecar surface uses the
   existing shipped vector mark, the Material Designer display name, and the
