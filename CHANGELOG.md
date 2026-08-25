@@ -45,6 +45,14 @@ version section when a release carries them.
 
 ### Changed
 
+- **Chinese community links now have the correct accessible name.** The entry
+  navigation rail already sent Simplified and Traditional Chinese interfaces
+  to the OpenDesign Feishu group, but its new translation key was absent from
+  the typed locale dictionaries and stopped the hosted release type-check. The
+  dedicated label is now present in every locale dictionary, with native
+  Simplified and Traditional Chinese copy and a focused source regression. A
+  replacement hosted build is still required before packaging is verified.
+
 - **General Settings is exhaustive in the command-palette index again.** The
   live `general` section now appears in both `SETTINGS_SECTION_TOKENS` and the
   searchable index with its real anchor and localized title keys. This repairs

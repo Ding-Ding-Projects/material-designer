@@ -29,6 +29,39 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Localize the Chinese Feishu community label
+
+**Reason:** The entry navigation rail intentionally sends Simplified and
+Traditional Chinese interfaces to the OpenDesign Feishu group, but the typed
+locale contract did not define the accessible label requested by that call
+site. The missing key stopped the hosted release type-check. Every locale now
+keeps a complete dictionary, the two active Chinese variants name Feishu in
+their own scripts, and a focused regression pins the locale-sensitive label.
+
+**Changed files:**
+
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/EntryNavRail.community-label.test.ts`
+
 ### 2026-08-25 - Preserve project changes across the v0.20.3 baseline
 
 **Reason:** Advancing the pinned upstream tree to commit

@@ -733,6 +733,7 @@ export const th: Dict = {
   'entry.openSettingsAria': 'เปิดการตั้งค่า',
   'entry.discordLabel': 'เข้าร่วม Discord',
   'entry.discordAria': 'เข้าร่วม Discord ของ OpenDesign',
+  'entry.feishuAria': 'เข้าร่วมกลุ่ม OpenDesign บน Feishu',
   'entry.discordAriaWithOnline': 'เข้าร่วม Discord ของ OpenDesign - {online}',
   'entry.discordOnlineLabel': 'ออนไลน์ {count} คน',
   'entry.mailAria': 'ส่งอีเมลถึง OpenDesign',

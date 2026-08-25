@@ -733,6 +733,7 @@ export const ja: Dict = {
   'entry.openSettingsAria': '設定を開く',
   'entry.discordLabel': 'Discord に参加',
   'entry.discordAria': 'OpenDesign の Discord に参加',
+  'entry.feishuAria': 'OpenDesign の Feishu グループに参加',
   'entry.discordAriaWithOnline': 'OpenDesign の Discord に参加 - {online}',
   'entry.discordOnlineLabel': '{count} 人がオンライン',
   'entry.mailAria': 'OpenDesign にメールする',

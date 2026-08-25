@@ -733,6 +733,7 @@ export const id: Dict = {
   'entry.openSettingsAria': 'Buka pengaturan',
   'entry.discordLabel': 'Gabung Discord',
   'entry.discordAria': 'Gabung Discord OpenDesign',
+  'entry.feishuAria': 'Gabung grup OpenDesign di Feishu',
   'entry.discordAriaWithOnline': 'Gabung Discord OpenDesign - {online}',
   'entry.discordOnlineLabel': '{count} online',
   'entry.mailAria': 'Kirim email ke OpenDesign',

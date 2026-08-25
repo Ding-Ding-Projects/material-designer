@@ -733,6 +733,7 @@ export const de: Dict = {
   'entry.openSettingsAria': 'Einstellungen öffnen',
   'entry.discordLabel': 'Discord beitreten',
   'entry.discordAria': 'Tritt dem OpenDesign Discord bei',
+  'entry.feishuAria': 'Der OpenDesign-Gruppe auf Feishu beitreten',
   'entry.discordAriaWithOnline': 'Tritt dem OpenDesign Discord bei - {online}',
   'entry.discordOnlineLabel': '{count} online',
   'entry.mailAria': 'E-Mail an OpenDesign senden',

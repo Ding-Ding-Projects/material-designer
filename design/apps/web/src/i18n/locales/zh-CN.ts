@@ -740,6 +740,7 @@ export const zhCN: Dict = {
   "entry.openSettingsAria": "打开设置",
   "entry.discordLabel": "加入 Discord",
   "entry.discordAria": "加入 OpenDesign Discord",
+  "entry.feishuAria": "加入 OpenDesign 飞书群",
   "entry.discordAriaWithOnline": "加入 OpenDesign Discord - {online}",
   "entry.discordOnlineLabel": "{count} 在线",
   "entry.mailAria": "给 OpenDesign 发邮件",

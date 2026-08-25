@@ -733,6 +733,7 @@ export const fa: Dict = {
   'entry.openSettingsAria': 'باز کردن تنظیمات',
   'entry.discordLabel': 'پیوستن به Discord',
   'entry.discordAria': 'به Discord اوپن دیزاین بپیوندید',
+  'entry.feishuAria': 'به گروه OpenDesign در Feishu بپیوندید',
   'entry.discordAriaWithOnline': 'به Discord اوپن دیزاین بپیوندید - {online}',
   'entry.discordOnlineLabel': '{count} آنلاین',
   'entry.mailAria': 'به OpenDesign ایمیل بفرستید',
