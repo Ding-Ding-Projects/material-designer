@@ -25,6 +25,7 @@ import {
   prepareImageExportTarget,
   planDeckImageCapture,
   requestPreviewSnapshot,
+  sha256Hex,
   sourceLooksLikeExportableDeck,
   sourceLooksLikeNavigableDeck,
 } from '../../src/runtime/exports';
@@ -73,6 +74,39 @@ describe('planDeckImageCapture (#4604 current-slide capture for runtime decks)',
       useOffscreen: false,
       index: undefined,
     });
+  });
+});
+
+describe('sha256Hex digest input normalization', () => {
+  const abcDigest = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+
+  it('digests an ordinary Uint8Array without mutating it', async () => {
+    const bytes = new Uint8Array([97, 98, 99]);
+    const before = bytes.slice();
+
+    await expect(sha256Hex(bytes)).resolves.toBe(abcDigest);
+    expect(bytes).toEqual(before);
+  });
+
+  it('copies only the exact byte window of a subarray', async () => {
+    const backing = new Uint8Array([120, 97, 98, 99, 121]);
+    const bytes = backing.subarray(1, 4);
+    const before = backing.slice();
+
+    await expect(sha256Hex(bytes)).resolves.toBe(abcDigest);
+    expect(backing).toEqual(before);
+  });
+
+  it('supports SharedArrayBuffer-backed views when available', async () => {
+    if (typeof SharedArrayBuffer === 'undefined') return;
+    const backing = new SharedArrayBuffer(5);
+    const allBytes = new Uint8Array(backing);
+    allBytes.set([120, 97, 98, 99, 121]);
+    const bytes = allBytes.subarray(1, 4);
+    const before = allBytes.slice();
+
+    await expect(sha256Hex(bytes)).resolves.toBe(abcDigest);
+    expect(allBytes).toEqual(before);
   });
 });
 

@@ -1297,8 +1297,10 @@ function isProjectArchiveReceipt(
     && receipt.archiveDigestScope.length > 0;
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+export async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digestInput = new Uint8Array(bytes.byteLength);
+  digestInput.set(bytes);
+  const digest = await crypto.subtle.digest('SHA-256', digestInput);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
