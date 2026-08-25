@@ -3,7 +3,7 @@
 How the upstream design workspace was brought into this repository, and how the
 copy is proved to be faithful.
 
-The short version: `design/` holds **12,835 files** copied byte-for-byte from a
+The short version: `design/` holds **12,884 upstream files** copied byte-for-byte from a
 pinned upstream commit. A committed shell script re-derives that claim from
 `git` alone, and `MODIFICATIONS.md` is both the licence-required change notice
 and the allowlist that script reads. The two cannot drift apart, because a file
@@ -25,16 +25,18 @@ The verifier runs on every push through the root `Verify` workflow — see
 | Fact | Value | Verified |
 | --- | --- | --- |
 | Upstream project | Open Design, Apache-2.0 | Yes — `design/LICENSE` |
-| Pinned upstream commit | `393af2f991525a6c85cb04ee4aea0cd8967693c8` | Yes — submodule `vendor/open-design` |
-| Upstream version | v0.20.2 | Yes — `design/package.json` |
-| Files under `design/` | 13,079 tracked, 12,835 expected upstream | Yes — `scripts/verify-port.sh`; declared product-only additions account for the difference |
-| Files declared as changed | Whatever `MODIFICATIONS.md` currently lists | Read the file; the count moves with every rebrand commit |
+| Pinned upstream commit | `05f5b33ef59f078df10ac1125986e00e4a796cf3` | Yes - submodule `vendor/open-design` and `scripts/upstream-manifest.tsv` |
+| Upstream version | v0.20.3 development baseline | Yes - `design/package.json` and the pinned commit subject |
+| Files under `design/` | 13,175 tracked, 12,884 expected upstream | Yes - `scripts/verify-port.sh`; declared project-only additions account for the difference |
+| Files declared as changed | 715 unique paths | Yes - `MODIFICATIONS.md`, checked by `scripts/verify-port.sh` |
+| Preserved baseline differences | 89 upstream paths plus 8 project-only paths | Yes - `scripts/import-preservation-inventory.tsv` records mode, blob, and owning commit |
+| Raw-byte repair | 1,200 index-equal paths materialized from pinned blobs | Yes - `scripts/materialize-upstream-raw-bytes.sh`; final verifier reports zero raw-byte gaps |
 | Verifier invariant | **`gaps` must be `0`** | Run the script, or read the `Verify` job summary |
 
 **No verifier transcript is pasted here.** Every counter except `gaps` moves as
 rebranding work lands, so a frozen copy is wrong shortly after it is written.
-There is exactly one annotated transcript in this repository —
-[verification.md § Reading a run](verification.md#reading-a-run) — and the
+There is exactly one annotated transcript in this repository:
+[verification.md, Reading a run](verification.md#reading-a-run). The
 always-current values come from the `Verify` workflow's job summary, which
 regenerates the whole table on every push.
 

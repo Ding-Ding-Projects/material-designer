@@ -56,9 +56,12 @@ with the project's standards.
       complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
-      submodule and manifest now identify `393af2f99` / v0.20.2, with 12,835
-      upstream files. Exact-byte verification is green after preserving and
-      three-way merging every declared product path touched upstream.
+      submodule and manifest now identify `05f5b33ef` / v0.20.3 development,
+      with 12,884 upstream files. Exact-byte verification is green after
+      restoring 1,200 index-equal raw files from pinned blobs, preserving 89
+      upstream-path differences and eight project-only files in an explicit
+      mode/blob/owner inventory, and removing 91 declarations made stale by
+      the new baseline.
 - [x] **Add explicit website and desktop-application handoff ZIPs.** Website
       project archives already carry `DESIGN-HANDOFF.md` and
       `DESIGN-MANIFEST.json`; the new desktop target adds a sandboxed source

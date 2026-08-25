@@ -3,7 +3,8 @@
 `scripts/verify-port.sh` proves that `design/` is a byte-for-byte copy of the
 pinned upstream tree, and that every file which is *not* a byte-for-byte copy has
 a licence notice declaring it. It is pure `git` and POSIX shell — no package
-manager, no runtime, no network.
+manager, no runtime, no network. The current baseline is
+`05f5b33ef59f078df10ac1125986e00e4a796cf3`, with 12,884 upstream paths.
 
 ## Behaviour
 
@@ -23,7 +24,23 @@ human-readable output, and as a `source` field in the JSON.
 | Source | When it is used | What it is |
 | --- | --- | --- |
 | `submodule` | `vendor/open-design` is checked out | The pinned submodule's own index. |
-| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 12,835 upstream files, with the source URL and commit in header comments. |
+| `manifest` | The submodule is absent but `scripts/upstream-manifest.tsv` exists | A committed table of the upstream mode, blob id and path for all 12,884 upstream files, with the source URL and commit in header comments. |
+
+### Raw-byte preservation repair
+
+`scripts/materialize-upstream-raw-bytes.sh` repairs working-file byte drift only
+after a fail-closed preflight. A target is eligible only when its tracked mode
+and blob already equal the pinned upstream mode and blob, the path is not
+declared in `MODIFICATIONS.md`, and `design/` has no uncommitted content. The
+script stages each blob through `git cat-file`, validates its raw object id
+before replacement, and validates the destination again afterward. Any local
+index difference or declared path is protected and never overwritten.
+
+The 2026-08-25 reconciliation materialized 1,200 eligible paths. It preserved
+89 index-different upstream paths and eight project-only paths in
+`scripts/import-preservation-inventory.tsv`, removed 91 declarations that the
+new upstream baseline had made stale, and finished with every verifier counter
+at zero gaps.
 
 The manifest exists so continuous integration does not have to clone a 1.7 GB
 object store to answer a question about file hashes. It is a shortcut, and the

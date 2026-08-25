@@ -1,11 +1,11 @@
 # Modifications to the imported work
 
-`design/` contains a copy of **Open Design** v0.20.2, licensed under the Apache
+`design/` contains a copy of **Open Design** v0.20.3, licensed under the Apache
 License 2.0. The full licence text is at [`design/LICENSE`](design/LICENSE).
 
 - Upstream: <https://github.com/nexu-io/open-design>
-- Imported at commit: `393af2f991525a6c85cb04ee4aea0cd8967693c8`
-- Import date: 2026-08-21
+- Imported at commit: `05f5b33ef59f078df10ac1125986e00e4a796cf3`
+- Import date: 2026-08-25
 
 Apache-2.0 section 4(b) requires prominent notices on files that were changed.
 This file is that notice, kept in one place so a reader sees the whole delta
@@ -28,6 +28,118 @@ Copied byte-for-byte from the pinned submodule: all 12,835 files match the
 upstream blob ids exactly, file modes included.
 
 ## Changes
+
+### 2026-08-25 - Preserve project changes across the v0.20.3 baseline
+
+**Reason:** Advancing the pinned upstream tree to commit
+`05f5b33ef59f078df10ac1125986e00e4a796cf3` retained 89 project-owned
+versions of upstream paths and eight project-only packaging support files.
+The deterministic preservation inventory records each local mode and blob,
+the corresponding upstream mode and blob where one exists, and the Git
+commit that owns the retained version. Raw checkout-byte drift was restored
+from the pinned blobs only after the index equality preflight proved that no
+committed project change could be overwritten.
+
+**Changed files:**
+
+- `.github/config/scopes.json`
+- `.github/scripts/scopes.py`
+- `.github/workflows/ci.yml`
+- `.gitignore`
+- `apps/AGENTS.md`
+- `apps/daemon/package.json`
+- `apps/daemon/src/runtimes/defs/mimo.ts`
+- `apps/daemon/src/runtimes/opencode-log.ts`
+- `apps/daemon/tests/agent-session-resume.test.ts`
+- `apps/desktop/package.json`
+- `apps/desktop/tests/main/base-href-precedence.test.ts`
+- `apps/desktop/tests/main/export-title-replacement-patterns.test.ts`
+- `apps/desktop/tests/main/save-print-ready-document-as-pdf.test.ts`
+- `apps/landing-page/app/_components/go-banner.astro`
+- `apps/landing-page/app/_components/header.tsx`
+- `apps/landing-page/app/_components/locale-switcher-script.astro`
+- `apps/landing-page/app/_components/pricing-individual-plans.astro`
+- `apps/landing-page/app/_components/sub-page-layout.astro`
+- `apps/landing-page/app/_lib/pricing-content.ts`
+- `apps/landing-page/app/_lib/pricing-current-plan.ts`
+- `apps/landing-page/app/_lib/pricing-team-content.ts`
+- `apps/landing-page/app/_lib/pricing.ts`
+- `apps/landing-page/app/i18n.ts`
+- `apps/landing-page/app/pages/community/events/index.astro`
+- `apps/landing-page/app/pages/community/open-design-hong-kong-workshop/index.astro`
+- `apps/landing-page/app/pages/community/open-design-osaka-meetup/index.astro`
+- `apps/landing-page/app/pages/community/open-design-shanghai-workshop/index.astro`
+- `apps/landing-page/app/pages/index.astro`
+- `apps/landing-page/app/pages/pricing/index.astro`
+- `apps/landing-page/package.json`
+- `apps/landing-page/tests/go-banner.test.ts`
+- `apps/landing-page/tests/header-download-cta.test.ts`
+- `apps/landing-page/tests/home-campaign-banner.test.ts`
+- `apps/landing-page/tests/pricing-contract.test.ts`
+- `apps/packaged/AGENTS.md`
+- `apps/packaged/package.json`
+- `apps/web/src/campaigns/go-plan-content.ts`
+- `apps/web/src/campaigns/go-plan.ts`
+- `apps/web/src/components/AmrLowBalanceDialog.module.css`
+- `apps/web/src/components/UpdaterPopup.module.css`
+- `apps/web/tests/analytics/export-error-code.test.ts`
+- `apps/web/tests/campaigns/deepseek-v4-flash-modal.test.tsx`
+- `apps/web/tests/campaigns/deepseek-v4-flash-ui-contract.test.ts`
+- `apps/web/tests/campaigns/deepseek-v4-flash.test.ts`
+- `apps/web/tests/campaigns/go-plan.test.ts`
+- `apps/web/tests/components/EntryNavRail.credits-zero-balance.test.tsx`
+- `apps/web/tests/components/EntryNavRail.updater-after-avatar.test.tsx`
+- `apps/web/tests/components/FileViewer.manual-edit-history.test.tsx`
+- `apps/web/tests/components/FileViewer.manual-edit.test.tsx`
+- `apps/web/tests/components/InlineModelSwitcher.unlimited-badge.test.tsx`
+- `apps/web/tests/components/MessageCenter.test.tsx`
+- `apps/web/tests/runtime/amr-unlimited-models.plan-tier.test.ts`
+- `apps/web/tests/runtime/preview-observability-bridge.test.ts`
+- `apps/web/tests/runtime/srcdoc-deck-bridge-framework-deck.test.ts`
+- `apps/web/tests/runtime/srcdoc.test.ts`
+- `design-templates/ib-pitch-book/example.html`
+- `e2e/package.json`
+- `e2e/tests/packaged-smoke-workflow.test.ts`
+- `e2e/tests/pricing-unlimited-models.test.ts`
+- `e2e/tests/scripts/scopes.test.ts`
+- `e2e/ui/amr-onboarding.test.ts`
+- `package.json`
+- `packages/contracts/package.json`
+- `packages/download/package.json`
+- `packages/host/package.json`
+- `packages/launcher-proto/package.json`
+- `packages/platform/package.json`
+- `packages/release/package.json`
+- `packages/sidecar-proto/package.json`
+- `packages/sidecar/package.json`
+- `plugins/_official/examples/ib-pitch-book/example.html`
+- `specs/current/ci.md`
+- `tools/dev/package.json`
+- `tools/pack/package.json`
+- `tools/pack/src/cache.ts`
+- `tools/pack/src/config/index.ts`
+- `tools/pack/src/launcher-runtime-snapshot.ts`
+- `tools/pack/src/lock.ts`
+- `tools/pack/src/mac-prebundle.ts`
+- `tools/pack/src/resources.ts`
+- `tools/pack/src/update-cache-lifecycle-snapshot.ts`
+- `tools/pack/src/versions.ts`
+- `tools/pack/src/win-prebundle.ts`
+- `tools/pack/tests/mac-paths.test.ts`
+- `tools/pack/tests/node-pty-runtime.test.ts`
+- `tools/pack/tests/package-source-hash.test.ts`
+- `tools/pack/tests/web-sourcemaps.test.ts`
+- `tools/pack/tests/win-app.test.ts`
+- `tools/pack/tests/win-custom-installer.test.ts`
+- `tools/pack/tests/win-registry.test.ts`
+- `tools/pack/tests/win-removal-plan.test.ts`
+- `tools/pack/tests/win-resources.test.ts`
+- `tools/pack/tests/win-size-index.test.ts`
+- `tools/pack/tests/workspace-build.test.ts`
+- `tools/pack/tsconfig.tests.json`
+- `tools/pack/vitest.config.ts`
+- `tools/release/package.json`
+
 
 ### 2026-08-24 — Add the desktop toy-lock policy core and authentication prompt
 
@@ -69,9 +181,6 @@ feature's own tests. Chat sends now proceed directly with no upsell step.
 - `apps/web/src/components/AmrArtifactUpgradeGate.tsx`
 - `apps/web/src/components/AmrArtifactUpgradeHomeCard.module.css`
 - `apps/web/src/components/AmrArtifactUpgradeHomeCard.tsx`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/EntryView.tsx`
-- `apps/web/src/components/HomeView.tsx`
 - `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
@@ -121,19 +230,11 @@ or local test command was run; hosted verification remains pending.
 
 - `apps/daemon/src/library-store.ts`
 - `apps/daemon/src/routes/library.ts`
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/DesignSystemFlow.tsx`
-- `apps/web/src/components/FileWorkspace.tsx`
 - `apps/web/src/components/HomeHero.tsx`
 - `apps/web/src/components/LibraryPicker.module.css`
-- `apps/web/src/components/LibraryPicker.tsx`
-- `apps/web/src/components/LibraryPreviewModal.tsx`
 - `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/components/LibrarySection.tsx`
-- `apps/web/src/components/LibraryUploadModal.tsx`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/src/lib/confirm-delete.ts`
-- `apps/web/src/providers/registry.ts`
 - `apps/web/tests/library-route-and-search.contract.test.ts`
 - `packages/contracts/src/api/library.ts`
 ### 2026-08-21 — Converge shared shell geometry and tab controls
@@ -186,11 +287,7 @@ typecheck, built rendering, and installed capture evidence remain pending.
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/AppStatusBar.module.css`
 - `apps/web/src/components/AppStatusBar.tsx`
-- `apps/web/src/components/EntryNavRail.tsx`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/ProjectSearchModal.tsx`
 - `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/i18n/locales/en.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
@@ -229,23 +326,16 @@ checks run.
 
 - `apps/daemon/src/library-store.ts`
 - `apps/daemon/src/routes/library.ts`
-- `apps/web/src/components/EntryNavRail.tsx`
-- `apps/web/src/components/LibraryAssetMeta.tsx`
 - `apps/web/src/components/LibraryPicker.module.css`
-- `apps/web/src/components/LibraryPicker.tsx`
 - `apps/web/src/components/LibraryPreviewModal.module.css`
-- `apps/web/src/components/LibraryPreviewModal.tsx`
 - `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/components/LibrarySection.tsx`
 - `apps/web/src/components/LibraryUploadModal.module.css`
-- `apps/web/src/components/LibraryUploadModal.tsx`
 - `apps/web/src/components/regex/RegexSearchField.module.css`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
 - `apps/web/src/i18n/locales/en.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/src/providers/registry.ts`
 - `apps/web/tests/components/LibrarySection.a11y.test.tsx`
 - `apps/web/tests/components/LibrarySection.delete-gate.test.tsx`
 - `apps/web/tests/components/library-picker-perf.test.tsx`
@@ -273,10 +363,7 @@ image was added; deterministic capture-fixture status remains pending until a
 
 **Changed files:**
 
-- `apps/web/src/analytics/workspace.ts`
-- `apps/web/src/components/EntryNavRail.tsx`
 - `apps/web/src/components/LibrarySection.module.css`
-- `apps/web/src/components/LibrarySection.tsx`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/features/libraryUi.ts`
 - `apps/web/tests/components/EntryNavRail.library.test.tsx`
@@ -323,9 +410,7 @@ translated rows at narrow and bilingual layouts.
 - `packages/host/src/testing.ts`
 - `packages/host/tests/index.test.ts`
 - `apps/web/src/router.ts`
-- `apps/web/src/components/EntryShell.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/components/command-palette/CommandPalette.tsx`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
 - `apps/web/src/components/settings/settingsTabs.ts`
@@ -393,8 +478,6 @@ sections instead of being folded into a duplicate navigation branch.
 **Changed files:**
 
 - `apps/web/src/router.ts`
-- `apps/web/src/components/EntrySettingsMenu.tsx`
-- `apps/web/src/state/config.ts`
 - `apps/web/src/state/appearance.ts`
 - `apps/web/tests/router.test.ts`
 
@@ -433,12 +516,7 @@ and capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/ChatPane.tsx`
 - `apps/web/src/components/HomeHero.tsx`
-- `apps/web/src/components/QuickSwitcher.tsx`
-- `apps/web/src/components/composer/LexicalComposerInput.tsx`
-- `apps/web/src/components/workspace-context.ts`
 - `apps/web/src/styles/chat.css`
 - `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
 
@@ -455,7 +533,6 @@ runtime interaction and capture evidence remain pending.
 
 **Changed files:**
 
-- `apps/web/src/components/FileWorkspace.tsx`
 - `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
 - `apps/web/tests/components/FileWorkspace.test.tsx`
 - `apps/web/tests/styles/workspace-tabs-chrome.test.ts`
@@ -474,7 +551,6 @@ runtime interaction or capture verdict.
 
 **Changed files:**
 
-- `apps/web/src/components/ChatComposer.tsx`
 - `apps/web/src/styles/chat.css`
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/components/ChatComposer.context-pickers.test.tsx`
@@ -507,10 +583,7 @@ separate.
 - `apps/daemon/src/server.ts`
 - `apps/daemon/src/routes/editor.ts`
 - `apps/daemon/tests/project-archive.test.ts`
-- `apps/web/src/runtime/exports.ts`
-- `apps/web/src/providers/registry.ts`
 - `apps/web/src/lib/history/export.ts`
-- `apps/web/src/components/HandoffButton.tsx`
 - `apps/web/src/components/ProjectArchiveAction.tsx`
 - `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/styles/design-system-flow.css`
@@ -598,7 +671,6 @@ geometry has been verified here.
 **Changed files:**
 
 - `apps/web/src/components/FileViewerMenuSearch.tsx`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/styles/viewer/tools.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/tests/components/FileViewer.menu-contract.test.ts`
@@ -619,22 +691,16 @@ no installed build or runtime geometry has been verified here.
 **Changed files:**
 
 - `apps/web/src/components/FileViewerMenuSearch.tsx`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
-- `apps/web/src/hooks/useDismissOnOutsideInteraction.ts`
 - `apps/web/src/styles/viewer/tools.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/tests/components/FileViewer.menu-contract.test.ts`
 - `apps/web/app/layout.tsx`
-- `apps/web/src/analytics/client.ts`
-- `apps/web/src/analytics/error-tracking.ts`
 - `apps/web/src/capture/studio-fixture.ts`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/components/appearance/store.ts`
 - `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/i18n/index.tsx`
 - `apps/web/src/router.ts`
-- `apps/web/src/state/config.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Close the Studio capture lifecycle and stale-state seams
@@ -654,15 +720,10 @@ typecheck, built rendering, and installed capture evidence remain pending.
 **Changed files:**
 
 - `apps/web/src/App.tsx`
-- `apps/web/src/analytics/client.ts`
-- `apps/web/src/analytics/error-tracking.ts`
-- `apps/web/src/analytics/provider.tsx`
 - `apps/web/src/capture/studio-fixture.ts`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/components/appearance/store.ts`
 - `apps/web/src/i18n/index.tsx`
 - `apps/web/src/state/appearance.ts`
-- `apps/web/src/state/projects.ts`
 - `apps/web/src/router.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
@@ -681,18 +742,11 @@ installed capture evidence remain pending.
 **Changed files:**
 
 - `apps/web/src/App.tsx`
-- `apps/web/src/analytics/identity.ts`
-- `apps/web/src/analytics/onboarding-session.ts`
-- `apps/web/src/analytics/provider.tsx`
 - `apps/web/src/capture/fetch-wrapper-stack.ts`
 - `apps/web/src/capture/studio-fixture.ts`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/components/ProjectView.tsx`
 - `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
 - `apps/web/src/components/appearance/presets.ts`
-- `apps/web/src/lib/coalesced-get.ts`
-- `apps/web/src/state/project-display-cache.ts`
-- `apps/web/src/state/projects.ts`
 - `apps/web/tests/capture/studio-fixture.test.ts`
 
 ### 2026-08-21 — Resolve duplicate desktop update and diagnostics branding
@@ -733,7 +787,6 @@ display-scale evidence remains separate.
 
 - `apps/daemon/src/projects.ts`
 - `apps/daemon/tests/project-archive.test.ts`
-- `apps/web/src/components/FileViewer.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -787,11 +840,8 @@ and the uniqueness of every repaired declaration.
 
 - `apps/daemon/src/cli.ts`
 - `apps/web/app/layout.tsx`
-- `apps/web/src/components/FigmaImportModal.tsx`
 - `apps/web/src/lib/confirm-delete.ts`
-- `apps/web/src/providers/registry.ts`
 - `apps/web/src/state/appearance.ts`
-- `apps/web/src/state/projects.ts`
 - `apps/web/tests/lib/confirm-delete.test.ts`
 - `apps/web/tests/providers/project-workspace-transport-scope.test.ts`
 - `apps/web/tests/providers/registry.test.ts`
@@ -840,9 +890,6 @@ regressions cover these paths; hosted and installed-artifact proof remains separ
 - `packages/contracts/src/prompts/system.ts`
 - `packages/contracts/tests/scenario-defaults.test.ts`
 - `packages/contracts/tests/system-prompt.test.ts`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/NewProjectModal.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
 - `apps/web/tests/components/NewProjectPanel.test.tsx`
 
 ### 2026-08-21 — Make desktop creation claimed, exclusive, and agent-authoritative
@@ -866,9 +913,6 @@ picker a portalled, keyboard-safe, localized 48px interaction surface.
 - `apps/daemon/tests/desktop-scaffold.test.ts`
 - `apps/daemon/tests/project-archive.test.ts`
 - `packages/contracts/src/api/projects.ts`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/NewProjectModal.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
 - `apps/web/tests/components/NewProjectPanel.test.tsx`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
@@ -892,7 +936,6 @@ picker a portalled, keyboard-safe, localized 48px interaction surface.
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/workspace/artifacts.css`
 
 ### 2026-08-10 — Finish the production Material 3 shell against the checked-in UI contract
 
@@ -917,7 +960,6 @@ remain intact.
 - `apps/web/src/styles/home/home-hero.css`
 - `apps/web/src/styles/home/recent-projects.css`
 - `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/styles/primitives.css`
 - `apps/web/src/styles/shell.css`
 
 ### 2026-08-07 — Bound and identify Squirrel lifecycle commands
@@ -1078,8 +1120,6 @@ with the supported `html` artifact kind.
 
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/command-palette/CommandPalette.tsx`
-- `apps/web/src/components/FigmaImportModal.tsx`
-- `apps/web/src/components/UpdateDialog.tsx`
 - `apps/web/tests/components/FileWorkspace.test.tsx`
 
 ### 2026-08-07 — Make every release artifact intentionally unsigned
@@ -1098,7 +1138,6 @@ Focused packer tests assert the unsigned boundary.
 - `tools/pack/README.md`
 - `tools/pack/src/config.ts`
 - `tools/pack/src/index.ts`
-- `tools/pack/src/mac/builder.ts`
 - `tools/pack/src/win/builder.ts`
 - `tools/pack/src/win/custom-installer.ts`
 - `tools/pack/src/win/sign.ts`
@@ -1119,9 +1158,6 @@ committed at [`6f4015b8`](https://github.com/Ding-Ding-Projects/material-designe
 
 **Changed files:**
 
-- `apps/web/src/lib/updater.ts`
-- `apps/web/src/components/UpdateDialog.tsx`
-- `apps/web/src/components/UpdaterPopup.tsx`
 - `apps/web/tests/lib/updater.test.ts`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 
@@ -1163,7 +1199,6 @@ globals in the geometry tests.
 
 **Changed files:**
 
-- `apps/web/src/components/EntryShell.tsx`
 - `apps/web/src/components/command-palette/CommandPalette.module.css`
 - `apps/web/src/components/settings/SettingsTabStrip.tsx`
 - `apps/web/src/components/settings/SettingsTabs.module.css`
@@ -1232,7 +1267,6 @@ state and the native input contract. `zh-HK` intentionally continues to inherit
 
 **Changed files:**
 
-- `apps/web/src/components/FigmaImportModal.tsx`
 - `apps/web/src/components/FigmaImportModal.module.css`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
 
@@ -1256,9 +1290,6 @@ user-facing value.
 
 **Changed files:**
 
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/FigmaImportModal.tsx`
-- `apps/web/src/components/HomeView.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -1304,10 +1335,7 @@ documented as such.
 - `apps/desktop/tests/main/updater/feed.test.ts`
 - `apps/packaged/src/index.ts`
 - `apps/packaged/tests/squirrel-startup.test.ts`
-- `apps/web/src/components/UpdateDialog.tsx`
-- `apps/web/src/components/UpdaterPopup.tsx`
 - `apps/web/src/i18n/locales/en.ts`
-- `apps/web/src/lib/updater.ts`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 - `apps/web/tests/components/UpdaterPopup.test.tsx`
 - `apps/web/tests/lib/updater.test.ts`
@@ -1360,7 +1388,6 @@ design-system accessibility fixes already present in this checkout.
 - `apps/desktop/src/main/updater/deferred-launch.ts`
 - `apps/desktop/tests/main/update-preflight.test.ts`
 - `apps/desktop/tests/main/updater-host-boundary.test.ts`
-- `apps/web/src/components/FigmaImportModal.tsx`
 - `apps/web/tests/components/DesignSystemFlow.test.tsx`
 - `apps/web/tests/components/FileWorkspace.test.tsx`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
@@ -1378,10 +1405,8 @@ cancellation, and records both behaviours in focused tests.
 
 **Changed files:**
 
-- `apps/web/src/components/FigmaImportModal.tsx`
 - `apps/web/src/components/FigmaImportModal.module.css`
 - `apps/web/tests/components/FigmaImportModal.a11y.test.tsx`
-- `apps/web/src/components/UpdateDialog.tsx`
 - `apps/web/src/components/UpdateDialog.module.css`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 
@@ -1493,8 +1518,6 @@ it caught a divergence that no rendered pixel would have revealed.
 
 **Changed files:**
 
-- `apps/web/src/components/DesignBrowserPanel.tsx`
-- `apps/web/src/components/FileViewer.tsx`
 
 ### 2026-08-04 — Settings stops being a modal and becomes a page
 
@@ -1698,7 +1721,6 @@ name, which `smartphone` is. It is now `mobile`, which the font does carry.
 
 **Changed files:**
 
-- `apps/web/src/components/Icon.tsx`
 - `apps/web/src/components/MaterialSymbol.tsx`
 
 ### 2026-08-04 — Wave 8: the scrims, popovers and sheets the blanket floor never reached, and a tab strip that was never the size it was asked for
@@ -1774,7 +1796,6 @@ declares the variable, and its literal text is pinned by a component spec.
 - `apps/web/src/styles/home/use-everywhere.css`
 - `apps/web/src/styles/viewer/templates-plugins.css`
 - `apps/web/src/styles/viewer/theater.css`
-- `apps/web/src/styles/workspace/artifacts.css`
 - `apps/web/src/styles/workspace/drawer.css`
 - `apps/web/src/components/FigmaImportModal.module.css`
 - `apps/web/src/components/LibraryUploadModal.module.css`
@@ -1892,7 +1913,6 @@ unverified until CI runs them.
 **Changed files:**
 
 - `apps/web/src/App.tsx`
-- `apps/web/src/components/EntryHelpMenu.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/history/VersionHistoryDialog.module.css`
 - `apps/web/src/components/history/VersionHistoryDialog.tsx`
@@ -2122,13 +2142,8 @@ stays unticked.
 
 **Changed files:**
 
-- `apps/web/src/components/IntegrationsView.tsx`
-- `apps/web/src/components/McpClientSection.tsx`
-- `apps/web/src/components/RoutinesSection.tsx`
-- `apps/web/src/components/SkillsSection.tsx`
 - `apps/web/src/components/Switch.module.css`
 - `apps/web/src/components/Switch.tsx`
-- `apps/web/src/components/TasksView.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -2151,7 +2166,6 @@ stays unticked.
 - `apps/web/src/i18n/types.ts`
 - `apps/web/src/styles/home/integrations.css`
 - `apps/web/src/styles/home/tasks.css`
-- `apps/web/src/styles/primitives.css`
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/src/styles/viewer/templates-plugins.css`
 - `apps/web/src/styles/workspace/connectors.css`
@@ -2261,7 +2275,6 @@ an element's text.
 
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.module.css`
 - `apps/web/src/components/workspace-tabs/TabGroupAppearanceEditor.tsx`
 - `apps/web/src/components/workspace-tabs/WorkspaceTabDiscovery.module.css`
@@ -2382,12 +2395,7 @@ than re-argued.
 - `apps/web/src/styles/material-symbols.css`
 - `apps/web/src/components/MaterialSymbol.tsx`
 - `apps/web/src/components/MaterialSymbol.module.css`
-- `apps/web/src/components/FileViewer.tsx`
-- `apps/web/src/components/PreviewDrawOverlay.tsx`
-- `apps/web/src/components/AvatarMenu.tsx`
-- `apps/web/src/components/DesignBrowserPanel.tsx`
 - `apps/web/src/components/WindowTitleBar.tsx`
-- `apps/web/src/components/AppChromeHeader.tsx`
 - `apps/web/tests/styles/bundled-fonts.test.ts`
 - `apps/web/tests/components/WindowTitleBar.test.tsx`
 - `apps/web/tests/components/AvatarMenu.test.tsx`
@@ -2453,8 +2461,6 @@ green through the entire life of the defect.
 
 **Changed files:**
 
-- `apps/web/src/components/EntryNavRail.tsx`
-- `apps/web/src/components/EntryShell.tsx`
 - `apps/web/tests/components/EntryNavRail.toggle.test.tsx` (new)
 
 ### 2026-08-04 — The four collections stop being four different products
@@ -2654,13 +2660,11 @@ and its rows stop shrinking so the overflow is real rather than absorbed.
 
 **Changed files:**
 
-- `apps/web/src/components/NewProjectPanel.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/styles/home/entry-layout.css`
 - `apps/web/src/styles/home/plugins-home.css`
 - `apps/web/src/styles/viewer/core.css`
 - `apps/web/src/styles/viewer/library.css`
-- `apps/web/src/styles/workspace/artifacts.css`
 - `apps/web/src/styles/workspace/connectors.css`
 - `apps/web/src/styles/workspace/mention-home.css`
 - `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
@@ -2737,7 +2741,6 @@ desktop shell, and this change deliberately reintroduces no CSS `zoom`.
 - `apps/web/src/i18n/types.ts`
 - `apps/web/src/state/appearance.ts`
 - `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/styles/primitives.css`
 - `apps/web/tests/components/AppearanceControls.test.tsx`
 - `apps/web/tests/state/appearance-auto-fit.test.ts`
 - `apps/web/tests/styles/appearance-density-tokens.test.ts`
@@ -2768,7 +2771,6 @@ was verified to fail on a deliberately drifted constant before being trusted.
 - `apps/desktop/src/main/runtime.ts`
 - `apps/web/app/[[...slug]]/client-app.tsx`
 - `apps/web/src/App.tsx`
-- `apps/web/src/observability/white-screen.ts`
 - `apps/web/src/state/appearance.ts`
 - `apps/web/tests/observability/white-screen.test.ts`
 - `e2e/lib/loading-shell.ts`
@@ -2943,17 +2945,7 @@ pass.
 
 **Changed files:**
 
-- `apps/web/src/components/DesignSystemFlow.tsx`
-- `apps/web/src/components/EntryShell.tsx`
-- `apps/web/src/components/FileWorkspace.tsx`
-- `apps/web/src/components/HomeView.tsx`
-- `apps/web/src/components/McpClientSection.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
-- `apps/web/src/components/PluginsView.tsx`
 - `apps/web/src/components/ProjectView.tsx`
-- `apps/web/src/components/WhatsNewPopup.tsx`
-- `apps/web/src/components/XaiOAuthControl.tsx`
-- `apps/web/src/components/use-everywhere/sections.ts`
 - `apps/web/src/design-system-auto-prompt.ts`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
@@ -3033,42 +3025,17 @@ of sliding under.
 - `AGENTS.md`
 - `apps/web/src/components/AppStatusBar.module.css`
 - `apps/web/src/components/AppStatusBar.tsx`
-- `apps/web/src/components/AssistantMessage.tsx`
-- `apps/web/src/components/BoardComposerPopover.tsx`
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/ChatPane.tsx`
-- `apps/web/src/components/ConversationsMenu.tsx`
-- `apps/web/src/components/DesignBrowserPanel.tsx`
-- `apps/web/src/components/DesignFilesPanel.tsx`
-- `apps/web/src/components/DesignKitView.tsx`
-- `apps/web/src/components/DesignSystemSwitchPicker.tsx`
-- `apps/web/src/components/ExamplesTab.tsx`
-- `apps/web/src/components/FileViewer.tsx`
-- `apps/web/src/components/FileWorkspace.tsx`
-- `apps/web/src/components/NewAutomationModal.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
-- `apps/web/src/components/NextStepActions.tsx`
-- `apps/web/src/components/PluginsView.tsx`
-- `apps/web/src/components/PreviewModal.tsx`
-- `apps/web/src/components/PrivacySection.tsx`
-- `apps/web/src/components/RoutinesSection.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/UpdaterPopup.tsx`
 - `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
 - `apps/web/src/components/bulk/messages.ts`
 - `apps/web/src/components/command-palette/CommandPalette.tsx`
 - `apps/web/src/components/command-palette/commands.ts`
-- `apps/web/src/components/design-system-github-evidence.ts`
-- `apps/web/src/components/routineScheduleLabels.ts`
-- `apps/web/src/components/workspace/TabLauncherMenu.tsx`
 - `apps/web/src/i18n/index.tsx`
 - `apps/web/src/i18n/interpolate.ts`
 - `apps/web/tests/components/design-system-github-evidence.test.ts`
 - `apps/web/src/i18n/runErrors.ts`
-- `apps/web/src/runtime/design-toolbox.ts`
 - `apps/web/src/styles/home/plugins-home.css`
 - `apps/web/src/styles/md3-tokens.css`
-- `apps/web/src/utils/chatTime.ts`
 - `apps/web/tests/i18n/interpolation.test.ts`
 - `apps/web/tests/styles/home-templates-status-bar-clearance.test.ts`
 
@@ -3213,8 +3180,6 @@ broken by this change; it is a test that was documenting the bug.
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/AppStatusBar.tsx`
 - `apps/web/src/components/AppStatusBar.module.css`
-- `apps/web/src/components/EntryNavRail.tsx`
-- `apps/web/src/components/EntryShell.tsx`
 - `apps/web/src/styles/home/entry-layout.css`
 - `apps/web/src/i18n/types.ts`
 - `e2e/lib/playwright/rail.ts`
@@ -3295,7 +3260,6 @@ notes can say so. The daemon's token already covers the operation meanwhile.
 - `apps/daemon/tests/design-systems/import-auto-rebuild-route.test.ts`
 - `apps/daemon/tests/routes/design-systems-confirm-delete.test.ts`
 - `apps/daemon/tests/routes/projects.test.ts`
-- `apps/web/src/components/RecentProjectsStrip.tsx`
 - `apps/web/tests/components/RecentProjectsStrip.destructive-gate.test.tsx`
 - `apps/web/tests/lib/confirm-delete.test.ts`
 
@@ -3390,10 +3354,7 @@ ok, so a server error closed the gate reporting success.
 - `apps/daemon/tests/project-file-version-routes.test.ts`
 - `apps/daemon/tests/project-preview-containment.test.ts`
 - `apps/daemon/tests/routes/export-manifest.test.ts`
-- `apps/web/src/components/BrandPreviewCard.tsx`
 - `apps/web/src/lib/confirm-delete.ts`
-- `apps/web/src/providers/registry.ts`
-- `apps/web/src/state/projects.ts`
 - `apps/web/tests/state/projects.test.ts`
 - `e2e/lib/vitest/packaged-pty-smoke.ts`
 - `packages/contracts/src/api/destructive-confirmation.ts`
@@ -3435,18 +3396,8 @@ added across all twenty locales, with Cantonese written rather than inherited.
 
 **Changed files:**
 
-- `apps/web/src/components/BrandPreviewCard.tsx`
-- `apps/web/src/components/ChatPane.tsx`
-- `apps/web/src/components/ConversationsMenu.tsx`
-- `apps/web/src/components/DesignFilesPanel.tsx`
-- `apps/web/src/components/DesignSystemsTab.tsx`
-- `apps/web/src/components/FileWorkspace.tsx`
-- `apps/web/src/components/MemorySection.tsx`
-- `apps/web/src/components/PreviewModal.tsx`
-- `apps/web/src/components/RoutinesSection.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/SketchEditor.tsx`
-- `apps/web/src/components/TasksView.tsx`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
 - `apps/web/src/i18n/locales/en.ts`
@@ -3468,7 +3419,6 @@ added across all twenty locales, with Cantonese written rather than inherited.
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/src/runtime/exports.ts`
 - `apps/web/tests/components/ConversationsMenu.destructive-gate.test.tsx`
 - `apps/web/tests/components/MemorySection.test.tsx`
 - `apps/web/tests/components/RoutinesSection.test.tsx`
@@ -3523,8 +3473,6 @@ did not happen.
 
 **Changed files:**
 
-- `apps/web/src/components/MemorySection.tsx`
-- `apps/web/src/components/LibrarySection.tsx`
 - `apps/web/src/i18n/types.ts`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
@@ -3833,8 +3781,6 @@ confirmation, and the two together asked twice.
 
 **Changed files:**
 
-- `apps/web/src/components/FileWorkspace.tsx`
-- `apps/web/src/components/DesignFilesPanel.tsx`
 - `apps/web/tests/components/bulk/run.test.ts`
 
 ### 2026-08-04 — Bundle the Cairo face, and end the application's one network font request
@@ -4225,21 +4171,16 @@ of scope for this entry; the new controls beside it are translated.
 **Changed files:**
 
 - `apps/web/src/App.tsx`
-- `apps/web/src/components/FileWorkspace.tsx`
-- `apps/web/src/components/PrivacySection.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/WorkspaceTabsBar.module.css`
-- `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/components/command-palette/CommandPalette.module.css`
 - `apps/web/src/components/command-palette/CommandPalette.tsx`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/quickSwitcherScope.ts`
 - `apps/web/src/components/command-palette/reveal.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
-- `apps/web/src/components/pet/PetSettings.tsx`
 - `apps/web/src/components/workspace-tabs/bulkClose.ts`
 - `apps/web/src/components/workspace-tabs/tabPinning.ts`
-- `apps/web/src/styles/primitives.css`
 - `apps/web/src/styles/shell.css`
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/components/CommandPalette.settings-index.test.ts`
@@ -4343,14 +4284,6 @@ wire**; the three settings-surface fields above are its per-section ones.
 
 **Changed files:**
 
-- `apps/web/src/components/BrandsTab.tsx`
-- `apps/web/src/components/DesignSystemsSection.tsx`
-- `apps/web/src/components/DesignSystemsTab.tsx`
-- `apps/web/src/components/ExamplesTab.tsx`
-- `apps/web/src/components/McpClientSection.tsx`
-- `apps/web/src/components/PluginsView.tsx`
-- `apps/web/src/components/ProjectReferenceModal.tsx`
-- `apps/web/src/components/SkillsSection.tsx`
 - `apps/web/src/components/regex/RegexBuilder.module.css`
 - `apps/web/src/components/regex/RegexBuilder.tsx`
 - `apps/web/src/components/regex/RegexPartRow.tsx`
@@ -4442,7 +4375,6 @@ the file. It opens from Settings → About, directly under the version.
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/DimSumSurprise.module.css`
 - `apps/web/src/components/DimSumSurprise.tsx`
-- `apps/web/src/components/EntryHelpMenu.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/Toast.tsx`
 - `apps/web/src/components/changelog/ChangelogDateRange.module.css`
@@ -4578,8 +4510,6 @@ emitted a duplicate installer language for no gain.
 - `apps/web/src/components/HomeHero.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/SketchEditor.tsx`
-- `apps/web/src/components/UpdateDialog.tsx`
-- `apps/web/src/components/plugins-home/presetSeedPrompt.ts`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
 - `apps/web/src/i18n/index.tsx`
@@ -4604,7 +4534,6 @@ emitted a duplicate installer language for no gain.
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/src/styles/workspace/artifacts.css`
 - `apps/web/tests/i18n/detect-initial-locale.test.ts`
 - `apps/web/tests/i18n/language-modes.test.ts`
 - `apps/web/tests/i18n/locales.test.ts`
@@ -5131,8 +5060,6 @@ tracks the product.
 - `apps/packaged/tests/windows-lifecycle.test.ts`
 - `apps/web/app/layout.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/UpdateDialog.tsx`
-- `apps/web/src/components/WhatsNewPopup.tsx`
 - `apps/web/tests/components/SettingsDialog.execution.test.tsx`
 - `apps/web/tests/components/UpdateDialog.test.tsx`
 - `docs/code-review-guidelines.md`
@@ -5147,14 +5074,11 @@ tracks the product.
 - `tools/pack/README.md`
 - `tools/pack/resources/linux/open-design.desktop.template`
 - `tools/pack/src/launcher-layout.ts`
-- `tools/pack/src/linux.ts`
 - `tools/pack/src/mac/constants.ts`
-- `tools/pack/src/mac/identity.ts`
 - `tools/pack/src/win/builder.ts`
 - `tools/pack/src/win/constants.ts`
 - `tools/pack/src/win/lifecycle.ts`
 - `tools/pack/src/win/nsis.ts`
-- `tools/pack/src/win/payload.ts`
 - `tools/pack/tests/launcher-layout.test.ts`
 - `tools/pack/tests/launcher-payload.test.ts`
 - `tools/pack/tests/linux.test.ts`
@@ -5284,8 +5208,6 @@ screen reader rather than talking over it.
 
 - `apps/web/src/components/ContextMenu.module.css`
 - `apps/web/src/components/ContextMenu.tsx`
-- `apps/web/src/components/DesignFilesPanel.tsx`
-- `apps/web/src/components/DesignsTab.tsx`
 - `apps/web/src/components/appearance/AppearanceRuntime.tsx`
 - `apps/web/src/components/appearance/InfiniteColorPicker.module.css`
 - `apps/web/src/components/appearance/InfiniteColorPicker.tsx`
@@ -5350,7 +5272,6 @@ their separate launch configuration.
 
 **Changed files:**
 
-- `tools/pack/src/win/manifest.ts`
 - `tools/pack/tests/win-manifest.test.ts`
 
 ### 2026-08-21 — Localized full-folder browser and focus-safe failure paths
@@ -5372,12 +5293,6 @@ failure, and has source checks for the exact dialog, path, and result contracts.
 - `apps/desktop/src/main/preload.cts`
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/tests/main/folder-picker-contract.test.ts`
-- `apps/web/src/components/ChatComposer.tsx`
-- `apps/web/src/components/DesignSystemFlow.tsx`
-- `apps/web/src/components/HomeView.tsx`
-- `apps/web/src/components/NewProjectPanel.tsx`
-- `apps/web/src/components/WorkingDirPicker.tsx`
-- `apps/web/src/components/useOpenFolderImport.ts`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
 - `apps/web/src/i18n/locales/ar.ts`
@@ -5400,8 +5315,6 @@ failure, and has source checks for the exact dialog, path, and result contracts.
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
-- `apps/web/src/providers/registry.ts`
-- `apps/web/src/state/projects.ts`
 - `apps/web/tests/providers/registry.test.ts`
 - `apps/web/tests/state/projects.test.ts`
 - `packages/host/src/actions.ts`

@@ -1,12 +1,12 @@
 # Verbatim import
 
-How the 12,835 upstream files under `design/` were copied from the pinned upstream commit
+How the 12,884 upstream files under `design/` were copied from the pinned upstream commit
 without a single byte, permission bit, or path being altered by the copy.
 
 > [!NOTE]
 > This page describes the import by its **outcome**, which is verified, and gives
 > the procedure that reproduces that outcome. The proof is
-> [`scripts/verify-port.sh`](../../scripts/verify-port.sh), not a transcript —
+> [`scripts/verify-port.sh`](../../scripts/verify-port.sh), not a transcript:
 > anybody can re-run it and get the same answer regardless of how the bytes
 > arrived. See [verification.md](verification.md).
 
@@ -16,7 +16,7 @@ The import produced, for every path in the upstream tree:
 
 - the **same bytes** on disk,
 - the **same blob object id** in this repository's index,
-- the **same file mode** recorded for every one of the 12,835 upstream files,
+- the **same file mode** recorded for every one of the 12,884 upstream files,
 
 and it tracked **two paths that upstream's own `.gitignore` excludes**, because
 those two files are present in the upstream commit and a faithful copy of a
