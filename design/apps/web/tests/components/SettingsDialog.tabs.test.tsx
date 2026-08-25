@@ -22,6 +22,7 @@ import {
 import { fetchConnectors, fetchDesignTemplates, fetchSkills } from '../../src/providers/registry';
 import { en } from '../../src/i18n/locales/en';
 import type { AppConfig } from '../../src/types';
+import type { Route } from '../../src/router';
 
 vi.mock('../../src/providers/registry', async () => {
   const actual = await vi.importActual<typeof import('../../src/providers/registry')>(
@@ -161,6 +162,21 @@ afterEach(() => {
 });
 
 describe('Settings: the tab strip', () => {
+  it('narrows settings-route state before the section callback dependency list', () => {
+    const routeWithoutView: Route = { kind: 'marketplace' };
+
+    expect(routeWithoutView.kind).toBe('marketplace');
+    expect(SETTINGS_DIALOG_SOURCE).toContain(
+      "const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';",
+    );
+    expect(SETTINGS_DIALOG_SOURCE).toContain(
+      '[onSectionChange, pageMode, settingsPageRouteActive]',
+    );
+    expect(SETTINGS_DIALOG_SOURCE).not.toContain(
+      '[onSectionChange, pageMode, route.kind, route.view]',
+    );
+  });
+
   it('presents every section as a tab in one labelled tablist', () => {
     renderSettings();
 

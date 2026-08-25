@@ -1664,6 +1664,7 @@ export function SettingsDialog({
   );
   const localSectionNavigationRef = useRef<string | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
   const settingsSearchActive = settingsQuery.trim().length > 0;
@@ -1688,7 +1689,7 @@ export function SettingsDialog({
   const selectSettingsSection = useCallback((section: SettingsSection) => {
     setActiveSection(section);
     onSectionChange?.(section);
-    if (!pageMode || route.kind !== 'home' || route.view !== 'settings') return;
+    if (!pageMode || !settingsPageRouteActive) return;
     const targetPath = section === 'appearance' ? '/settings/appearance' : '/settings';
     localSectionNavigationRef.current = window.location.pathname !== targetPath
       ? (section === 'appearance' ? 'appearance' : 'settings')
@@ -1698,7 +1699,7 @@ export function SettingsDialog({
         ? { kind: 'home', view: 'settings', settingsSection: 'appearance' }
         : { kind: 'home', view: 'settings' },
     );
-  }, [onSectionChange, pageMode, route.kind, route.view]);
+  }, [onSectionChange, pageMode, settingsPageRouteActive]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
     selectSettingsSection(hit.section);
     requestSettingsReveal(hit.entry.id);
