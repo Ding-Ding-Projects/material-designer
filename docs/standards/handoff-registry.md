@@ -47,6 +47,13 @@ section persistence, so reopening Settings never restores the read-only handoff
 page as if it were a mutable preference panel. The page's Back to Settings
 control returns to the normal `/settings` focus entry point.
 
+The settings token and the route interception are one contract. A source-file
+recovery must preserve both `SettingsSection` membership and the
+`App.openSettings` handoff branch. Keeping only the tab definition leaves a
+type-invalid registry, while removing the definition makes the documented
+destination undiscoverable. The focused settings-handoff test checks the token,
+non-restorable behavior, palette entry, and dedicated route wiring together.
+
 ## Verification
 
 Run the source contract from the repository root:

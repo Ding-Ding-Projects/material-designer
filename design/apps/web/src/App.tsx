@@ -4640,6 +4640,13 @@ function AppInner() {
     section: SettingsSection = 'execution',
     opts?: { highlight?: SettingsHighlight },
   ) => {
+    if (section === 'handoff') {
+      settingsReturnTargetRef.current = null;
+      setSettingsWelcome(false);
+      setSettingsHighlight(null);
+      navigate({ kind: 'home', view: 'handoff' });
+      return;
+    }
     if (section === 'composio' || section === 'mcpClient' || section === 'integrations') {
       settingsReturnTargetRef.current = null;
       setIntegrationInitialTab(

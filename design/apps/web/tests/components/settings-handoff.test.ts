@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -21,5 +23,17 @@ describe('settings handoff destination', () => {
       id: sectionAnchorFor('handoff'),
       section: 'handoff',
     }));
+  });
+
+  it('keeps the virtual token connected to the dedicated route', () => {
+    const appSource = readFileSync(new URL('../../src/App.tsx', import.meta.url), 'utf8');
+    const dialogSource = readFileSync(
+      new URL('../../src/components/SettingsDialog.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(dialogSource).toMatch(/^\s*\| 'handoff'$/m);
+    expect(appSource).toMatch(/^\s*if \(section === 'handoff'\) \{$/m);
+    expect(appSource).toMatch(/^\s*navigate\(\{ kind: 'home', view: 'handoff' \}\);$/m);
   });
 });

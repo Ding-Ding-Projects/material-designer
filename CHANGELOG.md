@@ -45,6 +45,17 @@ version section when a release carries them.
 
 ### Changed
 
+- **UI interaction evidence now has a fail-closed foundation.** A hand-written inventory covers the Windows desktop application and documentation site independently, retains every mandatory absent target, and imports the existing ten design-parity destinations without mistaking discovery for completeness. Versioned schemas define immediate post-click capture receipts, and the PowerShell validator plus deliberate negative regression reject missing whole rows, missing interaction fields, and invented evidence. This is evidence infrastructure only: no feature status was upgraded and no capture was fabricated.
+
+- **Settings keeps the dedicated design-handoff destination wired as a virtual
+  section.** The current source repair restores the `SettingsSection` token and
+  the `App.openSettings` route interception that a whole-file upstream recovery
+  removed, while keeping Handoff excluded from restorable settings state. It
+  also restores the narrator section token and panel mount removed by the same
+  recovery. The focused regression now checks that registry discovery and route
+  wiring survive together. Hosted verification is pending; the completing
+  commit records the repair and evidence foundation.
+
 - **The daemon release compile errors are fixed.** Commit
   [`cfc92832f`](https://github.com/Ding-Ding-Projects/material-designer/commit/cfc92832f5f2d319622c7e6097a85f7b2bbe63cf)
   repairs strict typing in scaffold identity, filesystem-error handling, and

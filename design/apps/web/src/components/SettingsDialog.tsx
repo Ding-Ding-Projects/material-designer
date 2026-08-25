@@ -156,6 +156,7 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
+import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
@@ -226,6 +227,7 @@ export type SettingsSection =
   | 'integrations'
   | 'mcpClient'
   | 'language'
+  | 'narrator'
   | 'appearance'
   | 'critiqueTheater'
   | 'notifications'
@@ -240,6 +242,10 @@ export type SettingsSection =
   // section. Reconcile follow-up: route library through a dedicated
   // navigate() call so openSettings only owns dialog-bound sections.
   | 'library'
+  // Handoff is a virtual settings destination. App.openSettings intercepts
+  // it and navigates to the dedicated read-only route instead of rendering a
+  // settings panel, but the shared settings registry still owns the token.
+  | 'handoff'
   | 'about';
 
 // Maps a requested section token onto the section that actually owns a nav
@@ -3843,6 +3849,7 @@ export function SettingsDialog({
     integrations: { title: t('settings.mcpServerTitle'), subtitle: t('settings.mcpServerHint') },
     mcpClient: { title: t('settings.externalMcpTitle'), subtitle: t('settings.externalMcpHint') },
     language: { title: t('settings.language'), subtitle: t('settings.languageHint') },
+    narrator: { title: t('narrator.title'), subtitle: t('narrator.hint') },
     // The theme setting is gone (the app ships light-only), so `appearance` has
     // no copy of its own. It survives only as a legacy deep-link token that
     // `normalizeSettingsSection` folds into General, so this entry can never be
@@ -3867,6 +3874,8 @@ export function SettingsDialog({
     // 'library' is opened via EntryShell route — SettingsDialog doesn't
     // render it but SettingsSection must accept the token (see type def).
     library: { title: '', subtitle: '' },
+    // Handoff is intercepted by App.openSettings before this dialog opens.
+    handoff: { title: t('handoff.title'), subtitle: t('handoff.subtitle') },
     about: { title: t('settings.about'), subtitle: t('settings.aboutHint') },
   };
   const activeHeader = sectionHeader[activeSection];
@@ -5966,6 +5975,10 @@ export function SettingsDialog({
 
           {activeSection === 'privacy' ? (
             <PrivacySection cfg={cfg} setCfg={setCfg} />
+          ) : null}
+
+          {activeSection === 'narrator' ? (
+            <NarratorSettingsPanel />
           ) : null}
 
           {activeSection === 'about' ? (

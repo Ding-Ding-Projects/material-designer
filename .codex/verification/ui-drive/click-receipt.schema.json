@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/material-designer/ui-drive/click-receipt.schema.json",
+  "title": "Material Designer per-click UI evidence receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "inventoryVersion", "surfaceId", "featureId", "interactionId", "sequence", "sourceCommit", "artifact", "captureTuple", "action", "semanticState", "image", "privacy", "inspection"],
+  "properties": {
+    "version": { "const": 1 },
+    "inventoryVersion": { "const": 1 },
+    "surfaceId": { "type": "string" },
+    "featureId": { "type": "string" },
+    "interactionId": { "type": "string" },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "sourceCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "builtFromCommit"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "builtFromCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "captureTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route", "theme", "language", "viewportWidth", "viewportHeight", "displayScale", "headlessRoute"],
+      "properties": {
+        "route": { "type": "string", "minLength": 1 },
+        "theme": { "enum": ["light", "dark", "contrast"] },
+        "language": { "enum": ["en-US", "zh-HK", "bilingual"] },
+        "viewportWidth": { "type": "integer", "minimum": 320 },
+        "viewportHeight": { "type": "integer", "minimum": 480 },
+        "displayScale": { "enum": [1, 1.25, 1.5, 2] },
+        "headlessRoute": { "const": "cheap-lowlevel-headless" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "target", "completed"],
+      "properties": {
+        "kind": { "enum": ["click", "right-click", "keyboard", "type", "select", "upload", "drag"] },
+        "target": { "type": "string", "minLength": 1 },
+        "completed": { "const": true }
+      }
+    },
+    "semanticState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedBefore", "observedBefore", "expectedAfter", "observedAfter", "matched"],
+      "properties": {
+        "expectedBefore": { "type": "string", "minLength": 1 },
+        "observedBefore": { "type": "string", "minLength": 1 },
+        "expectedAfter": { "type": "string", "minLength": 1 },
+        "observedAfter": { "type": "string", "minLength": 1 },
+        "matched": { "const": true }
+      }
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "width", "height", "pngSignatureValid", "nonblank"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "pngSignatureValid": { "const": true },
+        "nonblank": { "const": true }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checked", "privateDataFound", "unrelatedWindowsFound"],
+      "properties": {
+        "checked": { "const": true },
+        "privateDataFound": { "const": false },
+        "unrelatedWindowsFound": { "const": false }
+      }
+    },
+    "inspection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["originalOpened", "semanticStateConfirmed", "clippingChecked", "visualDefectIds"],
+      "properties": {
+        "originalOpened": { "const": true },
+        "semanticStateConfirmed": { "const": true },
+        "clippingChecked": { "const": true },
+        "visualDefectIds": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      }
+    }
+  }
+}

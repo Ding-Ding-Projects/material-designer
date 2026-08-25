@@ -1,5 +1,7 @@
 # Roadmap
 
+- [~] **Drive every user-facing surface and retain one inspected capture after every interaction.** The hand-written foundation now enumerates both user-facing surfaces, all mandatory feature targets, and the existing ten design-parity destinations. Versioned schemas and a PowerShell validator reject missing whole rows, missing interaction fields, false evidence on incomplete targets, and receipts that lack exact commit, artifact, capture-tuple, privacy, semantic-state, and original-image-inspection proof. No current-commit packaged artifact or per-click receipt exists yet, so the full drive remains unticked.
+
 > [!IMPORTANT]
 > **Release-shutdown status — 2026-08-21.** The integrated `main` and `origin/main`
 > match [`4eb5ad2d`](https://github.com/Ding-Ding-Projects/material-designer/commit/4eb5ad2dff3c7bb13b21d2e3f8f0ccc8167fc5e7).
@@ -20,6 +22,16 @@ provenance, target-SHA, asset-hash or publication-verification requirement.
 
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
+
+- [ ] **Restore the settings release contract after upstream-file recovery.**
+      Release run
+      [`32609013014`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32609013014)
+      stopped at the web TypeScript build because the tab registry still owned
+      the virtual Handoff destination while `SettingsSection` no longer accepted
+      it. The source repair restores the Handoff route contract and the narrator
+      panel contract removed by the same recovery. Pure-source verification is
+      local; hosted build, installed interaction, and capture evidence remain
+      pending, so this item is not complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `393af2f99` / v0.20.2, with 12,835
