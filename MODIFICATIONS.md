@@ -29,6 +29,26 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Replace the packaged startup splash's upstream identity
+
+**Reason:** the real full Squirrel package built from `64e427cd` showed the
+upstream mark, Open Design name, and upstream tagline before the Material
+Designer application opened. The splash now uses the existing shipped project
+vector, Material Designer display name, and factual local-first description.
+It retains live boot stages and monotonic progress, adds explicit accessible
+identity relationships, and disables dot and transition motion when reduced
+motion is requested. The upstream video source is removed so its baked-in
+identity cannot return through an opaque binary. Focused tests and a PowerShell
+guard enumerate both remaining identity sources, compare the inlined vector to
+the canonical SVG, and prove five deliberate regressions turn red before the
+restored fixture turns green.
+
+**Changed files:**
+
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/splash-video.ts` (removed)
+- `apps/desktop/tests/main/splash-branding.test.ts` (new)
+
 ### 2026-08-25 - Restore General Settings tab ownership
 
 **Reason:** Release run `32813607828` reached the exhaustive settings-tab

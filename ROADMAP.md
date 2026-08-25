@@ -1,5 +1,16 @@
 # Roadmap
 
+- [ ] **Replace the packaged startup splash's upstream identity.** The real
+      `64e427cd` full Squirrel package exposed the upstream mark, name, and
+      tagline before the application opened. Source now renders the canonical
+      shipped project mark, Material Designer name, factual local-first
+      description, accessible labels, reduced-motion behavior, and the existing
+      progress contract from one inventoried producer. Focused source and
+      deliberate red-then-green guards pass, and the inspected before capture
+      is committed with exact artifact and image hashes. Hosted tests, a new
+      package, and a same-tuple inspected after capture remain open, so this
+      item is not complete.
+
 - [~] **Drive every user-facing surface and retain one inspected capture after every interaction.** The hand-written foundation now enumerates both user-facing surfaces, all mandatory feature targets, and the existing ten design-parity destinations. Versioned schemas and a PowerShell validator reject missing whole rows, missing interaction fields, false evidence on incomplete targets, and receipts that lack exact commit, artifact, capture-tuple, privacy, semantic-state, and original-image-inspection proof. No current-commit packaged artifact or per-click receipt exists yet, so the full drive remains unticked.
 
 - [~] **Implement per-element toy locks and the complete authentication surface.**

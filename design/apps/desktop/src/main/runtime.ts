@@ -36,7 +36,6 @@ import { openFirstPartyMailto } from "./mailto-open.js";
 import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
-import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
 import { parseDesktopAppearanceTheme } from "./appearance-theme.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
@@ -1209,10 +1208,11 @@ const MAC_WINDOW_CHROME_CSS = `
   }
 `;
 
-// Light-background startup splash shown while the web runtime boots. It plays
-// the brand intro clip once and then holds on its final settled logo frame until
-// the main window is ready. The clip is embedded as a base64 data URL so it
-// renders identically in dev and in packaged builds (see `splash-video.ts`).
+// Light-background startup splash shown while the web runtime boots. The mark
+// is the same project-owned vector shipped by the web application, inlined so
+// the pre-sidecar packaged path has no file or network dependency. Keep the
+// path data synchronized with `mockups/open-design-m3/assets/logo.svg`; the focused
+// startup-branding guard compares the two sources exactly.
 function createPendingHtml(): string {
   const start = splashStagePayload("starting");
   const initialPct = Math.max(0, Math.min(100, Math.round((start.step / start.total) * 100)));
@@ -1234,12 +1234,33 @@ function createPendingHtml(): string {
         display: flex;
         justify-content: center;
       }
-      video {
-        background: #f2f4f5;
-        height: auto;
-        max-height: 100%;
-        max-width: 100%;
-        width: auto;
+      .splash-identity {
+        align-items: center;
+        color: #26251e;
+        display: flex;
+        flex-direction: column;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        gap: 14px;
+        margin-bottom: 54px;
+        text-align: center;
+      }
+      .splash-mark {
+        color: #26251e;
+        display: block;
+        height: 112px;
+        width: 112px;
+      }
+      .splash-name {
+        font-size: 38px;
+        font-weight: 700;
+        letter-spacing: -0.035em;
+        line-height: 1.1;
+      }
+      .splash-description {
+        color: #626a70;
+        font-size: 16px;
+        letter-spacing: 0.01em;
+        line-height: 1.4;
       }
       .boot-stage {
         bottom: 56px;
@@ -1290,17 +1311,21 @@ function createPendingHtml(): string {
         0%, 60%, 100% { opacity: 0.25; }
         30% { opacity: 1; }
       }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-dots .dot { animation: none; opacity: 1; }
+        .boot-progress-fill, .boot-stage { transition: none; }
+        .boot-stage-swapping { opacity: 1; }
+      }
     </style>
   </head>
   <body>
-    <video
-      id="splash"
-      autoplay
-      muted
-      playsinline
-      disablepictureinpicture
-      src="${SPLASH_VIDEO_DATA_URL}"
-    ></video>
+    <main class="splash-identity" aria-labelledby="splash-name" aria-describedby="splash-description">
+      <svg class="splash-mark" viewBox="0 0.726562 82 82" role="img" aria-label="Material Designer mark" xmlns="http://www.w3.org/2000/svg">
+        <path d="M41 0.726562C76.5753 0.726562 82 6.15121 82 41.7266C82 77.3019 76.5753 82.7266 41 82.7266C5.42465 82.7266 0 77.3019 0 41.7266C0 6.15121 5.42465 0.726562 41 0.726562ZM40.8906 16.4258C26.9164 16.4258 15.5879 27.7543 15.5879 41.7285C15.5879 46.7757 15.5879 58.0219 15.5879 63.665C15.588 65.5281 17.091 67.0312 18.9541 67.0312H40.8906C54.8647 67.0311 66.1932 55.7026 66.1934 41.7285C66.1934 27.7544 54.8647 16.4259 40.8906 16.4258ZM40.8906 21.4863C52.0699 21.4864 61.1328 30.5492 61.1328 41.7285C61.1327 52.9078 52.0699 61.9706 40.8906 61.9707C29.7113 61.9707 20.6485 52.9078 20.6484 41.7285C20.6484 30.5491 29.7113 21.4863 40.8906 21.4863ZM32.6445 32.2549C31.9921 32.0027 31.3503 32.6469 31.5996 33.3037L39.3145 53.6045C39.6345 54.4468 40.877 54.2162 40.877 53.3145V41.6836H52.665C53.5605 41.6836 53.7908 40.4368 52.9551 40.1133L32.6445 32.2549Z" fill="currentColor"></path>
+      </svg>
+      <div class="splash-name" id="splash-name">Material Designer</div>
+      <div class="splash-description" id="splash-description">A local-first design workspace</div>
+    </main>
     <div class="boot-progress" aria-hidden="true">
       <div class="boot-progress-fill" id="boot-progress-fill" data-pct="${initialPct}" style="width: ${initialPct}%;"></div>
     </div>
@@ -1308,17 +1333,6 @@ function createPendingHtml(): string {
       <span class="boot-stage-step" id="boot-stage-step">${start.step}/${start.total}</span><span id="boot-stage-text">${start.label}</span><span class="boot-dots" aria-hidden="true"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
     </div>
     <script>
-      (function () {
-        var video = document.getElementById("splash");
-        if (!video) return;
-        var play = function () {
-          var attempt = video.play();
-          if (attempt && typeof attempt.catch === "function") attempt.catch(function () {});
-        };
-        video.addEventListener("loadedmetadata", function () { video.currentTime = 0; });
-        video.addEventListener("loadeddata", play);
-        play();
-      })();
       // Accepts the structured { step, total, label } payload (and tolerates a
       // bare label string for back-compat). The step counter + progress bar give
       // a slow cold boot a sense of how far along it is; the bar only ever grows
