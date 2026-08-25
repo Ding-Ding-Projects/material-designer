@@ -17,6 +17,8 @@ export {
   OPEN_DESIGN_HOST_CLIENT_TYPES,
   OPEN_DESIGN_HOST_UPDATER_ACTIONS,
   OPEN_DESIGN_HOST_UPDATER_STATES,
+  OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS,
+  OPEN_DESIGN_TOY_LOCK_POLICIES,
 } from "./protocol.js";
 export type {
   OpenDesignHostClientType,
@@ -73,6 +75,16 @@ export type {
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostWindowControls,
   OpenDesignHostUiScale,
+  OpenDesignSettingsToyLockTarget,
+  OpenDesignToyLockPolicy,
+  OpenDesignToyLockMetadata,
+  OpenDesignToyLockFailureCode,
+  OpenDesignToyLockResult,
+  OpenDesignToyLockConfigureRequest,
+  OpenDesignToyLockVerifyRequest,
+  OpenDesignToyLockBeginTotpEnrollmentRequest,
+  OpenDesignToyLockConfirmTotpEnrollmentRequest,
+  OpenDesignHostToyLocks,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";
