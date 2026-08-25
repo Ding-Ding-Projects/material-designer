@@ -28,9 +28,12 @@ export type LauncherExistingDesktopGateResult =
  * unused outer can keep a main process and Chromium helpers alive indefinitely.
  */
 export function exitPackagedLauncherForExistingDesktop(
-  result: LauncherExistingDesktopGateResult,
+  result: LauncherExistingDesktopGateResult | null,
   exit: (code: number) => void,
 ): boolean {
+  // Deterministic capture launches deliberately skip desktop inspection. A
+  // missing result therefore means "continue this launcher", never "exit".
+  if (result == null) return false;
   if (result.action !== "exit") return false;
   exit(0);
   return true;

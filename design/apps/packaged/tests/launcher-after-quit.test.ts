@@ -114,6 +114,13 @@ describe("waitForLauncherAfterQuit", () => {
 });
 
 describe("exitPackagedLauncherForExistingDesktop", () => {
+  it("keeps deterministic capture startup alive when desktop inspection is skipped", () => {
+    const exit = vi.fn();
+
+    expect(exitPackagedLauncherForExistingDesktop(null, exit)).toBe(false);
+    expect(exit).not.toHaveBeenCalled();
+  });
+
   it.each(["existing-focused", "existing-focus-failed"] as const)(
     "terminates the duplicate outer after %s",
     (reason) => {
@@ -132,6 +139,13 @@ describe("exitPackagedLauncherForExistingDesktop", () => {
       exit,
     )).toBe(false);
     expect(exit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the nullable launcher flow explicit without a non-null assertion", async () => {
+    const source = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
+
+    expect(source).toContain("exitPackagedLauncherForExistingDesktop(existingDesktop,");
+    expect(source).not.toContain("existingDesktop!");
   });
 });
 

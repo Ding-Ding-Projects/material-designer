@@ -5509,6 +5509,18 @@ an editor refusal is reported without silently substituting the project folder.
 - `apps/web/src/providers/registry.ts`
 - `apps/web/tests/components/HandoffButton.export-path.test.tsx`
 
+### 2026-08-25 — Keep capture startup explicit when desktop inspection is skipped
+
+**Reason:** deterministic capture launches deliberately bypass the duplicate
+desktop inspection, so the launcher gate receives no result and must continue.
+The gate now handles that nullable state explicitly instead of relying on an
+unsafe assertion, while preserving the existing exit and continue outcomes.
+
+**Changed files:**
+
+- `apps/packaged/src/launcher-after-quit.ts`
+- `apps/packaged/tests/launcher-after-quit.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
