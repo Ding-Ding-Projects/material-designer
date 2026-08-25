@@ -11,14 +11,17 @@ export type ToyLockPolicy = (typeof TOY_LOCK_POLICIES)[number];
 export type ToyLockFactor = 'pin' | 'password' | 'totp';
 export type PinEntrySource = 'keypad' | 'manual';
 
-const POLICY_FACTORS: Readonly<Record<ToyLockPolicy, readonly ToyLockFactor[]>> = Object.freeze({
-  pin: Object.freeze(['pin']),
-  password: Object.freeze(['password']),
-  'pin-password': Object.freeze(['pin', 'password']),
-  'password-totp': Object.freeze(['password', 'totp']),
-  'pin-totp': Object.freeze(['pin', 'totp']),
-  'password-pin-totp': Object.freeze(['password', 'pin', 'totp']),
-});
+const freezeFactors = <const Factors extends readonly ToyLockFactor[]>(...factors: Factors): Readonly<Factors> =>
+  Object.freeze(factors);
+
+const POLICY_FACTORS = Object.freeze({
+  pin: freezeFactors('pin'),
+  password: freezeFactors('password'),
+  'pin-password': freezeFactors('pin', 'password'),
+  'password-totp': freezeFactors('password', 'totp'),
+  'pin-totp': freezeFactors('pin', 'totp'),
+  'password-pin-totp': freezeFactors('password', 'pin', 'totp'),
+} satisfies Readonly<Record<ToyLockPolicy, readonly ToyLockFactor[]>>);
 
 export interface PinInput {
   source: PinEntrySource;

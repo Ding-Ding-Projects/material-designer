@@ -7,10 +7,11 @@ import {
   interceptLockedActivation,
   normalizePin,
   recordAttempt,
+  type ToyLockFactor,
   type ToyLockPolicy,
 } from '../../src/security/toy-lock-core';
 
-const EXPECTED_POLICIES: Readonly<Record<ToyLockPolicy, readonly string[]>> = {
+const EXPECTED_POLICIES: Readonly<Record<ToyLockPolicy, readonly ToyLockFactor[]>> = {
   pin: ['pin'],
   password: ['password'],
   'pin-password': ['pin', 'password'],
@@ -18,6 +19,10 @@ const EXPECTED_POLICIES: Readonly<Record<ToyLockPolicy, readonly string[]>> = {
   'pin-totp': ['pin', 'totp'],
   'password-pin-totp': ['password', 'pin', 'totp'],
 };
+
+// @ts-expect-error Invalid factor names must remain compile-time errors.
+const INVALID_FACTOR_REJECTION: ToyLockFactor = 'biometric';
+void INVALID_FACTOR_REJECTION;
 
 describe('toy-lock policy registry', () => {
   it('contains exactly the six supported policies with exact factor order', () => {
@@ -34,7 +39,9 @@ describe('toy-lock policy registry', () => {
 
   it('does not allow callers to mutate the canonical policy or factor lists', () => {
     expect(Object.isFrozen(TOY_LOCK_POLICIES)).toBe(true);
-    expect(Object.isFrozen(factorsForPolicy('password-pin-totp'))).toBe(true);
+    for (const policy of TOY_LOCK_POLICIES) {
+      expect(Object.isFrozen(factorsForPolicy(policy))).toBe(true);
+    }
   });
 });
 
