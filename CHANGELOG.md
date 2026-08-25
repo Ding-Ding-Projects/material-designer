@@ -45,6 +45,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Routine failure labels now use the complete translation contract.** Release
+  run `32812909723` found that `RoutinesSection` narrowed interpolation variables
+  to plain strings and numbers before passing its translator to the shared run
+  failure resolver. The local alias now derives from the canonical `useT`
+  return type, preserving deferred translated values; a focused source
+  regression prevents the narrow signature from returning. Hosted replacement
+  verification and installed interaction remain pending.
+
+  **Routine failure label 而家食得晒完整 translation contract。** Release run
+  `32812909723` 捉到 `RoutinesSection` 自己收窄咗 interpolation variables，只准
+  string 同 number，搞到 shared run failure resolver 明明識食全餐，都畀個窄
+  門口卡住。Local alias 而家直接跟 canonical `useT` return type，deferred
+  translated values 唔使扮普通字串；focused source regression 亦守住個門口，
+  唔畀舊窄 signature 偷返嚟。Hosted replacement verification 同 installed
+  interaction 仲未完成。
+
 - **Complete project archive downloads are wired to their staged receipt contract.**
   Release run `32811211274` found that the project-level action imported a
   missing client API even though the daemon prepare and staged-download routes

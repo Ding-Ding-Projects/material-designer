@@ -64,8 +64,11 @@ with the project's standards.
       missing from the browser runtime. The browser contract now prepares and
       validates the receipt, streams with progress and cancellation, verifies
       byte length and SHA-256, and refuses to substitute the older one-file ZIP
-      fallback. A replacement hosted build is still required, so this item is
-      not complete.
+      fallback. Release run `32812909723` then found the same recovered narrow
+      translation alias in the Routines failure-label path. That alias now
+      derives from the canonical translator type, with a focused source
+      regression preventing the narrow signature from returning. A replacement
+      hosted build is still required, so this item is not complete.
 
 - [x] **Advance and reconcile the upstream Open Design baseline.** The pinned
       submodule and manifest now identify `05f5b33ef` / v0.20.3 development,

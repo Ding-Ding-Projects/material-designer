@@ -13,7 +13,6 @@ import { Icon } from './Icon';
 import { navigate } from '../router';
 import { useT } from '../i18n';
 import { localizeRunFailureReason } from '../i18n/runErrors';
-import type { Dict } from '../i18n/types';
 import { useAnalytics } from '../analytics/provider';
 import { trackAutomationsClick } from '../analytics/events';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
@@ -22,7 +21,7 @@ import { listProjects } from '../state/projects';
 
 // Shared translator signature: every sub-component in this file is module-scoped,
 // so `t` from `useT()` is threaded down as a prop rather than re-hooked.
-type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+type TranslateFn = ReturnType<typeof useT>;
 
 type ProjectSummary = { id: string; name: string };
 type RoutineWorkspaceScope = {

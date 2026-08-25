@@ -29,6 +29,20 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-25 - Keep Routines translation variables recursive
+
+**Reason:** The Routines failure-label helper accepts the application's canonical
+translator, whose interpolation variables may contain deferred translated values.
+`RoutinesSection` had narrowed its local translator alias to plain strings and
+numbers, so the hosted release type-check rejected its call to that helper. The
+alias now derives from `useT`, and a focused source regression prevents the
+narrower signature from returning.
+
+**Changed files:**
+
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/tests/components/RoutinesSection.translation-contract.test.ts`
+
 ### 2026-08-25 - Keep FileWorkspace translation variables recursive
 
 **Reason:** The Create-page subcategory label helper accepts the application's
