@@ -1,5 +1,20 @@
 # Roadmap
 
+- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
+      emergency handoff in `HANDOFF.md` records every preserved branch, exact
+      commit, review state, release blocker, and missing runtime evidence. No
+      incomplete branch is considered shipped merely because its work was
+      committed and pushed for preservation. A successor must re-read each HOLD
+      finding, reconcile approved source semantically, run hosted verification,
+      drive the installed application, and collect the required screenshots
+      before checking this item.
+
+      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
+      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
+      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
+      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
+      仲要補齊真正 screenshots，先可以 tick 呢項。
+
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles
