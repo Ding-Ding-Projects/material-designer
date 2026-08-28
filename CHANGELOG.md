@@ -45,6 +45,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Front-screen version provenance is prepared for integration.** The desktop
+  shell now has a visible version and release-timestamp strip before tabs and
+  onboarding authentication. Packaged provenance is bound to the source
+  commit and package version, while the documentation site paginates published
+  releases, dereferences tags to their actual commits, and injects matching
+  facts only from a published release targeting the deployed commit. The
+  release and manual installer paths accept externally supplied timestamps only
+  after strict calendar validation, and otherwise preserve an unavailable
+  state. Missing or malformed data remains unavailable. The initial onboarding identity also
+  uses Material Designer copy instead of upstream identity strings. This entry
+  describes the unmerged source lane; the parent integration must replace this
+  note with the exact integration commit link before publication.
+
+  **前置畫面版本來源資料已準備合併。** Desktop shell 而家喺 tabs 同 onboarding
+  authentication 之前顯示版本號同 release timestamp。Packaged provenance 會綁定
+  source commit 同 package version，documentation site 會逐頁讀晒 published release，
+  將 tag 解返真正 commit，對準部署 commit 之後先注入對應資料。Release 同手動
+  installer path 只接受外部提供、通過嚴格日期驗證嘅 timestamp，否則照樣留低
+  unavailable；資料欠缺或者格式唔啱就照實顯示 unavailable。
+  初始 onboarding identity 亦改用 Material Designer 文案，唔再將 upstream identity
+  當成產品身份。呢段係未合併 source lane 嘅記錄，正式 publication 前要由 parent
+  integration 補返 exact commit link。
+
 - **Windows Squirrel packaging again refuses executable signing and rcedit
   mutation at the producer.** Release
   [`32831335767`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32831335767)

@@ -34,7 +34,7 @@
                 .md-tooltip .md-drawer .md-palette
    Feedback     .md-snackbar-host .md-snackbar .md-snackbar--dish
                 .md-empty .md-callout .md-callout--info|warn|success|error
-   Site         .hero .card-grid .section .settings .setting-row .swatch-grid
+   Site         .hero .front-provenance .card-grid .section .settings .setting-row .swatch-grid
                 .color-translator .regex-builder .table-wrap .code-block
                 .md-mark .highlight-target
    Utility      .visually-hidden .skip-link .no-sb .stack .row .spacer
@@ -370,6 +370,85 @@ a:hover {
   color: var(--md-sys-color-on-surface-variant);
   font-size: var(--md-sys-typescale-label-small-size);
   line-height: var(--md-sys-typescale-label-small-line);
+}
+
+/* Front-screen identity. The site has no runtime package loader, so the
+   recorded release tuple lives in the HTML data attributes and this strip
+   formats the immutable UTC instant for the visitor's local timezone. */
+.front-provenance {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  min-height: 3.5rem;
+  padding: 0.625rem var(--gap);
+  background: var(--md-sys-color-surface-container);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.front-provenance h2 {
+  flex: none;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  white-space: nowrap;
+}
+
+.front-provenance dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.front-provenance dl > div {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.front-provenance dt,
+.front-provenance p {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: var(--md-sys-typescale-label-medium-size);
+  white-space: nowrap;
+}
+
+.front-provenance dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--md-ref-typeface-mono);
+  font-size: var(--md-sys-typescale-body-small-size);
+}
+
+.front-provenance p {
+  flex: none;
+  margin-inline-start: auto;
+}
+
+.front-provenance[data-provenance-status='verified'] p {
+  color: var(--md-sys-color-success);
+}
+
+.front-provenance[data-provenance-status='unavailable'] p {
+  color: var(--md-sys-color-error);
+}
+
+@media (max-width: 760px) {
+  .front-provenance {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .front-provenance dl {
+    flex-direction: column;
+  }
+
+  .front-provenance p {
+    margin-inline-start: 0;
+  }
 }
 
 /* ---- Body row ----------------------------------------------------------- */

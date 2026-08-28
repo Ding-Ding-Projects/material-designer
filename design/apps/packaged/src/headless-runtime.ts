@@ -222,6 +222,9 @@ export async function runPackagedHeadless(
     startSidecars: async () =>
       await startPackagedSidecars(runtime, paths, {
         appVersion: activeConfig.appVersion,
+        buildVersion: activeConfig.buildVersion,
+        buildSourceCommit: activeConfig.buildSourceCommit,
+        buildUpdatedAt: activeConfig.buildUpdatedAt,
         amrProfile: activeConfig.amrProfile,
         daemonCliEntry: activeConfig.daemonCliEntry,
         daemonSidecarEntry: activeConfig.daemonSidecarEntry,

@@ -8,6 +8,9 @@ on:
   push:
     branches:
       - '**'
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 permissions:
@@ -46,15 +49,50 @@ jobs:
         run: |
           set -uo pipefail
 
-          rel=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,name,assets 2>/dev/null) || {
+          f=site/index.html
+          TARGET_COMMIT=$(git rev-parse HEAD)
+          resolve_tag_commit() {
+            local tag="$1" ref_json object_type object_sha tag_json depth
+            ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" 2>/dev/null) || return 1
+            object_type=$(printf '%s' "$ref_json" | jq -r '.object.type // empty')
+            object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha // empty')
+            depth=0
+            while [ "$depth" -lt 4 ]; do
+              if [ "$object_type" = "commit" ] && printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+                printf '%s' "$object_sha"
+                return 0
+              fi
+              if [ "$object_type" != "tag" ] || ! printf '%s' "$object_sha" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+                return 1
+              fi
+              tag_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}" 2>/dev/null) || return 1
+              object_type=$(printf '%s' "$tag_json" | jq -r '.object.type // empty')
+              object_sha=$(printf '%s' "$tag_json" | jq -r '.object.sha // empty')
+              depth=$((depth + 1))
+            done
+            return 1
+          }
+
+          valid_iso_timestamp() {
+            local value="$1" date_part canonical_date
+            [[ "$value" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$ ]] || return 1
+            date_part="${value:0:10}"
+            canonical_date=$(date -u -d "$date_part" '+%Y-%m-%d' 2>/dev/null) || return 1
+            [ "$canonical_date" = "$date_part" ] || return 1
+            date -u -d "$value" '+%s' >/dev/null 2>&1
+          }
+
+          releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null | jq -s 'add') || {
             echo "::warning::could not read a published release; keeping the checked-in page facts"
             exit 0
           }
 
-          tag=$(printf '%s' "$rel" | jq -r '.tagName // empty')
-          title=$(printf '%s' "$rel" | jq -r '.name // empty')
-          installer=$(printf '%s' "$rel" | jq -r '[.assets[].name] | map(select(endswith("setup.exe")))[0] // empty')
-          bytes=$(printf '%s' "$rel" | jq -r --arg n "$installer" '[.assets[] | select(.name==$n) | .size][0] // empty')
+          published_releases=$(printf '%s' "$releases" | jq -c 'map(select(.draft == false and .prerelease == false and .published_at != null)) | sort_by(.published_at) | reverse')
+          latest=$(printf '%s' "$published_releases" | jq -c '.[0] // empty')
+          tag=$(printf '%s' "$latest" | jq -r '.tag_name // empty')
+          title=$(printf '%s' "$latest" | jq -r '.name // empty')
+          installer=$(printf '%s' "$latest" | jq -r '[.assets[]?.name] | map(select(endswith("setup.exe")))[0] // empty')
+          bytes=$(printf '%s' "$latest" | jq -r --arg n "$installer" '[.assets[]? | select(.name==$n) | .size][0] // empty')
 
           if [ -z "$tag" ] || [ -z "$installer" ]; then
             echo "::warning::the newest published release has no Windows installer; keeping the checked-in page facts"
@@ -76,8 +114,7 @@ jobs:
           fi
           [ -z "$sha" ] && sha="not published for this build"
 
-          commit=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body -q '.body' 2>/dev/null \
-            | sed -n 's/.*Built from `\([0-9a-f]\{7,40\}\)`.*/\1/p' | head -1)
+          commit=$(resolve_tag_commit "$tag" 2>/dev/null || true)
           [ -z "$commit" ] && commit="unknown"
           commit=${commit:0:7}
 
@@ -85,7 +122,6 @@ jobs:
           chip="${version} · x64 · ${mb} MB"
           url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/${installer}"
 
-          f=site/index.html
           set_field() {
             local key=$1 value=$2
             value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
@@ -104,6 +140,50 @@ jobs:
 
           esc_url=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
           sed -i "s|href=\"https://github.com/[^"]*/releases/download/[^"]*setup\.exe\"|href=\"$esc_url\"|g" "$f"
+
+          # The front-screen identity tuple is injected only when a published
+          # release tag resolves to this exact deployment commit. The checked-in
+          # source intentionally contains empty fields, so a deployment that
+          # races release publication displays an honest unavailable state.
+          front_tag=""
+          while IFS= read -r candidate_tag; do
+            [ -z "$candidate_tag" ] && continue
+            candidate_commit=$(resolve_tag_commit "$candidate_tag" 2>/dev/null || true)
+            if [ "$candidate_commit" = "$TARGET_COMMIT" ]; then
+              front_tag="$candidate_tag"
+              break
+            fi
+          done < <(printf '%s' "$published_releases" | jq -r '.[].tag_name // empty')
+          if [ -n "$front_tag" ]; then
+            front_dir="${RUNNER_TEMP//\\//}/front-provenance-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            rm -rf "$front_dir"
+            mkdir -p "$front_dir"
+            if gh release download "$front_tag" --repo "$GITHUB_REPOSITORY" --pattern 'build-provenance.json' --dir "$front_dir" --clobber 2>/dev/null; then
+              front_provenance="$front_dir/build-provenance.json"
+              front_version=$(jq -r '.package.version // empty' "$front_provenance")
+              front_commit=$(jq -r '.sourceCommit // empty' "$front_provenance")
+              front_updated_at=$(jq -r '.builtAt // empty' "$front_provenance")
+              if printf '%s' "$front_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$' \
+                && printf '%s' "$front_commit" | grep -Eq '^[0-9a-fA-F]{40}$' \
+                && [ "$front_commit" = "$TARGET_COMMIT" ] \
+                && valid_iso_timestamp "$front_updated_at"; then
+                safe_front_version=$(printf '%s' "$front_version" | sed 's/[&|\\]/\\&/g')
+                safe_front_commit=$(printf '%s' "$front_commit" | sed 's/[&|\\]/\\&/g')
+                safe_front_updated_at=$(printf '%s' "$front_updated_at" | sed 's/[&|\\]/\\&/g')
+                sed -i "s|data-front-version=\"\"|data-front-version=\"$safe_front_version\"|" "$f"
+                sed -i "s|data-front-updated-at=\"\"|data-front-updated-at=\"$safe_front_updated_at\"|" "$f"
+                sed -i "s|data-front-source-commit=\"\"|data-front-source-commit=\"$safe_front_commit\"|" "$f"
+                sed -i "s|data-front-provenance-value=\"version\">Unavailable|data-front-provenance-value=\"version\">$safe_front_version|" "$f"
+                echo "Front-screen provenance refreshed from $front_tag for $TARGET_COMMIT"
+              else
+                echo "::warning::the matching release provenance was malformed or not bound to $GITHUB_SHA; front-screen identity remains unavailable"
+              fi
+            else
+              echo "::warning::the matching release has no downloadable build-provenance.json; front-screen identity remains unavailable"
+            fi
+          else
+            echo "Front-screen provenance unavailable because no published release targets $TARGET_COMMIT"
+          fi
 
           echo "Published release facts refreshed for $tag"
           echo "  version   $version"

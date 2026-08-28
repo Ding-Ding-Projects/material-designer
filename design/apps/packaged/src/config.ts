@@ -34,6 +34,9 @@ export type PackagedVelaWebUrls = Partial<Record<PackagedAmrProfile, string>>;
 export type RawPackagedConfig = {
   amrProfile?: string;
   appVersion?: string;
+  buildVersion?: string;
+  buildSourceCommit?: string;
+  buildUpdatedAt?: string;
   daemonCliEntryRelative?: string;
   daemonSidecarEntryRelative?: string;
   namespace?: string;
@@ -68,6 +71,9 @@ export type RawPackagedConfig = {
 export type PackagedConfig = {
   amrProfile: PackagedAmrProfile | null;
   appVersion: string | null;
+  buildVersion?: string | null;
+  buildSourceCommit?: string | null;
+  buildUpdatedAt?: string | null;
   daemonCliEntry: string | null;
   daemonSidecarEntry: string | null;
   namespace: string;
@@ -248,6 +254,9 @@ export async function readPackagedConfig(options: { captureMode?: boolean } = {}
   return {
     amrProfile: resolvePackagedAmrProfile(raw.amrProfile),
     appVersion: cleanOptionalString(raw.appVersion),
+    buildVersion: cleanOptionalString(raw.buildVersion),
+    buildSourceCommit: cleanOptionalString(raw.buildSourceCommit),
+    buildUpdatedAt: cleanOptionalString(raw.buildUpdatedAt),
     daemonCliEntry,
     daemonSidecarEntry,
     namespace,

@@ -63,6 +63,14 @@ tag, publish or create a release. Omit
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
 
+> **Front-screen identity checkpoint:** The desktop shell now places a visible
+> version and provenance strip before navigation and onboarding authentication.
+> Packaged builds carry a source-commit-bound release timestamp, and the
+> documentation site injects the exact matching release tuple only after a
+> published-release event. Invalid or unavailable provenance stays visibly
+> unavailable. Hosted packaged interaction and the full capture matrix remain
+> separate verification work.
+
 <details>
 <summary><b>Fresh local installer screenshots — commit <code>0d6e47c7</code></b></summary>
 

@@ -40,7 +40,7 @@
   grid-template-columns: minmax(0, 1fr);
   /* Explicit chrome rows: title bar, tabs, body, status. The title row is
      zero-height on platforms that retain native caption chrome. */
-  grid-template-rows: 0 42px minmax(0, 1fr) 28px;
+  grid-template-rows: 0 42px auto minmax(0, 1fr) 28px;
   /* Same ground as the home page: paint nothing, let the body app-wash
      (browser) / wallpaper vibrancy + cream scrim (desktop) show through —
      the project view and home share one identical frosted ground by
@@ -67,7 +67,7 @@
    a number the header no longer uses, leaving a bare strip of `--bg-app`
    under the tab row on that one platform. */
 .workspace-shell:has(> [data-window-title-bar]) {
-  grid-template-rows: 40px 42px minmax(0, 1fr) 28px;
+  grid-template-rows: 40px 42px auto minmax(0, 1fr) 28px;
 }
 /* One cell, and every child in it.
  *
@@ -92,8 +92,11 @@
 .workspace-shell > .workspace-tabs-chrome {
   grid-row: 2;
 }
-.workspace-shell__body {
+.workspace-shell > [data-front-screen-provenance='true'] {
   grid-row: 3;
+}
+.workspace-shell__body {
+  grid-row: 4;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -112,6 +115,16 @@
   min-height: 0;
 }
 .workspace-shell > [data-app-status-bar='true'] {
+  grid-row: 5;
+}
+
+.workspace-shell__interactive {
+  display: contents;
+}
+.workspace-shell__interactive > .workspace-tabs-chrome {
+  grid-row: 2;
+}
+.workspace-shell__interactive > .workspace-shell__body {
   grid-row: 4;
 }
 
@@ -2882,11 +2895,11 @@ a.avatar-item:visited {
    legacy viewer routine that still declares a two-row workspace shell. No
    implicit row may absorb the status bar or a platform title bar. */
 .workspace-shell[data-client-type] {
-  grid-template-rows: 0 42px minmax(0, 1fr) 28px;
+  grid-template-rows: 0 42px auto minmax(0, 1fr) 28px;
 }
 
 .workspace-shell[data-client-type]:has(> [data-window-title-bar]) {
-  grid-template-rows: 40px 42px minmax(0, 1fr) 28px;
+  grid-template-rows: 40px 42px auto minmax(0, 1fr) 28px;
 }
 
 .workspace-shell[data-client-type] > [data-window-title-bar] {
@@ -2898,13 +2911,24 @@ a.avatar-item:visited {
   min-height: 42px;
   height: 42px;
 }
-
-.workspace-shell[data-client-type] > .workspace-shell__body {
+.workspace-shell[data-client-type] > [data-front-screen-provenance='true'] {
   grid-row: 3;
 }
 
-.workspace-shell[data-client-type] > [data-app-status-bar='true'] {
+.workspace-shell[data-client-type] > .workspace-shell__body {
   grid-row: 4;
+}
+
+.workspace-shell[data-client-type] > .workspace-shell__interactive > .workspace-tabs-chrome {
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type] > .workspace-shell__interactive > .workspace-shell__body {
+  grid-row: 4;
+}
+
+.workspace-shell[data-client-type] > [data-app-status-bar='true'] {
+  grid-row: 5;
   min-height: 28px;
   height: 28px;
 }

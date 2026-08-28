@@ -15,6 +15,14 @@ export interface AppVersionInfo {
   packaged: boolean;
   platform: string;
   arch: string;
+  provenance?: AppVersionProvenance | null;
+}
+
+export interface AppVersionProvenance {
+  schemaVersion: 1;
+  version: string;
+  sourceCommit: string;
+  updatedAt: string;
 }
 
 interface PackageMetadata {
@@ -75,6 +83,59 @@ function cleanString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
 }
 
+const SOURCE_COMMIT_RE = /^[0-9a-f]{40}$/i;
+const ISO_TIMESTAMP_WITH_SECONDS_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function isValidProvenanceTimestamp(value: string): boolean {
+  if (!ISO_TIMESTAMP_WITH_SECONDS_RE.test(value)) return false;
+  const parts = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if (!parts) return false;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText] = parts;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  const second = Number(secondText);
+  if (
+    month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59
+  ) return false;
+  const calendar = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return calendar.getUTCFullYear() === year
+    && calendar.getUTCMonth() === month - 1
+    && calendar.getUTCDate() === day
+    && calendar.getUTCHours() === hour
+    && calendar.getUTCMinutes() === minute
+    && calendar.getUTCSeconds() === second
+    && Number.isFinite(Date.parse(value));
+}
+
+function resolveBuildProvenance(
+  version: string,
+  env: NodeJS.ProcessEnv,
+): AppVersionProvenance | null {
+  const provenanceVersion = cleanString(env.OD_BUILD_VERSION);
+  const sourceCommit = cleanString(env.OD_BUILD_SOURCE_COMMIT);
+  const updatedAt = cleanString(env.OD_BUILD_UPDATED_AT);
+  if (
+    provenanceVersion == null
+    || provenanceVersion !== version
+    || sourceCommit == null
+    || !SOURCE_COMMIT_RE.test(sourceCommit)
+    || updatedAt == null
+    || !isValidProvenanceTimestamp(updatedAt)
+  ) {
+    return null;
+  }
+  return {
+    schemaVersion: 1,
+    version,
+    sourceCommit: sourceCommit.toLowerCase(),
+    updatedAt,
+  };
+}
+
 function inferReleaseChannelFromVersion(version: string): string | null {
   return releaseChannelFromVersion(version)
     ?? version.match(/^\d+\.\d+\.\d+-([0-9A-Za-z-]+)/)?.[1]?.split('.')[0]
@@ -122,7 +183,14 @@ export function resolveAppVersionInfo({
     ?? inferredChannel
     ?? (packaged ? 'stable' : 'development');
 
-  return { version, channel, packaged, platform, arch };
+  return {
+    version,
+    channel,
+    packaged,
+    platform,
+    arch,
+    provenance: resolveBuildProvenance(version, env),
+  };
 }
 
 async function readPackageMetadata(packageJsonUrl: URL): Promise<PackageMetadata | null> {

@@ -1,5 +1,17 @@
 # Roadmap
 
+- [~] **Show version-bound provenance before every front-screen action.** The
+      desktop shell now mounts a visible identity strip before tabs, routes,
+      settings, About, and onboarding authentication. The daemon and packaged
+      sidecars carry a validated source commit and externally supplied GitHub
+      run-start timestamp when available, while the documentation site renders its verified release tuple in the
+      visitor's local timezone with seconds and an explicit timezone label.
+      Missing, malformed, overflow-date, or version-mismatched provenance reports unavailable.
+      The initial onboarding producer also uses the Material Designer identity
+      in its title, action, and footer instead of upstream identity strings.
+      Focused source checks are added; hosted packaging and installed capture
+      evidence remain required before this item can be ticked.
+
 - [~] **Restore the unsigned Squirrel executable producer after hosted rcedit
       failure.** Release `32831335767` failed at `rcedit-x64.exe` with `Fatal
       error: Unable to commit changes`; it was not an Authenticode signing
