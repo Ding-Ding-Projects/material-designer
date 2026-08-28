@@ -1952,20 +1952,20 @@ installed build.
       outline, shadow, glow, character and word spacing, line height, baseline
       offset, direction and alignment. Unsupported properties stay visible with
       a capability explanation rather than silently dropping a saved value.
-      Every element now has a source-level target registry, pointer, keyboard
-      and touch context route, a bounded anchored non-modal editor, a layered
-      state model, and an explicit capability matrix in
-      `design/apps/web/src/components/appearance/`. The editor covers the
-      current Word-depth properties plus Photoshop-style layer, mask,
-      selection, blend, effect, transform, crop and state metadata. Built
-      artifact interaction, exhaustive target coverage, and per-click HuiShot
+      Every element now has a source-level target registry rooted at `App.tsx`,
+      observing body-owned portals, pointer, keyboard and touch context routes,
+      a bounded anchored non-modal editor, a layered state model, and an
+      explicit capability matrix in `design/apps/web/src/components/appearance/`.
+      Saved values are applied to real rendered targets as they mount. Built
+      artifact interaction, exhaustive target coverage, and per-click screenshot
       evidence remain open.
 - [~] **4.12 Named presets, export/import, and reset.** Saved themes
       exportable and importable as a file so a customised appearance survives a
       reinstall and can be shared, with per-element and global reset. The
-      current source lane adds per-element reset plus append-only undo/redo
-      snapshots; the existing global preset/reset path remains. Portable
-      per-element export/import and packaged proof remain open.
+      current source lane adds per-property, per-layer, per-state, per-element
+      and global reset, named presets, copy/paste style, bounded validated JSON
+      import/export, plus append-only undo/redo snapshots. Packaged proof
+      remains open.
 ### 4.0 The verification that never ran, and what it found
 
 The Phase 4 surfaces were written by agents that hit a session limit before

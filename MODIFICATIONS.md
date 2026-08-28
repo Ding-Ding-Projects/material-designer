@@ -43,6 +43,7 @@ does not claim runtime conformance.
 
 **Changed files:**
 
+- `apps/web/src/App.tsx`
 - `apps/web/src/components/appearance/AppearanceControls.tsx`
 - `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx`
 - `apps/web/src/components/appearance/ElementAppearanceEditor.module.css`

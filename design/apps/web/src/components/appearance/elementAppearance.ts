@@ -102,6 +102,20 @@ export interface AppearanceHistoryEntry {
   snapshot: ElementAppearance;
 }
 
+export interface ElementAppearanceExport {
+  schema: 'open-design.element-appearance';
+  version: 1;
+  targetId: string;
+  appearance: ElementAppearance;
+}
+
+export interface NamedAppearancePreset {
+  id: string;
+  name: string;
+  state: AppearanceStateStyle;
+  createdAt: string;
+}
+
 export interface AppearanceCapability {
   id: string;
   label: string;
@@ -136,11 +150,13 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
 
 const STORAGE_KEY = 'open-design:element-appearance:v1';
 const HISTORY_KEY = 'open-design:element-appearance-history:v1';
+const PRESETS_KEY = 'open-design:element-appearance-presets:v1';
 const MAX_TARGETS = 2000;
 const MAX_HISTORY = 200;
 const listeners = new Set<() => void>();
 let appearances: Record<string, ElementAppearance> | null = null;
 let history: AppearanceHistoryEntry[] | null = null;
+let copiedStyle: AppearanceStateStyle | null = null;
 
 function now(): string {
   return new Date().toISOString();
@@ -210,8 +226,41 @@ export function defaultElementAppearance(targetId: string): ElementAppearance {
   };
 }
 
+/** Apply the persisted state to the real DOM target, not only to the editor's
+ * local controls. Unsupported values remain in the snapshot, while supported
+ * values become renderer-visible properties immediately. */
+export function applyAppearanceStateToElement(element: HTMLElement | null, state: AppearanceStateStyle): void {
+  if (!element) return;
+  element.style.setProperty('--element-appearance-text', state.textColor);
+  element.style.setProperty('--element-appearance-highlight', state.highlightColor);
+  element.style.setProperty('--element-appearance-radius', `${state.borderRadius}px`);
+  element.style.setProperty('--element-appearance-elevation', String(state.elevation));
+  element.style.color = state.textColor;
+  element.style.fontFamily = state.fontFamily;
+  element.style.fontSize = `${state.fontSize}px`;
+  element.style.fontWeight = String(state.fontWeight);
+  element.style.fontStyle = state.italic ? 'italic' : 'normal';
+  element.style.textDecorationLine = [
+    state.underline !== 'none' ? 'underline' : '',
+    state.strike !== 'none' ? 'line-through' : '',
+    state.overline ? 'overline' : '',
+  ].filter(Boolean).join(' ') || 'none';
+  element.style.textTransform = state.capitalization === 'none' ? 'none' : state.capitalization;
+  element.style.letterSpacing = `${state.letterSpacing}em`;
+  element.style.wordSpacing = `${state.wordSpacing}em`;
+  element.style.lineHeight = String(state.lineHeight);
+  element.style.borderRadius = `${state.borderRadius}px`;
+  element.style.boxShadow = state.elevation > 0 ? `0 ${state.elevation}px ${state.elevation * 2}px rgb(0 0 0 / 18%)` : '';
+  element.dir = state.textDirection === 'auto' ? '' : state.textDirection;
+  element.style.textAlign = state.alignment === 'start' ? '' : state.alignment;
+}
+
 function cloneAppearance(value: ElementAppearance): ElementAppearance {
   return JSON.parse(JSON.stringify(value)) as ElementAppearance;
+}
+
+function cloneStyle(value: AppearanceStateStyle): AppearanceStateStyle {
+  return JSON.parse(JSON.stringify(value)) as AppearanceStateStyle;
 }
 
 function notify(): void {
@@ -277,6 +326,111 @@ export function setElementAppearance(targetId: string, next: ElementAppearance, 
 
 export function resetElementAppearance(targetId: string): void {
   setElementAppearance(targetId, defaultElementAppearance(targetId), 'Reset appearance');
+}
+
+export function resetAppearanceProperty(targetId: string, state: AppearanceState, property: keyof AppearanceStateStyle): void {
+  const current = getElementAppearance(targetId);
+  const defaults = defaultAppearanceStyle();
+  current.states[state] = { ...current.states[state], [property]: defaults[property] };
+  setElementAppearance(targetId, current, `Reset ${String(property)}`);
+}
+
+export function resetAppearanceState(targetId: string, state: AppearanceState): void {
+  const current = getElementAppearance(targetId);
+  current.states[state] = cloneAppearance(defaultElementAppearance(targetId)).states[state];
+  setElementAppearance(targetId, current, `Reset ${state} state`);
+}
+
+export function resetAllElementAppearances(targetIds: readonly string[]): void {
+  targetIds.forEach((targetId) => resetElementAppearance(targetId));
+}
+
+export function copyAppearanceStyle(targetId: string, state: AppearanceState): void {
+  copiedStyle = cloneStyle(getElementAppearance(targetId).states[state]);
+}
+
+export function pasteAppearanceStyle(targetId: string, state: AppearanceState): boolean {
+  if (!copiedStyle) return false;
+  const current = getElementAppearance(targetId);
+  current.states[state] = cloneStyle(copiedStyle);
+  setElementAppearance(targetId, current, 'Pasted appearance style');
+  return true;
+}
+
+export function serializeElementAppearance(targetId: string): string {
+  const payload: ElementAppearanceExport = {
+    schema: 'open-design.element-appearance',
+    version: 1,
+    targetId,
+    appearance: getElementAppearance(targetId),
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+export function parseElementAppearanceExport(value: unknown): ElementAppearanceExport | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<ElementAppearanceExport>;
+  if (raw.schema !== 'open-design.element-appearance' || raw.version !== 1 || typeof raw.targetId !== 'string' || raw.targetId.length > 200 || !raw.appearance || typeof raw.appearance !== 'object') return null;
+  const appearance = raw.appearance as ElementAppearance;
+  if (appearance.targetId !== raw.targetId || !appearance.states || typeof appearance.states !== 'object') return null;
+  if (!APPEARANCE_STATES.every((state) => {
+    const value = appearance.states[state];
+    return Boolean(value && typeof value === 'object' && Array.isArray(value.layers) && value.layers.length <= 200);
+  })) return null;
+  if (!APPEARANCE_STATES.includes(appearance.activeState) || typeof appearance.zoom !== 'number' || !Number.isFinite(appearance.zoom) || appearance.zoom < 0.25 || appearance.zoom > 4) return null;
+  if (JSON.stringify(appearance).length > 500_000) return null;
+  const normalized = defaultElementAppearance(raw.targetId);
+  return {
+    schema: 'open-design.element-appearance',
+    version: 1,
+    targetId: raw.targetId,
+    appearance: {
+      ...normalized,
+      ...appearance,
+      targetId: raw.targetId,
+      states: { ...normalized.states, ...appearance.states },
+    },
+  };
+}
+
+export function importElementAppearance(value: unknown, targetId: string): boolean {
+  const parsed = parseElementAppearanceExport(value);
+  if (!parsed) return false;
+  setElementAppearance(targetId, { ...parsed.appearance, targetId }, 'Imported appearance');
+  return true;
+}
+
+export function readNamedAppearancePresets(): readonly NamedAppearancePreset[] {
+  const value = readJson<unknown>(PRESETS_KEY, []);
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is NamedAppearancePreset => Boolean(
+    item && typeof item === 'object'
+    && typeof (item as NamedAppearancePreset).id === 'string'
+    && typeof (item as NamedAppearancePreset).name === 'string'
+    && (item as NamedAppearancePreset).name.length <= 120
+    && (item as NamedAppearancePreset).state
+    && typeof (item as NamedAppearancePreset).state === 'object',
+  )).slice(-100);
+}
+
+export function saveNamedAppearancePreset(name: string, targetId: string, state: AppearanceState): NamedAppearancePreset | null {
+  const trimmed = name.trim().slice(0, 120);
+  if (!trimmed) return null;
+  const preset: NamedAppearancePreset = { id: `preset-${Date.now()}`, name: trimmed, state: cloneStyle(getElementAppearance(targetId).states[state]), createdAt: now() };
+  const presets = [...readNamedAppearancePresets(), preset].slice(-100);
+  if (typeof window !== 'undefined') {
+    try { window.localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* keep the live style when storage is unavailable */ }
+  }
+  return preset;
+}
+
+export function applyNamedAppearancePreset(targetId: string, state: AppearanceState, presetId: string): boolean {
+  const preset = readNamedAppearancePresets().find((candidate) => candidate.id === presetId);
+  if (!preset) return false;
+  const current = getElementAppearance(targetId);
+  current.states[state] = cloneStyle(preset.state);
+  setElementAppearance(targetId, current, `Applied preset ${preset.name}`);
+  return true;
 }
 
 export function readElementAppearanceHistory(): readonly AppearanceHistoryEntry[] {

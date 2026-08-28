@@ -162,12 +162,12 @@ is bound to.
 | Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
 | Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
 | Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
-| Per-element **Edit appearance…** | **Partial source implementation at the current lane.** `ElementAppearanceBoundary` registers every rendered descendant and opens a target-specific menu through pointer, Shift+F10/Context Menu, and touch long-press paths. `ElementAppearanceEditor` is a bounded anchored non-modal editor. Built-artifact interaction and per-action capture evidence remain unverified. |
+| Per-element **Edit appearance…** | **Partial source implementation at the current lane.** `ElementAppearanceBoundary` now wraps the Windows desktop renderer root, observes body-owned portals, registers every rendered descendant including dialogs, menus, notifications, and the editor itself, and opens a target-specific menu through pointer, Shift+F10/Context Menu, and touch long-press paths. `ElementAppearanceEditor` is a bounded anchored non-modal editor. Built-artifact interaction and per-action capture evidence remain unverified. |
 | Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
 | Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
 | Word-depth typography editor | **Partial source implementation.** Global controls cover the existing supported properties, while the per-element editor adds family preview choices, size, weight, line height, colors, underline, strike, overline, capitalization, direction, alignment and spacing. Unsupported variable-font axes stay visible with an exact reason. Hosted and packaged evidence remain open. |
 | Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
-| Per-element and global reset | **Partial source implementation.** The per-element editor records reset, undo and redo snapshots in an append-only local history and the existing global reset remains available. Cross-restart and packaged proof remain open. |
+| Per-element and global reset | **Partial source implementation.** The per-element editor records per-property, per-layer, per-state, per-element, and global reset operations, undo and redo snapshots in an append-only local history. Cross-restart and packaged proof remain open. |
 | Search bar on every appearance control | **Partial.** Each target context menu and the property inspector own an independent `RegexSearchField`; the editor's capability matrix is filtered through that field. The full application-wide search inventory and built interaction remain open. |
 | Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
 | Settings route and panel ownership | **Source implemented.** Appearance is the typed settings sub-route; Workspace, Orbit and Routines are real SettingsDialog tabs with labelled panels. Workspace is removed from the strip and palette when its permission snapshot is not authorized, while Library remains owned by the entry route. |
@@ -189,7 +189,7 @@ dragged, validation, loading, success, warning and error.
 
 | Contract area | Source owner | Persistence and history | Accessibility and evidence |
 | --- | --- | --- | --- |
-| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, and touch long-press routes resolve one exact target. Built-artifact drive and per-click HuiShot receipts remain pending. |
+| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, and touch long-press routes resolve one exact target. Built-artifact drive and per-click screenshot receipts remain pending. |
 | Layered workspace | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Ordered layers and groups, visibility, lock, duplicate, rename, reorder, opacity, blend mode, fill, stroke, effects and geometry are stored per target and state | Keyboard-focusable controls, live status, bounded scroll panel. Runtime and display-scale evidence remain pending. |
 | Image editing | `ElementAppearanceEditor.tsx` | Selections, channels, masks, adjustment metadata, smart embedded content, crop/focal/safe-area values, filters, paths and warp metadata are retained in the state snapshot | Unsupported capability entries remain visible with an exact reason. Actual renderer fidelity and packaged evidence are not claimed. |
 | Word-depth typography | `ElementAppearanceEditor.tsx` | Family, size, weight, style, text effects, color, highlight, spacing, line height, baseline, direction and alignment are stored per state | Installed-family choices are rendered as previews; variable axes remain visible as unavailable where the renderer lacks the API. |
@@ -199,7 +199,7 @@ dragged, validation, loading, success, warning and error.
 
 This matrix is a source implementation record, not a conformance claim. The
 application still needs a fresh built package, exhaustive interaction ledger,
-per-click HuiShot set, and a red-then-green completeness run before any row can
+per-click screenshot set, and a red-then-green completeness run before any row can
 be called verified.
 
 ### What the documentation site implements

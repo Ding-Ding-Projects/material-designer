@@ -81,6 +81,7 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
+import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -845,10 +846,12 @@ export function App() {
   // it they keep springing/sliding for users who asked us not to animate.
   return (
     <MotionConfig reducedMotion="user">
-      <IframeKeepAliveProvider>
-        <WorkspaceMemberDirectoryPreloader />
-        <AppInner />
-      </IframeKeepAliveProvider>
+      <ElementAppearanceBoundary>
+        <IframeKeepAliveProvider>
+          <WorkspaceMemberDirectoryPreloader />
+          <AppInner />
+        </IframeKeepAliveProvider>
+      </ElementAppearanceBoundary>
     </MotionConfig>
   );
 }

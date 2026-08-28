@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
-import { useAppearanceRegistry, type AppearanceTarget } from './elementAppearance';
+import { applyAppearanceStateToElement, getElementAppearance, resetAllElementAppearances, useAppearanceRegistry, type AppearanceTarget } from './elementAppearance';
 
 interface ElementAppearanceBoundaryProps {
   children: ReactNode;
@@ -18,10 +18,10 @@ interface MenuPosition {
   left: number;
 }
 
-function targetIdFor(element: HTMLElement, index: number): string {
+function targetBaseFor(element: HTMLElement, index: number): string {
   const stable = element.dataset.testid || element.id || element.getAttribute('aria-label');
-  if (stable) return `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}:${index}`;
-  return `appearance:${element.tagName.toLowerCase()}:${index}`;
+  if (stable) return `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  return `appearance:${element.tagName.toLowerCase()}`;
 }
 
 function labelFor(element: HTMLElement, index: number): string {
@@ -31,9 +31,9 @@ function labelFor(element: HTMLElement, index: number): string {
     || `${element.tagName.toLowerCase()} ${index + 1}`;
 }
 
-function buildTarget(element: HTMLElement, index: number): AppearanceTarget {
+function buildTarget(element: HTMLElement, index: number, id: string): AppearanceTarget {
   return {
-    id: targetIdFor(element, index),
+    id,
     label: labelFor(element, index),
     role: element.getAttribute('role') || element.tagName.toLowerCase(),
     path: element.dataset.testid ? `[data-testid="${element.dataset.testid}"]` : element.id ? `#${element.id}` : element.tagName.toLowerCase(),
@@ -57,6 +57,8 @@ function clampMenuPosition(position: MenuPosition): MenuPosition {
  */
 export function ElementAppearanceBoundary({ children, onLockElement }: ElementAppearanceBoundaryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const elementIdsRef = useRef(new WeakMap<HTMLElement, string>());
+  const nextIdByBaseRef = useRef(new Map<string, number>());
   const pressTimerRef = useRef<number | null>(null);
   const { register, unregister, targets, get } = useAppearanceRegistry();
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
@@ -69,13 +71,23 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
   const scan = useCallback(() => {
     const root = rootRef.current;
     if (!root) return;
-    const elements = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+    const observationRoot = typeof document !== 'undefined' ? document.body : root;
+    const elements = [root, ...Array.from(observationRoot.querySelectorAll<HTMLElement>('*')).filter((element) => element !== root)];
     const live = new Set<string>();
     elements.forEach((element, index) => {
-      if (element.closest('[data-appearance-editor]')) return;
-      const target = buildTarget(element, index);
+      let id = elementIdsRef.current.get(element);
+      if (!id) {
+        const base = targetBaseFor(element, index);
+        const next = nextIdByBaseRef.current.get(base) ?? 0;
+        nextIdByBaseRef.current.set(base, next + 1);
+        id = `${base}:${next}`;
+        elementIdsRef.current.set(element, id);
+      }
+      const target = buildTarget(element, index, id);
       live.add(target.id);
       register(target);
+      const saved = getElementAppearance(target.id);
+      applyAppearanceStateToElement(element, saved.states[saved.activeState]);
     });
     targets.forEach((target) => {
       if (!live.has(target.id)) unregister(target.id);
@@ -87,7 +99,7 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     const root = rootRef.current;
     if (!root || typeof MutationObserver === 'undefined') return;
     const observer = new MutationObserver(scan);
-    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'aria-label', 'data-testid', 'title'] });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'aria-label', 'data-testid', 'title'] });
     return () => observer.disconnect();
   }, [scan]);
 
@@ -139,11 +151,54 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     pressTimerRef.current = null;
   }, []);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onNativeContextMenu = (event: MouseEvent) => {
+      const target = resolveEventTarget(event.target);
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openMenu(target, { top: event.clientY, left: event.clientX });
+    };
+    const onNativeKeyDown = (event: KeyboardEvent) => {
+      if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return;
+      const target = resolveEventTarget(document.activeElement);
+      if (!target) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const rect = target.element?.getBoundingClientRect();
+      openMenu(target, { top: rect?.bottom ?? 80, left: rect?.left ?? 80 });
+    };
+    const onNativePointerDown = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch') return;
+      const target = resolveEventTarget(event.target);
+      if (!target) return;
+      if (pressTimerRef.current !== null) window.clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = window.setTimeout(() => {
+        const rect = target.element?.getBoundingClientRect();
+        openMenu(target, { top: rect?.bottom ?? event.clientY, left: rect?.left ?? event.clientX });
+      }, 550);
+    };
+    document.addEventListener('contextmenu', onNativeContextMenu, true);
+    document.addEventListener('keydown', onNativeKeyDown, true);
+    document.addEventListener('pointerdown', onNativePointerDown, true);
+    document.addEventListener('pointerup', cancelLongPress, true);
+    document.addEventListener('pointercancel', cancelLongPress, true);
+    return () => {
+      document.removeEventListener('contextmenu', onNativeContextMenu, true);
+      document.removeEventListener('keydown', onNativeKeyDown, true);
+      document.removeEventListener('pointerdown', onNativePointerDown, true);
+      document.removeEventListener('pointerup', cancelLongPress, true);
+      document.removeEventListener('pointercancel', cancelLongPress, true);
+    };
+  }, [cancelLongPress, openMenu, resolveEventTarget]);
+
   const visibleActions = useMemo(() => [
     { id: 'edit', label: 'Edit appearance…', available: true },
     { id: 'lock', label: 'Lock this element…', available: Boolean(onLockElement) },
+    { id: 'reset-all', label: 'Reset all appearance…', available: targets.length > 0 },
     { id: 'close', label: 'Close menu', available: true },
-  ].filter((action) => menuSearch.matches(action.label)), [menuSearch, onLockElement]);
+  ].filter((action) => menuSearch.matches(action.label)), [menuSearch, onLockElement, targets.length]);
 
   const closeMenu = () => {
     setMenuPosition(null);
@@ -187,6 +242,13 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
                   setMenuPosition(null);
                 } else if (action.id === 'lock' && onLockElement) {
                   onLockElement(activeTarget);
+                  closeMenu();
+                } else if (action.id === 'reset-all') {
+                  resetAllElementAppearances(targets.map((target) => target.id));
+                  targets.forEach((target) => {
+                    const reset = getElementAppearance(target.id);
+                    applyAppearanceStateToElement(target.element, reset.states[reset.activeState]);
+                  });
                   closeMenu();
                 } else {
                   closeMenu();

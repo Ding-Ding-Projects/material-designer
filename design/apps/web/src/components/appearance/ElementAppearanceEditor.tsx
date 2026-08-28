@@ -9,7 +9,18 @@ import {
   APPEARANCE_STATES,
   defaultElementAppearance,
   getElementAppearance,
+  applyAppearanceStateToElement,
+  copyAppearanceStyle,
   resetElementAppearance,
+  resetAppearanceProperty,
+  resetAppearanceState,
+  pasteAppearanceStyle,
+  serializeElementAppearance,
+  parseElementAppearanceExport,
+  importElementAppearance,
+  applyNamedAppearancePreset,
+  readNamedAppearancePresets,
+  saveNamedAppearancePreset,
   setElementAppearance,
   undoElementAppearance,
   redoElementAppearance,
@@ -63,40 +74,8 @@ function panelPosition(target: HTMLElement | null): CSSProperties {
   return { left, top, width };
 }
 
-function applyStateToTarget(target: AppearanceTarget, state: AppearanceStateStyle): void {
-  const element = target.element;
-  if (!element) return;
-  element.style.setProperty('--element-appearance-text', state.textColor);
-  element.style.setProperty('--element-appearance-highlight', state.highlightColor);
-  element.style.setProperty('--element-appearance-radius', `${state.borderRadius}px`);
-  element.style.setProperty('--element-appearance-elevation', String(state.elevation));
-  element.style.color = state.textColor;
-  element.style.fontFamily = state.fontFamily;
-  element.style.fontSize = `${state.fontSize}px`;
-  element.style.fontWeight = String(state.fontWeight);
-  element.style.fontStyle = state.italic ? 'italic' : 'normal';
-  element.style.textDecorationLine = [
-    state.underline !== 'none' ? 'underline' : '',
-    state.strike !== 'none' ? 'line-through' : '',
-    state.overline ? 'overline' : '',
-  ].filter(Boolean).join(' ') || 'none';
-  element.style.textTransform = state.capitalization === 'none' ? 'none' : state.capitalization;
-  element.style.letterSpacing = `${state.letterSpacing}em`;
-  element.style.wordSpacing = `${state.wordSpacing}em`;
-  element.style.lineHeight = String(state.lineHeight);
-  element.style.borderRadius = `${state.borderRadius}px`;
-  element.style.boxShadow = state.elevation > 0 ? `0 ${state.elevation}px ${state.elevation * 2}px rgb(0 0 0 / 18%)` : '';
-  element.dir = state.textDirection === 'auto' ? '' : state.textDirection;
-  element.style.textAlign = state.alignment === 'start' ? '' : state.alignment;
-  element.dataset.elementAppearanceState = target.id;
-}
-
 function layerCopy(layer: AppearanceLayer): AppearanceLayer {
   return { ...layer, effects: [...layer.effects], transform: { ...layer.transform } };
-}
-
-function cloneState(state: AppearanceStateStyle): AppearanceStateStyle {
-  return { ...state, layers: state.layers.map(layerCopy), selections: state.selections.map((selection) => ({ ...selection, bounds: { ...selection.bounds } })), channels: [...state.channels], masks: [...state.masks], overrides: { ...state.overrides } };
 }
 
 export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEditorProps) {
@@ -104,13 +83,16 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
   const [selectedLayerId, setSelectedLayerId] = useState('base');
   const [position, setPosition] = useState<CSSProperties>(() => panelPosition(target.element));
   const [status, setStatus] = useState('');
+  const [presetName, setPresetName] = useState('');
+  const [presets, setPresets] = useState(() => [...readNamedAppearancePresets()]);
+  const importRef = useRef<HTMLInputElement | null>(null);
   const [propertyQuery, setPropertyQuery] = useState('');
   const propertySearch = useRegexSearch(propertyQuery, setPropertyQuery);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const currentState = appearance.states[appearance.activeState];
 
   useEffect(() => {
-    applyStateToTarget(target, currentState);
+    applyAppearanceStateToElement(target.element, currentState);
   }, [currentState, target]);
 
   useEffect(() => {
@@ -194,8 +176,79 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
     const next = defaultElementAppearance(target.id);
     setAppearance(next);
     resetElementAppearance(target.id);
-    applyStateToTarget(target, next.states[next.activeState]);
+    applyAppearanceStateToElement(target.element, next.states[next.activeState]);
     setStatus('Reset appearance recorded');
+  };
+
+  const resetProperty = (property: keyof AppearanceStateStyle) => {
+    resetAppearanceProperty(target.id, appearance.activeState, property);
+    const next = getElementAppearance(target.id);
+    setAppearance(next);
+    applyAppearanceStateToElement(target.element, next.states[next.activeState]);
+    setStatus(`Reset ${String(property)} recorded`);
+  };
+
+  const resetState = () => {
+    resetAppearanceState(target.id, appearance.activeState);
+    const next = getElementAppearance(target.id);
+    setAppearance(next);
+    applyAppearanceStateToElement(target.element, next.states[next.activeState]);
+    setStatus(`Reset ${appearance.activeState} state recorded`);
+  };
+
+  const exportAppearance = () => {
+    const blob = new Blob([serializeElementAppearance(target.id)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${target.id.replace(/[^a-zA-Z0-9_-]/g, '_')}-appearance.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setStatus('Appearance export prepared');
+  };
+
+  const importAppearance = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || file.size > 500_000) {
+      setStatus('Appearance import refused: file exceeds the 500000 byte limit');
+      return;
+    }
+    try {
+      const parsed = parseElementAppearanceExport(JSON.parse(await file.text()));
+      if (!parsed || !importElementAppearance(parsed, target.id)) {
+        setStatus('Appearance import refused: unsupported or malformed schema');
+        return;
+      }
+      const next = getElementAppearance(target.id);
+      setAppearance(next);
+      applyAppearanceStateToElement(target.element, next.states[next.activeState]);
+      setStatus('Appearance imported and applied');
+    } catch {
+      setStatus('Appearance import refused: malformed JSON');
+    }
+  };
+
+  const savePreset = () => {
+    const saved = saveNamedAppearancePreset(presetName, target.id, appearance.activeState);
+    if (!saved) {
+      setStatus('Preset name is required');
+      return;
+    }
+    setPresets([...readNamedAppearancePresets()]);
+    setPresetName('');
+    setStatus(`Saved preset ${saved.name}`);
+  };
+
+  const applyPreset = (presetId: string) => {
+    if (!applyNamedAppearancePreset(target.id, appearance.activeState, presetId)) {
+      setStatus('Preset could not be applied');
+      return;
+    }
+    const next = getElementAppearance(target.id);
+    setAppearance(next);
+    applyAppearanceStateToElement(target.element, next.states[next.activeState]);
+    setStatus('Preset applied and recorded');
   };
 
   const undo = () => {
@@ -228,6 +281,18 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
         <button type="button" onClick={undo} disabled={readOnlyDisabled(appearance)} title="Undo the latest appearance change">Undo</button>
         <button type="button" onClick={redo} title="Redo the latest appearance change">Redo</button>
         <button type="button" onClick={reset}>Reset this element</button>
+        <button type="button" onClick={resetState}>Reset this state</button>
+        <button type="button" onClick={() => { copyAppearanceStyle(target.id, appearance.activeState); setStatus('Style copied'); }}>Copy style</button>
+        <button type="button" onClick={() => { if (pasteAppearanceStyle(target.id, appearance.activeState)) { const next = getElementAppearance(target.id); setAppearance(next); setStatus('Style pasted and applied'); } else setStatus('Nothing to paste'); }}>Paste style</button>
+        <button type="button" onClick={exportAppearance}>Export appearance</button>
+        <button type="button" onClick={() => importRef.current?.click()}>Import appearance</button>
+        <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(event) => { void importAppearance(event); }} aria-label="Import appearance JSON" />
+        <input type="text" value={presetName} onChange={(event) => setPresetName(event.target.value)} placeholder="Preset name" aria-label="Preset name" maxLength={120} />
+        <button type="button" onClick={savePreset}>Save named preset</button>
+        <select aria-label="Apply named preset" value="" onChange={(event) => { if (event.target.value) applyPreset(event.target.value); }}>
+          <option value="">Apply preset…</option>
+          {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+        </select>
         <button type="button" onClick={() => update({ rulers: !appearance.rulers }, 'Changed rulers')}>{appearance.rulers ? 'Hide rulers' : 'Show rulers'}</button>
         <button type="button" onClick={() => update({ guides: !appearance.guides }, 'Changed guides')}>{appearance.guides ? 'Hide guides' : 'Show guides'}</button>
         <label>Zoom <input type="range" min="0.25" max="4" step="0.25" value={appearance.zoom} onChange={(event) => update({ zoom: Number(event.target.value) }, 'Changed zoom')} aria-label="Preview zoom" /></label>
@@ -268,10 +333,10 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
           <section className={styles.section}>
             <h3>Word-depth typography</h3>
             <div className={styles.form}>
-              <label className={styles.field}><span>Font family</span><select value={currentState.fontFamily} onChange={(event) => setString('fontFamily', event)}>{FONT_FAMILIES.map((font) => <option key={font} value={font} style={{ fontFamily: font }}>{font}</option>)}</select></label>
-              <label className={styles.field}><span>Font size (px)</span><input type="number" min="6" max="160" value={currentState.fontSize} onChange={(event) => setNumber('fontSize', event)} /></label>
-              <label className={styles.field}><span>Weight</span><input type="number" min="100" max="900" step="100" value={currentState.fontWeight} onChange={(event) => setNumber('fontWeight', event)} /></label>
-              <label className={styles.field}><span>Line height</span><input type="number" min="0.5" max="4" step="0.05" value={currentState.lineHeight} onChange={(event) => setNumber('lineHeight', event)} /></label>
+              <label className={styles.field}><span>Font family</span><select value={currentState.fontFamily} onChange={(event) => setString('fontFamily', event)}>{FONT_FAMILIES.map((font) => <option key={font} value={font} style={{ fontFamily: font }}>{font}</option>)}</select><button type="button" onClick={() => resetProperty('fontFamily')}>Reset property</button></label>
+              <label className={styles.field}><span>Font size (px)</span><input type="number" min="6" max="160" value={currentState.fontSize} onChange={(event) => setNumber('fontSize', event)} /><button type="button" onClick={() => resetProperty('fontSize')}>Reset property</button></label>
+              <label className={styles.field}><span>Weight</span><input type="number" min="100" max="900" step="100" value={currentState.fontWeight} onChange={(event) => setNumber('fontWeight', event)} /><button type="button" onClick={() => resetProperty('fontWeight')}>Reset property</button></label>
+              <label className={styles.field}><span>Line height</span><input type="number" min="0.5" max="4" step="0.05" value={currentState.lineHeight} onChange={(event) => setNumber('lineHeight', event)} /><button type="button" onClick={() => resetProperty('lineHeight')}>Reset property</button></label>
               <label className={styles.field}><span>Text color</span><input type="text" value={currentState.textColor} onChange={(event) => setString('textColor', event)} /><input className={styles.swatch} type="color" value={toColorInput(currentState.textColor)} onChange={(event) => setString('textColor', event)} aria-label="Text color picker" /></label>
               <label className={styles.field}><span>Highlight color</span><input type="text" value={currentState.highlightColor} onChange={(event) => setString('highlightColor', event)} /><input className={styles.swatch} type="color" value={toColorInput(currentState.highlightColor)} onChange={(event) => setString('highlightColor', event)} aria-label="Highlight color picker" /></label>
               <label className={styles.field}><span>Letter spacing (em)</span><input type="number" min="-1" max="2" step="0.01" value={currentState.letterSpacing} onChange={(event) => setNumber('letterSpacing', event)} /></label>

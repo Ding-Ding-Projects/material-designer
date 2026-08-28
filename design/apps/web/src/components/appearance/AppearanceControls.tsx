@@ -56,7 +56,6 @@ import {
   type UnsupportedReason,
 } from './typography';
 import styles from './AppearanceControls.module.css';
-import { ElementAppearanceBoundary } from './ElementAppearanceBoundary';
 
 /**
  * The `primary` role each seed resolves to in the LIGHT palette, copied
@@ -114,7 +113,6 @@ export function AppearanceControls() {
   const scalePercent = Math.round(preferences.uiScale * 100);
 
   return (
-    <ElementAppearanceBoundary>
     <div className={styles.cards}>
       {/* ---- Seed ---------------------------------------------------- */}
       <section className={styles.card} data-od-setting="appearance.seed">
@@ -418,6 +416,5 @@ export function AppearanceControls() {
         </Button>
       </div>
     </div>
-    </ElementAppearanceBoundary>
   );
 }

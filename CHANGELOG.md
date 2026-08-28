@@ -45,6 +45,25 @@ version section when a release carries them.
 
 ### Changed
 
+- **Extend appearance targeting to the complete desktop renderer.** The
+  `ElementAppearanceBoundary` now wraps the application root, observes
+  body-owned portals, and applies saved state properties to real rendered
+  elements as they mount. The editor adds validated JSON import/export,
+  named presets, copy/paste style, per-property, per-state, per-element and
+  global reset routes, plus the existing append-only undo history. Source
+  target coverage is recorded in `.codex/verification/appearance/target-inventory.json`;
+  built interaction and capture evidence remain pending. The integration
+  commit link will be added when this lane lands on the default branch.
+
+  **廣東話進度：** Appearance target 而家由 desktop renderer root 一路睇到
+  body-owned portal，元素一出場就會套返真正保存嘅 state properties。Editor
+  加咗 validated JSON import/export、named preset、copy/paste style、逐項
+  property、state、element 同 global reset，append-only undo history 繼續守住
+  條尾。Source target coverage 已記喺
+  `.codex/verification/appearance/target-inventory.json`；built interaction
+  同 capture evidence 仲等緊，integrate 落 default branch 之後先補 validated
+  commit link。
+
 - **Add a source-level every-element appearance editor foundation.** The web
   appearance surface now registers rendered descendants as stable targets and
   provides target-specific context actions through pointer, keyboard and touch
