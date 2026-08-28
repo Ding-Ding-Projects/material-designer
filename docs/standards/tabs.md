@@ -1,13 +1,13 @@
 # Tabbed navigation
 
-**Status: partial in code.** The settings dialog now has a real 17-section tab
-strip with a viewport-bounded above/below overflow surface, local search and an
-anchored regex builder
-([`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58)); the initial geometry and onboarding repair is
-[`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621), followed by
-[`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) for stacking,
-builder focus scope, stale-anchor clamping and viewport-test isolation. Workspace tab grouping, reordering,
-pinning, the four discovery searches and the bulk-close actions remain open.
+**Status: source implementation restored in this lane, runtime verification open.**
+The settings dialog has a real section tab strip with a bounded overflow surface,
+local search and an anchored regex builder. The workspace tab bar now also mounts
+the persisted pinning and grouping model, four independent discovery searches,
+the bounded move-into-group picker, the group appearance editor, and the two
+reviewable bulk-close directions. This lane has not run a local package build,
+browser drive, or installed desktop capture, so those results remain explicitly
+unverified until the parent integration reaches the hosted Chuts.
 
 ## The requirement
 
@@ -112,22 +112,22 @@ longest.
 
 | Requirement | Status |
 | --- | --- |
-| Browser-style tab strip | **Designed, not built.** |
-| Per-tab close, add button, active-tab lift | Designed. |
-| Inline rename | Designed (double-click). |
-| Per-tab title styling | **Partially designed** — bold/italic/underline, one family button, one size button, two alignments, one colour. Far short of the typography depth the appearance standard requires. |
-| Overflow surface | **Absent from design and code.** Tabs are capped at a maximum width and would clip. |
-| Reordering | **Absent.** |
-| Pinning | **Absent.** |
-| Grouping | **Absent.** |
-| Search: current strip | **Absent.** |
-| Search: within a group | **Absent.** |
-| Search: for groups | **Absent.** |
-| Search: master across all windows | **Absent.** |
-| Close tabs containing text | **Absent.** |
-| Close tabs not containing text | **Absent.** |
-| Persistence of order, pins, groups, collapsed state | **Absent.** |
-| Tabs on the landing page and documentation site | **Absent.** |
+| Browser-style tab strip | **Source-mounted.** The live workspace bar renders tab roles, roving focus, and route-backed activation. |
+| Per-tab close, add button, active-tab lift | **Source-mounted.** Permanent Home remains protected, while project tabs expose close and activation. |
+| Inline rename | **Not applicable to route-owned tab titles.** Titles come from project and route authorities; group names have an inline rename field in the discovery surface. |
+| Per-tab title styling | **Delegated to the per-element appearance lane.** The tab integration exposes the appearance hook, while the shared editor owns the full property matrix. |
+| Overflow surface | **Source-mounted.** Pinned and active tabs remain reachable while the flowing strip overflows. |
+| Reordering | **Source-mounted.** Drag and keyboard movement share the same state update. |
+| Pinning | **Source-mounted.** Pin state and pin order persist in the tab payload and are exposed from the discovery surface. |
+| Grouping | **Source-mounted.** Groups retain name, colour, order, collapsed state and membership, including empty groups. |
+| Search: current strip | **Source-mounted.** Own `RegexSearchField` controller and anchored builder. |
+| Search: within a group | **Source-mounted.** Each group owns a separate search controller and anchored builder. |
+| Search: for groups | **Source-mounted.** Group names and labels are searched independently. |
+| Search: master across all windows | **Source-mounted.** The window registry publishes this window and merges other live windows without sharing field state. |
+| Close tabs containing text | **Source-mounted.** One bounded matcher creates the review plan. |
+| Close tabs not containing text | **Source-mounted.** It negates the same matcher, with no second predicate implementation. |
+| Persistence of order, pinned order, groups, collapsed state | **Source-mounted.** The versioned payload migrates older tab data and reconciles stale ids. |
+| Tabs on the landing page and documentation site | **Source-mounted for the documentation site.** The static site has its own tab strip; full hosted interaction evidence remains open. |
 
 <details>
 <summary><b>What the mockup does specify</b> — the strip's exact anatomy</summary>
