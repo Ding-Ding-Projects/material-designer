@@ -5278,6 +5278,7 @@ export const en: Dict = {
   'appearance.color.ratingFail': 'Fails',
   'appearance.color.compositedNote': 'measured after the transparency is composited over the background',
   'appearance.color.copyValue': 'Copy the {format} value',
+  'appearance.color.editValue': 'Edit the {format} value',
   'appearance.color.lossAlpha': 'drops alpha',
   'appearance.color.lossRounding': 'rounds',
   'appearance.color.lossNotCss': 'not CSS',

@@ -514,7 +514,15 @@ export function InfiniteColorPicker({
         {representations.map((representation) => (
           <li className={styles.translation} key={representation.id}>
             <span className={styles.translationLabel}>{representation.label}</span>
-            <code className={styles.translationValue}>{representation.value}</code>
+            <input
+              key={`${representation.id}:${representation.value}`}
+              className={styles.translationValue}
+              type="text"
+              defaultValue={representation.value}
+              aria-label={t('appearance.color.editValue', { format: representation.label })}
+              onBlur={(event) => commitEntry(event.currentTarget.value)}
+              spellCheck={false}
+            />
             {representation.loss.length > 0 ? (
               <span className={styles.lossBadges}>
                 {representation.loss.map((loss) => (

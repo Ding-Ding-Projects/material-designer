@@ -30,8 +30,10 @@ by packaging, updates, storage, or diagnostics.
 - Local persistence, replacement, reset, and a failure path that keeps the
   previously valid selection active. The application mirrors the validated
   presentation state through daemon `app-config.json`, so the existing local
-  append-only settings history captures logo changes without capturing source
-  paths or credentials.
+  Git-backed append-only settings history captures logo changes. The history
+  manager can browse, search, diff, restore, and label those settings commits;
+  restoring creates a new commit, while source bytes, source paths, and
+  credentials remain excluded.
 - Versioned appearance JSON export/import with unknown-schema refusal and a
   bounded local schedule editor that applies temporary presets in the local
   timezone without rewriting the base selection. Rules have labels, enabled

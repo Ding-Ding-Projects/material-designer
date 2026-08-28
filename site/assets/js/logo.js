@@ -349,17 +349,17 @@ export async function convert(file, options = {}) {
       } else {
         context.drawImage(bitmap, sx, sy, sw, sh, targetWidth * inset, targetHeight * inset, targetWidth * (1 - inset * 2), targetHeight * (1 - inset * 2));
       }
-      const blob = await new Promise((resolve, reject) => canvas.toBlob((candidate) => {
+      const blob = await withDeadline(new Promise((resolve, reject) => canvas.toBlob((candidate) => {
         if (!candidate || candidate.size > MAX_OUTPUT_BYTES) { reject(new Error(`Converted output exceeds ${MAX_OUTPUT_BYTES} bytes.`)); return; }
         resolve(candidate);
-      }, 'image/png'));
+      }, 'image/png')), 'Logo conversion exceeded the bounded time limit.');
       const roundTripPromise = createImageBitmap(blob);
       let roundTripTimer;
       const roundTrip = await Promise.race([roundTripPromise, new Promise((resolve, reject) => { roundTripTimer = window.setTimeout(() => reject(new Error('Generated logo validation exceeded the bounded time limit.')), MAX_DECODE_TIME_MS); })]).catch((error) => { if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer); void roundTripPromise.then((lateBitmap) => lateBitmap.close(), () => undefined); throw error; });
       if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer);
       if (roundTrip.width !== targetWidth || roundTrip.height !== targetHeight) { roundTrip.close(); throw new Error('The generated image failed decoder dimension roundtrip.'); }
       roundTrip.close();
-      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error('The converted image could not be read back.')); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob); });
+      const dataUrl = await withDeadline(new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error('The converted image could not be read back.')); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob); }), 'Generated logo read-back exceeded the bounded time limit.');
       const encoded = dataUrl.slice(dataUrl.indexOf(',') + 1);
       const outBytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
       const output = validateBytes(outBytes);
@@ -375,13 +375,19 @@ export async function convert(file, options = {}) {
   } finally { bitmap.close(); }
 }
 
+async function withDeadline(task, message) {
+  let timer;
+  try { return await Promise.race([task, new Promise((resolve, reject) => { timer = window.setTimeout(() => reject(new Error(message)), MAX_DECODE_TIME_MS); })]); }
+  finally { if (timer !== undefined) window.clearTimeout(timer); }
+}
+
 function readSourceDataUrl(file) {
-  return new Promise((resolve, reject) => {
+  return withDeadline(new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('The local source could not be retained safely.'));
     reader.onload = () => resolve(String(reader.result));
     reader.readAsDataURL(file);
-  });
+  }), 'Local source retention exceeded the bounded time limit.');
 }
 
 function hexToRgb(hex) {
@@ -482,7 +488,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
     try {
       const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
       const entries = Array.isArray(existing) ? existing.slice(-99) : [];
-      entries.push({ changedAt: Date.now(), presetId: current.presetId, customActive: Boolean(current.custom), fit: current.fit, background: current.background, safeArea: current.safeArea, scheduleCount: current.schedules.length });
+      entries.push({ changedAt: Date.now(), presetId: current.presetId, customActive: Boolean(current.custom), fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, scheduleCount: current.schedules.length, snapshot: { presetId: current.presetId, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel } });
       localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
     } catch { /* history is best effort and contains no image bytes */ }
   };
@@ -518,7 +524,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
       const query = host.querySelector('[data-logo-history-search]')?.value?.trim().toLowerCase() || '';
       const visibleHistory = entries.filter((entry) => { const text = `${entry.action || ''} ${entry.presetId || ''} ${entry.changedAt || ''}`; return historyMatcher ? historyMatcher(text) : !query || text.toLowerCase().includes(query); });
       if (!visibleHistory.length) { const empty = document.createElement('li'); empty.textContent = t('logo.historyEmpty', 'No logo changes recorded locally.'); historyList.appendChild(empty); }
-      else visibleHistory.slice().reverse().forEach((entry) => { const item = document.createElement('li'); item.textContent = `${new Date(entry.changedAt).toLocaleString()} · ${entry.action || 'updated'} · ${entry.presetId || 'custom'}`; historyList.appendChild(item); });
+      else visibleHistory.slice().reverse().forEach((entry) => { const item = document.createElement('li'); item.append(document.createTextNode(`${new Date(entry.changedAt).toLocaleString()} · ${entry.action || 'updated'} · ${entry.presetId || 'custom'} `)); if (entry.snapshot && typeof entry.snapshot === 'object') { const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'md-btn md-btn--text'; restore.textContent = t('logo.historyRestore', 'Restore settings'); restore.addEventListener('click', () => { current = normalizeState({ ...current, ...entry.snapshot }); render(); }); item.appendChild(restore); } historyList.appendChild(item); });
     }
     host.querySelectorAll('[data-logo-preset]').forEach((button) => {
       const active = !current.custom && button.dataset.logoPreset === current.presetId;
@@ -559,7 +565,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
     const focalXValue = host.querySelector('[data-logo-focal-x-value]'); if (focalXValue) focalXValue.textContent = `${Math.round(current.focalPoint.x * 100)}%`;
     const focalYValue = host.querySelector('[data-logo-focal-y-value]'); if (focalYValue) focalYValue.textContent = `${Math.round(current.focalPoint.y * 100)}%`;
     const safeArea = host.querySelector('[data-logo-safe-area]'); if (safeArea) safeArea.checked = current.safeArea;
-    host.querySelectorAll('[data-logo-crop]').forEach((field) => { const name = field.dataset.logoCrop; if (name && current.crop[name] != null) field.value = String(current.crop[name]); });
+    host.querySelectorAll('[data-logo-crop]').forEach((field) => { const name = field.dataset.logoCrop; if (name && current.crop[name] != null) { field.value = String(current.crop[name]); field.setAttribute('aria-label', t(`logo.crop${name[0].toUpperCase()}${name.slice(1)}`, name)); } });
     const stage = host.querySelector('[data-logo-stage]');
     const live = host.querySelector('[data-logo-live]');
     if (live) {

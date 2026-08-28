@@ -607,6 +607,22 @@ function finiteFraction(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+function decodePngDataUrl(value: unknown, maxBytes: number): Buffer | undefined {
+  if (typeof value !== 'string' || !value.startsWith('data:image/png;base64,')) return undefined;
+  const encoded = value.slice('data:image/png;base64,'.length);
+  if (!encoded || encoded.length > maxBytes * 2 || !/^[A-Za-z0-9+/]*={0,2}$/u.test(encoded)) return undefined;
+  try {
+    const bytes = Buffer.from(encoded, 'base64');
+    if (bytes.length < 33 || bytes.length > maxBytes
+      || bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47
+      || bytes[4] !== 0x0d || bytes[5] !== 0x0a || bytes[6] !== 0x1a || bytes[7] !== 0x0a
+      || bytes.subarray(12, 16).toString('ascii') !== 'IHDR') return undefined;
+    return bytes;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Keep the durable daemon copy schema-safe and bounded for settings history. */
 function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
@@ -653,8 +669,9 @@ function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefin
     if (!raw.custom || typeof raw.custom !== 'object' || Array.isArray(raw.custom)) return undefined;
     const custom = raw.custom as Record<string, unknown>;
     if (Object.keys(custom).some((key) => !APP_LOGO_CUSTOM_KEYS.has(key))) return undefined;
-    if (custom.mimeType !== 'image/png' || typeof custom.dataUrl !== 'string'
-      || !custom.dataUrl.startsWith('data:image/png;base64,') || custom.dataUrl.length > APP_LOGO_DATA_URL_MAX
+    const customBytes = decodePngDataUrl(custom.dataUrl, 2 * 1024 * 1024);
+    if (custom.mimeType !== 'image/png' || typeof custom.dataUrl !== 'string' || !customBytes
+      || custom.dataUrl.length > APP_LOGO_DATA_URL_MAX
       || typeof custom.byteLength !== 'number' || custom.byteLength < 1 || custom.byteLength > 2 * 1024 * 1024) return undefined;
     if (!Number.isInteger(custom.width) || !Number.isInteger(custom.height) || (custom.width as number) < 1 || (custom.height as number) < 1
       || (custom.width as number) > 4096 || (custom.height as number) > 4096
@@ -672,8 +689,8 @@ function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefin
         const candidate = variants[target];
         if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return undefined;
         const asset = candidate as Record<string, unknown>;
-        if (typeof asset.dataUrl !== 'string' || !asset.dataUrl.startsWith('data:image/png;base64,')
-          || asset.dataUrl.length > APP_LOGO_DATA_URL_MAX || typeof asset.byteLength !== 'number'
+        const variantBytes = decodePngDataUrl(asset.dataUrl, 2 * 1024 * 1024);
+        if (typeof asset.dataUrl !== 'string' || !variantBytes || asset.dataUrl.length > APP_LOGO_DATA_URL_MAX || typeof asset.byteLength !== 'number'
           || asset.byteLength < 1 || asset.byteLength > 2 * 1024 * 1024 || asset.frameCount !== 1
           || typeof asset.width !== 'number' || typeof asset.height !== 'number' || typeof asset.hasAlpha !== 'boolean'
           || asset.width !== APP_LOGO_VARIANT_DIMS[target][0] || asset.height !== APP_LOGO_VARIANT_DIMS[target][1]) return undefined;

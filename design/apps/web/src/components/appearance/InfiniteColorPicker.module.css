@@ -272,6 +272,12 @@
 }
 
 .translationValue {
+  min-width: 12rem;
+  min-height: 36px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--md-sys-shape-corner-xs);
+  background: var(--bg-panel);
   font-family: var(--mono);
   font-size: var(--md-sys-typescale-body-small-size);
   color: var(--text);

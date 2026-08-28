@@ -12,6 +12,7 @@ const siteIndex = readFileSync(resolve(__dirname, '../../../../site/index.html')
 const configState = readFileSync(resolve(sourceRoot, 'state/config.ts'), 'utf8');
 const palette = readFileSync(resolve(sourceRoot, 'components/command-palette/CommandPalette.tsx'), 'utf8');
 const settingsIndex = readFileSync(resolve(sourceRoot, 'components/command-palette/settingsIndex.ts'), 'utf8');
+const colorPicker = readFileSync(resolve(sourceRoot, 'components/appearance/InfiniteColorPicker.tsx'), 'utf8');
 
 describe('app-logo surface inventory', () => {
   it('keeps the hand-written feature surface and safe local routes present', () => {
@@ -30,6 +31,9 @@ describe('app-logo surface inventory', () => {
       'logoRenderFingerprint',
       'sourceDataUrl',
       'redactLogoStateForDaemon',
+      'sourceDataUrl',
+      'logoRenderFingerprint',
+      'data-logo-history-list',
       'scheduleWeekdays',
       'scheduleDelete',
       'rainbowSpeedLevel',
@@ -65,7 +69,7 @@ describe('app-logo surface inventory', () => {
   });
 
   it('keeps the Day Teet Hui binary and persistence boundaries wired', () => {
-    for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'createImageBitmap', 'roundTrip', 'data-logo-color-translations', 'installerPreviewOnly']) {
+    for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'MAX_AGGREGATE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'createImageBitmap', 'roundTrip', 'data-logo-color-translations', 'data-logo-history-list', 'installerPreviewOnly']) {
       expect(siteLogo).toContain(marker);
     }
     expect(siteIndex).toContain('data-logo-color-field');
@@ -74,5 +78,6 @@ describe('app-logo surface inventory', () => {
     expect(configState).toContain('appLogo: config.appLogo');
     expect(palette).toContain("case 'appearance.logo'");
     expect(settingsIndex).toContain("control: 'appearance.logo'");
+    expect(colorPicker).toContain("appearance.color.editValue");
   });
 });

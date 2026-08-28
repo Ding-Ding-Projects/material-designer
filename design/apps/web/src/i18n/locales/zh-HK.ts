@@ -1130,6 +1130,7 @@ export const zhHK: Dict = {
   "appearance.color.ratingFail": "唔合格",
   "appearance.color.compositedNote": "係將透明度疊落背景之後先量嘅",
   "appearance.color.copyValue": "抄低 {format} 值",
+  "appearance.color.editValue": "編輯 {format} 值",
   "appearance.color.lossAlpha": "冇咗透明度",
   "appearance.color.lossRounding": "有進位誤差",
   "appearance.color.lossNotCss": "唔係 CSS",

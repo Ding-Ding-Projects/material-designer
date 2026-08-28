@@ -5592,6 +5592,7 @@ export interface Dict {
   'appearance.color.ratingFail': string;
   'appearance.color.compositedNote': string;
   'appearance.color.copyValue': string;
+  'appearance.color.editValue': string;
   'appearance.color.lossAlpha': string;
   'appearance.color.lossRounding': string;
   'appearance.color.lossNotCss': string;

@@ -757,13 +757,24 @@ function dataUrlToByteLength(dataUrl: string): number {
   return Math.floor(encoded.replace(/=/g, '').length * 3 / 4);
 }
 
+async function withDecodeDeadline<T>(task: Promise<T>, message: string): Promise<T> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([task, new Promise<never>((_resolve, reject) => {
+      timer = window.setTimeout(() => reject(new Error(message)), MAX_LOGO_DECODE_TIME_MS);
+    })]);
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
+  return await withDecodeDeadline(new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('The local source could not be retained safely.'));
     reader.onload = () => resolve(String(reader.result));
     reader.readAsDataURL(file);
-  });
+  }), 'Local source retention exceeded the bounded time limit.');
 }
 
 export async function convertLogoFile(
@@ -853,7 +864,7 @@ export async function convertLogoFile(
     };
     draw(canvas.width, canvas.height);
     const renderPng = async (): Promise<LogoCustomAsset> => {
-      const blob = await new Promise<Blob>((resolve, reject) => {
+      const blob = await withDecodeDeadline(new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((blob) => {
         if (!blob || blob.size > MAX_LOGO_OUTPUT_BYTES) {
           reject(new Error(`The converted logo exceeds ${MAX_LOGO_OUTPUT_BYTES} bytes.`));
@@ -861,7 +872,7 @@ export async function convertLogoFile(
         }
         resolve(blob);
       }, 'image/png');
-      });
+      }), 'Logo conversion exceeded the bounded time limit.');
       const roundTripPromise = createImageBitmap(blob);
       let roundTripTimer: number | undefined;
       const roundTrip = await Promise.race([

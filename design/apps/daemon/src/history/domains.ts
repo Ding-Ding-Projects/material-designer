@@ -275,6 +275,7 @@ export function defaultHistoryDomains(): HistoryDomain[] {
       label: 'App settings',
       noun: 'setting',
       nounPlural: 'settings',
+      note: 'Includes presentation-only appLogo state, with private source bytes excluded from snapshots and exports.',
       sources: [
         {
           kind: 'file',
