@@ -30,23 +30,28 @@ function Get-Sha512Base64([string]$Path) {
 }
 
 function Download-Verified([object]$Spec, [string]$Destination) {
-  $download = "$Destination.download"
-  Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue
-  Write-Phase "Downloading $($Spec.id) $($Spec.version) from its canonical source"
-  Invoke-WebRequest -UseBasicParsing -Uri $Spec.url -OutFile $download -TimeoutSec 300
-  if ($Spec.sha256) {
-    $actual = Get-Sha256 $download
-    if ($actual -ne $Spec.sha256.ToLowerInvariant()) {
-      throw "SHA-256 mismatch for $($Spec.id) $($Spec.version): expected $($Spec.sha256), received $actual"
+  $download = "$Destination.download.$([Guid]::NewGuid().ToString('N'))"
+  $moved = $false
+  try {
+    Write-Phase "Downloading $($Spec.id) $($Spec.version) from its canonical source"
+    Invoke-WebRequest -UseBasicParsing -Uri $Spec.url -OutFile $download -TimeoutSec 300
+    if ($Spec.sha256) {
+      $actual = Get-Sha256 $download
+      if ($actual -ne $Spec.sha256.ToLowerInvariant()) {
+        throw "SHA-256 mismatch for $($Spec.id) $($Spec.version): expected $($Spec.sha256), received $actual"
+      }
     }
-  }
-  if ($Spec.sha512Base64) {
-    $actual = Get-Sha512Base64 $download
-    if ($actual -ne $Spec.sha512Base64) {
-      throw "SHA-512 integrity mismatch for $($Spec.id) $($Spec.version): expected $($Spec.sha512Base64), received $actual"
+    if ($Spec.sha512Base64) {
+      $actual = Get-Sha512Base64 $download
+      if ($actual -ne $Spec.sha512Base64) {
+        throw "SHA-512 integrity mismatch for $($Spec.id) $($Spec.version): expected $($Spec.sha512Base64), received $actual"
+      }
     }
+    Move-Item -LiteralPath $download -Destination $Destination -Force
+    $moved = $true
+  } finally {
+    if (-not $moved) { Remove-Item -LiteralPath $download -Force -ErrorAction SilentlyContinue }
   }
-  Move-Item -LiteralPath $download -Destination $Destination -Force
 }
 
 function Ensure-InteractiveElevation {
@@ -70,6 +75,71 @@ function Ensure-ExclusiveLock([string]$Path) {
     }
   }
   throw "timed out waiting for dependency bootstrap lock: $Path"
+}
+
+function Refresh-ProcessPath {
+  $machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+  $env:Path = "$machine;$user"
+}
+
+function Import-CompilerEnvironment([string]$VcvarsPath) {
+  if (-not (Test-Path -LiteralPath $VcvarsPath -PathType Leaf)) {
+    throw "the compiler environment script is missing: $VcvarsPath"
+  }
+  $output = & cmd.exe /d /s /c "`"$VcvarsPath`" >nul && set"
+  if ($LASTEXITCODE -ne 0) { throw "the compiler environment script failed with exit code $LASTEXITCODE" }
+  $environment = [ordered]@{}
+  $allowedEnvironmentNames = @(
+    'Path', 'INCLUDE', 'LIB', 'LIBPATH', 'VCToolsInstallDir', 'VCToolsVersion',
+    'VSINSTALLDIR', 'VisualStudioVersion', 'WindowsSdkDir', 'WindowsSDKVersion',
+    'UniversalCRTSdkDir', 'UCRTVersion', 'VSCMD_ARG_TGT_ARCH'
+  )
+  foreach ($line in $output) {
+    if ($line -match '^(?<name>[^=]+)=(?<value>.*)$') {
+      if ($allowedEnvironmentNames -contains $Matches.name) {
+        $environment[$Matches.name] = $Matches.value
+        [Environment]::SetEnvironmentVariable($Matches.name, $Matches.value, 'Process')
+      }
+    }
+  }
+  $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+  if ($null -eq $cl) { throw "the compiler environment script completed but cl.exe was not found: $VcvarsPath" }
+  return [ordered]@{ clPath = $cl.Source; environment = $environment; vcvarsPath = $VcvarsPath }
+}
+
+function Resolve-CompilerEnvironment {
+  $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+  if ($null -eq $cl) {
+    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if ($null -ne $winget) {
+      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the canonical Windows package catalog'
+      & $winget.Source install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override '--wait --norestart --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended'
+      if ($LASTEXITCODE -ne 0) { throw "Visual Studio 2022 workload installation failed with exit code $LASTEXITCODE" }
+      Refresh-ProcessPath
+      $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+    }
+  }
+  $vcvars = $null
+  $vswhere = Get-Command vswhere.exe -ErrorAction SilentlyContinue
+  if ($null -ne $vswhere) {
+    $install = (& $vswhere.Source -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null | Select-Object -First 1)
+    if ($install) { $vcvars = Join-Path $install 'VC\Auxiliary\Build\vcvars64.bat' }
+  }
+  if ([string]::IsNullOrWhiteSpace($vcvars)) {
+    $vcvars = @(
+      'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
+      'C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat',
+      'C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\vcvars64.bat'
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  }
+  if (-not [string]::IsNullOrWhiteSpace($vcvars)) {
+    return Import-CompilerEnvironment $vcvars
+  }
+  if ($null -ne $cl -and (Test-Path -LiteralPath $cl.Source -PathType Leaf)) {
+    return [ordered]@{ clPath = $cl.Source; environment = [ordered]@{}; vcvarsPath = $null }
+  }
+  throw 'MSVC cl.exe is unavailable after the canonical Visual Studio 2022 workload attempt; the native workspace build cannot continue'
 }
 
 Ensure-InteractiveElevation
@@ -168,17 +238,22 @@ try {
   if ($pythonVersion -ne "Python $($pythonSpec.version)") { throw "expected Python $($pythonSpec.version), found '$pythonVersion'" }
   $env:Path = "$pythonRoot;$env:Path"
 
-  if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
-    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if ($winget) {
-      Write-Phase 'Installing the missing Visual Studio 2022 C++ workload from the canonical Windows package catalog'
-      & $winget.Source install --id Microsoft.VisualStudio.2022.BuildTools --exact --scope user --silent --accept-source-agreements --accept-package-agreements --override '--wait --norestart --add Microsoft.VisualStudio.Workload.VCTools;includeRecommended'
-      if ($LASTEXITCODE -eq 0) { Write-Phase 'Visual Studio Build Tools installer completed; the next build resolves its compiler environment' }
+  $compiler = Resolve-CompilerEnvironment
+  $resolutionDir = Join-Path $repo '.yum-tong\build'
+  New-Item -ItemType Directory -Force -Path $resolutionDir | Out-Null
+  $resolution = [ordered]@{
+    schemaVersion = 1
+    manifestPath = [IO.Path]::GetFullPath($manifestPath)
+    manifestSha256 = Get-Sha256 $manifestPath
+    tools = [ordered]@{
+      git = [ordered]@{ archive = [IO.Path]::GetFullPath($gitArchive); executable = [IO.Path]::GetFullPath($gitExe); sha256 = $gitSpec.sha256; version = $gitSpec.version }
+      node = [ordered]@{ archive = [IO.Path]::GetFullPath($nodeArchive); executable = [IO.Path]::GetFullPath($nodeExe); sha256 = $nodeSpec.sha256; version = $nodeSpec.version }
+      pnpm = [ordered]@{ archive = [IO.Path]::GetFullPath($pnpmTarball); executable = [IO.Path]::GetFullPath($pnpmCmd); sha512Base64 = $pnpmSpec.sha512Base64; version = $pnpmSpec.version }
+      python = [ordered]@{ archive = [IO.Path]::GetFullPath($pythonArchive); executable = [IO.Path]::GetFullPath($pythonExe); sha256 = $pythonSpec.sha256; version = $pythonSpec.version }
     }
+    compiler = [ordered]@{ clPath = [IO.Path]::GetFullPath($compiler.clPath); environment = $compiler.environment; version = $manifest.compiler.version; vcvarsPath = $compiler.vcvarsPath }
   }
-  if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
-    throw 'MSVC cl.exe is unavailable after the canonical Visual Studio 2022 workload attempt; the native workspace build cannot continue'
-  }
+  $resolution | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $resolutionDir 'dependency-resolution.json') -Encoding utf8
   Write-Phase "Dependencies ready: Git $($gitSpec.version), Node $($nodeSpec.version), pnpm $($pnpmSpec.version), Python $($pythonSpec.version), and MSVC"
 } finally {
   if ($null -ne $lock) { $lock.Dispose() }

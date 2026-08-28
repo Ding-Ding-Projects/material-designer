@@ -51,6 +51,37 @@ export type UpdateCandidate = {
   version: string;
 };
 
+const MAX_METADATA_BYTES = 1024 * 1024;
+const MAX_CHECKSUM_BYTES = 64 * 1024;
+export const UPDATE_REQUEST_TIMEOUT_MS = 30_000;
+const TRUSTED_UPDATE_HOSTS = new Set([
+  "github.com",
+  "api.github.com",
+  "objects.githubusercontent.com",
+  "raw.githubusercontent.com",
+  "githubusercontent.com",
+  "ding-ding-projects.github.io",
+]);
+
+export function isAllowedUpdateUrl(value: string, allowCustomTransport = false): boolean {
+  try {
+    const url = new URL(value);
+    if (url.username.length > 0 || url.password.length > 0) return false;
+    if (url.protocol === "http:") {
+      if (url.port !== "" && url.port !== "80") return false;
+      return allowCustomTransport || url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "[::1]";
+    }
+    if (url.port !== "" && url.port !== "443") return false;
+    return url.protocol === "https:" && (
+      allowCustomTransport
+      || TRUSTED_UPDATE_HOSTS.has(url.hostname)
+      || url.hostname.endsWith(".githubusercontent.com")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function sanitizePathSegment(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "update";
 }
@@ -413,10 +444,45 @@ export function remoteRequiresReinstall(
   return null;
 }
 
-export async function fetchJson(fetchImpl: typeof globalThis.fetch, url: string): Promise<Record<string, unknown>> {
-  const response = await fetchImpl(url);
-  if (!response.ok) throw new Error(`metadata request returned HTTP ${response.status}`);
-  const body = await response.json();
+async function fetchTextBounded(
+  fetchImpl: typeof globalThis.fetch,
+  url: string,
+  maxBytes: number,
+  label: string,
+  signal?: AbortSignal,
+  allowCustomTransport = false,
+): Promise<string> {
+  if (!isAllowedUpdateUrl(url, allowCustomTransport)) throw new Error(`${label} URL host is not allowlisted`);
+  const controller = new AbortController();
+  const onAbort = () => controller.abort(signal?.reason);
+  signal?.addEventListener("abort", onAbort, { once: true });
+  const timeout = setTimeout(() => controller.abort(), UPDATE_REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`${label} request returned HTTP ${response.status}`);
+    const declaredBytes = response.headers.get("content-length");
+    if (declaredBytes != null && Number.isFinite(Number(declaredBytes)) && Number(declaredBytes) > maxBytes) {
+      throw new Error(`${label} response exceeded ${maxBytes} bytes`);
+    }
+    const text = await response.text();
+    if (Buffer.byteLength(text, "utf8") > maxBytes) throw new Error(`${label} response exceeded ${maxBytes} bytes`);
+    return text;
+  } catch (error) {
+    if (controller.signal.aborted && !signal?.aborted) throw new Error(`${label} request timed out`);
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+export async function fetchJson(
+  fetchImpl: typeof globalThis.fetch,
+  url: string,
+  options: { allowCustomTransport?: boolean; signal?: AbortSignal } = {},
+): Promise<Record<string, unknown>> {
+  const text = await fetchTextBounded(fetchImpl, url, MAX_METADATA_BYTES, "metadata", options.signal, options.allowCustomTransport);
+  const body: unknown = JSON.parse(text);
   if (!isRecord(body)) throw new Error("metadata response was not a JSON object");
   return body;
 }
@@ -446,14 +512,17 @@ export function parseChecksumText(text: string, algorithm: "sha256" | "sha512"):
   return match[0].toLowerCase();
 }
 
-export async function resolveChecksum(fetchImpl: typeof globalThis.fetch, checksum: DesktopUpdateChecksumSnapshot): Promise<DesktopUpdateChecksumSnapshot> {
+export async function resolveChecksum(
+  fetchImpl: typeof globalThis.fetch,
+  checksum: DesktopUpdateChecksumSnapshot,
+  options: { allowCustomTransport?: boolean; signal?: AbortSignal } = {},
+): Promise<DesktopUpdateChecksumSnapshot> {
   if (checksum.value != null) return checksum;
   if (checksum.url == null) throw new Error("artifact checksum is missing");
-  const response = await fetchImpl(checksum.url);
-  if (!response.ok) throw new Error(`checksum request returned HTTP ${response.status}`);
+  const text = await fetchTextBounded(fetchImpl, checksum.url, MAX_CHECKSUM_BYTES, "checksum", options.signal, options.allowCustomTransport);
   return {
     ...checksum,
-    value: parseChecksumText(await response.text(), checksum.algorithm),
+    value: parseChecksumText(text, checksum.algorithm),
   };
 }
 

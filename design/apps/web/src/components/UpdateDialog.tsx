@@ -13,6 +13,7 @@ import { useI18n } from '../i18n';
 import { openExternalUrl } from '../providers/registry';
 import {
   checkForUpdaterUpdate,
+  cancelUpdaterDownload,
   deriveUpdaterModel,
   downloadUpdaterUpdate,
   openUpdaterInstaller,
@@ -231,6 +232,21 @@ export function UpdateDialog() {
     }
   }, [applyStatus, source]);
 
+  const cancelDownload = useCallback(async () => {
+    if (actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const result = await cancelUpdaterDownload({ payload: { source } });
+      if (result.ok) applyStatus(result.status);
+      else setActionError(result.reason);
+    } catch (cancelError) {
+      setActionError(cancelError instanceof Error ? cancelError.message : String(cancelError));
+    } finally {
+      setActionBusy(false);
+    }
+  }, [actionBusy, applyStatus, source]);
+
   const installAndQuit = useCallback(async (force: boolean) => {
     setActionBusy(true);
     setActionError(null);
@@ -310,8 +326,8 @@ export function UpdateDialog() {
       page_name: 'app',
       ...versionProps,
     });
-    void openExternalUrl(RELEASES_URL);
-  }, [analytics.track, versionProps]);
+    void openExternalUrl(model.releaseNotesUrl ?? RELEASES_URL);
+  }, [analytics.track, model.releaseNotesUrl, versionProps]);
 
   if (!open) return null;
 
@@ -335,6 +351,15 @@ export function UpdateDialog() {
     }
     if (status?.error != null && restartSafetyFromUpdaterStatus(status) == null) {
       return state === 'error' ? t('updater.dialogCheckFailed') : t('settings.updateActionFailed');
+    }
+    if (ready && model.downloadProgress != null) {
+      const readyMessage = model.availableVersion == null
+        ? t('updater.dialogReadyGeneric')
+        : t('updater.dialogReadyVersion', { version: model.availableVersion });
+      const incomingMessage = progress == null
+        ? t('settings.updateStatusDownloading')
+        : t('settings.updateStatusDownloadingPercent', { percent: progress });
+      return `${readyMessage} ${incomingMessage}`;
     }
     // A forced installer reinstall reads differently from a routine update:
     // the same copy covers both the not-yet-downloaded and ready states.
@@ -418,8 +443,8 @@ export function UpdateDialog() {
         </div>
         <h2 className={styles.title} id="update-dialog-title">{title}</h2>
         <p className={styles.status} id="update-dialog-status" aria-live="polite">{statusMessage}</p>
-        {!showSafety && downloading && progress != null ? (
-          <div className={styles.progress} aria-hidden>
+        {!showSafety && progress != null ? (
+          <div className={styles.progress} aria-label={statusMessage} data-testid="update-dialog-progress" role="progressbar" aria-valuemax={100} aria-valuemin={0} aria-valuenow={progress}>
             <span style={{ width: `${progress}%` }} />
           </div>
         ) : null}
@@ -437,6 +462,8 @@ export function UpdateDialog() {
             ) : (
               <button
                 className={styles.releaseLink}
+                data-release-notes-url={model.releaseNotesUrl ?? RELEASES_URL}
+                data-testid="update-dialog-release-notes"
                 onClick={openReleaseNotes}
                 type="button"
               >
@@ -446,6 +473,18 @@ export function UpdateDialog() {
           </div>
         ) : null}
         <div className={`${styles.actions} ${model.upToDate ? styles.actionsCentered : ''}`}>
+          {downloading ? (
+            <button
+              aria-label={`${t('common.cancel')} ${t('updater.download')}`}
+              className={styles.secondaryButton}
+              data-testid="update-dialog-cancel-download"
+              disabled={actionBusy}
+              onClick={() => void cancelDownload()}
+              type="button"
+            >
+              {t('common.cancel')}
+            </button>
+          ) : null}
           {!model.upToDate ? (
             <button className={styles.secondaryButton} onClick={close} ref={laterRef} type="button">
               {t('updater.later')}

@@ -17,6 +17,14 @@ materialization. A second invocation rechecks cached archives and skips
 extraction when the pinned executable is already present. A partial download
 stays in a `.download` path until verification succeeds.
 
+The Windows helper writes an ignored `dependency-resolution.json` record under
+`.yum-tong/build/`. It contains the manifest digest, exact executable paths, and
+the safe compiler environment values. `scripts/build.ps1` reads that record and
+uses those exact paths, so a machine-installed Node, pnpm, Python, or compiler
+cannot silently replace the pinned toolchain. The helper imports `vcvars64.bat`
+after a Visual Studio workload installation and records the resulting compiler
+path for the build process.
+
 The root `build.bat` calls the Windows helper before `scripts/build.ps1`. The
 installer entry point calls the same build path, so a person does not need to
 know an internal bootstrap command or invent a candidate number.

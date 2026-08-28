@@ -2095,6 +2095,14 @@ is based on `861065bb` and changes the
 root build entry points, their dependency helpers, build documentation, and
 the web update dialog's manual release fallback.
 
+The held review requested a second repair batch. The linked checkout now
+also contains uncommitted source changes for verified tool-path propagation,
+compiler environment import, stale package-result rejection, complete Squirrel
+package relationships, bounded feed and checksum requests, a real download
+abort controller, host cancellation, newer-download progress, and updater model
+fields plus stable dialog test targets. These changes are not yet represented
+by a new commit.
+
 ### Implemented source changes
 
 - Added `dependencies.manifest.json` with exact canonical inputs and digests for
@@ -2117,16 +2125,24 @@ the web update dialog's manual release fallback.
   dependency-invocation regression.
 - Added `scripts/test-updater-feed-boundary.ps1` with a deliberate red-then-green
   project-release-URL regression.
+- Extended the build entrypoint contract check for exact path propagation,
+  compiler activation, stale package-result rejection, provenance binding, and
+  Squirrel package relationship validation.
+- Added real updater cancellation from the renderer through the host and
+  streaming transfer layers, with bounded allowlisted metadata and checksum
+  requests and visible newer-download progress while an older update remains
+  ready.
 - Added `docs/build/dependency-bootstrap.md` and updated the build, release,
   README, roadmap, changelog, and modification notice.
 
 ### Verification completed
 
-PowerShell parsing succeeded for all four changed PowerShell scripts. Git Bash
+PowerShell parsing succeeded for all five changed PowerShell scripts. Git Bash
 syntax parsing succeeded for `download-dependencies.sh`. The entrypoint contract
-check passed and observed its temporary dependency-removal failure before
-restoration. `git diff --check` passed. No Node, pnpm, Electron, or UI runtime
-was launched locally.
+check passed and observed its temporary dependency-removal, path, compiler,
+stale-result, provenance, and package-relationship failures before restoration.
+The updater feed and transfer source was reviewed statically. No Node, pnpm,
+Electron, or UI runtime was launched locally.
 
 The port verifier was attempted through the installed Git Bash route and did not
 return within the bounded 90-second observation window. The process tree was
@@ -2135,12 +2151,11 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
 
 ### Remaining work for the next owner
 
-1. Independently review the root dependency and installer scripts, especially
-   the MinGit archive layout, package-manager materialization, compiler setup,
-   and PowerShell 5.1 behavior.
-2. Integrate this file state into a public-safe bilingual commit and add its
+1. Run the independent review agent against the repair batch and resolve any
+   remaining findings.
+2. Commit this repair batch with a public-safe bilingual message and add its
    commit link to the Unreleased changelog entry.
-3. Run the hosted build and release Chuts against the integrated commit.
+3. Run the hosted build and release checks against the integrated commit.
 4. Exercise the complete packaged updater flow through the approved headless
    route and retain the required interaction evidence.
 

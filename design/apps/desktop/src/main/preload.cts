@@ -305,13 +305,15 @@ const preview = {
 };
 
 function invokeUpdater(
-  action: 'check' | 'clear-cache' | 'download' | 'install' | 'status',
+  action: 'cancel' | 'check' | 'clear-cache' | 'download' | 'install' | 'status',
   options?: OpenDesignHostUpdaterActionOptions,
 ): Promise<OpenDesignHostUpdaterStatusSnapshot> {
   return ipcRenderer.invoke(`od:update:${action}`, options ?? null);
 }
 
 const updater = {
+  cancel: (options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot> =>
+    invokeUpdater('cancel', options),
   check: (options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot> =>
     invokeUpdater('check', options),
   'clear-cache': (options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot> =>

@@ -75,6 +75,7 @@ import {
   compareVersions,
   fetchJson,
   hasValidLauncherPayloadContext,
+  isAllowedUpdateUrl,
   releaseKey,
   releaseMatchesCandidate,
   remoteRequiresReinstall,
@@ -164,6 +165,7 @@ type ActionOptions = {
 
 export type DesktopUpdater = {
   authorizeInstallerLaunch(): Promise<{ ok: true } | { ok: false; reason: string }>;
+  cancelDownload(): Promise<DesktopUpdateStatusSnapshot>;
   checkForUpdates(options?: ActionOptions): Promise<DesktopUpdateStatusSnapshot>;
   clearCache(): Promise<DesktopUpdateStatusSnapshot>;
   config: DesktopUpdaterConfig;
@@ -443,6 +445,7 @@ export function createDesktopUpdater(
   let installFrozen = false;
   let lifecycleSummary: DesktopUpdateCacheLifecycleSummary | undefined;
   let progress: DesktopUpdateProgressSnapshot | undefined;
+  let downloadAbortController: AbortController | null = null;
   let reinstallRequirement: DesktopUpdateReinstallSnapshot | undefined;
   let state: DesktopUpdateState = DESKTOP_UPDATE_STATES.IDLE;
   let error: DesktopUpdateErrorSnapshot | undefined;
@@ -752,7 +755,9 @@ export function createDesktopUpdater(
     if (!keepDownloadedVisible) setState(DESKTOP_UPDATE_STATES.CHECKING);
     try {
       logUpdateEvent("check-start", { metadataUrl: config.metadataUrl });
-      const body = await fetchJson(fetchImpl, config.metadataUrl);
+      const body = await fetchJson(fetchImpl, config.metadataUrl, {
+        allowCustomTransport: deps.fetch != null,
+      });
       lastCheckedAt = now().toISOString();
       metadata = body;
       const root = await writeMetadataPatch((current) => ({
@@ -878,6 +883,8 @@ export function createDesktopUpdater(
     const opened = await openStore();
     if (!opened.ok) return opened.status;
     const nextCandidate = candidate;
+    const abortController = new AbortController();
+    downloadAbortController = abortController;
     const outputName = artifactFileName(nextCandidate);
     const cycleId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     const startedAt = now().toISOString();
@@ -905,6 +912,7 @@ export function createDesktopUpdater(
     let tmpPath: string | null = null;
     let stagingDir: string | null = null;
     const failDownload = async (nextError: DesktopUpdateErrorSnapshot): Promise<DesktopUpdateStatusSnapshot> => {
+      if (downloadAbortController === abortController) downloadAbortController = null;
       if (stagingDir != null) await rm(stagingDir, { force: true, recursive: true }).catch(() => undefined);
       incomingRelease = null;
       progress = undefined;
@@ -927,7 +935,13 @@ export function createDesktopUpdater(
       if (!containsPath(opened.root.realRoot, tmpPath)) {
         return await failDownload(createError("download-path-escaped", "resolved update download path escaped update root"));
       }
-      const resolvedChecksum = await resolveChecksum(fetchImpl, nextCandidate.checksum);
+      const resolvedChecksum = await resolveChecksum(fetchImpl, nextCandidate.checksum, {
+        allowCustomTransport: deps.fetch != null,
+        signal: abortController.signal,
+      });
+      if (!isAllowedUpdateUrl(nextCandidate.artifact.url, deps.fetch != null)) {
+        return await failDownload(createError("artifact-url-not-allowlisted", "update artifact URL host is not allowlisted"));
+      }
       await downloadCopyAndClear({
         basePath: downloadsRoot,
         bucket: "package-launcher",
@@ -939,6 +953,7 @@ export function createDesktopUpdater(
           emit();
         },
         outputPath: tmpPath,
+        signal: abortController.signal,
         payload: {
           checksum: managedChecksum(resolvedChecksum),
           url: nextCandidate.artifact.url,
@@ -987,6 +1002,7 @@ export function createDesktopUpdater(
       const previousActiveRelease = activeRelease;
       const prepareError = await preparePayloadReleaseForReady(downloadedRelease);
       if (prepareError != null) {
+        downloadAbortController = null;
         incomingRelease = null;
         progress = undefined;
         await writeStoreMetadata(opened.root, {
@@ -1008,6 +1024,7 @@ export function createDesktopUpdater(
       });
       progress = undefined;
       activeRelease = downloadedRelease;
+      downloadAbortController = null;
       incomingRelease = null;
       await writeStoreMetadata(opened.root, {
         ...opened.metadata,
@@ -1047,12 +1064,24 @@ export function createDesktopUpdater(
       if (config.autoOpen && nextCandidate.artifact.type === "payload") return await installUpdate();
       return downloaded;
     } catch (downloadError) {
+      downloadAbortController = null;
       if (stagingDir != null) await rm(stagingDir, { force: true, recursive: true }).catch(() => undefined);
       incomingRelease = null;
       progress = undefined;
       await writeMetadataPatch((current) => ({ ...current, incoming: undefined }));
+      if (abortController.signal.aborted) {
+        return setFailurePreservingActive(createError("download-cancelled", "update download was cancelled"));
+      }
       return setFailurePreservingActive(desktopDownloadError(downloadError));
     }
+  }
+
+  async function cancelDownload(): Promise<DesktopUpdateStatusSnapshot> {
+    const controller = downloadAbortController;
+    if (controller == null) return snapshot();
+    controller.abort();
+    try { await operation; } catch { /* the download reports its own cancelled state */ }
+    return snapshot();
   }
 
   async function writeInstallObservation(attemptedAt: string): Promise<InstallerObservationHandle | null> {
@@ -1480,6 +1509,7 @@ export function createDesktopUpdater(
 
   return {
     checkForUpdates: (options) => serialized(() => checkForCandidate(options)),
+    cancelDownload,
     clearCache: () => serialized(clearCacheAndResetState),
     config,
     authorizeInstallerLaunch: () => serialized(authorizeInstallerLaunch),
@@ -1494,6 +1524,8 @@ export function createDesktopUpdater(
           return this.clearCache();
         case DESKTOP_UPDATE_ACTIONS.DOWNLOAD:
           return this.downloadUpdate();
+        case DESKTOP_UPDATE_ACTIONS.CANCEL:
+          return this.cancelDownload();
         case DESKTOP_UPDATE_ACTIONS.INSTALL:
           return this.installUpdate();
       }

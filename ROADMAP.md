@@ -1,6 +1,6 @@
 # Roadmap
 
-- [~] **Make the root build and installer entry points fresh-machine safe.** The
+- [ ] **Make the root build and installer entry points fresh-machine safe.** The
       new dependency helpers pin and hash Node `24.20.0`, pnpm `10.33.2`, Python
       `3.12.10`, and MinGit `2.55.0.5`, use user-scoped caches, support silent
       mode, and check the native compiler workload. `build.bat` invokes the
@@ -8,7 +8,9 @@
       supplied. Local manifests now report provenance as unavailable unless an
       external record is bound to the exact source commit and package version.
       The source contract check is red-then-green; hosted verification and
-      integration remain open.
+      integration remain open. The current build/updater repair extends this
+      lane with exact path propagation, compiler-environment import, bounded
+      update cancellation, and complete Squirrel package relationships.
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and

@@ -219,7 +219,7 @@ describe('web updater model', () => {
     expect(model.hasDownloadedInstaller).toBe(false);
   });
 
-  it('keeps the downloaded installer visible without surfacing newer incoming progress', () => {
+  it('keeps the downloaded installer visible while surfacing newer incoming progress', () => {
     const model = deriveUpdaterModel(
       downloadedStatus({
         incoming: {
@@ -247,7 +247,11 @@ describe('web updater model', () => {
     expect(model.busy).toBe(false);
     expect(model.hasDownloadedInstaller).toBe(true);
     expect(model.shouldPrompt).toBe(true);
-    expect(model.downloadProgress).toBeNull();
+    expect(model.downloadProgress).toEqual({
+      percent: 25,
+      receivedBytes: 64,
+      totalBytes: 256,
+    });
   });
 
   it('does not keep prompting after the installer has been opened', () => {

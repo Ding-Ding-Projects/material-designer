@@ -45,6 +45,36 @@ version section when a release carries them.
 
 ### Changed
 
+- **Bind the build process to verified tools and make update cancellation real.**
+  The dependency helper now publishes a manifest-digest-bound resolution record,
+  imports the compiler environment after a Visual Studio workload install, and
+  feeds exact tool paths and versions into the build instead of allowing dynamic
+  machine fallback. Installer reuse is bound to the exact source commit and
+  package version, and the local Squirrel check validates `RELEASES`, package
+  SHA-1 values, NuGet identity, and full/delta relationships. The updater now
+  exposes platform, release-notes, restart, newer-download progress, bounded
+  allowlisted requests, and a real abort path from the dialog to the streaming
+  transfer. Source checks are complete; hosted verification remains pending.
+
+  **Build path 而家認實 verified tools，update cancel 亦真係會停。**
+  Helper 會寫 manifest-digest-bound resolution record，Visual Studio workload
+  裝完會 import compiler environment，再將 exact tool path 同 version 傳入
+  build，唔畀 machine fallback 偷換。Installer reuse 綁實 exact source commit
+  同 package version，local Squirrel check 會驗 `RELEASES`、package SHA-1、NuGet
+  identity 同 full/delta 關係。Updater model 加咗 platform、release-notes、restart、
+  newer-download progress、bounded allowlisted request，同埋由 dialog 一路落到
+  streaming transfer 嘅真 abort path。Source checks 完成，hosted verification 仲等緊。
+
+  **Changed files:** `scripts/build.ps1`, `scripts/build-installer.ps1`,
+  `scripts/download-dependencies.ps1`, `download-dependencies.sh`,
+  `scripts/test-build-entrypoints.ps1`, `.github/workflows/release.yml`,
+  `design/apps/desktop/src/main/updater.ts`,
+  `design/apps/desktop/src/main/updater/feed.ts`,
+  `design/apps/desktop/src/main/runtime.ts`, `design/apps/desktop/src/main/preload.cts`,
+  `design/apps/web/src/lib/updater.ts`, `design/apps/web/src/components/UpdateDialog.tsx`,
+  `design/apps/web/tests/lib/updater.test.ts`, and `design/packages/download/`.
+  The source commit link will be added after review.
+
 - **Root builds now bootstrap their pinned toolchain and refuse invented local provenance.**
   `download-dependencies.bat` and `download-dependencies.sh` use canonical
   sources, exact digests, user-scoped caches, idempotent silent mode, and a

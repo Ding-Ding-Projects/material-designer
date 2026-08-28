@@ -76,13 +76,30 @@ if (-not $?) { throw 'the prerequisite build did not complete' }
 $pkg = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
 $base = [version]$pkg.version
 $appVersion = "{0}.{1}.{2}" -f $base.Major, $base.Minor, ($base.Build + $Candidate)
+$resolutionPath = Join-Path $repo '.yum-tong\build\dependency-resolution.json'
+if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) { throw 'dependency resolution record is missing; run build.bat first' }
+$resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+$gitPath = [string]$resolution.tools.git.executable
+if ([string]::IsNullOrWhiteSpace($gitPath) -or -not (Test-Path -LiteralPath $gitPath -PathType Leaf)) { throw 'dependency resolution record has no usable Git executable' }
+$sha = (& $gitPath -C $repo rev-parse HEAD 2>$null).Trim()
+if ($sha -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the exact source commit for installer provenance' }
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
 $buildLogPath = Join-Path $runRoot 'installer-build.log'
 New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
 
+if ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath)) {
+  $sourceRecord = Join-Path $runRoot 'pack-source.json'
+  if (-not (Test-Path -LiteralPath $sourceRecord -PathType Leaf)) { throw 'reused tools-pack output has no source-commit record' }
+  $record = Get-Content -Raw -LiteralPath $sourceRecord | ConvertFrom-Json
+  if ($record.schemaVersion -ne 1 -or $record.sourceCommit -ne $sha -or $record.version -ne $appVersion) {
+    throw 'reused tools-pack output is stale for the current source commit or package version'
+  }
+}
 if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
+  Remove-Item -LiteralPath $packDir, $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $packDir, $cacheDir | Out-Null
   $previousErrorAction = $ErrorActionPreference
   try {
     # pnpm writes phase diagnostics to stderr even when packaging succeeds. Windows
@@ -102,6 +119,8 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
   if ($jsonStart -lt 0) { $jsonStart = $jsonText.IndexOf('{') - 1 }
   if ($jsonStart -lt 0) { throw "tools-pack produced no JSON result; see $buildLogPath" }
   $jsonText.Substring($jsonStart + 1).Trim() | Set-Content -LiteralPath $jsonPath -Encoding utf8
+  [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion } |
+    ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runRoot 'pack-source.json') -Encoding utf8
 } else {
   Write-Host "Reusing the existing tools-pack result at $jsonPath"
 }
@@ -132,6 +151,40 @@ if (-not $releases) { throw 'the Squirrel RELEASES index was not produced' }
 $full = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-full.nupkg')
 if ($full.Count -eq 0) { throw 'the Squirrel full .nupkg package was not produced' }
 $delta = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-delta.nupkg')
+
+function Assert-SquirrelPackageSet([string]$Root, [string]$ExpectedId, [string]$ExpectedVersion, [System.IO.FileInfo[]]$FullPackages, [System.IO.FileInfo[]]$DeltaPackages) {
+  $releasePath = Join-Path $Root 'RELEASES'
+  if (-not (Test-Path -LiteralPath $releasePath -PathType Leaf)) { throw 'the Squirrel RELEASES index was not produced' }
+  $indexed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  foreach ($line in Get-Content -LiteralPath $releasePath) {
+    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+    if ($line -notmatch '^([0-9a-fA-F]{40})\s+([^\s]+)\s+(\d+)$') { throw "Malformed RELEASES row: $line" }
+    $name = $Matches[2]
+    $bytes = [int64]$Matches[3]
+    if ([IO.Path]::GetFileName($name) -cne $name -or $name.Contains('..') -or -not $name.EndsWith('.nupkg', [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe package name in RELEASES: $name" }
+    if (-not $indexed.Add($name)) { throw "Duplicate package row in RELEASES: $name" }
+    $path = Join-Path $Root $name
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "RELEASES indexes missing package: $name" }
+    $item = Get-Item -LiteralPath $path
+    if ($item.Length -ne $bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA1).Hash.ToLowerInvariant() -ne $Matches[1].ToLowerInvariant()) { throw "RELEASES digest or byte length does not match $name" }
+  }
+  $packages = @($FullPackages + $DeltaPackages)
+  foreach ($package in $packages) {
+    if (-not $indexed.Contains($package.Name)) { throw "Squirrel package is not indexed by RELEASES: $($package.Name)" }
+  }
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  foreach ($package in $FullPackages) {
+    $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+    try {
+      $nuspecs = @($archive.Entries | Where-Object FullName -Like '*.nuspec')
+      if ($nuspecs.Count -ne 1) { throw "$($package.Name) must contain exactly one nuspec" }
+      $reader = [IO.StreamReader]::new($nuspecs[0].Open())
+      try { [xml]$xml = $reader.ReadToEnd() } finally { $reader.Dispose() }
+      if ($xml.package.metadata.id -ne $ExpectedId -or $xml.package.metadata.version -ne $ExpectedVersion) { throw "$($package.Name) package identity does not match $ExpectedId $ExpectedVersion" }
+    } finally { $archive.Dispose() }
+  }
+}
+Assert-SquirrelPackageSet $squirrelRoot 'open-design-packaged-app' $appVersion $full $delta
 $assetDir = Join-Path $runRoot 'assets'
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 $setupName = "material-designer-$appVersion-win-x64-setup.exe"
@@ -143,7 +196,6 @@ if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination (J
 $hash = Get-Sha256 (Join-Path $assetDir $setupName)
 "$hash  $setupName" | Set-Content -LiteralPath (Join-Path $assetDir "$setupName.sha256") -Encoding ascii
 
-$sha = (& git -C $repo rev-parse HEAD).Trim()
 $provenancePath = Join-Path $runRoot 'build-provenance.json'
 $provenance = [ordered]@{
   version = 1

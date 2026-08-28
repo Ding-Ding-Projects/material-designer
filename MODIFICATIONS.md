@@ -41,6 +41,63 @@ remain unchanged.
 
 - `apps/web/src/components/UpdateDialog.tsx`
 
+### 2026-08-27 - Bind updater cancellation, deadlines, and release metadata to real state
+
+**Reason:** The updater model did not expose the platform, release-notes target,
+or the fact that a Windows Squirrel installer requires a restart. A completed
+installer could also hide progress for a newer download, and a download could
+remain unbounded or uncancellable across the renderer, host, and transfer
+layers. Add bounded allowlisted feed and checksum requests, an abort controller
+that reaches the streaming transfer, a cancellable host action, explicit model
+fields, and testable update-dialog targets. The change preserves the existing
+restart safety and unsigned-package rules.
+
+**Changed files:**
+
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/updater.ts`
+- `apps/desktop/src/main/updater/feed.ts`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/lib/updater.ts`
+- `packages/download/src/managed-download.ts`
+- `packages/download/src/run.ts`
+- `packages/download/src/transfer.ts`
+- `packages/host/src/actions.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+- `packages/sidecar-proto/src/index.ts`
+
+### 2026-08-27 - Bind the build process to verified dependency paths
+
+**Reason:** The dependency helper previously changed PATH only in its own
+process. The following build could therefore resolve a different machine
+installation, while a stale packaging JSON could be reused without an exact
+source-commit check. The helper now writes an ignored, manifest-digest-bound
+resolution record, imports and records the compiler environment after workload
+installation, and the build consumes the exact executable paths and versions.
+The installer validates the Squirrel `RELEASES` rows, SHA-1 values, package
+names, NuGet identities, and full/delta relationships before producing local
+evidence.
+
+**Changed files:**
+
+- `apps/desktop/src/main/updater.ts`
+- `apps/desktop/src/main/updater/feed.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/web/src/components/UpdateDialog.tsx`
+- `apps/web/src/lib/updater.ts`
+- `apps/web/tests/lib/updater.test.ts`
+- `packages/download/src/managed-download.ts`
+- `packages/download/src/run.ts`
+- `packages/download/src/transfer.ts`
+- `packages/host/src/actions.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+- `packages/sidecar-proto/src/index.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh

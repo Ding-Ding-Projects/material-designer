@@ -37,8 +37,8 @@ local machine.
 
 | Requirement | Version | Why |
 | --- | --- | --- |
-| Node | `~24` | Declared by the workspace root and repeated by every package. **Node 22 is not a supported substitute** — the vendored project's documentation answers that question with a flat no. |
-| pnpm | `10.33.2` | Pinned exactly. Other versions in the `>=10.33.2 <11` range are permitted by the manifest but not what the lockfile was produced with. |
+| Node | `24.20.0` through the root helper | Declared by the workspace root and materialized from the exact pinned archive. **Node 22 is not a supported substitute** — the vendored project's documentation answers that question with a flat no. |
+| pnpm | `10.33.2` | Pinned exactly and verified from the canonical npm tarball. Other versions in the `>=10.33.2 <11` range are permitted by the manifest but not what the lockfile was produced with. |
 | Git | any recent | Needed for the submodule and for port verification. |
 | C++ build tools | 2022 or newer, desktop-development workload | **Windows only.** The embedded SQLite binding has no prebuilt binary for Windows on this Node version and is compiled from source. |
 | Python | 3.x, on the path | **Windows only.** Required by the native build system. |

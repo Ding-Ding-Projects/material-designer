@@ -11,32 +11,57 @@ done
 if [[ "${SILENT:-0}" == "1" ]]; then silent=1; fi
 
 repo_root="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+manifest_path="$repo_root/dependencies.manifest.json"
 tool_root="${XDG_CACHE_HOME:-$HOME/.cache}/material-designer/toolchain"
 mkdir -p "$tool_root"
 
 say() { (( silent )) || printf '[download-dependencies] %s\n' "$*"; }
 die() { printf 'Dependency bootstrap failed: %s\n' "$*" >&2; exit 1; }
+manifest_value() {
+  local id="$1" key="$2"
+  awk -v wanted_id="$id" -v wanted_key="$key" '
+    index($0, "\"id\": \"" wanted_id "\"") > 0 { inside=1; next }
+    inside && index($0, "\"id\":") > 0 { exit }
+    inside && index($0, "\"" wanted_key "\":") > 0 {
+      line=$0
+      sub(/^[^:]*:[[:space:]]*"/, "", line)
+      sub(/",?[[:space:]]*$/, "", line)
+      print line
+      exit
+    }
+  ' "$manifest_path"
+}
 sha256_file() { sha256sum "$1" | awk '{print $1}'; }
 sha512_b64() { openssl dgst -sha512 -binary "$1" | base64 | tr -d '\n'; }
 download_verified() {
-  local url="$1" dest="$2" expected_sha256="${3:-}" expected_sha512="${4:-}" tmp="${dest}.download"
-  rm -f -- "$tmp"
+  local url="$1" dest="$2" expected_sha256="${3:-}" expected_sha512="${4:-}" tmp
+  tmp="$(mktemp "${dest}.download.XXXXXX")" || die "could not create a unique temporary file beside $dest"
   say "Downloading $(basename "$dest") from the canonical source"
-  curl --fail --location --retry 3 --retry-delay 2 --silent --show-error --connect-timeout 20 --max-time 600 "$url" --output "$tmp"
+  if ! curl --fail --location --retry 3 --retry-delay 2 --silent --show-error --connect-timeout 20 --max-time 600 "$url" --output "$tmp"; then
+    rm -f -- "$tmp"
+    die "download failed for $url"
+  fi
   [[ -z "$expected_sha256" || "$(sha256_file "$tmp")" == "$expected_sha256" ]] || die "SHA-256 mismatch for $url"
   [[ -z "$expected_sha512" || "$(sha512_b64 "$tmp")" == "$expected_sha512" ]] || die "SHA-512 integrity mismatch for $url"
   mv -f -- "$tmp" "$dest"
 }
 
+[[ -f "$manifest_path" ]] || die "dependency manifest is missing: $manifest_path"
+exec 9>"$tool_root/.download-dependencies.lock"
+flock -w 120 9 || die "timed out waiting for dependency bootstrap lock"
+
 if [[ "$(uname -s)" != "Linux" ]]; then die "this companion script supports Linux only; use download-dependencies.bat on Windows"; fi
 case "$(uname -m)" in x86_64) ;; *) die "unsupported Linux architecture: $(uname -m)" ;; esac
 
-node_version=24.20.0
+node_version="$(manifest_value node version)"
+node_url="$(manifest_value node url)"
+node_sha256="$(manifest_value node sha256)"
+[[ -n "$node_version" && -n "$node_url" && -n "$node_sha256" ]] || die 'the Linux Node manifest entry is incomplete'
 node_root="$tool_root/node-v${node_version}-linux-x64"
 node_bin="$node_root/bin/node"
 node_archive="$tool_root/node-v${node_version}-linux-x64.tar.xz"
-if [[ ! -f "$node_archive" || "$(sha256_file "$node_archive")" != "2f2c0da162318f0de47665410c7c8c2ed3d36c8f3105de4bbc61176c70a7cbf2" ]]; then
-  download_verified "https://nodejs.org/dist/v${node_version}/node-v${node_version}-linux-x64.tar.xz" "$node_archive" "2f2c0da162318f0de47665410c7c8c2ed3d36c8f3105de4bbc61176c70a7cbf2"
+if [[ ! -f "$node_archive" || "$(sha256_file "$node_archive")" != "$node_sha256" ]]; then
+  download_verified "$node_url" "$node_archive" "$node_sha256"
 fi
 if [[ ! -x "$node_bin" ]]; then
   rm -rf -- "$node_root"
@@ -45,15 +70,18 @@ fi
 export PATH="$node_root/bin:$PATH"
 [[ "$(node --version)" == "v${node_version}" ]] || die "expected Node v${node_version}"
 
-pnpm_version=10.33.2
+pnpm_version="$(manifest_value pnpm version)"
+pnpm_url="$(manifest_value pnpm url)"
+pnpm_sha512="$(manifest_value pnpm sha512Base64)"
+[[ -n "$pnpm_version" && -n "$pnpm_url" && -n "$pnpm_sha512" ]] || die 'the Linux pnpm manifest entry is incomplete'
 pnpm_root="$tool_root/pnpm-${pnpm_version}"
 pnpm_bin=""
 for candidate in "$pnpm_root/pnpm" "$pnpm_root/bin/pnpm" "$pnpm_root/node_modules/.bin/pnpm"; do
   if [[ -x "$candidate" ]]; then pnpm_bin="$candidate"; break; fi
 done
 pnpm_tarball="$tool_root/pnpm-${pnpm_version}.tgz"
-if [[ ! -f "$pnpm_tarball" || "$(sha512_b64 "$pnpm_tarball")" != "qQ+vb+6rca1sblf5Tg/hoS9dzCLNdU20CulZPraj4LaxLjVAIYuzeuCDQEsfLObbKkEh6XmCm0r/lLmfSdoc+A==" ]]; then
-  download_verified "https://registry.npmjs.org/pnpm/-/pnpm-${pnpm_version}.tgz" "$pnpm_tarball" "" "qQ+vb+6rca1sblf5Tg/hoS9dzCLNdU20CulZPraj4LaxLjVAIYuzeuCDQEsfLObbKkEh6XmCm0r/lLmfSdoc+A=="
+if [[ ! -f "$pnpm_tarball" || "$(sha512_b64 "$pnpm_tarball")" != "$pnpm_sha512" ]]; then
+  download_verified "$pnpm_url" "$pnpm_tarball" "" "$pnpm_sha512"
 fi
 if [[ ! -x "$pnpm_bin" ]]; then
   mkdir -p "$pnpm_root"

@@ -556,6 +556,22 @@ function UpdaterPopupPanel({
         {!quitRecoverable && model.reinstall?.url != null ? (
           <ReinstallLearnMoreLink t={t} url={model.reinstall.url} />
         ) : null}
+        {model.downloadProgress != null ? (
+          <p
+            aria-label={model.downloadProgress.percent == null
+              ? t('updater.downloading')
+              : t('updater.downloadingPercent', { percent: model.downloadProgress.percent })}
+            data-testid="updater-newer-download-progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            {...(model.downloadProgress.percent == null ? {} : { 'aria-valuenow': model.downloadProgress.percent })}
+          >
+            {model.downloadProgress.percent == null
+              ? t('updater.downloading')
+              : t('updater.downloadingPercent', { percent: model.downloadProgress.percent })}
+          </p>
+        ) : null}
         {channelLabel != null ? <span className="updater-popup__badge">{channelLabel}</span> : null}
         {installError != null ? (
           <p className="updater-popup__error" data-testid="updater-install-error" role="alert">

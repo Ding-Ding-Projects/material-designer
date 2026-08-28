@@ -46,6 +46,7 @@ export async function managedDownload(options: ManagedDownloadOptions): Promise<
       fetchImpl: options.fetch ?? globalThis.fetch,
       maxAttempts: options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
       requestHeaders: options.payload.headers,
+      signal: options.signal,
     }),
   };
   activeTasks.set(key, task);

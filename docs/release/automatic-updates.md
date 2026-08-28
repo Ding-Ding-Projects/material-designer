@@ -41,6 +41,19 @@ the installed channel cannot use an in-app installer. It never redirects to the
 upstream product's release page, and it does not claim that a release is
 available when the feed did not provide one.
 
+Feed metadata and checksum text are fetched over a bounded request with a
+response-size limit. Production updater URLs must use HTTPS and an allowlisted
+release host, while loopback HTTP is reserved for bounded development fixtures.
+URLs with embedded credentials are rejected. The staged installer download has
+an abort controller that reaches the streaming response and file pipeline, so
+Cancel download stops the actual transfer and reports a cancelled state rather
+than merely hiding the progress surface.
+
+When an older installer is already ready and a newer release is downloading,
+the update model preserves the ready restart action and exposes the newer
+incoming byte count and percentage at the same time. The two states are not
+collapsed into a single optimistic version.
+
 The HTML editor uses the same renderer preparation callback as sketch and
 Markdown. Its debounced style write and inline-text acknowledgement are
 settled before the host reports success. Switching files keys the viewer and

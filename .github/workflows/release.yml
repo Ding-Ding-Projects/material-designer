@@ -62,6 +62,9 @@ jobs:
         with:
           arch: x64
 
+      - name: Exercise the root dependency entrypoint
+        run: .\download-dependencies.bat /s
+
       - name: Clear prohibited signing inputs
         run: |
           $ErrorActionPreference = "Stop"
