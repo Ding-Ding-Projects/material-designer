@@ -2,6 +2,14 @@
 
 ## Unreleased — Add local Ollama suite manager
 
+The review repair hardens official catalog pagination, source identity and
+revision checks, installed-state reconciliation, hardware evidence ordering,
+collision-safe durable pull records, provider terminal-status handling, abort
+connected queue actions, bounded chat sessions, capability-gated attachments,
+and allowlisted harness health rollback.
+
+Source commit: [`e34c6703`](https://github.com/Ding-Ding-Projects/material-designer/commit/e34c67036ed13289e4c62de8221c39e80883b67f)
+
 Follow-up source work now records the official catalog source identity and
 revision, retains a validated stale cache, reports bounded host hardware facts,
 persists and reconciles the pull queue, exposes pause, resume, retry, and
