@@ -14,7 +14,7 @@ const SEARCH_PROPS = {
   lockedReason: 'Unlock this control first.',
   onLockedActivate: (request: LockedActivationRequest): LockedActivationReceipt => ({
     targetId: request.targetId,
-    accepted: true,
+    phase: 'requested',
   }),
 };
 
@@ -220,13 +220,14 @@ describe('CustomSelect', () => {
   });
 
   it('detects duplicate caller ids instead of silently sharing an option namespace', () => {
+    const onChange = vi.fn();
     const props = {
       ...SEARCH_PROPS,
       ownerId: 'duplicate-owner',
       ariaLabel: 'Duplicate',
       value: 'one',
       options: [{ value: 'one', label: 'One' }],
-      onChange: () => {},
+      onChange,
     };
     render(
       <>
@@ -236,6 +237,50 @@ describe('CustomSelect', () => {
     );
     expect(screen.getByTestId('duplicate-a')).toHaveAttribute('data-owner-duplicate', 'true');
     expect(screen.getByTestId('duplicate-b')).toHaveAttribute('data-owner-duplicate', 'true');
+    fireEvent.click(screen.getByTestId('duplicate-a'));
+    expect(screen.queryByTestId('duplicate-a-filter')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('does not confuse a duplicate value with an unrelated option id', () => {
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="namespaces"
+        ariaLabel="Namespace test"
+        value="first"
+        options={[
+          { id: 'shared-id', value: 'first', label: 'First' },
+          { id: 'other-id', value: 'shared-id', label: 'Id-shaped value' },
+          { id: 'third-id', value: 'first', label: 'Duplicate value' },
+        ]}
+        onChange={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('namespaces'));
+    expect(screen.getByRole('option', { name: 'Id-shaped value' })).not.toBeDisabled();
+    expect(screen.getByRole('option', { name: /First/ })).toBeDisabled();
+    expect(screen.getByRole('option', { name: /Duplicate value/ })).toBeDisabled();
+  });
+
+  it('uses the caller label as an accessible label, not as a description', () => {
+    const label = document.createElement('span');
+    label.id = 'select-label';
+    label.textContent = 'Provider label';
+    document.body.append(label);
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="labelled"
+        ariaLabel="Provider"
+        labelledBy="select-label"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('labelled')).toHaveAttribute('aria-labelledby', 'select-label');
+    expect(screen.getByTestId('labelled')).not.toHaveAttribute('aria-describedby', 'select-label');
   });
 
   it('marks duplicate option values before an ambiguous selection can ship', () => {
@@ -294,7 +339,7 @@ describe('CustomSelect', () => {
   it('keeps a locked trigger disabled while its wrapper remains an unlock target', () => {
     const onLockedActivate = vi.fn((request: LockedActivationRequest): LockedActivationReceipt => ({
       targetId: request.targetId,
-      accepted: true,
+      phase: 'requested',
     }));
     const onContextMenu = vi.fn();
     render(
@@ -327,7 +372,28 @@ describe('CustomSelect', () => {
     ]);
     fireEvent.contextMenu(wrapper);
     expect(onContextMenu).toHaveBeenCalledTimes(1);
+    expect(onLockedActivate).toHaveBeenCalledTimes(4);
+    expect(onLockedActivate.mock.calls.at(-1)?.[0].input).toBe('programmatic');
     expect(screen.queryByTestId('locked-filter')).toBeNull();
+  });
+
+  it('refuses a malformed locked lifecycle receipt without opening the menu', () => {
+    const onLockedActivate = vi.fn(() => undefined as unknown as LockedActivationReceipt);
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="bad-receipt"
+        locked
+        ariaLabel="Bad receipt"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onLockedActivate={onLockedActivate}
+        onChange={() => {}}
+      />,
+    );
+    const wrapper = screen.getByRole('button', { name: 'Bad receipt: locked' });
+    expect(() => fireEvent.click(wrapper)).not.toThrow();
+    expect(screen.queryByTestId('bad-receipt-filter')).toBeNull();
   });
 
   it('scrolls the active option into view after keyboard movement', () => {

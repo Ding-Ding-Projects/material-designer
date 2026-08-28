@@ -10,8 +10,8 @@ visible until its owning feature lane migrates it.
 
 | Row | Source | Contract | State |
 | --- | --- | --- | --- |
-| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, positive result count, keyboard navigation, active scrolling, focus return, viewport recompute, shortcut registry display, typed appearance and lock receipts, duplicate-id refusal, and fail-closed destructive confirmation receipt handoff. | [x] implemented, mounted tests present |
-| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with readonly option/group types, explicit stable option ids, required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, filtered groups, positive result count, keyboard navigation, focus return, active-option scrolling, viewport recompute, duplicate owner/id refusal markers, typed locked-trigger pointer/touch/keyboard/AT/programmatic receipts, visible disabled reasons, context-menu wrapper, and an optional trigger context-menu handoff. | [x] implemented, mounted tests present |
+| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, positive result count, keyboard navigation, active scrolling, focus return, viewport recompute, shortcut registry display, typed appearance and lock lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`), duplicate-id refusal, and fail-closed destructive confirmation receipt handoff. | [x] implemented, mounted tests present |
+| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with readonly option/group types, explicit stable option ids, required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, filtered groups, positive result count, keyboard navigation, focus return, active-option scrolling, viewport recompute, duplicate owner/id refusal markers, typed locked-trigger pointer/touch/keyboard/AT/programmatic lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`), visible disabled reasons, context-menu wrapper, and an optional trigger context-menu handoff. | [x] implemented, mounted tests present |
 | primitive-regex-active-result | `design/apps/web/src/components/regex/RegexSearchField.tsx` | Search fields can expose the active filtered result to their own listbox or menu through `aria-activedescendant` without sharing controller state. | [x] implemented, mounted tests present |
 
 ## Native select rows
@@ -163,7 +163,7 @@ unfinished and remain completion blockers.
 | menu-composer-mode | `design/apps/web/src/components/ComposerModePicker.tsx:238` | [ ] RED |
 | menu-composer-plus-1 | `design/apps/web/src/components/ComposerPlusMenu.tsx:601` | [ ] RED |
 | menu-composer-plus-2 | `design/apps/web/src/components/ComposerPlusMenu.tsx:985` | [ ] RED |
-| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:413` | [x] green, shared primitive owns filtering and callbacks |
+| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:435` | [x] green, shared primitive owns filtering and callbacks |
 | menu-design-browser-1 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2588` | [ ] RED |
 | menu-design-browser-2 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2791` | [ ] RED |
 | menu-design-files | `design/apps/web/src/components/DesignFilesPanel.tsx:1349` | [ ] RED |

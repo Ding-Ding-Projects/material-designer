@@ -7,11 +7,11 @@ import { ContextMenu } from '../../src/components/ContextMenu';
 
 const acceptTargetAction = (request: { targetId: string; action: 'edit-appearance' | 'lock-element' }) => ({
   ...request,
-  accepted: true as const,
+  phase: 'requested' as const,
 });
 const acceptDestructive = (request: { targetId: string; itemId: string; label: string }) => ({
   ...request,
-  accepted: true as const,
+  phase: 'requested' as const,
 });
 
 describe('ContextMenu scroll behavior', () => {
@@ -38,6 +38,7 @@ describe('ContextMenu scroll behavior', () => {
         lockLabel="Lock this element…"
         onRequestDestructiveConfirmation={acceptDestructive}
         destructiveUnavailableLabel="Confirmation is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
       />,
     );
 

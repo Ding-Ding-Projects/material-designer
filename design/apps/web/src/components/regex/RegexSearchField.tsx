@@ -183,16 +183,16 @@ export function RegexSearchField({
       if (!(target instanceof Node)) return false;
       return Boolean(hostRef.current?.contains(target) || popoverRef.current?.contains(target));
     };
-    const onPointerDown = (event: MouseEvent) => {
+    const onPointerDown = (event: PointerEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {
       if (!isInside(event.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('focusin', onFocusIn);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('focusin', onFocusIn);
     };
   }, [open]);

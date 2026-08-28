@@ -31,6 +31,7 @@ export interface CustomSelectGroup {
 export type CustomSelectItem = CustomSelectOption | CustomSelectGroup;
 
 export type LockedActivationInput = 'pointer' | 'keyboard' | 'programmatic';
+export type LockedActivationReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
 
 export interface LockedActivationRequest {
   readonly targetId: string;
@@ -39,7 +40,7 @@ export interface LockedActivationRequest {
 
 export interface LockedActivationReceipt {
   readonly targetId: string;
-  readonly accepted: true;
+  readonly phase: LockedActivationReceiptPhase;
 }
 
 export interface CustomSelectProps {
@@ -114,6 +115,12 @@ function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boole
   if (!(target instanceof Element)) return false;
   const owner = target.closest('[data-regex-owner]');
   return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
+}
+
+function hasDuplicateOwnerId(ownerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+    .filter((node) => node.getAttribute('data-select-owner') === ownerId).length > 1;
 }
 
 export function CustomSelect({
@@ -193,28 +200,31 @@ export function CustomSelect({
     () => new Set([...duplicateOptionValues, ...duplicateOptionIds]),
     [duplicateOptionIds, duplicateOptionValues],
   );
+  const isInvalidOption = useCallback(
+    (option: FlatOption) => duplicateOptionValues.has(option.value) || duplicateOptionIds.has(option.stableId),
+    [duplicateOptionIds, duplicateOptionValues],
+  );
   const enabledOptions = useMemo(
     () => visibleOptions.filter((option) =>
-      !option.disabled && !invalidOptionValues.has(option.value) && !invalidOptionValues.has(option.stableId),
+      !option.disabled && !isInvalidOption(option),
     ),
-    [invalidOptionValues, visibleOptions],
+    [isInvalidOption, visibleOptions],
   );
   const enabledOptionsRef = useRef(enabledOptions);
   enabledOptionsRef.current = enabledOptions;
   const optionIdBySourceKey = useMemo(
     () => new Map(flatOptions.map((option, index) => [
       option.sourceKey,
-      `${domOwnerId}-option-${option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')}${invalidOptionValues.has(option.stableId) || invalidOptionValues.has(option.value) ? `-${index}` : ''}`,
+      `${domOwnerId}-option-${option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')}${isInvalidOption(option) ? `-${index}` : ''}`,
     ])),
-    [domOwnerId, flatOptions, invalidOptionValues],
+    [domOwnerId, flatOptions, isInvalidOption],
   );
   const optionBySourceKey = useMemo(
     () => new Map(flatOptions.map((option) => [option.sourceKey, option])),
     [flatOptions],
   );
   const activeFlatOption = flatOptions.find((option) =>
-    option.value === activeValue && !invalidOptionValues.has(option.value)
-      && !invalidOptionValues.has(option.stableId),
+    option.value === activeValue && !isInvalidOption(option),
   );
   const activeOptionId = open && activeFlatOption
     ? optionIdBySourceKey.get(activeFlatOption.sourceKey)
@@ -263,12 +273,19 @@ export function CustomSelect({
 
   const activateLocked = useCallback((input: LockedActivationInput) => {
     if (!locked) return false;
-    const receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
-    if (receipt.accepted !== true || receipt.targetId !== resolvedOwnerId) {
-      console.error('Locked select activation did not return an accepted receipt.');
+    let receipt: LockedActivationReceipt;
+    try {
+      receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
+    } catch {
+      console.error('Locked select activation was refused.');
       return false;
     }
-    return true;
+    if (!receipt || receipt.targetId !== resolvedOwnerId
+      || !['requested', 'opened', 'completed', 'cancelled'].includes(receipt.phase)) {
+      console.error('Locked select activation did not return a valid lifecycle receipt.');
+      return false;
+    }
+    return receipt.phase !== 'cancelled';
   }, [locked, onLockedActivate, resolvedOwnerId]);
 
   useEffect(() => {
@@ -354,10 +371,11 @@ export function CustomSelect({
 
   const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
-    if (!next || next.disabled || invalidOptionValues.has(next.value) || invalidOptionValues.has(next.stableId)) return;
+    if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)
+      || !next || next.disabled || isInvalidOption(next)) return;
     onChange(next.value);
     closeMenu(true);
-  }, [closeMenu, flatOptions, invalidOptionValues, onChange]);
+  }, [closeMenu, duplicateOwner, flatOptions, isInvalidOption, onChange, resolvedOwnerId]);
 
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (!enabledOptions.length) return;
@@ -464,7 +482,7 @@ export function CustomSelect({
                     option={option}
                     selected={option.value === value}
                     active={option.value === activeValue}
-                    invalid={invalidOptionValues.has(option.value) || invalidOptionValues.has(option.stableId)}
+                    invalid={isInvalidOption(option)}
                     invalidReason={duplicateOptionLabel}
                     id={optionIdBySourceKey.get(option.sourceKey)}
                     onChoose={choose}
@@ -482,7 +500,7 @@ export function CustomSelect({
               option={option}
               selected={option.value === value}
               active={option.value === activeValue}
-              invalid={invalidOptionValues.has(option.value) || invalidOptionValues.has(option.stableId)}
+              invalid={isInvalidOption(option)}
               invalidReason={duplicateOptionLabel}
               id={optionIdBySourceKey.get(option.sourceKey)}
               onChoose={choose}
@@ -495,6 +513,11 @@ export function CustomSelect({
   );
 
   const onButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (activateLocked('keyboard')) {
       event.preventDefault();
       event.stopPropagation();
@@ -543,7 +566,7 @@ export function CustomSelect({
         aria-expanded={open}
         aria-controls={`${domOwnerId}-menu`}
         aria-activedescendant={activeOptionId}
-        aria-describedby={labelledBy}
+        aria-labelledby={labelledBy}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
         disabled={disabled || locked}
         aria-disabled={disabled || locked || undefined}
@@ -553,6 +576,7 @@ export function CustomSelect({
         data-select-owner={resolvedOwnerId}
         data-owner-duplicate={duplicateOwner || undefined}
         onClick={() => {
+          if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)) return;
           if (locked && activateLocked('programmatic')) return;
           if (open) closeMenu(true);
           else setOpen(true);
@@ -604,7 +628,7 @@ export function CustomSelect({
           }}
           onContextMenu={(event) => {
             event.preventDefault();
-            onContextMenu?.(event);
+            if (activateLocked('programmatic')) onContextMenu?.(event);
           }}
         >
           {trigger}

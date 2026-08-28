@@ -43,10 +43,12 @@ export interface TargetActionRequest {
   readonly action: TargetActionKind;
 }
 
+export type ActionReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';
+
 export interface TargetActionReceipt {
   readonly targetId: string;
   readonly action: TargetActionKind;
-  readonly accepted: true;
+  readonly phase: ActionReceiptPhase;
 }
 
 export interface DestructiveConfirmationRequest {
@@ -58,7 +60,7 @@ export interface DestructiveConfirmationRequest {
 export interface DestructiveConfirmationReceipt {
   readonly targetId: string;
   readonly itemId: string;
-  readonly accepted: true;
+  readonly phase: ActionReceiptPhase;
 }
 
 export interface ContextMenuProps {
@@ -153,13 +155,20 @@ function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boole
   return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
 }
 
+function hasDuplicateOwnerId(attribute: string, ownerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>(`[${attribute}]`))
+    .filter((node) => node.getAttribute(attribute) === ownerId).length > 1;
+}
+
 function isTargetActionReceipt(
   value: TargetActionReceipt | DestructiveConfirmationReceipt | undefined,
   targetId: string,
   action?: TargetActionKind,
   itemId?: string,
 ): boolean {
-  if (!value || value.accepted !== true || value.targetId !== targetId) return false;
+  if (!value || value.targetId !== targetId
+    || !['requested', 'opened', 'completed', 'cancelled'].includes(value.phase)) return false;
   if (action !== undefined && ('action' in value ? value.action !== action : true)) return false;
   if (itemId !== undefined && ('itemId' in value ? value.itemId !== itemId : true)) return false;
   return true;
@@ -287,15 +296,22 @@ export function ContextMenu({
   }, [onClose, restoreFocus]);
 
   const activate = useCallback((item: ContextMenuItem) => {
-    if (duplicateOwner || duplicateItemIds.has(item.id)
+    if (duplicateOwner || hasDuplicateOwnerId('data-context-menu-owner', resolvedOwnerId)
+      || duplicateItemIds.has(item.id)
       || item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
     if (item.targetAction) {
       const request = { targetId: resolvedOwnerId, action: item.targetAction };
-      const receipt = item.targetAction === 'edit-appearance'
-        ? onEditAppearance(request)
-        : onLock(request);
+      let receipt: TargetActionReceipt;
+      try {
+        receipt = item.targetAction === 'edit-appearance'
+          ? onEditAppearance(request)
+          : onLock(request);
+      } catch {
+        console.error('Context menu target action was refused.');
+        return;
+      }
       if (!isTargetActionReceipt(receipt, resolvedOwnerId, item.targetAction)) {
-        console.error('Context menu target action did not return an accepted receipt.');
+        console.error('Context menu target action did not return a valid lifecycle receipt.');
         return;
       }
       onClose();
@@ -303,13 +319,19 @@ export function ContextMenu({
       return;
     }
     if (item.danger) {
-      const receipt = onRequestDestructiveConfirmation({
-        targetId: resolvedOwnerId,
-        itemId: item.id,
-        label: item.label,
-      });
+      let receipt: DestructiveConfirmationReceipt;
+      try {
+        receipt = onRequestDestructiveConfirmation({
+          targetId: resolvedOwnerId,
+          itemId: item.id,
+          label: item.label,
+        });
+      } catch {
+        console.error('Context menu destructive confirmation was refused.');
+        return;
+      }
       if (!isTargetActionReceipt(receipt, resolvedOwnerId, undefined, item.id)) {
-        console.error('Context menu destructive action did not return an accepted receipt.');
+        console.error('Context menu destructive action did not return a valid lifecycle receipt.');
         return;
       }
     } else item.onSelect();
@@ -391,7 +413,7 @@ export function ContextMenu({
       document.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('scroll', onScroll, true);
     };
-  }, [dismiss]);
+  }, [dismiss, domOwnerId]);
 
   const activeOptionId = activeId && visibleItems.some((item) => item.id === activeId)
     ? `${domOwnerId}-${activeId}`

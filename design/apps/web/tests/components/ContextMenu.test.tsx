@@ -31,11 +31,11 @@ afterEach(() => {
 });
 
 function acceptTargetAction(request: TargetActionRequest): TargetActionReceipt {
-  return { ...request, accepted: true };
+  return { ...request, phase: 'requested' };
 }
 
 function acceptDestructive(request: DestructiveConfirmationRequest) {
-  return { ...request, accepted: true as const };
+  return { ...request, phase: 'requested' as const };
 }
 
 function createOpener(): HTMLButtonElement {
@@ -84,6 +84,7 @@ function renderMenu(props: Partial<Parameters<typeof ContextMenu>[0]> = {}) {
       lockLabel="Lock this element…"
       onRequestDestructiveConfirmation={acceptDestructive}
       destructiveUnavailableLabel="Confirmation is unavailable."
+      identityUnavailableLabel="Duplicate identity is unavailable."
       {...props}
     />,
   );
@@ -306,7 +307,7 @@ describe('ContextMenu', () => {
     const badReceipt = vi.fn(() => ({
       targetId: 'some-other-target',
       action: 'edit-appearance' as const,
-      accepted: true as const,
+      phase: 'opened' as const,
     }));
     renderMenu({ onClose, onEditAppearance: badReceipt });
     fireEvent.click(screen.getByTestId('menu-edit-appearance'));
@@ -345,6 +346,7 @@ describe('ContextMenu', () => {
           lockLabel="Lock this element…"
           onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
+          identityUnavailableLabel="Duplicate identity is unavailable."
         />
         <ContextMenu
           items={[{ id: 'two', label: 'Two', onSelect: () => {} }]}
@@ -364,6 +366,7 @@ describe('ContextMenu', () => {
           lockLabel="Lock this element…"
           onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
+          identityUnavailableLabel="Duplicate identity is unavailable."
         />
       </>,
     );
@@ -393,6 +396,7 @@ describe('ContextMenu', () => {
         lockLabel="Lock this element…"
         onRequestDestructiveConfirmation={acceptDestructive}
         destructiveUnavailableLabel="Confirmation is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
       />
     );
     render(<><div>{view('a')}</div><div>{view('b')}</div></>);

@@ -147,7 +147,8 @@ describe('shared menu and dropdown primitive source contract', () => {
   it('keeps locked select activation typed and fail-closed', () => {
     const select = source('CustomSelect.tsx');
     expect(select).toContain('onLockedActivate: (request: LockedActivationRequest) => LockedActivationReceipt;');
-    expect(select).toContain("console.error('Locked select activation did not return an accepted receipt.');");
+    expect(select).toContain("export type LockedActivationReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';");
+    expect(select).toContain("console.error('Locked select activation did not return a valid lifecycle receipt.');");
     expect(select).toContain('data-locked={locked || undefined}');
   });
 
@@ -166,6 +167,7 @@ describe('shared menu and dropdown primitive source contract', () => {
       menu,
       (value) => value.includes('readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;')
         && value.includes('readonly onLock: (request: TargetActionRequest) => TargetActionReceipt;')
+        && value.includes("export type ActionReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';")
         && value.includes('readonly onRequestDestructiveConfirmation:')
         && value.includes(') => DestructiveConfirmationReceipt;')
         && hasJsxAttribute(value, 'data-callback-collision'),
