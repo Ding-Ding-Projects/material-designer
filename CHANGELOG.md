@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — Add local Ollama suite manager
+
+The desktop settings surface now includes a local Ollama suite manager with
+bounded runtime status, catalog pagination, installed-tag reconciliation,
+conservative hardware-fit evidence, streamed pulls and chat, and allowlisted
+harness profile validation. Each suite tab has its own plain-text-first search
+and anchored regex builder. The daemon bridge refuses non-loopback origins and
+unbounded request or response data.
+
+Source commit: [`41ef1500`](https://github.com/Ding-Ding-Projects/material-designer/commit/41ef150026a0303057171bd7776d9ec69fff89a7)
+
+Hosted type checks, packaged interaction, and per-click capture evidence remain
+pending for this source lane.
+
 ## 2026-08-21 — Harden desktop project creation
 
 Desktop application creation now claims only a newly empty project directory with
