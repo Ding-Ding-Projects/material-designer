@@ -53,7 +53,7 @@ interface Props {
   onClose: () => void;
   /** Test id prefix inherited from the field, so two builders never collide. */
   testIdPrefix?: string;
-  /** Stable owner id for field-scoped snippet persistence. */
+  /** Stable owner id supplied to field-scoped workbench features. */
   fieldId?: string;
 }
 

@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { CustomSelect } from '../../src/components/CustomSelect';
+import { CustomSelect, type LockedActivationRequest, type LockedActivationReceipt } from '../../src/components/CustomSelect';
 
 afterEach(() => cleanup());
 
@@ -12,6 +12,10 @@ const SEARCH_PROPS = {
   noResultsLabel: 'No options match this filter.',
   resultCountLabel: (count: number) => `${count} options`,
   lockedReason: 'Unlock this control first.',
+  onLockedActivate: (request: LockedActivationRequest): LockedActivationReceipt => ({
+    targetId: request.targetId,
+    accepted: true,
+  }),
 };
 
 describe('CustomSelect', () => {
@@ -248,6 +252,25 @@ describe('CustomSelect', () => {
     expect(screen.getByTestId('duplicate-options')).toHaveAttribute('data-option-duplicate', 'true');
   });
 
+  it('refuses duplicate caller option ids even when values differ', () => {
+    const onChange = vi.fn();
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="duplicate-ids"
+        ariaLabel="Duplicate ids"
+        value="one"
+        options={[{ id: 'same', value: 'one', label: 'One' }, { id: 'same', value: 'two', label: 'Two' }]}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('duplicate-ids'));
+    expect(screen.getByTestId('duplicate-ids')).toHaveAttribute('data-option-duplicate', 'true');
+    expect(screen.getByRole('option', { name: /Two/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('option', { name: /Two/ }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('supports touch selection through the same option action', () => {
     const onChange = vi.fn();
     render(
@@ -269,7 +292,11 @@ describe('CustomSelect', () => {
   });
 
   it('keeps a locked trigger disabled while its wrapper remains an unlock target', () => {
-    const onLockedActivate = vi.fn();
+    const onLockedActivate = vi.fn((request: LockedActivationRequest): LockedActivationReceipt => ({
+      targetId: request.targetId,
+      accepted: true,
+    }));
+    const onContextMenu = vi.fn();
     render(
       <CustomSelect
         {...SEARCH_PROPS}
@@ -277,6 +304,7 @@ describe('CustomSelect', () => {
         locked
         lockedReason="Unlock this control first."
         onLockedActivate={onLockedActivate}
+        onContextMenu={onContextMenu}
         ariaLabel="Locked"
         value="one"
         options={[{ value: 'one', label: 'One' }]}
@@ -286,8 +314,19 @@ describe('CustomSelect', () => {
     expect(screen.getByTestId('locked')).toBeDisabled();
     const wrapper = screen.getByRole('button', { name: 'Locked: locked' });
     fireEvent.pointerDown(wrapper, { pointerType: 'touch' });
+    fireEvent.click(wrapper);
     fireEvent.keyDown(wrapper, { key: 'Enter' });
     expect(onLockedActivate).toHaveBeenCalledTimes(2);
+    fireEvent.click(wrapper);
+    fireEvent.click(wrapper);
+    expect(onLockedActivate).toHaveBeenCalledTimes(3);
+    expect(onLockedActivate.mock.calls.map(([request]) => request.input)).toEqual([
+      'pointer',
+      'keyboard',
+      'programmatic',
+    ]);
+    fireEvent.contextMenu(wrapper);
+    expect(onContextMenu).toHaveBeenCalledTimes(1);
     expect(screen.queryByTestId('locked-filter')).toBeNull();
   });
 
@@ -317,6 +356,35 @@ describe('CustomSelect', () => {
         configurable: true,
         value: previous,
       });
+    }
+  });
+
+  it('recomputes portal bounds without overflow in a tiny viewport', () => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 20 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 20 });
+    try {
+      render(
+        <CustomSelect
+          {...SEARCH_PROPS}
+          testId="tiny"
+          ariaLabel="Tiny"
+          value="one"
+          options={[{ value: 'one', label: 'One' }]}
+          onChange={() => {}}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('tiny'));
+      const menu = screen.getByRole('listbox');
+      expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.left, 10)).toBeLessThanOrEqual(20);
+      expect(Number.parseInt(menu.style.top, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.top, 10)).toBeLessThanOrEqual(20);
+      expect(Number.parseInt(menu.style.maxHeight, 10)).toBeGreaterThanOrEqual(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
     }
   });
 });

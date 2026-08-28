@@ -29,7 +29,7 @@
   /* `dvh` second so it wins where the dynamic unit is understood. */
   max-height: calc(100vh - 16px);
   max-height: calc(100dvh - 16px);
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
@@ -78,6 +78,7 @@
 }
 
 .itemList {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
@@ -185,6 +186,14 @@
      the viewport-bounded menu. */
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.disabledReason {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.3;
 }
 
 /* Right-aligned, as the platform draws it. `margin-left: auto` rather than a

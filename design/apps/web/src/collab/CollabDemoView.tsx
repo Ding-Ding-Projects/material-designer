@@ -154,6 +154,7 @@ export function CollabDemoView({ projectId }: { projectId: string | null }) {
               noResultsLabel="No roles match this filter."
               resultCountLabel={(count) => `${count} roles`}
               lockedReason="Unlock this role control first."
+              onLockedActivate={(request) => ({ targetId: request.targetId, accepted: true })}
             />
           </div>
 

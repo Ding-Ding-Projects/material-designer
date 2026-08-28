@@ -144,6 +144,13 @@ describe('shared menu and dropdown primitive source contract', () => {
     );
   });
 
+  it('keeps locked select activation typed and fail-closed', () => {
+    const select = source('CustomSelect.tsx');
+    expect(select).toContain('onLockedActivate: (request: LockedActivationRequest) => LockedActivationReceipt;');
+    expect(select).toContain("console.error('Locked select activation did not return an accepted receipt.');");
+    expect(select).toContain('data-locked={locked || undefined}');
+  });
+
   it('keeps the active result prop in the shared search field', () => {
     const field = source('regex/RegexSearchField.tsx');
     expectRedThenGreen(
@@ -157,9 +164,12 @@ describe('shared menu and dropdown primitive source contract', () => {
     const menu = source('ContextMenu.tsx');
     expectRedThenGreen(
       menu,
-      (value) => value.includes('readonly onEditAppearance: () => void;')
-        && value.includes('readonly onLock: () => void;'),
-      (value) => value.replace('readonly onEditAppearance: () => void;', 'readonly onEditAppearanceX: () => void;'),
+      (value) => value.includes('readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;')
+        && value.includes('readonly onLock: (request: TargetActionRequest) => TargetActionReceipt;')
+        && value.includes('readonly onRequestDestructiveConfirmation:')
+        && value.includes(') => DestructiveConfirmationReceipt;')
+        && hasJsxAttribute(value, 'data-callback-collision'),
+      (value) => value.replace('readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;', 'readonly onEditAppearanceX: (request: TargetActionRequest) => TargetActionReceipt;'),
     );
   });
 

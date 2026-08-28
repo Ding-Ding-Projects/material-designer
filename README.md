@@ -60,6 +60,24 @@ artifact manifest, build provenance and SHA-256 under `.yum-tong/`. They never
 tag, publish or create a release. Omit
 `/s` for the final local launch question after a successful build.
 
+## Shared menu and dropdown migration
+
+The shared `ContextMenu.tsx` and `CustomSelect.tsx` primitives now provide
+field-owned plain-text-first filtering, an adjacent anchored regex builder,
+stable owner and field ids, keyboard and touch paths, active-result scrolling,
+viewport recompute, 48px targets, reduced-motion behavior, visible result
+counts, typed appearance and lock receipts, and fail-closed destructive-action
+confirmation handoffs. A locked dropdown keeps an operable unlock wrapper.
+
+The collaboration role picker is the first production caller migrated to the
+shared dropdown. The hand-written migration inventory at
+[`docs/standards/shared-ui-primitives-migration.md`](docs/standards/shared-ui-primitives-migration.md)
+lists all 50 `role="menu"` containers, every remaining native select, every
+direct search input, and additional search-like controls. Unmigrated rows stay
+explicitly red, so this section does not claim complete application coverage.
+Source implementation is recorded at
+[`2aade3c`](https://github.com/Ding-Ding-Projects/material-designer/commit/2aade3ca).
+
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
 

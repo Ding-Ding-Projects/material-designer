@@ -12,7 +12,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ContextMenu, type ContextMenuItem } from '../../src/components/ContextMenu';
+import {
+  ContextMenu,
+  type ContextMenuItem,
+  type DestructiveConfirmationRequest,
+  type DestructiveConfirmationReceipt,
+  type TargetActionRequest,
+  type TargetActionReceipt,
+} from '../../src/components/ContextMenu';
 import {
   ariaKeyShortcuts,
   shortcutKeyTokens,
@@ -22,6 +29,14 @@ afterEach(() => {
   cleanup();
   document.querySelectorAll('[data-context-menu-opener]').forEach((element) => element.remove());
 });
+
+function acceptTargetAction(request: TargetActionRequest): TargetActionReceipt {
+  return { ...request, accepted: true };
+}
+
+function acceptDestructive(request: DestructiveConfirmationRequest) {
+  return { ...request, accepted: true as const };
+}
 
 function createOpener(): HTMLButtonElement {
   const opener = document.createElement('button');
@@ -63,10 +78,11 @@ function renderMenu(props: Partial<Parameters<typeof ContextMenu>[0]> = {}) {
       searchPlaceholder="Filter actions"
       noResultsLabel="No actions match this filter."
       resultCountLabel={(count) => `${count} actions`}
-      onEditAppearance={() => {}}
-      onLock={() => {}}
+      onEditAppearance={acceptTargetAction}
+      onLock={acceptTargetAction}
       editAppearanceLabel="Edit appearance…"
       lockLabel="Lock this element…"
+      onRequestDestructiveConfirmation={acceptDestructive}
       destructiveUnavailableLabel="Confirmation is unavailable."
       {...props}
     />,
@@ -157,6 +173,26 @@ describe('ContextMenu', () => {
       expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(8);
     } finally {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+    }
+  });
+
+  it('keeps its surface inside an extremely small viewport', () => {
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 10 });
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: 10 });
+    try {
+      renderMenu({ x: 9, y: 9 });
+      const menu = screen.getByTestId('menu');
+      expect(Number.parseInt(menu.style.width, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.left, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.left, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.top, 10)).toBeGreaterThanOrEqual(0);
+      expect(Number.parseInt(menu.style.top, 10)).toBeLessThanOrEqual(10);
+      expect(Number.parseInt(menu.style.maxHeight, 10)).toBeGreaterThanOrEqual(1);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: originalHeight });
     }
   });
 
@@ -255,14 +291,27 @@ describe('ContextMenu', () => {
   });
 
   it('adds real target-specific appearance and lock callbacks', () => {
-    const onEditAppearance = vi.fn();
-    const onLock = vi.fn();
+    const onEditAppearance = vi.fn(acceptTargetAction);
+    const onLock = vi.fn(acceptTargetAction);
     renderMenu({ onEditAppearance, onLock });
 
     fireEvent.click(screen.getByTestId('menu-edit-appearance'));
     expect(onEditAppearance).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByTestId('menu-lock-element'));
     expect(onLock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not accept an appearance callback that returns a mismatched receipt', () => {
+    const onClose = vi.fn();
+    const badReceipt = vi.fn(() => ({
+      targetId: 'some-other-target',
+      action: 'edit-appearance' as const,
+      accepted: true as const,
+    }));
+    renderMenu({ onClose, onEditAppearance: badReceipt });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(badReceipt).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('keeps a portalled builder inside its owning menu for pointer and scroll events', () => {
@@ -290,10 +339,11 @@ describe('ContextMenu', () => {
           searchPlaceholder="Filter first"
           noResultsLabel="No first actions match."
           resultCountLabel={(count) => `${count} first actions`}
-          onEditAppearance={() => {}}
-          onLock={() => {}}
+          onEditAppearance={acceptTargetAction}
+          onLock={acceptTargetAction}
           editAppearanceLabel="Edit appearance…"
           lockLabel="Lock this element…"
+          onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
         />
         <ContextMenu
@@ -308,10 +358,11 @@ describe('ContextMenu', () => {
           searchPlaceholder="Filter second"
           noResultsLabel="No second actions match."
           resultCountLabel={(count) => `${count} second actions`}
-          onEditAppearance={() => {}}
-          onLock={() => {}}
+          onEditAppearance={acceptTargetAction}
+          onLock={acceptTargetAction}
           editAppearanceLabel="Edit appearance…"
           lockLabel="Lock this element…"
+          onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
         />
       </>,
@@ -336,10 +387,11 @@ describe('ContextMenu', () => {
         searchPlaceholder="Filter actions"
         noResultsLabel="No actions match."
         resultCountLabel={(count) => `${count} actions`}
-        onEditAppearance={() => {}}
-        onLock={() => {}}
+        onEditAppearance={acceptTargetAction}
+        onLock={acceptTargetAction}
         editAppearanceLabel="Edit appearance…"
         lockLabel="Lock this element…"
+        onRequestDestructiveConfirmation={acceptDestructive}
         destructiveUnavailableLabel="Confirmation is unavailable."
       />
     );
@@ -350,21 +402,38 @@ describe('ContextMenu', () => {
     expect(screen.getByTestId('a-lock-element')).toBeTruthy();
   });
 
+  it('refuses duplicate item ids while keeping both labels visible', () => {
+    renderMenu({
+      items: [
+        { id: 'same', label: 'First same id', onSelect: () => {} },
+        { id: 'same', label: 'Second same id', onSelect: () => {} },
+      ],
+    });
+    const menu = screen.getByTestId('menu');
+    expect(menu).toHaveAttribute('data-item-duplicate', 'true');
+    expect(screen.getByText('First same id').closest('button')).toBeDisabled();
+    expect(screen.getByText('Second same id').closest('button')).toBeDisabled();
+  });
+
   it('refuses a dangerous action when no confirmation handoff exists', () => {
     const onSelect = vi.fn();
     renderMenu({
       items: [{ id: 'delete', label: 'Delete', danger: true, onSelect }],
+      onRequestDestructiveConfirmation: undefined as unknown as (
+        request: DestructiveConfirmationRequest,
+      ) => DestructiveConfirmationReceipt,
     });
     const deleteButton = screen.getByTestId('menu-delete');
     expect(deleteButton).toBeDisabled();
     expect(deleteButton).toHaveAttribute('title', 'Confirmation is unavailable.');
+    expect(deleteButton).toHaveTextContent('Confirmation is unavailable.');
     fireEvent.click(deleteButton);
     expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('routes a dangerous action to confirmation before any item callback', () => {
     const onSelect = vi.fn();
-    const requestConfirmation = vi.fn();
+    const requestConfirmation = vi.fn(acceptDestructive);
     const item = { id: 'delete', label: 'Delete', danger: true, onSelect };
     renderMenu({ items: [item], onRequestDestructiveConfirmation: requestConfirmation });
     fireEvent.click(screen.getByTestId('menu-delete'));

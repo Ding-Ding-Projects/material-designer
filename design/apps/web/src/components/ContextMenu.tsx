@@ -28,11 +28,37 @@ export interface ContextMenuItem {
   readonly disabled?: boolean;
   /** Explains a disabled item, including a toy-lock recovery route when relevant. */
   readonly disabledReason?: string;
+  readonly targetAction?: TargetActionKind;
   /** Draw a rule above this item. */
   readonly separatorBefore?: boolean;
   /** Overrides the `<menu testId>-<item id>` default, for existing selectors. */
   readonly testId?: string;
   readonly onSelect: () => void;
+}
+
+export type TargetActionKind = 'edit-appearance' | 'lock-element';
+
+export interface TargetActionRequest {
+  readonly targetId: string;
+  readonly action: TargetActionKind;
+}
+
+export interface TargetActionReceipt {
+  readonly targetId: string;
+  readonly action: TargetActionKind;
+  readonly accepted: true;
+}
+
+export interface DestructiveConfirmationRequest {
+  readonly targetId: string;
+  readonly itemId: string;
+  readonly label: string;
+}
+
+export interface DestructiveConfirmationReceipt {
+  readonly targetId: string;
+  readonly itemId: string;
+  readonly accepted: true;
 }
 
 export interface ContextMenuProps {
@@ -57,13 +83,16 @@ export interface ContextMenuProps {
   readonly noResultsLabel: string;
   readonly resultCountLabel: (count: number) => string;
   /** Real callbacks for the exact target, required by every context menu. */
-  readonly onEditAppearance: () => void;
-  readonly onLock: () => void;
+  readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;
+  readonly onLock: (request: TargetActionRequest) => TargetActionReceipt;
   readonly editAppearanceLabel: string;
   readonly lockLabel: string;
   /** Destructive actions stay visible but cannot execute without this handoff. */
-  readonly onRequestDestructiveConfirmation?: (item: ContextMenuItem) => void;
+  readonly onRequestDestructiveConfirmation: (
+    request: DestructiveConfirmationRequest,
+  ) => DestructiveConfirmationReceipt;
   readonly destructiveUnavailableLabel: string;
+  readonly identityUnavailableLabel: string;
 }
 
 const DEFAULT_WIDTH = 260;
@@ -94,21 +123,46 @@ function clampToViewport(
   const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
   const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
   const height = menuHeight(items);
+  const maxLeft = Math.max(0, viewportWidth - width);
+  const maxTop = Math.max(0, viewportHeight - height);
+  const left = viewportWidth <= EDGE_PADDING * 2 + 1
+    ? Math.max(0, Math.min(x, maxLeft))
+    : Math.max(EDGE_PADDING, Math.min(x, Math.max(EDGE_PADDING, maxLeft - EDGE_PADDING)));
+  const top = viewportHeight <= EDGE_PADDING * 2 + 1
+    ? Math.max(0, Math.min(y, maxTop))
+    : Math.max(EDGE_PADDING, Math.min(y, Math.max(EDGE_PADDING, maxTop - EDGE_PADDING)));
   return {
-    left: Math.max(EDGE_PADDING, Math.min(x, viewportWidth - width - EDGE_PADDING)),
-    top: Math.max(EDGE_PADDING, Math.min(y, viewportHeight - height - EDGE_PADDING)),
+    left,
+    top,
   };
 }
 
 function widthWithinViewport(width: number): number {
   const viewportWidth = typeof window === 'undefined' ? 1024 : window.innerWidth;
-  return Math.max(1, Math.min(width, viewportWidth - EDGE_PADDING * 2));
+  return Math.max(1, Math.min(width, Math.max(1, viewportWidth - EDGE_PADDING * 2)));
+}
+
+function heightWithinViewport(): number {
+  const viewportHeight = typeof window === 'undefined' ? 768 : window.innerHeight;
+  return Math.max(1, viewportHeight - EDGE_PADDING * 2);
 }
 
 function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boolean {
   if (!(target instanceof Element)) return false;
   const owner = target.closest('[data-regex-owner]');
   return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
+}
+
+function isTargetActionReceipt(
+  value: TargetActionReceipt | DestructiveConfirmationReceipt | undefined,
+  targetId: string,
+  action?: TargetActionKind,
+  itemId?: string,
+): boolean {
+  if (!value || value.accepted !== true || value.targetId !== targetId) return false;
+  if (action !== undefined && ('action' in value ? value.action !== action : true)) return false;
+  if (itemId !== undefined && ('itemId' in value ? value.itemId !== itemId : true)) return false;
+  return true;
 }
 
 export function ContextMenu({
@@ -133,6 +187,7 @@ export function ContextMenu({
   lockLabel,
   onRequestDestructiveConfirmation,
   destructiveUnavailableLabel,
+  identityUnavailableLabel,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const reactId = useId();
@@ -147,16 +202,35 @@ export function ContextMenu({
     const result = [...items];
     const ids = new Set(result.map((item) => item.id));
     const editId = uniqueItemId('edit-appearance', ids);
-    result.push({ id: editId, label: editAppearanceLabel, onSelect: onEditAppearance });
+    result.push({
+      id: editId,
+      label: editAppearanceLabel,
+      targetAction: 'edit-appearance',
+      onSelect: () => {},
+    });
     ids.add(editId);
     const lockId = uniqueItemId('lock-element', ids);
-    result.push({ id: lockId, label: lockLabel, onSelect: onLock });
+    result.push({
+      id: lockId,
+      label: lockLabel,
+      targetAction: 'lock-element',
+      onSelect: () => {},
+    });
     return result;
   }, [editAppearanceLabel, items, lockLabel, onEditAppearance, onLock]);
 
   const callbackCollision = items.some((item) =>
     item.id === 'edit-appearance' || item.id === 'lock-element',
   );
+  const duplicateItemIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const item of menuItems) {
+      if (seen.has(item.id)) duplicates.add(item.id);
+      seen.add(item.id);
+    }
+    return duplicates;
+  }, [menuItems]);
   const menuWidth = widthWithinViewport(width);
   const [position, setPosition] = useState(() => clampToViewport(x, y, menuItems, menuWidth));
   const [duplicateOwner, setDuplicateOwner] = useState(false);
@@ -181,7 +255,7 @@ export function ContextMenu({
       .filter((node) => node.getAttribute('data-context-menu-owner') === resolvedOwnerId);
     setDuplicateOwner(matches.length > 1);
     if (matches.length > 1) {
-      console.error(`Duplicate context-menu owner id: ${resolvedOwnerId}`);
+      console.error('Duplicate context-menu owner id was refused.');
     }
   }, [resolvedOwnerId]);
 
@@ -191,8 +265,9 @@ export function ContextMenu({
   );
   const enabledVisibleItems = useMemo(
     () => visibleItems.filter((item) => !item.disabled
+      && !duplicateItemIds.has(item.id)
       && !(item.danger && !onRequestDestructiveConfirmation)),
-    [onRequestDestructiveConfirmation, visibleItems],
+    [duplicateItemIds, onRequestDestructiveConfirmation, visibleItems],
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -212,12 +287,35 @@ export function ContextMenu({
   }, [onClose, restoreFocus]);
 
   const activate = useCallback((item: ContextMenuItem) => {
-    if (item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
+    if (duplicateOwner || duplicateItemIds.has(item.id)
+      || item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
+    if (item.targetAction) {
+      const request = { targetId: resolvedOwnerId, action: item.targetAction };
+      const receipt = item.targetAction === 'edit-appearance'
+        ? onEditAppearance(request)
+        : onLock(request);
+      if (!isTargetActionReceipt(receipt, resolvedOwnerId, item.targetAction)) {
+        console.error('Context menu target action did not return an accepted receipt.');
+        return;
+      }
+      onClose();
+      restoreFocus();
+      return;
+    }
+    if (item.danger) {
+      const receipt = onRequestDestructiveConfirmation({
+        targetId: resolvedOwnerId,
+        itemId: item.id,
+        label: item.label,
+      });
+      if (!isTargetActionReceipt(receipt, resolvedOwnerId, undefined, item.id)) {
+        console.error('Context menu destructive action did not return an accepted receipt.');
+        return;
+      }
+    } else item.onSelect();
     onClose();
-    if (item.danger) onRequestDestructiveConfirmation?.(item);
-    else item.onSelect();
     restoreFocus();
-  }, [onClose, onRequestDestructiveConfirmation, restoreFocus]);
+  }, [duplicateItemIds, duplicateOwner, onClose, onEditAppearance, onLock, onRequestDestructiveConfirmation, resolvedOwnerId, restoreFocus]);
 
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (enabledVisibleItems.length === 0) return;
@@ -311,13 +409,14 @@ export function ContextMenu({
     <div
       ref={menuRef}
       className={styles.menu}
-      style={{ left: position.left, top: position.top, width: menuWidth }}
+      style={{ left: position.left, top: position.top, width: menuWidth, maxHeight: heightWithinViewport() }}
       role="menu"
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledBy}
       data-testid={testId}
       data-context-menu-owner={resolvedOwnerId}
       data-owner-duplicate={duplicateOwner || undefined}
+      data-item-duplicate={duplicateItemIds.size > 0 || undefined}
       data-callback-collision={callbackCollision || undefined}
       onMouseDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
@@ -376,25 +475,28 @@ export function ContextMenu({
           <div className={styles.noResults} role="status" data-testid={testId ? `${testId}-no-results` : undefined}>
             {noResultsLabel}
           </div>
-        ) : visibleItems.map((item) => {
+        ) : visibleItems.map((item, index) => {
           const tokens = item.shortcutId
             ? shortcutKeyTokens(item.shortcutId, { mac: onMac })
             : null;
           const optionId = `${domOwnerId}-${item.id}`;
           const unavailableDestructive = Boolean(item.danger && !onRequestDestructiveConfirmation);
+          const unavailableIdentity = duplicateOwner || duplicateItemIds.has(item.id);
           return (
-            <div key={item.id} className={styles.row}>
+            <div key={`${item.id}-${index}`} className={styles.row}>
               {item.separatorBefore ? <span className={styles.separator} role="none" /> : null}
               <button
                 type="button"
                 role="menuitem"
-                disabled={item.disabled || unavailableDestructive}
+                disabled={item.disabled || unavailableDestructive || unavailableIdentity}
                 className={`${styles.item}${item.danger ? ` ${styles.danger}` : ''}`}
                 data-testid={item.testId ?? optionId}
                 data-menu-item-id={item.id}
                 id={optionId}
                 title={unavailableDestructive
                   ? destructiveUnavailableLabel
+                  : unavailableIdentity
+                    ? identityUnavailableLabel
                   : item.disabled
                     ? item.disabledReason
                     : undefined}
@@ -409,7 +511,18 @@ export function ContextMenu({
                     <Icon name={item.icon} size={18} />
                   </span>
                 ) : <span className={styles.icon} aria-hidden />}
-                <span className={styles.label} title={item.label}>{item.label}</span>
+                <span className={styles.label} title={item.label}>
+                  {item.label}
+                  {(item.disabled && item.disabledReason) || unavailableDestructive || unavailableIdentity ? (
+                    <span className={styles.disabledReason}>
+                      {unavailableDestructive
+                        ? destructiveUnavailableLabel
+                        : unavailableIdentity
+                          ? identityUnavailableLabel
+                          : item.disabledReason}
+                    </span>
+                  ) : null}
+                </span>
                 {tokens ? (
                   <span className={styles.shortcut} aria-hidden="true">
                     {tokens.map((token, index) => (

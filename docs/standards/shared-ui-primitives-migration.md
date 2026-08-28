@@ -10,8 +10,8 @@ visible until its owning feature lane migrates it.
 
 | Row | Source | Contract | State |
 | --- | --- | --- | --- |
-| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, result status, keyboard navigation, focus return, viewport recompute, shortcut registry display, mandatory appearance and lock callback seams, and fail-closed destructive confirmation handoff. | [x] implemented, mounted tests present |
-| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, filtered groups, result status, keyboard navigation, focus return, active-option scrolling, viewport recompute, stable owner IDs, locked-trigger wrapper, and an optional context-menu handoff. | [x] implemented, mounted tests present |
+| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, positive result count, keyboard navigation, active scrolling, focus return, viewport recompute, shortcut registry display, typed appearance and lock receipts, duplicate-id refusal, and fail-closed destructive confirmation receipt handoff. | [x] implemented, mounted tests present |
+| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with readonly option/group types, explicit stable option ids, required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id, isolated state, filtered groups, positive result count, keyboard navigation, focus return, active-option scrolling, viewport recompute, duplicate owner/id refusal markers, typed locked-trigger pointer/touch/keyboard/AT/programmatic receipts, visible disabled reasons, context-menu wrapper, and an optional trigger context-menu handoff. | [x] implemented, mounted tests present |
 | primitive-regex-active-result | `design/apps/web/src/components/regex/RegexSearchField.tsx` | Search fields can expose the active filtered result to their own listbox or menu through `aria-activedescendant` without sharing controller state. | [x] implemented, mounted tests present |
 
 ## Native select rows
@@ -103,7 +103,7 @@ same field-owned controller contract.
 | search-plugins | `design/apps/web/src/components/PluginsView.tsx:3042` | [ ] RED |
 | search-project-reference | `design/apps/web/src/components/ProjectReferenceModal.tsx:177` | [ ] RED |
 | search-skills | `design/apps/web/src/components/SkillsSection.tsx:628` | [ ] RED |
-| search-regex-shared | `design/apps/web/src/components/regex/RegexSearchField.tsx:219` | [x] green, shared primitive owns the builder |
+| search-regex-shared | `design/apps/web/src/components/regex/RegexSearchField.tsx:222` | [x] green, shared primitive owns the builder |
 
 ## Search-like controls beyond literal `type="search"`
 
@@ -163,7 +163,7 @@ unfinished and remain completion blockers.
 | menu-composer-mode | `design/apps/web/src/components/ComposerModePicker.tsx:238` | [ ] RED |
 | menu-composer-plus-1 | `design/apps/web/src/components/ComposerPlusMenu.tsx:601` | [ ] RED |
 | menu-composer-plus-2 | `design/apps/web/src/components/ComposerPlusMenu.tsx:985` | [ ] RED |
-| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:315` | [x] green, shared primitive owns filtering and callbacks |
+| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:413` | [x] green, shared primitive owns filtering and callbacks |
 | menu-design-browser-1 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2588` | [ ] RED |
 | menu-design-browser-2 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2791` | [ ] RED |
 | menu-design-files | `design/apps/web/src/components/DesignFilesPanel.tsx:1349` | [ ] RED |

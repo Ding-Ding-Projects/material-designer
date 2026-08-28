@@ -58,7 +58,7 @@ export interface RegexSearchFieldProps {
   ariaControls?: string;
   /** Optional active result id, used by listbox/menu owners while this field has focus. */
   ariaActiveDescendant?: string;
-  /** Stable field id forwarded to field-scoped regex persistence. */
+  /** Stable field id forwarded to the regex workbench owner. */
   fieldId?: string;
   testId?: string;
   autoFocus?: boolean;
