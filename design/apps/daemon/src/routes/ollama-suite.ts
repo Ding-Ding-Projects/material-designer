@@ -1,6 +1,7 @@
 import type { Express, Response } from 'express';
 import { promises as fs } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -9,6 +10,7 @@ const MAX_JSON_BYTES = 8 * 1024 * 1024;
 const MAX_MODEL_TAG = 160;
 const MAX_MESSAGES = 100;
 const MAX_MESSAGE_BYTES = 100_000;
+const MAX_SYSTEM_PROMPT_BYTES = 100_000;
 const OFFICIAL_CATALOG_URL = 'https://ollama.com/api/tags';
 const MAX_PULL_QUEUE_ITEMS = 10_000;
 
@@ -83,6 +85,23 @@ interface DurablePull {
   queuedAt: string;
   updatedAt: string;
   retryable: boolean;
+  providerStatus: 'queued' | 'pulling' | 'success' | 'error' | 'cancelled' | null;
+}
+
+function isDurablePull(value: unknown): value is DurablePull {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.id === 'string' && item.id.length > 0 && item.id.length <= 160
+    && typeof item.tag === 'string' && item.tag.length > 0 && item.tag.length <= MAX_MODEL_TAG
+    && ['queued', 'pulling', 'paused', 'completed', 'cancelled', 'failed'].includes(String(item.state))
+    && typeof item.completedBytes === 'number' && Number.isFinite(item.completedBytes) && item.completedBytes >= 0
+    && (item.totalBytes === null || (typeof item.totalBytes === 'number' && Number.isFinite(item.totalBytes) && item.totalBytes >= 0))
+    && typeof item.attempts === 'number' && Number.isInteger(item.attempts) && item.attempts >= 0 && item.attempts <= 100
+    && typeof item.queuedAt === 'string' && item.queuedAt.length <= 80
+    && typeof item.updatedAt === 'string' && item.updatedAt.length <= 80
+    && (item.detail === null || typeof item.detail === 'string')
+    && typeof item.retryable === 'boolean'
+    && (item.providerStatus === null || ['queued', 'pulling', 'success', 'error', 'cancelled'].includes(String(item.providerStatus)));
 }
 
 function createPullStore(dataDir: string) {
@@ -96,7 +115,7 @@ function createPullStore(dataDir: string) {
     loading = (async () => {
       try {
         const parsed: unknown = JSON.parse(await fs.readFile(file, 'utf8'));
-        if (Array.isArray(parsed)) records = parsed.slice(0, MAX_PULL_QUEUE_ITEMS) as DurablePull[];
+        if (Array.isArray(parsed)) records = parsed.slice(0, MAX_PULL_QUEUE_ITEMS).filter(isDurablePull);
       } catch {
         records = [];
       }
@@ -123,7 +142,7 @@ function createPullStore(dataDir: string) {
   return {
     async list() { await load(); return records.map((record) => ({ ...record })); },
     async get(id: string) { await load(); return records.find((record) => record.id === id) ?? null; },
-    async add(tag: string) { await load(); const now = new Date().toISOString(); const record: DurablePull = { id: `${tag}-${Date.now()}`, tag, state: 'queued', completedBytes: 0, totalBytes: null, attempts: 0, detail: null, queuedAt: now, updatedAt: now, retryable: true }; records.push(record); await save(); return record; },
+    async add(tag: string) { await load(); const now = new Date().toISOString(); const record: DurablePull = { id: randomUUID(), tag, state: 'queued', completedBytes: 0, totalBytes: null, attempts: 0, detail: null, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'queued' }; records.push(record); await save(); return record; },
     async update(id: string, changes: Partial<DurablePull>) { await load(); const record = records.find((item) => item.id === id); if (!record) return null; Object.assign(record, changes, { updatedAt: new Date().toISOString() }); await save(); return record; },
   };
 }
@@ -153,6 +172,7 @@ async function hardwareFacts(dataDir: string) {
 
 export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD_DATA_DIR ?? process.cwd()): void {
   const pullStore = createPullStore(dataDir);
+  const pullControllers = new Map<string, AbortController>();
   app.get('/api/ollama/hardware', async (_req, res) => res.json(await hardwareFacts(dataDir)));
   app.get('/api/ollama/pulls', async (_req, res) => res.json({ records: await pullStore.list(), concurrency: 2 }));
   app.post('/api/ollama/harness/preflight', async (req, res) => {
@@ -203,22 +223,24 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     }
   });
   app.post('/api/ollama/pulls/:id/cancel', async (req, res) => {
-    const record = await pullStore.update(req.params.id, { state: 'cancelled', retryable: false, detail: 'Cancelled by the user.' });
+    pullControllers.get(req.params.id)?.abort();
+    const record = await pullStore.update(req.params.id, { state: 'cancelled', providerStatus: 'cancelled', retryable: false, detail: 'Cancelled by the user.' });
     return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
   });
   app.post('/api/ollama/pulls/:id/pause', async (req, res) => {
-    const record = await pullStore.update(req.params.id, { state: 'paused', detail: 'Paused by the user.' });
+    pullControllers.get(req.params.id)?.abort();
+    const record = await pullStore.update(req.params.id, { state: 'paused', providerStatus: 'cancelled', detail: 'Paused by the user.' });
     return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
   });
   app.post('/api/ollama/pulls/:id/resume', async (req, res) => {
-    const record = await pullStore.update(req.params.id, { state: 'queued', detail: 'Queued for resume.' });
+    const record = await pullStore.update(req.params.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for resume.' });
     return record ? res.json(record) : sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
   });
   app.post('/api/ollama/pulls/:id/retry', async (req, res) => {
     const record = await pullStore.get(req.params.id);
     if (!record) return sendFailure(res, 404, 'NOT_FOUND', 'Unknown pull queue item.');
     if (!record.retryable || !['failed', 'cancelled'].includes(record.state)) return sendFailure(res, 409, 'NOT_RETRYABLE', 'This pull is not in a retryable state.');
-    return res.json(await pullStore.update(record.id, { state: 'queued', detail: 'Queued for retry.', retryable: true }));
+    return res.json(await pullStore.update(record.id, { state: 'queued', providerStatus: 'queued', detail: 'Queued for retry.', retryable: true }));
   });
   app.get('/api/ollama/runtime', async (req, res) => {
     const base = loopbackBaseUrl(req.query.baseUrl);
@@ -294,12 +316,15 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
     const active = (await pullStore.list()).filter((record) => record.state === 'pulling').length;
     const record = await pullStore.add(tag);
     if (active >= 2) return res.status(202).json(record);
+    const pullController = new AbortController();
+    pullControllers.set(record.id, pullController);
     try {
-      await pullStore.update(record.id, { state: 'pulling', attempts: 1, detail: 'Starting local pull.' });
-      const response = await localRequest(base, 'api/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag, stream: true }), signal: AbortSignal.timeout(30 * 60 * 1000) });
-      if (!response.ok) { await pullStore.update(record.id, { state: 'failed', detail: `Local pull returned HTTP ${response.status}.`, retryable: true }); return sendFailure(res, 502, 'PULL_FAILED', `Local pull returned HTTP ${response.status}.`); }
+      await pullStore.update(record.id, { state: 'pulling', providerStatus: 'pulling', attempts: 1, detail: 'Starting local pull.' });
+      const response = await localRequest(base, 'api/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: tag, stream: true }), signal: AbortSignal.any([pullController.signal, AbortSignal.timeout(30 * 60 * 1000)]) });
+      if (!response.ok) { await pullStore.update(record.id, { state: 'failed', providerStatus: 'error', detail: `Local pull returned HTTP ${response.status}.`, retryable: true }); return sendFailure(res, 502, 'PULL_FAILED', `Local pull returned HTTP ${response.status}.`); }
       res.status(response.status);
       res.setHeader('content-type', 'application/x-ndjson');
+      res.setHeader('x-ollama-pull-id', record.id);
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -308,6 +333,7 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
         if (next.done) break;
         res.write(Buffer.from(next.value));
         buffer += decoder.decode(next.value, { stream: true });
+        if (Buffer.byteLength(buffer, 'utf8') > 128 * 1024) throw new Error('progress-record-too-large');
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
         for (const line of lines) {
@@ -316,18 +342,36 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
             const completedBytes = typeof value.completed === 'number' ? value.completed : undefined;
             const totalBytes = typeof value.total === 'number' ? value.total : undefined;
             const status = typeof value.status === 'string' ? value.status : undefined;
-            await pullStore.update(record.id, { ...(completedBytes === undefined ? {} : { completedBytes }), ...(totalBytes === undefined ? {} : { totalBytes }), ...(status === 'success' ? { state: 'completed', retryable: false } : { detail: status ?? null }) });
+            await pullStore.update(record.id, { ...(completedBytes === undefined ? {} : { completedBytes }), ...(totalBytes === undefined ? {} : { totalBytes }), ...(status === 'success' ? { state: 'completed', providerStatus: 'success', retryable: false } : status === 'error' ? { state: 'failed', providerStatus: 'error', retryable: true, detail: 'Provider reported an error.' } : { detail: status ?? null }) });
           } catch {
             // Keep forwarding provider lines, but never let malformed progress corrupt queue state.
           }
         }
       }
-      await pullStore.update(record.id, { state: 'completed', detail: 'Pull stream completed.', retryable: false });
+      if (buffer.trim()) {
+        try {
+          const value = JSON.parse(buffer) as Record<string, unknown>;
+          if (value.status === 'success') await pullStore.update(record.id, { providerStatus: 'success' });
+          if (value.status === 'error') await pullStore.update(record.id, { providerStatus: 'error', detail: 'Provider reported an error.' });
+        } catch {
+          await pullStore.update(record.id, { detail: 'Provider returned an incomplete final progress record.' });
+        }
+      }
+      const final = await pullStore.get(record.id);
+      if (final?.providerStatus === 'success') await pullStore.update(record.id, { state: 'completed', detail: 'Pull stream completed.', retryable: false });
+      else await pullStore.update(record.id, { state: 'failed', providerStatus: 'error', detail: 'Provider stream ended without a success status.', retryable: true });
       res.end();
     } catch {
-      await pullStore.update(record.id, { state: 'failed', detail: 'The pull stream ended before completion.', retryable: true });
+      const current = await pullStore.get(record.id);
+      if (current?.state !== 'cancelled' && current?.state !== 'paused') {
+        await pullStore.update(record.id, { state: 'failed', providerStatus: 'error', detail: 'The pull stream ended before completion.', retryable: true });
+      }
+      pullControllers.delete(record.id);
       if (res.headersSent) return res.end();
       return sendFailure(res, 503, 'OFFLINE', 'The local runtime could not start the pull.');
+    }
+    finally {
+      pullControllers.delete(record.id);
     }
   });
 
@@ -343,8 +387,17 @@ export function registerOllamaSuiteRoutes(app: Express, dataDir = process.env.OD
       return [{ role: raw.role.slice(0, 32), content: raw.content.slice(0, MAX_MESSAGE_BYTES) }];
     });
     if (safeMessages.length !== messages.length) return sendFailure(res, 400, 'INVALID_INPUT', 'Every chat message must have a bounded role and content.');
+    const rawParameters = req.body?.parameters && typeof req.body.parameters === 'object' ? req.body.parameters as Record<string, unknown> : {};
+    const temperature = rawParameters.temperature;
+    const topP = rawParameters.topP;
+    const topK = rawParameters.topK;
+    const numCtx = rawParameters.numCtx;
+    const seed = rawParameters.seed;
+    if (typeof temperature !== 'number' || !Number.isFinite(temperature) || temperature < 0 || temperature > 2 || typeof topP !== 'number' || !Number.isFinite(topP) || topP < 0 || topP > 1 || typeof topK !== 'number' || !Number.isInteger(topK) || topK < 1 || topK > 1000 || typeof numCtx !== 'number' || !Number.isInteger(numCtx) || numCtx < 1 || numCtx > 1_000_000 || (seed !== null && typeof seed !== 'undefined' && (typeof seed !== 'number' || !Number.isInteger(seed) || seed < 0 || seed > 2_147_483_647))) return sendFailure(res, 400, 'INVALID_INPUT', 'Chat parameters are outside their documented bounds.');
+    const systemPrompt = typeof req.body?.systemPrompt === 'string' && Buffer.byteLength(req.body.systemPrompt, 'utf8') <= MAX_SYSTEM_PROMPT_BYTES ? req.body.systemPrompt.slice(0, MAX_SYSTEM_PROMPT_BYTES) : '';
+    const ollamaMessages = systemPrompt ? [{ role: 'system', content: systemPrompt }, ...safeMessages] : safeMessages;
     try {
-      const response = await localRequest(base, 'api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: tag, messages: safeMessages, stream: true }), signal: AbortSignal.timeout(30 * 60 * 1000) });
+      const response = await localRequest(base, 'api/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: tag, messages: ollamaMessages, options: { temperature, top_p: topP, top_k: topK, num_ctx: numCtx, ...(seed === null || typeof seed === 'undefined' ? {} : { seed }) }, stream: true }), signal: AbortSignal.timeout(30 * 60 * 1000) });
       if (!response.ok) return sendFailure(res, 502, 'CHAT_FAILED', `Local chat returned HTTP ${response.status}.`);
       res.status(response.status);
       res.setHeader('content-type', 'application/x-ndjson');

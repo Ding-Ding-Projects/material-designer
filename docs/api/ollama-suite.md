@@ -8,6 +8,9 @@ redirects, bounds JSON responses, and forwards the local runtime operations
 used by the settings surface: runtime status, hardware facts, installed tags,
 official catalog pages, streamed pulls, durable pull actions, streamed chat,
 and allowlisted harness preflight, launch, health, snapshot, and restore.
+Pull records use collision-safe ids, validated disk loading, bounded NDJSON
+progress, and an explicit provider terminal status. A streamed pull is only
+completed when the provider emits its success record.
 
 ## Configuration
 

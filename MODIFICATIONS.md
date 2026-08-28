@@ -5600,8 +5600,10 @@ handling, shell-free harness profile validation, five settings tabs, and an
 independent regex search field for each tab. The daemon is registered with a
 durable queue, bounded hardware telemetry, official-catalog source identity,
 and allowlisted harness lifecycle. Source tests cover the primary validation
-and refusal boundaries. Packaged interaction evidence remains open and is not
-claimed here.
+and refusal boundaries. Validated restart recovery, provider terminal-status
+handling, and capability gating are included. Platform-specific GPU probing,
+provider-aware resume, and packaged interaction evidence remain open and are
+not claimed here.
 
 **Changed files:**
 

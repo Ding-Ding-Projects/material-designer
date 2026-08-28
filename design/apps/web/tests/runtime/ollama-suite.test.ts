@@ -4,12 +4,15 @@ import {
   collectCatalog,
   computeHardwareFit,
   attachmentCapability,
+  createChatSession,
   createPullQueue,
   isLoopbackOllamaOrigin,
   parseCatalogPage,
   parseCatalogSnapshot,
   reconcileInstalledModels,
   validateHarnessProfile,
+  validateChatParameters,
+  redactChatExport,
   type OllamaPullRecord,
 } from '../../src/runtime/ollama-suite';
 
@@ -51,14 +54,14 @@ describe('local Ollama suite domain', () => {
   });
 
   it('returns Unknown when hardware evidence is incomplete', () => {
-    expect(computeHardwareFit({ blobBytes: 100, parameterCount: null, quantization: null, contextWindow: null }, { ramBytes: null, vramBytes: null, freeDiskBytes: null, architecture: null, backendSupported: null, backend: null, driver: null })).toMatchObject({ verdict: 'unknown' });
+    expect(computeHardwareFit({ blobBytes: 100, parameterCount: null, quantization: null, contextWindow: null }, { ramBytes: null, availableRamBytes: null, vramBytes: null, freeDiskBytes: null, architecture: null, backendSupported: null, backend: null, driver: null })).toMatchObject({ verdict: 'unknown' });
   });
 
   it('returns conservative storage and RAM verdicts', () => {
     const variant = { blobBytes: 1_000_000_000, parameterCount: 7_000_000_000, quantization: 'Q4', contextWindow: 8192 } as const;
-    expect(computeHardwareFit(variant, { ramBytes: 2_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: true, backend: 'cpu', driver: null }).verdict).toBe('unlikely');
-    expect(computeHardwareFit(variant, { ramBytes: 4_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: true, backend: 'cpu', driver: null }).verdict).toBe('runs-well');
-    expect(computeHardwareFit(variant, { ramBytes: 4_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: false, backend: 'unsupported', driver: null }).verdict).toBe('unlikely');
+    expect(computeHardwareFit(variant, { ramBytes: 2_000_000_000, availableRamBytes: 2_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: true, backend: 'cpu', driver: null }).verdict).toBe('unlikely');
+    expect(computeHardwareFit(variant, { ramBytes: 4_000_000_000, availableRamBytes: 4_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: true, backend: 'cpu', driver: null }).verdict).toBe('runs-well');
+    expect(computeHardwareFit(variant, { ramBytes: 4_000_000_000, availableRamBytes: 4_000_000_000, vramBytes: null, freeDiskBytes: 2_000_000_000, architecture: 'x64', backendSupported: false, backend: 'unsupported', driver: null }).verdict).toBe('unlikely');
   });
 
   it('rejects shell syntax in registered harness profiles', () => {
@@ -71,8 +74,15 @@ describe('local Ollama suite domain', () => {
     expect(attachmentCapability({ capabilities: ['vision'] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: true });
   });
 
+  it('bounds chat parameters and redacts a local session export to safe fields', () => {
+    expect(validateChatParameters({ temperature: 9, topP: 0.9, topK: 40, numCtx: 8192, seed: null })).toMatchObject({ ok: false });
+    const session = createChatSession('tiny:latest', 'Local session', () => '2026-08-27T00:00:00Z');
+    session.messages.push({ role: 'user', content: 'hello', attachments: [{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }] });
+    expect(redactChatExport(session)).toMatchObject({ version: 1, id: session.id, messages: [{ role: 'user', content: 'hello', attachments: [{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }] }] });
+  });
+
   it('recovers pulling queue records and caps active work at two items', async () => {
-    let saved: OllamaPullRecord[] = [{ id: 'old', tag: 'tiny:latest', state: 'pulling', completedBytes: 2, totalBytes: 4, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true }];
+    let saved: OllamaPullRecord[] = [{ id: 'old', tag: 'tiny:latest', state: 'pulling', completedBytes: 2, totalBytes: 4, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling' }];
     const queue = createPullQueue({ load: async () => saved, save: async (next) => { saved = [...next]; } }, () => '2026-08-27T01:00:00Z');
     expect((await queue.list())[0]).toMatchObject({ state: 'queued', detail: 'Recovered after restart.' });
     const first = await queue.enqueue('first:latest');

@@ -56,10 +56,12 @@ export interface OllamaCatalogSnapshot {
   complete: boolean;
   stale: boolean;
   staleAfterMs: number;
+  catalogKind: 'official';
 }
 
 export interface OllamaHardwareFacts {
   ramBytes: number | null;
+  availableRamBytes: number | null;
   vramBytes: number | null;
   freeDiskBytes: number | null;
   architecture: string | null;
@@ -81,6 +83,7 @@ export interface OllamaPullRecord {
   queuedAt: string;
   updatedAt: string;
   retryable: boolean;
+  providerStatus: 'queued' | 'pulling' | 'success' | 'error' | 'cancelled' | null;
 }
 
 export interface OllamaAttachment {
@@ -88,6 +91,33 @@ export interface OllamaAttachment {
   mimeType: string;
   bytes: number;
 }
+
+export interface OllamaChatParameters {
+  temperature: number;
+  topP: number;
+  topK: number;
+  numCtx: number;
+  seed: number | null;
+}
+
+export interface OllamaChatSession {
+  id: string;
+  name: string;
+  modelTag: string;
+  systemPrompt: string;
+  parameters: OllamaChatParameters;
+  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string; attachments?: OllamaAttachment[] }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const DEFAULT_CHAT_PARAMETERS: OllamaChatParameters = {
+  temperature: 0.7,
+  topP: 0.9,
+  topK: 40,
+  numCtx: 8192,
+  seed: null,
+};
 
 export interface OllamaQueueStorage {
   load(): Promise<OllamaPullRecord[]>;
@@ -214,6 +244,23 @@ function parseVariant(value: unknown): OllamaResult<OllamaModelVariant> {
   };
 }
 
+function parsePullRecord(value: unknown): OllamaPullRecord | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const id = boundedString(raw.id, 160);
+  const tag = boundedString(raw.tag, OLLAMA_MAX_MODEL_NAME);
+  const state = raw.state;
+  const providerStatus = raw.providerStatus;
+  if (!id || !tag || !['queued', 'pulling', 'paused', 'completed', 'cancelled', 'failed'].includes(String(state)) || (providerStatus !== null && !['queued', 'pulling', 'success', 'error', 'cancelled'].includes(String(providerStatus)))) return null;
+  const completedBytes = boundedNumber(raw.completedBytes);
+  const totalBytes = raw.totalBytes === null ? null : boundedNumber(raw.totalBytes);
+  const attempts = boundedNumber(raw.attempts, 100);
+  const queuedAt = boundedString(raw.queuedAt, 80);
+  const updatedAt = boundedString(raw.updatedAt, 80);
+  if (completedBytes === null || totalBytes === undefined || attempts === null || !queuedAt || !updatedAt || typeof raw.retryable !== 'boolean') return null;
+  return { id, tag, state: state as OllamaPullRecord['state'], completedBytes, totalBytes, detail: typeof raw.detail === 'string' ? raw.detail.slice(0, 500) : null, attempts, queuedAt, updatedAt, retryable: raw.retryable, providerStatus: providerStatus as OllamaPullRecord['providerStatus'] };
+}
+
 export function parseCatalogPage(value: unknown): OllamaResult<{
   variants: OllamaModelVariant[];
   nextPageToken: string | null;
@@ -253,10 +300,10 @@ export function parseCatalogSnapshot(value: unknown): OllamaResult<OllamaCatalog
   const fetchedAt = boundedString(raw.fetchedAt, 80);
   const pageCount = boundedNumber(raw.pageCount, OLLAMA_MAX_CATALOG_PAGES);
   const staleAfterMs = boundedNumber(raw.staleAfterMs, 7 * 24 * 60 * 60 * 1000);
-  if (!fetchedAt || pageCount === null || staleAfterMs === null || raw.complete !== true || !page.value.sourceRevision || !page.value.sourceIdentity) {
+  if (!fetchedAt || pageCount === null || staleAfterMs === null || raw.complete !== true || raw.catalogKind !== 'official' || !page.value.sourceRevision || !page.value.sourceIdentity) {
     return resultError('malformed-response', 'Catalog snapshot metadata is incomplete.');
   }
-  return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: true, stale: raw.stale === true, staleAfterMs } };
+  return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: true, stale: raw.stale === true, staleAfterMs, catalogKind: 'official' } };
 }
 
 export async function collectCatalog(
@@ -277,8 +324,11 @@ export async function collectCatalog(
       pageCount += 1;
       const parsed = parseCatalogPage(await fetchPage(pageToken, signal));
       if (!parsed.ok) return parsed;
+      if (sourceRevision !== null && parsed.value.sourceRevision !== sourceRevision) return resultError('malformed-response', 'Official catalog revision changed during pagination.');
+      if (sourceIdentity !== null && parsed.value.sourceIdentity !== sourceIdentity) return resultError('malformed-response', 'Official catalog source identity changed during pagination.');
       sourceRevision ??= parsed.value.sourceRevision;
       sourceIdentity ??= parsed.value.sourceIdentity;
+      if (variants.some((item) => parsed.value.variants.some((pageItem) => pageItem.tag === item.tag))) return resultError('malformed-response', 'Official catalog pagination repeated a model tag.');
       variants.push(...parsed.value.variants);
       const next = parsed.value.nextPageToken;
       if (!next) break;
@@ -299,6 +349,7 @@ export async function collectCatalog(
         complete,
         stale: false,
         staleAfterMs,
+        catalogKind: 'official',
       },
     };
   } catch (error) {
@@ -314,11 +365,11 @@ export function markCatalogStaleness(snapshot: OllamaCatalogSnapshot, now = Date
 
 export function computeHardwareFit(
   variant: Pick<OllamaModelVariant, 'blobBytes' | 'parameterCount' | 'quantization' | 'contextWindow'>,
-  hardware: Pick<OllamaHardwareFacts, 'ramBytes' | 'vramBytes' | 'freeDiskBytes' | 'architecture' | 'backendSupported' | 'backend' | 'driver'>,
+  hardware: Pick<OllamaHardwareFacts, 'ramBytes' | 'availableRamBytes' | 'vramBytes' | 'freeDiskBytes' | 'architecture' | 'backendSupported' | 'backend' | 'driver'>,
 ): { verdict: OllamaFitVerdict; evidence: string[] } {
   const evidence: string[] = [];
-  if (!variant.blobBytes || !hardware.ramBytes || !hardware.freeDiskBytes) {
-    return { verdict: 'unknown', evidence: ['Blob size, RAM, and free destination storage are required.'] };
+  if (!variant.blobBytes || !hardware.ramBytes || !hardware.availableRamBytes || !hardware.freeDiskBytes) {
+    return { verdict: 'unknown', evidence: ['Blob size, total RAM, available RAM, and free destination storage are required.'] };
   }
   const overhead = Math.max(512 * 1024 * 1024, Math.round(variant.blobBytes * 0.2));
   const contextOverhead = variant.contextWindow ? Math.min(4 * 1024 * 1024 * 1024, variant.contextWindow * 4096) : 0;
@@ -330,10 +381,10 @@ export function computeHardwareFit(
   if (hardware.architecture) evidence.push(`Architecture: ${hardware.architecture}.`);
   if (hardware.backend) evidence.push(`Backend: ${hardware.backend}.`);
   if (hardware.driver) evidence.push(`Driver: ${hardware.driver}.`);
+  if (hardware.freeDiskBytes < requiredDisk) return { verdict: 'unlikely', evidence: [...evidence, 'Free destination storage is below the conservative estimate.'] };
+  if (hardware.availableRamBytes < requiredRam) return { verdict: 'unlikely', evidence: [...evidence, 'Available RAM is below the conservative estimate.'] };
   if (hardware.backendSupported === false) return { verdict: 'unlikely', evidence: [...evidence, 'The detected backend does not support this runtime.'] };
   if (hardware.backendSupported === null) return { verdict: 'runs-with-limits', evidence: [...evidence, 'Backend support is unknown, so the verdict is conservative.'] };
-  if (hardware.freeDiskBytes < requiredDisk) return { verdict: 'unlikely', evidence: [...evidence, 'Free destination storage is below the conservative estimate.'] };
-  if (hardware.ramBytes < requiredRam) return { verdict: 'unlikely', evidence: [...evidence, 'System RAM is below the conservative estimate.'] };
   if (hardware.vramBytes !== null && hardware.vramBytes < variant.blobBytes) return { verdict: 'runs-with-limits', evidence: [...evidence, 'VRAM is below the model blob size, so CPU or shared-memory execution may be required.'] };
   if (variant.contextWindow && variant.contextWindow > 131_072) {
     return { verdict: 'runs-with-limits', evidence: [...evidence, 'The declared context window is large and may need a lower setting.'] };
@@ -427,6 +478,28 @@ export function attachmentCapability(
   return { allowed: true, reason: 'Selected model declares this attachment capability.' };
 }
 
+export function validateChatParameters(value: unknown): OllamaResult<OllamaChatParameters> {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const temperature = boundedNumber(raw.temperature, 2);
+  const topP = boundedNumber(raw.topP, 1);
+  const topK = boundedNumber(raw.topK, 1_000);
+  const numCtx = boundedNumber(raw.numCtx, 1_000_000);
+  const seed = raw.seed === null || typeof raw.seed === 'undefined' ? null : boundedNumber(raw.seed, 2_147_483_647);
+  if (temperature === null || topP === null || topK === null || numCtx === null || (raw.seed !== null && typeof raw.seed !== 'undefined' && seed === null)) {
+    return resultError('invalid-input', 'Chat parameters are outside their documented bounds.');
+  }
+  return { ok: true, value: { temperature, topP, topK, numCtx, seed } };
+}
+
+export function createChatSession(modelTag: string, name = 'Local chat', now = () => new Date().toISOString()): OllamaChatSession {
+  const timestamp = now();
+  return { id: typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `chat-${Date.now()}`, name: name.slice(0, 120), modelTag: modelTag.slice(0, OLLAMA_MAX_MODEL_NAME), systemPrompt: '', parameters: { ...DEFAULT_CHAT_PARAMETERS }, messages: [], createdAt: timestamp, updatedAt: timestamp };
+}
+
+export function redactChatExport(session: OllamaChatSession): Record<string, unknown> {
+  return { version: 1, id: session.id, name: session.name, modelTag: session.modelTag, systemPrompt: session.systemPrompt, parameters: session.parameters, messages: session.messages.map((message) => ({ role: message.role, content: message.content, attachments: message.attachments?.map((attachment) => ({ name: attachment.name, mimeType: attachment.mimeType, bytes: attachment.bytes })) })) };
+}
+
 export function createPullQueue(storage: OllamaQueueStorage, now = () => new Date().toISOString()) {
   let records: OllamaPullRecord[] = [];
   let paused = false;
@@ -457,7 +530,7 @@ export function createPullQueue(storage: OllamaQueueStorage, now = () => new Dat
       await ready;
       if (!boundedString(tag, OLLAMA_MAX_MODEL_NAME)) return resultError('invalid-input', 'A model tag is required.');
       if (records.length >= OLLAMA_MAX_QUEUE_ITEMS) return resultError('invalid-input', 'The durable pull queue reached its bounded item limit.');
-      const record: OllamaPullRecord = { id: `${tag}-${Date.now()}`, tag, state: 'queued', completedBytes: 0, totalBytes: null, detail: null, attempts: 0, queuedAt: now(), updatedAt: now(), retryable: true };
+      const record: OllamaPullRecord = { id: typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `${tag}-${Date.now()}-${Math.random().toString(16).slice(2)}`, tag, state: 'queued', completedBytes: 0, totalBytes: null, detail: null, attempts: 0, queuedAt: now(), updatedAt: now(), retryable: true, providerStatus: 'queued' };
       records.push(record);
       await persist();
       await schedule();
@@ -506,8 +579,8 @@ export interface OllamaSuiteClient {
   pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
   pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
   catalogPage(pageToken: string | null, signal?: AbortSignal): Promise<OllamaResult<unknown>>;
-  pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
-  chat(tag: string, messages: readonly { role: string; content: string }[], signal?: AbortSignal): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
+  pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<{ stream: ReadableStream<Uint8Array> | null; id: string | null }>>;
+  chat(tag: string, messages: readonly { role: string; content: string }[], parameters?: OllamaChatParameters, signal?: AbortSignal, systemPrompt?: string): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
   harnessLaunch(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
 }
@@ -562,7 +635,7 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       const parsed = await boundedJson(response);
       if (!parsed.ok) return parsed;
       const raw = parsed.value as Record<string, unknown>;
-      const records = Array.isArray(raw.records) ? raw.records.filter((item): item is OllamaPullRecord => Boolean(item && typeof item === 'object')) : [];
+      const records = Array.isArray(raw.records) ? raw.records.flatMap((item) => { const record = parsePullRecord(item); return record ? [record] : []; }) : [];
       return { ok: true, value: { records, concurrency: typeof raw.concurrency === 'number' ? raw.concurrency : 2 } };
     },
     async pullAction(id, action, signal) {
@@ -587,12 +660,15 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       const response = await request('/api/ollama/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tag }), signal });
       if (!response) return resultError('offline', 'The local runtime could not start the pull.');
       if (!response.ok) return resultError('request-failed', `The pull request returned HTTP ${response.status}.`);
-      return { ok: true, value: response.body };
+      return { ok: true, value: { stream: response.body, id: response.headers.get('x-ollama-pull-id') } };
     },
-    async chat(tag, messages, signal) {
+    async chat(tag, messages, parameters = DEFAULT_CHAT_PARAMETERS, signal, systemPrompt = '') {
       if (!boundedString(tag, OLLAMA_MAX_MODEL_NAME) || messages.length > 100) return resultError('invalid-input', 'Chat needs a bounded model tag and message history.');
+      const checkedParameters = validateChatParameters(parameters);
+      if (!checkedParameters.ok) return checkedParameters;
       const safeMessages = messages.map((message) => ({ role: message.role.slice(0, 32), content: message.content.slice(0, 100_000) }));
-      const response = await request('/api/ollama/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tag, messages: safeMessages }), signal });
+      const safeSystemPrompt = systemPrompt.slice(0, 100_000);
+      const response = await request('/api/ollama/chat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tag, messages: safeMessages, parameters: checkedParameters.value, systemPrompt: safeSystemPrompt }), signal });
       if (!response) return resultError('offline', 'The local runtime could not start chat.');
       if (!response.ok) return resultError('request-failed', `The chat request returned HTTP ${response.status}.`);
       return { ok: true, value: response.body };

@@ -22,9 +22,12 @@ The host persists queued, pulling, paused, completed, cancelled, and failed
 states, limits active work to two items, records byte progress and attempts, and
 reconciles an interrupted pull after restart. Local chat streams newline-
 delimited responses, supports cancellation through the request signal, and
-keeps message history in application-local state. Attachment controls remain
-visible but are disabled with the exact capability gap when the selected model
-does not advertise vision, text, or file input.
+keeps message history in application-local state. Chat sessions validate
+bounded temperature, top-p, top-k, context, and seed parameters, retain an
+editable system prompt, persist a redacted local transcript, and export only
+safe metadata and message content. Attachment controls remain visible but are
+disabled with the exact capability gap when the selected model does not
+advertise vision, text, or file input.
 
 Harness profiles are allowlisted records. They use a semantic executable picker
 and bounded argument values, display a reviewable preflight, snapshot the
@@ -87,15 +90,17 @@ The focused source suite is
 `design/apps/web/tests/runtime/ollama-suite.test.ts`. It covers loopback
 origin validation, malformed pages, complete pagination, repeated-token
 refusal, installed/catalog reconciliation, conservative hardware verdicts,
-and harness shell-syntax rejection. The source suite is not run locally in
-this lane because repository policy reserves Node, package-manager, and app
+and harness shell-syntax rejection. The source suite is not run locally in this
+lane because repository policy reserves Node, package-manager, and app
 execution for CI.
 
 The built desktop surface still needs the full packaged interaction evidence:
 healthy, missing, stopped, offline, stale, pulling, partial pull, streamed
 chat, unavailable attachment, harness preflight, failed launch, rollback,
-all search fields, and every per-click capture. Those states are deliberately
-not described as verified by this source-only change.
+all search fields, and every per-click capture. The host API still needs a
+platform-specific GPU, VRAM, driver, and backend probe, and the queue needs
+provider-aware resume rather than only durable state reconciliation. Those
+states are deliberately not described as verified by this source-only change.
 
 ## Suggested articles
 

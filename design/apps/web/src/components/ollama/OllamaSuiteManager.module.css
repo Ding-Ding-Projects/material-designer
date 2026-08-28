@@ -47,6 +47,9 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .chatLog p { margin: 0 0 10px; }
 .chatComposer { align-items: flex-end; }
 .chatComposer textarea { flex: 1; }
+.chatSessionMeta { color: var(--md-sys-color-on-surface-variant, #47464f); font-size: 12px; }
+.parameterGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.parameterGrid input { min-height: 40px; width: 100%; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; padding: 6px 8px; }
 .empty { padding: 20px; text-align: center; border: 1px dashed var(--md-sys-color-outline, #777680); border-radius: 16px; }
 @media (max-width: 680px) {
   .root { padding: 14px; border-radius: 20px; }
