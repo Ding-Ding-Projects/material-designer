@@ -114,6 +114,13 @@ function wireLanguage() {
  * 1b. Front-screen build identity and provenance
  * ------------------------------------------------------------------ */
 
+function isValidAppVersion(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= 128
+    && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9]\d*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(value);
+}
+
 function wireFrontScreenProvenance() {
   const root = $('[data-front-screen-provenance]');
   if (!root) return;
@@ -124,7 +131,7 @@ function wireFrontScreenProvenance() {
   const version = root.getAttribute('data-front-version')?.trim() || '';
   const updatedAt = root.getAttribute('data-front-updated-at')?.trim() || '';
   const sourceCommit = root.getAttribute('data-front-source-commit')?.trim() || '';
-  const validVersion = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version);
+  const validVersion = isValidAppVersion(version);
   const validCommit = /^[0-9a-f]{40}$/i.test(sourceCommit);
   const parsed = new Date(updatedAt);
   const timestampParts = updatedAt.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);

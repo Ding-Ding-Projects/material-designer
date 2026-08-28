@@ -109,7 +109,7 @@ function Test-HostClockProvenance([string]$Text) {
       $name = $Matches[1]
       $rightHandSide = $Matches[2]
       $aliases = @([regex]::Matches($rightHandSide, '\$(\w+)') | ForEach-Object { $_.Groups[1].Value })
-      $inheritsHostClock = $rightHandSide -match '(?:Get-Date|DateTime::Now)'
+      $inheritsHostClock = $rightHandSide -match '(?:Get-Date|\[(?:DateTime|DateTimeOffset)\]::(?:Now|UtcNow))'
       foreach ($alias in $aliases) {
         if (@($hostClockVariables | Where-Object { $_ -ieq $alias }).Count -gt 0) {
           $inheritsHostClock = $true
@@ -124,7 +124,7 @@ function Test-HostClockProvenance([string]$Text) {
       $candidate = $Matches[1]
       if (@($hostClockVariables | Where-Object { $_ -ieq $candidate }).Count -gt 0) { return $true }
     }
-    if ($line.Code -match '(?:builtAt|updatedAt|generatedAt)[^=]*=\s*[^#]*(?:Get-Date|DateTime::Now)') {
+    if ($line.Code -match '(?:builtAt|updatedAt|generatedAt)[^=]*=\s*[^#]*(?:Get-Date|\[(?:DateTime|DateTimeOffset)\]::(?:Now|UtcNow))') {
       return $true
     }
   }
@@ -132,7 +132,7 @@ function Test-HostClockProvenance([string]$Text) {
 }
 
 function Assert-NoHostClockProvenance([string]$Text, [string]$InjectionNeedle, [string]$InjectionValue, [string]$Label) {
-  $hostClockPattern = '(?im)^\s*\$[^\r\n#]*(?:builtAt|updatedAt|generatedAt)[^\r\n#]*=\s*[^\r\n#]*(?:Get-Date|DateTime::Now)'
+  $hostClockPattern = '(?im)^\s*\$[^\r\n#]*(?:builtAt|updatedAt|generatedAt)[^\r\n#]*=\s*[^\r\n#]*(?:Get-Date|\[(?:DateTime|DateTimeOffset)\]::(?:Now|UtcNow))'
   if (Test-HostClockProvenance $Text) {
     throw "Front-screen provenance source uses a host clock: $Label"
   }
@@ -150,12 +150,24 @@ function Assert-NoHostClockProvenance([string]$Text, [string]$InjectionNeedle, [
     }
   }
   if ($indirectIndex -lt 0) { throw "Self-test could not inject an indirect host clock: $Label" }
-  $indirectLines[$indirectIndex] = '$stamp = (Get-Date).ToUniversalTime().ToString(''o'')'
+  $indirectLines[$indirectIndex] = '$stamp = [DateTimeOffset]::UtcNow.ToString(''o'')'
   $indirectLines += '$alias = $stamp'
   $indirectLines += '$provenance.builtAt = $alias'
   $indirectText = $indirectLines -join "`n"
   if (-not (Test-HostClockProvenance $indirectText)) {
     throw "Negative regression stayed green for indirect host clock provenance: $Label"
+  }
+}
+
+$hostClockFixtures = @('Get-Date', '[DateTime]::Now', '[DateTime]::UtcNow', '[DateTimeOffset]::Now', '[DateTimeOffset]::UtcNow')
+foreach ($clock in $hostClockFixtures) {
+  $directFixture = '$provenance.builtAt = ' + $clock
+  if (-not (Test-HostClockProvenance $directFixture)) {
+    throw "Host-clock fixture was not detected directly: $clock"
+  }
+  $transitiveFixture = '$stamp = ' + $clock + [Environment]::NewLine + '$alias = $stamp' + [Environment]::NewLine + '$provenance.builtAt = $alias'
+  if (-not (Test-HostClockProvenance $transitiveFixture)) {
+    throw "Host-clock fixture was not detected through aliases: $clock"
   }
 }
 
@@ -182,6 +194,8 @@ $boundaries = @(
   [pscustomobject]@{ path = 'design/apps/web/tests/providers/registry.test.ts'; needle = "it('settles false when the health request hangs', async () => {"; label = 'health request deadline test' },
   [pscustomobject]@{ path = 'site/index.html'; needle = 'data-front-updated-at=""'; label = 'site generated provenance instant boundary' },
   [pscustomobject]@{ path = 'site/assets/js/main.js'; needle = 'wireFrontScreenProvenance();'; label = 'site front-screen wiring' },
+  [pscustomobject]@{ path = 'site/assets/js/main.js'; needle = 'function isValidAppVersion(value) {'; label = 'site semantic version validation' },
+  [pscustomobject]@{ path = 'scripts/test-front-screen-provenance-pages-fixture.sh'; needle = 'helper_text="$('; label = 'Pages executable helper fixture' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'release:'; label = 'Pages release-publication trigger' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'TARGET_COMMIT=$(git rev-parse HEAD)'; label = 'Pages exact target commit selection' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'map(select(.draft == false and .prerelease == false and .published_at != null))'; label = 'Pages published release filter' },

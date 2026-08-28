@@ -51,6 +51,13 @@ therefore remains honestly unavailable, while the subsequent publication event
 refreshes the same deployment with the exact matching release data. No
 visitor-time clock or hand-entered release fact is used.
 
+The substitution helpers count their full matching lines before and after every
+replacement. Installer links require exactly two immutable URLs, and each
+visible provenance field requires exactly one source and one resulting value.
+The committed `scripts/test-front-screen-provenance-pages-fixture.sh` extracts
+and executes those workflow helpers against a temporary copy of `site/index.html`,
+then proves missing and wrong markers turn the helper red.
+
 ### The self-contained-assets gate
 
 Standard 15 forbids CDN scripts, remote stylesheets, remote fonts, remote images

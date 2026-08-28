@@ -143,7 +143,7 @@ jobs:
             fi
             value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
             sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$value|g" "$f"
-            updated=$(grep -oF "$marker" "$f" | grep -oF ">$raw_value" | wc -l | tr -d ' ')
+            updated=$(grep -F "$marker" "$f" | grep -F ">$raw_value" | wc -l | tr -d ' ')
             if [ "$updated" -ne "$expected" ]; then
               echo "::error::release field substitution for $key changed $updated visible values, expected $expected"
               return 1
@@ -160,7 +160,7 @@ jobs:
             fi
             escaped=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
             sed -i "/$marker/s|href=\"#\"|href=\"$escaped\"|" "$f"
-            updated=$(grep -oF "$marker" "$f" | grep -oF "href=\"$url\"" | wc -l | tr -d ' ')
+            updated=$(grep -F "$marker" "$f" | grep -F "href=\"$url\"" | wc -l | tr -d ' ')
             if [ "$updated" -ne "$expected" ]; then
               echo "::error::release link substitution for $kind changed $updated links, expected $expected"
               return 1
@@ -177,7 +177,7 @@ jobs:
             escaped_source=$(printf '%s' "$source" | sed 's/[&|\\]/\\&/g')
             escaped_replacement=$(printf '%s' "$replacement" | sed 's/[&|\\]/\\&/g')
             sed -i "s|$escaped_source|$escaped_replacement|g" "$f"
-            updated=$(grep -oF "$replacement" "$f" | wc -l | tr -d ' ')
+            updated=$(grep -F "$replacement" "$f" | wc -l | tr -d ' ')
             if [ "$updated" -ne "$expected" ]; then
               echo "::error::front-screen substitution for $source did not produce $expected visible values"
               return 1

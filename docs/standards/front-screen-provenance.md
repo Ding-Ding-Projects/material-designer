@@ -44,7 +44,10 @@ Focused source checks cover:
 - the empty site source tuple, visible fields, local formatter, and unavailable fallback;
 - strict calendar validation that rejects overflow dates such as February 31;
 - the manual installer route's externally supplied-or-unavailable provenance boundary;
-- the Pages workflow's no-JavaScript injection of every visible provenance value and status.
+- the Pages workflow's no-JavaScript injection of every visible provenance value and status;
+- the Pages helper fixture's exact field and link counts, including deliberate
+  missing-marker and wrong-marker failures;
+- fixed-point host-clock alias detection for direct and transitive timestamp assignments.
 
 The relevant files are `design/apps/web/src/lib/front-screen-provenance.ts`, `design/apps/web/src/components/FrontScreenProvenance.tsx`, `design/apps/daemon/src/app-version.ts`, `design/apps/packaged/src/config.ts`, `design/apps/packaged/src/sidecars.ts`, and `site/assets/js/main.js`. Hosted build and packaged interaction remain separate evidence requirements and must be rerun against the commit that contains this feature.
 
