@@ -2112,27 +2112,27 @@ The following commits are preservation points. They are not all complete or
 approved for default-branch integration. Review each branch's documented HOLD
 findings before merging it.
 
-| Area | Branch | Preserved tip | Current state |
-|---|---|---:|---|
-| Front-screen provenance | `yum-tong-front-provenance-20260827` | `e9b40ad61581f30b548225fc49f896a0ed5e219c` | Source already represented on default branch through `01c2263a` and `538f1d4c`; installed screenshots remain pending |
-| Release integrity and Pages | `yum-tong-release-integrity-20260827` | `7682e8a5f1980c698e68e436a1d12c9ceaa9f063` | Source checks green; publication intentionally blocked by the photo-policy conflict |
-| Build and updater | `yum-tong-build-updater-20260827` | `65538a62c15dee491f51445de976ff1980b3bc15` | Reconciled source checkpoint; independent final review and hosted packaging remain pending |
-| Documentation evidence | `yum-tong-docs-evidence-20260827` | `d7072bfbb844210e75670f935ab09261b302cd56` | Reconciled documentation checkpoint; hosted and installed reader evidence remain pending |
-| Day-site parity | `yum-tong-day-teet-hui-parity-20260827` | `ad5250ebf2ba7622dd4a074dab6c38030d75754b` | Reconciled source checkpoint; runtime parity remains held |
-| Advanced regex workbench | `yum-tong-regex-workbench-20260827` | `366616d7fa111c43626485cb6dd039846eb35001` | HOLD due async overflow, timeout classification, mode synchronization, inventory, and fallback issues |
-| Shared UI primitives | `yum-tong-shared-ui-primitives-20260827` | `9ed1d752178f15ff84a5365ea4c0fa6c45bffd94` | HOLD due callback-order, locked context-menu, accessibility-name, and DOM-identity issues |
-| Toy-lock public integration | `yum-tong-toy-lock-ui-public-20260828` | `9b2e9fdda7b3fd8ac1db73087eca5a7b4d1e346d` | HOLD due QR decoding order, persisted tab appearance, editor depth, and unlock-ladder dependency |
-| Appearance source | `yum-tong-appearance-editor-20260827` | `1860c895b9a2b7b9322882aff0e4f8438b5ac0bc` | History acknowledgement seam preserved; full appearance contract incomplete |
-| Appearance deep repair | `yum-tong-appearance-deep-repair-20260828` | `9327b0b0660a9d5f2c88676a4fd4bc3d65ce72d6` | Emergency checkpoint, incomplete and unverified |
-| Appearance schema child | `yum-tong-appearance-schema-baby-20260828` | `64fdfb3c74af2d70d55d4b6c869736e0eb99befa` | Narrow schema checkpoint, source checks only |
-| Universal settings | `yum-tong-universal-settings-20260827` | `7d967f1f247240adcf6bb9d4523320e2dbc3798d` | Emergency schema checkpoint; broad source HOLD findings remain |
-| Personal vocabulary | `yum-tong-personal-vocabulary-20260827` | `4b8fc5d17fbda827d5df04816e9f6272f109be6f` | HOLD, including unresolved universal-settings dependency and history semantics |
-| Logo customization | `yum-tong-logo-customization-20260827` | `cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62` | HOLD due desktop color workbench, history acknowledgement, palette, search, and schedule issues |
-| File converter | `yum-tong-file-converter-20260827` | `3d8101ff2b93161b009305f7b8acb9620263259e` | Emergency bounded-queue checkpoint; many converter HOLD findings remain |
-| Tabs, history, export | `yum-tong-tabs-history-20260827` | `fd0744de4eb242169af0a68b65f2491cd880b20e` | History mutation endpoint preserved; full lane remains held |
-| Authenticator and lockout | `yum-tong-authenticator-lockout-20260827` | `88f3331765567514d7e199c71fe87b45bd423da8` | Incomplete standards and runtime evidence |
-| Ollama suite | `yum-tong-ollama-suite-20260827` | `45df17da5e01e43b8c3da6417344d53617175702` | Incomplete and not approved for integration |
-| Browser downloads and destructive actions | `yum-tong-emergency-preserve-bc0e-20260828` | `794e3c5f953ebd8e2eaaa3f9440d77141be31514` | Detached staged work rescued into a branch, review still required |
+| Area | Preserved tip | Current state |
+|---|---:|---|
+| Front-screen provenance | `e9b40ad61581f30b548225fc49f896a0ed5e219c` | Source already represented on default branch through `01c2263a` and `538f1d4c`; installed screenshots remain pending |
+| Release integrity and Pages | `7682e8a5f1980c698e68e436a1d12c9ceaa9f063` | Source checks green; publication intentionally blocked by the photo-policy conflict |
+| Build and updater | `65538a62c15dee491f51445de976ff1980b3bc15` | Reconciled source checkpoint; independent final review and hosted packaging remain pending |
+| Documentation evidence | `d7072bfbb844210e75670f935ab09261b302cd56` | Reconciled documentation checkpoint; hosted and installed reader evidence remain pending |
+| Documentation-site parity | `ad5250ebf2ba7622dd4a074dab6c38030d75754b` | Reconciled source checkpoint; runtime parity remains held |
+| Advanced regex workbench | `366616d7fa111c43626485cb6dd039846eb35001` | HOLD due async overflow, timeout classification, mode synchronization, inventory, and fallback issues |
+| Shared UI primitives | `9ed1d752178f15ff84a5365ea4c0fa6c45bffd94` | HOLD due callback-order, locked context-menu, accessibility-name, and DOM-identity issues |
+| Toy-lock public integration | `9b2e9fdda7b3fd8ac1db73087eca5a7b4d1e346d` | HOLD due QR decoding order, persisted tab appearance, editor depth, and unlock-ladder dependency |
+| Appearance source | `1860c895b9a2b7b9322882aff0e4f8438b5ac0bc` | History acknowledgement seam preserved; full appearance contract incomplete |
+| Appearance deep repair | `9327b0b0660a9d5f2c88676a4fd4bc3d65ce72d6` | Emergency checkpoint, incomplete and unverified |
+| Appearance schema child | `64fdfb3c74af2d70d55d4b6c869736e0eb99befa` | Narrow schema checkpoint, source checks only |
+| Universal settings | `7d967f1f247240adcf6bb9d4523320e2dbc3798d` | Emergency schema checkpoint; broad source HOLD findings remain |
+| Personal vocabulary | `4b8fc5d17fbda827d5df04816e9f6272f109be6f` | HOLD, including unresolved universal-settings dependency and history semantics |
+| Logo customization | `cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62` | HOLD due desktop color workbench, history acknowledgement, palette, search, and schedule issues |
+| File converter | `3d8101ff2b93161b009305f7b8acb9620263259e` | Emergency bounded-queue checkpoint; many converter HOLD findings remain |
+| Tabs, history, export | `fd0744de4eb242169af0a68b65f2491cd880b20e` | History mutation endpoint preserved; full lane remains held |
+| Authenticator and lockout | `88f3331765567514d7e199c71fe87b45bd423da8` | Incomplete standards and runtime evidence |
+| Ollama suite | `45df17da5e01e43b8c3da6417344d53617175702` | Incomplete and not approved for integration |
+| Browser downloads and destructive actions | `794e3c5f953ebd8e2eaaa3f9440d77141be31514` | Detached staged work rescued into a local branch, review still required |
 
 Additional historical branches and linked working directories remain present.
 Do not delete them solely because they are old or because another branch appears
