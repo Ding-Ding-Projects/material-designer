@@ -1,7 +1,7 @@
 name: Pages
 
 # Publish the checked-in static site from the same pinned Windows image used by
-# the product workflow.  This job deploys files; it does not run tests, lint,
+# the product workflow. This job deploys files; it does not run tests, lint,
 # type checks, static analysis, accessibility checks, or screenshot gates.
 
 on:
@@ -23,6 +23,7 @@ jobs:
   deploy:
     name: Deploy site
     runs-on: windows-2022
+    timeout-minutes: 120
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -39,78 +40,139 @@ jobs:
       - name: Bootstrap Windows CI tools
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bootstrap-ci-tools.ps1
 
-      - name: Fill in the newest published release facts
+      - name: Wait for the current successful release
+        id: current_release_run
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
+          expected_sha="$GITHUB_SHA"
+          deadline=$(( $(date +%s) + 3600 ))
+          while :; do
+            runs=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$expected_sha" --limit 50 --json databaseId,status,conclusion,headSha,updatedAt)
+            successful=$(printf '%s' "$runs" | jq -r --arg sha "$expected_sha" '[.[] | select(.headSha == $sha and .status == "completed" and .conclusion == "success")] | sort_by(.updatedAt) | last.databaseId // empty')
+            if [ -n "$successful" ]; then
+              printf 'run_id=%s\n' "$successful" >> "$GITHUB_OUTPUT"
+              echo "Release run $successful completed successfully for $expected_sha"
+              break
+            fi
+            failed=$(printf '%s' "$runs" | jq -r --arg sha "$expected_sha" '[.[] | select(.headSha == $sha and .status == "completed" and .conclusion != "success" and .conclusion != null)] | sort_by(.updatedAt) | last | if . == null then empty else ("#" + (.databaseId|tostring) + " " + (.conclusion|tostring)) end')
+            if [ -n "$failed" ]; then
+              echo "::error::the current release run failed or was cancelled: $failed" >&2
+              exit 1
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "::error::no successful Release run appeared for $expected_sha within 60 minutes" >&2
+              exit 1
+            fi
+            echo "Waiting for a successful Release run for $expected_sha"
+            sleep 20
+          done
 
-          rel=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,name,assets 2>/dev/null) || {
-            echo "::warning::could not read a published release; keeping the checked-in page facts"
-            exit 0
-          }
+      - name: Resolve and apply the current published release facts
+        id: release_facts
+        shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          RELEASE_RUN_ID: ${{ steps.current_release_run.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          expected_sha="$GITHUB_SHA"
+          run_head=$(gh run view "$RELEASE_RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha,status,conclusion --jq '.headSha + "\t" + .status + "\t" + (.conclusion // "")')
+          run_head_sha=$(printf '%s' "$run_head" | cut -f1)
+          run_status=$(printf '%s' "$run_head" | cut -f2)
+          run_conclusion=$(printf '%s' "$run_head" | cut -f3)
+          [ "$run_head_sha" = "$expected_sha" ] && [ "$run_status" = "completed" ] && [ "$run_conclusion" = "success" ] || { echo "::error::the selected Release run is not a successful run for $expected_sha: $run_head" >&2; exit 1; }
 
-          tag=$(printf '%s' "$rel" | jq -r '.tagName // empty')
-          title=$(printf '%s' "$rel" | jq -r '.name // empty')
-          installer=$(printf '%s' "$rel" | jq -r '[.assets[].name] | map(select(endswith("setup.exe")))[0] // empty')
-          bytes=$(printf '%s' "$rel" | jq -r --arg n "$installer" '[.assets[] | select(.name==$n) | .size][0] // empty')
+          matches_file="${RUNNER_TEMP//\\//}/pages-release-matches-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tsv"
+          : > "$matches_file"
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            body=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,body --jq '.body // ""' 2>/dev/null) || continue
+            commit=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-commit: ([0-9a-f]{40}) -->$/\1/p' | head -1)
+            if [ "$commit" = "$expected_sha" ]; then
+              printf '%s\t%s\n' "$tag" "$commit" >> "$matches_file"
+            fi
+          done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName')
+          match_count=$(wc -l < "$matches_file" | tr -d '[:space:]')
+          [ "$match_count" = "1" ] || { echo "::error::expected exactly one published release for $expected_sha, found $match_count" >&2; exit 1; }
+          release_tag=$(cut -f1 "$matches_file")
+          release_json=$(gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft,isPrerelease,assets,body)
+          [ "$(printf '%s' "$release_json" | jq -r '.tagName')" = "$release_tag" ] || { echo "::error::release tag identity changed during resolution" >&2; exit 1; }
+          [ "$(printf '%s' "$release_json" | jq -r '.isDraft')" = "false" ] || { echo "::error::selected release is still a draft" >&2; exit 1; }
+          [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ] || { echo "::error::selected release is a prerelease" >&2; exit 1; }
+          body=$(printf '%s' "$release_json" | jq -r '.body // ""')
+          version=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-version: ([0-9][0-9.]*) -->$/\1/p' | head -1)
+          commit=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-commit: ([0-9a-f]{40}) -->$/\1/p' | head -1)
+          codename=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-codename: (.*) -->$/\1/p' | head -1)
+          image_asset=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-image-asset: ([a-z0-9-]+\.png) -->$/\1/p' | head -1)
+          image_sha=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-image-sha256: ([0-9a-f]{64}) -->$/\1/p' | head -1)
+          image_id=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-id: (hk-dish-[0-9]+) -->$/\1/p' | head -1)
+          for value in "$version" "$commit" "$codename" "$image_asset" "$image_sha" "$image_id"; do
+            [ -n "$value" ] || { echo "::error::the published release is missing a required machine-readable fact" >&2; exit 1; }
+          done
+          [ "$commit" = "$expected_sha" ] || { echo "::error::published release commit does not match the current checkout" >&2; exit 1; }
+          installer=$(printf '%s' "$release_json" | jq -r '[.assets[] | select((.name | endswith("setup.exe")) and ((.size // 0) > 0))] | if length == 1 then .[0].name else empty end')
+          installer_bytes=$(printf '%s' "$release_json" | jq -r --arg n "$installer" '[.assets[] | select(.name == $n) | .size][0] // empty')
+          [ -n "$installer" ] && [ -n "$installer_bytes" ] || { echo "::error::current release does not have exactly one downloadable installer" >&2; exit 1; }
+          printf '%s\n' "$body" | grep -F 'Workflow duration:' >/dev/null || { echo "::error::current release has no verified workflow duration" >&2; exit 1; }
+          printf '%s\n' "$body" | grep -F 'Lines of code' >/dev/null || { echo "::error::current release has no line-count evidence" >&2; exit 1; }
+          jq -e --arg n "$image_asset" '[.assets[] | select(.name == $n and .contentType == "image/png" and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing its verified PNG catalog image asset" >&2; exit 1; }
+          for required in "$installer" "$installer.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json "$image_asset"; do
+            jq -e --arg n "$required" '[.assets[] | select(.name == $n and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing required asset $required" >&2; exit 1; }
+          done
 
-          if [ -z "$tag" ] || [ -z "$installer" ]; then
-            echo "::warning::the newest published release has no Windows installer; keeping the checked-in page facts"
-            exit 0
-          fi
+          verify_dir="${RUNNER_TEMP//\\//}/pages-release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$verify_dir"
+          mkdir -p "$verify_dir"
+          gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern "$installer.sha256" --pattern "$image_asset" --dir "$verify_dir" --clobber
+          image_actual_sha=$(sha256sum "$verify_dir/$image_asset" | awk '{print tolower($1)}')
+          [ "$image_actual_sha" = "$image_sha" ] || { echo "::error::published image hash does not match release notes" >&2; exit 1; }
+          image_magic=$(od -An -tx1 -N8 "$verify_dir/$image_asset" | tr -d '[:space:]')
+          [ "$image_magic" = "89504e470d0a1a0a" ] || { echo "::error::published image is not a PNG" >&2; exit 1; }
 
-          codename=${title#*— }
-          [ "$codename" = "$title" ] && codename="none for this build"
-
-          version=$(printf '%s' "$installer" | sed -n 's/.*-\([0-9][0-9.]*\)-win-x64-setup\.exe/\1/p')
-          [ -z "$version" ] && version="unknown"
-
-          sha_dir="${RUNNER_TEMP//\\//}/pages-sha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          rm -rf "$sha_dir"
-          mkdir -p "$sha_dir"
-          sha=""
-          if gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern '*setup.exe.sha256' --dir "$sha_dir" --clobber 2>/dev/null; then
-            sha=$(cat "$sha_dir"/*.sha256 2>/dev/null | tr -d '\r' | awk '{print $1}' | head -1)
-          fi
-          [ -z "$sha" ] && sha="not published for this build"
-
-          commit=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body -q '.body' 2>/dev/null \
-            | sed -n 's/.*Built from `\([0-9a-f]\{7,40\}\)`.*/\1/p' | head -1)
-          [ -z "$commit" ] && commit="unknown"
-          commit=${commit:0:7}
-
-          mb=$(( (bytes + 524288) / 1048576 ))
+          mb=$(( (installer_bytes + 524288) / 1048576 ))
           chip="${version} · x64 · ${mb} MB"
-          url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/${installer}"
-
+          installer_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}"
+          image_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${image_asset}"
           f=site/index.html
           set_field() {
             local key=$1 value=$2
-            value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
-            sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$value|g" "$f"
+            local count escaped
+            count=$(grep -o "data-release=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" -gt 0 ] || { echo "::error::site is missing data-release field $key" >&2; exit 1; }
+            escaped=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
+            sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$escaped|g" "$f"
+            grep -F "data-release=\"$key\">$value" "$f" >/dev/null || { echo "::error::site field $key was not updated" >&2; exit 1; }
           }
 
-          set_field tag       "$tag"
+          set_field tag       "$release_tag"
           set_field version   "$version"
-          set_field commit    "$commit"
+          set_field commit    "${commit:0:7}"
           set_field installer "$installer"
-          set_field sha       "$sha"
+          set_field sha       "$(cat "$verify_dir/$installer.sha256" | tr -d '\r' | awk '{print $1}')"
           set_field chip      "$chip"
+          set_field image     "$image_asset"
+          set_field image-sha "$image_sha"
 
           cn=$(printf '%s' "$codename" | sed 's/[&|\\]/\\&/g')
-          sed -i "s|\(data-release=\"codename\"[^>]*>\).*\(</td>\)|\1$cn\2|g" "$f"
+          codename_count=$(grep -o 'data-release="codename"' "$f" | wc -l | tr -d '[:space:]')
+          [ "$codename_count" -gt 0 ] || { echo "::error::site is missing the release code-name field" >&2; exit 1; }
+          sed -i "s|\(data-release=\"codename\"[^>]*>\).*</td>|\1$cn</td>|g" "$f"
+          grep -F "data-release=\"codename\">$codename</td>" "$f" >/dev/null || { echo "::error::site code-name field was not updated" >&2; exit 1; }
 
-          esc_url=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
-          sed -i "s|href=\"https://github.com/[^"]*/releases/download/[^"]*setup\.exe\"|href=\"$esc_url\"|g" "$f"
+          esc_url=$(printf '%s' "$installer_url" | sed 's/[&|\\]/\\&/g')
+          installer_link_count=$(grep -o 'data-release-href="installer"' "$f" | wc -l | tr -d '[:space:]')
+          [ "$installer_link_count" -gt 0 ] || { echo "::error::site is missing the installer link field" >&2; exit 1; }
+          sed -i "s|\(data-release-href=\"installer\"[^>]*href=\)\"[^\"]*\"|\1\"$esc_url\"|g" "$f"
+          grep -F "href=\"$installer_url\"" "$f" >/dev/null || { echo "::error::site installer link was not updated" >&2; exit 1; }
+          image_url_escaped=$(printf '%s' "$image_url" | sed 's/[&|\\]/\\&/g')
+          sed -i "s|\(data-release-href=\"image\"[^>]*href=\)\"[^\"]*\"|\1\"$image_url_escaped\"|g" "$f"
+          grep -F "href=\"$image_url\"" "$f" >/dev/null || { echo "::error::site image link was not updated" >&2; exit 1; }
 
-          echo "Published release facts refreshed for $tag"
-          echo "  version   $version"
-          echo "  code name $codename"
-          echo "  commit    $commit"
-          echo "  installer $installer ($mb MB)"
-          echo "  sha256    ${sha:0:16}…"
+          printf 'tag=%s\nversion=%s\ncommit=%s\ninstaller=%s\nimage=%s\nimage_sha=%s\n' "$release_tag" "$version" "$commit" "$installer" "$image_asset" "$image_sha" >> "$GITHUB_OUTPUT"
+          echo "Published release facts refreshed from $release_tag targeting $commit"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

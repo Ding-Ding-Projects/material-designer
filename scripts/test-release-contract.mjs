@@ -35,6 +35,9 @@ for (const [path, source] of workflows) {
 }
 
 const release = await text(".github/workflows/release.yml");
+const pages = await text(".github/workflows/pages.yml");
+const codename = await text("scripts/release-codename.sh");
+const site = await text("site/index.html");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
 
@@ -49,13 +52,25 @@ requireText(release, "Clear prohibited signing inputs", "release.yml does not cl
 requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
 requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does not scope Windows PowerShell native stderr handling around tools-pack");
 requireText(release, '$packExitCode = $LASTEXITCODE', "release.yml does not judge tools-pack by its native exit code");
-requireText(release, 'dim-sum photo attachment temporarily skipped by current owner direction', "release.yml does not record the temporary owner-authorized photo exception");
-requireText(release, 'status=temporarily-skipped', "release.yml does not expose the temporary photo-exception status");
+requireText(release, 'cat "$raw" >> "$GITHUB_OUTPUT"', "release.yml does not forward every code-name output");
+requireText(release, 'id: dim_sum_contract', "release.yml does not expose the required catalog-image Chut");
+requireText(release, 'CATALOG_IMAGE: ${{ steps.codename.outputs.image }}', "release.yml does not wire the image output");
+requireText(release, 'CATALOG_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}', "release.yml does not wire the image_dish output");
+requireText(release, 'curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"', "release.yml does not download the selected published image");
+requireText(release, 'png_magic=$(od -An -tx1 -N8 "$photo_path"', "release.yml does not verify the PNG signature");
+requireText(release, 'sha256sum "$photo_path"', "release.yml does not hash the selected image");
+requireText(release, 'FromStream($stream, $true, $true)', "release.yml does not decode the selected image");
+requireText(release, 'grep -Fqx "$TAG"', "release.yml does not reject duplicate release tags");
+requireText(release, '<!-- dim-sum-id: ${CODE_NAME_ID} -->', "release.yml does not record the stable spent dish id");
+requireText(release, '<!-- dim-sum-image-asset: ${CATALOG_IMAGE_ASSET} -->', "release.yml does not record the attached image asset");
+requireText(release, '<!-- dim-sum-image-sha256: ${CATALOG_IMAGE_SHA256} -->', "release.yml does not record the attached image hash");
+requireText(release, "steps.codename.outcome == 'success'", "release.yml can publish without successful code-name selection");
+requireText(release, "steps.dim_sum_contract.outcome == 'success'", "release.yml can publish without a verified catalog image");
+forbid(release, /temporary dim-sum photo exception|status=temporarily-skipped|temporarily skipped by the repository owner/, "release.yml still contains a temporary photo-exception success path");
 requireText(release, '[IO.File]::WriteAllText(', "release.yml does not use an exact cross-shell checksum writer");
 requireText(release, '"$hash  $assetName`n"', "release.yml does not terminate the checksum with an explicit LF");
 requireText(release, '[Text.UTF8Encoding]::new($false)', "release.yml does not keep the checksum BOM-free");
 requireText(release, "branches:\n      - '**'", "release.yml still dispatches recursively on release-tag pushes");
-forbid(release, /release publication is blocked: the standing contract requires a downloadable dim-sum photo/, "release.yml still blocks publication on the temporarily skipped photo contract");
 forbid(release, /Set-Content[^\n]*assetName\.sha256/, "release.yml writes the checksum through platform-native line endings");
 forbid(release, /portableZipPath|win-x64-portable\.zip|--to all/, "release.yml still publishes or requests a portable/aggregate Windows package");
 requireText(release, "shell: powershell", "release.yml does not use the Windows PowerShell shell available on the hosted runner");
@@ -66,6 +81,8 @@ requireText(release, "$signature.Status -ne 'NotSigned'", "release.yml does not 
 requireText(release, "signed = $false", "release metadata does not declare unsigned artifacts");
 requireText(release, "WORKFLOW_STARTED_AT", "release notes do not receive the workflow start timestamp");
 requireText(release, "Workflow duration", "release notes do not publish workflow timing");
+requireText(release, "node scripts/line-count.mjs", "release.yml does not invoke the committed line counter");
+requireText(release, 'test -s "$out"', "release.yml does not reject an empty line-count output");
 requireText(release, "gh release edit", "release notes are not finalized after publication");
 requireText(release, "id: unsigned", "release.yml does not expose the unsigned-output verdict to publication");
 requireText(release, "id: artifact_contract", "release.yml does not expose the complete-artifact verdict to publication");
@@ -91,6 +108,30 @@ requireText(release, "squirrel-packaging-evidence-${{ github.run_id }}-${{ githu
 requireText(release, "(Join-Path $env:RUNNER_TEMP \"squirrel-packaging-evidence-${{ github.run_id }}-${{ github.run_attempt }}\")", "release.yml cleanup does not include the exact run-scoped packaging evidence directory");
 forbid(release, /steps\.pack\.outputs\.packaging_evidence/, "release.yml duplicates the deterministic packaging evidence path through an uncertain step output");
 forbid(release, /^\s+(?:pnpm(?:\.cmd)?\s+.*\b(?:test|lint|typecheck)|npm\s+.*\btest)\b/gm, "release.yml runs a prohibited test, lint, or type-check command");
+
+requireText(codename, "source=unavailable", "release-codename.sh has no honest unavailable result");
+requireText(codename, 'grep -Fqx "$id" "$tmp/used.txt"', "release-codename.sh does not exclude spent dish ids");
+requireText(codename, 'startswith("catalog-v1")', "release-codename.sh does not restrict photo assets to catalog-v1 releases");
+requireText(codename, '.isDraft == false', "release-codename.sh can select a draft catalog asset");
+requireText(codename, '.isPrerelease == false', "release-codename.sh can select a prerelease catalog asset");
+requireText(codename, "printf 'image=", "release-codename.sh does not emit image");
+requireText(codename, "printf 'image_dish=", "release-codename.sh does not emit image_dish");
+requireText(codename, "printf 'image_bytes=", "release-codename.sh does not emit image_bytes");
+requireText(codename, "printf 'image_content_type=", "release-codename.sh does not emit image_content_type");
+forbid(codename, /bundled_index|assets\/dim-sum\/images/, "release-codename.sh still falls back to consumer-repository images");
+
+requireText(pages, "Wait for the current successful release", "pages.yml does not wait for the current release run");
+requireText(pages, 'gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$expected_sha"', "pages.yml does not resolve the release run for the checked-out SHA");
+requireText(pages, 'gh run view "$RELEASE_RUN_ID"', "pages.yml does not independently verify the selected release run");
+requireText(pages, "expected exactly one published release", "pages.yml does not reject duplicate current releases");
+requireText(pages, "release-commit:", "pages.yml does not read the release commit marker");
+requireText(pages, "dim-sum-image-asset:", "pages.yml does not read the image-asset marker");
+requireText(pages, "dim-sum-image-sha256:", "pages.yml does not read the image hash marker");
+requireText(pages, "set_field image", "pages.yml does not maintain the current image field");
+forbid(pages, /keeping the checked-in page facts|newest published release has no Windows installer/, "pages.yml can silently deploy stale checked-in release facts");
+requireText(site, "data-release=\"image\"", "site/index.html does not expose the current image asset");
+requireText(site, "data-release=\"image-sha\"", "site/index.html does not expose the image hash");
+requireText(site, "data-release-href=\"image\"", "site/index.html does not expose the current image link");
 
 forbid(release, /^\s+--signed\b/m, "release.yml still requests a signed package");
 forbid(release, /\$\{\{\s*secrets\.(?:WIN_SIGN|OD_WIN_SIGN)/, "release.yml still reads signing secrets");

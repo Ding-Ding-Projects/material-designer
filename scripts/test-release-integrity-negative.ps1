@@ -1,0 +1,118 @@
+[CmdletBinding()]
+param()
+
+$ErrorActionPreference = 'Stop'
+$root = (Get-Location).Path
+$validator = (Resolve-Path -LiteralPath 'scripts/verify-release-integrity.ps1').Path
+$tempRoot = Join-Path ([IO.Path]::GetTempPath()) ('material-designer-release-integrity-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $tempRoot | Out-Null
+
+function New-Fixture {
+  $fixture = Join-Path $tempRoot ([guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Path (Join-Path $fixture '.github/workflows') -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $fixture 'scripts') -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $fixture 'site') -Force | Out-Null
+  Copy-Item -LiteralPath '.github/workflows/release.yml' -Destination (Join-Path $fixture '.github/workflows/release.yml')
+  Copy-Item -LiteralPath '.github/workflows/pages.yml' -Destination (Join-Path $fixture '.github/workflows/pages.yml')
+  Copy-Item -LiteralPath 'scripts/release-codename.sh' -Destination (Join-Path $fixture 'scripts/release-codename.sh')
+  Copy-Item -LiteralPath 'site/index.html' -Destination (Join-Path $fixture 'site/index.html')
+  return $fixture
+}
+
+function Invoke-Contract([string]$Fixture) {
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = 'Continue'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $validator `
+      -ReleaseWorkflow (Join-Path $Fixture '.github/workflows/release.yml') `
+      -PagesWorkflow (Join-Path $Fixture '.github/workflows/pages.yml') `
+      -CodenameScript (Join-Path $Fixture 'scripts/release-codename.sh') `
+      -SiteIndex (Join-Path $Fixture 'site/index.html') *> $null
+    return $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
+}
+
+function Expect-Red([string]$Name, [scriptblock]$Mutation) {
+  $fixture = New-Fixture
+  try {
+    & $Mutation $fixture
+    $code = Invoke-Contract $fixture
+    if ($code -eq 0) { throw "Negative mutation '$Name' stayed green." }
+    Write-Output "RED: $Name"
+  } finally {
+    if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
+  }
+}
+
+try {
+  $baseline = New-Fixture
+  try {
+    $baselineCode = Invoke-Contract $baseline
+    if ($baselineCode -ne 0) { throw 'Release integrity baseline is not green.' }
+  } finally {
+    if (Test-Path -LiteralPath $baseline) { Remove-Item -LiteralPath $baseline -Recurse -Force }
+  }
+
+  Expect-Red 'remove-used-id-exclusion' {
+    param($fixture)
+    $path = Join-Path $fixture 'scripts/release-codename.sh'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('grep -Fqx "$id" "$tmp/used.txt"', 'grep -F "$id" "$tmp/used.txt"'))
+  }
+  Expect-Red 'remove-image-output' {
+    param($fixture)
+    $path = Join-Path $fixture 'scripts/release-codename.sh'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('printf ''image_dish=%s\n'' "$id"', 'printf ''dish=%s\n'' "$id"'))
+  }
+  Expect-Red 'remove-output-forwarding' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('cat "$raw" >> "$GITHUB_OUTPUT"', 'cat "$raw" > "$GITHUB_OUTPUT"'))
+  }
+  Expect-Red 'remove-pages-current-release-resolution' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('expected exactly one published release', 'expected one published release'))
+  }
+  Expect-Red 'remove-duplicate-release-check' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('grep -Fqx "$TAG"', 'grep -Fxq "$TAG"'))
+  }
+  Expect-Red 'remove-timing-evidence' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('Workflow duration:', 'Workflow elapsed:'))
+  }
+  Expect-Red 'remove-line-count-evidence' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('Lines of code', 'Code lines'))
+  }
+  Expect-Red 'remove-unsigned-asset-proof' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace("Status -ne 'NotSigned'", "Status -ne 'Signed'"))
+  }
+
+  $restored = New-Fixture
+  try {
+    $restoredCode = Invoke-Contract $restored
+    if ($restoredCode -ne 0) { throw 'Restored release integrity fixture did not return green.' }
+  } finally {
+    if (Test-Path -LiteralPath $restored) { Remove-Item -LiteralPath $restored -Recurse -Force }
+  }
+  Write-Output 'PASS: eight exact release-integrity mutations turned red, then the restored contract returned green.'
+} finally {
+  if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
+  Set-Location $root
+}

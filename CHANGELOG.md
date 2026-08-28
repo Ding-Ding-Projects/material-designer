@@ -45,6 +45,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair release identity, catalog-photo validation, and Pages freshness.**
+  `scripts/release-codename.sh` now reads the public catalog with `jq`, skips
+  every exact `dim-sum-id` already recorded in published release notes, and
+  selects only a non-draft, non-prerelease `catalog-v1*` PNG. The Release
+  workflow forwards `image` and `image_dish`, downloads and decodes the image,
+  verifies its signature, byte count, and SHA-256, records stable image markers,
+  rejects duplicate tags, and blocks publication when the required image is
+  absent. The Pages workflow waits for a successful Release run for the exact
+  checkout commit, resolves exactly one matching published release, verifies its
+  installer, image, timing, line-count, and required assets, and refuses stale
+  checked-in facts. Source commit link: **to be filled after this lane commits**.
+
+  **Release identity 同 Pages freshness 修好，點心相唔再玩失蹤。**
+  `scripts/release-codename.sh` 而家用 `jq` 睇公開 catalog，逐個跳過 release
+  notes 已經記低嘅 `dim-sum-id`，只揀 published、唔係 draft/prerelease 嘅
+  `catalog-v1*` PNG。Release workflow 會傳出 `image` 同 `image_dish`，下載、
+  decode、驗 signature、bytes 同 SHA-256，寫低穩定 markers，撞 tag 就停，
+  無相就唔畀 publish。Pages workflow 會等同一個 commit 嘅成功 Release，
+  驗唯一 published release、installer、相、timing、line count 同 assets，
+  舊 facts 想混入嚟就即刻食閉門羹。Source commit link 會喺呢條 lane commit
+  之後補返。
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.

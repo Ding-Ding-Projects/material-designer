@@ -429,30 +429,72 @@ jobs:
           set -uo pipefail
           raw="${RUNNER_TEMP//\\//}/codename-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.env"
           used=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' 2>/dev/null \
-            | while read -r tag; do
-                gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body' 2>/dev/null \
-                  | sed -n 's/.*dim-sum-id: *\([a-z0-9-]*\).*/\1/p'
-              done | sort -u | paste -sd, -)
-          bash scripts/release-codename.sh --used "${used:-}" > "$raw" 2>/dev/null || true
-          if grep -qx 'source=public' "$raw"; then
-            grep -E '^(id|slug|name_en|name_zh|jyutping|codename|photo_url|alt_en|alt_yue|source)=' "$raw" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::the public dim-sum catalog did not resolve a published photo; no code name or bundled image will be attached"
-            printf '%s\n' 'id=' 'codename=' 'photo_url=' 'source=unavailable' >> "$GITHUB_OUTPUT"
+            | while IFS= read -r tag; do
+                [ -n "$tag" ] || continue
+                gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json body --jq '.body // ""' 2>/dev/null \
+                  | sed -nE 's/^<!-- dim-sum-id: (hk-dish-[0-9]+) -->$/\1/p; s/^\*\*Code name: (.*)\*\*$/\1/p'
+              done | LC_ALL=C sort -u)
+          if ! bash scripts/release-codename.sh --used "${used:-}" > "$raw"; then
+            echo "::error::the public catalog code-name selector failed" >&2
+            exit 1
           fi
+          cat "$raw" >> "$GITHUB_OUTPUT"
+          echo "Selected code-name source: $(sed -n 's/^source=//p' "$raw")"
+          echo "Selected dish id: $(sed -n 's/^id=//p' "$raw")"
 
-      - name: Record temporary dim-sum photo exception
+      - name: Verify and stage required public catalog image
         id: dim_sum_contract
         if: ${{ steps.pack.outputs.build_json != '' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
+        env:
+          CATALOG_SOURCE: ${{ steps.codename.outputs.source }}
+          CATALOG_ID: ${{ steps.codename.outputs.id }}
+          CATALOG_IMAGE: ${{ steps.codename.outputs.image }}
+          CATALOG_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}
+          CATALOG_IMAGE_URL: ${{ steps.codename.outputs.photo_url }}
+          CATALOG_IMAGE_BYTES: ${{ steps.codename.outputs.image_bytes }}
+          CATALOG_IMAGE_CONTENT_TYPE: ${{ steps.codename.outputs.image_content_type }}
+          CATALOG_IMAGE_TAG: ${{ steps.codename.outputs.image_tag }}
         run: |
           set -euo pipefail
-          echo "::warning::dim-sum photo attachment temporarily skipped by current owner direction; no catalog image is copied into or attached by this repository"
-          echo "status=temporarily-skipped" >> "$GITHUB_OUTPUT"
+          if [ "${CATALOG_SOURCE:-}" != "public" ]; then
+            echo "::error::the required public catalog image is unavailable; code-name absence alone is non-fatal, but release publication requires a verified image asset" >&2
+            exit 1
+          fi
+          for value in "$CATALOG_ID" "$CATALOG_IMAGE" "$CATALOG_IMAGE_DISH" "$CATALOG_IMAGE_URL" "$CATALOG_IMAGE_BYTES" "$CATALOG_IMAGE_TAG"; do
+            [ -n "$value" ] || { echo "::error::the public catalog selector omitted a required image output" >&2; exit 1; }
+          done
+          [ "$CATALOG_ID" = "$CATALOG_IMAGE_DISH" ] || { echo "::error::image_dish does not match the selected dish id" >&2; exit 1; }
+          [ "$CATALOG_IMAGE_CONTENT_TYPE" = "image/png" ] || { echo "::error::the selected catalog asset is not an image/png" >&2; exit 1; }
+          case "$CATALOG_IMAGE_URL" in https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1*/*) ;; *) echo "::error::the selected image URL is not a published catalog-v1 asset" >&2; exit 1 ;; esac
+          photo_dir="${RUNNER_TEMP//\\//}/dim-sum-photo-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          rm -rf "$photo_dir"
+          mkdir -p "$photo_dir"
+          photo_path="$photo_dir/$CATALOG_IMAGE"
+          curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"
+          [ -s "$photo_path" ] || { echo "::error::the downloaded catalog image is empty" >&2; exit 1; }
+          actual_bytes=$(wc -c < "$photo_path" | tr -d '[:space:]')
+          [ "$actual_bytes" = "$CATALOG_IMAGE_BYTES" ] || { echo "::error::catalog image size mismatch: expected $CATALOG_IMAGE_BYTES, got $actual_bytes" >&2; exit 1; }
+          png_magic=$(od -An -tx1 -N8 "$photo_path" | tr -d '[:space:]')
+          [ "$png_magic" = "89504e470d0a1a0a" ] || { echo "::error::catalog image does not have a PNG signature" >&2; exit 1; }
+          export PHOTO_PATH="$photo_path"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference="Stop"; Add-Type -AssemblyName System.Drawing; $stream=[IO.File]::OpenRead($env:PHOTO_PATH); try { $image=[Drawing.Image]::FromStream($stream, $true, $true); if ($image.RawFormat.Guid -ne [Drawing.Imaging.ImageFormat]::Png.Guid) { throw "catalog image decoder did not identify PNG" }; if ($image.Width -lt 1 -or $image.Height -lt 1) { throw "catalog image has invalid dimensions" }; Write-Host ("Decoded catalog image {0}x{1}" -f $image.Width,$image.Height) } finally { if ($null -ne $image) { $image.Dispose() }; $stream.Dispose() }'
+          image_sha256=$(sha256sum "$photo_path" | awk '{print tolower($1)}')
+          staged_name="dim-sum-${CATALOG_IMAGE_DISH}.png"
+          cp "$photo_path" "${{ steps.pack.outputs.staged_dir }}/$staged_name"
+          printf 'image=%s\n' "$CATALOG_IMAGE" >> "$GITHUB_OUTPUT"
+          printf 'image_dish=%s\n' "$CATALOG_IMAGE_DISH" >> "$GITHUB_OUTPUT"
+          printf 'asset_name=%s\n' "$staged_name" >> "$GITHUB_OUTPUT"
+          printf 'asset_sha256=%s\n' "$image_sha256" >> "$GITHUB_OUTPUT"
+          printf 'asset_bytes=%s\n' "$actual_bytes" >> "$GITHUB_OUTPUT"
+          printf 'asset_url=%s\n' "$CATALOG_IMAGE_URL" >> "$GITHUB_OUTPUT"
+          printf 'asset_tag=%s\n' "$CATALOG_IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          printf 'status=verified\n' >> "$GITHUB_OUTPUT"
+          echo "Verified and staged $staged_name ($actual_bytes bytes, SHA-256 $image_sha256) from $CATALOG_IMAGE_URL"
 
       - name: Publish the release
         id: publish
-        if: ${{ always() && steps.pack.outcome == 'success' && steps.unsigned.outcome == 'success' && steps.artifact_contract.outcome == 'success' && steps.lines.outcome == 'success' && steps.dim_sum_contract.outcome == 'success' }}
+        if: ${{ always() && steps.pack.outcome == 'success' && steps.unsigned.outcome == 'success' && steps.artifact_contract.outcome == 'success' && steps.lines.outcome == 'success' && steps.codename.outcome == 'success' && steps.dim_sum_contract.outcome == 'success' }}
         shell: 'C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
@@ -463,8 +505,15 @@ jobs:
           SQUIRREL_FULL_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_full_package_count }}
           SQUIRREL_DELTA_PACKAGE_COUNT: ${{ steps.pack.outputs.squirrel_delta_package_count }}
           STAGED: ${{ steps.pack.outputs.staged_dir }}
+          CODE_NAME_ID: ${{ steps.codename.outputs.id }}
           CODENAME: ${{ steps.codename.outputs.codename }}
           DISH_PHOTO_URL: ${{ steps.codename.outputs.photo_url }}
+          CATALOG_IMAGE: ${{ steps.dim_sum_contract.outputs.image }}
+          CATALOG_IMAGE_DISH: ${{ steps.dim_sum_contract.outputs.image_dish }}
+          CATALOG_IMAGE_ASSET: ${{ steps.dim_sum_contract.outputs.asset_name }}
+          CATALOG_IMAGE_SHA256: ${{ steps.dim_sum_contract.outputs.asset_sha256 }}
+          CATALOG_IMAGE_BYTES: ${{ steps.dim_sum_contract.outputs.asset_bytes }}
+          CATALOG_IMAGE_TAG: ${{ steps.dim_sum_contract.outputs.asset_tag }}
           LINE_COUNT_PATH: ${{ steps.lines.outputs.path }}
         run: |
           set -euo pipefail
@@ -472,22 +521,37 @@ jobs:
           workflow_started_at=$(gh run view "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY" --json startedAt --jq '.startedAt')
           [ -n "$workflow_started_at" ] || { echo "::error::GitHub Actions did not return startedAt"; exit 1; }
           [ -d "$STAGED" ] || { echo "::error::the release staging directory is missing"; exit 1; }
+          for value in "$CODE_NAME_ID" "$CODENAME" "$DISH_PHOTO_URL" "$CATALOG_IMAGE" "$CATALOG_IMAGE_DISH" "$CATALOG_IMAGE_ASSET" "$CATALOG_IMAGE_SHA256" "$CATALOG_IMAGE_BYTES" "$CATALOG_IMAGE_TAG"; do
+            [ -n "$value" ] || { echo "::error::release publication is missing required code-name or image output"; exit 1; }
+          done
+          [ "$CODE_NAME_ID" = "$CATALOG_IMAGE_DISH" ] || { echo "::error::release code-name id and image_dish differ"; exit 1; }
+          if gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName' | grep -Fqx "$TAG"; then
+            echo "::error::a release already exists for tag $TAG; refusing duplicate publication" >&2
+            exit 1
+          fi
 
           {
             echo "## Material Designer ${APP_VERSION}"
-            if [ -n "${CODENAME:-}" ]; then
-              echo ""
-              echo "**Code name: ${CODENAME}**"
-              if [ -n "${DISH_PHOTO_URL:-}" ]; then
-                echo "Public catalog photo: ${DISH_PHOTO_URL}"
-              fi
-            else
-              echo ""
-              echo "No public catalog code name was resolved for this build; the version remains authoritative."
-            fi
+            echo "<!-- release-version: ${APP_VERSION} -->"
+            echo "<!-- release-tag: ${TAG} -->"
+            echo "<!-- release-commit: ${GITHUB_SHA} -->"
+            echo "<!-- release-codename: ${CODENAME} -->"
+            echo "<!-- dim-sum-id: ${CODE_NAME_ID} -->"
+            echo "<!-- dim-sum-image-dish: ${CATALOG_IMAGE_DISH} -->"
+            echo "<!-- dim-sum-image-asset: ${CATALOG_IMAGE_ASSET} -->"
+            echo "<!-- dim-sum-image-sha256: ${CATALOG_IMAGE_SHA256} -->"
             echo ""
-            echo "> [!NOTE]"
-            echo "> Dim-sum photo attachment was temporarily skipped by the repository owner's current direction. No catalog image was copied into or attached to this release."
+            echo "### Dim sum code name"
+            echo ""
+            echo "**${CODENAME}**"
+            echo ""
+            echo "- Stable dish id: \`${CODE_NAME_ID}\`"
+            echo "- Public catalog release: \`${CATALOG_IMAGE_TAG}\`"
+            echo "- Public catalog photo source: ${DISH_PHOTO_URL}"
+            echo "- Attached image: \`${CATALOG_IMAGE_ASSET}\` (${CATALOG_IMAGE_BYTES} bytes, SHA-256 \`${CATALOG_IMAGE_SHA256}\`)"
+            echo "- ${CODENAME} is a real PNG photograph resolved from the published public catalog asset."
+            echo ""
+            echo "![${CODENAME} photo](${DISH_PHOTO_URL})"
             echo ""
             echo "A Material Design 3 build of a local-first design tool."
             echo ""
@@ -514,7 +578,7 @@ jobs:
 
           assets=("$STAGED"/*)
           [ "${#assets[@]}" -gt 0 ] || { echo "::error::no staged release assets"; exit 1; }
-          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION}${CODENAME:+ — ${CODENAME}}" --notes-file "$notes" --draft "${assets[@]}"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Material Designer ${APP_VERSION} - ${CODENAME}" --notes-file "$notes" --draft "${assets[@]}"
 
           workflow_completed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           workflow_duration=$(WORKFLOW_STARTED_AT="$workflow_started_at" WORKFLOW_COMPLETED_AT="$workflow_completed_at" node <<'NODE'
@@ -545,6 +609,9 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
           ASSET_NAME: ${{ steps.pack.outputs.asset_name }}
+          CODE_NAME_ID: ${{ steps.codename.outputs.id }}
+          CATALOG_IMAGE_ASSET: ${{ steps.dim_sum_contract.outputs.asset_name }}
+          CATALOG_IMAGE_SHA256: ${{ steps.dim_sum_contract.outputs.asset_sha256 }}
           EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -555,6 +622,9 @@ jobs:
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
           printf '%s\n' "$body" | grep -F "Built from \`$EXPECTED_SHA\`" >/dev/null
           printf '%s\n' "$body" | grep -F "Workflow duration:" >/dev/null
+          printf '%s\n' "$body" | grep -F "<!-- dim-sum-id: $CODE_NAME_ID -->" >/dev/null
+          printf '%s\n' "$body" | grep -F "<!-- dim-sum-image-asset: $CATALOG_IMAGE_ASSET -->" >/dev/null
+          printf '%s\n' "$body" | grep -F "<!-- dim-sum-image-sha256: $CATALOG_IMAGE_SHA256 -->" >/dev/null
 
           ref_json=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")
           object_sha=$(printf '%s' "$ref_json" | jq -r '.object.sha')
@@ -564,7 +634,7 @@ jobs:
           fi
           [ "$object_sha" = "$EXPECTED_SHA" ] || { echo "::error::tag $TAG points at $object_sha, expected $EXPECTED_SHA"; exit 1; }
 
-          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json; do
+          for required in "$ASSET_NAME" "$ASSET_NAME.sha256" RELEASES metadata.json material-designer.ico build-evidence.json build-provenance.json artifact-receipt.json "$CATALOG_IMAGE_ASSET"; do
             jq -e --arg name "$required" '[.assets[] | select(.name == $name and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null
           done
           jq -e --arg name "$ASSET_NAME" '[.assets[] | select(.name | ascii_downcase | endswith(".exe"))] | length == 1 and .[0].name == $name' <<< "$release_json" >/dev/null
@@ -573,8 +643,10 @@ jobs:
           verify_dir="${RUNNER_TEMP//\\//}/release-verify-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$verify_dir"
           mkdir -p "$verify_dir"
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --dir "$verify_dir" --clobber
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ASSET_NAME" --pattern "$ASSET_NAME.sha256" --pattern "$CATALOG_IMAGE_ASSET" --dir "$verify_dir" --clobber
           (cd "$verify_dir" && sha256sum -c "$ASSET_NAME.sha256")
+          actual_image_sha=$(sha256sum "$verify_dir/$CATALOG_IMAGE_ASSET" | awk '{print tolower($1)}')
+          [ "$actual_image_sha" = "$CATALOG_IMAGE_SHA256" ] || { echo "::error::published catalog image SHA-256 mismatch"; exit 1; }
           echo "Published release $TAG targets $EXPECTED_SHA and has downloadable unsigned Squirrel assets."
 
       - name: Upload release evidence

@@ -1,38 +1,24 @@
 #!/usr/bin/env bash
-# Pick the dim sum code name for the next release.
+# Select one unused dish whose public photograph is already published.
 #
-# A code name is used once. Reusing one makes two different builds
-# indistinguishable in conversation, which is the only job a code name has, so
-# this reads the dishes already spent from the existing releases rather than
-# trusting a counter that a re-run would repeat.
-#
-# The names come from the public catalog at Ding-Ding-Projects/dim-sum-photos,
-# which is the authority for dish metadata and holds 2,866 dishes. The twenty
-# four images bundled in this repository were the previous source, and they ran
-# out inside a single day of per-push releases — every build after that shipped
-# with no code name at all, which is how this was noticed.
-#
-# On photos, two shared rules pull in different directions: every release must
-# attach a real dim sum photo as a downloadable asset, and a consumer repository
-# must not copy public catalog photos or add to its bundled set. This satisfies
-# both rather than silently picking one: the code name and its photo LINK come
-# from the public catalog, and the attached asset is one of the twenty four
-# images already tracked here, rotated deterministically. Nothing is fetched or
-# vendored at publish time, and the release still carries a real steamer basket.
+# The public catalog is the only source of release code-name metadata. A dish
+# is eligible only when its image path is present as a non-empty PNG asset on a
+# published catalog-v1* release. The consumer repository is never used as a
+# fallback for a code name or photograph.
 #
 # Usage:
-#   scripts/release-codename.sh                 # reads used ids from stdin, one per line
-#   scripts/release-codename.sh --used a,b,c    # or pass them inline
+#   scripts/release-codename.sh
+#   scripts/release-codename.sh --used hk-dish-0001,hk-dish-0002
 #
-# Output: KEY=VALUE lines for $GITHUB_OUTPUT (id, slug, name_en, name_zh,
-# jyutping, codename, photo_url, image, image_dish, alt_en, alt_yue, source).
-# Exits 0 with `id=` empty only when no unused dish can be resolved at all — a
-# release is never blocked for want of a code name.
+# Without --used, ids are read from standard input, one per line. The command
+# emits KEY=VALUE records suitable for GITHUB_OUTPUT. If the catalog or its
+# published assets cannot be resolved, it exits successfully with an empty id
+# and source=unavailable. Code-name absence alone does not fail a release, but
+# the release workflow independently fails when the required image is absent.
 
 set -u -o pipefail
 
 repo_root=$(git rev-parse --show-toplevel) || exit 2
-bundled_index="$repo_root/assets/dim-sum/index.json"
 public_index_url="https://raw.githubusercontent.com/Ding-Ding-Projects/dim-sum-photos/main/catalog/index.json"
 public_repo="Ding-Ding-Projects/dim-sum-photos"
 
@@ -44,140 +30,102 @@ elif [ ! -t 0 ]; then
 fi
 
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
+trap 'rm -rf "$tmp" 2>/dev/null || true' EXIT
 
-printf '%s\n' "$used" | sed 's/[[:space:]]//g' | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
-spent=$(wc -l < "$tmp/used.txt" | tr -d ' ')
-
-# ---------------------------------------------------------------------------
-# The bundled images, which are what actually gets attached to the release.
-# ---------------------------------------------------------------------------
-bundled_images=()
-if [ -d "$repo_root/assets/dim-sum/images" ]; then
-  while IFS= read -r p; do
-    bundled_images+=("$p")
-  done < <(cd "$repo_root/assets/dim-sum/images" && ls -1 *.png 2>/dev/null | LC_ALL=C sort)
-fi
-
-attach_image=""
-attach_dish=""
-if [ "${#bundled_images[@]}" -gt 0 ]; then
-  pick=$(( spent % ${#bundled_images[@]} ))
-  attach_image="assets/dim-sum/images/${bundled_images[$pick]}"
-  attach_dish="${bundled_images[$pick]%.png}"
-fi
-
-# ---------------------------------------------------------------------------
-# The public catalog, which is the authority for the code name itself.
-# ---------------------------------------------------------------------------
-emit() {
-  printf 'id=%s\n' "$1"
-  printf 'slug=%s\n' "$2"
-  printf 'name_en=%s\n' "$3"
-  printf 'name_zh=%s\n' "$4"
-  printf 'jyutping=%s\n' "$5"
-  printf 'codename=%s · %s\n' "$3" "$4"
-  printf 'photo_url=%s\n' "$6"
-  printf 'alt_en=%s\n' "$7"
-  printf 'alt_yue=%s\n' "$8"
-  printf 'source=%s\n' "$9"
-  printf 'image=%s\n' "$attach_image"
-  printf 'image_dish=%s\n' "$attach_dish"
+emit_empty() {
+  local reason=${1:-unavailable}
+  printf 'id=\nslug=\nname_en=\nname_zh=\njyutping=\n'
+  printf 'codename=\nphoto_url=\nimage=\nimage_dish=\nimage_bytes=\n'
+  printf 'image_content_type=\nimage_tag=\nalt_en=\nalt_yue=\nsource=unavailable\n'
+  printf 'reason=%s\n' "$reason"
 }
 
-if curl -fsSL --max-time 60 "$public_index_url" -o "$tmp/public.json" 2>/dev/null; then
-  # Which photos are actually published. A dish whose image is not public yet is
-  # unavailable to us, however complete its metadata reads.
-  : > "$tmp/assets.tsv"
-  if command -v gh >/dev/null 2>&1; then
-    for tag in $(gh release list --repo "$public_repo" --limit 200 --json tagName --jq '.[].tagName' 2>/dev/null | grep '^catalog-v1'); do
-      gh release view "$tag" --repo "$public_repo" --json assets --jq '.assets[].name' 2>/dev/null \
-        | while IFS= read -r name; do printf '%s\t%s\n' "$name" "$tag"; done >> "$tmp/assets.tsv"
-    done
+printf '%s\n' "$used" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "release-codename: jq is unavailable; no public catalog selection" >&2
+  emit_empty missing-jq
+  exit 0
+fi
+
+if ! curl -fsSL --max-time 60 "$public_index_url" -o "$tmp/public.json" 2>/dev/null; then
+  echo "release-codename: public catalog is unavailable" >&2
+  emit_empty catalog-unreachable
+  exit 0
+fi
+
+if ! jq -e '.schemaVersion == "1.0.0" and (.dishes | type == "array")' "$tmp/public.json" >/dev/null 2>&1; then
+  echo "release-codename: public catalog schema is invalid" >&2
+  emit_empty catalog-invalid
+  exit 0
+fi
+
+: > "$tmp/assets.tsv"
+if ! command -v gh >/dev/null 2>&1; then
+  echo "release-codename: gh is unavailable; published catalog assets cannot be verified" >&2
+  emit_empty missing-gh
+  exit 0
+fi
+
+while IFS= read -r tag; do
+  [ -n "$tag" ] || continue
+  gh release view "$tag" --repo "$public_repo" --json assets --jq \
+    '.assets[] | select((.name | endswith(".png")) and (.contentType == "image/png") and ((.size // 0) > 0)) | [.name, (.size | tostring), .contentType] | @tsv' \
+    2>/dev/null | awk -v catalog_tag="$tag" '{ print $0 "\t" catalog_tag }' >> "$tmp/assets.tsv" || {
+      echo "release-codename: could not read published assets for $tag" >&2
+      emit_empty asset-inventory-failed
+      exit 0
+    }
+done < <(gh release list --repo "$public_repo" --limit 1000 --json tagName,isDraft,isPrerelease --jq \
+  '.[] | select((.tagName | startswith("catalog-v1")) and (.isDraft == false) and (.isPrerelease == false)) | .tagName' 2>/dev/null)
+
+if [ ! -s "$tmp/assets.tsv" ]; then
+  echo "release-codename: no published catalog-v1* PNG assets were found" >&2
+  emit_empty no-published-image
+  exit 0
+fi
+
+if ! jq -r '.dishes[] | [.id, .slug, .name.en, .name.zhHant, .jyutping, .image.path, .image.alt.en, .image.alt.yue] | @tsv' "$tmp/public.json" > "$tmp/dishes.tsv"; then
+  echo "release-codename: public catalog dish records could not be parsed" >&2
+  emit_empty catalog-dishes-invalid
+  exit 0
+fi
+
+selected=0
+while IFS=$'\t' read -r id slug name_en name_zh jyutping image_path alt_en alt_yue; do
+  [ -n "$id" ] || continue
+  if grep -Fqx "$id" "$tmp/used.txt" || grep -Fqx "$name_en · $name_zh" "$tmp/used.txt"; then
+    continue
   fi
-  published=$(wc -l < "$tmp/assets.tsv" | tr -d ' ')
+  image_asset=${image_path##*/}
+  asset_row=$(awk -F '\t' -v wanted="$image_asset" '$1 == wanted { print; exit }' "$tmp/assets.tsv")
+  [ -n "$asset_row" ] || continue
+  IFS=$'\t' read -r published_asset image_bytes image_content_type image_tag <<< "$asset_row"
+  [ "$published_asset" = "$image_asset" ] || continue
+  photo_url="https://github.com/$public_repo/releases/download/$image_tag/$published_asset"
 
-  # Flatten the catalog. `name` and `image.alt` are nested objects spread over
-  # several lines, and `description` carries its own `en`, so each field is
-  # taken once per record and later repeats are ignored.
-  awk '
-    function val(line,   s) { s = line; sub(/^[^:]*: *"/, "", s); sub(/",?$/, "", s); return s }
-    /"id": *"hk-dish-/ { if (id != "") emit(); id = val($0); slug=en=zh=jyut=path=alten=altyue=""; next }
-    /"slug": *"/       { if (id != "" && slug  == "") slug  = val($0); next }
-    /"en": *"/         { if (id != "" && en    == "") en    = val($0); next }
-    /"zhHant": *"/     { if (id != "" && zh    == "") zh    = val($0); next }
-    /"jyutping": *"/   { if (id != "" && jyut  == "") jyut  = val($0); next }
-    /"path": *"/       { if (id != "" && path  == "") path  = val($0); next }
-    /"yue": *"/        { if (id != "" && altyue== "") altyue= val($0); next }
-    END { if (id != "") emit() }
-    function emit() {
-      if (id != "" && path != "")
-        printf "%s\t%s\t%s\t%s\t%s\t%s\n", id, slug, en, zh, jyut, path
-    }
-  ' "$tmp/public.json" > "$tmp/dishes.tsv"
+  printf 'id=%s\n' "$id"
+  printf 'slug=%s\n' "$slug"
+  printf 'name_en=%s\n' "$name_en"
+  printf 'name_zh=%s\n' "$name_zh"
+  printf 'jyutping=%s\n' "$jyutping"
+  printf 'codename=%s · %s\n' "$name_en" "$name_zh"
+  printf 'photo_url=%s\n' "$photo_url"
+  printf 'image=%s\n' "$published_asset"
+  printf 'image_dish=%s\n' "$id"
+  printf 'image_bytes=%s\n' "$image_bytes"
+  printf 'image_content_type=%s\n' "$image_content_type"
+  printf 'image_tag=%s\n' "$image_tag"
+  printf 'alt_en=%s\n' "$alt_en"
+  printf 'alt_yue=%s\n' "$alt_yue"
+  printf 'source=public\n'
+  printf 'reason=selected-unused-published-image\n'
+  selected=1
+  break
+done < "$tmp/dishes.tsv"
 
-  total=$(wc -l < "$tmp/dishes.tsv" | tr -d ' ')
-  echo "release-codename: public catalog — $total dishes, $published published photos, $spent already spent" >&2
+[ "$selected" = 1 ] && exit 0
 
-  while IFS=$'\t' read -r id slug en zh jyut path; do
-    grep -qx "$id" "$tmp/used.txt" && continue
-    base=${path##*/}
-    tag=$(grep -m1 -P "^\Q$base\E\t" "$tmp/assets.tsv" 2>/dev/null | cut -f2)
-    [ -z "$tag" ] && tag=$(awk -F'\t' -v b="$base" '$1==b {print $2; exit}' "$tmp/assets.tsv")
-    if [ -z "$tag" ]; then
-      continue
-    fi
-    url="https://github.com/$public_repo/releases/download/$tag/$base"
-    emit "$id" "$slug" "$en" "$zh" "$jyut" "$url" \
-      "Catalog photograph of $en ($zh) from the public dim sum catalog." \
-      "公開點心圖鑑入面「$zh」嘅相。" \
-      "public"
-    exit 0
-  done < "$tmp/dishes.tsv"
-
-  echo "release-codename: no unused dish with a published photo in the public catalog" >&2
-else
-  echo "release-codename: public catalog unreachable; falling back to the bundled index" >&2
-fi
-
-# ---------------------------------------------------------------------------
-# Fallback: the bundled index. Never block a release on catalog availability.
-# ---------------------------------------------------------------------------
-if [ -f "$bundled_index" ]; then
-  awk '
-    function val(line,   s) { s = line; sub(/^[^:]*: *"/, "", s); sub(/",?$/, "", s); return s }
-    function nested(line, key,   s) {
-      s = line
-      sub(".*\"" key "\": *\"", "", s)
-      sub("\".*", "", s)
-      return s
-    }
-    /"id":/       { if (id != "") emit(); id = val($0); next }
-    /"slug":/     { slug = val($0); next }
-    /"name":/     { en = nested($0, "en"); zh = nested($0, "zhHant"); next }
-    /"jyutping":/ { jyut = val($0); next }
-    /"image":/    { image = val($0); next }
-    /"alt":/      { alten = nested($0, "en"); altyue = nested($0, "yue"); next }
-    END { if (id != "") emit() }
-    function emit() {
-      if (id != "" && image != "")
-        printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", id, slug, en, zh, jyut, image, alten, altyue
-      slug = en = zh = jyut = image = alten = altyue = ""
-    }
-  ' "$bundled_index" > "$tmp/bundled.tsv"
-
-  while IFS=$'\t' read -r id slug en zh jyut image alten altyue; do
-    grep -qx "$id" "$tmp/used.txt" && continue
-    [ -f "$repo_root/assets/dim-sum/$image" ] || continue
-    attach_image="assets/dim-sum/$image"
-    attach_dish="$id"
-    emit "$id" "$slug" "$en" "$zh" "$jyut" "" "$alten" "$altyue" "bundled"
-    exit 0
-  done < "$tmp/bundled.tsv"
-fi
-
-echo "release-codename: no unused dish could be resolved; shipping without a code name" >&2
-echo "id="
-printf 'image=%s\n' "$attach_image"
-printf 'image_dish=%s\n' "$attach_dish"
+echo "release-codename: no unused dish with a published image was found" >&2
+emit_empty no-unused-published-image
 exit 0

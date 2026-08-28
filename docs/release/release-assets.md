@@ -1,25 +1,23 @@
 # Release assets
 
 > [!IMPORTANT]
-> **Current release boundary — 2026-08-11.** A new release is not claimed from
-> the queued runs at the older `887d5a06` commit. The next publication must contain the real
-> unsigned Squirrel `Setup.exe`, `RELEASES`, full package (and delta packages
-> when produced), `metadata.json`, icon, checksum and provenance evidence. The
-> older `v0.16.1-r71.1` record predates that feed and is intentionally retained
-> as historical evidence. A dim-sum image cannot be staged by copying the
-> consumer repository's legacy catalogue; the contradictory photo requirements
-> are a release blocker until resolved.
+> **Release-integrity repair, 2026-08-27.** A new release must contain the real
+> unsigned Squirrel `Setup.exe`, `RELEASES`, full package and delta packages when
+> produced, `metadata.json`, icon, checksum, provenance evidence, and one verified
+> PNG downloaded from a published public catalog release. The catalog image is
+> staged only for that run and release; it is never added to this repository or
+> its bundled catalog. Missing image, hash, decode, or asset evidence blocks
+> publication.
 
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
 
 > [!IMPORTANT]
-> **Status: published.** Two legacy releases exist, each carrying a Windows
-> installer, its checksum file and a code-name image. The release workflow now
-> stages a project-owned Squirrel.Windows feed for new releases; the first
-> post-migration release is still awaiting its CI evidence. The new workflow
-> publishes intentionally unsigned artifacts and verifies `NotSigned` before
-> publication; the two historical releases are also unsigned. There is **no
+> **Status: source repair complete, hosted evidence pending.** The release workflow
+> stages a project-owned Squirrel.Windows feed and now verifies the current public
+> catalog image before publication. It publishes intentionally unsigned artifacts
+> and verifies `NotSigned`. Historical releases remain retained as historical
+> evidence. There is **no
 > macOS or Linux artifact** — that absence is deliberate
 > and is explained below rather than left for a reader to notice.
 
@@ -33,7 +31,7 @@ to the run but *not* to the release, and what is deliberately absent.
 | `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
-| `codename-<dish id>.png` | The release's dim sum code-name photograph, from the bundled catalogue. See [code-names.md](code-names.md). |
+| `dim-sum-<dish id>.png` | The release's verified dim sum code-name photograph, downloaded from the matching published public catalog asset for this run. See [code-names.md](code-names.md). |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
 from the unsigned executable's unchanged Electron version resource. The visible

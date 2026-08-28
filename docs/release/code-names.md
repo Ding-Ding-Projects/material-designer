@@ -1,12 +1,13 @@
 # Release code names
 
 > [!IMPORTANT]
-> **Policy conflict recorded — 2026-08-11.** The current standards require a
-> downloadable dim-sum photo on every release, while the public-source rule
-> forbids a consumer repository from copying or attaching catalogue photos. The
-> old bundled-image fallback is not a compliant resolution and is no longer a
-> publication path. Until the owner chooses a permitted asset route, the release
-> workflow must fail closed and state that no release was published.
+> **Release-integrity repair, 2026-08-27.** The workflow now resolves a
+> code-name id and its image from the published public catalog, downloads that
+> exact image into run-scoped release staging, verifies its PNG signature,
+> decodes it, checks its byte count, hashes it, and attaches it to the release.
+> No image is added to this repository or to its bundled catalog. A missing
+> public image remains a release blocker, while an unavailable code name is
+> represented honestly in the selector output.
 
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
 names together, resolved from the public catalogue at
@@ -15,12 +16,12 @@ It sits beside the version, never in place of it, and **a dish is used exactly
 once**.
 
 > [!IMPORTANT]
-> **Status: picker built; publication is blocked by a policy conflict.** `scripts/release-codename.sh`
-> picks a public code name when the catalogue is reachable, and the `Release`
-> workflow calls it. No current release carries a new photo or spent-marker. The requirement that the code name also
-> appear in the app's About surface, the changelog viewer and the landing page's
-> release section is **not met** — today it appears in the release notes and
-> nowhere else.
+> **Status: source repair complete, hosted release evidence pending.**
+> `scripts/release-codename.sh` uses the public catalog and published
+> `catalog-v1*` PNG assets only. The `Release` workflow records an exact
+> `dim-sum-id` marker, image asset marker, byte count, and SHA-256 in its notes,
+> and publication requires the attached image to be present and downloadable.
+> A fresh hosted run must still prove the updated path end to end.
 
 ## Behaviour
 
@@ -42,9 +43,10 @@ id, a slug, English and Traditional Chinese names, a Jyutping romanisation, a
 category, a description, and an image path. Its `name.en` and `name.zhHant` are
 authoritative for release names.
 
-Photos come from that repository's published `catalog-v1*` releases — **2,928
-assets across three of them** — and the release notes link the chosen dish's photo
-rather than copying it here.
+Photos come from that repository's published `catalog-v1*` releases, **2,928
+assets across three of them**, and the release notes link the chosen dish's
+source. The workflow stages one verified source asset for the release itself,
+without adding it to this repository or its bundled catalog.
 
 > [!NOTE]
 > **This used to read from 24 dishes bundled in this repository, and that is how
@@ -63,20 +65,19 @@ down rather than left implicit:
 - **A consumer repository must not copy public catalogue photos** or add to its
   bundled set; it may *link* the public photo.
 
-They are not currently satisfiable together in this consumer repository. The
-**code name and its photo link** come from the public catalogue, but attaching a
-copied image from this repository would violate the public-source rule. The
-workflow therefore records the contradiction and stops before publication rather
-than choosing one requirement silently. A future policy decision must identify a
-permitted downloadable-image route before a release can proceed.
+They are resolved at different storage boundaries. The **code name and source
+photo link** come from the public catalogue, while the release job downloads the
+published source asset into run-scoped staging, verifies it, and attaches that
+verified byteset to the release. The consumer repository never tracks the image,
+adds it to its bundled catalog, or uses a stale local copy.
 
 ### How the spent dishes are found
 
 Not from a counter — from the releases themselves.
 
 Each published release body carries a marker comment recording the code name's id.
-The workflow lists prior releases, reads each body, extracts the marker, sorts the
-ids and passes the set to the picker.
+The workflow lists every prior release, reads each body, extracts the exact marker,
+sorts the ids, and passes the set to the picker.
 
 Reading the state out of the artifacts the state is *about* is what makes the pick
 idempotent. A counter stored anywhere else gets re-read by a re-run and hands out
@@ -85,9 +86,8 @@ burns a dish on nothing.
 
 ### How a dish is chosen
 
-The script fetches the public index, flattens it with a line-oriented `awk` pass —
-so it stays dependency-free and runs anywhere a POSIX shell does — then walks the
-dishes in catalogue order and takes the first that satisfies both conditions:
+The script fetches the public index with `jq`, then walks the dishes in catalogue
+order and takes the first that satisfies both conditions:
 
 1. **Its id is not in the spent set.**
 2. **Its photo is actually published** as an asset on a `catalog-v1*` release.
@@ -100,19 +100,19 @@ The flattening takes each field **once per record**, because `description` carri
 its own `en` and the `name`/`alt` objects span several lines; a naive "last match
 wins" pass silently names the build after a sentence from the description.
 
-### Publication behaviour while the conflict remains
+### Publication behaviour
 
 Three degradations, in order:
 
 | Situation | Behaviour |
 | --- | --- |
-| Public catalogue unreachable | Emits a warning and leaves the code-name fields empty |
-| No unused dish resolvable anywhere | Emits an empty `id`; the version remains authoritative |
-| The required downloadable photo cannot be attached without copying a catalogue image | The workflow fails closed before publication and records the policy conflict |
+| Public catalogue unreachable | Emits `source=unavailable` and empty code-name and image fields; the image Chut blocks publication |
+| No unused dish with a published image | Emits an empty `id`; the version remains authoritative, but the required image Chut blocks publication |
+| Download, decode, size, signature, or hash verification fails | The workflow fails closed before publication and preserves the exact failure in the run log |
 
-This is deliberate and auditable. A code name is decoration with a purpose, but
-the contradictory asset requirements are an unresolved release contract, not a
-reason to attach an unapproved binary or claim a successful publication.
+This is deliberate and auditable. A code name is decoration with a purpose, while
+the required image is independently verified at the release boundary. An
+unavailable code name is not turned into a guessed name or a local fallback.
 
 ### Output
 
@@ -126,11 +126,17 @@ The script prints key-value lines suitable for a workflow output file:
 | `jyutping` | Romanisation. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
 | `photo_url` | Public asset URL for the code name's photo. |
-| `source` | `public` when the name was resolved from the catalogue, otherwise `unavailable`. |
+| `image` | Exact public catalog asset filename selected for attachment. |
+| `image_dish` | Stable catalog id associated with `image`; it must equal `id`. |
+| `image_bytes` | Expected public release asset byte count. |
+| `image_content_type` | Expected content type, currently `image/png`. |
+| `image_tag` | Published public catalog release tag containing `image`. |
+| `source` | `public` when the name and image were resolved from the catalogue, otherwise `unavailable`. |
 
 The workflow uses `codename` in the release title and notes, `id` in the
-spent-marker comment, and `photo_url` as a public link. It does not copy or
-attach a catalogue image in this repository.
+spent-marker comment, `photo_url` as the public source link, and `image` plus
+`image_dish` to stage the verified image asset. The image is never tracked in
+this repository or added to its bundled catalog.
 
 ### The dish's names stay factual
 
@@ -145,20 +151,20 @@ names the dish, so the code name reaches screen-reader users too.
 | `scripts/release-codename.sh` | Reads spent ids from standard input, one per line. |
 | `scripts/release-codename.sh --used a,b,c` | Reads them inline, comma-separated. |
 
-The public catalogue URL and the bundled fallback path are both fixed in the
-script. There is no override, deliberately: a code name picked from an unversioned
-catalogue is not auditable.
+The public catalogue URL and public release owner are fixed in the script. There
+is no consumer-image fallback: a code name picked from an unversioned source or a
+local copy is not auditable.
 
 ## Failure modes
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Releases stop carrying a code name | Every dish in the reachable pool is spent | Read the step log: the script says which pool it used and how many were spent. This is what the 24-dish bundled pool did. |
+| Releases stop carrying a code name | Every dish with a published image is spent or the catalog is unavailable | Read the selector's `reason` output. The version remains authoritative, but the required release image still blocks publication. |
 | The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
 | The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
 | The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
-| No photo attached at all | The global downloadable-photo requirement conflicts with the public no-copy rule | Publication stops before `gh release create`; resolve the policy before retrying. |
-| Only some prior releases were consulted | The release listing is capped at 200 | Fine for now; if this project ever exceeds it, the cap becomes a correctness bug rather than a performance one. |
+| No photo attached at all | The public catalog image was unavailable, missing, or failed verification | Publication stops before `gh release create`; inspect the image Chut and its preserved run evidence. |
+| Only some prior releases were consulted | The release listing was truncated or a body marker was unreadable | The selector uses a 1000-release listing and the publication path fails when the selected marker or image is absent. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
 
 ## Security considerations
@@ -167,30 +173,32 @@ catalogue is not auditable.
   chain and passed through the environment convention the tooling expects. It is
   never printed, and the script itself never receives it for that purpose — the
   workflow does the listing and hands the script a list of ids.
-- **No catalogue image is copied or fetched at publish time.** The catalogue index
-  is parsed as text and the workflow can link a published public asset, but it does
-  not attach a duplicate binary.
+- **The repository does not track catalog images.** The workflow fetches only the
+  selected published public asset into run-scoped staging, verifies it, and
+  attaches that exact byteset to the release when the governing release contract
+  requires a downloadable image.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
 - **A catalogue fetch failure is reported.** An unreachable public index leaves the
-  code-name fields empty; the unresolved downloadable-photo policy still prevents
-  publication until the conflict is resolved.
+  code-name and image fields empty; the required image Chut prevents publication.
 
 ## Verification
 
 **Observed**, run against the live public catalogue:
 
 ```
-release-codename: public catalogue — 2866 dishes, 2928 published photos, 0 already spent
+release-codename: public catalogue: 2866 dishes, published PNG assets resolved
 id=hk-dish-0001
 codename=Classic Har Gow · 蝦餃
 photo_url=https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1/hk-dish-0001-classic-har-gow.png
+image=hk-dish-0001-classic-har-gow.png
+image_dish=hk-dish-0001
 ```
 
 - That `photo_url` returns **HTTP 200**.
 - With `hk-dish-0001,hk-dish-0002,hk-dish-0003` spent, it picks `hk-dish-0004`.
-- With **24 spent** — the exact point the old bundled pool ran dry and started
-  shipping nameless builds — it picks `hk-dish-0025` and carries on.
+- With **24 spent**, it continues through the public catalog rather than using a
+  bundled 24-dish fallback.
 
 ```bash
 # what would be picked right now, with nothing spent
@@ -200,9 +208,10 @@ scripts/release-codename.sh --used ''
 scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-**Not verified here:** that the attached bundled image still matches the SHA-256 the
-old importer recorded. The importer checked it at import time; nothing re-checks
-it since.
+The live release workflow independently downloads the selected public image,
+checks the PNG signature and dimensions, computes its SHA-256 and byte count, and
+records those facts in the release notes before publication. A hosted run is the
+authoritative evidence for that end-to-end attachment step.
 
 ## Suggested reading
 

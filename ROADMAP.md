@@ -1,5 +1,26 @@
 # Roadmap
 
+- [~] **Repair release identity, required catalog image attachment, and Pages
+      freshness.** `scripts/release-codename.sh` now uses the public catalog and
+      published `catalog-v1*` PNG assets, excludes every exact `dim-sum-id` found
+      in prior release notes, and emits `image` plus `image_dish` metadata. The
+      Release workflow downloads, decodes, size-checks, hashes, and attaches the
+      selected image, records stable release markers, rejects duplicate tags,
+      and fails when the required image is missing. Pages waits for a successful
+      Release for the exact checkout SHA, resolves exactly one matching published
+      release, and refuses stale facts. The local validator and its eight
+      deliberate red-then-green mutations pass. A hosted run at this source
+      commit remains required before ticking this item.
+
+      **廣東話進度：** Release identity、catalog 相同 Pages freshness 已經
+      修好。`scripts/release-codename.sh` 而家只用 public catalog 同 published
+      `catalog-v1*` PNG，見到 prior release notes 嘅 `dim-sum-id` 就跳過，仲會
+      清楚傳出 `image` 同 `image_dish`。Release workflow 會下載、decode、驗
+      signature、bytes、SHA-256 再 attach，marker 齊晒，撞 tag 或無相就停。
+      Pages 會等同一個 checkout SHA 嘅成功 Release，唯一 matching release
+      先准更新，舊 facts 唔可以混入。Local validator 八個故意拆線全部先
+      轉紅再還原轉綠；仲要 hosted run 證明先可以剔滿。
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current
@@ -88,12 +109,13 @@
 > identify the packer root cause. Installed launch, updater, removal and parity
 > evidence remain open.
 
-The contradictory dim-sum image rules remain unresolved as a durable standard.
-The current release remains blocked when its required photo asset is absent, and
-the workflow records the missing asset without attaching a copied catalog image.
-No exception makes an incomplete release compliant, and package, unsigned,
-provenance, target-SHA, asset-hash, and publication-verification requirements
-remain active.
+The former dim-sum image policy conflict is resolved at the storage boundary:
+the workflow never adds an image to this repository or its bundled catalog, but
+it does stage the exact published public PNG for the release, verify its bytes,
+and attach it when the governing release contract requires a downloadable image.
+Missing image evidence still blocks publication. Package, unsigned, provenance,
+target-SHA, asset-hash, timing, line-count, duplicate-release, and
+publication-verification requirements remain active.
 
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.

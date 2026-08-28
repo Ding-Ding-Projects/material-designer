@@ -6,16 +6,17 @@ publication, and accepting that tag push would recursively launch another
 release lane.
 
 > [!IMPORTANT]
-> **Release-shutdown boundary — 2026-08-11.** The release definition is being reduced
+> **Release-integrity repair, 2026-08-27.** The release definition is reduced
 > to hosted `windows-2022` packaging, unsigned Squirrel artifact collection and
 > publication evidence. Actions must not run tests, lint, typecheck, static
 > analysis or screenshot gates, and none of those results may hold back a
 > release. Any successful publication still has to be exactly one unique,
 > non-draft release targeted at the workflow SHA, with timing, hashes, required
-> Squirrel files and post-publication verification. The dim-sum rule is currently
-> contradictory (attach a downloadable photo versus never copying catalogue
-> photos); the workflow must stop and record that blocker until a policy decision
-> resolves it.
+> Squirrel files and post-publication verification. The workflow now selects an
+> unused public-catalog id, downloads the matching published PNG into run-scoped
+> staging, verifies the signature, decodes it, checks bytes and SHA-256, and
+> requires the image in the release. Code-name-only unavailability remains an
+> honest empty selector result, while missing required image evidence blocks.
 
 How a release is produced, end to end, from a push to a published installer.
 Everything happens inside one workflow run on the pinned hosted `windows-2022`
@@ -199,14 +200,17 @@ path is used.
 error rather than discarding it, because when the counter exits non-zero it is
 because one of its own self-checks tripped, and that reason belongs in the log.
 
-**15 — Choose the code name.** See [code-names.md](code-names.md).
+**15: Choose the code name and image.** See [code-names.md](code-names.md). The
+selector reads every prior release marker, skips spent ids, and only accepts a
+published `catalog-v1*` PNG. The following Chut downloads, decodes, sizes, hashes,
+and stages that exact public image. Missing `image` or `image_dish` output fails
+before publication.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
-the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
-verification. By explicit owner direction, the current release temporarily
-skips the contradictory dim-sum photo attachment. The run warns and the release
-notes state the omission; no catalog image is copied or attached. This temporary
-exception changes no other publication requirement.
+the verified catalog image, the explicit `--target "$GITHUB_SHA"`, and
+post-publication target/hash/asset verification. The notes carry stable release,
+commit, dish-id, image-asset, image-byte, and image-SHA markers so a later run can
+prove that the same dish was not reused.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.
@@ -223,7 +227,7 @@ into the run summary.
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run**, read from the step's actual outcome; plus the commit and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to the change notice, and a statement of non-affiliation |
-| Marker | An HTML comment recording the code name's id, so the next run can tell it is spent |
+| Marker | HTML comments recording the release version, tag, commit, dish id, image asset, and image SHA-256 |
 
 **The verification line is the honest-evidence mechanism.** It is a case statement
 over the smoke step's real outcome — success, failure, anything else — so a

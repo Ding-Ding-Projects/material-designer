@@ -2,7 +2,10 @@
 
 The third workflow at the repository root, `.github/workflows/pages.yml`, deploys
 `site/` to GitHub Pages and refuses to publish a site that would reach the
-network for an asset.
+network for an asset. It first waits for exactly one successful `Release` run for
+the checked-out commit and reads that published release back before changing the
+release panel. A Pages run can therefore never silently reuse stale checked-in
+installer, tag, commit, image, or hash facts.
 
 > [!NOTE]
 > **The site is deployed.** The workflow has run and published the site at the
@@ -33,6 +36,8 @@ artifact and deploys it.
 | Checkout | Plain checkout. No submodule — the site does not read `design/`. |
 | Check the site is self-contained | Six `grep` sweeps over `site/`. Any hit fails the job. |
 | Stage the dish catalogue | Copies `assets/dim-sum/` into `site/assets/dim-sum/`. The catalogue lives at the repository root because the application and the release workflow use it too, and only `site/` is published — a page addressing `../assets/…` would 404 for every visitor. A missing catalogue warns and continues rather than failing the deployment. |
+| Wait for the current successful release | Polls `Release` for the exact checkout SHA, rejects failed or cancelled runs, and times out rather than deploying stale facts. |
+| Resolve the current published release | Requires exactly one non-draft, non-prerelease release whose machine-readable commit marker equals the checkout SHA, verifies its installer, image, timing, line-count, and required asset set, then updates `site/index.html`. |
 | Configure Pages | Resolves the site's base URL for the deployment. |
 | Upload site | Uploads `site/` as the Pages artifact. |
 | Deploy | Publishes it and records the resulting URL on the run. |
@@ -110,8 +115,8 @@ change without the page changing. See
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Triggers | Pushes to the default branch touching `site/**` or the workflow file; plus manual dispatch | A docs deployment should not run on every unrelated commit |
-| Runner | `[self-hosted, linux, material-designer]` | Dedicated project runner; the workflow cleans the checkout and verifies `gh`, `jq`, Bash and its static-site text utilities before publishing |
+| Triggers | Every push and manual dispatch | Release facts and the deployed page must be resolved for every exact checkout SHA |
+| Runner | `windows-2022` | The workflow cleans the checkout, bootstraps `gh`, `jq`, Bash and its static-site text utilities, then waits for the matching successful Release |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |
 | Environment | `github-pages`, with the deployment URL recorded as its output | The published URL is read off the run rather than assumed |
@@ -161,9 +166,11 @@ repository — a one-time repository setting, not something the workflow can do 
 itself.
 
 **Verified from the tree:** that `.github/workflows/pages.yml` exists; that it
-uploads `site/`; that it runs six self-contained checks over `*.html`, `*.css`
-and `*.js`; that its permissions and concurrency are as tabulated above; and that
-`site/` contains `index.html`, `assets/css/{tokens,app}.css`,
+waits for a successful `Release` run for the exact checkout SHA; that it rejects
+duplicate current releases and stale release markers; that it verifies the
+installer, image, image hash, timing, line-count, and required asset set; that it
+uploads `site/`; that its permissions and concurrency are as tabulated above; and
+that `site/` contains `index.html`, `assets/css/{tokens,app}.css`,
 `assets/js/{main,i18n,appearance,tabs,regex,ui}.js` and `.nojekyll`.
 
 **Not observed:** the gate rejecting anything, and any behaviour of the published
@@ -178,7 +185,13 @@ What a run has already demonstrated:
       staged dish catalogue and a dish photograph all resolving under the
       repository-scoped base path
 - [x] the installer download button resolving to the immutable asset URL of a
-      published release rather than a `latest` redirect
+       published release rather than a `latest` redirect
+
+The current freshness and image-asset checks are source-verified by
+`scripts/verify-release-integrity.ps1`. Its companion
+`scripts/test-release-integrity-negative.ps1` removes each boundary in turn,
+observes a red result, restores the exact source, and observes green. A hosted
+run still remains the authority for the final published release evidence.
 
 What is still outstanding, and must not be read as passing:
 

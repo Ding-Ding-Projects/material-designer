@@ -310,10 +310,11 @@ failure.
 **12 — Count lines.** `node scripts/line-count.mjs` into a file, with an honest
 fallback line if it fails, so the release notes never carry a fabricated number.
 
-**13 — Choose the code name.** `scripts/release-codename.sh`, given the dishes
-already spent. Those are read out of the **existing releases** — each release
-body carries a `dim-sum-id` marker — rather than from a counter that a re-run
-would repeat.
+**13: Choose the code name and image.** `scripts/release-codename.sh` reads
+every existing release body, skips each exact `dim-sum-id` marker, and selects
+only a dish whose image is present on a published `catalog-v1*` release. The
+next Chut downloads, decodes, sizes, hashes, and stages that exact public PNG.
+Missing `image` or `image_dish` output blocks publication.
 
 **14 — Publish.** `gh release create` with a generated notes file, `--latest`,
 and every staged asset plus the code name's image.
@@ -330,7 +331,7 @@ and every staged asset plus the code name's image.
 | Verification | The smoke-test outcome as **passed**, **failed** or **not run** — read from the step's actual outcome, never predicted — and a link to the run |
 | Lines of code | The counter's table, or an honest "not available for this build" |
 | Provenance | The upstream project, version, pinned commit, licence, a pointer to `MODIFICATIONS.md`, and a statement of non-affiliation |
-| Marker | An HTML comment recording the code name's id, so the next run can tell it is spent |
+| Marker | HTML comments recording the release version, tag, commit, dish id, image asset, and image SHA-256 |
 
 The smoke-test line is the honest-evidence mechanism: it reports what the step
 actually did rather than assuming success, and a skipped smoke test says "not
@@ -338,12 +339,15 @@ run" instead of implying a pass.
 
 ## `Pages` — static deploy
 
-`Pages` uses `[self-hosted, linux, material-designer]` and keeps its existing
-trusted push/manual triggers. It has no `package.json`, lockfile or build step:
-the workflow checks out with `clean: true`, bootstraps the required static-site
-publishing tools (`gh`, `jq`, Bash and the standard text utilities), stages the
-local catalogue, fills release facts, and uploads `site/`. It therefore does not
-invent a Node/pnpm install for a project that declares no such dependency.
+`Pages` uses the pinned hosted `windows-2022` image and trusted push/manual
+triggers. It has no `package.json`, lockfile or build step: the workflow checks
+out with `clean: true`, bootstraps the required static-site publishing tools
+(`gh`, `jq`, Bash and the standard text utilities), waits for a successful
+`Release` run for the exact checkout SHA, resolves exactly one matching published
+release, verifies its installer, catalog image, timing, line count and asset set,
+then updates and uploads `site/`. It therefore does not invent a Node/pnpm
+install for a project that declares no such dependency, and it never falls back
+to stale checked-in release facts.
 
 ## Configuration
 
@@ -352,8 +356,8 @@ invent a Node/pnpm install for a project that declares no such dependency.
 | Workflow | Triggers |
 | --- | --- |
 | `Verify` | every push and manual dispatch; no pull-request trigger on the self-hosted runner |
-| `Release` | pushes to the default branch, manual dispatch |
-| `Pages` | pushes to the default branch that touch `site/**` or the workflow itself, manual dispatch — see [../site/](../site/) |
+| `Release` | every push and manual dispatch |
+| `Pages` | every push and manual dispatch, with release freshness resolved for the exact checkout SHA, see [../site/](../site/) |
 
 Manual dispatch of `Release` takes two inputs, both defaulting to true: whether
 to run the smoke test, and whether to publish. Turning publish off is how you
@@ -385,28 +389,26 @@ claim publisher authenticity or replace a code signature.
 
 ### Runner selection
 
-The root workflows use the explicitly labelled `material-designer` self-hosted
-runner contract. `.github/actionlint.yaml` declares that custom label so local
-structural lint can validate the workflow files. On Windows, the local check is
-run as `actionlint -shellcheck=` because the repository records a known
-actionlint/shellcheck pipe hang on this host; that pass validates workflow
-structure, while the CI actionlint step remains the evidence for shell blocks.
+The root workflows use the pinned hosted `windows-2022` image. Local structural
+inspection remains separate from hosted workflow evidence. On this host, the
+local actionlint/shellcheck pipe has a recorded hang, so any structural pass must
+use the documented `actionlint -shellcheck=` form and must not be described as a
+shell-content verdict.
 
 The root workflows use an explicit self-hosted contract:
 
 | Workflow/job | Runner labels | Trusted events |
 | --- | --- | --- |
-| `Verify` / `verify` | `[self-hosted, linux, material-designer]` | Push and manual dispatch; no `pull_request` trigger because the repository is public. |
-| `Verify` / `test` | `[self-hosted, linux, material-designer]` | The same trusted workflow events. |
-| `Release` / `build` | `[self-hosted, windows, material-designer]` | Default-branch push and manual dispatch. |
-| `Pages` / `deploy` | `[self-hosted, linux, material-designer]` | Site/default-branch push and manual dispatch. |
+| `Verify` / `provenance` | `windows-2022` | Every push and manual dispatch. |
+| `Release` / `build` | `windows-2022` | Every push and manual dispatch. |
+| `Pages` / `deploy` | `windows-2022` | Every push and manual dispatch, after current-release resolution. |
 
-The runner administrator must provide the Actions runner service, Git, Bash and
-the platform tools used by the matching workflow. The workflow itself installs
-Node 24 and pnpm 10.33.2 for dependency jobs, checks their versions, cleans the
-checkout, and runs `pnpm install --frozen-lockfile` from
-`design/pnpm-lock.yaml`. `Pages` has no package manifest or build step, so it
-performs an explicit check for its static publishing tools instead of inventing
+The hosted image supplies the runner service, Git, Bash and the platform tools
+used by the matching workflow. The workflow itself installs Node 24 and pnpm
+10.33.2 for dependency jobs, checks their versions, cleans the checkout, and runs
+`pnpm install --frozen-lockfile` from `design/pnpm-lock.yaml`. `Pages` has no
+package manifest or build step, so it performs an explicit check for its static
+publishing tools instead of inventing
 a dependency install.
 
 Self-hosted machines must be dedicated to this project, contain no user data,
@@ -427,8 +429,10 @@ run untrusted checkout content on them.
 | The build reports an installer path that does not exist | A packaging failure that did not set a non-zero exit | The workflow checks the path explicitly and fails. Read the uploaded build logs. |
 | Smoke test fails | The built application does not install, launch, answer its health check, or uninstall cleanly | A real defect in the artifact. The installer still uploads as an artifact for inspection. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
-| The same code name twice | The prior release's `dim-sum-id` marker was missing or unreadable | The marker is what makes the pick idempotent across re-runs. |
-| No code name chosen | Every dish spent, or no catalogue | The script exits `0` with an empty id and the release ships with its version alone. A code name never blocks a release. |
+| The same code name twice | The prior release's `dim-sum-id` marker was missing, malformed, or unreadable | The release workflow reads every prior body and refuses duplicate publication when the exact tag already exists. |
+| No code name chosen | Every dish with a published image is spent, or the public catalog is unavailable | The selector exits `0` with `source=unavailable`; the version remains authoritative, but the required image Chut blocks publication. |
+| Required image missing | The selected public asset is absent, empty, not PNG, undecodable, or has a different size/hash | Publication stops before `gh release create`, with the run preserving its diagnostics. |
+| Pages shows stale release facts | Pages ran before a matching successful Release or accepted a different commit | Pages waits for the exact SHA, resolves exactly one published release, and rejects stale markers before upload. |
 
 ## Security considerations
 
