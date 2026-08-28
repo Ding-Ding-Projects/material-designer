@@ -138,6 +138,7 @@ import {
 import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
+import { AuthenticatorDestination } from './components/AuthenticatorDestination';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
@@ -5081,6 +5082,8 @@ function AppInner() {
     );
   } else if (route.kind === 'home' && route.view === 'settings') {
     appMain = renderSettingsSurface('page');
+  } else if (route.kind === 'home' && route.view === 'authenticator') {
+    appMain = <AuthenticatorDestination />;
   } else if (route.kind === 'project') {
     const pendingCreation =
       activeProject && pendingProjectCreation?.projectId === activeProject.id

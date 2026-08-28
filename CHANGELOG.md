@@ -43,6 +43,26 @@ Two rules this file is held to:
 Changes land here as they are committed, each with its commit link, and move into a
 version section when a release carries them.
 
+### Added
+
+- **Source lane for a local authenticator and unlock ladder.** The task branch adds
+  strict Base32 and `otpauth://totp/` handling, RFC 6238 and HOTP protocol
+  vectors, an in-process bounded QR matrix, URI/image/clipboard/camera/manual
+  registration adapters, operating-system-vault-only secret separation,
+  explicit secret-export confirmation, encrypted append-only local history, and
+  a host-owned single-use-nonce ladder for dish, sums, timed moles, and clock
+  recovery. Focused source tests and a deliberate red-then-green validator are
+  present; no hosted build, packaged interaction, or capture evidence is claimed.
+  The final default-jer integration commit link will be added after this lane is incorporated.
+
+- **Mount the authenticator destination and route.** The renderer now exposes an
+  `/authenticator` destination with browser-style Codes, Register, and History
+  tabs, an anchored search builder, semantic local file selection, camera and
+  credential-vault unavailable states, protected-history controls, and a
+  command-palette destination row. Workspace tab title and icon maps preserve
+  the route. Hosted build, platform bridge consumption, and packaged interaction
+  remain unverified. The final default-jer integration commit link will be added after this lane is incorporated.
+
 ### Changed
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,

@@ -70,6 +70,7 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
+import { ElectronSecretVault } from "./authenticator/electron-vault.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -2991,6 +2992,24 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         return safeStorage.decryptString(value);
       },
     },
+  });
+  const authenticatorVault = new ElectronSecretVault({
+    directory: join(app.getPath("userData"), "authenticator-vault"),
+    safeStorage: {
+      isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+      encryptString: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.encryptString(value);
+      },
+      decryptString: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.decryptString(value);
+      },
+    },
+  });
+  ipcMain.handle("od:authenticator:vault-status", async (event) => {
+    requireMainWindowSender(event);
+    return { available: authenticatorVault.isAvailable() };
   });
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);

@@ -62,6 +62,7 @@ each has its own article because each guards a distinct failure.
 | [export-surface-inventory.md](export-surface-inventory.md) | Hand-written inventory of project, file, data, design-system, diagnostics, history and editor export surfaces with their source/runtime evidence boundary. |
 | [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
 | [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
+| [authenticator-and-unlock-ladder.md](authenticator-and-unlock-ladder.md) | Local authenticator protocol, vault-only storage, append-only history, and the host-owned unlock ladder. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

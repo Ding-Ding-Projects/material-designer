@@ -29,6 +29,38 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Add isolated authenticator and unlock-ladder source lane
+
+**Reason:** The application needs a separately reviewable local authenticator
+protocol and host-owned lockout recovery path before either can be mounted in a
+user-facing destination. This lane adds bounded RFC 6238 and HOTP handling,
+local QR and registration adapters, vault-only secret separation, encrypted
+append-only history, and single-use-nonce ladder state with School-mode and
+timed-mole boundaries. The lane is source-only and deliberately does not edit
+the Settings toy-lock UI, claim a build, or claim packaged interaction.
+
+**Changed files:**
+
+- `apps/desktop/src/main/authenticator/protocol.ts`
+- `apps/desktop/src/main/authenticator/destination.ts`
+- `apps/desktop/src/main/authenticator/store.ts`
+- `apps/desktop/src/main/authenticator/history.ts`
+- `apps/desktop/src/main/authenticator/index.ts`
+- `apps/desktop/src/main/authenticator/electron-vault.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/lockout/protocol.ts`
+- `apps/desktop/src/main/lockout/service.ts`
+- `apps/desktop/tests/main/authenticator-lockout.test.ts`
+- `apps/web/src/components/AuthenticatorDestination.tsx`
+- `apps/web/src/components/AuthenticatorDestination.module.css`
+- `apps/web/src/components/ExportDiagnosticsButton.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/router.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/tests/components/AuthenticatorDestination.contract.test.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh

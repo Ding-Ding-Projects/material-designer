@@ -484,4 +484,6 @@ contextBridge.exposeInMainWorld(OPEN_DESIGN_HOST_GLOBAL, hostBridge);
 contextBridge.exposeInMainWorld('openDesignDesktop', {
   exportDiagnostics: (): Promise<DesktopDiagnosticsExportResult> =>
     ipcRenderer.invoke(DESKTOP_DIAGNOSTICS_IPC_CHANNEL) as Promise<DesktopDiagnosticsExportResult>,
+  authenticatorVaultStatus: (): Promise<{ available: boolean }> =>
+    ipcRenderer.invoke('od:authenticator:vault-status') as Promise<{ available: boolean }>,
 });

@@ -1,5 +1,16 @@
 # Roadmap
 
+- [ ] **Add the local authenticator destination and host-owned unlock ladder.**
+      Source-only lane `yum-tong-authenticator-lockout-20260827` adds strict
+      Base32 and `otpauth://totp/` protocol handling, RFC 6238 and HOTP vectors,
+      bounded in-process QR, URI/image/clipboard/camera/manual registration,
+      vault-only metadata separation, explicit secret-export confirmation,
+      encrypted append-only local history, and the nonce-based dish, sums,
+      timed-mole and clock ladder. Focused source tests and the exact
+      red-then-green validator exist. Hosted typecheck, built destination
+      mounting, vault adapter, packaged interaction, and screenshot evidence are
+      still open. Integration commit link will be added after review.
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

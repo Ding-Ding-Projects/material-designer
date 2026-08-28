@@ -1,0 +1,34 @@
+.surface { display: grid; gap: 20px; max-width: 1040px; margin: 0 auto; padding: 28px; color: var(--md-sys-color-on-surface, #1a1b20); }
+.header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.eyebrow { margin: 0; color: var(--md-sys-color-primary, #415f91); font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; }
+.header h1 { margin: 4px 0; font-size: clamp(1.7rem, 4vw, 2.6rem); }
+.lede { max-width: 680px; margin: 0; color: var(--md-sys-color-on-surface-variant, #44474f); }
+.vaultState, .notice { padding: 10px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 12px; background: var(--md-sys-color-surface-container, #f0f0f7); }
+.tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--md-sys-color-outline-variant, #c6c6ce); overflow-x: auto; }
+.tab, .tabActive { min-height: 48px; padding: 10px 18px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: inherit; cursor: pointer; }
+.tabActive { border-bottom-color: var(--md-sys-color-primary, #415f91); font-weight: 700; }
+.panel { display: grid; gap: 20px; }
+.searchRow { max-width: 560px; }
+.empty { display: grid; gap: 10px; padding: 36px; border: 1px dashed var(--md-sys-color-outline, #77777f); border-radius: 20px; background: var(--md-sys-color-surface-container-low, #f8f8ff); }
+.empty strong { font-size: 1.15rem; }
+.empty button, .importActions button { justify-self: start; min-height: 48px; padding: 10px 16px; border: 1px solid var(--md-sys-color-primary, #415f91); border-radius: 24px; background: var(--md-sys-color-primary, #415f91); color: var(--md-sys-color-on-primary, white); cursor: pointer; }
+.entryList { display: grid; gap: 12px; }
+.entryActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.entryActions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 20px; background: var(--md-sys-color-surface-container, #f0f0f7); color: inherit; }
+.entry { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 16px; border: 1px solid var(--md-sys-color-outline-variant, #c6c6ce); border-radius: 16px; }
+.entry h2, .entry p { margin: 0; }
+.entry strong { font-size: 1.5rem; letter-spacing: .1em; }
+.registrationGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.registrationGrid label, .filePicker { display: grid; gap: 8px; font-weight: 600; }
+.registrationGrid input, .registrationGrid textarea, .registrationGrid select { box-sizing: border-box; width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 10px; background: var(--md-sys-color-surface, white); color: inherit; font: inherit; }
+.registrationGrid textarea { min-height: 96px; resize: vertical; }
+.importActions { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.filePicker { min-height: 48px; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 12px; }
+.filePicker input { max-width: 100%; }
+.disclosure { margin: 0; color: var(--md-sys-color-on-surface-variant, #44474f); }
+.historyFilters { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(130px, 1fr)); gap: 12px; align-items: end; }
+.historyFilters label { display: grid; gap: 8px; font-weight: 600; }
+.historyFilters input, .historyFilters select { min-height: 48px; box-sizing: border-box; padding: 10px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 10px; background: var(--md-sys-color-surface, white); color: inherit; font: inherit; }
+.historyActions { display: flex; flex-wrap: wrap; gap: 10px; }
+.historyActions button { min-height: 48px; padding: 10px 14px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 24px; background: var(--md-sys-color-surface-container, #f0f0f7); color: inherit; }
+@media (max-width: 700px) { .surface { padding: 18px; } .header { display: grid; } .registrationGrid { grid-template-columns: 1fr; } .entry { grid-template-columns: 1fr; } .entry strong { justify-self: start; } }
