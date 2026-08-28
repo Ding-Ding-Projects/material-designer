@@ -233,7 +233,7 @@ export function OllamaSuiteManager() {
 
   const sendChat = useCallback(async () => {
     if (!selectedModel || !chatInput.trim() || chatBusy) return;
-    const userMessage = { role: 'user', content: chatInput.trim() };
+    const userMessage: { role: 'user'; content: string } = { role: 'user', content: chatInput.trim() };
     const nextMessages = [...chatMessages, userMessage];
     setChatMessages([...nextMessages, { role: 'assistant', content: '' }]);
     setChatInput('');
