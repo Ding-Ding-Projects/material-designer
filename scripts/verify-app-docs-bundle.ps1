@@ -1,10 +1,11 @@
 [CmdletBinding()]
 param(
-  [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
+  [string]$RepoRoot = '',
   [switch]$SelfTest
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) { $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')) }
 $manifestPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json'
 $bundlePath = Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts'
 $componentPath = Join-Path $RepoRoot 'design/apps/web/src/components/documentation/DocumentationBrowserView.tsx'
@@ -19,14 +20,22 @@ if (-not (Test-Path -LiteralPath $bundlePath -PathType Leaf)) { throw "App docum
 $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $bundle = Get-Content -Raw -LiteralPath $bundlePath
 
+function Read-BundleManifest([string]$Text) {
+  $start = $Text.IndexOf('export const DOCS_MANIFEST: BundledDocumentationManifest =')
+  if ($start -lt 0) { throw 'The app documentation bundle has no exact manifest export.' }
+  $jsonStart = $Text.IndexOf('{', $start)
+  $jsonEnd = $Text.LastIndexOf(' as const;')
+  if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { throw 'The app documentation bundle has no parseable manifest object.' }
+  try { return $Text.Substring($jsonStart, $jsonEnd - $jsonStart) | ConvertFrom-Json } catch { throw 'The app documentation bundle manifest object is not valid JSON.' }
+}
+
 function Assert-AppDocsBundle([string]$Text, [object]$Source) {
-  if ($Text -notmatch 'export const DOCS_MANIFEST') { throw 'The app documentation bundle has no exported manifest.' }
-  if ($Text -notmatch '"articleCount":\s*' + [regex]::Escape([string]$Source.articleCount)) { throw 'The app documentation bundle count differs from the source manifest.' }
-  foreach ($article in $Source.articles) {
-    $pathNeedle = '"path":\s*"' + [regex]::Escape($article.path) + '"'
-    $hashNeedle = '"sha256":\s*"' + [regex]::Escape($article.sha256) + '"'
-    if ($Text -notmatch $pathNeedle) { throw "The app bundle omitted article $($article.path)." }
-    if ($Text -notmatch $hashNeedle) { throw "The app bundle has no source hash for $($article.path)." }
+  $parsed = Read-BundleManifest $Text
+  $sourceJson = $Source | ConvertTo-Json -Depth 12 -Compress
+  $parsedJson = $parsed | ConvertTo-Json -Depth 12 -Compress
+  if ($sourceJson -ne $parsedJson) { throw 'The app documentation bundle object differs from the exact source manifest.' }
+  if ($parsed.articleCount -ne $Source.articleCount -or @($parsed.articles).Count -ne $Source.articleCount) {
+    throw 'The app documentation bundle count differs from the source manifest.'
   }
 }
 

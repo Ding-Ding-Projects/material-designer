@@ -2203,13 +2203,13 @@ export function init() {
     }
   });
 
-  // Ctrl/Cmd+K anywhere. Captured so a focused text field cannot swallow it.
+  // Ctrl+Shift+F anywhere. Captured so a focused text field cannot swallow it.
   document.addEventListener(
     'keydown',
     (event) => {
       // `event.key` is absent on some synthetic events; guard rather than throw
       // inside a capture-phase listener bound to the whole document.
-      if ((event.ctrlKey || event.metaKey) && !event.altKey && String(event.key || '').toLowerCase() === 'k') {
+      if (event.ctrlKey && event.shiftKey && !event.altKey && String(event.key || '').toLowerCase() === 'f') {
         event.preventDefault();
         palette.toggle(document.activeElement);
       }

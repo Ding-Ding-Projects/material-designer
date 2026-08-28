@@ -487,7 +487,7 @@ version section when a release carries them.
   同 built-runtime verification 未完成，亦無加 photo 或 release asset。
 
 - **The upload modal also localizes pasted-text status rows.** Commit
-  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2b0b0d62e0cd3f5f6f43fa18d27b7156)
+  [`0d097aee2`](https://github.com/Ding-Ding-Projects/material-designer/commit/0d097aee2e531e0b4c18ffede0441f2b8bc4ad07)
   routes the last inline label through the shared Library locale catalog. This
   is source-only evidence; hosted and built-runtime verification remains
   pending.

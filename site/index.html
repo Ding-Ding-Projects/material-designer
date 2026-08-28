@@ -43,6 +43,20 @@
 <meta name="description" content="Material Designer is a Material Design 3 rebuild of a local-first design workspace. A Windows installer is published and smoke-tested; the standards work is in progress and this page says which parts are done.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#FFF8F6">
+<!-- Product-specific previews are static so crawlers do not need JavaScript. -->
+<meta property="og:title" content="Material Designer documentation and status">
+<meta property="og:description" content="Read the complete bundled documentation tree offline and inspect verified release and feature status.">
+<meta property="og:url" content="https://ding-ding-projects.github.io/material-designer/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Material Designer">
+<meta property="og:image" content="https://ding-ding-projects.github.io/material-designer/assets/social-preview.png?v=0.20.257-r255.1">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="900">
+<meta property="og:image:alt" content="Material Designer packaged application home screen with its custom title bar, navigation rail, prompt surface, and template cards">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Material Designer documentation and status">
+<meta name="twitter:description" content="Complete bundled documentation, release evidence, and honest feature status.">
+<meta name="twitter:image" content="https://ding-ding-projects.github.io/material-designer/assets/social-preview.png?v=0.20.257-r255.1">
 
 <!--
   Appearance, applied before first paint.
@@ -208,7 +222,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
                 data-i18n-attr="aria-label:palette.open">
           <svg aria-hidden="true" focusable="false"><use href="#i-command"/></svg>
           <span class="i18n-text" data-i18n="palette.heading" data-i18n-inline>Command palette</span>
-          <kbd class="kbd">Ctrl K</kbd>
+          <kbd class="kbd">Ctrl+Shift+F</kbd>
         </button>
 
         <button type="button" class="md-icon-btn" data-md-notifications-toggle
@@ -1200,7 +1214,33 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       <h2 class="section__title" id="dc-title" data-i18n="dc.heading">Documentation</h2>
     </div>
 
-    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 41 articles. This panel indexes it and links every article at its source. It is not a copy: two copies of the same document drift apart, and the one nobody remembers to edit is the one a reader believes.</p>
+    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 68 articles. This panel indexes it and links every article at its source.</p>
+
+    <section class="docs-browser" data-docs-browser aria-labelledby="dc-browser-title">
+      <div class="section__head">
+        <h3 class="section__title" id="dc-browser-title" data-i18n="dc.browser.heading">Read every article offline</h3>
+        <p class="section__sub" data-i18n="dc.browser.sub">The published bundle contains the complete Markdown tree, so reading an article does not require a network request.</p>
+      </div>
+      <p class="prose" data-i18n="dc.browser.intro">This reader uses one isolated renderer for provider-authored Markdown. Internal article links stay inside the reader, external links are labelled, and a missing or invalid manifest is reported instead of becoming an empty spinner.</p>
+      <div class="md-search docs-browser__search" id="docs-search" data-mode="plain">
+        <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+        <label class="visually-hidden" for="docs-search-input" data-i18n="dc.browser.search.label">Search documentation articles</label>
+        <input class="md-search__input" id="docs-search-input" type="search" autocomplete="off" spellcheck="false" placeholder="Search titles and article text" data-i18n-attr="placeholder:dc.browser.search.placeholder" aria-describedby="docs-browser-status">
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="docs-search-mode" aria-pressed="false" data-i18n-attr="aria-label:search.mode.regex; title:search.mode.hint">.*</button>
+        <button type="button" class="md-icon-btn md-icon-btn--small" id="docs-search-builder" aria-haspopup="dialog" aria-expanded="false" data-i18n-attr="aria-label:regex.builder.open; title:regex.builder.open"><svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg></button>
+      </div>
+      <p class="md-body-small on-surface-variant" id="docs-browser-status" role="status" aria-live="polite" data-i18n="dc.browser.loading">Loading the bundled article manifest…</p>
+      <div class="docs-browser__layout">
+        <nav class="docs-browser__index md-card md-card--outlined" aria-labelledby="dc-browser-index-title">
+          <h4 class="md-title-medium" id="dc-browser-index-title" data-i18n="dc.browser.index">Article index</h4>
+          <ul class="docs-article-list" id="docs-article-list"></ul>
+        </nav>
+        <article class="docs-browser__reader md-card md-card--outlined" id="docs-reader-article" aria-labelledby="docs-reader-title">
+          <div class="docs-reader__head"><div><h4 class="md-title-large" id="docs-reader-title" data-i18n="dc.browser.reader.empty">Choose an article</h4><p class="md-body-small on-surface-variant" id="docs-reader-meta"></p></div><a class="md-btn md-btn--text" id="docs-reader-source" href="#" target="_blank" rel="noopener noreferrer" hidden><span data-i18n="dc.browser.source" data-i18n-inline>Open source</span><span class="visually-hidden" data-i18n="common.openInNewTab">Opens in a new tab</span></a></div>
+          <div class="docs-reader__body prose" id="docs-reader-body"><p data-i18n="dc.browser.reader.hint">Select an article to read its bundled content.</p></div>
+        </article>
+      </div>
+    </section>
 
     <p>
       <a class="md-btn md-btn--filled" href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs" rel="noopener noreferrer" target="_blank">

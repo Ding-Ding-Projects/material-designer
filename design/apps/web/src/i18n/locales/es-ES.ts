@@ -1667,6 +1667,7 @@ export const esES: Dict = {
   'documentation.empty': 'Ningún artículo incluido coincide con esta búsqueda.',
   'documentation.loading': 'Cargando la documentación incluida',
   'documentation.manifestError': 'No se pudo abrir la documentación incluida.',
+  'documentation.invalidRegex': 'Patrón no válido o inseguro:',
   'entry.helpMenuAria': 'Menú de ayuda',
   'entry.helpGetHelp': 'Obtener ayuda en GitHub',
   'entry.helpSubmitFeature': 'Enviar una sugerencia',

@@ -1702,6 +1702,7 @@ export const en: Dict = {
   'documentation.empty': 'No bundled articles match this search.',
   'documentation.loading': 'Loading the bundled documentation',
   'documentation.manifestError': 'The bundled documentation could not be opened.',
+  'documentation.invalidRegex': 'Invalid or unsafe pattern:',
   'entry.helpMenuAria': 'Help menu',
   'entry.helpGetHelp': 'Get help on GitHub',
   'entry.helpSubmitFeature': 'Submit a feature request',

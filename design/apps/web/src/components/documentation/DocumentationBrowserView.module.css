@@ -150,6 +150,12 @@
   color: var(--text-muted);
 }
 
+.error {
+  margin-top: 8px;
+  color: var(--md-sys-color-error);
+  font-size: 0.8rem;
+}
+
 .reader {
   overflow: hidden;
 }

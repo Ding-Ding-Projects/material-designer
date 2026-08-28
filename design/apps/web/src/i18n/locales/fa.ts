@@ -1667,6 +1667,7 @@ export const fa: Dict = {
   'documentation.empty': 'هیچ مقاله بسته‌بندی‌شده‌ای با این جست‌وجو مطابقت ندارد.',
   'documentation.loading': 'در حال بارگذاری مستندات بسته‌بندی‌شده',
   'documentation.manifestError': 'مستندات بسته‌بندی‌شده باز نشد.',
+  'documentation.invalidRegex': 'الگوی نامعتبر یا ناامن:',
   'entry.helpMenuAria': 'منوی راهنما',
   'entry.helpGetHelp': 'دریافت کمک در GitHub',
   'entry.helpSubmitFeature': 'پیشنهاد قابلیت',

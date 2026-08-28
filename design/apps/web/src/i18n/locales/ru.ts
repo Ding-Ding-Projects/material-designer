@@ -1667,6 +1667,7 @@ export const ru: Dict = {
   'documentation.empty': 'Включённых статей по этому запросу нет.',
   'documentation.loading': 'Загрузка включённой документации',
   'documentation.manifestError': 'Не удалось открыть включённую документацию.',
+  'documentation.invalidRegex': 'Недопустимый или небезопасный шаблон:',
   'entry.helpMenuAria': 'Меню помощи',
   'entry.helpGetHelp': 'Получить помощь на GitHub',
   'entry.helpSubmitFeature': 'Предложить функцию',

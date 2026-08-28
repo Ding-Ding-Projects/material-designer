@@ -1667,6 +1667,7 @@ export const uk: Dict = {
   'documentation.empty': 'Вбудованих статей за цим запитом немає.',
   'documentation.loading': 'Завантаження вбудованої документації',
   'documentation.manifestError': 'Не вдалося відкрити вбудовану документацію.',
+  'documentation.invalidRegex': 'Неприпустимий або небезпечний шаблон:',
   'entry.helpMenuAria': 'Меню довідки',
   'entry.helpGetHelp': 'Отримати допомогу на GitHub',
   'entry.helpSubmitFeature': 'Запропонувати функцію',

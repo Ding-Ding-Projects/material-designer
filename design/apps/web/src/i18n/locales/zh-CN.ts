@@ -1750,6 +1750,7 @@ export const zhCN: Dict = {
   "documentation.empty": "没有内置文章匹配此搜索。",
   "documentation.loading": "正在加载内置文档",
   "documentation.manifestError": "无法打开内置文档。",
+  "documentation.invalidRegex": "模式无效或不安全：",
   "entry.helpMenuAria": "帮助菜单",
   "entry.helpGetHelp": "在 GitHub 上获取帮助",
   "entry.helpSubmitFeature": "提交功能建议",

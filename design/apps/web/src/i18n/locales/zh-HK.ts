@@ -158,6 +158,7 @@ export const zhHK: Dict = {
   "documentation.empty": "內置文章入面冇嘢啱呢個搜尋。",
   "documentation.loading": "載入緊內置文件",
   "documentation.manifestError": "內置文件打唔開。",
+  "documentation.invalidRegex": "模式無效或唔安全：",
   "entry.helpMenuAria": "說明選單",
   "entry.helpGetHelp": "去 GitHub 搵人幫手",
   "entry.helpSubmitFeature": "提個功能建議",

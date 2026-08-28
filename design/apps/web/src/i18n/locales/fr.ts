@@ -1667,6 +1667,7 @@ export const fr: Dict = {
   'documentation.empty': 'Aucun article inclus ne correspond à cette recherche.',
   'documentation.loading': 'Chargement de la documentation incluse',
   'documentation.manifestError': 'La documentation incluse ne peut pas être ouverte.',
+  'documentation.invalidRegex': 'Motif non valide ou dangereux :',
   'entry.helpMenuAria': 'Menu d\'aide',
   'entry.helpGetHelp': 'Obtenir de l\'aide sur GitHub',
   'entry.helpSubmitFeature': 'Proposer une fonctionnalité',

@@ -2297,6 +2297,7 @@ export interface Dict {
   'documentation.empty': string;
   'documentation.loading': string;
   'documentation.manifestError': string;
+  'documentation.invalidRegex': string;
   'entry.helpMenuAria': string;
   'entry.helpGetHelp': string;
   'entry.helpSubmitFeature': string;

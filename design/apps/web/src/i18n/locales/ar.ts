@@ -1667,6 +1667,7 @@ export const ar: Dict = {
   'documentation.empty': 'لا توجد مقالات مجمعة تطابق هذا البحث.',
   'documentation.loading': 'جار تحميل التوثيق المجمع',
   'documentation.manifestError': 'تعذر فتح التوثيق المجمع.',
+  'documentation.invalidRegex': 'النمط غير صالح أو غير آمن:',
   'entry.helpMenuAria': 'قائمة المساعدة',
   'entry.helpGetHelp': 'احصل على مساعدة على GitHub',
   'entry.helpSubmitFeature': 'اقترح ميزة',

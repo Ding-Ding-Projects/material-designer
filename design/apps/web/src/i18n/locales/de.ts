@@ -1667,6 +1667,7 @@ export const de: Dict = {
   'documentation.empty': 'Keine gebündelten Artikel passen zu dieser Suche.',
   'documentation.loading': 'Gebündelte Dokumentation wird geladen',
   'documentation.manifestError': 'Die gebündelte Dokumentation konnte nicht geöffnet werden.',
+  'documentation.invalidRegex': 'Ungültiges oder unsicheres Muster:',
   'entry.helpMenuAria': 'Hilfemenü',
   'entry.helpGetHelp': 'Hilfe auf GitHub',
   'entry.helpSubmitFeature': 'Feature vorschlagen',

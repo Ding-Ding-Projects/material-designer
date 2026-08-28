@@ -1667,6 +1667,7 @@ export const ptBR: Dict = {
   'documentation.empty': 'Nenhum artigo incluído corresponde a esta pesquisa.',
   'documentation.loading': 'Carregando documentação incluída',
   'documentation.manifestError': 'Não foi possível abrir a documentação incluída.',
+  'documentation.invalidRegex': 'Padrão inválido ou inseguro:',
   'entry.helpMenuAria': 'Menu de ajuda',
   'entry.helpGetHelp': 'Obter ajuda no GitHub',
   'entry.helpSubmitFeature': 'Sugerir um recurso',

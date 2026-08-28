@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -85,6 +86,10 @@ function suggestedArticles(article: BundledDocumentationArticle): BundledDocumen
   }).slice(0, 3);
 }
 
+function headingSlug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-');
+}
+
 export function DocumentationBrowserView() {
   const t = useT();
   const [activeTab, setActiveTab] = useState<DocumentationTab>('articles');
@@ -92,10 +97,20 @@ export function DocumentationBrowserView() {
   const [history, setHistory] = useState<string[]>(readHistory);
   const [searchQuery, setSearchQuery] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
+  const readerBodyRef = useRef<HTMLDivElement | null>(null);
   const articleSearch = useRegexSearch(searchQuery, setSearchQuery);
   const historySearch = useRegexSearch(historyQuery, setHistoryQuery);
 
   const selectedArticle = articleByPath(selectedPath) ?? DOCS_MANIFEST.articles[0] ?? null;
+
+  useEffect(() => {
+    const readerBody = readerBodyRef.current;
+    if (!readerBody) return;
+    readerBody.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6').forEach((heading) => {
+      const slug = headingSlug(heading.textContent ?? '');
+      if (slug) heading.id = `documentation-heading-${slug}`;
+    });
+  }, [selectedArticle]);
 
   useEffect(() => {
     try {
@@ -225,7 +240,13 @@ export function DocumentationBrowserView() {
             ariaLabel={t('documentation.articleSearch')}
             ariaControls="documentation-article-list"
             testId="documentation-article-search"
+            ariaInvalid={Boolean(articleSearch.error)}
           />
+          {articleSearch.error ? (
+            <p className={styles.error} role="alert">
+              {t('documentation.invalidRegex')} {articleSearch.error.message}
+            </p>
+          ) : null}
           <p className={styles.status} role="status" aria-live="polite">
             {visibleArticles.length} / {DOCS_MANIFEST.articleCount}
           </p>
@@ -256,8 +277,12 @@ export function DocumentationBrowserView() {
               {t('documentation.source')}
             </a>
           </header>
-          <div className={styles.readerBody}>
-            {renderMarkdown(selectedArticle.markdown, { onLinkClick: handleArticleLink })}
+          <div ref={readerBodyRef} className={styles.readerBody}>
+            {renderMarkdown(selectedArticle.markdown, {
+              onLinkClick: handleArticleLink,
+              allowedExternalHosts: ['github.com', 'www.github.com', 'raw.githubusercontent.com', 'ding-ding-projects.github.io'],
+              allowRelativeImages: true,
+            })}
             <section className={styles.suggested} aria-labelledby="documentation-suggested-title">
               <h3 id="documentation-suggested-title">{t('documentation.suggested')}</h3>
               <ul>
@@ -287,7 +312,13 @@ export function DocumentationBrowserView() {
           ariaLabel={t('documentation.historySearch')}
           ariaControls="documentation-history-list"
           testId="documentation-history-search"
+          ariaInvalid={Boolean(historySearch.error)}
         />
+        {historySearch.error ? (
+          <p className={styles.error} role="alert">
+            {t('documentation.invalidRegex')} {historySearch.error.message}
+          </p>
+        ) : null}
         <p className={styles.status} role="status" aria-live="polite">{visibleHistory.length}</p>
         <ul id="documentation-history-list" className={styles.historyList}>
           {visibleHistory.map((article) => (

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "policy": "real-built-artifact-only",
+  "route": "cheap-lowlevel-headless",
+  "status": "pending",
+  "statusReason": "A current packaged recording has not yet been captured and inspected. No media is substituted.",
+  "requiredSteps": [
+    "open-application",
+    "open-main-destination",
+    "open-settings",
+    "open-documentation-reader",
+    "open-regex-builder",
+    "complete-one-real-task",
+    "show-an-honest-failure",
+    "show-empty-state",
+    "show-progress-and-cancellation",
+    "close-application"
+  ],
+  "recording": null
+}

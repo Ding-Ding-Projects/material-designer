@@ -1667,6 +1667,7 @@ export const hu: Dict = {
   'documentation.empty': 'Egyetlen csomagolt cikk sem felel meg a keresésnek.',
   'documentation.loading': 'Csomagolt dokumentáció betöltése',
   'documentation.manifestError': 'A csomagolt dokumentáció nem nyitható meg.',
+  'documentation.invalidRegex': 'Érvénytelen vagy nem biztonságos minta:',
   'entry.helpMenuAria': 'Súgó menü',
   'entry.helpGetHelp': 'Kérj segítséget a GitHubon',
   'entry.helpSubmitFeature': 'Funkció javaslása',

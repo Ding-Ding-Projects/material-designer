@@ -1667,6 +1667,7 @@ export const th: Dict = {
   'documentation.empty': 'ไม่มีบทความที่รวมไว้ตรงกับการค้นหานี้',
   'documentation.loading': 'กำลังโหลดเอกสารที่รวมไว้',
   'documentation.manifestError': 'เปิดเอกสารที่รวมไว้ไม่ได้',
+  'documentation.invalidRegex': 'รูปแบบไม่ถูกต้องหรือไม่ปลอดภัย:',
   'entry.helpMenuAria': 'เมนูช่วยเหลือ',
   'entry.helpGetHelp': 'ขอความช่วยเหลือบน GitHub',
   'entry.helpSubmitFeature': 'ส่งคำขอฟีเจอร์',

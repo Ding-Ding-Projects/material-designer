@@ -131,8 +131,8 @@ change without the page changing. See
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Triggers | Every push, published release, and manual dispatch | A published release event refreshes version-bound facts after a push deployment race |
-| Runner | `[self-hosted, linux, material-designer]` | Dedicated project runner; the workflow cleans the checkout and verifies `gh`, `jq`, Bash and its static-site text utilities before publishing |
+| Triggers | Every push and manual dispatch | The run resolves the newest published release against the exact deployed commit before replacing visible facts |
+| Runner | `windows-2022` | The workflow uses the pinned Windows hosted image and bootstraps the tools it needs before publishing |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |
 | Environment | `github-pages`, with the deployment URL recorded as its output | The published URL is read off the run rather than assumed |

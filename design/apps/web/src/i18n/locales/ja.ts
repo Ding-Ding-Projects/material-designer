@@ -1667,6 +1667,7 @@ export const ja: Dict = {
   'documentation.empty': '検索に一致する同梱記事はありません。',
   'documentation.loading': '同梱ドキュメントを読み込み中',
   'documentation.manifestError': '同梱ドキュメントを開けませんでした。',
+  'documentation.invalidRegex': '無効または安全でないパターン:',
   'entry.helpMenuAria': 'ヘルプメニュー',
   'entry.helpGetHelp': 'GitHub でサポートを受ける',
   'entry.helpSubmitFeature': '機能をリクエスト',

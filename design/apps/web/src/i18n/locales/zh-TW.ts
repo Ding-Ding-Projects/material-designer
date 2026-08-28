@@ -1791,6 +1791,7 @@ export const zhTW: Dict = {
   "documentation.empty": "沒有內建文章符合這次搜尋。",
   "documentation.loading": "正在載入內建文件",
   "documentation.manifestError": "無法開啟內建文件。",
+  "documentation.invalidRegex": "模式無效或不安全：",
   "entry.helpMenuAria": "說明選單",
   "entry.helpGetHelp": "在 GitHub 取得協助",
   "entry.helpSubmitFeature": "提交功能建議",

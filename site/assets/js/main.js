@@ -17,6 +17,7 @@ import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
 import { initToyLocks } from './toy-locks.js';
+import docsBrowser from './docs-browser.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -656,6 +657,7 @@ function start() {
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });
+  void docsBrowser.initDocsBrowser({ i18n, regex, tabs, ui });
   paintTokenSwatches();
 
   if (regex.setRegexTranslator) regex.setRegexTranslator((k, f) => label(k, f));

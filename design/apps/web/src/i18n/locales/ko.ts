@@ -1667,6 +1667,7 @@ export const ko: Dict = {
   'documentation.empty': '검색과 일치하는 번들 문서가 없습니다.',
   'documentation.loading': '번들 문서를 불러오는 중',
   'documentation.manifestError': '번들 문서를 열 수 없습니다.',
+  'documentation.invalidRegex': '잘못되었거나 안전하지 않은 패턴:',
   'entry.helpMenuAria': '도움말 메뉴',
   'entry.helpGetHelp': 'GitHub 에서 도움 받기',
   'entry.helpSubmitFeature': '기능 제안하기',

@@ -1667,6 +1667,7 @@ export const tr: Dict = {
   'documentation.empty': 'Bu aramayla eşleşen paketlenmiş makale yok.',
   'documentation.loading': 'Paketlenmiş dokümantasyon yükleniyor',
   'documentation.manifestError': 'Paketlenmiş dokümantasyon açılamadı.',
+  'documentation.invalidRegex': 'Geçersiz veya güvenli olmayan desen:',
   'entry.helpMenuAria': 'Yardım menüsü',
   'entry.helpGetHelp': 'GitHub üzerinden yardım alın',
   'entry.helpSubmitFeature': 'Özellik öner',

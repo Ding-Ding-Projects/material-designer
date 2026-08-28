@@ -1,11 +1,12 @@
 [CmdletBinding()]
 param(
-  [string]$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
+  [string]$RepoRoot = '',
   [string]$ManifestPath = '',
   [string]$OutputPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($RepoRoot)) { $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')) }
 if ([string]::IsNullOrWhiteSpace($ManifestPath)) { $ManifestPath = Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $RepoRoot 'design/apps/web/src/lib/docs/generated.ts' }
 if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) { throw "Source documentation manifest is missing: $ManifestPath" }

@@ -27,8 +27,12 @@ result list. Empty results say that no bundled article matches.
 
 Every article receives a suggested-reading section at the end of the reader. The
 manifest preserves authored suggestions and supplies a deterministic same-category
-fallback when an older article did not yet have one. This keeps an old article
-connected without copying its body into a second source of truth.
+fallback when an older article did not yet have one. The generator normalizes
+every relative suggestion to a docs-root path and verifies that it resolves to an
+article in the same manifest. Source articles are therefore allowed to omit a
+literal final Suggested articles section, because this generated manifest is the
+single documented equivalent and is checked on every generation. This keeps an
+old article connected without copying its body into a second source of truth.
 
 The renderer is isolated in `site/assets/js/docs-browser.js`. It escapes article
 text before adding only the generated elements it owns. A Markdown document

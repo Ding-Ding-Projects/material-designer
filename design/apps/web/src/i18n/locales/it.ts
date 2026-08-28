@@ -1667,6 +1667,7 @@ export const it: Dict = {
   'documentation.empty': 'Nessun articolo incluso corrisponde alla ricerca.',
   'documentation.loading': 'Caricamento della documentazione inclusa',
   'documentation.manifestError': 'Impossibile aprire la documentazione inclusa.',
+  'documentation.invalidRegex': 'Pattern non valido o non sicuro:',
   'entry.helpMenuAria': 'Menu Aiuto',
   'entry.helpGetHelp': 'Ottieni assistenza su GitHub',
   'entry.helpSubmitFeature': 'Invia una richiesta di funzionalità',

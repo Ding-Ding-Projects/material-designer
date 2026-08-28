@@ -1667,6 +1667,7 @@ export const id: Dict = {
   'documentation.empty': 'Tidak ada artikel bundel yang cocok dengan pencarian ini.',
   'documentation.loading': 'Memuat dokumentasi bundel',
   'documentation.manifestError': 'Dokumentasi bundel tidak dapat dibuka.',
+  'documentation.invalidRegex': 'Pola tidak valid atau tidak aman:',
   'entry.helpMenuAria': 'Menu bantuan',
   'entry.helpGetHelp': 'Dapatkan bantuan di GitHub',
   'entry.helpSubmitFeature': 'Ajukan fitur',

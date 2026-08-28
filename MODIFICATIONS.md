@@ -29,6 +29,53 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-28 - Repair documentation evidence and source-bound reader safety
+
+**Reason:** The source review found that the documentation lane needed to be
+  reconciled with the current main line, not merely replayed. This repair keeps
+  the current provenance and release workflow, restores the site reader and its
+  local manifest tooling, parses the exact installed-app bundle object, binds
+  recording evidence to in-repository media, source Git SHA, built output, and
+  per-action receipts, and makes article links, images, regex failures, tabs,
+  and 48px controls explicit and testable. Hosted packaging and runtime capture
+  remain pending.
+
+**Changed files:**
+
+- `apps/web/src/runtime/markdown.tsx`
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx`
+- `apps/web/src/components/documentation/DocumentationBrowserView.module.css`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx`
+- `apps/web/tests/lib/docs/manifest.test.ts`
+- `assets/css/app.css`
+- `assets/js/docs-browser.js`
+- `assets/js/i18n.js`
+- `assets/js/main.js`
+- `assets/js/tabs.js`
+- `assets/js/ui.js`
+- `index.html`
+
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and

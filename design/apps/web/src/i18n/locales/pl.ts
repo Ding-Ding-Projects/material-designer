@@ -1667,6 +1667,7 @@ export const pl: Dict = {
   'documentation.empty': 'Żaden dołączony artykuł nie pasuje do tego wyszukiwania.',
   'documentation.loading': 'Wczytywanie dołączonej dokumentacji',
   'documentation.manifestError': 'Nie można otworzyć dołączonej dokumentacji.',
+  'documentation.invalidRegex': 'Nieprawidłowy lub niebezpieczny wzorzec:',
   'entry.helpMenuAria': 'Menu pomocy',
   'entry.helpGetHelp': 'Uzyskaj pomoc na GitHubie',
   'entry.helpSubmitFeature': 'Zaproponuj funkcję',
