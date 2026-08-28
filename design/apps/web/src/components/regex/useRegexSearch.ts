@@ -58,6 +58,12 @@ export interface RegexSearchController {
   setSample: (next: string) => void;
 }
 
+export interface RegexSearchInitialState {
+  mode?: RegexSearchMode;
+  flags?: string;
+  sample?: string;
+}
+
 interface Compiled {
   regex: RegExp | null;
   error: PatternError | null;
@@ -69,12 +75,13 @@ const MATCH_EVERYTHING = (): boolean => true;
 export function useRegexSearch(
   query: string,
   onQueryChange: (next: string) => void,
+  initial: RegexSearchInitialState = {},
 ): RegexSearchController {
-  const [mode, setModeState] = useState<RegexSearchMode>('text');
-  const [flags, setFlags] = useState<string>(DEFAULT_FLAGS);
+  const [mode, setModeState] = useState<RegexSearchMode>(initial.mode ?? 'text');
+  const [flags, setFlags] = useState<string>(initial.flags ?? DEFAULT_FLAGS);
   const [parts, setParts] = useState<RegexPart[]>([]);
   const [syncFailure, setSyncFailure] = useState<ParseFailure | null>(null);
-  const [sample, setSample] = useState('');
+  const [sample, setSample] = useState(initial.sample ?? '');
 
   // The pattern the parts list was last derived from or rendered to. Anything
   // else arriving in `query` came from somewhere the parts have not seen.

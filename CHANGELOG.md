@@ -45,6 +45,187 @@ version section when a release carries them.
 
 ### Changed
 
+- **Validate persisted converter audit records.** Commit
+  [`a3c1152c`](https://github.com/Ding-Ding-Projects/material-designer/commit/a3c1152c017263611536465f720b102ed9c0baa7)
+  validates notification and history records before returning them to the
+  renderer, including the severity, action, identifier, timestamp, bounded
+  text, and optional revision fields. Malformed persisted state is reported as
+  a read failure instead of being rendered as a healthy record. This remains
+  source and IPC evidence only, with packaged runtime interaction and capture
+  evidence still unverified.
+
+  **Audit record 都要驗身先出街。** Commit `a3c1152c` 會先驗 notification 同
+  history 入面嘅 severity、action、identifier、timestamp、bounded text 同
+  revision；壞 state 會當 read failure，唔會扮健康 record。今次仍然只有 source
+  同 IPC evidence，packaged runtime interaction 同 captures 仲未驗證。
+
+- **Bound queue migration and prove replacement races.** Commit
+  [`271b3da5`](https://github.com/Ding-Ding-Projects/material-designer/commit/271b3da5a606ce28b4f274f0eb4194516691c060)
+  streams legacy array records one object at a time, rebuilds the generated
+  index without an unbounded de-duplication set, and adds real temporary-file
+  coverage for changed destinations and concurrent creation. A changed target
+  cannot spend an old authorization, and concurrent new promotions elect one
+  winner while leaving the other request refused. This remains source and IPC
+  evidence only. Packaged runtime interaction and capture evidence remain
+  unverified.
+
+  **Legacy queue migration 同 replacement race 而家有實證。** Commit `271b3da5`
+  逐個 object stream 舊 array，rebuild index 唔再養無限大 de-dup set，temporary
+  file tests 真係試 destination 改過同 concurrent creation。改過嘅 target 唔可以
+  偷用舊 authorization，並行新 promotion 只揀一個贏家，另一個清楚打回頭。今次
+  仍然只有 source 同 IPC evidence，packaged runtime interaction 同 captures 仲未
+  驗證。
+
+- **Harden the converter queue, overwrite path, and local audit records.** Commit
+  [`aac585db`](https://github.com/Ding-Ding-Projects/material-designer/commit/aac585db256cf7295a517e375f444e9f85ef0e1d)
+  replaces whole-queue page reconstruction with fixed-size on-disk order chunks,
+  per-item snapshots, bounded page reads, and one-record-at-a-time journal
+  compaction. Enabled adapters report incremental source-byte progress. Existing
+  destinations require a host-issued single-use authorization bound to the exact
+  conversion and destination snapshot, then an exclusive promotion lock and
+  rollback path. The renderer mounts the two-key full-range confirmation gate;
+  converter dropdowns retain their own persistent search and regex state; and
+  host-backed notifications plus redacted local Git history record mutations.
+  This commit has source and IPC evidence only. Packaged runtime interaction and
+  capture evidence remain unverified.
+
+  **Queue、overwrite 同 local audit 今次唔再扮輕身。** Commit `aac585db` 將
+  whole queue reconstruction 換成 fixed-size on-disk order chunks、per-item
+  snapshot、bounded page 同逐筆 compaction；enabled adapter 逐段報 source-byte
+  progress。已有 destination 要 host-issued single-use authorization，綁實今次
+  conversion 同 snapshot，之後先用 exclusive lock 同 rollback。Renderer 有兩把匙
+  加完整 slider，個個 dropdown 自己保存 search 同 regex；notification 同 redacted
+  local Git history 都有記錄。呢個 commit 只有 source 同 IPC evidence，packaged
+  runtime interaction 同 captures 仲未驗證。
+
+- **Add the bounded local file-converter host foundation.** The desktop namespace
+  now exposes eight adapter categories, signature-first detection, visible
+  unavailable formats, bundled-only proof, PDF inspect and editing operations,
+  atomic output validation, and a paged resumable queue with bounded concurrency.
+  This is source-level evidence only; renderer mounting, packaged interaction, and
+  capture evidence remain open. The integration commit link will be added when the
+  lane lands on the default branch.
+
+  **本地 file converter 個 host 底座落咗，八大類型唔再扮失蹤。** 由 byte
+  signature 揀格式，冇 bundled codec 就老實顯示原因，PDF 可以 inspect 同
+  編頁，output 先驗證再原子落地，queue 就逐頁食、限住並行，唔會一口氣吞晒。
+  而家係 source-level evidence，renderer mounting、packaged drive 同 captures
+  仲未有；integration commit link 會喺落 default branch 時補返。
+
+- **Mount the local file-converter destination and opaque host bridge.** The
+  `/file-converter` destination now provides category tabs, semantic source and
+  destination controls, one `RegexSearchField` per category, disabled adapter
+  reasons, loss and metadata disclosure, queue progress and cancellation,
+  browser fallback copy, export, and host-issued file handles that keep paths in
+  the main process. Packaged interaction and capture evidence remain open.
+
+  **File converter 個 destination 而家真係有門口喇。** 八大 category 有 tabs，
+  每類有自己 search 同 regex affordance，冇 codec 就寫明原因，loss 同 metadata
+  先講清楚，queue 有 progress 同 cancel，browser fallback 唔扮 desktop host，
+  bridge 就用 host-issued handle 收住條 path。Packaged drive 同 captures 仲要
+  等真機證明。
+
+- **Complete PDF controls and add the documentation-site equivalent.** The
+  desktop converter now exposes inspect, split, merge, extract, reorder, rotate,
+  and metadata controls through the host bridge, with post-write PDF reopening.
+  The documentation site now carries a separate browser-local converter surface
+  with all eight categories, per-category search builders, unavailable reasons,
+  persistent queue records, cancellation, export, and an explicit boundary that
+  it cannot write to the desktop filesystem.
+
+  **PDF 個工具櫃齊腳，網站都有自己嗰份 browser-local 版本。** inspect、split、
+  merge、extract、reorder、rotate 同 metadata 全部有掣，落地之後再開返驗，網站
+  就逐類顯示 adapters、search 同 regex builder，冇 codec 寫明原因，仲講清楚
+  唔會伸手入 desktop filesystem。Packaged drive 同 captures 仍然未驗證。
+
+- **Make the desktop queue host-backed and durable.** The renderer now reads
+  queue records from the main-process store, while the host persists item state,
+  bounds concurrency, reconciles interrupted work after restart, and handles
+  pause, resume, cancel, and retry. PDF controls call host-owned operations.
+  Notification history, local event summaries, bulk selection, and export hooks
+  remain visible without exposing source bytes or host paths.
+
+  **Queue 唔再靠 renderer 自己記住，host 先係唯一話事人。** queue record
+  落地保存，並行數量有限，重新開機會將半途 item 寫成清楚嘅 failure，仲有
+  pause、resume、cancel 同 retry。PDF 工具真係打到 host，通知紀錄、local
+  event、bulk select 同 export 都有門口，但唔會洩漏 source bytes 或 host path。
+
+- **Correct the PDF capability claim.** The bundled PDF inspector remains
+  available, while split, merge, extract, reorder, rotate, and metadata edits are
+  now visibly disabled until a content-preserving rewrite engine is bundled and
+  verified. The host refuses those operations instead of producing synthetic
+  content that merely looks like a successful conversion.
+
+  **PDF 能力講清楚先，唔好扮有引擎。** inspector 繼續用得，其他編輯掣暫時
+  灰住，等真正 content-preserving engine bundle 同 verification 完成先開返。
+  Host 會直接拒絕，唔會整份假 output 當成功。
+
+- **Remove synthetic PDF output from the shipping path.** The desktop build now
+  ships bounded PDF inspection only. The old generated-page writer and dormant
+  edit helpers were removed from the converter namespace, and the visible
+  operation selector keeps content-changing actions unavailable until a real
+  bundled content-preserving engine exists.
+
+  **假 PDF output 收工，唔再扮有引擎。** 而家只做 bounded PDF inspection，舊嘅
+  generated-page writer 同 dormant edit helpers 已經移走，split、merge、extract、
+  reorder、rotate 同 metadata 掣繼續清楚 unavailable，等真正 engine 先再開。
+
+- **Keep PDF rewriting fail-closed until a content-preserving engine exists.**
+  The host bridge now exposes PDF inspection while visibly refusing split, merge,
+  extract, reorder, rotate, and metadata writes. Earlier source wiring for those
+  operations is retained as dormant code and is not advertised as available.
+
+  **PDF 改寫未有真正 engine 就唔開門。** inspect 可以做，split、merge、extract、
+  reorder、rotate 同 metadata 寫入全部清楚標 unavailable，之前嗰段 wiring 留低
+  做將來接 engine 用，唔再當成已經可用。
+
+- **Add source proof and live progress seams to the converter.** Enabled adapter
+  rows now carry a source-contract digest and path, queue workers accept bounded
+  progress callbacks, and the host reports measured completion throughput. The
+  renderer remains on the durable host queue and refuses existing destinations.
+  Packaged proof and runtime captures remain open.
+
+  **每個 adapter 而家有 source proof，queue 亦有 progress 條電線。** enabled row
+  帶住 digest 同 path，worker 可以逐步報 bytes，完成時量到實際 rate。renderer
+  繼續只信 durable host queue，舊 destination 仍然拒絕，packaged proof 同 captures
+  仲未到。
+
+- **Add proof metadata, progress callbacks, and target-format search ownership.**
+  Enabled adapters now expose source-contract digests, queue workers can report
+  bounded progress, and every target-format selector has its own search controller
+  and anchored builder. The PDF shipping path remains inspection-only, with
+  content-changing actions visibly unavailable.
+
+  **adapter proof、queue progress 同 target format search 分家處理。** enabled
+  adapter 帶住 digest，worker 有 bounded progress，每個 target selector 有自己
+  search 同 anchored builder，唔會互相撞車。PDF 仍然只 inspect，改內容嘅掣清楚
+  unavailable。
+
+- **Close the review findings around source, queue, overwrite, and context
+  actions.** The native source action now invokes the picker, bounded streaming
+  reads happen before byte allocation, renderer queue state comes only from the
+  durable host store, append/update records stream line by line, malformed state
+  stays visible as an error, and cancelled work is checked again before output
+  promotion. The target menu now has a real local filter and anchored builder,
+  while appearance and toy-lock entries say plainly that their broader lanes are
+  not mounted here.
+
+  **今次唔畀啲問題藏喺角落。** source 掣會真係開 picker，讀 bytes 逐段
+  入，queue 只信 host store，壞 record 唔會當冇到，cancel 遲到都唔可以偷雞
+  寫 output。target menu 有自己 filter 同 anchored builder，appearance 同 toy lock
+  未到呢條 lane 就老實講，唔扮完成。
+
+- **Harden the converter review paths.** Source selection now invokes the native
+  picker, inspects file size before allocation, and streams bounded bytes. Queue
+  state uses an append/update JSONL record store with streamed reads, malformed
+  state errors, restart reconciliation, and measurable completion throughput.
+  Multi-source PDF merge, multi-output split, active-cancel promotion checks, and
+  race-time overwrite refusal are wired through the host boundary.
+
+  **今次專門捉返啲扮冇事嘅位。** source picker 真係會開，讀檔先睇 size 再逐段
+  食，queue 用 append/update record，壞 record 會明講，重開機會交代半途工夫，
+  完成時會量 rate。PDF merge 可以揀多份，split 一段一個 output，cancel 太遲
+  都唔准偷雞落地，撞到舊 output 就要明確確認。
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`

@@ -1,5 +1,22 @@
 # Material Designer
 
+## Local file converter status
+
+The desktop host contains a source-level local converter foundation in
+`design/apps/desktop/src/main/converter/`. It exposes all eight required adapter
+categories, keeps unavailable codecs visible with exact reasons, detects types by
+bounded bytes, inspects PDF structure while visibly disabling unsupported edits,
+and runs a
+fixed-index, on-disk paged queue with durable item snapshots, streaming journal
+compaction, bounded concurrency, and incremental source-byte progress. Existing
+destinations use a host-issued one-use authorization bound to the exact conversion
+and a two-key full-slider gate, then an exclusive promotion lock with rollback.
+The renderer catalog, guided pickers, field-owned advanced regex builders, progress
+surfaces, durable notification/history bridge, and host bridge are now mounted at
+`/file-converter`, while packaged interaction evidence is still open. See
+[`docs/standards/file-converter.md`](docs/standards/file-converter.md) for the
+honest boundary and verification commands.
+
 > [!IMPORTANT]
 > **Design-parity and Squirrel migration checkpoint — 2026-08-21.** Commit
 > [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)

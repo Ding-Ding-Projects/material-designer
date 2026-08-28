@@ -29,6 +29,113 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Complete bounded converter host persistence and overwrite authorization
+
+**Reason:** The converter's first queue implementation rebuilt every record for
+each page and its overwrite refusal had no path for an explicitly reviewed
+replacement. The host now keeps a fixed-size order index beside per-item
+snapshots, compacts its journal one record at a time, reports incremental
+source-byte progress, and issues an in-memory single-use authorization bound to
+the exact conversion and destination snapshot. The renderer mounts the real
+two-key full-range confirmation gate, every converter dropdown owns persistent
+search and regex state, and host-backed notifications plus redacted local Git
+history record mutations without storing source payloads. Source and IPC
+negative regressions use comment-aware exact boundaries. Packaged interaction
+and capture evidence remain open.
+
+**Changed files:**
+
+- `apps/desktop/src/main/converter/types.ts`
+- `apps/desktop/src/main/converter/queue.ts`
+- `apps/desktop/src/main/converter/host.ts`
+- `apps/desktop/src/main/converter/registry.ts`
+- `apps/desktop/src/main/converter/index.ts`
+- `apps/desktop/src/main/converter/overwrite.ts`
+- `apps/desktop/src/main/converter/audit.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/tests/main/file-converter.test.ts`
+- `apps/desktop/tests/main/file-converter-ipc-contract.test.ts`
+- `apps/web/src/components/FileConverterView.tsx`
+- `apps/web/src/components/converter/ConverterSearchableChoice.tsx`
+- `apps/web/src/components/converter/ConverterSearchableChoice.module.css`
+- `apps/web/src/components/converter/converterCopy.ts`
+- `apps/web/src/components/regex/useRegexSearch.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/index.ts`
+
+### 2026-08-27 - Add bounded local file-converter host foundation
+
+**Reason:** The desktop application needed a local converter boundary that does
+not mistake a filename for a type, enable codecs that are not bundled, load an
+unbounded queue into memory, or publish an output before it has been validated.
+The new namespace records the eight adapter categories, bounded byte detection,
+PDF inspection and editing operations, atomic output, unavailable capability
+reasons, and paged queue state. Focused source tests and a deliberate negative
+regression cover the exact missing-bundle and unbounded-queue failure modes.
+Renderer mounting and packaged UI evidence remain open and are recorded as
+partial in the inventory and feature article.
+
+**Changed files:**
+
+- `apps/desktop/src/main/converter/types.ts`
+- `apps/desktop/src/main/converter/detect.ts`
+- `apps/desktop/src/main/converter/registry.ts`
+- `apps/desktop/src/main/converter/pdf.ts`
+- `apps/desktop/src/main/converter/host.ts`
+- `apps/desktop/src/main/converter/queue.ts`
+- `apps/desktop/src/main/converter/index.ts`
+- `apps/desktop/tests/main/file-converter.test.ts`
+
+### 2026-08-27 - Mount the local file-converter destination and host bridge
+
+**Reason:** The host foundation needs a real renderer destination so a desktop
+user can choose a source and destination, inspect the categorized adapter catalog,
+review loss disclosures, queue work, and start a conversion through opaque
+host-issued file handles. The destination provides a browser-style category tab
+surface, isolated advanced regex search fields, truthful unavailable-adapter
+states, keyboard-accessible controls, local queue persistence, and a browser
+fallback that never pretends it can write without the desktop host. The bridge
+keeps paths in the main process and refuses unknown handles.
+
+**Changed files:**
+
+- `apps/web/src/components/FileConverterView.tsx`
+- `apps/web/src/components/FileConverterView.module.css`
+- `apps/web/src/router.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/tests/router.test.ts`
+- `apps/web/tests/file-converter.contract.test.ts`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/index.ts`
+
+### 2026-08-27 - Complete PDF operation controls and add the site converter equivalent
+
+**Reason:** The converter destination now exposes the host-backed PDF operation
+selector for inspect, split, merge, extract, reorder, rotate, and metadata work.
+The documentation site also carries its own browser-local converter equivalent
+with all eight category cards, one local search and advanced builder per card,
+visible unavailable formats, file mediation, queue persistence, cancellation,
+and explicit no-desktop-filesystem boundaries. Source checks deliberately fail
+when the converter mount, PDF controls, notification/history/export hooks, or
+site equivalent disappears.
+
+**Changed files:**
+
+- `apps/web/src/components/FileConverterView.tsx`
+- `apps/web/src/components/FileConverterView.module.css`
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/index.ts`
+- `site/index.html`
+- `site/assets/js/main.js`
+- `site/assets/js/tabs.js`
+- `site/assets/js/converter.js`
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and

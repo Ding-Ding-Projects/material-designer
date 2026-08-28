@@ -71,6 +71,7 @@ export const DEFAULT_TABS = Object.freeze([
   { id: 'docs',        icon: 'docs',       en: 'Documentation',      yue: '文件' },
   { id: 'provenance',  icon: 'provenance', en: 'Provenance',         yue: '出處' },
   { id: 'settings',    icon: 'settings',   en: 'Settings',           yue: '設定' },
+  { id: 'converter',   icon: 'features',   en: 'File converter',      yue: '檔案轉換' },
 ].map(Object.freeze));
 
 /**

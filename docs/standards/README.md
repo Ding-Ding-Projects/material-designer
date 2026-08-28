@@ -63,6 +63,7 @@ each has its own article because each guards a distinct failure.
 | [ui-drive-evidence.md](ui-drive-evidence.md) | Fail-closed per-surface interaction inventory, immediate post-click capture receipts, and exact red-then-green negative regression. |
 | [front-screen-provenance.md](front-screen-provenance.md) | The version and provenance-bound local timestamp shown before navigation, settings, About, and onboarding authentication. |
 | [toy-locks.md](toy-locks.md) | The six desktop authentication policies, shared PIN validation and attempt budgeting, locked-target interception, and the remaining visible-surface work. |
+| [file-converter.md](file-converter.md) | The local categorized converter catalog, bounded byte detection, PDF operations, atomic output, and paged resumable queue. |
 
 [accessibility.md](accessibility.md) summarises the first three of these
 alongside the accessibility matrix, because they are checked at the same time.

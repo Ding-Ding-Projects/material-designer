@@ -91,7 +91,8 @@ export interface PaletteRegistryContext {
 
 interface DestinationSpec {
   id: string;
-  labelKey: keyof Dict;
+  labelKey?: keyof Dict;
+  label?: string;
   icon: IconName;
   route: Route;
   keywords: readonly string[];
@@ -146,6 +147,13 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     icon: 'grid',
     route: { kind: 'marketplace' },
     keywords: ['marketplace', 'catalog', 'browse plugins'],
+  },
+  {
+    id: 'go.file-converter',
+    label: 'File converter',
+    icon: 'file',
+    route: { kind: 'home', view: 'file-converter' },
+    keywords: ['file converter', 'convert files', 'pdf tools', 'batch conversion'],
   },
 ];
 
@@ -221,7 +229,7 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     rows.push({
       kind: 'destination',
       id: destination.id,
-      title: t(destination.labelKey),
+      title: destination.label ?? (destination.labelKey ? t(destination.labelKey) : destination.id),
       group: goGroup,
       icon: destination.icon,
       keywords: destination.keywords,

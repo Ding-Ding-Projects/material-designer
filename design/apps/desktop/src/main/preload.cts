@@ -23,6 +23,7 @@ import type {
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostToyLocks,
+  OpenDesignHostConverter,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -424,6 +425,49 @@ const toyLocks: OpenDesignHostToyLocks = {
   verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
 };
 
+// Converter requests carry opaque host-issued file handles, never renderer
+// supplied filesystem paths. The main process owns picker, byte inspection,
+// conversion, and destination writes.
+const converter: OpenDesignHostConverter = {
+  catalog: () => ipcRenderer.invoke('od:converter:catalog'),
+  pickSource: () => ipcRenderer.invoke('od:converter:pick-source'),
+  pickSources: () => ipcRenderer.invoke('od:converter:pick-sources'),
+  pickDestination: (suggestedName?: string) => ipcRenderer.invoke('od:converter:pick-destination', suggestedName),
+  preview: (sourceHandle, destinationHandle, adapterId, targetFormat) => ipcRenderer.invoke(
+    'od:converter:preview', { sourceHandle, destinationHandle, adapterId, targetFormat },
+  ).catch((error: unknown) => failure(reasonFromError(error))),
+  convert: (sourceHandle, destinationHandle, adapterId, targetFormat, options) => ipcRenderer.invoke(
+    'od:converter:convert', { sourceHandle, destinationHandle, adapterId, targetFormat, options: options ?? null },
+  ).catch((error: unknown) => ({ ok: false, status: 'failed', reason: reasonFromError(error) })),
+  requestOverwrite: (sourceHandle, destinationHandle, adapterId, targetFormat) => ipcRenderer.invoke(
+    'od:converter:request-overwrite', { sourceHandle, destinationHandle, adapterId, targetFormat },
+  ).catch((error: unknown) => failure(reasonFromError(error))),
+  overwrite: (sourceHandle, destinationHandle, adapterId, targetFormat, token, options) => ipcRenderer.invoke(
+    'od:converter:overwrite', { sourceHandle, destinationHandle, adapterId, targetFormat, token, options: options ?? null },
+  ).catch((error: unknown) => ({ ok: false, status: 'failed', reason: reasonFromError(error) })),
+  pdfOperation: (sourceHandle, destinationHandle, operation, options, sourceHandles, destinationHandles) => ipcRenderer.invoke(
+    'od:converter:pdf-operation', { sourceHandle, destinationHandle, operation, options: options ?? null, sourceHandles: sourceHandles ?? null, destinationHandles: destinationHandles ?? null },
+  ).catch((error: unknown) => failure(reasonFromError(error))),
+  queue: {
+    list: () => ipcRenderer.invoke('od:converter:queue:list').catch((error: unknown) => failure(reasonFromError(error))),
+    page: (cursor?: string, pageSize?: number) => ipcRenderer.invoke('od:converter:queue:page', cursor ?? null, pageSize ?? null).catch((error: unknown) => failure(reasonFromError(error))),
+    enqueue: (sourceHandle, destinationHandle, adapterId, targetFormat) => ipcRenderer.invoke('od:converter:queue:enqueue', { sourceHandle, destinationHandle, adapterId, targetFormat }).catch((error: unknown) => failure(reasonFromError(error))),
+    start: () => ipcRenderer.invoke('od:converter:queue:start').catch((error: unknown) => actionFailure(reasonFromError(error))),
+    pause: () => ipcRenderer.invoke('od:converter:queue:pause').catch((error: unknown) => actionFailure(reasonFromError(error))),
+    resume: () => ipcRenderer.invoke('od:converter:queue:resume').catch((error: unknown) => actionFailure(reasonFromError(error))),
+    cancel: (ids) => ipcRenderer.invoke('od:converter:queue:cancel', ids ?? null).catch((error: unknown) => actionFailure(reasonFromError(error))),
+    retry: (ids) => ipcRenderer.invoke('od:converter:queue:retry', ids ?? null).catch((error: unknown) => actionFailure(reasonFromError(error))),
+  },
+  notifications: {
+    page: (cursor?: string, pageSize?: number) => ipcRenderer.invoke('od:converter:notifications:page', cursor ?? null, pageSize ?? null).catch((error: unknown) => failure(reasonFromError(error))),
+    markRead: (ids) => ipcRenderer.invoke('od:converter:notifications:mark-read', ids ?? null).catch((error: unknown) => actionFailure(reasonFromError(error))),
+    dismiss: (ids) => ipcRenderer.invoke('od:converter:notifications:dismiss', ids ?? null).catch((error: unknown) => actionFailure(reasonFromError(error))),
+  },
+  history: {
+    page: (cursor?: string, pageSize?: number) => ipcRenderer.invoke('od:converter:history:page', cursor ?? null, pageSize ?? null).catch((error: unknown) => failure(reasonFromError(error))),
+  },
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -472,6 +516,7 @@ const hostBridge = {
   },
   uiScale,
   toyLocks,
+  converter,
   updater,
   // win32 only: every other platform keeps its native title bar, so the
   // namespace is absent there and the renderer feature-detects rather than

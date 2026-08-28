@@ -16,6 +16,7 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import * as converter from './converter.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -656,6 +657,7 @@ function start() {
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });
+  converter.init();
   paintTokenSwatches();
 
   if (regex.setRegexTranslator) regex.setRegexTranslator((k, f) => label(k, f));

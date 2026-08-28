@@ -139,6 +139,7 @@ import {
 import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
+import { FileConverterView } from './components/FileConverterView';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
@@ -289,6 +290,7 @@ export function shouldRouteToFirstRunOnboarding(
     pathname.startsWith('/projects/')
     || pathname.startsWith('/collab-demo')
     || pathname.startsWith('/community')
+    || pathname.startsWith('/file-converter')
   ) {
     return false;
   }
@@ -4967,6 +4969,8 @@ function AppInner() {
     );
   } else if (route.kind === 'marketplace') {
     appMain = <MarketplaceView />;
+  } else if (route.kind === 'home' && route.view === 'file-converter') {
+    appMain = <FileConverterView />;
   } else if (route.kind === 'marketplace-detail') {
     appMain = (
       <PluginDetailView

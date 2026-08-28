@@ -23,6 +23,7 @@ import {
 import type {
   OpenDesignHostActionResult,
   OpenDesignHostCaptureResult,
+  OpenDesignHostConverterOverwriteChallenge,
   OpenDesignHostPreviewNavigationFailure,
   OpenDesignHostProjectImportInit,
   OpenDesignHostUpdaterActionOptions,
@@ -70,6 +71,13 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
+import { ADAPTER_CATALOG } from "./converter/registry.js";
+import { ConverterHost, ensureDestinationCapacity, readBoundedFile } from "./converter/host.js";
+import { detectSource } from "./converter/detect.js";
+import { ConversionQueue, FileQueueStore } from "./converter/queue.js";
+import { OverwriteAuthorizationStore } from "./converter/overwrite.js";
+import { ConverterAuditStore } from "./converter/audit.js";
+import type { OpenDesignHostConverterQueueItem } from "@open-design/host";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -80,6 +88,29 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:list",
   "od:toy-locks:remove",
   "od:toy-locks:verify",
+] as const);
+const CONVERTER_IPC_CHANNELS = Object.freeze([
+  "od:converter:catalog",
+  "od:converter:pick-source",
+  "od:converter:pick-sources",
+  "od:converter:pick-destination",
+  "od:converter:preview",
+  "od:converter:convert",
+  "od:converter:request-overwrite",
+  "od:converter:overwrite",
+  "od:converter:pdf-operation",
+  "od:converter:queue:list",
+  "od:converter:queue:page",
+  "od:converter:queue:enqueue",
+  "od:converter:queue:start",
+  "od:converter:queue:pause",
+  "od:converter:queue:resume",
+  "od:converter:queue:cancel",
+  "od:converter:queue:retry",
+  "od:converter:notifications:page",
+  "od:converter:notifications:mark-read",
+  "od:converter:notifications:dismiss",
+  "od:converter:history:page",
 ] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
 let previewNavigationFailureEventSequence = 0;
@@ -2395,6 +2426,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeHandler("shell:open-external");
   ipcMain.removeHandler("shell:open-path");
   ipcMain.removeHandler("browser:clear-data");
+  ipcMain.removeHandler("od:converter:catalog");
+  ipcMain.removeHandler("od:converter:pick-source");
+  ipcMain.removeHandler("od:converter:pick-sources");
+  ipcMain.removeHandler("od:converter:pick-destination");
+  ipcMain.removeHandler("od:converter:preview");
+  ipcMain.removeHandler("od:converter:convert");
+  ipcMain.removeHandler("od:converter:pdf-operation");
+  for (const channel of ["od:converter:queue:list", "od:converter:queue:page", "od:converter:queue:enqueue", "od:converter:queue:start", "od:converter:queue:pause", "od:converter:queue:resume", "od:converter:queue:cancel", "od:converter:queue:retry"]) ipcMain.removeHandler(channel);
   for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
@@ -2992,6 +3031,147 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       },
     },
   });
+  const converterHost = new ConverterHost();
+  const converterFiles = new Map<string, { path: string; name: string; expiresAt: number }>();
+  const converterHandlePruner = setInterval(() => { const now = Date.now(); for (const [handle, file] of converterFiles) if (file.expiresAt <= now) converterFiles.delete(handle); }, 60_000);
+  const converterAudit = new ConverterAuditStore(join(app.getPath("userData"), "converter", "audit"));
+  const converterOverwrite = new OverwriteAuthorizationStore();
+  const converterQueueStore = new FileQueueStore(join(app.getPath("userData"), "converter", "queue.jsonl"), join(app.getPath("userData"), "converter", "queue.json"));
+  const converterQueue = new ConversionQueue(
+    converterQueueStore,
+    async (item, signal, onProgress) => {
+      const preview = await converterHost.preview(item.sourcePath, item.destinationPath, item.adapterId, item.targetFormat);
+      return converterHost.convert(preview, signal, onProgress);
+    },
+    2,
+  );
+  void converterQueue.reconcileAfterRestart().then(() => converterQueueStore.compact()).catch(() => undefined);
+  const publicQueueItem = (item: { id: string; sourcePath: string; destinationPath: string; targetFormat: string; state: OpenDesignHostConverterQueueItem["state"]; bytesProcessed: number; totalBytes?: number; bytesPerSecond?: number; etaSeconds?: number; reason?: string; updatedAt: number }): OpenDesignHostConverterQueueItem => ({ id: item.id, sourceName: item.sourcePath.split(/[\\/]/).pop() ?? "source", destinationName: item.destinationPath.split(/[\\/]/).pop() ?? "destination", targetFormat: item.targetFormat, state: item.state, bytesProcessed: item.bytesProcessed, ...(item.totalBytes === undefined ? {} : { totalBytes: item.totalBytes }), ...(item.bytesPerSecond === undefined ? {} : { bytesPerSecond: item.bytesPerSecond }), ...(item.etaSeconds === undefined ? {} : { etaSeconds: item.etaSeconds }), ...(item.reason === undefined ? {} : { reason: item.reason }), updatedAt: item.updatedAt });
+  const converterFile = (handle: unknown): { path: string; name: string } => {
+    if (typeof handle !== "string" || handle.length === 0) throw new Error("converter file handle is missing");
+    const file = converterFiles.get(handle);
+    if (!file) throw new Error("converter file handle is unknown or expired");
+    if (file.expiresAt <= Date.now()) { converterFiles.delete(handle); throw new Error("converter file handle is expired"); }
+    return file;
+  };
+  ipcMain.handle("od:converter:catalog", (event) => {
+    requireMainWindowSender(event);
+    return ADAPTER_CATALOG.map(({ id, category, label, sourceFormats, targetFormats, bundled, unavailableReason, capabilities, bounds }) => ({ id, category, label, sourceFormats, targetFormats, bundled, ...(unavailableReason ? { unavailableReason } : {}), capabilities, bounds }));
+  });
+  ipcMain.handle("od:converter:pick-source", async (event) => {
+    requireMainWindowSender(event);
+    const parent = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow();
+    const result = await (parent ? dialog.showOpenDialog(parent, { properties: ["openFile", "dontAddToRecent"], title: "Choose a source file" }) : dialog.showOpenDialog({ properties: ["openFile", "dontAddToRecent"], title: "Choose a source file" }));
+    if (result.canceled || result.filePaths.length === 0) return { canceled: true, ok: false };
+    const path = result.filePaths[0]!; const bytes = await readBoundedFile(path); const detected = detectSource(bytes, path); const handle = randomBytes(18).toString("hex"); converterFiles.set(handle, { path, name: path.split(/[\\/]/).pop() ?? "source", expiresAt: Date.now() + 30 * 60 * 1000 });
+    return { handle, name: converterFiles.get(handle)!.name, bytes: bytes.length, format: detected.format, mime: detected.mime };
+  });
+  ipcMain.handle("od:converter:pick-sources", async (event) => {
+    requireMainWindowSender(event);
+    const parent = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow(); const options = { properties: ["openFile", "multiSelections", "dontAddToRecent"] as Electron.OpenDialogOptions["properties"], title: "Choose source files" };
+    const result = await (parent ? dialog.showOpenDialog(parent, options) : dialog.showOpenDialog(options));
+    if (result.canceled || result.filePaths.length === 0) return { canceled: true, ok: false };
+    const files = []; for (const path of result.filePaths) { const bytes = await readBoundedFile(path); const detected = detectSource(bytes, path); const handle = randomBytes(18).toString("hex"); const name = path.split(/[\\/]/).pop() ?? "source"; converterFiles.set(handle, { path, name, expiresAt: Date.now() + 30 * 60 * 1000 }); files.push({ handle, name, bytes: bytes.length, format: detected.format, mime: detected.mime }); }
+    return files;
+  });
+  ipcMain.handle("od:converter:pick-destination", async (event, suggestedName: unknown) => {
+    requireMainWindowSender(event);
+    const parent = BrowserWindow.fromWebContents(event.sender) ?? BrowserWindow.getFocusedWindow(); const defaultPath = typeof suggestedName === "string" && suggestedName.trim().length > 0 ? suggestedName.trim().slice(0, 200) : "converted-output";
+    const result = await (parent ? dialog.showSaveDialog(parent, { properties: ["showOverwriteConfirmation", "dontAddToRecent"], title: "Choose a destination file", defaultPath }) : dialog.showSaveDialog({ properties: ["showOverwriteConfirmation", "dontAddToRecent"], title: "Choose a destination file", defaultPath }));
+    if (result.canceled || !result.filePath) return { canceled: true, ok: false };
+    const handle = randomBytes(18).toString("hex"); converterFiles.set(handle, { path: result.filePath, name: result.filePath.split(/[\\/]/).pop() ?? defaultPath, expiresAt: Date.now() + 30 * 60 * 1000 });
+    const existing = await stat(result.filePath).catch(() => undefined);
+    return { handle, name: converterFiles.get(handle)!.name, bytes: existing?.size ?? 0, exists: existing?.isFile() === true, format: result.filePath.split(".").pop()?.toLowerCase() ?? "unknown" };
+  });
+  ipcMain.handle("od:converter:preview", async (event, request: unknown) => {
+    requireMainWindowSender(event); if (!request || typeof request !== "object") throw new Error("converter preview request is invalid"); const value = request as Record<string, unknown>; const source = converterFile(value.sourceHandle); const destination = converterFile(value.destinationHandle); return converterHost.preview(source.path, destination.path, String(value.adapterId ?? ""), String(value.targetFormat ?? ""));
+  });
+  ipcMain.handle("od:converter:request-overwrite", async (event, request: unknown) => {
+    requireMainWindowSender(event);
+    if (!request || typeof request !== "object") throw new Error("converter overwrite request is invalid");
+    const value = request as Record<string, unknown>;
+    const sourceHandle = typeof value.sourceHandle === "string" ? value.sourceHandle : "";
+    const destinationHandle = typeof value.destinationHandle === "string" ? value.destinationHandle : "";
+    const source = converterFile(sourceHandle);
+    const destination = converterFile(destinationHandle);
+    const adapterId = typeof value.adapterId === "string" ? value.adapterId : "";
+    const targetFormat = typeof value.targetFormat === "string" ? value.targetFormat : "";
+    await converterHost.preview(source.path, destination.path, adapterId, targetFormat);
+    const challenge = await converterOverwrite.issue({ sourcePath: source.path, destinationPath: destination.path, adapterId, targetFormat });
+    void converterAudit.notify({
+      severity: "warning",
+      title: "Overwrite confirmation required",
+      body: "The selected destination already exists. The two-key slider must authorize exactly this replacement.",
+    });
+    return {
+      ok: true,
+      token: challenge.token,
+      expiresAtMs: challenge.expiresAtMs,
+      destination: {
+        exists: challenge.destination.exists,
+        size: challenge.destination.size,
+        mtimeMs: challenge.destination.mtimeMs,
+      },
+    } satisfies OpenDesignHostConverterOverwriteChallenge;
+  });
+  ipcMain.handle("od:converter:overwrite", async (event, request: unknown) => {
+    requireMainWindowSender(event);
+    if (!request || typeof request !== "object") throw new Error("converter overwrite request is invalid");
+    const value = request as Record<string, unknown>;
+    const sourceHandle = typeof value.sourceHandle === "string" ? value.sourceHandle : "";
+    const destinationHandle = typeof value.destinationHandle === "string" ? value.destinationHandle : "";
+    const source = converterFile(sourceHandle);
+    const destination = converterFile(destinationHandle);
+    const adapterId = typeof value.adapterId === "string" ? value.adapterId : "";
+    const targetFormat = typeof value.targetFormat === "string" ? value.targetFormat : "";
+    const token = typeof value.token === "string" ? value.token : "";
+    try {
+      const authorization = await converterOverwrite.consume(token, { sourcePath: source.path, destinationPath: destination.path, adapterId, targetFormat });
+      const preview = await converterHost.preview(source.path, destination.path, adapterId, targetFormat);
+      const result = await converterHost.convertAuthorized(preview, authorization);
+      if (result.status === "converted") {
+        const history = await converterAudit.recordMutation({ action: "conversion", summary: `Replaced an existing destination with ${targetFormat} output.` });
+        void converterAudit.notify({ severity: "success", title: "Conversion complete", body: history.ok ? "The confirmed destination was replaced and the redacted history revision was recorded." : "The confirmed destination was replaced; local history could not be recorded." });
+      } else {
+        void converterAudit.notify({ severity: result.status === "cancelled" ? "warning" : "error", title: "Conversion did not complete", body: result.reason });
+      }
+      return result.status === "converted"
+        ? { ok: true, status: "converted", bytes: result.bytes, format: result.format, destination: { handle: destinationHandle, name: destination.name, bytes: result.bytes, format: targetFormat } }
+        : { ok: false, status: result.status, reason: result.reason };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "The overwrite authorization could not be used.";
+      void converterAudit.notify({ severity: "error", title: "Overwrite refused", body: reason });
+      return { ok: false, status: "failed", reason };
+    }
+  });
+  ipcMain.handle("od:converter:convert", async (event, request: unknown) => {
+    requireMainWindowSender(event); if (!request || typeof request !== "object") throw new Error("converter request is invalid"); const value = request as Record<string, unknown>; const source = converterFile(value.sourceHandle); const destination = converterFile(value.destinationHandle); const preview = await converterHost.preview(source.path, destination.path, String(value.adapterId ?? ""), String(value.targetFormat ?? "")); const result = await converterHost.convert({ ...preview, options: value.options && typeof value.options === "object" ? value.options as Record<string, unknown> : undefined }); if (result.status === "converted") { await converterAudit.recordMutation({ action: "conversion", summary: `Converted a local source to ${result.format} output.` }); void converterAudit.notify({ severity: "success", title: "Conversion complete", body: "The converted output was validated and promoted." }); } else void converterAudit.notify({ severity: result.status === "cancelled" ? "warning" : "error", title: "Conversion did not complete", body: result.reason }); return result;
+  });
+  ipcMain.handle("od:converter:pdf-operation", async (event, request: unknown) => {
+    requireMainWindowSender(event);
+    if (!request || typeof request !== "object") throw new Error("converter PDF request is invalid");
+    const value = request as Record<string, unknown>;
+    const operation = typeof value.operation === "string" ? value.operation : "";
+    const sourceHandles = Array.isArray(value.sourceHandles)
+      ? value.sourceHandles.filter((handle): handle is string => typeof handle === "string")
+      : [value.sourceHandle].filter((handle): handle is string => typeof handle === "string");
+    const sources = sourceHandles.map((handle) => converterFile(handle));
+    if (sources.length === 0) return { ok: false, reason: "At least one PDF source is required." };
+    if (operation === "inspect") { const document = await converterHost.inspectPdf(sources[0]!.path); return { ok: true, operation, pages: document.pages.length, metadata: document.metadata }; }
+    return { ok: false, reason: "Content-preserving PDF edit operations are disabled because no bundled PDF rewrite engine is available." };
+  });
+  ipcMain.handle("od:converter:queue:list", async (event) => { requireMainWindowSender(event); return { ok: false, reason: "Full converter queue snapshots are disabled; use paged queue reads." }; });
+  ipcMain.handle("od:converter:queue:page", async (event, cursor: unknown, pageSize: unknown) => { requireMainWindowSender(event); try { const page = await converterQueue.listPage(typeof cursor === "string" ? cursor : undefined, typeof pageSize === "number" ? pageSize : undefined); return { items: page.items.map(publicQueueItem), ...(page.nextCursor === undefined ? {} : { nextCursor: page.nextCursor }) }; } catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "The durable converter queue page could not be read." }; } });
+  ipcMain.handle("od:converter:queue:enqueue", async (event, request: unknown) => { requireMainWindowSender(event); if (!request || typeof request !== "object") throw new Error("converter queue request is invalid"); const value = request as Record<string, unknown>; const source = converterFile(value.sourceHandle); const destination = converterFile(value.destinationHandle); const target = typeof value.targetFormat === "string" ? value.targetFormat : ""; const adapterId = typeof value.adapterId === "string" ? value.adapterId : ""; const sourceInfo = await stat(source.path); await ensureDestinationCapacity(destination.path, sourceInfo.size); const item = await converterQueue.enqueue(source.path, destination.path, target, adapterId, sourceInfo.size); const history = await converterAudit.recordMutation({ action: "created", summary: `Queued a local ${target} conversion.` }); void converterAudit.notify({ severity: "info", title: "Conversion queued", body: history.ok ? "The queue record was saved and its redacted history revision was recorded." : "The queue record was saved, but local history could not be recorded." }); return publicQueueItem(item); });
+  ipcMain.handle("od:converter:queue:start", async (event) => { requireMainWindowSender(event); try { await converterQueue.listPage(undefined, 1); } catch (error) { return { ok: false, reason: error instanceof Error ? error.message : "The durable converter queue could not be read." }; } void converterQueue.run((item) => { if (item.state === "converted" || item.state === "failed" || item.state === "cancelled" || item.state === "skipped") void converterAudit.notify({ severity: item.state === "converted" ? "success" : item.state === "cancelled" ? "warning" : "error", title: `Queue item ${item.state}`, body: `The queued ${item.targetFormat} conversion reached ${item.state}.` }); }); return { ok: true }; });
+  ipcMain.handle("od:converter:queue:pause", async (event) => { requireMainWindowSender(event); converterQueue.pause(); void converterAudit.recordMutation({ action: "updated", summary: "Paused the local conversion queue." }); return { ok: true }; });
+  ipcMain.handle("od:converter:queue:resume", async (event) => { requireMainWindowSender(event); converterQueue.resume(); if (!converterQueue.running) void converterQueue.run().catch(() => undefined); void converterAudit.recordMutation({ action: "updated", summary: "Resumed the local conversion queue." }); return { ok: true }; });
+  ipcMain.handle("od:converter:queue:cancel", async (event, ids: unknown) => { requireMainWindowSender(event); await converterQueue.cancelSelected(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined); void converterAudit.recordMutation({ action: "updated", summary: "Cancelled selected local conversion queue records." }); return { ok: true }; });
+  ipcMain.handle("od:converter:queue:retry", async (event, ids: unknown) => { requireMainWindowSender(event); await converterQueue.retry(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined); void converterAudit.recordMutation({ action: "updated", summary: "Returned failed converter records to the local queue." }); return { ok: true }; });
+  ipcMain.handle("od:converter:notifications:page", async (event, cursor: unknown, pageSize: unknown) => { requireMainWindowSender(event); const result = await converterAudit.notificationsPage(typeof cursor === "string" ? cursor : undefined, typeof pageSize === "number" ? pageSize : undefined); return result.ok ? result.value : { ok: false, reason: result.reason }; });
+  ipcMain.handle("od:converter:notifications:mark-read", async (event, ids: unknown) => { requireMainWindowSender(event); const result = await converterAudit.markRead(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined); return result.ok ? { ok: true } : { ok: false, reason: result.reason }; });
+  ipcMain.handle("od:converter:notifications:dismiss", async (event, ids: unknown) => { requireMainWindowSender(event); const result = await converterAudit.dismiss(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined); return result.ok ? { ok: true } : { ok: false, reason: result.reason }; });
+  ipcMain.handle("od:converter:history:page", async (event, cursor: unknown, pageSize: unknown) => { requireMainWindowSender(event); const result = await converterAudit.historyPage(typeof cursor === "string" ? cursor : undefined, typeof pageSize === "number" ? pageSize : undefined); return result.ok ? result.value : { ok: false, reason: result.reason }; });
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);
     return toyLockStore.list();
@@ -3892,6 +4072,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
     async close() {
+      clearInterval(converterHandlePruner);
+      converterFiles.clear();
+      converterOverwrite.clear();
       stopped = true;
       if (timer != null) {
         clearTimeout(timer);
@@ -3907,6 +4090,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
       ipcMain.removeHandler("browser:clear-data");
       for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
+      for (const channel of CONVERTER_IPC_CHANNELS) ipcMain.removeHandler(channel);
       if (splash != null && !splash.isDestroyed()) splash.close();
       if (petWindow != null && !petWindow.isDestroyed()) petWindow.close();
       detachCaptureDebugger?.();

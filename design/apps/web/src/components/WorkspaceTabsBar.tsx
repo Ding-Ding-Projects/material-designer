@@ -222,6 +222,7 @@ function reviveTab(value: unknown): WorkspaceChromeTab | null {
       || view === 'plugins'
       || view === 'design-systems'
       || view === 'integrations'
+      || view === 'file-converter'
     ) {
       return { id, kind: 'entry', view, createdAt, lastActiveAt };
     }
@@ -1981,6 +1982,7 @@ function displayTabFor(
     'workspace-settings': t('entry.navWorkspaceSettings'),
     handoff: t('handoff.title'),
     settings: t('settings.title'),
+    'file-converter': 'File converter',
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
     home: 'home',
@@ -2000,6 +2002,7 @@ function displayTabFor(
     'workspace-settings': 'settings',
     handoff: 'layers-filled',
     settings: 'settings',
+    'file-converter': 'file',
   };
   return {
     id: tab.id,

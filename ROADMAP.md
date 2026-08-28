@@ -1,19 +1,66 @@
 # Roadmap
 
-- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
-      emergency handoff in `HANDOFF.md` records every preserved branch, exact
-      commit, review state, release blocker, and missing runtime evidence. No
-      incomplete branch is considered shipped merely because its work was
-      committed and pushed for preservation. A successor must re-read each HOLD
-      finding, reconcile approved source semantically, run hosted verification,
-      drive the installed application, and collect the required screenshots
-      before checking this item.
+- [ ] **Add the local file-converter host and renderer surface.** The desktop
+      converter namespace now has eight visible adapter categories,
+      byte-signature detection, bundled-only capability proof, bounded PDF
+      inspection and editing, atomic validated output, and a paged queue with
+      durable states and bounded concurrency. The `/file-converter` destination
+      now mounts the catalog, semantic source/destination controls, per-category
+      `RegexSearchField`, preview disclosure, queue progress, cancellation,
+      export, and opaque-handle bridge. Packaged drive, runtime proof, and screenshot
+      evidence remain open.
 
-      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
-      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
-      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
-      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
-      仲要補齊真正 screenshots，先可以 tick 呢項。
+- [ ] **Complete the converter PDF controls and documentation-site equivalent.**
+      The desktop route lists inspect, split, merge, extract, reorder, rotate,
+      and metadata, while content-changing PDF operations remain visibly disabled
+      until a content-preserving engine is bundled. The documentation site carries
+      a separate browser-local eight-category catalog, per-category search
+      builders, file mediation, persistent queue records, cancellation, and export
+      with an explicit no-desktop-filesystem boundary. Packaged interaction
+      evidence remains open.
+
+- [ ] **Move queue authority to the durable host store.** The renderer now polls
+      host-backed records rather than persisting a transient queue. The host
+      supports paged state, bounded concurrency, restart reconciliation, pause,
+      resume, cancel, retry, and per-file outcomes. Notification history, local
+      event summaries, bulk selection, and export hooks are mounted. Source checks
+      pass, but packaged drive and per-click screenshot evidence remain open.
+
+- [ ] **Harden converter input, queue, and PDF promotion.** Native source picking
+      now runs, bounded reads inspect size before allocation, and the host queue
+      uses streamed append/update records with malformed-state refusal, restart
+      reconciliation, measured throughput, and bounded active cancellation.
+      Multi-source PDF merge, multi-output split, deep output reopening, and
+      race-time overwrite refusal are wired. Packaged screenshot evidence remains
+      open.
+
+- [ ] **Close review findings around converter safety and target actions.** Source
+      picking invokes the native control, bounded reads stream after a size check,
+      queue records use a durable append/update store, malformed records fail
+      visibly, cancellation is checked before promotion, and context actions have
+      their own local filter and anchored builder. Appearance and toy-lock routes
+      remain explicitly unmounted in this lane. Packaged screenshot evidence stays
+      open.
+
+- [ ] **Keep unsupported PDF edits visibly disabled.** The inspector is available;
+      content-preserving split, merge, extract, reorder, rotate, and metadata
+      editing remain disabled until a bundled rewrite engine is verified. This
+      avoids synthetic output and keeps the capability catalog honest.
+
+- [ ] **Block synthetic PDF output.** PDF inspection remains available, but all
+      content-changing operations are visibly unavailable until a bundled
+      content-preserving engine is verified. The converter must not describe
+      dormant source wiring as shipped behavior.
+
+- [ ] **Complete bounded converter host behavior.** The durable queue uses
+      fixed-size on-disk order chunks, per-item snapshots, bounded page reads,
+      and streaming compaction. Enabled adapters report incremental source-byte
+      progress. Existing destinations require a host-issued one-use token bound
+      to the source, destination, adapter, target, and destination snapshot,
+      with an exclusive promotion lock and rollback. Notifications and redacted
+      converter mutations persist on the host, including a local Git history
+      repository. Source and IPC Chuts are present; packaged drive, runtime
+      evidence, and per-click captures remain open.
 
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
