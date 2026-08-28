@@ -105,6 +105,49 @@ same field-owned controller contract.
 | search-skills | `design/apps/web/src/components/SkillsSection.tsx:628` | [ ] RED |
 | search-regex-shared | `design/apps/web/src/components/regex/RegexSearchField.tsx:219` | [x] green, shared primitive owns the builder |
 
+## Search-like controls beyond literal `type="search"`
+
+The following source rows are search-like controls identified by their local
+search/filter containers, placeholders, or labels. They are listed separately
+because a text input can be a search field without declaring an HTML search
+type. Each row is RED until it has the same field-owned builder contract.
+
+| Row | Source location | State |
+| --- | --- | --- |
+| searchlike-chat-composer-plus-1 | `design/apps/web/src/components/ChatComposer.tsx:725` | [ ] RED |
+| searchlike-chat-composer-plus-2 | `design/apps/web/src/components/ChatComposer.tsx:887` | [ ] RED |
+| searchlike-chat-composer-tools-plugins | `design/apps/web/src/components/ChatComposer.tsx:4258` | [ ] RED |
+| searchlike-chat-composer-tools-mcp | `design/apps/web/src/components/ChatComposer.tsx:4365` | [ ] RED |
+| searchlike-chat-composer-toolbox | `design/apps/web/src/components/ChatComposer.tsx:4570` | [ ] RED |
+| searchlike-chat-composer-skills | `design/apps/web/src/components/ChatComposer.tsx:4772` | [ ] RED |
+| searchlike-chat-history | `design/apps/web/src/components/ChatPane.tsx:2579` | [ ] RED |
+| searchlike-connectors | `design/apps/web/src/components/ConnectorsBrowser.tsx:874` | [ ] RED |
+| searchlike-design-browser-use | `design/apps/web/src/components/DesignBrowserPanel.tsx:2796` | [ ] RED |
+| searchlike-design-browser-reference | `design/apps/web/src/components/DesignBrowserPanel.tsx:3364` | [ ] RED |
+| searchlike-design-system-picker | `design/apps/web/src/components/DesignSystemPicker.tsx:313` | [ ] RED |
+| searchlike-designs-tab | `design/apps/web/src/components/DesignsTab.tsx:654` | [ ] RED |
+| searchlike-design-systems-tab | `design/apps/web/src/components/DesignSystemsTab.tsx:1037` | [ ] RED |
+| searchlike-entry-shell | `design/apps/web/src/components/EntryShell.tsx:4356` | [ ] RED |
+| searchlike-examples | `design/apps/web/src/components/ExamplesTab.tsx:357` | [ ] RED |
+| searchlike-file-viewer | `design/apps/web/src/components/FileViewer.tsx:4061` | [ ] RED |
+| searchlike-file-workspace | `design/apps/web/src/components/FileWorkspace.tsx:8095` | [ ] RED |
+| searchlike-library | `design/apps/web/src/components/LibrarySection.tsx:1157` | [ ] RED |
+| searchlike-mcp | `design/apps/web/src/components/McpClientSection.tsx:674` | [ ] RED |
+| searchlike-model-options | `design/apps/web/src/components/modelOptions.tsx:613` | [ ] RED |
+| searchlike-project-prompts | `design/apps/web/src/components/NewProjectPanel.tsx:1928` | [ ] RED |
+| searchlike-project-design-system | `design/apps/web/src/components/NewProjectPanel.tsx:2406` | [ ] RED |
+| searchlike-project-model | `design/apps/web/src/components/NewProjectPanel.tsx:2939` | [ ] RED |
+| searchlike-next-step | `design/apps/web/src/components/NextStepActions.tsx:933` | [ ] RED |
+| searchlike-plugins-home | `design/apps/web/src/components/PluginsHomeSection.tsx:562` | [ ] RED |
+| searchlike-plugins-marketplace | `design/apps/web/src/components/PluginsView.tsx:2131` | [ ] RED |
+| searchlike-plugins-available | `design/apps/web/src/components/PluginsView.tsx:3038` | [ ] RED |
+| searchlike-project-reference | `design/apps/web/src/components/ProjectReferenceModal.tsx:173` | [ ] RED |
+| searchlike-project-search | `design/apps/web/src/components/ProjectSearchModal.tsx:134` | [ ] RED |
+| searchlike-prompt-templates | `design/apps/web/src/components/PromptTemplatesTab.tsx:104` | [ ] RED |
+| searchlike-quick-switcher | `design/apps/web/src/components/QuickSwitcher.tsx:161` | [ ] RED |
+| searchlike-skills | `design/apps/web/src/components/SkillsSection.tsx:627` | [ ] RED |
+| searchlike-tab-launcher | `design/apps/web/src/components/workspace/TabLauncherMenu.tsx:218` | [ ] RED |
+
 ## Context-menu rows
 
 The source currently contains exactly 50 `role="menu"` containers. This is a

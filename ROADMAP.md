@@ -12,7 +12,7 @@
   and legacy inline context menu adapter are still red rows owned by their feature
   lanes, so this item is not complete. The shared search API remains coordinated
   with the regex workbench for field-scoped advanced capabilities. The hardening
-  batch is recorded at [`5f74ed1`](https://github.com/Ding-Ding-Projects/material-designer/commit/5f74ed17).
+  batch is recorded at [`2aade3c`](https://github.com/Ding-Ding-Projects/material-designer/commit/2aade3ca).
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and

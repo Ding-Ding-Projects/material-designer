@@ -67,6 +67,20 @@ version section when a release carries them.
   50 個 `role="menu"`、所有 native select 同 direct search fields，未搬嘅 rows
   繼續清楚標紅。
 
+- **Shared search fields now receive stable regex owner ids.** `ContextMenu.tsx`
+  and `CustomSelect.tsx` forward a stable `fieldId` into the regex builder,
+  allowing the regex workbench to own field-scoped snippets and saved state
+  without duplicating controller logic in menu primitives. Locked dropdown
+  triggers retain an operable unlock wrapper, and duplicate option values are
+  marked before they can silently produce an ambiguous selection.
+  See [`2aade3c`](https://github.com/Ding-Ding-Projects/material-designer/commit/2aade3ca).
+
+  **Shared search fields 而家攞到 stable regex owner ids。** `ContextMenu.tsx`
+  同 `CustomSelect.tsx` 將 stable `fieldId` 傳入 regex builder，等 regex
+  workbench 自己管理 field-scoped snippets 同 saved state，shared primitives
+  唔使另起爐灶。Locked dropdown trigger 保留 operable unlock wrapper，duplicate
+  option values 會先標記，唔會靜雞雞整出含糊 selection。
+
 ### Changed
 
 - **Shared menus and dropdowns gained field-owned filtering.** `ContextMenu.tsx`
