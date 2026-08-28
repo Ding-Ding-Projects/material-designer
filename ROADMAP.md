@@ -1,20 +1,55 @@
 # Roadmap
 
-- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
-      emergency handoff in `HANDOFF.md` records every preserved branch, exact
-      commit, review state, release blocker, and missing runtime evidence. No
-      incomplete branch is considered shipped merely because its work was
-      committed and pushed for preservation. A successor must re-read each HOLD
-      finding, reconcile approved source semantically, run hosted verification,
-      drive the installed application, and collect the required screenshots
-      before checking this item.
+- [~] **Mount the universal settings and Status Hub source surface.** The
+      General settings page now owns a versioned local record for the three
+      language modes, independent 1–5 tone levels, dialog emoji preference,
+      School mode, display name, narrator choices, scheduled settings, five
+      attention accommodations, searchable notification history, and factual
+      status cards. The documentation page owns the equivalent browser-local
+      surface. Hosted type checks, packaged interaction, cross-surface
+      propagation, and per-action capture evidence remain open.
 
-      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
-      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
-      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
-      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
-      仲要補齊真正 screenshots，先可以 tick 呢項。
+      **廣東話進度：** 通用設定同 Status Hub source surface 已經掛入 General，
+      三個語言模式、兩條獨立 1–5 語氣程度、emoji、School mode、顯示名稱、
+      旁白、排程、五個專注配合、通知歷史同證據卡都有門口。Documentation
+      page 都有自己嗰份 browser-local surface。Hosted checks、packaged 操作、
+      跨 surface 即時同步同逐個操作 capture 仲要補，未當完成。
 
+      Source milestone `c57c78d4` adds host registration/report/heartbeat/readback
+      with an explicit local fallback, redacted Git-backed settings history,
+      browser-session credential fallback, notification super-confirmation,
+      palette host write-through, localized unlock-ladder labels, and a
+      hand-written dynamic search inventory. Hosted checks, packaged 操作 and
+      per-action capture evidence remain open.
+
+      Follow-up `335802d4` keeps nested narrator voice, rate, pitch, and quiet
+      choices intact when a palette control writes only one narrator field, and
+      preserves a selected Cantonese mode for single-language writes.
+
+      Follow-up `917f93e6` keeps the browser synchronization event guarded when
+      server rendering has no window. Hosted checks and packaged evidence stay
+      open.
+
+      Follow-up `4a2e5588` requires the session credential through the visible
+      page unlock control before School mode can be turned off. Hosted checks
+      and packaged evidence stay open.
+
+      Source repair `702901e1` binds effective scheduled language to the live
+      value, refreshes local schedules on the bounded timer, and excludes
+      unavailable or off external rules so the base state remains authoritative.
+
+      Source repair `ab1450b1` adds strict depth, collection, finite-value, and
+      secret boundaries; serialized writes and deduplicated live watchers; live
+      schedule refresh and consumers; chosen School-name propagation; host-backed
+      disable authentication; hashed browser fallback credentials; page storage
+      and BroadcastChannel synchronization; page ADHD effects; scheduled value
+      editors; provenance-linked status evidence; and roving settings-tab focus.
+      Hosted and packaged evidence stay open.
+
+      Source repair `5b2f0a67` tightens the host allowlist, adds shared-record
+      watching, applies scheduled values to live consumers, carries narrator
+      voice/rate/pitch choices into speech synthesis, and applies dialog emoji
+      to mounted dialog titles. Hosted checks and packaged evidence stay open.
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles

@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { lookup } from "node:dns/promises";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
@@ -34,6 +35,7 @@ import type {
   OpenDesignToyLockVerifyRequest,
   OpenDesignToyLockBeginTotpEnrollmentRequest,
   OpenDesignToyLockConfirmTotpEnrollmentRequest,
+  OpenDesignUniversalStatusReport,
 } from "@open-design/host";
 
 import { renderDeckSlides } from "./deck-capture.js";
@@ -70,9 +72,163 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
+import { UniversalSettingsStore } from "./universal-settings-store.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
+const UNIVERSAL_SETTINGS_READ_IPC_CHANNEL = "od:universal-settings:read";
+const UNIVERSAL_SETTINGS_WRITE_IPC_CHANNEL = "od:universal-settings:write";
+const UNIVERSAL_SETTINGS_CHANGED_EVENT = "od:universal-settings:changed";
+const UNIVERSAL_SETTINGS_RESOLVE_SCHEDULE_IPC_CHANNEL = "od:universal-settings:resolve-schedule";
+const UNIVERSAL_SETTINGS_SET_HA_TOKEN_IPC_CHANNEL = "od:universal-settings:set-home-assistant-token";
+const UNIVERSAL_SETTINGS_CLEAR_HA_TOKEN_IPC_CHANNEL = "od:universal-settings:clear-home-assistant-token";
+const STATUS_HUB_REGISTER_IPC_CHANNEL = "od:status-hub:register";
+const STATUS_HUB_REPORT_IPC_CHANNEL = "od:status-hub:report";
+const STATUS_HUB_HEARTBEAT_IPC_CHANNEL = "od:status-hub:heartbeat";
+const STATUS_HUB_READ_IPC_CHANNEL = "od:status-hub:read";
+const UNIVERSAL_SCHEDULE_RESPONSE_MAX_BYTES = 64 * 1024;
+
+function isAllowedUniversalScheduleUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    if (url.username || url.password || url.hash) return false;
+    if (url.protocol === "https:") return true;
+    if (url.protocol !== "http:") return false;
+    return url.hostname === "127.0.0.1" || url.hostname === "localhost" || url.hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+function isPrivateScheduleAddress(address: string): boolean {
+  const normalized = address.toLowerCase().replace(/^\[|\]$/g, '');
+  if (normalized === '::1') return true;
+  if (/^(?:10\.|127\.|169\.254\.|192\.168\.)/u.test(normalized)) return true;
+  const private172 = normalized.match(/^172\.(\d{1,3})\./u);
+  if (private172 && Number(private172[1]) >= 16 && Number(private172[1]) <= 31) return true;
+  return normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
+}
+
+async function passesScheduleDnsBoundary(raw: string): Promise<boolean> {
+  let url: URL;
+  try { url = new URL(raw); } catch { return false; }
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]') return true;
+  try {
+    const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+    return addresses.length > 0 && addresses.every(({ address }) => !isPrivateScheduleAddress(address));
+  } catch {
+    return false;
+  }
+}
+
+function allowedUniversalScheduleValues(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value == null || Array.isArray(value)) return null;
+  const input = value as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  if (input.languageMode === "english" || input.languageMode === "cantonese" || input.languageMode === "bilingual") output.languageMode = input.languageMode;
+  if (input.theme === "light" || input.theme === "dark" || input.theme === "system") output.theme = input.theme;
+  if (input.density === "comfortable" || input.density === "compact" || input.density === "spacious") output.density = input.density;
+  if (typeof input.accentColor === "string" && /^(?:#[0-9a-f]{6}|#[0-9a-f]{8})$/i.test(input.accentColor)) output.accentColor = input.accentColor;
+  if (typeof input.uiFontFamily === "string" && input.uiFontFamily.length <= 160) output.uiFontFamily = input.uiFontFamily;
+  return output;
+}
+
+async function readBoundedUniversalResponse(response: Response): Promise<Uint8Array | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      if (!next.value) break;
+      total += next.value.byteLength;
+      if (total > UNIVERSAL_SCHEDULE_RESPONSE_MAX_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+async function resolveUniversalScheduleSource(
+  request: unknown,
+  readHomeAssistantToken: () => Promise<string | null> = async () => null,
+): Promise<{ ok: true; values: Record<string, unknown>; observedAt: number; sourceState: "on" | "off" | "local" } | { ok: false; code: "invalid-input" | "credential-unavailable" | "offline" | "timeout" | "invalid-response" }> {
+  if (typeof request !== "object" || request == null || Array.isArray(request)) return { ok: false, code: "invalid-input" };
+  const input = request as Record<string, unknown>;
+  if (input.source === "homeAssistant") {
+    if (typeof input.baseUrl !== "string" || !isAllowedUniversalScheduleUrl(input.baseUrl)
+      || typeof input.entity !== "string" || !/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(input.entity)) {
+      return { ok: false, code: "invalid-input" };
+    }
+    if (!await passesScheduleDnsBoundary(input.baseUrl)) return { ok: false, code: "invalid-input" };
+    const token = await readHomeAssistantToken();
+    if (!token) return { ok: false, code: "credential-unavailable" };
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch(
+        `${input.baseUrl.replace(/\/$/, "")}/api/states/${encodeURIComponent(input.entity)}`,
+        { headers: { Authorization: `Bearer ${token}` }, redirect: "error", signal: controller.signal },
+      );
+      const declared = response.headers.get("content-length");
+      if (declared && Number(declared) > UNIVERSAL_SCHEDULE_RESPONSE_MAX_BYTES) return { ok: false, code: "invalid-response" };
+      if (!response.ok) return { ok: false, code: "offline" };
+      const bytes = await readBoundedUniversalResponse(response);
+      if (!bytes) return { ok: false, code: "invalid-response" };
+      let parsed: unknown;
+      try { parsed = JSON.parse(new TextDecoder().decode(bytes)); } catch { return { ok: false, code: "invalid-response" }; }
+      if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) return { ok: false, code: "invalid-response" };
+      const record = parsed as Record<string, unknown>;
+      if (record.entity_id !== input.entity || (record.state !== "on" && record.state !== "off")) return { ok: false, code: "invalid-response" };
+      if (record.state === "off") return { ok: true, values: {}, observedAt: Date.now(), sourceState: "off" };
+      const attributes = record.attributes;
+      const values = typeof attributes === "object" && attributes != null && !Array.isArray(attributes)
+        ? allowedUniversalScheduleValues((attributes as Record<string, unknown>).values) ?? {}
+        : {};
+      return { ok: true, values, observedAt: Date.now(), sourceState: "on" };
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return { ok: false, code: "timeout" };
+      return { ok: false, code: "offline" };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (input.source !== "api" || typeof input.url !== "string" || !isAllowedUniversalScheduleUrl(input.url) || !await passesScheduleDnsBoundary(input.url)) return { ok: false, code: "invalid-input" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const response = await fetch(input.url, { credentials: "omit", redirect: "error", signal: controller.signal });
+    const declared = response.headers.get("content-length");
+    if (declared && Number(declared) > UNIVERSAL_SCHEDULE_RESPONSE_MAX_BYTES) return { ok: false, code: "invalid-response" };
+    if (!response.ok) return { ok: false, code: "offline" };
+    const bytes = await readBoundedUniversalResponse(response);
+    if (!bytes) return { ok: false, code: "invalid-response" };
+    let parsed: unknown;
+    try { parsed = JSON.parse(new TextDecoder().decode(bytes)); } catch { return { ok: false, code: "invalid-response" }; }
+    if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed) || (parsed as Record<string, unknown>).schemaVersion !== 1) return { ok: false, code: "invalid-response" };
+    const values = allowedUniversalScheduleValues((parsed as Record<string, unknown>).values);
+    if (!values) return { ok: false, code: "invalid-response" };
+    return { ok: true, values, observedAt: Date.now(), sourceState: "on" };
+  } catch (error: unknown) {
+    if (error instanceof DOMException && error.name === "AbortError") return { ok: false, code: "timeout" };
+    return { ok: false, code: "offline" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
 const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:begin-totp-enrollment",
   "od:toy-locks:confirm-totp-enrollment",
@@ -3019,6 +3175,87 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle("od:toy-locks:verify", async (event, request: OpenDesignToyLockVerifyRequest) => {
     requireMainWindowSender(event);
     return toyLockStore.verify(request);
+  });
+  const universalSettingsStore = new UniversalSettingsStore(
+    join(app.getPath("userData"), "universal-settings"),
+    {
+      protect: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.encryptString(value);
+      },
+      unprotect: (value) => {
+        if (!safeStorage.isEncryptionAvailable()) throw new Error("operating-system protection is unavailable");
+        return safeStorage.decryptString(value);
+      },
+    },
+  );
+  const publishUniversalSettings = (state: Record<string, unknown>): void => {
+    const displayName = typeof state.displayName === "string"
+      && state.displayName.trim().length > 0
+      && state.displayName.length <= 120
+      ? state.displayName.trim()
+      : "Material Designer";
+    for (const candidate of BrowserWindow.getAllWindows()) {
+      if (candidate.isDestroyed() || candidate.webContents.isDestroyed()) continue;
+      candidate.setTitle(displayName);
+      candidate.webContents.send(UNIVERSAL_SETTINGS_CHANGED_EVENT, state);
+    }
+  };
+  const unsubscribeUniversalSettings = universalSettingsStore.subscribe(publishUniversalSettings);
+  ipcMain.handle(UNIVERSAL_SETTINGS_READ_IPC_CHANNEL, async (event) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.read();
+  });
+  ipcMain.handle(UNIVERSAL_SETTINGS_WRITE_IPC_CHANNEL, async (
+    event,
+    state: unknown,
+    expectedRevision: unknown,
+  ) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.write(state, expectedRevision as number);
+  });
+  ipcMain.handle(UNIVERSAL_SETTINGS_RESOLVE_SCHEDULE_IPC_CHANNEL, async (event, request: unknown) => {
+    requireMainWindowSender(event);
+    return resolveUniversalScheduleSource(request, () => universalSettingsStore.readHomeAssistantToken());
+  });
+  ipcMain.handle(UNIVERSAL_SETTINGS_SET_HA_TOKEN_IPC_CHANNEL, async (event, value: unknown) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.setHomeAssistantToken(value);
+  });
+  ipcMain.handle(UNIVERSAL_SETTINGS_CLEAR_HA_TOKEN_IPC_CHANNEL, async (event) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.clearHomeAssistantToken();
+  });
+  ipcMain.handle(STATUS_HUB_REGISTER_IPC_CHANNEL, async (event, report: OpenDesignUniversalStatusReport) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.registerStatus(report);
+  });
+  ipcMain.handle(STATUS_HUB_REPORT_IPC_CHANNEL, async (event, report: OpenDesignUniversalStatusReport) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.reportStatus(report);
+  });
+  ipcMain.handle(STATUS_HUB_HEARTBEAT_IPC_CHANNEL, async (event, sessionId: unknown, updatedAt: unknown) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.heartbeatStatus(sessionId, updatedAt);
+  });
+  ipcMain.handle(STATUS_HUB_READ_IPC_CHANNEL, async (event, sessionId: unknown) => {
+    requireMainWindowSender(event);
+    return universalSettingsStore.readStatus(sessionId);
+  });
+  void universalSettingsStore.read().then((result) => {
+    if (result.ok) publishUniversalSettings(result.state);
+  });
+  window.once("closed", () => {
+    unsubscribeUniversalSettings();
+    ipcMain.removeHandler(UNIVERSAL_SETTINGS_READ_IPC_CHANNEL);
+    ipcMain.removeHandler(UNIVERSAL_SETTINGS_WRITE_IPC_CHANNEL);
+    ipcMain.removeHandler(UNIVERSAL_SETTINGS_RESOLVE_SCHEDULE_IPC_CHANNEL);
+    ipcMain.removeHandler(UNIVERSAL_SETTINGS_SET_HA_TOKEN_IPC_CHANNEL);
+    ipcMain.removeHandler(UNIVERSAL_SETTINGS_CLEAR_HA_TOKEN_IPC_CHANNEL);
+    ipcMain.removeHandler(STATUS_HUB_REGISTER_IPC_CHANNEL);
+    ipcMain.removeHandler(STATUS_HUB_REPORT_IPC_CHANNEL);
+    ipcMain.removeHandler(STATUS_HUB_HEARTBEAT_IPC_CHANNEL);
+    ipcMain.removeHandler(STATUS_HUB_READ_IPC_CHANNEL);
   });
   const discoverUpdateDaemonBaseUrl = async (): Promise<string> => {
     const daemonUrl = await options.discoverDaemonUrl?.();

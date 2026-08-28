@@ -5,7 +5,9 @@ a decision they must make.** Everything that merely informs becomes a
 non-blocking notification; the small set of things that are genuinely
 irreversible get a gate that is deliberately hard to pass by accident.
 
-**Status:** notifications and the notification centre are **designed, not built**.
+**Status:** the shared notification centre now has a source implementation with
+filter-aware bulk selection. Full packaged interaction and the destructive
+confirmation integration remain open.
 The super-confirmation gate is **not started and not designed** — it is absent
 from the mockup entirely.
 
@@ -85,12 +87,12 @@ display scales.
 
 | Requirement | Status |
 | --- | --- |
-| Non-blocking notification surface | **Designed, not built.** |
+| Non-blocking notification surface | **Partial source implementation.** Existing toast and centre surfaces remain active. |
 | Auto-dismiss with a timeout | Designed — a 6-second dismissal. |
 | Errors and warnings persisting until dismissed | **Not designed.** The mockup shows one auto-dismissing success notification; the persistence rule for errors is unspecified. |
 | Stacking without overlap | **Not designed.** A single notification is shown. |
 | Actions and links in a notification | Designed — an undo action is present. |
-| Notification centre | **Designed, not built.** |
+| Notification centre | **Partial source implementation.** It now has its own regex search, visible-row selection, inverse selection, selected mark-read, and selected removal. |
 | Non-blocking settings surface | Designed — settings become a full page rather than a modal dialog, which is the rule applied correctly. |
 | No nagging | Nothing nagging appears in the design. |
 | **Super-confirmation gate** | **Not started and not designed.** |

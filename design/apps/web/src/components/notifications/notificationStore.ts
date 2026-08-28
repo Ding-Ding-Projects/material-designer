@@ -201,6 +201,14 @@ export function clearNotifications(): void {
   commit(EMPTY);
 }
 
+/** Remove only the records selected in the notification centre. */
+export function clearNotificationIds(ids: ReadonlySet<string>): void {
+  if (ids.size === 0 || records.length === 0) return;
+  for (const id of ids) clearTimer(id);
+  const next = records.filter((record) => !ids.has(record.id));
+  if (next.length !== records.length) commit(next);
+}
+
 export function readNotifications(): readonly NotificationRecord[] {
   return records;
 }

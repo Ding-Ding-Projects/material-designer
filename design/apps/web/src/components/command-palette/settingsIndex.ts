@@ -122,7 +122,14 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     section: 'general',
     titleKey: 'settings.general',
     hintKey: 'settings.generalHint',
-    keywords: ['general', 'language', 'notifications', 'pet', 'project locations', 'critique theater'],
+    keywords: ['general', 'language', 'notifications', 'pet', 'project locations', 'critique theater', 'universal settings', 'school mode', 'attention modes', 'scheduled settings', 'display name', 'dialog emoji', 'status hub'],
+  },
+  {
+    id: 'universal-settings',
+    section: 'general',
+    titleKey: 'settings.general',
+    hintKey: 'settings.generalHint',
+    keywords: ['universal settings', 'shared preferences', 'school mode', 'display name', 'narrator', 'scheduled settings', 'attention modes', 'notification history', 'status hub'],
   },
   {
     id: sectionAnchorFor('execution'),

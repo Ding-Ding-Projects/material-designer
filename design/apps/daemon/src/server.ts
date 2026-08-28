@@ -748,6 +748,7 @@ import { registerSocialShareRoutes } from './routes/social-share.js';
 import { registerOpenDesignPublicMetadataRoutes } from './routes/open-design-public-metadata.js';
 import { registerWhatsNewRoutes } from './routes/whats-new.js';
 import { registerHistoryRoutes } from './routes/history.js';
+import { registerUnlockLadderRoutes } from './routes/unlock-ladder.js';
 import { createHistoryService } from './history/service.js';
 import { defaultHistoryDomains } from './history/domains.js';
 import { createSqliteTableDomain } from './history/sqlite-domain.js';
@@ -7430,6 +7431,10 @@ export async function startServer({
   // export and must stay unreachable on a non-loopback bind.
   registerHistoryRoutes(app, {
     history: historyService,
+    http: { requireLocalDaemonRequest },
+  });
+
+  registerUnlockLadderRoutes(app, {
     http: { requireLocalDaemonRequest },
   });
 

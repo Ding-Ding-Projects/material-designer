@@ -43,6 +43,251 @@ Two rules this file is held to:
 Changes land here as they are committed, each with its commit link, and move into a
 version section when a release carries them.
 
+### Source repair
+
+- **Apply scheduled language and source fallback safely.** Commit
+  [`702901e1`](https://github.com/Ding-Ding-Projects/material-designer/commit/702901e1)
+  makes effective scheduled language use the scheduled value, refreshes local
+  schedules on the bounded timer, and excludes unavailable or explicitly off
+  external rules so stale overlays cannot override the local base state. Hosted
+  checks, packaged interaction, and capture evidence remain pending.
+
+  **排程語言同 source fallback 安全接通。** `702901e1` 令 effective scheduled
+  language 用返排程值，本機 schedule 都會用 bounded timer refresh；external
+  source unavailable 或明確 off 就排除，stale overlay 冇得蓋過本機 base。Hosted
+  checks、packaged 操作同 capture evidence 仲未有。
+
+- **Harden universal settings runtime and access controls.** Commit
+  [`ab1450b1`](https://github.com/Ding-Ding-Projects/material-designer/commit/ab1450b1)
+  adds over-depth and collection limits, finite-value validation, serialized
+  writes, transient rename retry, watcher deduplication, live schedule refresh,
+  effective shell consumers, chosen School name propagation, host-backed
+  disable authentication, hashed browser fallback credentials, storage and
+  BroadcastChannel synchronization, page attention effects, scheduled value
+  editors, and roving settings-tab keyboard focus. Status provenance links now
+  use a validated source commit when the running package provides one. Hosted
+  checks, packaged interaction, and capture evidence remain pending.
+
+  **Universal settings runtime 同 access control 加固。** `ab1450b1` 加入過深
+  同過大 collection 限制、finite value validation、serialized writes、短暫
+  rename retry、watcher 去重、live schedule refresh、effective shell consumer、
+  自訂 School 名稱傳遞、host-backed disable authentication、hashed browser
+  fallback credential、storage 同 BroadcastChannel sync、page attention effect、
+  scheduled value editor 同 roving settings-tab keyboard focus。Status provenance
+  link 有 package 提供有效 source commit 就會用返。Hosted checks、packaged
+  操作同 capture evidence 仲未有。
+
+- **Apply effective schedules and narrator controls.** Commit
+  [`5b2f0a67`](https://github.com/Ding-Ding-Projects/material-designer/commit/5b2f0a67)
+  tightens the host schema to an explicit allowlist, watches the shared record
+  for another running window, applies scheduled appearance and attention values
+  to live consumers, and passes stable narrator voice identities, rate, and
+  pitch into the serialized speech queue. The dialog emoji preference now
+  reaches mounted dialog titles, and focused source assertions cover the new
+  boundaries. Hosted checks, packaged interaction, and per-action capture
+  evidence remain pending.
+
+  **排程同旁白 controls 真正接通。** `5b2f0a67` 將 host schema 收窄到明確
+  allowlist，watch 共用 record，將排程 appearance 同 attention 值套落 live
+  consumer，亦將 stable narrator voice identity、rate 同 pitch 傳入
+  serialized speech queue。Dialog emoji preference 會到達新 mount 嘅 dialog
+  title，focused source assertions 亦守住新 boundary。Hosted checks、packaged
+  操作同逐個 capture evidence 仲未有。
+
+### Added
+
+- **Host status, local recovery, and remaining settings seams.** Commit
+  [`c57c78d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/c57c78d4)
+  adds host registration, reporting, heartbeat, readback, and an explicit local
+  fallback when no authenticated shared status endpoint is connected. Settings
+  revisions now have a redacted isolated Git history alongside the JSONL
+  recovery stream, while Home Assistant credential events record metadata only.
+  The palette writes language, tone, and narrator changes through the host record;
+  selected notification removal uses the existing two-key slider confirmation;
+  the documentation page has a session-only credential equivalent and a complete
+  dynamic search inventory; and the unlock ladder labels its ordered stages,
+  arithmetic inputs, and mole cells for the active language mode and assistive
+  technology.
+
+  Hosted type checks, packaged interaction, and per-action capture evidence remain
+  pending for the integrated candidate.
+
+  **Status Hub、local recovery 同 settings seam 補齊。** `c57c78d4` 加入 host
+  登記、報告、heartbeat、讀返，同冇 authenticated shared endpoint 時嘅 local
+  fallback。Settings revision 而家有 redacted isolated Git history，JSONL
+  recovery stream 照留，Home Assistant credential event 只記 metadata。Palette
+  嘅語言、語氣同旁白改動會寫返 host record，揀選通知刪除要經兩條匙同滑桿；
+  Documentation page 有今次 session 專用 credential equivalent 同完整 dynamic
+  search inventory；unlock ladder 會按語言顯示有次序步驟、算式輸入同地鼠格，
+  亦照顧 assistive technology。Hosted checks、packaged 操作同逐個 capture
+  evidence 仲未有。
+
+- **Preserve nested narrator preferences in palette writes.** Commit
+  [`335802d4`](https://github.com/Ding-Ding-Projects/material-designer/commit/335802d4)
+  merges the existing host narrator record before applying an enabled or
+  language change, so selected voice identities, rate, pitch, and quiet mode
+  survive. Single-language palette writes also preserve an active Cantonese
+  choice instead of assuming English. Hosted checks and packaged capture remain
+  pending.
+
+  **Palette 寫旁白設定唔再抹走 nested preference。** `335802d4` 會先 merge
+  現有 host narrator record，先至改 enabled 或 language，揀好嘅 voice、速度、
+  音調同 quiet mode 就保得住。Single-language palette 亦會保留粵語選擇，唔會
+  自動當英文。Hosted checks 同 packaged capture 仲未到。
+
+- **Keep palette host events safe during server rendering.** Commit
+  [`917f93e6`](https://github.com/Ding-Ding-Projects/material-designer/commit/917f93e6)
+  dispatches the browser synchronization event only when a browser window
+  exists, while retaining the canonical host write. Hosted checks and packaged
+  capture remain pending.
+
+  **Server rendering 都唔會畀 palette event 拖落水。** `917f93e6` 只喺有
+  browser window 時先 dispatch synchronization event，canonical host write
+  照行。Hosted checks 同 packaged capture 仲未有。
+
+- **Require the browser-local credential to leave School mode.** Commit
+  [`4a2e5588`](https://github.com/Ding-Ding-Projects/material-designer/commit/4a2e5588)
+  keeps the page equivalent fail-closed when disabling the mode, checks the
+  session credential through a visible unlock control, and reports the recovery
+  path without exposing or exporting its value. Hosted checks and packaged
+  capture remain pending.
+
+  **Documentation page 離開 School mode 要 browser-local credential。** `4a2e5588`
+  令頁面 equivalent 關閉模式時 fail-closed，經 visible unlock control 核對今次
+  session credential，亦唔會暴露或者 export 個值。Hosted checks 同 packaged
+  capture 仲未有。
+
+- **Universal settings and status evidence surfaces.** Commit
+  [`10ee8093`](https://github.com/Ding-Ding-Projects/material-designer/commit/10ee8093)
+  adds a versioned local settings contract to the application and an equivalent
+  browser-local surface to the documentation page. It covers the three language
+  modes, independent tone levels, the dialog emoji preference, School mode,
+  display-name decoupling, narrator choices, scheduled settings, attention
+  accommodations, searchable notification history, and factual status cards.
+  Hosted type checks, packaged interaction, and per-action capture evidence
+  remain pending for the integrated candidate.
+
+  **通用設定同 status evidence surface 一齊落地。** `10ee8093` 將三個語言模式、
+  兩條獨立語氣程度、emoji、School mode、顯示名稱、旁白、排程、專注配合、
+  可搜尋通知歷史同事實 status 卡片放入 application 同 documentation page。
+  Hosted type checks、packaged 操作同逐個 action capture 仲未完成，唔會扮已驗證。
+
+- **School mode now forces English on the visible universal surface.** Commit
+  [`4f0ae811`](https://github.com/Ding-Ding-Projects/material-designer/commit/4f0ae811)
+  keeps School mode and Status Hub controls reachable while suppressing the
+  other universal tabs and restoring prior language choices only after the mode
+  is turned off.
+
+  **School mode 而家會將可見通用介面鎖定用英文。** `4f0ae811` 保留 School mode
+  同 Status Hub 控制，收埋其他通用分頁，關閉之後先還原之前嘅語言選擇。
+
+- **Shared credential setup now uses the host vault path.** Commit
+  [`b328e5dd`](https://github.com/Ding-Ding-Projects/material-designer/commit/b328e5dd)
+  replaces the status-only control with the host-owned configuration call,
+  presents all six declared policies, and clears secret fields after success or
+  cancellation. TOTP QR pairing remains part of the dedicated lock surface.
+
+  **共用憑證設定而家真係經 host vault path。** `b328e5dd` 由淨係顯示狀態改為
+  呼叫主機設定，六種 policy 都有，成功或者取消會清走秘密欄位。TOTP QR 配對
+  仍然由專門嘅 lock surface 負責。
+
+- **Universal settings now use a host-owned shared record on desktop.** Commits
+  [`b088afc1`](https://github.com/Ding-Ding-Projects/material-designer/commit/b088afc1)
+  and [`2f030eb5`](https://github.com/Ding-Ding-Projects/material-designer/commit/2f030eb5)
+  add the main-process app-data store, revision-checked atomic writes, live
+  renderer notifications, native title updates, bridge validation, and focused
+  store tests. Browser storage remains the separate page equivalent. Hosted
+  type checks and packaged interaction evidence remain pending.
+
+  **Desktop universal settings 而家用 host-owned shared record。** `b088afc1` 同
+  `2f030eb5` 加入 main-process app-data store、revision 檢查、atomic 寫入、
+  live renderer 通知、native title 更新、bridge validation 同 focused store
+  tests。Browser storage 繼續係獨立 page 版本，hosted type checks 同 packaged
+  操作 evidence 仲未到。
+
+- **Desktop universal settings now own the live application contract.** Commit
+  [`4dad34f6`](https://github.com/Ding-Ding-Projects/material-designer/commit/4dad34f6)
+  moves renderer state behind the host-owned revision store, keeps language,
+  tone, emoji, title, narrator, and School mode active outside Settings,
+  validates privileged schedule reads, and routes the standalone narrator entry
+  through the universal surface. Hosted type checks, packaged operation, and
+  per-action capture evidence remain pending.
+
+  **Desktop universal settings 而家真係揸住 live application contract。** `4dad34f6`
+  將 renderer state 放到 host-owned revision store，Settings 關咗都繼續守住
+  語言、語氣、emoji、title、旁白同 School mode，privileged schedule reads
+  驗清楚，獨立 narrator entry 亦經 universal surface。Hosted type checks、
+  packaged 操作同逐個 action capture evidence 仲未到。
+
+- **School mode now reaches the application shell and page controls.** Commit
+  [`b8df3a65`](https://github.com/Ding-Ding-Projects/material-designer/commit/b8df3a65)
+  publishes a live shell boundary, synchronizes the real language provider and
+  narrator, removes the duplicate locale editor, filters forbidden palette rows,
+  and suppresses language, dish, and pet affordances in both surfaces.
+
+  **School mode 而家去到成個 application shell 同 page controls。** `b8df3a65`
+  即時發出 shell boundary，同步真正語言 provider 同旁白，拆走 duplicate locale
+  editor，palette 收埋禁用項目，兩個介面都會收起語言、點心同 pet 控制。
+
+- **Home Assistant schedule sources now use protected host storage.** Commit
+  [`f52428c0`](https://github.com/Ding-Ding-Projects/material-designer/commit/f52428c0)
+  adds encrypted token enrollment and clear operations, strict base URL and
+  boolean-entity validation, redirect and response bounds, cancellation,
+  `on` and `off` state handling, and a local-base fallback when the vault or
+  source is unavailable. The token never enters the settings record.
+
+  **Home Assistant 排程來源而家用受保護嘅 host storage。** `f52428c0` 加入加密
+  token 登記同清除、嚴格 base URL 同 boolean entity 驗證、redirect 同 response
+  限制、取消、on/off 狀態處理；vault 或來源唔得時就退返本機基準值，token 唔會
+  入 settings record。
+
+- **Universal controls now finish their source-only interaction paths.** Commit
+  [`f69d39a5`](https://github.com/Ding-Ding-Projects/material-designer/commit/f69d39a5)
+  gives each picker its own regex search, carries the Home Assistant base URL
+  and entity fields across both surfaces, records redacted append-only setting
+  history, and makes attention accommodations visible in the live shell.
+  Hosted type checks, packaged operation, and per-action capture evidence remain
+  pending for the integrated candidate.
+
+  **Universal controls 而家補齊 source-only interaction path。** `f69d39a5` 令每個
+  picker 有自己嘅 regex search，兩個 surface 都有 Home Assistant base URL 同
+  entity 欄位，設定改動會寫 redacted append-only history，專注配合亦會喺 live
+  shell 顯示。Hosted type checks、packaged 操作同逐個 action capture evidence
+  仲未到 integrated candidate。
+
+- **Protected schedules and the unlock ladder now have source-backed paths.**
+  Commits [`c90d5341`](https://github.com/Ding-Ding-Projects/material-designer/commit/c90d5341)
+  and [`bfc53a49`](https://github.com/Ding-Ding-Projects/material-designer/commit/bfc53a49)
+  add the local-daemon nonce ladder, School mode entry at the sums rung,
+  single-use grading, the clock fallback, and the exhausted-attempts UI route.
+  They also complete the Home Assistant source fields and keep the new route
+  tests whitespace-clean. Hosted and packaged evidence remains pending.
+
+  **受保護排程同 unlock ladder 而家有 source-backed path。** `c90d5341` 同
+  `bfc53a49` 加入 local-daemon nonce ladder、School mode 由 sums rung 開始、
+  single-use grading、clock fallback 同 authentication 次數用晒之後嘅 UI route。
+
+- **The notification centre now supports filter-aware bulk actions.** Commit
+  [`a60ce290`](https://github.com/Ding-Ding-Projects/material-designer/commit/a60ce290)
+  adds visible-row selection, inverse selection, selected mark-read, and
+  selected removal while retaining the centre's independent regex search.
+  Hosted UI interaction and packaged capture evidence remain pending.
+
+  **Notification centre 而家支援跟搜尋篩選嘅批量操作。** `a60ce290` 加入可見
+  row 選擇、反轉選擇、標記揀中項目已讀，同埋只清走揀中項目，亦保留 centre
+  自己嘅 regex search。Hosted UI 操作同 packaged capture evidence 仲未完成。
+
+- **External schedule responses now stream through a hard byte bound.** Commit
+  [`98fdced1`](https://github.com/Ding-Ding-Projects/material-designer/commit/98fdced1)
+  reads response chunks incrementally and cancels at 64 KiB even when a source
+  omits `Content-Length`. Timeout cleanup remains active on every settle path.
+
+  **External schedule response 而家逐段流入硬 byte 上限。** `98fdced1` 逐段讀
+  response，冇 `Content-Length` 都會喺 64 KiB 取消，timeout cleanup 每條 settle
+  路都繼續生效。
+  Home Assistant source 欄位亦完整，route tests 收尾冇多餘空行。Hosted 同
+  packaged evidence 仲未完成。
+
 ### Changed
 
 - **Show version-bound provenance before front-screen interaction.** The desktop

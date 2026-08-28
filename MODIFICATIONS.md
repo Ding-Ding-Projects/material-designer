@@ -29,6 +29,60 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Add universal settings and Status Hub source surfaces
+
+**Reason:** The universal settings contract needs one versioned local state
+model for the desktop surface and an equivalent browser-local model for the
+documentation page. The new settings panel provides language modes, independent
+tone sliders, dialog emoji preference, School mode and display-name controls,
+narrator choices, scheduled settings, attention accommodations, notification
+bulk actions, and evidence cards. The host now records status registration,
+reports, heartbeats and readback with an explicit local fallback, and keeps
+redacted settings revisions in an isolated Git history. Palette changes write
+through the host record, selected notification removal uses the existing
+two-key slider confirmation, the browser page has a session-only credential
+equivalent, and dynamic panels and pickers have a hand-written search inventory.
+The state module validates and bounds all values before storage, broadcasts live
+changes, watches the shared settings file for changes from another running
+surface, and records no secret values. The shell applies scheduled appearance
+values to live document consumers, and narrator queue utterances carry stable
+voice, rate, and pitch choices into the speech engine. Runtime interaction and packaged capture
+evidence remain pending for the final integrated candidate.
+
+**Changed files:**
+
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/command-palette/CommandPalette.tsx`
+- `apps/web/src/components/LanguageMenu.tsx`
+- `apps/web/src/components/DimSumSurprise.tsx`
+- `apps/web/src/styles/universal-settings.css`
+- `apps/web/src/index.css`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/components/universal/UniversalSettingsPanel.tsx`
+- `apps/web/src/components/universal/UniversalSettingsPanel.module.css`
+- `apps/web/src/components/universal/universalSettings.ts`
+- `apps/web/src/components/universal/UniversalSettingsRuntime.tsx`
+- `apps/web/src/components/narrator/queue.ts`
+- `apps/web/src/components/narrator/settings.ts`
+- `apps/web/src/components/narrator/speech.ts`
+- `apps/web/tests/components/universalSettings.test.ts`
+- `apps/web/tests/components/CommandPalette.settings-index.test.ts`
+- `apps/desktop/src/main/universal-settings-store.ts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/preload.cts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/detection.ts`
+- `apps/desktop/tests/main/universal-settings-store.test.ts`
+- `apps/daemon/src/routes/unlock-ladder.ts`
+- `apps/daemon/src/server.ts`
+- `apps/daemon/tests/routes/unlock-ladder.test.ts`
+- `apps/web/src/components/UnlockLadderPanel.tsx`
+- `apps/web/src/components/UnlockLadderPanel.module.css`
+- `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
+- `apps/web/src/components/notifications/NotificationCenter.tsx`
+- `apps/web/src/components/notifications/notificationStore.ts`
+- `apps/web/src/components/notifications/NotificationCenter.module.css`
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and

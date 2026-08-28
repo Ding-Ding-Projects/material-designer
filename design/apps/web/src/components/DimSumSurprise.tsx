@@ -100,6 +100,7 @@ export function DimSumSurprise({ eligible }: { eligible: boolean }) {
   // like a card that wandered in from somewhere else.
   return (
     <Toast
+      className="universal-dim-sum-surface"
       details={t('dimSum.blurb')}
       media={media}
       message={dimSumDishName(dish)}

@@ -12,6 +12,7 @@ import {
 } from '../security/toy-lock-core';
 
 import styles from './ToyLockAuthenticationPopover.module.css';
+import { UnlockLadderPanel } from './UnlockLadderPanel';
 
 export interface ToyLockVerificationRequest {
   readonly targetId: string;
@@ -64,6 +65,8 @@ type Copy = {
   rejected: string;
   verificationFailed: string;
   verifying: string;
+  ladder: string;
+  ladderHint: string;
 };
 
 const EN = {
@@ -74,7 +77,7 @@ const EN = {
   backspace: 'Backspace', continue: 'Continue', cancel: 'Cancel',
   invalidPin: 'Enter a PIN containing 4 to 12 digits.', required: 'Enter this factor before continuing.',
   rejected: 'That factor did not match.', verificationFailed: 'The factor could not be checked. Try again.',
-  verifying: 'Checking factor…',
+  verifying: 'Checking factor…', ladder: 'Try the unlock ladder', ladderHint: 'This clears only the waiting period. Credentials remain required.',
 } satisfies Copy;
 
 const ZH_HK = {
@@ -84,7 +87,7 @@ const ZH_HK = {
   totp: '驗證器代碼', keypad: '門禁式鍵盤', manual: '手動輸入 PIN', clear: '清除',
   backspace: '退格', continue: '繼續', cancel: '取消',
   invalidPin: '請輸入 4 至 12 個數字嘅 PIN。', required: '繼續之前要輸入呢個因素。',
-  rejected: '呢個因素唔吻合。', verificationFailed: '暫時檢查唔到呢個因素。請再試。', verifying: '檢查緊因素…',
+  rejected: '呢個因素唔吻合。', verificationFailed: '暫時檢查唔到呢個因素。請再試。', verifying: '檢查緊因素…', ladder: '試下解鎖階梯', ladderHint: '只會清除等待時間，憑證仍然要輸入。',
 } satisfies Copy;
 
 function fill(template: string, vars: Record<string, string | number>): string {
@@ -137,6 +140,7 @@ export function ToyLockAuthenticationPopover({
   const [value, setValue] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [ladderOpen, setLadderOpen] = useState(false);
   const [position, setPosition] = useState(() => anchorPosition(anchor));
   const panelRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -163,6 +167,7 @@ export function ToyLockAuthenticationPopover({
     setValue('');
     setMessage('');
     setSubmitting(false);
+    setLadderOpen(false);
   }, [attemptMaximum, policy, targetId]);
 
   useLayoutEffect(() => {
@@ -313,6 +318,17 @@ export function ToyLockAuthenticationPopover({
       )}
 
       {message && <p id={messageId} className={styles.message} role="status">{message}</p>}
+
+      {budget.remaining === 0 && !ladderOpen ? (
+        <button type="button" onClick={() => setLadderOpen(true)}>{copy.ladder}</button>
+      ) : null}
+      {budget.remaining === 0 && ladderOpen ? (
+        <UnlockLadderPanel
+          lockoutId={targetId}
+          schoolMode={typeof document !== 'undefined' && document.documentElement.getAttribute('data-universal-school-mode') === 'true'}
+          onWaitingCleared={cancel}
+        />
+      ) : null}
 
       <footer className={styles.actions}>
         <button type="button" onClick={cancel}>{copy.cancel}</button>

@@ -3064,3 +3064,38 @@ mark {
     border: 1px solid var(--md-sys-color-outline-variant);
   }
 }
+
+/* Universal settings owns a real tab strip and keeps its own searchable
+   panels. The strip scrolls rather than clipping, which is important for the
+   bilingual labels at narrow widths. */
+.universal-tabs {
+  display: flex;
+  gap: .5rem;
+  overflow-x: auto;
+  padding: .25rem;
+  margin-block: .75rem;
+}
+.universal-tabs .md-btn { flex: 0 0 auto; min-height: 2.75rem; }
+.universal-tabs .md-btn.is-active { background: var(--md-sys-color-secondary-container); }
+.universal-search { max-width: 34rem; margin-block: .75rem; }
+.settings-universal [data-universal-panel] { display: grid; gap: .75rem; }
+.settings-universal [data-universal-panel][hidden] { display: none; }
+.settings-universal .button-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.settings-universal .md-card { padding: .75rem; }
+.settings-universal .setting-row { min-height: 3rem; }
+html[data-universal-school-mode='true'] #settings-language,
+html[data-universal-school-mode='true'] #settings-tone,
+html[data-universal-school-mode='true'] [data-universal-school-suppressed='true'],
+html[data-universal-school-mode='true'] [data-dim-sum-surprise] {
+  display: none !important;
+}
+@media (max-width: 40rem) {
+  .settings-universal .setting-row { grid-template-columns: 1fr; }
+}
+html[data-universal-adhd-low-stimulation='true'] *,
+html[data-universal-adhd-low-stimulation='true'] *::before,
+html[data-universal-adhd-low-stimulation='true'] *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+html[data-universal-adhd-focus='true'] [data-universal-adhd-dimmed='true'] { opacity: .5; }
+.universal-adhd-time-awareness, .universal-adhd-next-action, .universal-adhd-momentum { position: fixed; right: 16px; bottom: 16px; z-index: 1200; padding: 10px 14px; border: 1px solid var(--md-sys-color-outline-variant, #cac4d0); border-radius: 14px; background: var(--md-sys-color-surface-container-high, #ece6f0); color: var(--md-sys-color-on-surface, #1d1b20); box-shadow: 0 4px 12px rgb(0 0 0 / 18%); }
+.universal-adhd-next-action { bottom: 64px; }
+.universal-adhd-momentum { bottom: 112px; }

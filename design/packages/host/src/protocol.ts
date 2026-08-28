@@ -460,6 +460,58 @@ export const OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS = Object.freeze([
 export type OpenDesignSettingsToyLockTarget =
   (typeof OPEN_DESIGN_SETTINGS_TOY_LOCK_TARGETS)[number];
 
+/** Presentation-only preferences owned by the desktop host's app-data store. */
+export type OpenDesignUniversalSettingsState = Record<string, unknown> & {
+  schemaVersion: 1;
+  revision: number;
+  updatedAt: number;
+};
+
+export type OpenDesignUniversalSettingsResult =
+  | { ok: true; state: OpenDesignUniversalSettingsState }
+  | { ok: false; code: 'invalid-input' | 'stale-revision' | 'persistence-failed' | 'store-corrupt' };
+
+export type OpenDesignUniversalScheduleRequest =
+  | { source: 'api'; url: string }
+  | { source: 'homeAssistant'; baseUrl: string; entity: string };
+
+export type OpenDesignUniversalScheduleResult =
+  | { ok: true; values: Record<string, unknown>; observedAt: number; sourceState: 'on' | 'off' | 'local' }
+  | { ok: false; code: 'invalid-input' | 'credential-unavailable' | 'offline' | 'timeout' | 'invalid-response' };
+
+export type OpenDesignHostUniversalSettings = {
+  read(): Promise<OpenDesignUniversalSettingsResult>;
+  write(state: OpenDesignUniversalSettingsState, expectedRevision: number): Promise<OpenDesignUniversalSettingsResult>;
+  subscribe(listener: (state: OpenDesignUniversalSettingsState) => void): () => void;
+  resolveSchedule(request: OpenDesignUniversalScheduleRequest): Promise<OpenDesignUniversalScheduleResult>;
+  setHomeAssistantToken(value: string): Promise<{ ok: true } | { ok: false; code: 'invalid-input' | 'protection-unavailable' | 'persistence-failed' }>;
+  clearHomeAssistantToken(): Promise<{ ok: true } | { ok: false; code: 'invalid-input' | 'protection-unavailable' | 'persistence-failed' }>;
+};
+
+/** A local status projection owned by the desktop host. It never invents a
+ * forge URL: evidence links are accepted only when supplied by the caller and
+ * the delivery field says whether the shared hub was reachable. */
+export type OpenDesignUniversalStatusReport = {
+  sessionId: string;
+  project: string;
+  state: 'running' | 'waiting' | 'blocked' | 'failed' | 'verified' | 'unavailable';
+  summary: string;
+  evidence: readonly { label: string; url: string | null; verified: boolean }[];
+  sourceRevision: string | null;
+  updatedAt: number;
+};
+
+export type OpenDesignUniversalStatusResult =
+  | { ok: true; report: OpenDesignUniversalStatusReport; delivery: 'hub' | 'local-fallback'; noDeliveryReason: string | null }
+  | { ok: false; code: 'invalid-input' | 'persistence-failed' | 'unavailable' };
+
+export type OpenDesignHostStatusHub = {
+  register(report: OpenDesignUniversalStatusReport): Promise<OpenDesignUniversalStatusResult>;
+  report(report: OpenDesignUniversalStatusReport): Promise<OpenDesignUniversalStatusResult>;
+  heartbeat(sessionId: string, updatedAt: number): Promise<OpenDesignUniversalStatusResult>;
+  read(sessionId: string): Promise<OpenDesignUniversalStatusResult>;
+};
+
 export const OPEN_DESIGN_TOY_LOCK_POLICIES = Object.freeze([
   "pin", "password", "pin-password", "password-totp", "pin-totp",
   "password-pin-totp",
@@ -596,6 +648,10 @@ export type OpenDesignHostBridge = {
   uiScale?: OpenDesignHostUiScale;
   /** Optional on desktop hosts predating persistent Settings-tab toy locks. */
   toyLocks?: OpenDesignHostToyLocks;
+  /** Optional on hosts predating the shared universal app-data record. */
+  universalSettings?: OpenDesignHostUniversalSettings;
+  /** Optional host-owned status projection, with an honest local fallback. */
+  statusHub?: OpenDesignHostStatusHub;
   updater: {
     check(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;
     "clear-cache"(options?: OpenDesignHostUpdaterActionOptions): Promise<OpenDesignHostUpdaterStatusSnapshot>;

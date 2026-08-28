@@ -42,6 +42,7 @@ far each one has got.
 | [accessibility.md](accessibility.md) | Keyboard reachability, visible focus, roles and names, contrast, reduced motion, and no clipping at any scale — as completion blockers, not polish. |
 | [local-assets.md](local-assets.md) | No script, stylesheet, font or image fetched from a third-party origin, and no tracking — on every surface individually. |
 | [documentation-currency.md](documentation-currency.md) | Documentation, changelog and roadmap brought current in the same task that changes the project. |
+| [universal-settings.md](universal-settings.md) | Shared local language, tone, School mode, narrator, schedules, attention accommodations, notifications, and Status Hub evidence. |
 
 ### Interface-quality rules with their own file
 
@@ -78,12 +79,12 @@ section names.
 
 | # | Standard | Status | File |
 | --- | --- | --- | --- |
-| 1 | Language modes + two tone sliders | **Not started in the application.** 19 locales ship; Cantonese is not one of them, and no tone slider exists. Implemented on the documentation site. | [language-modes.md](language-modes.md) |
+| 1 | Language modes + two tone sliders | **Partial source implementation.** The General settings surface now mounts a versioned universal settings panel with three modes and independent 1–5 sliders defaulting to 5. Full app-wide propagation and built-runtime proof remain open. The documentation page already has its own controls. | [language-modes.md](language-modes.md), [universal-settings.md](universal-settings.md) |
 | 2 | Material Design 3 conformance | **Partial.** The token sheet and its mapping layer landed at `dea6b0a`, as did the Windows frameless window and custom title bar. Component anatomy is not started. | [material-design-3.md](material-design-3.md) |
 | 3 | Runtime appearance customization | **Not started in the application.** No per-element editor, no continuous picker, no presets. The site implements theme, density, seed and scale, plus a partial colour translator. | [appearance-customization.md](appearance-customization.md) |
 | 4 | Regex builder on every search bar | **Partial.** The command palette and settings-tab overflow menu have independent builders; the overflow builder's focus scope and viewport repair are committed at `ec2c76d7`; other required fields do not. | [regex-builder.md](regex-builder.md) |
 | 5 | Browser-style tabs everywhere | **Partial in code.** The settings dialog has a 17-section tab strip, viewport-bounded overflow, local regex search and a portalled focus route; workspace pinning, grouping and the four discovery searches remain open. | [tabs.md](tabs.md) |
-| 6 | Non-blocking notifications + centre | **Designed, not built** in the application. Implemented on the site. | [notifications.md](notifications.md) |
+| 6 | Non-blocking notifications + centre | **Partial source implementation.** The universal settings panel provides a local searchable notification list with selection, invert, mark-read and bulk clear actions. Chrome-level notification integration and built-runtime proof remain open. | [notifications.md](notifications.md), [universal-settings.md](universal-settings.md) |
 | 7 | Super confirmation for destructive actions | **Not started, and not yet designed.** Absent from the mockup entirely — the largest undesigned gap in the set. | [super-confirmation.md](super-confirmation.md) |
 | 8 | Command palette | **Not started in the application.** Designed in the mockup, including inline live controls. Implemented on the site. | [command-palette.md](command-palette.md) |
 | 9 | Changelog viewer | **Not started in the application.** Designed in the mockup, commit links included. Releases now exist, so the viewer would have content on its first run. | [changelog-viewer.md](changelog-viewer.md) |

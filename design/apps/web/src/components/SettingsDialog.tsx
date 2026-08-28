@@ -30,7 +30,6 @@ import {
   trackSettingsByokProviderOptionClick,
   trackSettingsConnectorAuthResult,
   trackSettingsDesignReviewClick,
-  trackSettingsLanguageClick,
   trackSettingsLocalCliClick,
   trackSettingsExecutionModeTabClick,
   trackSettingsMediaProvidersClick,
@@ -38,7 +37,7 @@ import {
   trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
-import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
@@ -156,7 +155,6 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
-import { NarratorSettingsPanel } from './narrator/NarratorSettingsPanel';
 import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
@@ -230,6 +228,7 @@ import {
   type SettingsTabToyLock,
 } from './settings/SettingsTabStrip';
 import { SettingsSearchResults } from './settings/SettingsSearchResults';
+import { UniversalSettingsPanel } from './universal/UniversalSettingsPanel';
 import {
   matchSettingsIndex,
   settingsHitCountsBySection,
@@ -1553,7 +1552,7 @@ export function SettingsDialog({
   onProviderModelsCacheChange,
   onDraftChange,
 }: Props) {
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale } = useI18n();
   const route = useRoute();
   const pageMode = presentation === 'page';
   const analytics = useAnalytics();
@@ -5899,36 +5898,7 @@ export function SettingsDialog({
               there is no longer a standalone render block for any of them. */}
           {activeSection === 'general' ? (
             <section className="settings-section settings-general-section">
-              <div className="settings-general-block">
-                <div className="settings-general-field">
-                  <span className="settings-general-label">{t('settings.language')}</span>
-                  <label className="settings-general-select">
-                    <select
-                      value={locale}
-                      aria-label={t('settings.language')}
-                      onChange={(event) => {
-                        const next = event.target.value as Locale;
-                        // P1 ui_click area=language — record the locale id
-                        // that was picked, regardless of whether it differs
-                        // from the current one (user clicked = signal).
-                        trackSettingsLanguageClick(analytics.track, {
-                          page_name: 'settings',
-                          area: 'language',
-                          element: next,
-                        });
-                        setLocale(next);
-                      }}
-                    >
-                      {LOCALES.map((code) => (
-                        <option key={code} value={code}>
-                          {LOCALE_LABEL[code]} · {code}
-                        </option>
-                      ))}
-                    </select>
-                    <Icon name="chevron-down" size={14} />
-                  </label>
-                </div>
-              </div>
+              <UniversalSettingsPanel appVersionInfo={appVersionInfo} />
 
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
@@ -6011,7 +5981,7 @@ export function SettingsDialog({
           ) : null}
 
           {activeSection === 'narrator' ? (
-            <NarratorSettingsPanel />
+            <UniversalSettingsPanel appVersionInfo={appVersionInfo} initialSection="narrator" />
           ) : null}
 
           {activeSection === 'about' ? (

@@ -43,12 +43,20 @@ export interface NarratorSettings {
   language: NarratorLanguage;
   /** The user's own "not now" — quiet hours, reduced sound, a meeting. */
   quiet: boolean;
+  rate: number;
+  pitch: number;
+  englishVoiceId: string | null;
+  cantoneseVoiceId: string | null;
 }
 
 export const DEFAULT_NARRATOR_SETTINGS: NarratorSettings = {
   enabled: false,
   language: 'en',
   quiet: false,
+  rate: 1,
+  pitch: 1,
+  englishVoiceId: null,
+  cantoneseVoiceId: null,
 };
 
 export interface NarrationRequest {
@@ -83,6 +91,9 @@ export interface NarratorUtterance {
   text: string;
   /** 1 normally; reduced when ducking under an active screen reader. */
   volume: number;
+  voiceId: string | null;
+  rate: number;
+  pitch: number;
 }
 
 export interface NarratorEnvironment {
@@ -325,6 +336,9 @@ export class NarratorQueue {
         language,
         text: language === 'en' ? request.en : request.zhHK,
         volume,
+        voiceId: language === 'en' ? this.settings.englishVoiceId : this.settings.cantoneseVoiceId,
+        rate: this.settings.rate,
+        pitch: this.settings.pitch,
       };
       this.spoken.push(utterance);
       if (this.spoken.length > NarratorQueue.SPOKEN_LOG_LIMIT) this.spoken.shift();

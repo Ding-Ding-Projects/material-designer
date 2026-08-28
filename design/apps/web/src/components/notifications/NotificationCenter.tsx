@@ -22,6 +22,7 @@ import { useRegexSearch } from '../regex/useRegexSearch';
 import { SEVERITY_ICON, SEVERITY_LABEL_KEYS } from './NotificationHost';
 import {
   clearNotifications,
+  clearNotificationIds,
   markAllNotificationsRead,
   markNotificationRead,
   unreadNotificationCount,
@@ -29,6 +30,7 @@ import {
   type NotificationRecord,
 } from './notificationStore';
 import styles from './NotificationCenter.module.css';
+import { DestructiveGate } from '../destructive/DestructiveGate';
 
 /** Past this the badge stops being a number and becomes "a lot". */
 const BADGE_CAP = 99;
@@ -59,6 +61,8 @@ export function NotificationCenter() {
   const unread = unreadNotificationCount(records);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmSelectedClear, setConfirmSelectedClear] = useState(false);
   // This field's own controller. `useRegexSearch` is never shared between two
   // fields, so the pattern built here cannot leak into the tab search that
   // sits two buttons away in the same chrome.
@@ -100,6 +104,7 @@ export function NotificationCenter() {
   }, [open]);
 
   const visible = records.filter((record) => matchesRecord(record, search.matches, t));
+  const visibleIds = visible.map((record) => record.id);
   const badge = unread > BADGE_CAP ? `${BADGE_CAP}+` : String(unread);
   const label = unread > 0
     ? `${t('notifications.open')} — ${t('notifications.unread', { count: unread })}`
@@ -170,6 +175,34 @@ export function NotificationCenter() {
               <div className={styles.actions}>
                 <button
                   type="button"
+                  onClick={() => setSelectedIds(new Set(visibleIds))}
+                  disabled={visible.length === 0}
+                  data-testid="notification-select-all"
+                >
+                  Select visible ({visible.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set(visibleIds.filter((id) => !selectedIds.has(id))))}
+                  disabled={visible.length === 0}
+                  data-testid="notification-invert-selection"
+                >
+                  Invert
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selected = selectedIds;
+                    for (const id of selected) markNotificationRead(id);
+                    setSelectedIds(new Set());
+                  }}
+                  disabled={selectedIds.size === 0}
+                  data-testid="notification-mark-selected-read"
+                >
+                  Mark selected read ({selectedIds.size})
+                </button>
+                <button
+                  type="button"
                   onClick={markAllNotificationsRead}
                   disabled={unread === 0}
                   data-testid="notification-mark-all-read"
@@ -184,6 +217,17 @@ export function NotificationCenter() {
                 >
                   {t('notifications.clear')}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedIds.size === 0) return;
+                    setConfirmSelectedClear(true);
+                  }}
+                  disabled={selectedIds.size === 0}
+                  data-testid="notification-clear-selected"
+                >
+                  Clear selected
+                </button>
               </div>
               <div className={styles.list} data-testid="notification-list">
                 {visible.length === 0 ? (
@@ -195,7 +239,17 @@ export function NotificationCenter() {
                 ) : (
                   <ul className={styles.rows}>
                     {visible.map((record) => (
-                      <NotificationRow key={record.id} record={record} />
+                      <NotificationRow
+                        key={record.id}
+                        record={record}
+                        selected={selectedIds.has(record.id)}
+                        onSelected={(checked) => setSelectedIds((current) => {
+                          const next = new Set(current);
+                          if (checked) next.add(record.id);
+                          else next.delete(record.id);
+                          return next;
+                        })}
+                      />
                     ))}
                   </ul>
                 )}
@@ -204,6 +258,21 @@ export function NotificationCenter() {
             document.body,
           )
         : null}
+      {confirmSelectedClear ? (
+        <DestructiveGate
+          action="Remove selected notifications"
+          target={`${selectedIds.size} selected notification${selectedIds.size === 1 ? '' : 's'}`}
+          items={records.filter((record) => selectedIds.has(record.id)).map((record) => record.title)}
+          detail="This removes the selected notification history records. It cannot be undone from this panel."
+          irreversible
+          onConfirm={() => {
+            clearNotificationIds(selectedIds);
+            setSelectedIds(new Set());
+            return true;
+          }}
+          onClose={() => setConfirmSelectedClear(false)}
+        />
+      ) : null}
     </>
   );
 }
@@ -227,7 +296,7 @@ function matchesRecord(
   return matches(haystack);
 }
 
-function NotificationRow({ record }: { record: NotificationRecord }) {
+function NotificationRow({ record, selected, onSelected }: { record: NotificationRecord; selected: boolean; onSelected: (checked: boolean) => void }) {
   const t = useT();
   const action = record.action;
   return (
@@ -237,6 +306,13 @@ function NotificationRow({ record }: { record: NotificationRecord }) {
       data-read={record.read ? 'true' : 'false'}
       data-testid="notification-row"
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={(event) => onSelected(event.currentTarget.checked)}
+        aria-label={`Select notification ${record.title}`}
+        data-testid="notification-row-select"
+      />
       <span className={styles.rowIcon} aria-hidden>
         <Icon name={SEVERITY_ICON[record.severity]} size={14} />
       </span>

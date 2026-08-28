@@ -83,6 +83,7 @@ import {
   type SettingsHighlight,
 } from './components/SettingsDialog';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
+import { UniversalSettingsRuntime } from './components/universal/UniversalSettingsRuntime';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
@@ -847,6 +848,7 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       <IframeKeepAliveProvider>
+        <UniversalSettingsRuntime />
         <WorkspaceMemberDirectoryPreloader />
         <AppInner />
       </IframeKeepAliveProvider>

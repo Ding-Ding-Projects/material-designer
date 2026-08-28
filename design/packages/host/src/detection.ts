@@ -60,6 +60,32 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const universalSettings = value.universalSettings;
+  if (
+    universalSettings != null
+    && (!isRecord(universalSettings)
+      || !hasFunction(universalSettings, "read")
+      || !hasFunction(universalSettings, "write")
+      || !hasFunction(universalSettings, "subscribe")
+      || !hasFunction(universalSettings, "resolveSchedule")
+      || !hasFunction(universalSettings, "setHomeAssistantToken")
+      || !hasFunction(universalSettings, "clearHomeAssistantToken"))
+  ) {
+    return false;
+  }
+
+  const statusHub = value.statusHub;
+  if (
+    statusHub != null
+    && (!isRecord(statusHub)
+      || !hasFunction(statusHub, "register")
+      || !hasFunction(statusHub, "report")
+      || !hasFunction(statusHub, "heartbeat")
+      || !hasFunction(statusHub, "read"))
+  ) {
+    return false;
+  }
+
   const shell = value.shell;
   if (!isRecord(shell) || !hasFunction(shell, "openExternal") || !hasFunction(shell, "openPath")) return false;
 

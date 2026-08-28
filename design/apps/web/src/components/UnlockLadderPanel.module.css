@@ -1,0 +1,11 @@
+.panel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--md-sys-color-outline-variant, #c9c4d0); border-radius: 14px; background: var(--md-sys-color-surface-container-low, #f7f2fa); }
+.panel h3, .hint, .message { margin: 0; }
+.hint { color: var(--md-sys-color-on-surface-variant, #49454f); font-size: .9rem; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(56px, 1fr)); gap: 8px; }
+.grid button, .panel > button, .sums > button { min-height: 44px; border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: 10px; background: var(--md-sys-color-surface, #fffbfe); color: inherit; }
+.sums { display: grid; grid-template-columns: repeat(2, minmax(100px, 1fr)); gap: 8px; }
+.sums label { display: grid; gap: 4px; }
+.sums input { min-height: 40px; border: 1px solid var(--md-sys-color-outline, #79747e); border-radius: 8px; padding: 6px; }
+.message { color: var(--md-sys-color-on-surface-variant, #49454f); }
+.stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0 0 0 20px; color: var(--md-sys-color-on-surface-variant, #49454f); font-size: .78rem; }
+.stages li[aria-current='step'] { color: var(--md-sys-color-primary, #6750a4); font-weight: 700; }

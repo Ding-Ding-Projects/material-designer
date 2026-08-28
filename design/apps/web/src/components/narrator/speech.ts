@@ -111,8 +111,12 @@ export function createBrowserNarratorEnvironment(
       // Voices arrive asynchronously on some engines, so this is read at
       // speak time rather than cached at construction; an empty list here
       // simply means the platform default voice is used.
-      const voice = pickVoice(synth.getVoices(), utterance.language);
+      const voices = synth.getVoices();
+      const preferred = utterance.voiceId ? voices.find((voice) => voice.voiceURI === utterance.voiceId) : null;
+      const voice = preferred ?? pickVoice(voices, utterance.language);
       if (voice) spoken.voice = voice;
+      spoken.rate = Math.max(0.1, Math.min(3, utterance.rate));
+      spoken.pitch = Math.max(0, Math.min(2, utterance.pitch));
       spoken.onend = finish;
       spoken.onerror = finish;
 
