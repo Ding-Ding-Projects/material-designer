@@ -2,6 +2,14 @@
 
 ## Unreleased — Add local Ollama suite manager
 
+The behavioral review repair makes the daemon the sole queue owner, adds
+collision-safe durable scheduling with abort-connected pause and cancel, and
+requires provider terminal success. Official catalog rows now require bounded
+pagination metadata, stable identity, consistent revision, valid tags, and
+separate installed and running reconciliation.
+
+Source commit: [`4912b0fe`](https://github.com/Ding-Ding-Projects/material-designer/commit/4912b0fe6ee10e98b91fa8df6dbfe09a851139e6)
+
 The final review repair also preserves the literal chat role union at the
 session boundary, keeping the persisted transcript type-safe without changing
 the user-visible conversation.
