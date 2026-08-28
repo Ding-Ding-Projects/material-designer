@@ -16,6 +16,10 @@ import type { FunnyOverrides } from '../types';
  * given level gets the same energy on both sides of the separator.
  */
 export const ZH_HK_FUNNY: FunnyOverrides = {
+  'regexBuilder.workbenchHint': { 3: '呢啲插入會將原始語法加落個欄，零件表達唔到時就退後一步。', 5: '呢啲插入會將引擎原始語法釘落個欄，式樣一進階，零件就識趣咁讓位。' },
+  'regexBuilder.evaluationRefused': { 3: '引擎未行之前已拒絕剖析：{reason}', 5: '個引擎見到有風險式樣，決定留喺被竇唔出門：{reason}' },
+  'regexBuilder.evaluationExhausted': { 3: '剖析去到本機安全上限就停咗。可見結果唔會再繼續過濾。', 5: '本機安全額度用晒，個清單會保持老實，唔再偷偷過濾。' },
+  'regexBuilder.snippetSaved': { 3: '式樣已經留喺本機', 5: '式樣乖乖收咗喺本機儲存' },
   'handoff.downloadSucceeded': { 3: '交接匯出下載咗', 5: '份登記冊自己行咗出去喇' },
   'handoff.downloadFailed': { 3: '交接匯出下載唔到', 5: '份下載唔肯出門口' },
   'handoff.statusImplemented': { 3: '已實作', 5: '實作咗，仲有文件做證' },

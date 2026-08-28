@@ -45,6 +45,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Make every site search worker-backed and inventory all viewer menus.**
+  Documentation content, settings, tab-list, tab-overflow, and tab-context
+  searches now evaluate through each field's killable worker-backed controller.
+  Builder mode, pattern, flags, validation, and query changes notify the real
+  search callback in both directions. Refused and timed-out evaluations never
+  become definitive no-match results, while bounded sweeps and result sets
+  report incomplete state. The hand-written inventory records 33 rows, 30 wired
+  rows, all nine discovered FileViewer menus with stable field ids, and three
+  explicitly red cross-lane site tab rows. Source commit:
+  [`e819328f`](https://github.com/Ding-Ding-Projects/material-designer/commit/e819328fa960f6d79e8555e0f657660610d08bed).
+
+  **Site search 而家全部用 worker-backed evaluator，viewer menu inventory
+  亦列晒。** Documentation content、settings、tab-list、tab-overflow 同
+  tab-context search 經每個 field 自己嘅可終止 controller 去行，builder mode、
+  pattern、flags、validation 同 query 會雙向同步。Refused 同 timeout 唔會扮
+  definitive no-match，bounded sweep 同 result set 會老實報 incomplete。手寫
+  inventory 有 33 行，30 行 wired，九個 FileViewer menu 有 stable field id，
+  三行 cross-lane site tab row 明確標 red。Source commit：
+  [`e819328f`](https://github.com/Ding-Ding-Projects/material-designer/commit/e819328fa960f6d79e8555e0f657660610d08bed)。
+
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`

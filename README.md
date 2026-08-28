@@ -159,6 +159,12 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > capture evidence for every one is not established by this note, so the status
 > below does not claim that all of them are shipped or verified.
 >
+> The current regex source lane is recorded in [`e819328f`](https://github.com/Ding-Ding-Projects/material-designer/commit/e819328fa960f6d79e8555e0f657660610d08bed).
+> It covers 33 hand-written search rows, 30 wired rows, all nine discovered
+> FileViewer menus, worker-backed documentation content and settings search,
+> and three explicitly RED site tab rows owned by the tabs lane. Hosted package,
+> built interaction, and screenshot evidence remain pending.
+>
 > **The honest gap is no longer "is it built" but "has anyone looked".** One capture
 > has been reviewed — the one above — and reviewing it caught the window chrome
 > still carrying the upstream brand. Nothing has been checked at a second display

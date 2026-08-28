@@ -22,7 +22,7 @@ import {
   fetchDesignSystem,
   fetchDesignSystems,
   fetchLibraryAsset,
-  fetchLibraryAssets,
+  fetchAllLibraryAssets,
   fetchLibraryAssetAsFile,
   libraryAssetRawUrl,
   syncLibrary,
@@ -55,6 +55,7 @@ import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
+import { RegexSearchField, useRegexSearch } from './regex';
 
 type Translate = ReturnType<typeof useT>;
 
@@ -90,6 +91,74 @@ function sourceFilters(t: Translate): Array<{ value: string; label: string }> {
     { value: 'design-system', label: t('library.sourceDesignSystem') },
     { value: 'generated', label: t('library.sourceGenerated') },
   ];
+}
+
+interface LibraryFilterComboboxProps {
+  label: string;
+  value: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  testId: string;
+}
+
+/** A searchable local picker. Native select controls cannot host the required
+ * field-owned anchored regex builder, so every filter owns this small listbox. */
+function LibraryFilterCombobox({ label, value, options, onChange, testId }: LibraryFilterComboboxProps) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return options.filter((option) => {
+      if (!needle) return true;
+      return search.mode === 'regex' ? search.matches(option.label) : option.label.toLowerCase().includes(needle);
+    });
+  }, [options, query, search.mode, search.matches]);
+  const selected = options.find((option) => option.value === value)?.label ?? label;
+  return (
+    <div className={styles.filterCombo}>
+      <button
+        type="button"
+        className={styles.filterComboTrigger}
+        role="combobox"
+        aria-label={label}
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        data-testid={testId}
+      >
+        <span className={styles.filterComboLabel}>{selected}</span>
+      </button>
+      {open ? (
+        <div className={styles.filterComboPanel} role="listbox" aria-label={label}>
+          <RegexSearchField
+            search={search}
+            fieldLabel={label}
+            placeholder={t('common.search')}
+            ariaLabel={t('common.search')}
+            className={styles.filterComboSearch}
+            hostClassName={styles.searchFieldHost}
+            testId={`${testId}-search`}
+            autoFocus
+          />
+          <div className={styles.filterComboOptions}>
+          {visible.length ? visible.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              className={styles.filterComboOption}
+              onClick={() => { onChange(option.value); setOpen(false); setQuery(''); }}
+            >
+              {option.label}
+            </button>
+          )) : <p className={styles.filterComboEmpty}>{t('library.noMatches')}</p>}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** Local `YYYY-MM-DD` for a Date — matches the daemon's `archivedDate` bucket. */
@@ -502,10 +571,12 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const workspaceIdentity = workspaceIdentityCacheKey(workspaceContext);
   const [assets, setAssets] = useState<LibraryAsset[]>([]);
   const [loading, setLoading] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [kind, setKind] = useState('');
   const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
+  const librarySearch = useRegexSearch(search, setSearch);
   // The input updates `search` instantly (responsive typing) but the server
   // query keys off `debouncedSearch`, so a fast typist fires one request, not
   // one per keystroke.
@@ -524,6 +595,8 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   // "Use in design system" menu state (multi-select → design system).
   const [dsMenuOpen, setDsMenuOpen] = useState(false);
   const [dsList, setDsList] = useState<DesignSystemSummary[]>([]);
+  const [dsSearchQuery, setDsSearchQuery] = useState('');
+  const dsSearch = useRegexSearch(dsSearchQuery, setDsSearchQuery);
   const [dsBusy, setDsBusy] = useState(false);
   const dsLoadedRef = useRef(false);
   const dsMenuWrapRef = useRef<HTMLDivElement>(null);
@@ -553,15 +626,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     // stored as `image`); narrow to images on the server, then split client-side.
     if (kind) q.kind = kind === 'element' ? 'image' : kind;
     if (source) q.source = source;
-    if (debouncedSearch.trim()) q.q = debouncedSearch.trim();
+    if (librarySearch.mode === 'text' && debouncedSearch.trim()) q.q = debouncedSearch.trim();
     return q;
-  }, [kind, source, debouncedSearch]);
+  }, [kind, source, debouncedSearch, librarySearch.mode]);
 
   // Whether any filter narrows the default newest-first feed. Tracked in a ref
   // so the long-lived SSE subscription can read it without resubscribing on
   // every keystroke. When filters are active the SSE handler can't safely
   // predict membership (server `source` is an EXISTS join, `q` is a fuzzy
   // match), so it falls back to a single full reload.
+  // Regex is a live filter too. Keeping it out of this predicate lets the
+  // incremental stream append unfiltered rows while the visible list claims
+  // to be filtered, which is a silent completeness failure.
   const filtersActive = !!(kind || source || debouncedSearch.trim());
   const filtersActiveRef = useRef(filtersActive);
   useEffect(() => {
@@ -570,12 +646,24 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const next = await fetchLibraryAssets(query);
-    // Final filtering is badge-aware (shared with the picker) so `image` excludes
-    // element captures and `element` keeps only them; other kinds pass through.
-    setAssets(next.filter((a) => matchesKindFilter(a, kind as KindFilterValue)));
-    setLoading(false);
-  }, [query, kind]);
+    setLibraryError(null);
+    try {
+      const result = await fetchAllLibraryAssets(query);
+      if (!result.ok) setLibraryError(result.error);
+      // Final filtering is badge-aware (shared with the picker) so `image`
+      // excludes element captures and `element` keeps only them; interrupted
+      // pages remain visible but never look complete.
+      setAssets(
+        result.assets
+          .filter((a) => matchesKindFilter(a, kind as KindFilterValue))
+          .filter((a) => librarySearch.mode === 'regex' ? librarySearch.matches(`${assetTitle(a)} ${primarySource(a)} ${kindLabel(badgeKind(a))}`) : true),
+      );
+    } catch (error) {
+      setLibraryError(error instanceof Error ? error.message : 'Library request could not be completed.');
+    } finally {
+      setLoading(false);
+    }
+  }, [query, kind, librarySearch.mode, librarySearch.matches]);
 
   // Force a reconcile (design systems + agent deliverables → referenced Library
   // rows), then reload so the freshly-indexed assets appear. The throttle lives
@@ -1108,6 +1196,16 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   const kindFilterOptions = useMemo(() => kindFilters(t), [t]);
   const sourceFilterOptions = useMemo(() => sourceFilters(t), [t]);
+  const visibleDesignSystems = useMemo(
+    () => dsList.filter((item) => {
+      const haystack = `${item.title} ${item.id}`;
+      if (!dsSearchQuery.trim()) return true;
+      return dsSearch.mode === 'regex'
+        ? dsSearch.matches(haystack)
+        : haystack.toLowerCase().includes(dsSearchQuery.trim().toLowerCase());
+    }),
+    [dsList, dsSearchQuery, dsSearch.mode, dsSearch.matches],
+  );
 
   // Render one memoized card. The wrapper just wires this render's per-card
   // props; `LibraryCard` itself is what skips re-rendering when only another
@@ -1154,30 +1252,29 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       </header>
 
       <div className={styles.toolbar}>
-        <div className={styles.searchWrap}>
-          <Icon name="search" size={15} className={styles.searchIcon} />
-          <input
-            className={styles.search}
-            type="search"
-            placeholder={t('library.searchPlaceholder')}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select aria-label={t('library.filterByKind')} className={styles.select} value={kind} onChange={(e) => setKind(e.target.value)}>
-          {kindFilterOptions.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <select aria-label={t('library.filterBySource')} className={styles.select} value={source} onChange={(e) => setSource(e.target.value)}>
-          {sourceFilterOptions.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
+        <RegexSearchField
+          search={librarySearch}
+          fieldLabel={t('library.searchPlaceholder')}
+          placeholder={t('library.searchPlaceholder')}
+          ariaLabel={t('library.searchPlaceholder')}
+          hostClassName={styles.searchWrap}
+          className={styles.search}
+          testId="library-search"
+        />
+        <LibraryFilterCombobox
+          label={t('library.filterByKind')}
+          value={kind}
+          options={kindFilterOptions}
+          onChange={setKind}
+          testId="library-kind-filter"
+        />
+        <LibraryFilterCombobox
+          label={t('library.filterBySource')}
+          value={source}
+          options={sourceFilterOptions}
+          onChange={setSource}
+          testId="library-source-filter"
+        />
         <div className={styles.viewToggle} role="group" aria-label={t('library.viewMode')}>
           <button
             type="button"
@@ -1236,6 +1333,13 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         </Button>
       </div>
 
+      {libraryError ? (
+        <div className={styles.loadError} role="alert" data-testid="library-load-error">
+          <span>{t('library.loadError')} ({libraryError})</span>
+          <button type="button" onClick={() => { void load(); }}>{t('library.retry')}</button>
+        </div>
+      ) : null}
+
       {selectedCount > 0 && !dragging ? (
         <div className={styles.selectionBar}>
           <span className={styles.selectionCount}>
@@ -1289,10 +1393,18 @@ export function LibrarySection({ active, onOpenProject }: Props) {
                 </button>
                 <div className={styles.dsMenuDivider} />
                 <div className={styles.dsMenuHeader}>{t('library.refineExisting')}</div>
-                {dsList.length === 0 ? (
+                <RegexSearchField
+                  search={dsSearch}
+                  fieldLabel={t('library.refineExisting')}
+                  placeholder={t('common.search')}
+                  ariaLabel={t('common.search')}
+                  hostClassName={styles.dsMenuSearch}
+                  testId="library-design-system-menu-search"
+                />
+                {visibleDesignSystems.length === 0 ? (
                   <div className={styles.dsMenuEmpty}>{t('library.noEditableDesignSystems')}</div>
                 ) : (
-                  dsList.map((ds) => (
+                  visibleDesignSystems.map((ds) => (
                     <button
                       key={ds.id}
                       type="button"

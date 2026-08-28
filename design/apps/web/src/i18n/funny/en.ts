@@ -19,6 +19,10 @@ import type { FunnyOverrides } from '../types';
  * "permanently". That part is on whoever writes the line.
  */
 export const EN_FUNNY: FunnyOverrides = {
+  'regexBuilder.workbenchHint': { 3: 'These inserts append raw syntax to the field; guided parts step aside when the raw editor needs the steering wheel.', 5: 'These inserts bolt raw engine syntax onto the field; the guided parts politely move their chairs when the pattern gets fancy.' },
+  'regexBuilder.evaluationRefused': { 3: 'Evaluation refused before the engine ran: {reason}', 5: 'The engine was asked to run a risky pattern and wisely stayed in bed: {reason}' },
+  'regexBuilder.evaluationExhausted': { 3: 'Evaluation stopped at the local safety budget. The visible result set is not filtered further.', 5: 'The safety budget tapped out, so the visible list stays honest and is not filtered any further.' },
+  'regexBuilder.snippetSaved': { 3: 'Snippet saved locally', 5: 'Snippet tucked safely into local storage' },
   'handoff.downloadSucceeded': { 3: 'Handoff export downloaded', 5: 'The registry has left the building' },
   'handoff.downloadFailed': { 3: 'Handoff export could not be downloaded', 5: 'The download declined its little trip' },
   'handoff.statusImplemented': { 3: 'Implemented', 5: 'Implemented, with paperwork' },

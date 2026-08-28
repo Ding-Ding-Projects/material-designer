@@ -647,6 +647,11 @@ const CATALOGUE = {
     en: 'That pattern will not compile: {error}',
     yue: '呢個 pattern 編譯唔到：{error}',
   },
+  'search.refused': { en: 'Pattern refused before matching', yue: '個 pattern 喺比對前已經被拒絕' },
+  'search.timedOut': { en: 'Pattern evaluation timed out', yue: '個 pattern 比對超時' },
+  'search.truncated': { en: 'Pattern matches were truncated', yue: '個 pattern 嘅比對結果已截短' },
+  'search.resultsTruncated': { en: 'Only the first 60 matching entries are shown.', yue: '而家只顯示頭 60 個夾到嘅項目。' },
+  'search.sweepIncomplete': { en: 'Search stopped at the sweep budget; this result set may be incomplete.', yue: '搜尋去到整輪剖析額度就停咗，結果可能未完整。' },
   'search.clear': { en: 'Clear the search', yue: '清空搜尋' },
 
   'regex.builder.open': { en: 'Open the regex builder', yue: '打開 regex 產生器' },

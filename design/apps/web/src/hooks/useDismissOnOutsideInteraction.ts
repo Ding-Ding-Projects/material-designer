@@ -23,6 +23,7 @@ export function useDismissOnOutsideInteraction(
   open: boolean,
   containerRef: RefObject<HTMLElement | null>,
   onDismiss: () => void,
+  portaledInsideSelector?: string,
 ): void {
   // Callers pass an inline arrow; keeping it in a ref means the listeners are
   // bound once per open rather than re-bound on every render.
@@ -34,7 +35,9 @@ export function useDismissOnOutsideInteraction(
     const onPointerDown = (event: PointerEvent) => {
       const container = containerRef.current;
       if (!container) return;
-      if (!container.contains(event.target as Node)) onDismissRef.current();
+      if (container.contains(event.target as Node)) return;
+      if (portaledInsideSelector && event.target instanceof Element && event.target.closest(portaledInsideSelector)) return;
+      onDismissRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onDismissRef.current();
@@ -45,5 +48,5 @@ export function useDismissOnOutsideInteraction(
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open, containerRef]);
+  }, [open, containerRef, portaledInsideSelector]);
 }

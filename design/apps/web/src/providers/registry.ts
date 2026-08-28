@@ -3563,22 +3563,115 @@ export interface LibraryAssetQuery {
   q?: string;
   date?: string;
   tag?: string;
+  /** Opaque keyset cursor returned by the Library HTTP route. */
+  cursor?: string;
+  /** Per-page request size, clamped by the provider walk. */
+  limit?: number;
 }
 
-export async function fetchLibraryAssets(query: LibraryAssetQuery = {}): Promise<LibraryAsset[]> {
+export const LIBRARY_PAGE_SIZE = 500;
+export const LIBRARY_PAGINATION_LIMIT = 10_000;
+
+export type LibraryAssetFetchResult =
+  | {
+      ok: true;
+      assets: LibraryAsset[];
+      nextCursor: null;
+      pages: number;
+      complete: true;
+      interrupted: false;
+      error: null;
+    }
+  | {
+      ok: false;
+      assets: LibraryAsset[];
+      nextCursor: string | null;
+      pages: number;
+      complete: false;
+      interrupted: true;
+      error: string;
+    };
+
+export function parseLibraryNextCursor(value: unknown): { ok: true; nextCursor: string | null } | { ok: false } {
+  if (value === undefined || value === null) return { ok: true, nextCursor: null };
+  if (typeof value !== 'string' || value.length === 0 || value.length > 4096) return { ok: false };
+  return { ok: true, nextCursor: value };
+}
+
+/** Legacy offset parsing remains strict for callers that still use the CLI list. */
+export function parseLibraryNextOffset(value: unknown): { ok: true; nextOffset: number | null } | { ok: false } {
+  if (value === undefined || value === null) return { ok: true, nextOffset: null };
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) return { ok: false };
+  return { ok: true, nextOffset: value };
+}
+
+async function fetchLibraryAssetsPage(query: LibraryAssetQuery): Promise<
+  | { ok: true; assets: LibraryAsset[]; nextCursor: string | null }
+  | { ok: false; error: string }
+> {
   try {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
-      if (value) params.set(key, value);
+      if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
     }
     const qs = params.toString();
     const resp = await fetch(`/api/library/assets${qs ? `?${qs}` : ''}`);
-    if (!resp.ok) return [];
+    if (!resp.ok) return { ok: false, error: `Library request returned HTTP ${resp.status}.` };
     const json = (await resp.json()) as LibraryAssetListResponse;
-    return json.assets ?? [];
+    const cursor = parseLibraryNextCursor(json.nextCursor);
+    if (!cursor.ok) return { ok: false, error: 'Library returned an invalid pagination cursor.' };
+    return { ok: true, assets: Array.isArray(json.assets) ? json.assets : [], nextCursor: cursor.nextCursor };
   } catch {
-    return [];
+    return { ok: false, error: 'Library request could not be completed.' };
   }
+}
+
+/**
+ * Fetch every cursor in one stable keyset snapshot. A repeated cursor or a
+ * pagination limit is an interrupted result, never a successful partial list.
+ * Already fetched rows remain available for retry and are labelled incomplete
+ * by the caller.
+ */
+export async function fetchAllLibraryAssets(
+  query: LibraryAssetQuery = {},
+  options?: { paginationLimit?: number },
+): Promise<LibraryAssetFetchResult> {
+  const assets: LibraryAsset[] = [];
+  const seenCursors = new Set<string>();
+  const paginationLimit = Math.min(
+    Math.max(1, options?.paginationLimit ?? LIBRARY_PAGINATION_LIMIT),
+    LIBRARY_PAGINATION_LIMIT,
+  );
+  let nextCursor: string | null = query.cursor ?? null;
+  let pages = 0;
+  for (;;) {
+    if (pages >= paginationLimit) {
+      return { ok: false, assets, nextCursor, pages, complete: false, interrupted: true, error: 'pagination-limit' };
+    }
+    if (nextCursor !== null) {
+      if (seenCursors.has(nextCursor)) {
+        return { ok: false, assets, nextCursor, pages, complete: false, interrupted: true, error: 'pagination-cursor-repeated' };
+      }
+      seenCursors.add(nextCursor);
+    }
+    const result = await fetchLibraryAssetsPage({ ...query, cursor: nextCursor ?? undefined, limit: LIBRARY_PAGE_SIZE });
+    pages += 1;
+    if (!result.ok) {
+      return { ok: false, assets, nextCursor, pages, complete: false, interrupted: true, error: result.error };
+    }
+    assets.push(...result.assets);
+    nextCursor = result.nextCursor;
+    if (nextCursor === null) {
+      return { ok: true, assets, nextCursor: null, pages, complete: true, interrupted: false, error: null };
+    }
+  }
+}
+
+/** Compatibility wrapper. It is exhaustive, while the typed function above
+ * keeps interruptions visible to surfaces that can offer a retry. */
+export async function fetchLibraryAssets(query: LibraryAssetQuery = {}) {
+  const result = await fetchAllLibraryAssets(query);
+  return result.assets;
 }
 
 /**

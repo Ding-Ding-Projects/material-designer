@@ -12,10 +12,10 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import type { LibraryAsset } from '@open-design/contracts';
-import { Button, Input } from '@open-design/components';
+import { Button } from '@open-design/components';
 import { useT } from '../i18n';
 import { modalOverlay, modalContent } from '../motion';
-import { fetchLibraryAssets, libraryAssetRawUrl } from '../providers/registry';
+import { fetchAllLibraryAssets, libraryAssetRawUrl } from '../providers/registry';
 import {
   KindIcon,
   assetTitle,
@@ -29,6 +29,7 @@ import type { BadgeKind } from './LibraryAssetMeta';
 import { Icon } from './Icon';
 import { useInView } from './plugins-home/useInView';
 import styles from './LibraryPicker.module.css';
+import { RegexSearchField, useRegexSearch } from './regex';
 
 // Mirrors the Library grid's chips. `element` is a badge-only identity (an image
 // clip carrying `metadata.element`), so it has no storage kind of its own; the
@@ -64,25 +65,34 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState<BadgeKind | ''>('');
   const [search, setSearch] = useState('');
+  const searchRegex = useRegexSearch(search, setSearch);
   // Debounced mirror of `search` so the (potentially large) filter pass runs
   // once per typing pause, not on every keystroke. The input stays bound to
   // `search` for instant feedback.
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadedOnceRef = useRef(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const result = await fetchAllLibraryAssets();
+      loadedOnceRef.current = true;
+      if (!result.ok) setLoadError(result.error);
+      setAssets(result.assets);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Library request could not be completed.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    void fetchLibraryAssets().then((next) => {
-      if (cancelled) return;
-      setAssets(next);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void load().catch(() => undefined);
+  }, [load]);
 
   useEffect(() => {
     function onKey(ev: KeyboardEvent) {
@@ -98,16 +108,16 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   }, [search]);
 
   const visible = useMemo(() => {
-    const q = debouncedSearch.trim().toLowerCase();
     return assets.filter((asset) => {
       if (!matchesKindFilter(asset, kind)) return false;
-      if (!q) return true;
       const hay = `${assetTitle(asset)} ${asset.tags?.join(' ') ?? ''} ${asset.caption ?? ''} ${
         asset.sourceDomain ?? ''
       } ${asset.ocrText ?? ''}`.toLowerCase();
-      return hay.includes(q);
+      return searchRegex.mode === 'regex'
+        ? searchRegex.matches(hay)
+        : !debouncedSearch.trim() || hay.includes(debouncedSearch.trim().toLowerCase());
     });
-  }, [assets, kind, debouncedSearch]);
+  }, [assets, kind, debouncedSearch, searchRegex.mode, searchRegex.matches]);
 
   // Stable so the memoized PickerCard's shallow-prop compare holds: a selection
   // toggle then only re-renders the one card whose `selected` flipped, not every
@@ -175,12 +185,12 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
         </header>
 
         <div className={styles.toolbar}>
-          <Input
-            type="search"
-            value={search}
+          <RegexSearchField
+            search={searchRegex}
+            fieldLabel={t('libraryPicker.searchPlaceholder')}
             placeholder={t('libraryPicker.searchPlaceholder')}
-            onChange={(e) => setSearch(e.target.value)}
-            data-testid="library-picker-search"
+            ariaLabel={t('libraryPicker.searchPlaceholder')}
+            testId="library-picker-search"
           />
           <div className={styles.kinds} role="tablist">
             <button
@@ -208,6 +218,12 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
         </div>
 
         <div className={styles.body}>
+          {loadError ? (
+            <div className={styles.inlineError} role="alert" data-testid="library-picker-load-error" data-refresh-state="library-picker-refresh-error">
+              <span>{t('library.loadError')} ({loadError})</span>
+              <button type="button" onClick={() => { loadedOnceRef.current = false; void load(); }}>{t('library.retry')}</button>
+            </div>
+          ) : null}
           {loading ? (
             <div className={styles.placeholder}>{t('libraryPicker.loading')}</div>
           ) : visible.length === 0 ? (

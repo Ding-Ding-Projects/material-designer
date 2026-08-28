@@ -305,7 +305,9 @@ function wireSearch(fieldId, modeId, builderId, statusId, onQuery) {
   const input = $('#' + fieldId);
   if (!input) return null;
 
-  const state = { mode: 'plain', matcher: null };
+  const state = { mode: 'plain', matcher: null, flags: 'i' };
+  const evaluator = regex.createEvaluator({ deadlineMs: 250 });
+  let runSerial = 0;
 
   const modeBtn = $('#' + modeId);
   const builderBtn = $('#' + builderId);
@@ -321,40 +323,74 @@ function wireSearch(fieldId, modeId, builderId, statusId, onQuery) {
       translate: (k, f) => label(k, f),
       onApply: (pattern, flags) => {
         state.mode = 'regex';
+        state.flags = flags || 'i';
         input.value = pattern;
         if (modeBtn) modeBtn.setAttribute('aria-pressed', 'true');
-        run(flags);
+        void run(flags);
+      },
+      onChange: (next) => {
+        state.mode = next.mode === 'regex' ? 'regex' : 'plain';
+        state.flags = next.flags || 'i';
+        void run(state.flags);
       },
     });
   }
 
-  function currentMatcher(flags) {
+  function currentPlainMatcher() {
     const query = input.value.trim();
     if (!query) return null;
+    const needle = query.toLowerCase();
+    return (text) => text.toLowerCase().includes(needle);
+  }
+
+  async function run(flags = state.flags) {
+    const serial = ++runSerial;
+    const query = input.value.trim();
+    if (!query) {
+      state.matcher = null;
+      await onQuery(null, query, state.mode, () => serial === runSerial);
+      return;
+    }
     if (state.mode !== 'regex') {
-      const needle = query.toLowerCase();
-      return (text) => text.toLowerCase().includes(needle);
+      const matcher = currentPlainMatcher();
+      state.matcher = matcher;
+      await onQuery(matcher, query, state.mode, () => serial === runSerial);
+      return;
     }
-    try {
-      const re = new RegExp(query, flags || 'i');
-      if (status) status.textContent = '';
-      return (text) => { re.lastIndex = 0; return re.test(text); };
-    } catch (error) {
-      // An invalid pattern reports itself and stops matching, rather than
-      // silently returning nothing and looking like "no results".
-      if (status) status.textContent = label('search.invalid', 'Invalid pattern') + ': ' + error.message;
-      return 'invalid';
-    }
-  }
 
-  function run(flags) {
-    const matcher = currentMatcher(flags);
+    // The controller owns compilation and evaluation. This initial empty
+    // sample validates syntax and conservative refusal before the page scans
+    // its own content, so main.js never constructs a raw RegExp.
+    const probe = await evaluator.evaluate({ pattern: query, flags: flags || 'i', sample: '' });
+    if (serial !== runSerial) return;
+    if (!probe.ok) {
+      if (status) status.textContent = i18n.t('search.invalid', { error: i18n.t('search.refused') });
+      state.matcher = 'invalid';
+      await onQuery('invalid', query, state.mode, () => serial === runSerial);
+      return;
+    }
+    if (status) status.textContent = probe.timedOut ? i18n.t('search.timedOut') : '';
+    const matcher = async (text) => {
+      const result = await evaluator.evaluate({ pattern: query, flags: flags || 'i', sample: String(text || '').slice(0, 4000) });
+      if (serial !== runSerial) return false;
+      if (!result.ok) {
+        if (status) status.textContent = i18n.t('search.invalid', { error: i18n.t('search.refused') });
+        return false;
+      }
+      if (result.timedOut || result.truncated) {
+        if (status) status.textContent = result.timedOut
+          ? i18n.t('search.timedOut')
+          : i18n.t('search.truncated');
+        return false;
+      }
+      return Array.isArray(result.matches) && result.matches.length > 0;
+    };
     state.matcher = matcher;
-    onQuery(matcher, input.value.trim(), state.mode);
+    await onQuery(matcher, query, state.mode, () => serial === runSerial);
   }
 
-  input.addEventListener('input', () => run());
-  input.addEventListener('search', () => run());
+  input.addEventListener('input', () => { void run(); });
+  input.addEventListener('search', () => { void run(); });
 
   if (modeBtn) {
     modeBtn.addEventListener('click', () => {
@@ -365,7 +401,7 @@ function wireSearch(fieldId, modeId, builderId, statusId, onQuery) {
         ? label('search.mode.regex', 'Regular expression')
         : label('search.mode.plain', 'Plain text');
       if (status) status.textContent = hint;
-      run();
+      void run();
     });
   }
 
@@ -381,7 +417,7 @@ function wireContentSearch() {
   const scroll = $('#app-scroll');
 
   wireSearch('site-search-input', 'site-search-mode', 'site-search-builder', 'site-search-status',
-    (matcher, query) => {
+    async (matcher, query, mode, isCurrent) => {
       if (!results || !list) return;
 
       if (!query || matcher === 'invalid') {
@@ -390,7 +426,21 @@ function wireContentSearch() {
         return;
       }
 
-      const hits = index.filter((entry) => matcher(entry.text)).slice(0, 60);
+      const hits = [];
+      let resultTruncated = false;
+      let sweepIncomplete = false;
+      const sweepStarted = performance.now();
+      for (const entry of index) {
+        if (isCurrent && !isCurrent()) return;
+        if (performance.now() - sweepStarted > 2000) {
+          sweepIncomplete = true;
+          break;
+        }
+        if (await matcher(entry.text)) {
+          if (hits.length < 60) hits.push(entry);
+          else resultTruncated = true;
+        }
+      }
       list.textContent = '';
 
       for (const hit of hits) {
@@ -426,6 +476,18 @@ function wireContentSearch() {
         empty.textContent = label('search.empty', 'Nothing on this page matches that.');
         list.append(empty);
       }
+      if (resultTruncated) {
+        const truncated = document.createElement('li');
+        truncated.className = 'md-empty__body';
+        truncated.textContent = i18n.t('search.resultsTruncated');
+        list.append(truncated);
+      }
+      if (sweepIncomplete) {
+        const incomplete = document.createElement('li');
+        incomplete.className = 'md-empty__body';
+        incomplete.textContent = i18n.t('search.sweepIncomplete');
+        list.append(incomplete);
+      }
 
       results.hidden = false;
       if (scroll) scroll.hidden = true;
@@ -434,18 +496,27 @@ function wireContentSearch() {
 
 function wireSettingsSearch() {
   const units = () => $$('#tab-panel-settings [data-setting-unit], .settings-group');
+  const status = $('#settings-search-status');
 
   wireSearch('settings-search-input', 'settings-search-mode', 'settings-search-builder',
-    'settings-search-status', (matcher, query) => {
+    'settings-search-status', async (matcher, query, mode, isCurrent) => {
       const all = units();
       if (!query || matcher === 'invalid') {
         for (const unit of all) unit.hidden = false;
         return;
       }
+      const sweepStarted = performance.now();
+      let sweepIncomplete = false;
       for (const unit of all) {
+        if (isCurrent && !isCurrent()) return;
+        if (performance.now() - sweepStarted > 2000) {
+          sweepIncomplete = true;
+          break;
+        }
         const text = (unit.textContent || '').replace(/\s+/g, ' ').trim();
-        unit.hidden = !matcher(text);
+        unit.hidden = !(await matcher(text));
       }
+      if (status && sweepIncomplete) status.textContent = i18n.t('search.sweepIncomplete');
       // A group whose every row is hidden hides itself too, so the surface does
       // not end up as a column of empty headings.
       for (const group of $$('.settings-group')) {

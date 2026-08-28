@@ -1,20 +1,5 @@
 # Roadmap
 
-- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
-      emergency handoff in `HANDOFF.md` records every preserved branch, exact
-      commit, review state, release blocker, and missing runtime evidence. No
-      incomplete branch is considered shipped merely because its work was
-      committed and pushed for preservation. A successor must re-read each HOLD
-      finding, reconcile approved source semantically, run hosted verification,
-      drive the installed application, and collect the required screenshots
-      before checking this item.
-
-      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
-      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
-      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
-      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
-      仲要補齊真正 screenshots，先可以 tick 呢項。
-
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles
@@ -1684,11 +1669,14 @@ against the source, not against the memory of having done it.
       floating panel: `RegexSearchField` opens a popover portalled to the body
       and positioned from its own host's rect, bound to that field's query,
       pattern, flags and mode. Each field gets its own; none share hidden state.
-- [x] **Wire it to every collection search bar.** **Thirteen surfaces** consume
-      `RegexSearchField` — brands, design systems (both views), the entry
-      topbar, examples, the MCP client section, the notification centre,
-      plugins, the project reference modal, settings, skills and the rest.
-      Plain text stays the default and regex is an explicit opt-in.
+- [x] **Wire every inventoried desktop and documentation-site search bar.**
+      The hand-written inventory in
+      [`docs/standards/search-surface-inventory.md`](docs/standards/search-surface-inventory.md)
+      records the currently reachable field-owned builders and their isolated
+      state boundaries. The source check is green for those rows, but bare
+      search controls in feature work outside the active route inventory remain
+      open and must be promoted only after a real builder is wired. Plain text
+      stays the default and regex is an explicit opt-in.
 - [x] **Give every settings surface its own search bar wired to the same
       builder.** `SettingsSearchResults` searches option labels, descriptions and
       current values, and renders `settings.searchOtherTabBadge` naming the
@@ -1696,18 +1684,41 @@ against the source, not against the memory of having done it.
       appearing to be missing.
       *The capture that confirmed it absent was of `90e52d3`; it has since been
       built, and the capture in the README shows the field.*
-- [x] **Evaluate locally and defensively** — the pattern is capped at
-      `MAX_PATTERN_LENGTH` and the sample at `MAX_SAMPLE_LENGTH` before either
-      reaches the engine, the match loop is bounded by `MAX_SAMPLE_MATCHES`, and
-      zero-width matches are advanced explicitly rather than looping forever.
-      `evaluate.ts` is honest in its own header that this is *bounding*, not
-      immunity: real catastrophic-backtracking protection needs a worker with a
-      timeout or a non-backtracking engine, and neither exists here. That
-      caveat is worth keeping visible rather than tidying away.
+ - [x] **Evaluate locally and defensively** — the pattern is capped at
+       `MAX_PATTERN_LENGTH` and the sample at `MAX_SAMPLE_LENGTH` before either
+       reaches the engine, the match loop is bounded by `MAX_SAMPLE_MATCHES`, and
+       zero-width matches use Unicode-aware advancement. Since the synchronous
+       engine cannot be killed mid-`exec()`, nested quantifiers, quantified
+       alternations, and quantified backreferences are refused before evaluation.
+       List-budget exhaustion stays visible and leaves rows unfiltered rather than
+       silently inventing a complete result.
 - [x] **Test against the real engine** — `tests/components/regex/` holds
       `evaluate.test.ts`, `parse.test.ts`, `pattern.test.ts` and
       `RegexSearchField.test.tsx`, plus `CommandPalette.regex-filter.test.ts`
       for the palette's own surface.
+- [x] **Extend the builder into an advanced workbench.** `diagnostics.ts` keeps
+      JavaScript RegExp and its ECMAScript dialect explicit, exposes a capability
+      matrix with visible unsupported constructs, token ranges and structured
+      explanations, bounded replacement-template previews, validated local
+      snippet JSON import/export/copy, elapsed-time profiling, and a structural
+      trace with an explicit engine-trace limitation. `RegexWorkbenchPanels` is
+      mounted in the same field-local popover. `diagnostics.test.ts`,
+      `RegexWorkbenchPanels.test.tsx`, and `searchSurfaceInventory.test.ts`
+       cover the new behavior and deliberate red-then-green omissions. Hosted
+       build and packaged interaction evidence remain open.
+ - [x] **Harden the workbench and Library continuation.** Unicode code-point
+       escapes receive exact token ranges, match navigation and expected
+       match/no-match cases are available, replacement previews preserve native
+       unmatched-capture semantics, imported snippets are byte-bounded with
+       duplicate-key and unknown-field rejection, and validated snippets persist
+       per field. `fetchAllLibraryAssets` walks every opaque cursor with repeated-
+       cursor and pagination-limit detection, and Library surfaces label an
+       interrupted partial result for retry. The expanded 33-row search inventory
+       records exact field ids, including all nine actual FileViewer menus,
+       picker, filter and site fields. Three required site tab rows remain
+       explicitly RED until the tabs lane supplies group, group-name and master
+       searches. Source Chuts are green for the enumerated rows; packaged
+       interaction evidence remains open.
 
 ### 3.4 Dim sum surprise
 

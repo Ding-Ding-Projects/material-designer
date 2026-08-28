@@ -291,6 +291,10 @@ const CHROME_KEYS = {
                                            '分頁條唔夠位收埋咗，喺呢度一樣揀到。'],
   emptyQuery:  ['tabs.filter.empty',       'Type to filter the list.', '打字就篩選。'],
   invalid:     ['tabs.pattern.error',      'Pattern error',            'Pattern 有錯'],
+  invalidDetail:['tabs.pattern.invalidDetail','The pattern was rejected before matching.', '個式樣喺比對前已經被拒絕。'],
+  refused:     ['tabs.pattern.refused', 'Pattern refused before matching because it was unsafe to evaluate.', '個式樣有安全風險，所以未比對就拒絕咗。'],
+  timedOut:    ['tabs.pattern.timedOut', 'Pattern evaluation timed out before this list was complete.', '個式樣比對超時，清單未完成。'],
+  incomplete:  ['tabs.pattern.incomplete', 'Search stopped at its bounded evaluation budget; the visible list may be incomplete.', '搜尋去到有上限嘅剖析額度就停咗，畫面上嘅清單可能未完整。'],
   engineNote:  ['tabs.engine.note',        `Engine: ${REGEX_DIALECT}`, `引擎：${REGEX_DIALECT}`],
 };
 
@@ -350,12 +354,52 @@ function chrome(key) {
  * ========================================================================== */
 
 /**
- * Heuristic for the nested-quantifier shapes that backtrack catastrophically.
- * This is a guard, not a proof — it is here because a pasted pattern is the
- * realistic threat, and refusing it with an honest message beats freezing.
+ * Conservative parser for the synchronous fallback. A worker is the normal
+ * evaluator in regex.js, but this route must remain safe when a worker cannot
+ * be created. Track nested groups, alternation and quantifiers while skipping
+ * escapes and character classes, then refuse an ambiguous quantified group.
  */
 function looksCatastrophic(pattern) {
-  return /(\([^)]*[+*]\)|\[[^\]]*\][+*])\s*[+*]/.test(pattern);
+  const frames = [];
+  let inClass = false;
+  let escaped = false;
+  const quantifierEnd = (at) => {
+    const ch = pattern[at];
+    if (ch === '*' || ch === '+' || ch === '?') return at + 1;
+    if (ch !== '{') return at;
+    const close = pattern.indexOf('}', at + 1);
+    if (close < 0 || !/^\{(?:\d+|\d*,\d*)\}/.test(pattern.slice(at, close + 1))) return at;
+    return close + 1;
+  };
+  for (let i = 0; i < pattern.length; i += 1) {
+    const ch = pattern[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '[') { inClass = true; continue; }
+    if (ch === ']' && inClass) { inClass = false; continue; }
+    if (inClass) continue;
+    if (ch === '(') {
+      frames.push({ hasQuantifier: false, hasAlternation: false });
+      continue;
+    }
+    if (ch === '|') {
+      for (const frame of frames) frame.hasAlternation = true;
+      continue;
+    }
+    if (ch === ')') {
+      const frame = frames.pop();
+      const end = quantifierEnd(i + 1);
+      if (frame && end > i + 1 && (frame.hasQuantifier || frame.hasAlternation)) return true;
+      continue;
+    }
+    if (ch === '?' && pattern[i - 1] === '(') continue;
+    const end = quantifierEnd(i);
+    if (end > i) {
+      for (const frame of frames) frame.hasQuantifier = true;
+      i = end - 1;
+    }
+  }
+  return /\\(?:\d+|k<[^>]+>)[+*{]/.test(pattern);
 }
 
 /**
@@ -416,7 +460,12 @@ function safeFindMatches(text, re) {
   const started = performance.now();
   let match;
   while ((match = global.exec(text)) !== null) {
-    if (match[0].length === 0) global.lastIndex += 1; // zero-width guard
+    if (match[0].length === 0) {
+      const unicode = global.unicode || global.flags.indexOf('v') !== -1;
+      const next = unicode && text.codePointAt(global.lastIndex) > 0xffff ? global.lastIndex + 2 : global.lastIndex + 1;
+      if (next === global.lastIndex || global.lastIndex >= text.length) break;
+      global.lastIndex = Math.min(text.length, next);
+    } // zero-width guard
     else ranges.push([match.index, match.index + match[0].length]);
     if (ranges.length >= MAX_MATCHES_PER_TEXT) break;
     if (performance.now() - started > MATCH_BUDGET_MS) break;
@@ -781,28 +830,40 @@ function createSearchField({ owner, placeholder, onChange, compact = false }) {
       return { ok: fallback.ok, empty: fallback.empty, error: fallback.error, test: fallback.test };
     },
 
+    /** Evaluate one visible tab label through the field's worker-backed controller. */
+    evaluateText(text) {
+      if (controller) {
+        return controller.evaluateText(text).then((result) => ({
+          ok: Boolean(result.ok),
+          matched: Boolean(result.ok && Array.isArray(result.matches) && result.matches.length),
+          timedOut: Boolean(result.timedOut),
+          truncated: Boolean(result.truncated),
+          refused: result.error === 'HIGH_RISK_PATTERN',
+          ranges: result.ranges || [],
+          error: result.error || null,
+        }));
+      }
+      const fallback = createTabMatcher({ query: input.value, mode: fallbackMode, flags: 'i' });
+      return Promise.resolve({
+        ok: fallback.ok,
+        matched: Boolean(fallback.ok && fallback.test(text)),
+        timedOut: false,
+        truncated: false,
+        refused: !fallback.ok,
+        ranges: fallback.ok ? fallback.find(String(text ?? '').slice(0, MAX_TEXT_LENGTH)) : [],
+        error: fallback.error || null,
+      });
+    },
+
     /**
      * Match ranges for highlighting. regex.js's matcher is a boolean predicate,
      * so the ranges are computed here from the pattern and flags it reports —
      * the same source, so the highlight can never disagree with the filter.
      */
     ranges(text) {
-      let pattern;
-      let flags;
-      if (controller) {
-        const state = controller.getState();
-        if (!state.valid) return [];
-        pattern = state.pattern;
-        flags = state.flags;
-      } else {
-        pattern = fallbackMode === 'regex' ? input.value : escapeRegExp(input.value);
-        flags = 'i';
-      }
-      if (!pattern || pattern.length > MAX_PATTERN_LENGTH) return [];
-      try {
-        const re = new RegExp(pattern, String(flags || 'i').replace(/[gy]/g, ''));
-        return safeFindMatches(String(text ?? '').slice(0, MAX_TEXT_LENGTH), re);
-      } catch { return []; }
+      if (controller) return [];
+      const fallback = createTabMatcher({ query: input.value, mode: fallbackMode, flags: 'i' });
+      return fallback.ok ? fallback.find(String(text ?? '').slice(0, MAX_TEXT_LENGTH)) : [];
     },
 
     destroy() {
@@ -1600,7 +1661,7 @@ class TabStrip {
       role: 'dialog',
       label: chrome('findTabs'),
       onOpen: () => {
-        this.#renderTabList();
+      this.#renderTabList();
         requestAnimationFrame(() => this.listField.focus());
       },
     });
@@ -1616,11 +1677,11 @@ class TabStrip {
     else this.listField.focus();
   }
 
-  #renderTabList() {
+  async #renderTabList() {
     this.listNote.textContent = chrome('engineNote');
     this.listNote.dataset.error = 'false';
     this.listBody.replaceChildren(
-      ...this.#buildRows(this.order, this.listField, this.listNote, { pop: this.listPop, manage: true }),
+      ...(await this.#buildRows(this.order, this.listField, this.listNote, { pop: this.listPop, manage: true })),
     );
   }
 
@@ -1629,22 +1690,45 @@ class TabStrip {
    * state and whether the strip is currently hiding it, and offer the same
    * management actions without losing the active query.
    */
-  #buildRows(ids, field, note, { pop, manage = false } = {}) {
+  async #buildRows(ids, field, note, { pop, manage = false } = {}) {
     const matcher = field.matcher();
     field.input.setAttribute('aria-invalid', String(!matcher.ok));
-    if (!matcher.ok) {
-      note.textContent = `${chrome('invalid')}: ${matcher.error}`;
-      note.dataset.error = 'true';
-      return [el('p', { class: 'md-pop__empty', text: chrome('noMatch') })];
-    }
+    // A controller may still be compiling or may have refused the pattern.
+    // Let its worker result decide the visible state, rather than turning an
+    // unresolved predicate into a definitive no-match message.
 
     const rows = [];
     const started = performance.now();
+    let incomplete = false;
     for (const id of ids) {
-      if (performance.now() - started > MATCH_BUDGET_MS * 4) break; // total budget
+      if (performance.now() - started > MATCH_BUDGET_MS * 4) {
+        incomplete = true;
+        break;
+      }
       const def = this.definitions.get(id);
       const { full } = labelFor(def);
-      if (!matcher.empty && !matcher.test(full)) continue;
+      let matchRanges = [];
+      if (!matcher.empty) {
+        const result = await field.evaluateText(full);
+        if (!result.ok || result.refused) {
+          note.textContent = result.timedOut
+            ? chrome('timedOut')
+            : result.truncated
+              ? chrome('incomplete')
+              : result.refused
+                ? chrome('refused')
+                : `${chrome('invalid')}: ${chrome('invalidDetail')}`;
+          note.dataset.error = 'true';
+          return [el('p', { class: 'md-pop__empty', text: note.textContent })];
+        }
+        if (result.timedOut || result.truncated) {
+          note.textContent = result.timedOut ? chrome('timedOut') : chrome('incomplete');
+          note.dataset.error = 'true';
+          incomplete = true;
+        }
+        if (!result.matched) continue;
+        matchRanges = result.ranges;
+      }
 
       const isPinned = this.pinned.has(id);
       const isHiddenNow = this.hiddenIds.includes(id);
@@ -1656,7 +1740,7 @@ class TabStrip {
 
       const name = el('span', { class: 'md-pop__name' });
       const strong = el('b');
-      strong.innerHTML = matcher.empty ? escapeHtml(full) : highlight(full, field.ranges(full));
+      strong.innerHTML = matcher.empty ? escapeHtml(full) : highlight(full, matchRanges);
       name.append(strong);
       if (meta) name.append(el('span', { class: 'md-pop__meta', text: meta }));
 
@@ -1691,6 +1775,11 @@ class TabStrip {
       rows.push(row);
     }
 
+    if (incomplete) {
+      note.textContent = chrome('incomplete');
+      note.dataset.error = 'true';
+    }
+
     if (!rows.length) {
       // An honest no-match message naming what was filtered, never an empty box
       // that reads as a loading failure.
@@ -1722,7 +1811,7 @@ class TabStrip {
       role: 'dialog',
       label: chrome('tabActions'),
       onOpen: () => {
-        this.#renderContextMenu();
+      void this.#renderContextMenu();
         requestAnimationFrame(() => this.menuField.focus());
       },
       returnFocusTo: () => this.nodes.get(this.menuTargetId),
@@ -1751,7 +1840,7 @@ class TabStrip {
     this.menuPop.open();
   }
 
-  #renderContextMenu() {
+  async #renderContextMenu() {
     const id = this.menuTargetId;
     if (!id) return;
     const isPinned = this.pinned.has(id);
@@ -1766,9 +1855,17 @@ class TabStrip {
     const matcher = this.menuField.matcher();
     this.menuField.input.setAttribute('aria-invalid', String(!matcher.ok));
 
-    const rows = items
-      .filter((item) => matcher.ok && (matcher.empty || matcher.test(item.label)))
-      .map((item) => el('div', { class: 'md-pop__row' },
+    const rows = [];
+    for (const item of items) {
+      if (!matcher.empty) {
+        const result = await this.menuField.evaluateText(item.label);
+        if (!result.ok || result.refused || result.timedOut || result.truncated) {
+          this.menuBody.replaceChildren(el('p', { class: 'md-pop__empty', text: result.timedOut ? chrome('timedOut') : result.truncated ? chrome('incomplete') : result.refused ? chrome('refused') : `${chrome('invalid')}: ${chrome('invalidDetail')}` }));
+          return;
+        }
+        if (!result.matched) continue;
+      }
+      rows.push(el('div', { class: 'md-pop__row' },
         el('button', {
           type: 'button', class: 'md-pop__pick',
           onclick: () => { this.menuPop.close(); item.run(); },
@@ -1778,6 +1875,7 @@ class TabStrip {
         // It is decorative text to AT, since the menu item itself is the target.
         item.keys ? el('span', { class: 'md-pop__shortcut', 'aria-hidden': 'true', text: item.keys }) : null),
       ));
+    }
 
     this.menuBody.replaceChildren(
       ...(rows.length ? rows : [el('p', { class: 'md-pop__empty', text: chrome('noMatch') })]),

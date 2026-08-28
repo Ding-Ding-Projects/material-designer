@@ -26,6 +26,7 @@ import { parsePattern, type ParseFailure } from './parse';
 import { createBoundedMatcher } from './evaluate';
 
 export type RegexSearchMode = 'text' | 'regex';
+export type RegexEvaluationState = 'ready' | 'exhausted' | 'refused';
 
 export interface RegexSearchController {
   /** The field's current text: plain text, or the pattern in regex mode. */
@@ -52,6 +53,9 @@ export interface RegexSearchController {
   regex: RegExp | null;
   /** Row predicate. Never throws, and never hides rows on failure. */
   matches: (text: string) => boolean;
+  /** Visible state for a refused or budget-exhausted local evaluation. */
+  evaluationState: RegexEvaluationState;
+  evaluationMessage: string | null;
   /** Scratch text the builder previews against. Lives here so closing and
    *  reopening the popover does not throw the user's sample away. */
   sample: string;
@@ -75,6 +79,8 @@ export function useRegexSearch(
   const [parts, setParts] = useState<RegexPart[]>([]);
   const [syncFailure, setSyncFailure] = useState<ParseFailure | null>(null);
   const [sample, setSample] = useState('');
+  const [evaluationState, setEvaluationState] = useState<RegexEvaluationState>('ready');
+  const [evaluationMessage, setEvaluationMessage] = useState<string | null>(null);
 
   // The pattern the parts list was last derived from or rendered to. Anything
   // else arriving in `query` came from somewhere the parts have not seen.
@@ -155,6 +161,21 @@ export function useRegexSearch(
     };
   }, [mode, query, flags]);
 
+  useEffect(() => {
+    if (mode === 'regex' && compiled.error?.kind === 'unsafe') {
+      setEvaluationState('refused');
+      setEvaluationMessage(compiled.error.reason);
+      return;
+    }
+    if (mode === 'text') {
+      setEvaluationState('ready');
+      setEvaluationMessage(null);
+      return;
+    }
+    setEvaluationState('ready');
+    setEvaluationMessage(null);
+  }, [mode, compiled.error]);
+
   const matches = useMemo<(text: string) => boolean>(() => {
     if (mode === 'text') {
       const needle = query.trim().toLowerCase();
@@ -162,9 +183,26 @@ export function useRegexSearch(
       return (text: string) => text.toLowerCase().includes(needle);
     }
     const regex = compiled.regex;
-    if (!regex) return MATCH_EVERYTHING;
+    if (!regex) {
+      return MATCH_EVERYTHING;
+    }
     const bounded = createBoundedMatcher(regex);
-    return (text: string) => bounded.test(text);
+    const reported = { value: false };
+    return (text: string) => {
+      const result = bounded.test(text);
+      if (!reported.value && bounded.exhausted()) {
+        reported.value = true;
+        const state = bounded.refused() ? 'refused' : 'exhausted';
+        const message = bounded.reason();
+        // Matching is called by host renderers. Defer the state write so a
+        // budget notice never mutates React state while a host is rendering.
+        queueMicrotask(() => {
+          setEvaluationState(state);
+          setEvaluationMessage(message);
+        });
+      }
+      return result;
+    };
   }, [mode, query, compiled]);
 
   return {
@@ -183,6 +221,8 @@ export function useRegexSearch(
     usingLastValid: compiled.usingLastValid,
     regex: compiled.regex,
     matches,
+    evaluationState,
+    evaluationMessage,
     sample,
     setSample,
   };

@@ -21,21 +21,15 @@
 //
 // ── WHAT IT DOES NOT COVER ─────────────────────────────────────────────────
 //
-// This is a bound on how MANY evaluations happen, not on how long ONE of them
-// takes. A single `exec`/`test` call cannot be interrupted: JavaScript's RegExp
-// is synchronous and the engine does not yield. If a genuinely catastrophic
-// pattern — the classic `(a+)+$` against a long run of `a` — is handed a
-// subject that survives the length caps, that one call still blocks the main
-// thread until the engine finishes, and every check above only runs afterwards.
-//
-// So: the caps make the blow-up far less likely and far shorter when it
-// happens, and `looksCatastrophic` warns about the shape that causes most of
-// them. None of that is a guarantee. Real interruptibility needs the match to
-// run somewhere it can be killed (a worker with a timeout) or an engine that
-// does not backtrack; neither exists here, and this file should not be read as
-// claiming otherwise.
+// The desktop route uses a conservative structural parser before every
+// synchronous evaluation. Nested quantified groups, quantified alternation,
+// and quantified backreferences are refused before the engine is constructed,
+// including nested forms discovered through the complete group stack. This is
+// the safe fallback for a renderer that cannot kill a synchronous call. The
+// site workbench uses a killable worker on its normal route and the same
+// conservative parser when a worker cannot be created.
 
-import { MAX_SAMPLE_LENGTH } from './pattern';
+import { MAX_SAMPLE_LENGTH, classifyPatternRisk } from './pattern';
 
 export const MAX_SAMPLE_MATCHES = 200;
 /** Wall-clock budget for collecting matches in the builder preview. */
@@ -64,6 +58,20 @@ export interface SampleRun {
   sampleTruncated: boolean;
   /** The subject actually scanned, after truncation. */
   scanned: string;
+  /** Refused before the JavaScript engine was allowed to evaluate it. */
+  refused: boolean;
+  /** Human-readable reason for a refused or exhausted evaluation. */
+  refusalReason: string | null;
+}
+
+/** ECMAScript's AdvanceStringIndex, so zero-width Unicode matches do not split
+ * a surrogate pair into two fake positions. */
+export function advanceStringIndex(input: string, index: number, unicode: boolean): number {
+  if (!unicode) return Math.min(input.length, index + 1);
+  const codePoint = input.codePointAt(index);
+  return codePoint !== undefined && codePoint > 0xffff
+    ? Math.min(input.length, index + 2)
+    : Math.min(input.length, index + 1);
 }
 
 /**
@@ -75,6 +83,18 @@ export interface SampleRun {
 export function runSample(regex: RegExp, sample: string): SampleRun {
   const sampleTruncated = sample.length > MAX_SAMPLE_LENGTH;
   const scanned = sampleTruncated ? sample.slice(0, MAX_SAMPLE_LENGTH) : sample;
+  const risk = classifyPatternRisk(regex.source);
+  if (risk.highRisk) {
+    return {
+      matches: [],
+      truncated: false,
+      timedOut: false,
+      sampleTruncated,
+      scanned,
+      refused: true,
+      refusalReason: risk.reason,
+    };
+  }
 
   let flags = regex.flags;
   // Sticky already advances through the subject; global is what makes a
@@ -85,7 +105,7 @@ export function runSample(regex: RegExp, sample: string): SampleRun {
   try {
     scan = new RegExp(regex.source, flags);
   } catch {
-    return { matches: [], truncated: false, timedOut: false, sampleTruncated, scanned };
+    return { matches: [], truncated: false, timedOut: false, sampleTruncated, scanned, refused: false, refusalReason: null };
   }
 
   const matches: SampleMatch[] = [];
@@ -105,7 +125,11 @@ export function runSample(regex: RegExp, sample: string): SampleRun {
     });
     // A zero-width match leaves lastIndex where it was; without this the loop
     // would return the same empty match forever.
-    if (found[0].length === 0) scan.lastIndex += 1;
+    if (found[0].length === 0) {
+      const nextIndex = advanceStringIndex(scanned, scan.lastIndex, scan.unicode);
+      if (nextIndex === scan.lastIndex && scan.lastIndex >= scanned.length) break;
+      scan.lastIndex = nextIndex;
+    }
     if (matches.length >= MAX_SAMPLE_MATCHES) {
       truncated = true;
       break;
@@ -117,7 +141,7 @@ export function runSample(regex: RegExp, sample: string): SampleRun {
     if (scan.lastIndex > scanned.length) break;
   }
 
-  return { matches, truncated, timedOut, sampleTruncated, scanned };
+  return { matches, truncated, timedOut, sampleTruncated, scanned, refused: false, refusalReason: null };
 }
 
 export interface HighlightSegment {
@@ -161,6 +185,10 @@ export interface BoundedMatcher {
   test: (text: string) => boolean;
   /** True once the cumulative budget ran out and filtering stopped. */
   exhausted: () => boolean;
+  /** True when the pattern was refused before any engine evaluation. */
+  refused: () => boolean;
+  /** Explains refusal or exhaustion, without hiding the result set. */
+  reason: () => string | null;
 }
 
 /**
@@ -176,17 +204,29 @@ export function createBoundedMatcher(
 ): BoundedMatcher {
   let spent = 0;
   let exhausted = false;
+  let refusalReason: string | null = null;
+  const risk = classifyPatternRisk(regex.source);
+  if (risk.highRisk) {
+    return {
+      test: () => true,
+      exhausted: () => true,
+      refused: () => true,
+      reason: () => risk.reason,
+    };
+  }
   let scan: RegExp;
   try {
     // A private copy: `lastIndex` is reset per call, and the builder preview
     // must not be able to move a live search bar's cursor or vice versa.
     scan = new RegExp(regex.source, regex.flags);
   } catch {
-    return { test: () => true, exhausted: () => true };
+    return { test: () => true, exhausted: () => true, refused: () => false, reason: () => 'The pattern could not be compiled.' };
   }
 
   return {
     exhausted: () => exhausted,
+    refused: () => false,
+    reason: () => refusalReason,
     test(text: string): boolean {
       if (exhausted) return true;
       const subject = text.length > MAX_HAYSTACK_LENGTH ? text.slice(0, MAX_HAYSTACK_LENGTH) : text;
@@ -197,6 +237,7 @@ export function createBoundedMatcher(
         result = scan.test(subject);
       } catch {
         exhausted = true;
+        refusalReason = 'The pattern evaluation was refused after an engine error.';
         return true;
       }
       spent += Date.now() - started;
@@ -207,13 +248,9 @@ export function createBoundedMatcher(
 }
 
 // Nested quantifiers and duplicated alternatives are the shapes behind almost
-// every real-world catastrophic backtrack. This is a heuristic on the pattern
-// text, not an analysis: it has false positives (`(ab*c)+` is usually fine) and
-// false negatives (a blow-up can span several groups). It exists to put a
-// warning in front of the user, never to decide whether a pattern is allowed.
-const NESTED_QUANTIFIER =
-  /\([^()]*[+*}][^()]*\)\s*[+*{]|\([^()]*\|[^()]*\)\s*[+*{]/;
-
+// every real-world catastrophic backtrack. This scanner is deliberately
+// conservative: it tracks the complete group stack, escaped text and classes,
+// and refuses an ambiguous quantified group before synchronous evaluation.
 export function looksCatastrophic(source: string): boolean {
-  return NESTED_QUANTIFIER.test(source);
+  return classifyPatternRisk(source).highRisk;
 }

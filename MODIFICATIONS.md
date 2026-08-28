@@ -29,6 +29,43 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-28 - Preserve the regex workbench and field-owned search safety
+
+**Reason:** The regex lane adds the advanced workbench, conservative preflight
+for synchronous evaluation, worker-backed documentation search, exhaustive
+field-owned menu search, exact search-surface inventory rows, and explicit
+incomplete or refusal states. The current baseline also keeps the front-screen
+provenance changes separate from this feature lane.
+
+**Changed files:**
+
+- `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/FileViewerMenuSearch.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/LibraryPicker.tsx`
+- `apps/web/src/components/regex/RegexBuilder.module.css`
+- `apps/web/src/components/regex/RegexBuilder.tsx`
+- `apps/web/src/components/regex/RegexSamplePanel.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/components/regex/RegexWorkbenchPanels.tsx`
+- `apps/web/src/components/regex/diagnostics.ts`
+- `apps/web/src/components/regex/evaluate.ts`
+- `apps/web/src/components/regex/index.ts`
+- `apps/web/src/components/regex/pattern.ts`
+- `apps/web/src/components/regex/searchSurfaceInventory.ts`
+- `apps/web/src/components/regex/useRegexSearch.ts`
+- `apps/web/src/hooks/useDismissOnOutsideInteraction.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/regex/RegexWorkbenchPanels.test.tsx`
+- `apps/web/tests/components/regex/diagnostics.test.ts`
+- `apps/web/tests/components/regex/searchSurfaceInventory.test.ts`
+
+
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and
