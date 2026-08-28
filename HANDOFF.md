@@ -2089,7 +2089,9 @@ installer/release work or the parked dim-sum photo lane.
 ## Root build bootstrap and updater fallback, 2026-08-27
 
 The build-and-updater lane is source-complete but not yet integrated into the
-default branch. The isolated candidate is based on `861065bb` and changes the
+default branch. Source commit
+[`1f473e7d`](https://github.com/Ding-Ding-Projects/material-designer/commit/1f473e7dde135337fb9ff03c77a7a68b1985743e)
+is based on `861065bb` and changes the
 root build entry points, their dependency helpers, build documentation, and
 the web update dialog's manual release fallback.
 

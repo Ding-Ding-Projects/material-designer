@@ -71,7 +71,8 @@ version section when a release carries them.
   `docs/build/dependency-bootstrap.md`, `docs/build/README.md`,
   `docs/build/from-source.md`, `docs/release/automatic-updates.md`,
   `design/apps/web/src/components/UpdateDialog.tsx`, and `MODIFICATIONS.md`.
-  The integration commit link will be added after review and merge.
+  Source commit [`1f473e7d`](https://github.com/Ding-Ding-Projects/material-designer/commit/1f473e7dde135337fb9ff03c77a7a68b1985743e)
+  carries this lane. Hosted verification and integration remain pending.
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
