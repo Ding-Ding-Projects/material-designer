@@ -218,7 +218,7 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-trigger {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
+  min-height: 48px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -232,6 +232,15 @@ textarea { resize: vertical; font-family: inherit; }
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out);
+}
+.od-select-locked-wrapper {
+  display: block;
+  min-width: 0;
+  border-radius: var(--radius-sm);
+}
+.od-select-locked-wrapper:focus-visible {
+  outline: 2px solid var(--selected);
+  outline-offset: 2px;
 }
 .od-select-trigger:hover:not(:disabled),
 .od-select-trigger[aria-expanded='true'] {
@@ -288,8 +297,15 @@ textarea { resize: vertical; font-family: inherit; }
   width: 100%;
 }
 .od-select-search input {
-  min-height: 36px;
+  min-height: 48px;
   min-width: 0;
+}
+.od-select-result-count {
+  display: block;
+  padding: 2px 4px 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.3;
 }
 .od-select-options {
   min-height: 0;
@@ -297,7 +313,7 @@ textarea { resize: vertical; font-family: inherit; }
   overscroll-behavior: contain;
 }
 .od-select-no-results {
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -317,7 +333,7 @@ textarea { resize: vertical; font-family: inherit; }
 .od-select-option {
   width: 100%;
   min-width: 0;
-  min-height: 30px;
+  min-height: 48px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 16px;
   align-items: center;

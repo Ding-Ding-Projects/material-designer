@@ -1,9 +1,8 @@
 // Accessible select primitive with a field-owned filter.
 //
 // The filter stays plain text until regex is explicitly enabled. Its
-// RegexSearchField owns the query, flags, validation, snippets, history, and
-// anchored builder, so every select instance remains isolated from every
-// other one.
+// RegexSearchField owns the query, flags, validation, and anchored builder, so
+// every select instance remains isolated from every other one.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
@@ -19,6 +18,12 @@ export interface CustomSelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Explains why a disabled trigger cannot open its surface. */
+  disabledReason?: string;
+  /** A locked trigger remains an unlock target through its operable wrapper. */
+  locked?: boolean;
+  onLockedActivate?: () => void;
+  lockedReason?: string;
 }
 
 export interface CustomSelectGroup {
@@ -44,11 +49,14 @@ export interface CustomSelectProps {
   onFocus?: () => void;
   testId?: string;
   /** Text and accessible label for this select instance's local filter. */
-  searchLabel?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
+  searchLabel: string;
+  searchPlaceholder: string;
+  noResultsLabel: string;
+  resultCountLabel: (count: number) => string;
   /** Optional target-specific context-menu handoff for the trigger. */
   onContextMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
+  /** Stable caller-owned id. Duplicate ids are reported and marked. */
+  ownerId?: string;
 }
 
 interface FlatOption extends CustomSelectOption {
@@ -74,6 +82,12 @@ function flattenOptions(items: CustomSelectItem[]): FlatOption[] {
   );
 }
 
+function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boolean {
+  if (!(target instanceof Element)) return false;
+  const owner = target.closest('[data-regex-owner]');
+  return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
+}
+
 export function CustomSelect({
   value,
   options,
@@ -84,18 +98,26 @@ export function CustomSelect({
   triggerClassName,
   menuClassName,
   disabled = false,
+  disabledReason,
+  locked = false,
+  onLockedActivate,
+  lockedReason = 'This control is locked. Unlock it to continue.',
   placeholder,
   portal = true,
   title,
   onFocus,
+  ownerId,
   testId,
-  searchLabel = `${ariaLabel} options`,
-  searchPlaceholder = 'Filter options',
-  noResultsLabel = 'No options match this filter.',
+  searchLabel,
+  searchPlaceholder,
+  noResultsLabel,
+  resultCountLabel,
   onContextMenu,
 }: CustomSelectProps) {
   const reactId = useId();
   const idBase = reactId.replace(/:/g, '');
+  const resolvedOwnerId = ownerId ?? testId ?? idBase;
+  const domOwnerId = resolvedOwnerId.replace(/[^A-Za-z0-9_-]/g, '-');
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const wasOpenRef = useRef(false);
@@ -103,6 +125,7 @@ export function CustomSelect({
   const [open, setOpen] = useState(false);
   const [activeValue, setActiveValue] = useState(value);
   const [position, setPosition] = useState<MenuPosition | null>(null);
+  const [duplicateOwner, setDuplicateOwner] = useState(false);
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
 
@@ -124,8 +147,8 @@ export function CustomSelect({
   flatOptionsRef.current = flatOptions;
   enabledOptionsRef.current = enabledOptions;
   const optionIdByValue = useMemo(
-    () => new Map(flatOptions.map((option, index) => [option.value, `${idBase}-option-${index}`])),
-    [flatOptions, idBase],
+    () => new Map(flatOptions.map((option, index) => [option.value, `${domOwnerId}-option-${index}`])),
+    [domOwnerId, flatOptions],
   );
   const activeOptionId = open && activeValue ? optionIdByValue.get(activeValue) : undefined;
 
@@ -136,8 +159,9 @@ export function CustomSelect({
     const viewportPad = 12;
     const below = window.innerHeight - rect.bottom - viewportPad;
     const above = rect.top - viewportPad;
-    const maxHeight = Math.max(160, Math.min(360, Math.max(below, above) - gap));
-    const openAbove = below < 220 && above > below;
+    const available = Math.max(1, Math.max(below, above) - gap);
+    const maxHeight = Math.min(360, available);
+    const openAbove = below < Math.min(220, available) && above > below;
     setPosition({
       top: openAbove ? Math.max(viewportPad, rect.top - maxHeight - gap) : rect.bottom + gap,
       left: Math.min(
@@ -159,6 +183,12 @@ export function CustomSelect({
     setQuery('');
     if (shouldRestoreFocus) restoreFocus();
   }, [restoreFocus]);
+
+  const activateLocked = useCallback(() => {
+    if (!locked) return false;
+    onLockedActivate?.();
+    return true;
+  }, [locked, onLockedActivate]);
 
   useEffect(() => {
     if (!portal) return;
@@ -191,10 +221,33 @@ export function CustomSelect({
   }, [activeValue, enabledOptions, open]);
 
   useEffect(() => {
+    if (locked && open) {
+      setOpen(false);
+      setQuery('');
+    }
+  }, [locked, open]);
+
+  useEffect(() => {
+    if (!open || !activeOptionId) return;
+    const active = document.getElementById(activeOptionId);
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeOptionId, open]);
+
+  useEffect(() => {
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
+      .filter((node) => node.getAttribute('data-select-owner') === resolvedOwnerId);
+    setDuplicateOwner(matches.length > 1);
+    if (matches.length > 1) console.error(`Duplicate select owner id: ${resolvedOwnerId}`);
+  }, [resolvedOwnerId]);
+
+  useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && (buttonRef.current?.contains(target) || menuRef.current?.contains(target))) return;
+      if (isOwnedRegexSurface(target, domOwnerId)) return;
       const opensAnotherSelect = target instanceof Element
         && target.closest('[data-dropdown-opener]') != null;
       closeMenu(!opensAnotherSelect);
@@ -210,7 +263,7 @@ export function CustomSelect({
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [closeMenu, open, portal, updatePosition]);
+  }, [closeMenu, domOwnerId, open, portal, updatePosition]);
 
   const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
@@ -261,7 +314,7 @@ export function CustomSelect({
   const menu = (
     <div
       ref={menuRef}
-      id={`${idBase}-menu`}
+      id={`${domOwnerId}-menu`}
       className={[
         'od-select-menu',
         portal ? 'portal' : 'inline',
@@ -269,6 +322,7 @@ export function CustomSelect({
       ].filter(Boolean).join(' ')}
       role="listbox"
       aria-label={ariaLabel}
+      aria-labelledby={labelledBy}
       aria-activedescendant={activeOptionId}
       style={
         portal && position
@@ -288,15 +342,20 @@ export function CustomSelect({
           search={search}
           fieldLabel={searchLabel}
           ariaLabel={searchLabel}
-          ariaControls={`${idBase}-options`}
+          ariaControls={`${domOwnerId}-options`}
           ariaActiveDescendant={activeOptionId}
           placeholder={searchPlaceholder}
           testId={testId ? `${testId}-filter` : undefined}
+          focusScopeId={`${domOwnerId}-filter`}
+          popoverZIndex={10000}
           autoFocus
           onKeyDown={onSearchKeyDown}
         />
+        <span className="od-select-result-count" role="status" aria-live="polite">
+          {resultCountLabel(visibleOptions.length)}
+        </span>
       </div>
-      <div id={`${idBase}-options`} className="od-select-options" role="none">
+      <div id={`${domOwnerId}-options`} className="od-select-options" role="none">
         {visibleOptions.length === 0 ? (
           <div className="od-select-no-results" role="status" data-testid={testId ? `${testId}-no-results` : undefined}>
             {noResultsLabel}
@@ -341,7 +400,12 @@ export function CustomSelect({
     </div>
   );
 
-  const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+  const onButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (activateLocked()) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open) {
@@ -374,8 +438,7 @@ export function CustomSelect({
     }
   };
 
-  return (
-    <div className={['od-select', className].filter(Boolean).join(' ')}>
+  const trigger = (
       <button
         ref={buttonRef}
         type="button"
@@ -384,15 +447,19 @@ export function CustomSelect({
         value={value}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-controls={`${idBase}-menu`}
+        aria-controls={`${domOwnerId}-menu`}
         aria-activedescendant={activeOptionId}
         aria-describedby={labelledBy}
         aria-label={`${ariaLabel}: ${selectedLabel}`}
-        disabled={disabled}
-        title={title}
+        disabled={disabled || locked}
+        aria-disabled={disabled || locked || undefined}
+        title={locked ? lockedReason : disabled ? disabledReason ?? title : title}
         data-testid={testId}
         data-dropdown-opener="true"
+        data-select-owner={resolvedOwnerId}
+        data-owner-duplicate={duplicateOwner || undefined}
         onClick={() => {
+          if (activateLocked()) return;
           if (open) closeMenu(true);
           else setOpen(true);
         }}
@@ -405,6 +472,31 @@ export function CustomSelect({
         </span>
         <Icon name="chevron-down" size={14} />
       </button>
+  );
+
+  return (
+    <div className={['od-select', className].filter(Boolean).join(' ')} data-locked={locked || undefined}>
+      {locked ? (
+        <span
+          className="od-select-locked-wrapper"
+          role="button"
+          tabIndex={0}
+          aria-label={`${ariaLabel}: locked`}
+          aria-disabled="true"
+          title={lockedReason}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            activateLocked();
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            activateLocked();
+          }}
+        >
+          {trigger}
+        </span>
+      ) : trigger}
       {open ? (portal ? (position ? createPortal(menu, document.body) : null) : menu) : null}
     </div>
   );
@@ -436,6 +528,7 @@ function SelectOptionButton({
       ].filter(Boolean).join(' ')}
       role="option"
       aria-selected={selected}
+      data-option-value={option.value}
       tabIndex={-1}
       disabled={option.disabled}
       onMouseEnter={() => onActive(option.value)}

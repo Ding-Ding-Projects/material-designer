@@ -10,8 +10,8 @@ visible until its owning feature lane migrates it.
 
 | Row | Source | Contract | State |
 | --- | --- | --- | --- |
-| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with a field-owned plain-text-first search, anchored regex builder, isolated state, result status, keyboard navigation, focus return, viewport bounds, shortcut registry display, and real appearance/lock callback seams. | [x] implemented, mounted tests present |
-| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with a field-owned plain-text-first search, anchored regex builder, isolated state, filtered groups, result status, keyboard navigation, focus return, viewport bounds, and an optional context-menu handoff. | [x] implemented, mounted tests present |
+| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, isolated state, result status, keyboard navigation, focus return, viewport recompute, shortcut registry display, mandatory appearance and lock callback seams, and fail-closed destructive confirmation handoff. | [x] implemented, mounted tests present |
+| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with required localized labels, field-owned plain-text-first search, anchored regex builder, isolated state, filtered groups, result status, keyboard navigation, focus return, active-option scrolling, viewport recompute, stable owner IDs, and an optional context-menu handoff. | [x] implemented, mounted tests present |
 | primitive-regex-active-result | `design/apps/web/src/components/regex/RegexSearchField.tsx` | Search fields can expose the active filtered result to their own listbox or menu through `aria-activedescendant` without sharing controller state. | [x] implemented, mounted tests present |
 
 ## Native select rows
@@ -23,7 +23,7 @@ search, and the adjacent anchored regex builder.
 
 | Row | Source location | Owning surface | State |
 | --- | --- | --- | --- |
-| select-collab-role | `design/apps/web/src/collab/CollabDemoView.tsx:145` | Collaboration demo role | [ ] RED, native select remains |
+| select-collab-role | `design/apps/web/src/collab/CollabDemoView.tsx:145` | Collaboration demo role | [x] migrated to `CustomSelect`, mounted builder coverage added |
 | select-avatar-account | `design/apps/web/src/components/AvatarMenu.tsx:596` | Avatar account picker | [ ] RED, native select remains |
 | select-avatar-owner | `design/apps/web/src/components/AvatarMenu.tsx:618` | Avatar owner picker | [ ] RED, native select remains |
 | select-design-browser | `design/apps/web/src/components/DesignBrowserPanel.tsx:3075` | Design browser filter | [ ] RED, native select remains |
@@ -103,14 +103,74 @@ same field-owned controller contract.
 | search-plugins | `design/apps/web/src/components/PluginsView.tsx:3042` | [ ] RED |
 | search-project-reference | `design/apps/web/src/components/ProjectReferenceModal.tsx:177` | [ ] RED |
 | search-skills | `design/apps/web/src/components/SkillsSection.tsx:628` | [ ] RED |
-| search-regex-shared | `design/apps/web/src/components/regex/RegexSearchField.tsx:212` | [x] green, shared primitive owns the builder |
+| search-regex-shared | `design/apps/web/src/components/regex/RegexSearchField.tsx:219` | [x] green, shared primitive owns the builder |
 
 ## Context-menu rows
 
+The source currently contains exactly 50 `role="menu"` containers. This is a
+hand-written list, not a discovery result. Every row below must eventually use
+the shared menu contract or document a verified equivalent. Rows marked RED are
+unfinished and remain completion blockers.
+
 | Row | Source location | State |
 | --- | --- | --- |
-| context-menu-primitive | `design/apps/web/src/components/ContextMenu.tsx` | [x] green, shared primitive now owns filtering and callbacks |
-| context-menu-sketch | `design/apps/web/src/components/SketchEditor.tsx:209-210,773-782` | [ ] RED, legacy inline menu adapter remains |
+| menu-chat-composer-1 | `design/apps/web/src/components/ChatComposer.tsx:2860` | [ ] RED |
+| menu-chat-composer-2 | `design/apps/web/src/components/ChatComposer.tsx:2920` | [ ] RED |
+| menu-chat-history | `design/apps/web/src/components/ChatPane.tsx:2545` | [ ] RED |
+| menu-composer-mode | `design/apps/web/src/components/ComposerModePicker.tsx:238` | [ ] RED |
+| menu-composer-plus-1 | `design/apps/web/src/components/ComposerPlusMenu.tsx:601` | [ ] RED |
+| menu-composer-plus-2 | `design/apps/web/src/components/ComposerPlusMenu.tsx:985` | [ ] RED |
+| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:315` | [x] green, shared primitive owns filtering and callbacks |
+| menu-design-browser-1 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2588` | [ ] RED |
+| menu-design-browser-2 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2791` | [ ] RED |
+| menu-design-files | `design/apps/web/src/components/DesignFilesPanel.tsx:1349` | [ ] RED |
+| menu-design-kit | `design/apps/web/src/components/DesignKitView.tsx:2033` | [ ] RED |
+| menu-designs-tab | `design/apps/web/src/components/DesignsTab.tsx:973` | [ ] RED |
+| menu-entry-help | `design/apps/web/src/components/EntryHelpMenu.tsx:102` | [ ] RED |
+| menu-entry-nav-account | `design/apps/web/src/components/EntryNavRail.tsx:842` | [ ] RED |
+| menu-entry-nav-overflow | `design/apps/web/src/components/EntryNavRail.tsx:1530` | [ ] RED |
+| menu-entry-settings-1 | `design/apps/web/src/components/EntrySettingsMenu.tsx:196` | [ ] RED |
+| menu-entry-settings-2 | `design/apps/web/src/components/EntrySettingsMenu.tsx:232` | [ ] RED |
+| menu-examples-share | `design/apps/web/src/components/ExamplesTab.tsx:694` | [ ] RED |
+| menu-file-viewer-present-1 | `design/apps/web/src/components/FileViewer.tsx:2383` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-zoom-2 | `design/apps/web/src/components/FileViewer.tsx:2465` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-actions-1 | `design/apps/web/src/components/FileViewer.tsx:4253` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-share-1 | `design/apps/web/src/components/FileViewer.tsx:6954` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-zoom-3 | `design/apps/web/src/components/FileViewer.tsx:15941` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-more | `design/apps/web/src/components/FileViewer.tsx:15983` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-present-2 | `design/apps/web/src/components/FileViewer.tsx:16167` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-share-2 | `design/apps/web/src/components/FileViewer.tsx:16268` | [~] partial owner-specific search, shared migration open |
+| menu-file-viewer-share-3 | `design/apps/web/src/components/FileViewer.tsx:19243` | [~] partial owner-specific search, shared migration open |
+| menu-home-subtype | `design/apps/web/src/components/HomeHero.tsx:3617` | [ ] RED |
+| menu-home-more | `design/apps/web/src/components/HomeHero.tsx:3768` | [ ] RED |
+| menu-inline-model | `design/apps/web/src/components/InlineModelSwitcher.tsx:1294` | [ ] RED |
+| menu-language | `design/apps/web/src/components/LanguageMenu.tsx:69` | [ ] RED |
+| menu-library | `design/apps/web/src/components/LibrarySection.tsx:1278` | [ ] RED |
+| menu-next-step-1 | `design/apps/web/src/components/NextStepActions.tsx:860` | [ ] RED |
+| menu-next-step-2 | `design/apps/web/src/components/NextStepActions.tsx:924` | [ ] RED |
+| menu-next-step-3 | `design/apps/web/src/components/NextStepActions.tsx:995` | [ ] RED |
+| menu-plugin-scenario | `design/apps/web/src/components/plugin-details/PluginScenarioDetail.tsx:187` | [ ] RED |
+| menu-plugin-share | `design/apps/web/src/components/plugin-details/PluginShareMenu.tsx:234` | [ ] RED |
+| menu-plugin-card | `design/apps/web/src/components/plugins-home/PluginCard.tsx:329` | [ ] RED |
+| menu-plugins-marketplace | `design/apps/web/src/components/PluginsView.tsx:2360` | [ ] RED |
+| menu-preview-1 | `design/apps/web/src/components/PreviewModal.tsx:620` | [ ] RED |
+| menu-preview-2 | `design/apps/web/src/components/PreviewModal.tsx:686` | [ ] RED |
+| menu-recent-projects-1 | `design/apps/web/src/components/RecentProjectsStrip.tsx:1443` | [ ] RED |
+| menu-recent-projects-2 | `design/apps/web/src/components/RecentProjectsStrip.tsx:1479` | [ ] RED |
+| menu-recent-projects-3 | `design/apps/web/src/components/RecentProjectsStrip.tsx:1539` | [ ] RED |
+| menu-recent-projects-4 | `design/apps/web/src/components/RecentProjectsStrip.tsx:1931` | [ ] RED |
+| menu-session-mode | `design/apps/web/src/components/SessionModeToggle.tsx:344` | [ ] RED |
+| menu-settings-tabs | `design/apps/web/src/components/settings/SettingsTabStrip.tsx:480` | [ ] RED |
+| menu-working-dir-1 | `design/apps/web/src/components/WorkingDirPicker.tsx:117` | [ ] RED |
+| menu-working-dir-2 | `design/apps/web/src/components/WorkingDirPicker.tsx:155` | [ ] RED |
+| menu-workspace-switcher | `design/apps/web/src/components/WorkspaceSwitcher.tsx:89` | [ ] RED |
+
+The legacy sketch adapter is also tracked even though it has no `role="menu"`
+container in this source scan:
+
+| Row | Source location | State |
+| --- | --- | --- |
+| context-menu-sketch-adapter | `design/apps/web/src/components/SketchEditor.tsx:209-210,773-782` | [ ] RED, legacy inline menu adapter remains |
 
 ## Migration rule
 

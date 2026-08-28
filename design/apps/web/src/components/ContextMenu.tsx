@@ -3,7 +3,7 @@
 // The menu owns its filter controller. Plain text is the default and the
 // adjacent RegexSearchField is the opt-in advanced workbench for this menu.
 // Keeping the controller here means two open menus cannot share query, flags,
-// history, snippets, or validation state.
+// or validation state.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -26,6 +26,8 @@ export interface ContextMenuItem {
   readonly shortcutId?: ShortcutId;
   readonly danger?: boolean;
   readonly disabled?: boolean;
+  /** Explains a disabled item, including a toy-lock recovery route when relevant. */
+  readonly disabledReason?: string;
   /** Draw a rule above this item. */
   readonly separatorBefore?: boolean;
   /** Overrides the `<menu testId>-<item id>` default, for existing selectors. */
@@ -39,30 +41,44 @@ export interface ContextMenuProps {
   readonly x: number;
   readonly y: number;
   readonly ariaLabel: string;
+  readonly ariaLabelledBy?: string;
   readonly onClose: () => void;
   /** The control that opened the menu, restored after every dismissal path. */
   readonly restoreFocusTo?: HTMLElement | null;
   readonly width?: number;
   readonly testId?: string;
+  /** Stable caller-owned id. Duplicate ids are reported and marked. */
+  readonly ownerId?: string;
   /** Override platform detection for the keycap notation. Tests use it. */
   readonly mac?: boolean;
   /** Accessible and visible label for this menu's field-owned filter. */
-  readonly searchLabel?: string;
-  readonly searchPlaceholder?: string;
-  readonly noResultsLabel?: string;
-  /** Real callbacks for the exact target. Omit only when the owner has no such operation. */
-  readonly onEditAppearance?: () => void;
-  readonly onLock?: () => void;
-  readonly editAppearanceLabel?: string;
-  readonly lockLabel?: string;
+  readonly searchLabel: string;
+  readonly searchPlaceholder: string;
+  readonly noResultsLabel: string;
+  readonly resultCountLabel: (count: number) => string;
+  /** Real callbacks for the exact target, required by every context menu. */
+  readonly onEditAppearance: () => void;
+  readonly onLock: () => void;
+  readonly editAppearanceLabel: string;
+  readonly lockLabel: string;
+  /** Destructive actions stay visible but cannot execute without this handoff. */
+  readonly onRequestDestructiveConfirmation?: (item: ContextMenuItem) => void;
+  readonly destructiveUnavailableLabel: string;
 }
 
 const DEFAULT_WIDTH = 260;
 const EDGE_PADDING = 8;
-const ITEM_HEIGHT = 44;
-const SEARCH_HEIGHT = 56;
+const ITEM_HEIGHT = 48;
+const SEARCH_HEIGHT = 72;
 const SEPARATOR_HEIGHT = 9;
 const MENU_PADDING = 16;
+
+function uniqueItemId(preferred: string, ids: Set<string>): string {
+  if (!ids.has(preferred)) return preferred;
+  let suffix = 2;
+  while (ids.has(`${preferred}-${suffix}`)) suffix += 1;
+  return `${preferred}-${suffix}`;
+}
 
 function menuHeight(items: readonly ContextMenuItem[]): number {
   const separators = items.filter((item) => item.separatorBefore).length;
@@ -89,29 +105,40 @@ function widthWithinViewport(width: number): number {
   return Math.max(1, Math.min(width, viewportWidth - EDGE_PADDING * 2));
 }
 
+function isOwnedRegexSurface(target: EventTarget | null, ownerId: string): boolean {
+  if (!(target instanceof Element)) return false;
+  const owner = target.closest('[data-regex-owner]');
+  return owner?.getAttribute('data-regex-owner') === `${ownerId}-filter`;
+}
+
 export function ContextMenu({
   items,
   x,
   y,
   ariaLabel,
+  ariaLabelledBy,
   onClose,
   restoreFocusTo = null,
   width = DEFAULT_WIDTH,
   testId,
+  ownerId,
   mac,
-  searchLabel = `${ariaLabel} menu actions`,
-  searchPlaceholder = 'Filter actions',
-  noResultsLabel = 'No actions match this filter.',
+  searchLabel,
+  searchPlaceholder,
+  noResultsLabel,
+  resultCountLabel,
   onEditAppearance,
   onLock,
-  editAppearanceLabel = 'Edit appearance…',
-  lockLabel = 'Lock this element…',
+  editAppearanceLabel,
+  lockLabel,
+  onRequestDestructiveConfirmation,
+  destructiveUnavailableLabel,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const reactId = useId();
   const menuId = reactId.replace(/:/g, '');
-  const menuWidth = widthWithinViewport(width);
-  const [position] = useState(() => clampToViewport(x, y, items, menuWidth));
+  const resolvedOwnerId = ownerId ?? testId ?? menuId;
+  const domOwnerId = resolvedOwnerId.replace(/[^A-Za-z0-9_-]/g, '-');
   const [query, setQuery] = useState('');
   const search = useRegexSearch(query, setQuery);
   const onMac = mac ?? isMacPlatform();
@@ -119,22 +146,53 @@ export function ContextMenu({
   const menuItems = useMemo(() => {
     const result = [...items];
     const ids = new Set(result.map((item) => item.id));
-    if (onEditAppearance && !ids.has('edit-appearance')) {
-      result.push({ id: 'edit-appearance', label: editAppearanceLabel, onSelect: onEditAppearance });
-    }
-    if (onLock && !ids.has('lock-element')) {
-      result.push({ id: 'lock-element', label: lockLabel, onSelect: onLock });
-    }
+    const editId = uniqueItemId('edit-appearance', ids);
+    result.push({ id: editId, label: editAppearanceLabel, onSelect: onEditAppearance });
+    ids.add(editId);
+    const lockId = uniqueItemId('lock-element', ids);
+    result.push({ id: lockId, label: lockLabel, onSelect: onLock });
     return result;
   }, [editAppearanceLabel, items, lockLabel, onEditAppearance, onLock]);
+
+  const callbackCollision = items.some((item) =>
+    item.id === 'edit-appearance' || item.id === 'lock-element',
+  );
+  const menuWidth = widthWithinViewport(width);
+  const [position, setPosition] = useState(() => clampToViewport(x, y, menuItems, menuWidth));
+  const [duplicateOwner, setDuplicateOwner] = useState(false);
+
+  const recomputePosition = useCallback(() => {
+    setPosition(clampToViewport(x, y, menuItems, widthWithinViewport(width)));
+  }, [menuItems, width, x, y]);
+
+  useEffect(() => {
+    recomputePosition();
+    const onViewportChange = () => recomputePosition();
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('scroll', onViewportChange, true);
+    return () => {
+      window.removeEventListener('resize', onViewportChange);
+      window.removeEventListener('scroll', onViewportChange, true);
+    };
+  }, [recomputePosition]);
+
+  useEffect(() => {
+    const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-context-menu-owner]'))
+      .filter((node) => node.getAttribute('data-context-menu-owner') === resolvedOwnerId);
+    setDuplicateOwner(matches.length > 1);
+    if (matches.length > 1) {
+      console.error(`Duplicate context-menu owner id: ${resolvedOwnerId}`);
+    }
+  }, [resolvedOwnerId]);
 
   const visibleItems = useMemo(
     () => menuItems.filter((item) => search.matches(`${item.label}\n${item.id}`)),
     [menuItems, search.matches],
   );
   const enabledVisibleItems = useMemo(
-    () => visibleItems.filter((item) => !item.disabled),
-    [visibleItems],
+    () => visibleItems.filter((item) => !item.disabled
+      && !(item.danger && !onRequestDestructiveConfirmation)),
+    [onRequestDestructiveConfirmation, visibleItems],
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -154,11 +212,12 @@ export function ContextMenu({
   }, [onClose, restoreFocus]);
 
   const activate = useCallback((item: ContextMenuItem) => {
-    if (item.disabled) return;
+    if (item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
     onClose();
-    item.onSelect();
+    if (item.danger) onRequestDestructiveConfirmation?.(item);
+    else item.onSelect();
     restoreFocus();
-  }, [onClose, restoreFocus]);
+  }, [onClose, onRequestDestructiveConfirmation, restoreFocus]);
 
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (enabledVisibleItems.length === 0) return;
@@ -215,6 +274,7 @@ export function ContextMenu({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
+      if (isOwnedRegexSurface(target, domOwnerId)) return;
       const opensAnotherMenu = target instanceof Element
         && target.closest('[data-context-menu-opener]') != null;
       dismiss(!opensAnotherMenu);
@@ -222,6 +282,7 @@ export function ContextMenu({
     const onScroll = (event: Event) => {
       const target = event.target;
       if (target instanceof Node && menuRef.current?.contains(target)) return;
+      if (isOwnedRegexSurface(target, domOwnerId)) return;
       dismiss();
     };
     document.addEventListener('keydown', onKeyDown);
@@ -235,8 +296,16 @@ export function ContextMenu({
   }, [dismiss]);
 
   const activeOptionId = activeId && visibleItems.some((item) => item.id === activeId)
-    ? `${testId ?? menuId}-${activeId}`
+    ? `${domOwnerId}-${activeId}`
     : undefined;
+
+  useEffect(() => {
+    if (!activeOptionId) return;
+    const active = document.getElementById(activeOptionId);
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeOptionId]);
 
   return (
     <div
@@ -245,7 +314,11 @@ export function ContextMenu({
       style={{ left: position.left, top: position.top, width: menuWidth }}
       role="menu"
       aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       data-testid={testId}
+      data-context-menu-owner={resolvedOwnerId}
+      data-owner-duplicate={duplicateOwner || undefined}
+      data-callback-collision={callbackCollision || undefined}
       onMouseDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
@@ -281,18 +354,23 @@ export function ContextMenu({
           search={search}
           fieldLabel={searchLabel}
           ariaLabel={searchLabel}
-          ariaControls={testId ? `${testId}-items` : undefined}
+          ariaControls={`${domOwnerId}-items`}
           ariaActiveDescendant={activeOptionId}
           placeholder={searchPlaceholder}
           hostClassName={styles.searchHost}
           className={styles.searchInput}
           toggleClassName={styles.searchToggle}
           testId={testId ? `${testId}-filter` : undefined}
+          focusScopeId={`${domOwnerId}-filter`}
+          popoverZIndex={10000}
           autoFocus
           onKeyDown={handleSearchKeyDown}
         />
+        <span className={styles.resultCount} role="status" aria-live="polite">
+          {resultCountLabel(visibleItems.length)}
+        </span>
       </div>
-      <div id={testId ? `${testId}-items` : undefined} className={styles.itemList} role="none">
+      <div id={`${domOwnerId}-items`} className={styles.itemList} role="none">
         {visibleItems.length === 0 ? (
           <div className={styles.noResults} role="status" data-testid={testId ? `${testId}-no-results` : undefined}>
             {noResultsLabel}
@@ -301,18 +379,24 @@ export function ContextMenu({
           const tokens = item.shortcutId
             ? shortcutKeyTokens(item.shortcutId, { mac: onMac })
             : null;
-          const optionId = `${testId ?? menuId}-${item.id}`;
+          const optionId = `${domOwnerId}-${item.id}`;
+          const unavailableDestructive = Boolean(item.danger && !onRequestDestructiveConfirmation);
           return (
             <div key={item.id} className={styles.row}>
               {item.separatorBefore ? <span className={styles.separator} role="none" /> : null}
               <button
                 type="button"
                 role="menuitem"
-                disabled={item.disabled}
+                disabled={item.disabled || unavailableDestructive}
                 className={`${styles.item}${item.danger ? ` ${styles.danger}` : ''}`}
                 data-testid={item.testId ?? optionId}
                 data-menu-item-id={item.id}
                 id={optionId}
+                title={unavailableDestructive
+                  ? destructiveUnavailableLabel
+                  : item.disabled
+                    ? item.disabledReason
+                    : undefined}
                 aria-keyshortcuts={
                   item.shortcutId ? ariaKeyShortcuts(item.shortcutId, { mac: onMac }) : undefined
                 }

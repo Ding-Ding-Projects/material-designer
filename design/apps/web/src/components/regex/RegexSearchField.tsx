@@ -65,6 +65,8 @@ export interface RegexSearchFieldProps {
   disabled?: boolean;
   /** Include the portalled builder in a surrounding modal's focus scope. */
   focusScopeId?: string;
+  /** Stacking level for an owner surface such as a dropdown or context menu. */
+  popoverZIndex?: number;
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onFocus?: () => void;
   onKeyDown?: (event: ReactKeyboardEvent<HTMLInputElement>) => void;
@@ -90,6 +92,7 @@ export function RegexSearchField({
   autoComplete = 'off',
   disabled = false,
   focusScopeId,
+  popoverZIndex,
   inputRef,
   onFocus,
   onKeyDown,
@@ -205,7 +208,11 @@ export function RegexSearchField({
   const regexOn = search.mode === 'regex';
 
   return (
-    <span className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`} ref={hostRef}>
+    <span
+      className={`${styles.host}${hostClassName ? ` ${hostClassName}` : ''}`}
+      ref={hostRef}
+      data-regex-owner={focusScopeId}
+    >
       <input
         ref={setInputNode}
         id={id}
@@ -280,9 +287,10 @@ export function RegexSearchField({
               role="dialog"
               aria-label={t('regexBuilder.title')}
               className={styles.popover}
-              style={popoverStyle}
+              style={{ ...popoverStyle, zIndex: popoverZIndex ?? 3000 }}
               data-focus-scope={focusScopeId}
               data-file-viewer-menu-builder={focusScopeId}
+              data-regex-owner={focusScopeId}
               data-testid={testId ? `${testId}-regex-popover` : undefined}
               onKeyDown={(event) => {
                 if (event.key !== 'Escape') return;

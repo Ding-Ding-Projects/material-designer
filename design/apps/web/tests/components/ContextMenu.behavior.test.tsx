@@ -19,6 +19,15 @@ describe('ContextMenu scroll behavior', () => {
         onClose={onClose}
         x={0}
         y={0}
+        searchLabel="Actions"
+        searchPlaceholder="Filter actions"
+        noResultsLabel="No actions match this filter."
+        resultCountLabel={(count) => `${count} actions`}
+        onEditAppearance={() => {}}
+        onLock={() => {}}
+        editAppearanceLabel="Edit appearance…"
+        lockLabel="Lock this element…"
+        destructiveUnavailableLabel="Confirmation is unavailable."
       />,
     );
 

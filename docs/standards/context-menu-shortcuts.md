@@ -12,7 +12,11 @@ shortcuts, and target-specific appearance and lock callback seams in
 owns the same field contract for every dropdown instance. The migration
 inventory at [shared-ui-primitives-migration.md](shared-ui-primitives-migration.md)
 keeps every remaining direct search, native select, and legacy inline context
-menu row explicitly red.
+menu row explicitly red. The current primitive API requires caller-provided
+localized labels and real appearance and lock callbacks, marks duplicate owner
+ids, keeps dangerous actions behind an explicit confirmation handoff, and exposes
+an operable wrapper for locked dropdown triggers. Its active result scrolls into
+view and its overlay recomputes against small viewport changes.
 
 The 2026-08-06 audit fixed the context
 menu's concrete clipping and dismissal defects: long bilingual labels wrap, and

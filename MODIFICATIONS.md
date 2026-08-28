@@ -49,9 +49,12 @@ those feature-owned rows are migrated.
 - `apps/web/src/components/CustomSelect.tsx`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/src/styles/primitives.css`
+- `apps/web/src/styles/entrance.css`
+- `apps/web/src/collab/CollabDemoView.tsx`
 - `apps/web/tests/components/ContextMenu.test.tsx`
 - `apps/web/tests/components/CustomSelect.test.tsx`
 - `apps/web/tests/components/shared-ui-primitives.contract.test.ts`
+- `apps/web/tests/collab-demo-view.test.tsx`
 
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 

@@ -3,11 +3,15 @@
 - [~] **Upgrade shared context-menu and dropdown primitives.** `ContextMenu.tsx`
   and `CustomSelect.tsx` now own isolated plain-text-first searches with adjacent
   anchored regex builders, result announcements, keyboard navigation, focus
-  restoration, viewport bounds, and mounted coverage. The migration inventory is
+  restoration, active-result scrolling, viewport recompute, stable caller IDs,
+  48px targets, reduced-motion behavior, locked-trigger wrappers, fail-closed
+  destructive confirmation handoffs, and mounted coverage. The migration inventory is
   hand-written at [`docs/standards/shared-ui-primitives-migration.md`](docs/standards/shared-ui-primitives-migration.md).
-  The remaining native selects, direct search fields, and legacy inline context
-  menu adapter are still red rows owned by their feature lanes, so this item is
-  not complete.
+  One high-impact collaboration role select now uses `CustomSelect`; the remaining
+  40 native selects, 21 direct search fields, 49 other `role="menu"` containers,
+  and legacy inline context menu adapter are still red rows owned by their feature
+  lanes, so this item is not complete. The shared search API remains coordinated
+  with the regex workbench for field-scoped advanced capabilities.
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and

@@ -79,6 +79,19 @@ describe('CollabDemoView', () => {
     expect(screen.getByText('5')).toBeTruthy();
   });
 
+  it('uses the shared searchable select for the demo role control', async () => {
+    installFetchStub([], null);
+    render(<CollabDemoView projectId="p1" />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const trigger = screen.getByTestId('collab-role-select');
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    fireEvent.click(trigger);
+    expect(screen.getByTestId('collab-role-select-filter')).toBeTruthy();
+    expect(screen.getByTestId('collab-role-select-filter-regex-toggle')).toBeTruthy();
+  });
+
   it('drives the sync routes from the author controls', async () => {
     const { calls } = installFetchStub([], null);
     render(<CollabDemoView projectId="p1" />);
