@@ -1,5 +1,21 @@
 # Roadmap
 
+- [ ] **Complete hosted verification of the public instruction mirrors and privacy
+      guard.** The source work in `AGENTS.md`, `README.md`, and
+      `scripts/verify-public-mirror-privacy.ps1` is complete for the current
+      contract addendum. Local verification proves the temporary negative
+      sentinel turns red and the restored full mirror turns green, and both
+      canonical dictionary formats plus the canonical Markdown source scan clean.
+      Hosted verification is still pending, so this item remains unchecked. This
+      item records documentation and guard status only and does not claim that
+      product features are implemented.
+
+      **廣東話進度：** Public instruction mirror 同 privacy guard 嘅 source work
+      已經完成，temporary negative sentinel 會轉紅，還原完整 mirror 就轉綠，
+      兩款 canonical dictionary 同 Markdown source 都掃到乾淨。Hosted
+      verification 仲未到，所以繼續留白；呢項只記錄 documentation 同 guard
+      狀態，唔代表 product feature 已經實作。
+
 - [~] **Restore the unsigned Squirrel executable producer after hosted rcedit
       failure.** Release `32831335767` failed at `rcedit-x64.exe` with `Fatal
       error: Unable to commit changes`; it was not an Authenticode signing
@@ -72,11 +88,12 @@
 > identify the packer root cause. Installed launch, updater, removal and parity
 > evidence remain open.
 
-The contradictory dim-sum image rules remain unresolved as a durable standard,
-but the repository owner explicitly directed the current release to skip the
-photo for now. The workflow records the temporary omission and attaches no
-copied catalog image; the exception does not relax any package, unsigned,
-provenance, target-SHA, asset-hash or publication-verification requirement.
+The contradictory dim-sum image rules remain unresolved as a durable standard.
+The current release remains blocked when its required photo asset is absent, and
+the workflow records the missing asset without attaching a copied catalog image.
+No exception makes an incomplete release compliant, and package, unsigned,
+provenance, target-SHA, asset-hash, and publication-verification requirements
+remain active.
 
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
