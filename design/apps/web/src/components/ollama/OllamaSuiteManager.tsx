@@ -16,11 +16,13 @@ import {
   redactChatExport,
   validateHarnessProfile,
   type OllamaCatalogSnapshot,
+  type OllamaAttachment,
   type OllamaHardwareFacts,
   type OllamaHarnessProfile,
   type OllamaModelVariant,
   type OllamaPullRecord,
   type OllamaRuntimeStatus,
+  type OllamaChatMessage,
 } from '../../runtime/ollama-suite';
 import styles from './OllamaSuiteManager.module.css';
 
@@ -101,7 +103,8 @@ export function OllamaSuiteManager() {
   const [pulls, setPulls] = useState<OllamaPullRecord[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{ role: string; content: string }>>([]);
+  const [chatMessages, setChatMessages] = useState<OllamaChatMessage[]>([]);
+  const [chatAttachments, setChatAttachments] = useState<OllamaAttachment[]>([]);
   const [chatSystemPrompt, setChatSystemPrompt] = useState('');
   const [chatParameters, setChatParameters] = useState(DEFAULT_CHAT_PARAMETERS);
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
@@ -111,6 +114,7 @@ export function OllamaSuiteManager() {
   const [refreshing, setRefreshing] = useState(false);
   const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
   const [harnessNotice, setHarnessNotice] = useState<string | null>(null);
+  const [harnessExecutable, setHarnessExecutable] = useState('');
 
   const [storeQuery, setStoreQuery] = useState('');
   const [pullsQuery, setPullsQuery] = useState('');
@@ -178,7 +182,7 @@ export function OllamaSuiteManager() {
           setChatSessionId(session.id);
           setChatSystemPrompt(typeof session.systemPrompt === 'string' ? session.systemPrompt : '');
           setChatParameters(session.parameters ?? DEFAULT_CHAT_PARAMETERS);
-          setChatMessages(session.messages.map((message) => ({ role: message.role, content: message.content })));
+          setChatMessages(session.messages);
         }
       }
       const raw = window.localStorage.getItem('material-designer.ollama.harness-profiles');
@@ -194,6 +198,14 @@ export function OllamaSuiteManager() {
     }
   }, [refresh]);
 
+  useEffect(() => {
+    if (!pulls.some((pull) => ['queued', 'pulling', 'paused'].includes(pull.state))) return;
+    const timer = window.setInterval(() => {
+      void client.pulls().then((result) => { if (result.ok) setPulls(result.value.records); });
+    }, 2_000);
+    return () => window.clearInterval(timer);
+  }, [client, pulls]);
+
   const filteredModels = models.filter((item) => activeSearch.matches(`${item.tag} ${item.family ?? ''} ${item.quantization ?? ''} ${FIT_LABELS[item.fit]}`));
   const filteredPulls = pulls.filter((item) => activeSearch.matches(`${item.tag} ${item.state} ${item.detail ?? ''}`));
   const filteredProfiles = profiles.filter((item) => activeSearch.matches(`${item.name} ${item.executable} ${item.modelTag}`));
@@ -203,7 +215,7 @@ export function OllamaSuiteManager() {
   const startPull = useCallback(async (tag: string) => {
     const id = `${tag}-${Date.now()}`;
     const now = new Date().toISOString();
-    setPulls((current) => [...current, { id, tag, state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'pulling' }]);
+    setPulls((current) => [...current, { id, tag, state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: now, updatedAt: now, retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' }]);
     const result = await client.pull(tag);
     if (!result.ok) {
       setPulls((current) => current.map((pull) => pull.id === id ? { ...pull, state: 'failed', detail: result.error.message } : pull));
@@ -211,6 +223,10 @@ export function OllamaSuiteManager() {
     }
     const streamId = result.value.id ?? id;
     if (streamId !== id) setPulls((current) => current.map((pull) => pull.id === id ? { ...pull, id: streamId } : pull));
+    if (!result.value.stream) {
+      setPulls((current) => current.map((pull) => pull.id === streamId ? { ...pull, state: 'queued', providerStatus: 'queued', detail: 'Queued by the daemon; progress will appear here.' } : pull));
+      return;
+    }
     await readNdjson(result.value.stream, (record) => {
       const status = typeof record.status === 'string' ? record.status : null;
       const completedBytes = typeof record.completed === 'number' ? record.completed : 0;
@@ -233,10 +249,11 @@ export function OllamaSuiteManager() {
 
   const sendChat = useCallback(async () => {
     if (!selectedModel || !chatInput.trim() || chatBusy) return;
-    const userMessage: { role: 'user'; content: string } = { role: 'user', content: chatInput.trim() };
+    const userMessage: OllamaChatMessage = { role: 'user', content: chatInput.trim(), attachments: chatAttachments.length ? chatAttachments : undefined };
     const nextMessages = [...chatMessages, userMessage];
     setChatMessages([...nextMessages, { role: 'assistant', content: '' }]);
     setChatInput('');
+    setChatAttachments([]);
     setChatBusy(true);
     const result = await client.chat(selectedModel, nextMessages, chatParameters, undefined, chatSystemPrompt);
     if (!result.ok) {
@@ -263,12 +280,13 @@ export function OllamaSuiteManager() {
     window.localStorage.setItem('material-designer.ollama.chat-session', JSON.stringify(redactChatExport(session)));
     setChatSessionId(session.id);
     setChatBusy(false);
-  }, [chatBusy, chatInput, chatMessages, chatParameters, chatSessionId, chatSystemPrompt, client, selectedModel]);
+  }, [chatAttachments, chatBusy, chatInput, chatMessages, chatParameters, chatSessionId, chatSystemPrompt, client, selectedModel]);
 
   const newChatSession = useCallback(() => {
     setChatMessages([]);
     setChatSessionId(null);
     setChatSystemPrompt('');
+    setChatAttachments([]);
     setChatParameters({ ...DEFAULT_CHAT_PARAMETERS });
     window.localStorage.removeItem('material-designer.ollama.chat-session');
   }, []);
@@ -279,7 +297,7 @@ export function OllamaSuiteManager() {
     session.id = chatSessionId;
     session.systemPrompt = chatSystemPrompt;
     session.parameters = chatParameters;
-    session.messages = chatMessages.map((message) => ({ role: message.role as 'system' | 'user' | 'assistant', content: message.content }));
+    session.messages = chatMessages;
     const blob = new Blob([JSON.stringify(redactChatExport(session), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -290,13 +308,13 @@ export function OllamaSuiteManager() {
   }, [chatMessages, chatParameters, chatSessionId, chatSystemPrompt, selectedModel]);
 
   const saveProfile = useCallback(() => {
-    const raw = { id: `profile-${Date.now()}`, name: 'Local harness', executable: 'ollama', arguments: ['run', selectedModel], workingDirectory: null, environmentKeys: [], modelTag: selectedModel, registered: false };
+    const raw = { id: `profile-${Date.now()}`, name: 'Local harness', executable: harnessExecutable, arguments: ['run', selectedModel], workingDirectory: null, healthUrl: null, environmentKeys: [], modelTag: selectedModel, registered: false };
     const validated = validateHarnessProfile(raw);
     if (!validated.ok) { setError(validated.error.message); return; }
     const next = [...profiles, validated.value];
     setProfiles(next);
     window.localStorage.setItem('material-designer.ollama.harness-profiles', JSON.stringify(next));
-  }, [profiles, selectedModel]);
+  }, [harnessExecutable, profiles, selectedModel]);
 
   const runHarness = useCallback(async (profile: OllamaHarnessProfile) => {
     setHarnessNotice('Running local preflight…');
@@ -351,9 +369,9 @@ export function OllamaSuiteManager() {
           {filteredModels.length === 0 ? <p className={styles.empty}>{text('No models match this search.', '呢個搜尋冇模型。')}</p> : null}
         </div>
       ) : null}
-      {tab === 'pulls' ? <div className={styles.panel} role="tabpanel"><h4>{text('Durable pull queue', '可恢復拉取隊列')}</h4>{filteredPulls.map((pull) => <div className={styles.pullRow} key={pull.id}><strong>{pull.tag}</strong><span>{pull.state}</span><progress max={pull.totalBytes ?? undefined} value={pull.totalBytes ? pull.completedBytes : undefined} /><small>{pull.totalBytes ? `${pull.completedBytes} / ${pull.totalBytes} bytes` : pull.detail ?? 'Waiting for byte totals'}</small><span className={styles.pullActions}>{pull.state === 'pulling' ? <button type="button" onClick={() => void pullAction(pull.id, 'pause')}>Pause</button> : null}{pull.state === 'paused' ? <button type="button" onClick={() => void pullAction(pull.id, 'resume')}>Resume</button> : null}{pull.state === 'failed' && pull.retryable ? <button type="button" onClick={() => void pullAction(pull.id, 'retry')}>Retry</button> : null}{['queued', 'pulling', 'paused'].includes(pull.state) ? <button type="button" onClick={() => void pullAction(pull.id, 'cancel')}>Cancel</button> : null}</span></div>)}{filteredPulls.length === 0 ? <p className={styles.empty}>{text('No pulls are queued.', '未有拉取工作。')}</p> : null}</div> : null}
-      {tab === 'chat' ? <div className={styles.panel} role="tabpanel"><div className={styles.panelHead}><h4>{text('Local streamed chat', '本機串流對話')}</h4><span className={styles.chatSessionMeta}>{chatSessionId ? `Session ${chatSessionId.slice(0, 8)}` : 'New session'}</span></div><label className={styles.field}><span>{text('Model tag', '模型標籤')}</span><select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>{models.filter((model) => model.installed).map((model) => <option key={model.tag} value={model.tag}>{model.tag}</option>)}<option value="">No installed model</option></select></label><label className={styles.field}><span>{text('System prompt', '系統提示')}</span><textarea value={chatSystemPrompt} onChange={(event) => setChatSystemPrompt(event.target.value.slice(0, 100_000))} placeholder="Optional local system prompt" aria-label="Local system prompt" /></label><div className={styles.parameterGrid}><label className={styles.compactField}><span>Temperature</span><input type="number" min="0" max="2" step="0.1" value={chatParameters.temperature} onChange={(event) => setChatParameters((current) => ({ ...current, temperature: Math.min(2, Math.max(0, Number(event.target.value))) }))} /></label><label className={styles.compactField}><span>Top P</span><input type="number" min="0" max="1" step="0.05" value={chatParameters.topP} onChange={(event) => setChatParameters((current) => ({ ...current, topP: Math.min(1, Math.max(0, Number(event.target.value))) }))} /></label><label className={styles.compactField}><span>Context</span><input type="number" min="1" max="1000000" value={chatParameters.numCtx} onChange={(event) => setChatParameters((current) => ({ ...current, numCtx: Math.min(1_000_000, Math.max(1, Math.trunc(Number(event.target.value)))) }))} /></label></div><label className={styles.field}><span>{text('Attachment, capability-gated', '附件，按能力開關')}</span><input type="file" disabled={!attachmentEnabled} aria-describedby="ollama-attachment-status" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !selectedModelInfo) return; const result = attachmentCapability(selectedModelInfo, { mimeType: file.type, bytes: file.size }); setAttachmentNotice(result.reason); }} /><small id="ollama-attachment-status">{attachmentNotice ?? (attachmentEnabled ? text('Choose a bounded local file.', '揀一個有大小限制嘅本機檔案。') : text('This model declares no attachment capability. Filter models to find one that supports this type.', '呢個模型未宣告附件能力，請篩選支援呢種檔案嘅模型。'))}</small></label><div className={styles.chatLog} aria-live="polite">{chatMessages.map((message, index) => <p key={`${message.role}-${index}`}><strong>{message.role}:</strong> {message.content}</p>)}</div><div className={styles.chatComposer}><textarea value={chatInput} onChange={(event) => setChatInput(event.target.value.slice(0, 100_000))} placeholder="Write a local prompt" aria-label="Local chat prompt" /><button type="button" onClick={() => void sendChat()} disabled={chatBusy || !selectedModel || !chatInput.trim()}>{chatBusy ? 'Streaming…' : 'Send'}</button><button type="button" onClick={newChatSession}>New session</button><button type="button" onClick={exportChat} disabled={!chatSessionId}>Export</button></div></div> : null}
-      {tab === 'harness' ? <div className={styles.panel} role="tabpanel"><h4>{text('Allowlisted harness profiles', '白名單工具設定')}</h4><p>{text('Shell syntax and arbitrary environment expansion are refused. The profile preview is local and reviewable before launch.', '會拒絕 shell 語法同任意環境展開，啟動前會喺本機顯示可審閱預覽。')}</p>{harnessNotice ? <p role="status">{harnessNotice}</p> : null}{filteredProfiles.map((profile) => <div className={styles.profileRow} key={profile.id}><strong>{profile.name}</strong><code>{profile.executable} {profile.arguments.join(' ')}</code><span>{profile.modelTag}</span><button type="button" onClick={() => void runHarness(profile)}>Preflight and launch</button></div>)}<button type="button" onClick={saveProfile} disabled={!selectedModel}>Save a safe local profile</button></div> : null}
+      {tab === 'pulls' ? <div className={styles.panel} role="tabpanel"><h4>{text('Durable pull queue', '可恢復拉取隊列')}</h4>{filteredPulls.map((pull) => <div className={styles.pullRow} key={pull.id}><strong>{pull.tag}</strong><span>{pull.state}</span><progress max={pull.totalBytes ?? undefined} value={pull.totalBytes ? pull.completedBytes : undefined} /><span aria-live="polite">{pull.rateBytesPerSecond ? `${pull.rateBytesPerSecond} bytes/s` : ''}{pull.etaSeconds !== null ? ` ETA ${pull.etaSeconds}s` : ''}{pull.partialOutcome === 'some' ? ' Partial outcome' : ''}</span><small>{pull.totalBytes ? `${pull.completedBytes} / ${pull.totalBytes} bytes` : pull.detail ?? 'Waiting for byte totals'}</small><span className={styles.pullActions}>{pull.state === 'pulling' ? <button type="button" onClick={() => void pullAction(pull.id, 'pause')}>Pause</button> : null}{pull.state === 'paused' ? <button type="button" onClick={() => void pullAction(pull.id, 'resume')}>Resume</button> : null}{pull.state === 'failed' && pull.retryable ? <button type="button" onClick={() => void pullAction(pull.id, 'retry')}>Retry</button> : null}{['queued', 'pulling', 'paused'].includes(pull.state) ? <button type="button" onClick={() => void pullAction(pull.id, 'cancel')}>Cancel</button> : null}</span></div>)}{filteredPulls.length === 0 ? <p className={styles.empty}>{text('No pulls are queued.', '未有拉取工作。')}</p> : null}</div> : null}
+      {tab === 'chat' ? <div className={styles.panel} role="tabpanel"><div className={styles.panelHead}><h4>{text('Local streamed chat', '本機串流對話')}</h4><span className={styles.chatSessionMeta}>{chatSessionId ? `Session ${chatSessionId.slice(0, 8)}` : 'New session'}</span></div><label className={styles.field}><span>{text('Model tag', '模型標籤')}</span><select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>{models.filter((model) => model.installed).map((model) => <option key={model.tag} value={model.tag}>{model.tag}</option>)}<option value="">No installed model</option></select></label><label className={styles.field}><span>{text('System prompt', '系統提示')}</span><textarea value={chatSystemPrompt} onChange={(event) => setChatSystemPrompt(event.target.value.slice(0, 100_000))} placeholder="Optional local system prompt" aria-label="Local system prompt" /></label><div className={styles.parameterGrid}><label className={styles.compactField}><span>Temperature</span><input type="number" min="0" max="2" step="0.1" value={chatParameters.temperature} onChange={(event) => setChatParameters((current) => ({ ...current, temperature: Math.min(2, Math.max(0, Number(event.target.value))) }))} /></label><label className={styles.compactField}><span>Top P</span><input type="number" min="0" max="1" step="0.05" value={chatParameters.topP} onChange={(event) => setChatParameters((current) => ({ ...current, topP: Math.min(1, Math.max(0, Number(event.target.value))) }))} /></label><label className={styles.compactField}><span>Context</span><input type="number" min="1" max="1000000" value={chatParameters.numCtx} onChange={(event) => setChatParameters((current) => ({ ...current, numCtx: Math.min(1_000_000, Math.max(1, Math.trunc(Number(event.target.value)))) }))} /></label></div><label className={styles.field}><span>{text('Attachment, capability-gated', '附件，按能力開關')}</span><input type="file" disabled={!attachmentEnabled} aria-describedby="ollama-attachment-status" onChange={async (event) => { const file = event.target.files?.[0]; if (!file || !selectedModelInfo) return; const result = attachmentCapability(selectedModelInfo, { mimeType: file.type, bytes: file.size }); setAttachmentNotice(result.reason); if (!result.allowed) return; const bytes = new Uint8Array(await file.arrayBuffer()); let binary = ''; for (let offset = 0; offset < bytes.length; offset += 0x8000) binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + 0x8000, bytes.length))); setChatAttachments([{ name: file.name.slice(0, 240), mimeType: file.type.slice(0, 120), bytes: file.size, dataBase64: btoa(binary) }]); }} /><small id="ollama-attachment-status">{attachmentNotice ?? (attachmentEnabled ? text('Choose a bounded local file.', '揀一個有大小限制嘅本機檔案。') : text('This model declares no attachment capability. Filter models to find one that supports this type.', '呢個模型未宣告附件能力，請篩選支援呢種檔案嘅模型。'))}</small></label><div className={styles.chatLog} aria-live="polite">{chatMessages.map((message, index) => <p key={`${message.role}-${index}`}><strong>{message.role}:</strong> {message.content}</p>)}</div><div className={styles.chatComposer}><textarea value={chatInput} onChange={(event) => setChatInput(event.target.value.slice(0, 100_000))} placeholder="Write a local prompt" aria-label="Local chat prompt" /><button type="button" onClick={() => void sendChat()} disabled={chatBusy || !selectedModel || !chatInput.trim()}>{chatBusy ? 'Streaming…' : 'Send'}</button><button type="button" onClick={newChatSession}>New session</button><button type="button" onClick={exportChat} disabled={!chatSessionId}>Export</button></div></div> : null}
+      {tab === 'harness' ? <div className={styles.panel} role="tabpanel"><h4>{text('Allowlisted harness profiles', '白名單工具設定')}</h4><p>{text('Shell syntax and arbitrary environment expansion are refused. The profile preview is local and reviewable before launch.', '會拒絕 shell 語法同任意環境展開，啟動前會喺本機顯示可審閱預覽。')}</p><label className={styles.field}><span>{text('Executable picker', '揀執行檔')}</span><input type="file" aria-label="Harness executable" onChange={(event) => { const file = event.target.files?.[0] as (File & { path?: string }) | undefined; setHarnessExecutable(file?.path ?? ''); }} /><small>{harnessExecutable || text('Choose an existing ollama executable.', '揀一個已存在嘅 ollama 執行檔。')}</small></label>{harnessNotice ? <p role="status">{harnessNotice}</p> : null}{filteredProfiles.map((profile) => <div className={styles.profileRow} key={profile.id}><strong>{profile.name}</strong><code>{profile.executable} {profile.arguments.join(' ')}</code><span>{profile.modelTag}</span><button type="button" onClick={() => void runHarness(profile)}>Preflight and launch</button></div>)}<button type="button" onClick={saveProfile} disabled={!selectedModel || !harnessExecutable}>Save a safe local profile</button></div> : null}
       {tab === 'recovery' ? <div className={styles.panel} role="tabpanel"><h4>{text('Recovery and offline states', '恢復同離線狀態')}</h4><p>{text('If the local service is missing, stopped, unhealthy, or offline, the last verified catalog and installed model list remain usable. Refresh after starting the service.', '如果本機服務未安裝、停咗、唔健康或者離線，最後一次已驗證目錄同已安裝模型清單仍然用得。開返服務後再刷新。')}</p><ul><li>Missing service: install it locally and return here.</li><li>Stopped service: start the local service and refresh.</li><li>Stale catalog: inspect the revision and refresh when online.</li><li>Unknown hardware fit: provide bounded hardware facts before pulling.</li></ul></div> : null}
     </section>
   );

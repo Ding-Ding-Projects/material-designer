@@ -5,15 +5,17 @@ import {
   computeHardwareFit,
   attachmentCapability,
   createChatSession,
-  createPullQueue,
   isLoopbackOllamaOrigin,
   parseCatalogPage,
   parseCatalogSnapshot,
+  parsePullRecord,
   reconcileInstalledModels,
   validateHarnessProfile,
   validateChatParameters,
   redactChatExport,
-  type OllamaPullRecord,
+  parseChatSession,
+  renameChatSession,
+  searchChatSessions,
 } from '../../src/runtime/ollama-suite';
 
 describe('local Ollama suite domain', () => {
@@ -25,8 +27,8 @@ describe('local Ollama suite domain', () => {
   });
 
   it('rejects malformed catalog pages and unknown fit labels', () => {
-    expect(parseCatalogPage({ variants: [{ tag: 'qwen:7b', fit: 'maybe' }] })).toMatchObject({ ok: false });
-    expect(parseCatalogPage({ variants: [{ tag: 'qwen:7b', fit: 'unknown' }] })).toMatchObject({ ok: true });
+    expect(parseCatalogPage({ variants: [{ tag: 'qwen:7b', fit: 'maybe' }], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' })).toMatchObject({ ok: false });
+    expect(parseCatalogPage({ variants: [{ tag: 'qwen:7b', fit: 'unknown' }], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' })).toMatchObject({ ok: true });
   });
 
   it('walks every catalog page and records completeness', async () => {
@@ -44,13 +46,22 @@ describe('local Ollama suite domain', () => {
     expect(result).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
   });
 
+  it('refuses catalog revision or tag drift between pages', async () => {
+    const revisionDrift = await collectCatalog(async (token) => token ? { variants: [], nextPageToken: null, sourceRevision: 'r2', sourceIdentity: 'catalog:r1' } : { variants: [], nextPageToken: 'next', sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }, new AbortController().signal);
+    expect(revisionDrift).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
+    const tagDrift = await collectCatalog(async (token) => token ? { variants: [{ tag: 'same:latest', fit: 'unknown' }], nextPageToken: null, sourceRevision: 'r1', sourceIdentity: 'catalog:r1' } : { variants: [{ tag: 'same:latest', fit: 'unknown' }], nextPageToken: 'next', sourceRevision: 'r1', sourceIdentity: 'catalog:r1' }, new AbortController().signal);
+    expect(tagDrift).toMatchObject({ ok: false, error: { code: 'malformed-response' } });
+  });
+
   it('rejects a cached snapshot without source revision or identity', () => {
     expect(parseCatalogSnapshot({ variants: [], sourceRevision: null, sourceIdentity: null, fetchedAt: '2026-08-27T00:00:00Z', pageCount: 1, complete: true, stale: false, staleAfterMs: 1000 })).toMatchObject({ ok: false });
   });
 
   it('reconciles installed tags that are absent from the verified catalog', () => {
-    const result = reconcileInstalledModels([], ['local:tag'], ['local:tag']);
+    const result = reconcileInstalledModels([{ tag: 'catalog:latest', family: null, parameterSize: null, parameterCount: null, quantization: null, blobBytes: null, contextWindow: null, contextOverheadBytes: null, capabilities: [], installed: false, running: false, fit: 'unknown', fitEvidence: [] }], ['local:tag'], ['local:tag', 'running:only']);
     expect(result[0]).toMatchObject({ tag: 'local:tag', installed: true, running: true, fit: 'unknown' });
+    expect(result.find((item) => item.tag === 'running:only')).toMatchObject({ installed: true, running: true });
+    expect(result.find((item) => item.tag === 'catalog:latest')).toMatchObject({ installed: false, running: false });
   });
 
   it('returns Unknown when hardware evidence is incomplete', () => {
@@ -74,21 +85,21 @@ describe('local Ollama suite domain', () => {
     expect(attachmentCapability({ capabilities: ['vision'] }, { mimeType: 'image/png', bytes: 100 })).toMatchObject({ allowed: true });
   });
 
+  it('accepts only complete durable pull records', () => {
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling', rateBytesPerSecond: null, etaSeconds: null, partialOutcome: 'none' })).not.toBeNull();
+    expect(parsePullRecord({ id: 'id', tag: 'tiny:latest', state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true })).toBeNull();
+  });
+
   it('bounds chat parameters and redacts a local session export to safe fields', () => {
     expect(validateChatParameters({ temperature: 9, topP: 0.9, topK: 40, numCtx: 8192, seed: null })).toMatchObject({ ok: false });
     const session = createChatSession('tiny:latest', 'Local session', () => '2026-08-27T00:00:00Z');
     session.messages.push({ role: 'user', content: 'hello', attachments: [{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }] });
     expect(redactChatExport(session)).toMatchObject({ version: 1, id: session.id, messages: [{ role: 'user', content: 'hello', attachments: [{ name: 'note.txt', mimeType: 'text/plain', bytes: 4 }] }] });
+    const parsed = parseChatSession({ ...session, parameters: session.parameters });
+    expect(parsed.ok).toBe(true);
+    expect(searchChatSessions([session], 'local session')).toHaveLength(1);
+    expect(renameChatSession(session, '', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: false });
+    expect(renameChatSession(session, 'Renamed', () => '2026-08-27T01:00:00Z')).toMatchObject({ ok: true, value: { name: 'Renamed', updatedAt: '2026-08-27T01:00:00Z' } });
   });
 
-  it('recovers pulling queue records and caps active work at two items', async () => {
-    let saved: OllamaPullRecord[] = [{ id: 'old', tag: 'tiny:latest', state: 'pulling', completedBytes: 2, totalBytes: 4, detail: null, attempts: 1, queuedAt: '2026-08-27T00:00:00Z', updatedAt: '2026-08-27T00:00:00Z', retryable: true, providerStatus: 'pulling' }];
-    const queue = createPullQueue({ load: async () => saved, save: async (next) => { saved = [...next]; } }, () => '2026-08-27T01:00:00Z');
-    expect((await queue.list())[0]).toMatchObject({ state: 'queued', detail: 'Recovered after restart.' });
-    const first = await queue.enqueue('first:latest');
-    const second = await queue.enqueue('second:latest');
-    const third = await queue.enqueue('third:latest');
-    expect([first, second, third].every((item) => item.ok)).toBe(true);
-    expect((await queue.list()).filter((item) => item.state === 'pulling').length).toBeLessThanOrEqual(2);
-  });
 });

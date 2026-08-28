@@ -11,6 +11,9 @@ and allowlisted harness preflight, launch, health, snapshot, and restore.
 Pull records use collision-safe ids, validated disk loading, bounded NDJSON
 progress, and an explicit provider terminal status. A streamed pull is only
 completed when the provider emits its success record.
+The daemon is the sole queue owner. The renderer consumes the daemon id and
+state, while pause and cancel abort the active provider request and resume or
+retry starts a new provider pull from the durable record.
 
 ## Configuration
 
@@ -20,6 +23,9 @@ credentials, query strings, fragments, non-loopback hosts, and unsupported
 schemes are refused. Request and response limits are enforced before data is
 made visible to the renderer. The official catalog route uses the fixed
 provider endpoint and does not accept an arbitrary catalog URL.
+The catalog identity is `ollama-official-model-tags-v1`, independent of page
+tokens. Every page must carry the same ETag revision, a bounded `models` array,
+and either a bounded next-page token or an explicit terminal `null`.
 
 ## Failure modes
 

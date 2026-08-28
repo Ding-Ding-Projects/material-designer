@@ -11,18 +11,21 @@ requests to an explicitly configured loopback service.
 The Model Store consumes the official catalog through a paginated, revisioned
 daemon fetch. It records the page count, completion status, fetch time, source
 identity, stale state, and every returned variant. A missing page token, source
-revision, or source identity keeps the snapshot incomplete. Installed tags
-remain visible when official metadata is absent, and such rows are labelled
+revision, or stable catalog identity keeps the snapshot incomplete. The source
+identity is the fixed official catalog identity and never includes a page token.
+Installed tags remain visible when official metadata is absent, and such rows are labelled
 **Unknown** instead of being treated as safe. Each variant carries an
 evidence-backed **Runs well**, **Runs with limits**, **Unlikely**, or
 **Unknown** hardware verdict.
 
-Pulls are queued as durable records and consume a streamed progress response.
-The host persists queued, pulling, paused, completed, cancelled, and failed
+Pulls are queued as durable records owned by the daemon and consume a streamed
+progress response. The host persists queued, pulling, paused, completed, cancelled, and failed
 states, limits active work to two items, records byte progress and attempts, and
 reconciles an interrupted pull after restart. Local chat streams newline-
 delimited responses, supports cancellation through the request signal, and
-keeps message history in application-local state. Chat sessions validate
+keeps message history in application-local state. Multiple named session
+records can be parsed, searched, renamed, and exported with bounded fields.
+Chat sessions validate
 bounded temperature, top-p, top-k, context, and seed parameters, retain an
 editable system prompt, persist a redacted local transcript, and export only
 safe metadata and message content. Attachment controls remain visible but are
@@ -46,8 +49,8 @@ pattern, flags, sample, and validation state with the originating field.
 
 The renderer uses same-origin daemon paths only. No user-entered URL is sent by
 the renderer. The daemon obtains the official catalog from its documented
-catalog endpoint, preserves the response ETag as source revision and the
-response URL plus page token as source identity, and marks the snapshot
+catalog endpoint, preserves the response ETag as source revision and a fixed
+catalog identity independent of the page token, and marks the snapshot
 incomplete when either is absent. The catalog is considered stale after six
 hours. Responses are bounded at 8 MiB, a catalog is bounded at 10,000 pages,
 and a page is bounded at 100,000 variants. The host reports RAM, available RAM,
@@ -98,9 +101,10 @@ The built desktop surface still needs the full packaged interaction evidence:
 healthy, missing, stopped, offline, stale, pulling, partial pull, streamed
 chat, unavailable attachment, harness preflight, failed launch, rollback,
 all search fields, and every per-click capture. The host API still needs a
-platform-specific GPU, VRAM, driver, and backend probe, and the queue needs
-provider-aware resume rather than only durable state reconciliation. Those
-states are deliberately not described as verified by this source-only change.
+platform-specific GPU, VRAM, driver, and backend probe. Resume restarts the
+provider pull from the durable record because the provider exposes no
+resumable token in this bridge. Those states are deliberately not described as
+verified by this source-only change.
 
 ## Suggested articles
 

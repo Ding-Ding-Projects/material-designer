@@ -5601,9 +5601,11 @@ independent regex search field for each tab. The daemon is registered with a
 durable queue, bounded hardware telemetry, official-catalog source identity,
 and allowlisted harness lifecycle. Source tests cover the primary validation
 and refusal boundaries. Validated restart recovery, provider terminal-status
-handling, and capability gating are included. Platform-specific GPU probing,
-provider-aware resume, and packaged interaction evidence remain open and are
-not claimed here.
+handling, capability gating, collision-safe queue ids, actual queue scheduling,
+and persistent chat session records are included. Platform-specific GPU
+probing and packaged interaction evidence remain open. Resume restarts the
+provider pull from its durable record because this bridge has no resumable
+provider token.
 
 **Changed files:**
 
