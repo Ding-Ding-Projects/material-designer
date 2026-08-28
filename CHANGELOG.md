@@ -45,112 +45,31 @@ version section when a release carries them.
 
 ### Changed
 
-- **Close the pinned build and updater review gaps.** The dependency manifest is
-  now strict about schema, platform ids, canonical hosts, formats, versions and
-  digests, with null-safe pnpm materialization and exact resolved-tool use in
-  both local and hosted packaging. Update responses refuse redirects and
-  validate their final URL, streamed downloads enforce a byte bound, and
-  cancellation remains effective through payload preparation and promotion,
-  rolling back a newly promoted release without disturbing the previous one.
-  The persistent updater popup now carries the exact release-notes URL and a
-  real cancel action while a newer release downloads over an older ready one.
-  Source commit
-  [`d08922d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/d08922d3c48b7e290ef30096bf26347a06f66878)
-  carries this repair. Hosted build, installed interaction and visual evidence
-  remain pending.
+- **Show version-bound provenance before front-screen interaction.** The desktop
+  shell now renders the running version and its release-provenance timestamp
+  before tabs, settings, About, and onboarding authentication. Both `/api/health`
+  and `/api/version` have bounded deadlines, so an unavailable daemon settles to
+  an honest unavailable state instead of leaving the interface inert. Packaged
+  provenance must match the package version and source commit, use a strictly
+  valid calendar timestamp with seconds and timezone, and come from external
+  release metadata rather than the host clock. The documentation page resolves
+  the published release for its exact deployed commit, follows annotated tags,
+  and fails closed unless every visible field and immutable installer link is
+  replaced exactly once. Source review is complete in
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1).
+  Hosted packaging and real front-screen capture evidence remain pending.
 
-  **Review gaps 而家收口，build 同 updater 唔再扮 exact。** Manifest schema、
-  platform ids、canonical hosts、formats、versions 同 digests 全部收緊，pnpm
-  materialize 就算搵唔到 command 都唔會拎 null 去撞牆；local 同 hosted
-  packaging 都用返 resolution record 入面嗰條 exact path。Update response
-  唔收 redirect，final URL 都要再驗，streaming download 有 byte 上限，cancel
-  一路行到 payload prepare 同 promote 都有效，半路取消會 rollback 新 output
-  但唔郁舊 ready release。Persistent updater popup 而家有 exact release-notes
-  link，同埋 newer release 蓋住舊 ready 狀態下載時真係可以 cancel。Source
-  commit 係上面嗰個，hosted build、installed interaction 同 visual evidence
-  仲未有。
-
-  **Changed files:** `dependencies.manifest.json`, `download-dependencies.sh`,
-  `scripts/download-dependencies.ps1`, `scripts/build-installer.ps1`,
-  `scripts/test-build-entrypoints.ps1`, `scripts/test-updater-contract.ps1`,
-  `.github/workflows/release.yml`, `design/apps/desktop/src/main/updater.ts`,
-  `design/apps/desktop/src/main/updater/feed.ts`,
-  `design/apps/web/src/components/UpdaterPopup.tsx`,
-  `design/packages/download/`, `docs/build/dependency-bootstrap.md`,
-  `docs/release/automatic-updates.md`, and `MODIFICATIONS.md`.
-  Follow-up source commit
-  [`5cb71765`](https://github.com/Ding-Ding-Projects/material-designer/commit/5cb7176584831e3feff07da6a1c18ccd72dbabbf)
-  corrects the shell manifest entry count and its literal-safe regression
-  assertion. Hosted verification remains pending.
-  Commit
-  [`88cd35e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/88cd35e362217e2ece6720260c8bbd36508e846b)
-  replaces the remaining imported release-page fallbacks in Settings and
-  post-update highlights, and expands the boundary check to all three web
-  producers. Hosted verification remains pending.
-  Commit
-  [`28d3933c`](https://github.com/Ding-Ding-Projects/material-designer/commit/28d3933c57dc2fceb198882d958c452836c4030c)
-  extends the shell companion with exact platform-id ordering and compiler
-  workload validation. Hosted verification remains pending.
-
-- **Bind the build process to verified tools and make update cancellation real.**
-  The dependency helper now publishes a manifest-digest-bound resolution record,
-  imports the compiler environment after a Visual Studio workload install, and
-  feeds exact tool paths and versions into the build instead of allowing dynamic
-  machine fallback. Installer reuse is bound to the exact source commit and
-  package version, and the local Squirrel check validates `RELEASES`, package
-  SHA-1 values, NuGet identity, and full/delta relationships. The updater now
-  exposes platform, release-notes, restart, newer-download progress, bounded
-  allowlisted requests, and a real abort path from the dialog to the streaming
-  transfer. Source checks are complete; hosted verification remains pending.
-
-  **Build path 而家認實 verified tools，update cancel 亦真係會停。**
-  Helper 會寫 manifest-digest-bound resolution record，Visual Studio workload
-  裝完會 import compiler environment，再將 exact tool path 同 version 傳入
-  build，唔畀 machine fallback 偷換。Installer reuse 綁實 exact source commit
-  同 package version，local Squirrel check 會驗 `RELEASES`、package SHA-1、NuGet
-  identity 同 full/delta 關係。Updater model 加咗 platform、release-notes、restart、
-  newer-download progress、bounded allowlisted request，同埋由 dialog 一路落到
-  streaming transfer 嘅真 abort path。Source checks 完成，hosted verification 仲等緊。
-
-  **Changed files:** `scripts/build.ps1`, `scripts/build-installer.ps1`,
-  `scripts/download-dependencies.ps1`, `download-dependencies.sh`,
-  `scripts/test-build-entrypoints.ps1`, `.github/workflows/release.yml`,
-  `design/apps/desktop/src/main/updater.ts`,
-  `design/apps/desktop/src/main/updater/feed.ts`,
-  `design/apps/desktop/src/main/runtime.ts`, `design/apps/desktop/src/main/preload.cts`,
-  `design/apps/web/src/lib/updater.ts`, `design/apps/web/src/components/UpdateDialog.tsx`,
-  `design/apps/web/tests/lib/updater.test.ts`, and `design/packages/download/`.
-  Source commit [`ed68118a`](https://github.com/Ding-Ding-Projects/material-designer/commit/ed68118abad2136d3dc21cf52bab81cc4411bc5a)
-  carries this repair batch. Hosted verification remains pending.
-
-- **Root builds now bootstrap their pinned toolchain and refuse invented local provenance.**
-  `download-dependencies.bat` and `download-dependencies.sh` use canonical
-  sources, exact digests, user-scoped caches, idempotent silent mode, and a
-  bounded compiler check. `build.bat` calls the helper before the package build,
-  while `build-installer.bat` computes a candidate ordinal when none is supplied.
-  Local manifests now report provenance as unavailable unless an external record
-  is bound to the exact source commit and package version. The build entrypoint
-  contract check proves red after the dependency call is removed and green after
-  restoration. Hosted verification remains pending for this source-only lane.
-
-  **Root build 而家會自己 bootstrap pinned toolchain，仲唔會扮有 provenance。**
-  `download-dependencies.bat` 同 `download-dependencies.sh` 用 canonical source、
-  exact digest、user-scoped cache，同埋 idempotent silent mode，仲會檢查 compiler。
-  `build.bat` 先叫 helper 再 build，`build-installer.bat` 無 candidate 都會自己
-  揀下一個。Local manifest 無 external record 就老實寫 unavailable；有 exact
-  commit 同 package version 綁住先可以報 verified。Contract check 刪走 dependency
-  call 會轉紅，還原就轉綠；hosted verification 仲未完成。
-
-  **Changed files:** `build.bat`, `build-installer.bat`, `dependencies.manifest.json`,
-  `download-dependencies.bat`, `download-dependencies.sh`,
-  `scripts/build.ps1`, `scripts/build-installer.ps1`,
-  `scripts/download-dependencies.ps1`, `scripts/test-build-entrypoints.ps1`,
-  `scripts/test-updater-feed-boundary.ps1`,
-  `docs/build/dependency-bootstrap.md`, `docs/build/README.md`,
-  `docs/build/from-source.md`, `docs/release/automatic-updates.md`,
-  `design/apps/web/src/components/UpdateDialog.tsx`, and `MODIFICATIONS.md`.
-  Source commit [`1f473e7d`](https://github.com/Ding-Ding-Projects/material-designer/commit/1f473e7dde135337fb9ff03c77a7a68b1985743e)
-  carries this lane. Hosted verification and integration remain pending.
+  **前置畫面先顯示同版本綁實嘅 provenance。** Desktop shell 而家喺 tabs、
+  Settings、About 同 onboarding authentication 之前，先顯示真正運行版本同
+  release provenance timestamp。`/api/health` 同 `/api/version` 都有 deadline，
+  daemon 唔覆就誠實落 unavailable，唔會成個介面企喺度扮雕塑。Packaged
+  provenance 必須對準 package version 同 source commit，日期要真、要有秒同
+  timezone，而且只可以來自外部 release metadata，唔可以攞本機時鐘即場作故仔。
+  Documentation page 會按部署 commit 搵唯一 published release、解 annotated tag，
+  每個 visible field 同 immutable installer link 都要啱啱好換一次，否則即刻收工。
+  Source review 已經喺
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1)
+  完成；hosted packaging 同真正 front-screen capture 仲係 pending。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the

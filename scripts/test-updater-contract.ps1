@@ -16,6 +16,7 @@ function Assert-Contract([string]$Source, [string]$Name) {
     @{ Name = 'cancel controller'; Pass = $Source.Contains('downloadAbortController') -and $Source.Contains('cancelDownload') -and $Source.Contains('DESKTOP_UPDATE_ACTIONS.CANCEL') },
     @{ Name = 'bounded request timeout'; Pass = $Source.Contains('UPDATE_REQUEST_TIMEOUT_MS') -and $Source.Contains('setTimeout(() => controller.abort()') },
     @{ Name = 'redirect refusal and final URL'; Pass = $Source.Contains('redirect: "error"') -and $Source.Contains('final URL host is not allowlisted') },
+    @{ Name = 'streamed feed counter'; Pass = $Source.Contains('response.body.getReader()') -and $Source.Contains('receivedBytes += chunk.byteLength') -and $Source.Contains('reader.cancel()') },
     @{ Name = 'streaming byte bound'; Pass = $Source.Contains('maxBytes') -and $Source.Contains('receivedBytes > target.maxBytes') -and $Source.Contains('SIZE_LIMIT') },
     @{ Name = 'newer progress while ready'; Pass = $Source.Contains('updater-newer-download-progress') -and $Source.Contains('downloadProgressFromStatus') },
     @{ Name = 'exact release notes link'; Pass = $Source.Contains('releaseNotesUrl') -and $Source.Contains('data-release-notes-url') },
@@ -32,6 +33,7 @@ $redGreenCases = @(
   @{ Name = 'cancel'; Needle = 'downloadAbortController'; Replacement = 'cancel_state_removed' },
   @{ Name = 'timeout'; Needle = 'UPDATE_REQUEST_TIMEOUT_MS'; Replacement = 'timeout_constant_removed' },
   @{ Name = 'redirect'; Needle = 'redirect: "error"'; Replacement = 'redirect: "follow"' },
+  @{ Name = 'feed stream'; Needle = 'response.body.getReader()'; Replacement = 'response.body_removed' },
   @{ Name = 'chunk bound'; Needle = 'receivedBytes > target.maxBytes'; Replacement = 'stream_limit_removed' },
   @{ Name = 'progress'; Needle = 'updater-newer-download-progress'; Replacement = 'progress_marker_removed' },
   @{ Name = 'release link'; Needle = 'data-release-notes-url'; Replacement = 'release_link_marker_removed' }

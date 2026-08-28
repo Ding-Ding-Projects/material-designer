@@ -62,9 +62,6 @@ jobs:
         with:
           arch: x64
 
-      - name: Exercise the root dependency entrypoint
-        run: .\download-dependencies.bat /s
-
       - name: Clear prohibited signing inputs
         run: |
           $ErrorActionPreference = "Stop"
@@ -101,6 +98,8 @@ jobs:
       - name: Read application version
         id: version
         working-directory: design
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.ORG_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           $ErrorActionPreference = "Stop"
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
@@ -109,12 +108,35 @@ jobs:
           $runNumber = [int64]"${{ github.run_number }}"
           $patch = [int64]$baseVersion.Build + $runNumber
           $appVersion = "$($baseVersion.Major).$($baseVersion.Minor).$patch"
+          # Query GitHub for the workflow's recorded start instant. If that
+          # external provenance is unavailable, package provenance remains
+          # explicitly unavailable rather than falling back to a host clock.
+          $updatedAt = ''
+          $githubRunStart = & gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" --jq '.run_started_at' 2>$null
+          if ($LASTEXITCODE -eq 0) { $updatedAt = ([string]$githubRunStart).Trim() }
+          $calendar = [DateTime]::MinValue
+          $timestampIsValid =
+            $updatedAt.Length -ge 19 -and
+            $updatedAt -match '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$' -and
+            [DateTime]::TryParseExact(
+              $updatedAt.Substring(0, 19),
+              'yyyy-MM-ddTHH:mm:ss',
+              [Globalization.CultureInfo]::InvariantCulture,
+              [Globalization.DateTimeStyles]::None,
+              [ref]$calendar)
+          $provenanceStatus = if ($timestampIsValid) { 'verified' } else { 'unavailable' }
           "app_version=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "tag=v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          Write-Host "base $($pkg.version), build version $appVersion"
+          "updated_at=$updatedAt" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "provenance_status=$provenanceStatus" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "base $($pkg.version), build version $appVersion, provenance timestamp $updatedAt"
 
       - name: Run the root build entrypoint
         timeout-minutes: 60
+        env:
+          OD_BUILD_VERSION: ${{ steps.version.outputs.app_version }}
+          OD_BUILD_SOURCE_COMMIT: ${{ github.sha }}
+          OD_BUILD_UPDATED_AT: ${{ steps.version.outputs.updated_at }}
         run: .\build.bat /s
 
       - name: Build the Windows Squirrel installer
@@ -127,6 +149,13 @@ jobs:
           $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
           $pnpmPath = [string]$resolution.tools.pnpm.executable
           if ([string]::IsNullOrWhiteSpace($pnpmPath) -or -not (Test-Path -LiteralPath $pnpmPath -PathType Leaf)) { throw 'root build did not resolve an exact pnpm executable' }
+          $env:OD_BUILD_VERSION = "${{ steps.version.outputs.app_version }}"
+          $env:OD_BUILD_SOURCE_COMMIT = "${{ github.sha }}"
+          $env:OD_BUILD_UPDATED_AT = "${{ steps.version.outputs.updated_at }}"
+          if ("${{ steps.version.outputs.provenance_status }}" -ne "verified") {
+            Remove-Item Env:OD_BUILD_UPDATED_AT -ErrorAction SilentlyContinue
+            Write-Warning "GitHub did not provide validated external provenance; the packaged front screen will show unavailable provenance."
+          }
           $runnerTemp = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
           $runnerInstallParent = Split-Path -Parent $runnerTemp
           if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
@@ -333,8 +362,7 @@ jobs:
           $evidence | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $staged "build-evidence.json") -Encoding utf8
           $provenance = [ordered]@{
             version = 1
-            sourceCommit = "${{ github.sha }}"
-            builtAt = (Get-Date).ToUniversalTime().ToString('o')
+            provenanceStatus = "${{ steps.version.outputs.provenance_status }}"
             packagingCommand = "resolved manifest pnpm exec tools-pack win build --to squirrel"
             cleanOutput = $true
             package = [ordered]@{ id = "open-design-packaged-app"; version = "${{ steps.version.outputs.app_version }}"; architecture = "x64" }
@@ -347,6 +375,10 @@ jobs:
               observedSignerInvocations = $observedSigners
               controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
             }
+          }
+          if ($provenance.provenanceStatus -eq "verified") {
+            $provenance.sourceCommit = "${{ github.sha }}"
+            $provenance.updatedAt = $env:OD_BUILD_UPDATED_AT
           }
           $provenancePath = Join-Path $staged "build-provenance.json"
           $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
@@ -399,6 +431,7 @@ jobs:
             -RequiredPackageEntry "lib/net45/Material Designer.exe" `
             -MetadataFile "metadata.json" `
             -IconFile "material-designer.ico" `
+            -RequireSignerAudit `
             -OutputPath $receipt
 
       - name: Count lines for release notes

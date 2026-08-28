@@ -37,6 +37,23 @@ for (const [path, source] of workflows) {
 const release = await text(".github/workflows/release.yml");
 const builder = await text("design/tools/pack/src/win/builder.ts");
 const pythonBootstrap = await text("scripts/bootstrap-python.ps1");
+const rootBuild = await text("scripts/build.ps1");
+const rootInstaller = await text("scripts/build-installer.ps1");
+
+function sectionBetween(source, start, end, message) {
+  const startAt = source.indexOf(start);
+  const endAt = source.indexOf(end, startAt + start.length);
+  if (startAt < 0 || endAt < 0 || endAt <= startAt) {
+    failures.push(message);
+    return "";
+  }
+  return source.slice(startAt, endAt);
+}
+
+function requireSection(source, start, end, needle, message) {
+  const section = sectionBetween(source, start, end, message);
+  if (section && !section.includes(needle)) failures.push(message);
+}
 
 requireText(release, "scripts/bootstrap-python.ps1", "release.yml does not bootstrap Python 3.12 automatically");
 forbid(release, /actions\/setup-python@v5/, "release.yml still invokes the policy-blocked setup-python action");
@@ -45,10 +62,13 @@ requireText(pythonBootstrap, "www.python.org/ftp/python/3.12.10", "Python bootst
 requireText(pythonBootstrap, "Expand-Archive", "Python bootstrap does not extract the portable Python archive");
 requireText(pythonBootstrap, "loads no setup script", "Python bootstrap does not document its policy-safe archive path");
 requireText(release, "ilammy/msvc-dev-cmd@v1", "release.yml does not activate the Windows C++ toolchain");
-requireText(release, "download-dependencies.bat /s", "release.yml does not exercise the root dependency entrypoint");
 requireText(release, ".\\build.bat /s", "release.yml does not exercise the complete root build entrypoint");
-requireText(release, "root build did not resolve an exact pnpm executable", "release.yml does not consume the resolved pnpm path before packaging");
-requireText(release, "& $pnpmPath exec tools-pack", "release.yml does not invoke tools-pack through the resolved pnpm path");
+requireText(rootBuild, "download-dependencies.ps1", "the root build entrypoint does not invoke the dependency helper");
+requireText(rootInstaller, "verify-squirrel-artifacts.ps1", "the root installer entrypoint does not use the shared Squirrel validator");
+requireSection(release, "- name: Run the root build entrypoint", "- name: Build the Windows Squirrel installer", ".\\build.bat /s", "release.yml does not exercise the complete root build entrypoint in its own step");
+requireSection(release, "- name: Build the Windows Squirrel installer", "- name: Confirm unsigned Squirrel output", "$pnpmPath = [string]$resolution.tools.pnpm.executable", "release.yml does not resolve pnpm inside the packaging step");
+requireSection(release, "- name: Build the Windows Squirrel installer", "- name: Confirm unsigned Squirrel output", "& $pnpmPath exec tools-pack win build", "release.yml does not invoke packaging through the resolved pnpm path");
+requireSection(release, "- name: Validate the complete Squirrel artifact set", "- name: Count lines for release notes", "scripts/verify-squirrel-artifacts.ps1", "release.yml does not invoke the shared Squirrel validator");
 requireText(release, "Clear prohibited signing inputs", "release.yml does not clear signing inputs");
 requireText(release, '--to squirrel', "release.yml does not select Squirrel as its only Windows package target");
 requireText(release, "$ErrorActionPreference = 'Continue'", "release.yml does not scope Windows PowerShell native stderr handling around tools-pack");
@@ -68,6 +88,8 @@ forbid(release, /\bpwsh\b/, "release.yml invokes pwsh instead of its declared Wi
 requireText(release, "CSC_IDENTITY_AUTO_DISCOVERY=false", "release.yml does not disable certificate discovery");
 requireText(release, "$signature.Status -ne 'NotSigned'", "release.yml does not verify an unsigned Setup.exe");
 requireText(release, "signed = $false", "release metadata does not declare unsigned artifacts");
+forbid(release, /builtAt\s*=|\.builtAt\s*=/, "release workflow still writes host-clock builtAt provenance");
+requireText(release, "$provenance.updatedAt = $env:OD_BUILD_UPDATED_AT", "release provenance does not use the externally supplied updatedAt value");
 requireText(release, "WORKFLOW_STARTED_AT", "release notes do not receive the workflow start timestamp");
 requireText(release, "Workflow duration", "release notes do not publish workflow timing");
 requireText(release, "gh release edit", "release notes are not finalized after publication");
@@ -77,6 +99,7 @@ requireText(release, "steps.unsigned.outcome == 'success'", "release.yml can pub
 requireText(release, "steps.artifact_contract.outcome == 'success'", "release.yml can publish without a successful complete-artifact check");
 requireText(release, '-MetadataFile "metadata.json"', "release.yml does not validate the updater metadata with the package set");
 requireText(release, '-IconFile "material-designer.ico"', "release.yml does not validate the packaged icon with the package set");
+requireText(release, "-RequireSignerAudit", "release.yml does not require signer observation in the shared validator");
 requireText(release, "signer-audit.ready", "release.yml does not wait for the independent signer observer before packaging");
 requireExact(release, '$packagingEvidence = Join-Path $runnerTemp ("squirrel-packaging-evidence-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")', "release.yml does not create one run-scoped packaging evidence directory");
 requireExact(release, 'Write-Host ("[tools-pack] " + $line)', "release.yml does not stream safe tools-pack diagnostics into the job log");

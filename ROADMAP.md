@@ -1,22 +1,22 @@
 # Roadmap
 
-- [ ] **Make the root build and installer entry points fresh-machine safe.** The
-      new dependency helpers pin and hash Node `24.20.0`, pnpm `10.33.2`, Python
-      `3.12.10`, and MinGit `2.55.0.5`, use user-scoped caches, support silent
-      mode, and check the native compiler workload. `build.bat` invokes the
-      helper, while `build-installer.bat` derives a candidate when none is
-      supplied. Local manifests now report provenance as unavailable unless an
-      external record is bound to the exact source commit and package version.
-      The source contract check is red-then-green; hosted verification and
-      integration remain open. The current build/updater repair extends this
-      lane with exact path propagation, compiler-environment import, bounded
-      update cancellation, and complete Squirrel package relationships. The
-      current repair adds strict manifest schema and canonical-source checks,
-      null-safe pnpm materialization, exact resolved pnpm use in packaging,
-      redirect and final-URL refusal, streaming byte bounds, cancellation-safe
-      promotion rollback, and red-then-green updater contract cases. Hosted
-      verification, integration, and packaged interaction remain open, so this
-      item stays unchecked.
+- [ ] **Verify version-bound provenance on every initial surface.** The desktop
+      source now places version and release-provenance time before navigation and
+      authentication, rejects host-clock and malformed provenance, and settles
+      bounded health and version requests to an honest unavailable state. The
+      documentation-page workflow resolves a published release for the exact
+      deployed commit and fails closed when any visible field or installer link
+      is missing. Source review is complete. Hosted type and package checks,
+      installed interaction, local-time rendering with seconds and timezone, and
+      real capture evidence remain required before this item can be checked.
+
+      **廣東話進度：** Desktop source 已經喺 navigation 同 authentication 前面
+      顯示版本同 release provenance time，host clock、亂日期、對唔上版本嘅資料
+      全部拒收，health 同 version request 吊住都會有期限，最後誠實顯示
+      unavailable。Documentation page 只會用部署 commit 對中嘅 published release，
+      少一個 visible field 或 installer link 都會轉紅。Source review 完成，但
+      hosted type、package、installed interaction、帶秒同 timezone 嘅 local-time
+      rendering 同真正 capture 仲未做，所以繼續留白。
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
@@ -34,7 +34,7 @@
       verification 仲未到，所以繼續留白；呢項只記錄 documentation 同 guard
       狀態，唔代表 product feature 已經實作。
 
-- [~] **Restore the unsigned Squirrel executable producer after hosted rcedit
+- [ ] **Restore the unsigned Squirrel executable producer after hosted rcedit
       failure.** Release `32831335767` failed at `rcedit-x64.exe` with `Fatal
       error: Unable to commit changes`; it was not an Authenticode signing
       invocation. The source restoration accidentally removed the project-owned
@@ -57,9 +57,9 @@
       package, and a same-tuple inspected after capture remain open, so this
       item is not complete.
 
-- [~] **Drive every user-facing surface and retain one inspected capture after every interaction.** The hand-written foundation now enumerates both user-facing surfaces, all mandatory feature targets, and the existing ten design-parity destinations. Versioned schemas and a PowerShell validator reject missing whole rows, missing interaction fields, false evidence on incomplete targets, and receipts that lack exact commit, artifact, capture-tuple, privacy, semantic-state, and original-image-inspection proof. No current-commit packaged artifact or per-click receipt exists yet, so the full drive remains unticked.
+- [ ] **Drive every user-facing surface and retain one inspected capture after every interaction.** The hand-written foundation now enumerates both user-facing surfaces, all mandatory feature targets, and the existing ten design-parity destinations. Versioned schemas and a PowerShell validator reject missing whole rows, missing interaction fields, false evidence on incomplete targets, and receipts that lack exact commit, artifact, capture-tuple, privacy, semantic-state, and original-image-inspection proof. No current-commit packaged artifact or per-click receipt exists yet, so the full drive remains unticked.
 
-- [~] **Implement per-element toy locks and the complete authentication surface.**
+- [ ] **Implement per-element toy locks and the complete authentication surface.**
       The desktop renderer now has a pure core for the exact six factor policies,
       shared keypad/manual PIN normalization, one bounded attempt budget, and
       locked-target activation interception that never invokes the protected
@@ -203,7 +203,7 @@ with the project's standards.
       rows compact labelled controls while retaining accessible names. Hosted
       interaction and high-scale capture evidence remains pending.
 
-- [~] **Add the production deterministic parity-route foundation.** The real
+- [ ] **Add the production deterministic parity-route foundation.** The real
       desktop entry now parses the exact v2 `material-designer://` tuple only in
       explicit developer/capture mode, rejects missing or duplicate route
       arguments, maps six semantically owned destinations to the existing web
@@ -259,7 +259,7 @@ with the project's standards.
       parent/trigger focus restoration. Built-artifact interaction proof remains
       pending the hosted package containing the repaired source.
 
-- [~] **Keep chat context project-wide across tab and file switches.** Commits
+- [ ] **Keep chat context project-wide across tab and file switches.** Commits
       [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
       removes implicit primary-file/Design Files preview selection and binds the
       automatic context to the project. Follow-up
@@ -328,7 +328,7 @@ with the project's standards.
       the only lane evidence until hosted builds, keyboard checks and the
       light/dark narrow/high-scale capture matrix run.
 
-- [~] **Retain failed Squirrel packaging diagnostics.** Release `32506068934`
+- [ ] **Retain failed Squirrel packaging diagnostics.** Release `32506068934`
       proved the packaging step can fail after `tools-pack` returns code `1`,
       but its nested build log was not retained by the always-uploaded evidence.
       Commit [`e241a1f1`](https://github.com/Ding-Ding-Projects/material-designer/commit/e241a1f1568077d6958f14896e0082b224b6d5f6)
@@ -338,7 +338,7 @@ with the project's standards.
       rethrowing. Hosted behavior and the packer root cause remain unverified
       until a replacement run exercises the path.
 
-- [~] **Harden the Studio deterministic capture lifecycle.** The source route now
+- [ ] **Harden the Studio deterministic capture lifecycle.** The source route now
       refuses malformed canonical addresses, keeps a validated per-run session
       authoritative across queryless file continuations, restores ordinary
       configuration and appearance state on exit, bypasses ordinary tab cache
@@ -673,7 +673,7 @@ Not by a local build — local builds do not happen here.
       environments, and release targets.
       *Verified by:* all three having run — *Verify* on a clean checkout,
       *Release* through to publication, *Pages* through to deployment.
-- [~] **Install job on the labelled self-hosted Windows runner.** `release.yml`
+- [ ] **Install job on the labelled self-hosted Windows runner.** `release.yml`
       now selects `[self-hosted, windows, material-designer]`, installs pnpm
       10.33.2, Node 24 and Python 3.12 through setup actions, exposes the x64
       MSVC/Windows SDK toolchain for native compilation, verifies the versions, cleans
@@ -691,7 +691,7 @@ Not by a local build — local builds do not happen here.
       unsupported NSIS action ([Release 31127492852](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31127492852)).
       Commit [5d66600](https://github.com/Ding-Ding-Projects/material-designer/commit/5d66600)
       corrects that call site; another labelled run is still required.
-- [~] **Bootstrap the non-language CI tools automatically.** The committed
+- [ ] **Bootstrap the non-language CI tools automatically.** The committed
       `scripts/bootstrap-ci-tools.sh` and `scripts/bootstrap-ci-tools.ps1`
       validate cached `gh`, `jq` and `7z` versions, download pinned official
       releases when a cache entry is absent or wrong, serialize cache updates,
@@ -708,7 +708,7 @@ Not by a local build — local builds do not happen here.
       *Verified by:* every one of those steps running from that directory without
       a path failure. The prediction was never tested the hard way, because it was
       written down before the first attempt rather than after it.
-- [~] **Run the port verifier in CI, with line endings forced to LF.**
+- [ ] **Run the port verifier in CI, with line endings forced to LF.**
       `verify.yml` runs `scripts/verify-port.sh` on
       `[self-hosted, linux, material-designer]`, on every push and manual
       dispatch. It deliberately has no pull-request trigger because this public
@@ -781,7 +781,7 @@ Not by a local build — local builds do not happen here.
       *Verified by:* two installers built and attached to their own releases, each
       with an explicit existence check on the reported path and its payload
       validated before the run continued.
-- [~] **Switch Windows packaging and updates to Squirrel.Windows.** The product-owned
+- [ ] **Switch Windows packaging and updates to Squirrel.Windows.** The product-owned
       manual and hosted entry points now request only `--to squirrel`; they no
       longer request the aggregate/portable target or stage a portable ZIP as an
       alternate installer. Commit [`8129ac77`](https://github.com/Ding-Ding-Projects/material-designer/commit/8129ac77)
@@ -1010,7 +1010,7 @@ Not by a local build — local builds do not happen here.
       the publishing API before anything was uploaded — and succeeding once the
       setting was turned on. The prediction in this line was correct, which is
       the only reason it is worth leaving written down.
-- [~] **Make the site's base path configurable and verify the built output
+- [ ] **Make the site's base path configurable and verify the built output
       carries it.** A fork publishing under a repository-scoped path with a
       hardcoded root will emit absolute asset URLs: the build goes green, the
       deployment succeeds, and every page returns a 404. Never conclude the site
@@ -1088,7 +1088,7 @@ meeting it.
       *Verified by:* the component's stylesheet, which carries each of those four
       values as a token reference rather than a literal, except the height and
       padding which are the measurements themselves.
-- [~] **Left cluster:** a 20×20 brand mark tinted with the primary role, the
+- [ ] **Left cluster:** a 20×20 brand mark tinted with the primary role, the
       product name at 12px/600 with 0.02em tracking in the on-surface-variant
       role, and a lighter subtitle at 11px.
       *Mark and name done to the measurement; the subtitle is deliberately not
@@ -1277,7 +1277,7 @@ first line of its main stylesheet. It must be bundled too.
       Original wording:
       self-host that face. This is an edit under `design/` and needs an
       allowlist entry.
-- [~] **Inventory and migrate icon call sites.** *The font swap is done; the SVG
+- [ ] **Inventory and migrate icon call sites.** *The font swap is done; the SVG
       sweep is not, and the inventory is why.* The real numbers: Remixicon had
       **61 distinct names across 95 call sites in 7 files**, all funnelled
       through one 27-line component with no raw `ri-` class strings anywhere —
@@ -1364,7 +1364,7 @@ is untouched.
       and the **selection indicator**, which is theme-invariant on purpose. The
       dark restatements collapsed at the same time — an M3 role flips itself, so a
       token defined as a role needs no dark override.
-- [~] **Actually consume the tokens.** In the mockup the shape and easing
+- [ ] **Actually consume the tokens.** In the mockup the shape and easing
       variables are declared and referenced zero times — every radius and easing
       is written as a literal, and three further variables are declared and never
       read. The port must wire the token layer rather than copying the literals,
@@ -1375,7 +1375,7 @@ is untouched.
       to a motion curve, but the interface's duration values are still literals in
       the mapping layer. Finish that before 2.5, or an animation-speed control has
       nothing to drive.
-- [~] **Normalise the radius sprawl to the documented scale** — 8 / 12 / 16 / 28
+- [ ] **Normalise the radius sprawl to the documented scale** — 8 / 12 / 16 / 28
       / full. The mockup uses more than a dozen distinct literal radii, over 160
       of them the pill value; the handoff sheet itself states the intended
       normalisation.
@@ -1409,7 +1409,7 @@ is untouched.
       *Verified by:* both roles present under the names the contract wrote, with
       the sheet's own header stating plainly that they are inventions of this
       contract rather than canonical Material Design 3 roles.
-- [~] **Add the roles the mockup omits** — surface tint, shadow, and the fixed
+- [ ] **Add the roles the mockup omits** — surface tint, shadow, and the fixed
       role family — or record in the feature documentation which are
       deliberately unused and why. A silent gap reads as an oversight.
       *Recorded, but in the wrong place.* The contract sheet's header names each
@@ -1500,7 +1500,7 @@ labels are longest — and when no legacy design element remains in them.
       state rather than becoming a false mounted verdict. The follow-up
       [`07a8d44c2`](https://github.com/Ding-Ding-Projects/material-designer/commit/07a8d44c2372ff511fe98cdd164a0939f6f7babf)
       keeps the readiness receipt in scope through the polling deadline.
-- [~] **Typed Appearance route lifecycle and section ownership** — switching
+- [ ] **Typed Appearance route lifecycle and section ownership** — switching
       away from `/settings/appearance` normalizes to `/settings`, the labelled
       Settings region focuses only on initial route entry or an external deep
       link, and Workspace, Orbit and Routines are real dialog-owned tabs.
@@ -1508,7 +1508,7 @@ labels are longest — and when no legacy design element remains in them.
       snapshot is not authorized; Library remains owned by the entry route.
       Source contracts are present; hosted lifecycle and installed-renderer
       evidence remain open.
-- [~] **48px Appearance and Settings hit areas** — theme/seed/font choices,
+- [ ] **48px Appearance and Settings hit areas** — theme/seed/font choices,
       sliders, picker fields, copy actions, tabs, search results, reset actions,
       regex toggles, overflow and page-back controls have a 48px hit-area floor
       while their visual glyphs/tracks may remain compact. Hosted scale
@@ -1920,7 +1920,7 @@ installed build.
       level in every category; spoken error narration still names the actual
       failure and is never suppressed by rate limits. Yields to an active screen
       reader and respects quiet settings.
-- [~] **4.9 Context-menu search and shortcut labels.** The audit fixed the
+- [ ] **4.9 Context-menu search and shortcut labels.** The audit fixed the
       concrete menu defects found in the file-menu path: long labels wrap and
       Escape, outside click, scroll, Tab and item selection restore focus to the
       originating control. The FileViewer now has a hand-written ten-menu

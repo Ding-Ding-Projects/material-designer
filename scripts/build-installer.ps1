@@ -11,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $design = Join-Path $repo 'design'
 $stateRoot = Join-Path $repo '.yum-tong\installer'
+New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 
 function Resolve-Candidate([int]$Requested) {
   if ($Requested -gt 0) { return $Requested }
@@ -25,9 +26,28 @@ function Resolve-Candidate([int]$Requested) {
   return (($existing | Measure-Object -Maximum).Maximum + 1)
 }
 
-$Candidate = Resolve-Candidate $Candidate
+function Reserve-Candidate([int]$Requested) {
+  $lockPath = Join-Path $stateRoot '.candidate-allocation.lock'
+  for ($attempt = 0; $attempt -lt 120; $attempt++) {
+    try {
+      $lock = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+      try {
+        $selected = Resolve-Candidate $Requested
+        $reservedRoot = Join-Path $stateRoot ("candidate-{0}" -f $selected)
+        New-Item -ItemType Directory -Force -Path $reservedRoot | Out-Null
+        return $selected
+      } finally {
+        $lock.Dispose()
+      }
+    } catch [IO.IOException] {
+      Start-Sleep -Milliseconds 250
+    }
+  }
+  throw 'timed out waiting for the installer candidate allocation lock'
+}
+
+$Candidate = Reserve-Candidate $Candidate
 $runRoot = Join-Path $stateRoot ("candidate-{0}" -f $Candidate)
-New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
 
 function Invoke-Checked([string]$File, [string[]]$Arguments, [string]$Description) {
   Write-Host $Description
@@ -79,6 +99,13 @@ $appVersion = "{0}.{1}.{2}" -f $base.Major, $base.Minor, ($base.Build + $Candida
 $resolutionPath = Join-Path $repo '.yum-tong\build\dependency-resolution.json'
 if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) { throw 'dependency resolution record is missing; run build.bat first' }
 $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+$compiler = $resolution.compiler
+if ($null -eq $compiler -or [string]::IsNullOrWhiteSpace([string]$compiler.clPath) -or -not (Test-Path -LiteralPath $compiler.clPath -PathType Leaf)) { throw 'dependency resolution record has no usable compiler environment' }
+if ($null -ne $compiler.environment) {
+  foreach ($property in $compiler.environment.psobject.Properties) {
+    [Environment]::SetEnvironmentVariable($property.Name, [string]$property.Value, 'Process')
+  }
+}
 $gitPath = [string]$resolution.tools.git.executable
 if ([string]::IsNullOrWhiteSpace($gitPath) -or -not (Test-Path -LiteralPath $gitPath -PathType Leaf)) { throw 'dependency resolution record has no usable Git executable' }
 $pnpmPath = [string]$resolution.tools.pnpm.executable
@@ -153,61 +180,28 @@ if (-not $releases) { throw 'the Squirrel RELEASES index was not produced' }
 $full = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-full.nupkg')
 if ($full.Count -eq 0) { throw 'the Squirrel full .nupkg package was not produced' }
 $delta = @(Get-ChildItem -LiteralPath $squirrelRoot -Recurse -File -Filter '*-delta.nupkg')
-
-function Assert-SquirrelPackageSet([string]$Root, [string]$ExpectedId, [string]$ExpectedVersion, [System.IO.FileInfo[]]$FullPackages, [System.IO.FileInfo[]]$DeltaPackages) {
-  $releasePath = Join-Path $Root 'RELEASES'
-  if (-not (Test-Path -LiteralPath $releasePath -PathType Leaf)) { throw 'the Squirrel RELEASES index was not produced' }
-  $indexed = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-  foreach ($line in Get-Content -LiteralPath $releasePath) {
-    if ([string]::IsNullOrWhiteSpace($line)) { continue }
-    if ($line -notmatch '^([0-9a-fA-F]{40})\s+([^\s]+)\s+(\d+)$') { throw "Malformed RELEASES row: $line" }
-    $name = $Matches[2]
-    $bytes = [int64]$Matches[3]
-    if ([IO.Path]::GetFileName($name) -cne $name -or $name.Contains('..') -or -not $name.EndsWith('.nupkg', [StringComparison]::OrdinalIgnoreCase)) { throw "Unsafe package name in RELEASES: $name" }
-    if (-not $indexed.Add($name)) { throw "Duplicate package row in RELEASES: $name" }
-    $path = Join-Path $Root $name
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "RELEASES indexes missing package: $name" }
-    $item = Get-Item -LiteralPath $path
-    if ($item.Length -ne $bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA1).Hash.ToLowerInvariant() -ne $Matches[1].ToLowerInvariant()) { throw "RELEASES digest or byte length does not match $name" }
-  }
-  $packages = @($FullPackages + $DeltaPackages)
-  foreach ($package in $packages) {
-    if (-not $indexed.Contains($package.Name)) { throw "Squirrel package is not indexed by RELEASES: $($package.Name)" }
-  }
-  Add-Type -AssemblyName System.IO.Compression.FileSystem
-  foreach ($package in $FullPackages) {
-    $archive = [IO.Compression.ZipFile]::OpenRead($package.FullName)
-    try {
-      $nuspecs = @($archive.Entries | Where-Object FullName -Like '*.nuspec')
-      if ($nuspecs.Count -ne 1) { throw "$($package.Name) must contain exactly one nuspec" }
-      $reader = [IO.StreamReader]::new($nuspecs[0].Open())
-      try { [xml]$xml = $reader.ReadToEnd() } finally { $reader.Dispose() }
-      if ($xml.package.metadata.id -ne $ExpectedId -or $xml.package.metadata.version -ne $ExpectedVersion) { throw "$($package.Name) package identity does not match $ExpectedId $ExpectedVersion" }
-    } finally { $archive.Dispose() }
-  }
-}
-Assert-SquirrelPackageSet $squirrelRoot 'open-design-packaged-app' $appVersion $full $delta
 $assetDir = Join-Path $runRoot 'assets'
+if (Test-Path -LiteralPath $assetDir) { Remove-Item -LiteralPath $assetDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null
 $setupName = "material-designer-$appVersion-win-x64-setup.exe"
 Copy-Item -LiteralPath $setupItem.FullName -Destination (Join-Path $assetDir $setupName) -Force
 Copy-Item -LiteralPath $releases.FullName -Destination (Join-Path $assetDir 'RELEASES') -Force
 foreach ($item in @($full + $delta)) { Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $assetDir $item.Name) -Force }
 $icon = Join-Path $design 'tools/pack/resources/win/icon.ico'
-if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force }
+if (-not (Test-Path -LiteralPath $icon -PathType Leaf)) { throw 'the packaged icon source is missing' }
+Copy-Item -LiteralPath $icon -Destination (Join-Path $assetDir 'material-designer.ico') -Force
 $hash = Get-Sha256 (Join-Path $assetDir $setupName)
 "$hash  $setupName" | Set-Content -LiteralPath (Join-Path $assetDir "$setupName.sha256") -Encoding ascii
 
 $provenancePath = Join-Path $runRoot 'build-provenance.json'
 $provenance = [ordered]@{
   version = 1
-  sourceCommit = $sha
-  status = 'unavailable'
+  provenanceStatus = 'unavailable'
   reason = 'No externally supplied build provenance record was provided to this local build'
   packagingCommand = 'build-installer.bat /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
-  buildLog = [ordered]@{ path = 'installer-build.log'; sha256 = Get-Sha256 $buildLogPath }
+  buildLog = [ordered]@{ path = [IO.Path]::GetFullPath($buildLogPath); sha256 = Get-Sha256 $buildLogPath }
   signing = [ordered]@{
     inputsCleared = $true
     certificateAutoDiscoveryDisabled = $true
@@ -218,17 +212,51 @@ $provenance = [ordered]@{
   }
 }
 if ([string]::IsNullOrWhiteSpace($ProvenanceFile)) { $ProvenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE }
+$external = $null
 if (-not [string]::IsNullOrWhiteSpace($ProvenanceFile)) {
   if (-not (Test-Path -LiteralPath $ProvenanceFile -PathType Leaf)) { throw "external provenance file was not found: $ProvenanceFile" }
   $external = Get-Content -Raw -LiteralPath $ProvenanceFile | ConvertFrom-Json
-  if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $appVersion -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
-    throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value'
+} elseif (-not [string]::IsNullOrWhiteSpace($env:OD_BUILD_VERSION) -or
+          -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_SOURCE_COMMIT) -or
+          -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_UPDATED_AT)) {
+  $external = [pscustomobject]@{
+    schemaVersion = 1
+    sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+    version = $env:OD_BUILD_VERSION
+    updatedAt = $env:OD_BUILD_UPDATED_AT
   }
-  try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch { throw 'external provenance updatedAt is not a valid timestamp' }
-  $provenance.status = 'verified'
+}
+if ($null -ne $external) {
+  if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $appVersion -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
+    if (-not [string]::IsNullOrWhiteSpace($ProvenanceFile)) { throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value' }
+    Write-Warning 'The supplied hosted provenance was incomplete; installer provenance remains unavailable.'
+    $external = $null
+  }
+}
+if ($null -ne $external) {
+  try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch {
+    if (-not [string]::IsNullOrWhiteSpace($ProvenanceFile)) { throw 'external provenance updatedAt is not a valid timestamp' }
+    Write-Warning 'The supplied hosted provenance timestamp was invalid; installer provenance remains unavailable.'
+    $external = $null
+  }
+}
+if ($null -ne $external) {
+  $provenance.provenanceStatus = 'verified'
+  $provenance.sourceCommit = $sha
+  $provenance.updatedAt = $external.updatedAt
   $provenance.external = [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion; updatedAt = $external.updatedAt; source = 'external-record' }
 }
 $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
+$releaseBase = 'https://github.com/Ding-Ding-Projects/material-designer/releases'
+$metadata = [ordered]@{
+  schemaVersion = 1
+  channel = 'stable'
+  releaseVersion = $appVersion
+  signed = $false
+  releaseNotesUrl = $releaseBase
+  platforms = [ordered]@{ win = [ordered]@{ enabled = $true; arch = 'x64'; artifacts = [ordered]@{ installer = [ordered]@{ type = 'installer'; name = 'Setup.exe'; url = "$releaseBase/download/v$appVersion-r$Candidate.1/$setupName"; size = [int64](Get-Item -LiteralPath (Join-Path $assetDir $setupName)).Length; sha256 = $hash; sha256Url = "$releaseBase/download/v$appVersion-r$Candidate.1/$setupName.sha256" } } } }
+}
+$metadata | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $assetDir 'metadata.json') -Encoding utf8
 $manifest = [ordered]@{
   schemaVersion = 1
   commit = $sha
@@ -243,14 +271,29 @@ $manifest = [ordered]@{
   fullPackages = @($full | ForEach-Object Name)
   deltaPackages = @($delta | ForEach-Object Name)
   installerFormat = 'squirrel'
-  provenanceStatus = $provenance.status
+  provenanceStatus = $provenance.provenanceStatus
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
 Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $setupName)))"
 Write-Host "SHA-256: $hash"
 Write-Host "Manifest: $([IO.Path]::GetFullPath((Join-Path $runRoot 'installer-manifest.json')))"
 Write-Host "Provenance: $([IO.Path]::GetFullPath($provenancePath))"
-if ($provenance.status -eq 'unavailable') {
+if ($provenance.provenanceStatus -eq 'unavailable') {
   Write-Warning 'No external build provenance record was supplied; updated-at is unavailable and the local artifact is not a provenance-bound release.'
 }
-Write-Warning 'The local artifact is unsigned. Run the hosted artifact validator before publication.'
+$receiptPath = Join-Path $runRoot 'artifact-receipt.json'
+$validator = Join-Path $repo 'scripts/verify-squirrel-artifacts.ps1'
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $validator `
+  -ArtifactDirectory $assetDir `
+  -ProvenancePath $provenancePath `
+  -ExpectedCommit $sha `
+  -SetupFile $setupName `
+  -ExpectedPackageId 'open-design-packaged-app' `
+  -ExpectedVersion $appVersion `
+  -ExpectedArchitecture x64 `
+  -RequiredPackageEntry 'lib/net45/Material Designer.exe' `
+  -MetadataFile 'metadata.json' `
+  -IconFile 'material-designer.ico' `
+  -OutputPath $receiptPath
+if ($LASTEXITCODE -ne 0) { throw "the shared Squirrel validator failed with exit code $LASTEXITCODE" }
+Write-Warning 'The local artifact is unsigned. The shared Squirrel validator completed without hosted signer observation.'

@@ -27,17 +27,28 @@ if ($initial.Count -gt 0) { throw "update-feed boundary failed: $($initial -join
 
 $fixtureRoot = Join-Path ([IO.Path]::GetTempPath()) ('material-designer-update-feed-' + [Guid]::NewGuid().ToString('N'))
 try {
-  $fixturePath = Join-Path $fixtureRoot 'design/apps/web/src/components/UpdateDialog.tsx'
-  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $fixturePath) | Out-Null
-  $original = Get-Content -Raw -LiteralPath (Join-Path $Root 'design/apps/web/src/components/UpdateDialog.tsx')
-  Copy-Item -LiteralPath (Join-Path $Root 'design/apps/web/src/components/SettingsDialog.tsx') -Destination (Join-Path $fixtureRoot 'design/apps/web/src/components/SettingsDialog.tsx')
-  Copy-Item -LiteralPath (Join-Path $Root 'design/apps/web/src/components/WhatsNewPopup.tsx') -Destination (Join-Path $fixtureRoot 'design/apps/web/src/components/WhatsNewPopup.tsx')
-  [IO.File]::WriteAllText($fixturePath, $original.Replace('https://github.com/Ding-Ding-Projects/material-designer/releases', 'https://github.com/nexu-io/open-design/releases'), [Text.UTF8Encoding]::new($false))
-  $negative = @(Test-UpdateFeedBoundary $fixtureRoot)
-  if ($negative.Count -eq 0) { throw 'the update-feed boundary stayed green after replacing the project release URL' }
-  [IO.File]::WriteAllText($fixturePath, $original, [Text.UTF8Encoding]::new($false))
-  if (@(Test-UpdateFeedBoundary $fixtureRoot).Count -ne 0) { throw 'the update-feed fixture did not return green after restoration' }
-  Write-Output 'PASS: update-feed boundary turned red for an upstream fallback and green after restoration.'
+  $producerFiles = @(
+    'design/apps/web/src/components/UpdateDialog.tsx',
+    'design/apps/web/src/components/SettingsDialog.tsx',
+    'design/apps/web/src/components/WhatsNewPopup.tsx'
+  )
+  foreach ($relative in $producerFiles) {
+    $fixturePath = Join-Path $fixtureRoot $relative
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $fixturePath) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $Root $relative) -Destination $fixturePath
+  }
+  foreach ($relative in $producerFiles) {
+    $fixturePath = Join-Path $fixtureRoot $relative
+    $original = Get-Content -Raw -LiteralPath $fixturePath
+    $mutated = $original.Replace('https://github.com/Ding-Ding-Projects/material-designer/releases', 'https://github.com/nexu-io/open-design/releases')
+    if ($mutated -eq $original) { throw "the update-feed mutation did not change $relative" }
+    [IO.File]::WriteAllText($fixturePath, $mutated, [Text.UTF8Encoding]::new($false))
+    $negative = @(Test-UpdateFeedBoundary $fixtureRoot)
+    if ($negative.Count -eq 0) { throw "the update-feed boundary stayed green after mutating $relative" }
+    [IO.File]::WriteAllText($fixturePath, $original, [Text.UTF8Encoding]::new($false))
+    if (@(Test-UpdateFeedBoundary $fixtureRoot).Count -ne 0) { throw "the update-feed fixture did not return green after restoring $relative" }
+  }
+  Write-Output 'PASS: each release-feed producer turned red independently and green after restoration.'
 } finally {
   if (Test-Path -LiteralPath $fixtureRoot) { Remove-Item -LiteralPath $fixtureRoot -Recurse -Force }
 }

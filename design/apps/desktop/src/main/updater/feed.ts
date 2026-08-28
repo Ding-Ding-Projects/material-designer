@@ -466,9 +466,26 @@ async function fetchTextBounded(
     if (declaredBytes != null && Number.isFinite(Number(declaredBytes)) && Number(declaredBytes) > maxBytes) {
       throw new Error(`${label} response exceeded ${maxBytes} bytes`);
     }
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > maxBytes) throw new Error(`${label} response exceeded ${maxBytes} bytes`);
-    return text;
+    if (response.body == null) throw new Error(`${label} response did not include a body`);
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let receivedBytes = 0;
+    try {
+      while (true) {
+        const next = await reader.read();
+        if (next.done) break;
+        const chunk = next.value;
+        receivedBytes += chunk.byteLength;
+        if (receivedBytes > maxBytes) {
+          await reader.cancel();
+          throw new Error(`${label} response exceeded ${maxBytes} bytes`);
+        }
+        chunks.push(chunk);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString("utf8");
   } catch (error) {
     if (controller.signal.aborted && !signal?.aborted) throw new Error(`${label} request timed out`);
     throw error;

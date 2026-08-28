@@ -975,7 +975,12 @@ export function createDesktopUpdater(
         signal: abortController.signal,
         payload: {
           checksum: managedChecksum(resolvedChecksum),
-          maxBytes: Math.min(nextCandidate.artifact.size ?? 2 * 1024 * 1024 * 1024, 2 * 1024 * 1024 * 1024),
+          maxBytes: Math.min(
+            typeof nextCandidate.artifact.size === "number" && nextCandidate.artifact.size > 0
+              ? nextCandidate.artifact.size
+              : 2 * 1024 * 1024 * 1024,
+            2 * 1024 * 1024 * 1024,
+          ),
           url: nextCandidate.artifact.url,
         },
       });

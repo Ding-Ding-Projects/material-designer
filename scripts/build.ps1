@@ -104,14 +104,36 @@ if (-not $SkipBuild) {
     reason = 'No externally supplied build provenance record was provided to this local build'
   }
   $provenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE
+  $external = $null
   if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) {
     if (-not (Test-Path -LiteralPath $provenanceFile -PathType Leaf)) { throw "external provenance file was not found: $provenanceFile" }
     $external = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
+  } elseif (-not [string]::IsNullOrWhiteSpace($env:OD_BUILD_VERSION) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_SOURCE_COMMIT) -or
+            -not [string]::IsNullOrWhiteSpace($env:OD_BUILD_UPDATED_AT)) {
+    $external = [pscustomobject]@{
+      schemaVersion = 1
+      sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+      version = $env:OD_BUILD_VERSION
+      updatedAt = $env:OD_BUILD_UPDATED_AT
+    }
+  }
+  if ($null -ne $external) {
     $package = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
     if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $package.version -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
-      throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value'
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value' }
+      Write-Warning 'The supplied hosted provenance was incomplete; build provenance remains unavailable.'
+      $external = $null
     }
-    try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch { throw 'external provenance updatedAt is not a valid timestamp' }
+  }
+  if ($null -ne $external) {
+    try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch {
+      if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) { throw 'external provenance updatedAt is not a valid timestamp' }
+      Write-Warning 'The supplied hosted provenance timestamp was invalid; build provenance remains unavailable.'
+      $external = $null
+    }
+  }
+  if ($null -ne $external) {
     $provenance = [ordered]@{
       status = 'verified'
       source = 'external-record'

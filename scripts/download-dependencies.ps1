@@ -40,6 +40,8 @@ function Assert-DependencyManifest {
   Assert-ManifestUrl $windows[3] @('python.org')
   Assert-ManifestUrl $linux[0] @('nodejs.org')
   Assert-ManifestUrl $linux[1] @('registry.npmjs.org')
+  $expectedGitUrl = 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/MinGit-2.55.0.5-64-bit.zip'
+  if ($windows[0].url -ne $expectedGitUrl) { throw "Git manifest URL path is not the exact MinGit 2.55.0.windows.5 archive: $($windows[0].url)" }
   if ($windows[0].format -ne 'zip' -or $windows[1].format -ne 'zip' -or $windows[2].format -ne 'npm-tarball' -or $windows[3].format -ne 'zip') { throw 'windows-x64 manifest formats are invalid' }
   if ($linux[0].format -ne 'tar.xz' -or $linux[1].format -ne 'npm-tarball') { throw 'linux-x64 manifest formats are invalid' }
   if ($manifest.compiler.id -ne 'visual-studio-build-tools' -or $manifest.compiler.version -ne '2022' -or

@@ -17,7 +17,8 @@ function Test-BuildContract([string]$ContractRoot) {
   $fetchBat = Join-Path $ContractRoot 'download-dependencies.bat'
   $manifestPath = Join-Path $ContractRoot 'dependencies.manifest.json'
 
-  foreach ($path in @($buildBat, $installerBat, $buildPs, $installerPs, $fetchPs, $fetchSh, $fetchBat, $manifestPath)) {
+  $validatorPath = Join-Path $ContractRoot 'scripts/verify-squirrel-artifacts.ps1'
+  foreach ($path in @($buildBat, $installerBat, $buildPs, $installerPs, $fetchPs, $fetchSh, $fetchBat, $manifestPath, $validatorPath)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $failures.Add("missing required entrypoint: $path") }
   }
   if ($failures.Count -gt 0) { return $failures }
@@ -28,6 +29,7 @@ function Test-BuildContract([string]$ContractRoot) {
   $installerSource = Get-Content -Raw -LiteralPath $installerPs
   $fetchSource = Get-Content -Raw -LiteralPath $fetchPs
   $fetchShell = Get-Content -Raw -LiteralPath $fetchSh
+  $validatorSource = Get-Content -Raw -LiteralPath (Join-Path $ContractRoot 'scripts/verify-squirrel-artifacts.ps1')
   $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 
   if ($build -notmatch 'scripts\\download-dependencies\.ps1') { $failures.Add('build.bat does not invoke the dependency bootstrap') }
@@ -37,13 +39,16 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($installerSource -notmatch 'function Resolve-Candidate') { $failures.Add('build-installer.ps1 has no automatic candidate resolver') }
   if ($installerSource -notmatch '\$pnpmPath = \[string\]\$resolution\.tools\.pnpm\.executable') { $failures.Add('build-installer.ps1 does not bind the manifest-resolved pnpm executable') }
   if ($installerSource -notmatch '& \$pnpmPath .*tools-pack win build') { $failures.Add('build-installer.ps1 does not invoke the resolved pnpm executable') }
+  if ($installerSource -notmatch '\$compiler = \$resolution\.compiler' -or $installerSource -notmatch 'compiler\.environment') { $failures.Add('build-installer.ps1 does not import the resolved compiler environment') }
+  if ($installerSource -notmatch '\$Candidate = Reserve-Candidate \$Candidate') { $failures.Add('build-installer.ps1 does not serialize candidate allocation') }
+  if ($installerSource -notmatch 'Remove-Item -LiteralPath \$assetDir -Recurse -Force') { $failures.Add('build-installer.ps1 does not clear candidate assets before cleanOutput') }
   if ($buildSource -notmatch 'dependency-resolution\.json') { $failures.Add('build.ps1 does not consume the helper resolution record') }
   if ($buildSource -notmatch '\$nodePath = \[string\]\$resolution\.tools\.node\.executable') { $failures.Add('build.ps1 does not use the manifest-resolved Node executable') }
   if ($buildSource -notmatch 'resolved Node version') { $failures.Add('build.ps1 does not validate the exact resolved Node version') }
   if ($buildSource -notmatch 'MATERIAL_DESIGNER_PROVENANCE_FILE') { $failures.Add('build.ps1 has no external provenance input') }
   if ($buildSource -match 'completedAt\s*=\s*\(Get-Date\)') { $failures.Add('build.ps1 fabricates provenance from the host clock') }
   if ($installerSource -match 'builtAt\s*=\s*\(Get-Date\)') { $failures.Add('build-installer.ps1 fabricates provenance from the host clock') }
-  if ($installerSource -notmatch "status = 'unavailable'") { $failures.Add('build-installer.ps1 has no honest unavailable provenance state') }
+  if ($installerSource -notmatch "provenanceStatus = 'unavailable'") { $failures.Add('build-installer.ps1 has no honest unavailable provenance state') }
   if ($fetchSource -notmatch 'Download-Verified') { $failures.Add('dependency bootstrap has no digest-verifying download path') }
   if ($fetchSource -notmatch 'Ensure-InteractiveElevation') { $failures.Add('dependency bootstrap has no interactive pre-elevation path') }
   if ($fetchSource -notmatch 'if \(-not \$interactive\) \{ return \}') { $failures.Add('dependency bootstrap does not preserve silent user-scoped execution') }
@@ -51,6 +56,7 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($fetchSource -notmatch 'Assert-DependencyManifest') { $failures.Add('dependency bootstrap does not validate the strict manifest schema') }
   if ($fetchSource -notmatch 'Assert-ManifestUrl') { $failures.Add('dependency bootstrap does not validate canonical manifest hosts and digests') }
   if ($fetchSource -notmatch 'Find-PnpmExecutable') { $failures.Add('dependency bootstrap does not use a null-safe pnpm resolver') }
+  if ($fetchSource -notmatch 'expectedGitUrl') { $failures.Add('dependency bootstrap does not validate the exact Git-for-Windows URL path') }
   if ($fetchSource -notmatch 'Microsoft.VisualStudio.2022.BuildTools') { $failures.Add('dependency bootstrap has no canonical MSVC workload route') }
   if ($fetchSource -notmatch 'return Import-CompilerEnvironment \$vcvars') { $failures.Add('dependency bootstrap does not import the compiler environment') }
   if ($fetchSource -notmatch 'vcvars64\.bat') { $failures.Add('dependency bootstrap does not resolve the x64 compiler environment') }
@@ -64,11 +70,13 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($fetchShell -notmatch 'platform ids are incomplete or reordered') { $failures.Add('Linux dependency bootstrap does not validate platform id order') }
   if ($fetchShell -notmatch 'requiredWorkload.*Microsoft\.VisualStudio\.Workload\.VCTools') { $failures.Add('Linux dependency bootstrap does not validate the compiler workload record') }
   if ($installerSource -notmatch 'signatureStatus') { $failures.Add('build-installer.ps1 does not retain the unsigned signature verdict') }
-  if ($installerSource -notmatch 'provenanceStatus = \$provenance\.status') { $failures.Add('build-installer.ps1 does not bind the installer manifest to provenance state') }
+  if ($installerSource -notmatch 'provenanceStatus = \$provenance\.provenanceStatus') { $failures.Add('build-installer.ps1 does not bind the installer manifest to provenance state') }
   if ($installerSource -notmatch '\$sourceRecord = Join-Path \$runRoot ''pack-source\.json''') { $failures.Add('build-installer.ps1 does not bind reusable pack output to a source commit') }
-  if ($installerSource -notmatch 'Assert-SquirrelPackageSet \$squirrelRoot') { $failures.Add('build-installer.ps1 does not validate the complete Squirrel package set') }
+  if ($installerSource -notmatch 'verify-squirrel-artifacts\.ps1') { $failures.Add('build-installer.ps1 does not use the shared Squirrel validator') }
+  if ($installerSource -match 'function Assert-SquirrelPackageSet') { $failures.Add('build-installer.ps1 carries a duplicate Squirrel validator') }
   if ($installerSource -notmatch 'RELEASES') { $failures.Add('build-installer.ps1 does not validate the Squirrel RELEASES relationship') }
-  if ($installerSource -notmatch 'nuspec') { $failures.Add('build-installer.ps1 does not validate package identity metadata') }
+  if ($validatorSource -notmatch 'nuspec') { $failures.Add('the shared Squirrel validator does not validate package identity metadata') }
+  if ($validatorSource -match '\.builtAt\b') { $failures.Add('the shared Squirrel validator still accepts host-clock builtAt provenance') }
   if ($manifest.schemaVersion -ne 1) { $failures.Add('dependency manifest schemaVersion is not exactly 1') }
   if ((@($manifest.platforms.'windows-x64').id -join ',') -ne 'git,node,pnpm,python') { $failures.Add('windows-x64 manifest ids are incomplete or reordered') }
   if ((@($manifest.platforms.'linux-x64').id -join ',') -ne 'node,pnpm') { $failures.Add('linux-x64 manifest ids are incomplete or reordered') }
@@ -93,7 +101,7 @@ try {
   foreach ($relative in @('build.bat', 'build-installer.bat', 'download-dependencies.bat', 'dependencies.manifest.json')) {
     Copy-Item -LiteralPath (Join-Path $Root $relative) -Destination (Join-Path $fixtureRoot $relative)
   }
-  foreach ($relative in @('build.ps1', 'build-installer.ps1', 'download-dependencies.ps1')) {
+  foreach ($relative in @('build.ps1', 'build-installer.ps1', 'download-dependencies.ps1', 'verify-squirrel-artifacts.ps1')) {
     Copy-Item -LiteralPath (Join-Path $Root "scripts/$relative") -Destination (Join-Path $fixtureRoot "scripts/$relative")
   }
   Copy-Item -LiteralPath (Join-Path $Root 'download-dependencies.sh') -Destination (Join-Path $fixtureRoot 'download-dependencies.sh')
@@ -111,9 +119,11 @@ try {
     @{ File = 'build.bat'; Needle = 'YUM_TONG_DEPENDENCIES_READY=1'; Replacement = 'YUM_TONG_DEPENDENCIES_READY=0'; Name = 'resolved PATH handoff' },
     @{ File = 'scripts/build.ps1'; Needle = '$nodePath = [string]$resolution.tools.node.executable'; Replacement = '$nodePath = [string]$resolution.tools.node.missing'; Name = 'exact Node executable binding' },
     @{ File = 'scripts/download-dependencies.ps1'; Needle = 'return Import-CompilerEnvironment $vcvars'; Replacement = 'return Import-CompilerEnvironment_REMOVED $vcvars'; Name = 'compiler environment activation' },
-    @{ File = 'scripts/build-installer.ps1'; Needle = 'provenanceStatus = $provenance.status'; Replacement = 'provenanceStatus = $null'; Name = 'provenance binding' },
+    @{ File = 'scripts/build-installer.ps1'; Needle = 'provenanceStatus = $provenance.provenanceStatus'; Replacement = 'provenanceStatus = $null'; Name = 'provenance binding' },
     @{ File = 'scripts/build-installer.ps1'; Needle = '$sourceRecord = Join-Path $runRoot ''pack-source.json'''; Replacement = '$sourceRecord = Join-Path $runRoot ''pack-source-missing.json'''; Name = 'stale pack source binding' },
-    @{ File = 'scripts/build-installer.ps1'; Needle = 'Assert-SquirrelPackageSet $squirrelRoot'; Replacement = 'Assert-SquirrelPackageSet_REMOVED $squirrelRoot'; Name = 'Squirrel package relationship validation' }
+    @{ File = 'scripts/build-installer.ps1'; Needle = 'verify-squirrel-artifacts.ps1'; Replacement = 'verify-squirrel-artifacts-REMOVED.ps1'; Name = 'shared Squirrel validator' }
+    ,@{ File = 'scripts/build-installer.ps1'; Needle = '$Candidate = Reserve-Candidate $Candidate'; Replacement = '$Candidate = Resolve-Candidate $Candidate'; Name = 'candidate allocation lock' }
+    ,@{ File = 'scripts/build-installer.ps1'; Needle = 'Remove-Item -LiteralPath $assetDir -Recurse -Force'; Replacement = 'Write-Host ''asset cleanup skipped'''; Name = 'candidate asset cleanup' }
     ,@{ File = 'scripts/build-installer.ps1'; Needle = '$pnpmPath = [string]$resolution.tools.pnpm.executable'; Replacement = '$resolvedPackageTool = [string]$resolution.tools.pnpm.executable'; Name = 'installer exact pnpm binding' }
     ,@{ File = 'download-dependencies.sh'; Needle = 'manifest_value()'; Replacement = 'manifest_value_REMOVED()'; Name = 'Linux manifest binding' },
     @{ File = 'download-dependencies.sh'; Needle = 'flock -w 120 9'; Replacement = 'flock_REMOVED -w 120 9'; Name = 'Linux cache lock' },

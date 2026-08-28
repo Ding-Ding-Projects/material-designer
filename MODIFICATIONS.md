@@ -29,28 +29,13 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
-### 2026-08-27 - Keep the manual update fallback on the project release feed
+### 2026-08-28 - Reconcile front-screen provenance with the build and updater repair
 
-**Reason:** The desktop update dialog used the upstream release page when an
-update was unavailable or unsupported. That fallback could send a Material
-Designer user to a different product's releases. The fallback now opens this
-project's release page, while the feed, package identity, and update behavior
-remain unchanged.
-
-**Changed files:**
-
-- `apps/web/src/components/UpdateDialog.tsx`
-
-### 2026-08-27 - Bind updater cancellation, deadlines, and release metadata to real state
-
-**Reason:** The updater model did not expose the platform, release-notes target,
-or the fact that a Windows Squirrel installer requires a restart. A completed
-installer could also hide progress for a newer download, and a download could
-remain unbounded or uncancellable across the renderer, host, and transfer
-layers. Add bounded allowlisted feed and checksum requests, an abort controller
-that reaches the streaming transfer, a cancellable host action, explicit model
-fields, and testable update-dialog targets. The change preserves the existing
-restart safety and unsigned-package rules.
+**Reason:** The current provenance integration is retained while the root build
+and installer lane is restored to a fresh-machine, exact-tool path. The updater
+keeps bounded redirects and streams, cancellation, release-link validation,
+and shared Squirrel validation. These files are the deliberate project changes
+in this reconciliation.
 
 **Changed files:**
 
@@ -58,11 +43,15 @@ restart safety and unsigned-package rules.
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/updater.ts`
 - `apps/desktop/src/main/updater/feed.ts`
+- `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/UpdateDialog.tsx`
 - `apps/web/src/components/UpdaterPopup.tsx`
+- `apps/web/src/components/WhatsNewPopup.tsx`
 - `apps/web/src/lib/updater.ts`
-- `packages/download/src/managed-download.ts`
+- `apps/web/tests/components/WhatsNewPopup.test.tsx`
+- `apps/web/tests/lib/updater.test.ts`
 - `packages/download/src/errors.ts`
+- `packages/download/src/managed-download.ts`
 - `packages/download/src/run.ts`
 - `packages/download/src/target.ts`
 - `packages/download/src/transfer.ts`
@@ -72,45 +61,62 @@ restart safety and unsigned-package rules.
 - `packages/host/src/protocol.ts`
 - `packages/sidecar-proto/src/index.ts`
 
-### 2026-08-27 - Keep every release fallback on the project feed
+### 2026-08-27 - Show version-bound build provenance on every front screen
 
-**Reason:** The settings About action and the post-update highlights dialog
-still used the imported product's release page when their own release link was
-missing or manually opened. Both fallbacks now use this project's release page.
-
-**Changed files:**
-
-- `apps/web/src/components/SettingsDialog.tsx`
-- `apps/web/src/components/WhatsNewPopup.tsx`
-
-### 2026-08-27 - Bind the build process to verified dependency paths
-
-**Reason:** The dependency helper previously changed PATH only in its own
-process. The following build could therefore resolve a different machine
-installation, while a stale packaging JSON could be reused without an exact
-source-commit check. The helper now writes an ignored, manifest-digest-bound
-resolution record, imports and records the compiler environment after workload
-installation, and the build consumes the exact executable paths and versions.
-The installer validates the Squirrel `RELEASES` rows, SHA-1 values, package
-names, NuGet identities, and full/delta relationships before producing local
-evidence.
+**Reason:** The packaged onboarding surface could show upstream identity and
+provided no trustworthy way to identify the running package before sign-in.
+The web shell and documentation site now show the running version before
+navigation, settings, About, or authentication, together with the release or
+build timestamp formatted in the visitor's local timezone with seconds and a
+timezone label. The daemon accepts the timestamp only when it is bound to the
+same package version and a 40-character source commit. Missing, malformed, or
+calendar-overflow records remain visibly unavailable rather than falling back
+to a launch clock. The packaged configuration and sidecar environment carry
+externally supplied release provenance values when available, and focused
+source regressions cover valid, missing, mismatched, and malformed records. The onboarding identity uses Material
+Designer rather than the upstream product name.
 
 **Changed files:**
 
-- `apps/desktop/src/main/updater.ts`
-- `apps/desktop/src/main/updater/feed.ts`
-- `apps/desktop/src/main/preload.cts`
-- `apps/desktop/src/main/runtime.ts`
-- `apps/web/src/components/UpdateDialog.tsx`
-- `apps/web/src/lib/updater.ts`
-- `apps/web/tests/lib/updater.test.ts`
-- `packages/download/src/managed-download.ts`
-- `packages/download/src/run.ts`
-- `packages/download/src/transfer.ts`
-- `packages/host/src/actions.ts`
-- `packages/host/src/index.ts`
-- `packages/host/src/protocol.ts`
-- `packages/sidecar-proto/src/index.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/FrontScreenProvenance.module.css` (new)
+- `apps/web/src/components/FrontScreenProvenance.tsx` (new)
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/lib/front-screen-provenance.ts` (new)
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts` (new)
+- `apps/web/tests/lib/front-screen-provenance.test.ts` (new)
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/daemon/src/app-version.ts`
+- `apps/daemon/tests/app-version.test.ts`
+- `apps/daemon/tests/version-route.test.ts`
+- `apps/packaged/src/config.ts`
+- `apps/packaged/src/headless-runtime.ts`
+- `apps/packaged/src/index.ts`
+- `apps/packaged/src/sidecars.ts`
+- `apps/packaged/tests/sidecars.test.ts`
+- `packages/contracts/src/api/version.ts`
+- `tools/pack/src/config/index.ts`
+- `tools/pack/src/win/manifest.ts`
 
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 

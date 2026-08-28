@@ -1102,12 +1102,18 @@ export async function fetchPromptTemplate(
   }
 }
 
+export const DAEMON_HEALTH_REQUEST_TIMEOUT_MS = 5_000;
+
 export async function daemonIsLive(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DAEMON_HEALTH_REQUEST_TIMEOUT_MS);
   try {
-    const resp = await fetch('/api/health');
+    const resp = await fetch('/api/health', { signal: controller.signal });
     return resp.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -1504,14 +1510,20 @@ function isAppVersionInfo(value: unknown): value is AppVersionInfo {
   );
 }
 
+export const APP_VERSION_REQUEST_TIMEOUT_MS = 5_000;
+
 export async function fetchAppVersionInfo(): Promise<AppVersionInfo | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), APP_VERSION_REQUEST_TIMEOUT_MS);
   try {
-    const resp = await fetch('/api/version');
+    const resp = await fetch('/api/version', { signal: controller.signal });
     if (!resp.ok) return null;
     const json = (await resp.json()) as Partial<AppVersionResponse>;
     return isAppVersionInfo(json.version) ? json.version : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

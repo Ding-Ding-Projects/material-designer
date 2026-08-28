@@ -460,6 +460,19 @@ describe('buildPackagedDaemonSpawnEnv', () => {
     expect(env.OD_LEGACY_DATA_DIR).toBeUndefined();
   });
 
+  it('forwards the version-bound build provenance to the daemon', () => {
+    const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
+      appVersion: '1.2.3',
+      buildSourceCommit: 'abcdef0123456789abcdef0123456789abcdef01',
+      buildUpdatedAt: '2026-08-27T12:34:56.789Z',
+      daemonCliEntry: null,
+      legacyDataDir: null,
+      requireDesktopAuth: true,
+    });
+    expect(env.OD_BUILD_SOURCE_COMMIT).toBe('abcdef0123456789abcdef0123456789abcdef01');
+    expect(env.OD_BUILD_UPDATED_AT).toBe('2026-08-27T12:34:56.789Z');
+  });
+
   it('forwards updater controls needed by a historical desktop handoff', () => {
     const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
       appVersion: '1.2.3',
