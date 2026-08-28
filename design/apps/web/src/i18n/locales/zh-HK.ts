@@ -1315,6 +1315,7 @@ export const zhHK: Dict = {
   "appLogo.resetDone": "標誌選擇已重設為出廠標誌。",
   "appLogo.conversionFailure": "圖片未能喺本機轉換。",
   "appLogo.errorCode": "圖片驗證（{code}）：{detail}",
+  "appLogo.historyUnavailable": "標誌已經改咗，但本機歷史未能確認今次變更。",
   "appLogo.export": "匯出標誌外觀",
   "appLogo.import": "匯入標誌外觀",
   "appLogo.importError": "呢份標誌外觀檔案無效，或者用咗未知 schema。乜都冇改。",

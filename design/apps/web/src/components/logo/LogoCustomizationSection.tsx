@@ -28,9 +28,10 @@ import type { Rgb, Rgba } from '../appearance/color';
 import { formatHex, formatHex8, parseColor } from '../appearance/color';
 import { CSS_COLOR_NAMES } from '../appearance/colorNames';
 import styles from './LogoCustomizationSection.module.css';
+import { openVersionHistory } from '../history/open-history';
 
 const DEFAULT_BACKGROUND: Rgba = { r: 255, g: 248, b: 246, a: 1 };
-const MAX_LOGO_FILE_BYTES = 4 * 1024 * 1024;
+const MAX_LOGO_FILE_BYTES = 16 * 1024 * 1024;
 const PRESET_LABEL_KEY = {
   material: 'appLogo.material',
   warm: 'appLogo.warm',
@@ -126,7 +127,7 @@ export function LogoCustomizationSection({
   onChange,
 }: {
   initial?: LogoState;
-  onChange?: (state: LogoState) => void;
+  onChange?: (state: LogoState) => Promise<boolean> | boolean;
 } = {}) {
   const t = useT();
   const [state, setState] = useState<LogoState>(() => hydrateLogoState(initial));
@@ -149,6 +150,7 @@ export function LogoCustomizationSection({
   const onChangeRef = useRef(onChange);
   const refreshGenerationRef = useRef(0);
   const pendingHistoryActionRef = useRef<'selected-preset' | 'uploaded-custom' | 'updated' | 'reset'>('updated');
+  const pendingSuccessRef = useRef<string | null>(null);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -167,12 +169,18 @@ export function LogoCustomizationSection({
     const applyScheduled = () => applyLogoStateToDocument(resolveScheduledLogoState(state));
     applyScheduled();
     writeStoredLogoState(state);
-    onChangeRef.current?.(redactLogoStateForDaemon(state));
     const stateJson = JSON.stringify(state);
     if (stateJson !== priorStateJsonRef.current) {
-      recordLogoMutation(pendingHistoryActionRef.current, state);
+      const acknowledged = recordLogoMutation(pendingHistoryActionRef.current, state);
       priorStateJsonRef.current = stateJson;
       pendingHistoryActionRef.current = 'updated';
+      const pendingSuccess = pendingSuccessRef.current;
+      pendingSuccessRef.current = null;
+      void Promise.resolve(onChangeRef.current?.(redactLogoStateForDaemon(state)) ?? true).then((daemonAcknowledged) => {
+        if (pendingSuccess) setStatus(acknowledged && daemonAcknowledged ? pendingSuccess : t('appLogo.historyUnavailable'));
+      });
+    } else {
+      void onChangeRef.current?.(redactLogoStateForDaemon(state));
     }
     const timer = window.setInterval(() => {
       applyScheduled();
@@ -252,7 +260,7 @@ export function LogoCustomizationSection({
         }),
       };
       update({ custom: activeCustom, crop: state.crop }, 'uploaded-custom');
-      setStatus(t('appLogo.converted', { width: custom.width, bytes: custom.byteLength }));
+      pendingSuccessRef.current = t('appLogo.converted', { width: custom.width, bytes: custom.byteLength });
     } catch (error) {
       // The prior valid logo remains active. The message is intentionally
       // generic so decoder errors cannot leak source bytes or private paths.
@@ -376,6 +384,7 @@ export function LogoCustomizationSection({
           {t('appLogo.import')}
           <input ref={importRef} type="file" accept="application/json,.json" onChange={(event) => void importAppearance(event.target.files?.[0])} />
         </label>
+        <button type="button" className={styles.reset} onClick={() => openVersionHistory({ domainId: 'settings' })}>{t('history.openButton')}</button>
       </div>
 
       <fieldset className={styles.scheduleFieldset} data-od-setting="appearance.logo.schedule">

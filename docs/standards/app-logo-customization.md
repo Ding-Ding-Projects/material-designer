@@ -43,6 +43,13 @@ by packaging, updates, storage, or diagnostics.
   every exposed logo value. Every persisted custom state
   must include all five target variants; malformed or incomplete cached variants
   are rejected as one state rather than partially applied.
+- A wall-clock time that is skipped by a daylight-saving transition never
+  matches. A repeated wall-clock time matches for both occurrences because
+  matching is against the rule timezone's displayed wall clock, not a host
+  instant guessed during authoring.
+- Appearance export and import share one 16 MiB transfer bound, large enough
+  for the bounded eight MiB derived-output aggregate plus JSON framing while
+  still refusing unbounded payloads.
 - A local search field with an adjacent anchored regular-expression builder.
 - The command palette owns a live preset selector for this setting, so changing
   the mark from the palette and from Settings reaches the same persisted state.
@@ -66,6 +73,13 @@ presentation metadata are kept in the private local cache. The original source
 is retained only to regenerate derivatives after later edits, and is stripped
 before app-config history, export, logs, telemetry, captures, or public records.
 The validator does not trust a file extension or MIME claim.
+
+The Day Teet Hui keeps its own metadata-only local history manager in browser
+storage. It can browse, search, restore safe presentation settings, and require
+history acknowledgement before reporting a logo mutation as complete. Because
+the browser surface cannot own the app's Git directory, restoring a deleted
+custom source never invents image bytes; it restores only settings still
+available in the current private cache.
 
 Custom marks do not alter the package identifier, executable name, installer
 identity, update feed, application-data location, or code-signing state.

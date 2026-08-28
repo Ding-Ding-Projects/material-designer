@@ -4495,6 +4495,7 @@ export const en: Dict = {
   'appLogo.resetDone': 'Logo selection reset to the shipped mark.',
   'appLogo.conversionFailure': 'The image could not be converted locally.',
   'appLogo.errorCode': 'Image validation ({code}): {detail}',
+  'appLogo.historyUnavailable': 'The logo changed, but local history could not acknowledge the mutation.',
   'appLogo.export': 'Export logo appearance',
   'appLogo.import': 'Import logo appearance',
   'appLogo.importError': 'That logo appearance file is invalid or uses an unknown schema. Nothing changed.',

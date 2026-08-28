@@ -12,6 +12,7 @@ export const HISTORY_KEY = 'md-designer:app-logo-history:v1';
 export const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 export const MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 export const MAX_AGGREGATE_BYTES = 8 * 1024 * 1024;
+export const MAX_TRANSFER_BYTES = 16 * 1024 * 1024;
 export const MAX_DIMENSION = 4096;
 export const MAX_PIXELS = 16 * 1024 * 1024;
 export const MAX_DECODE_TIME_MS = 2000;
@@ -439,11 +440,11 @@ function hslToRgb({ h, s, l }) {
 
 function parseColorRepresentation(name, text) {
   const source = String(text).trim();
-  if (name === 'HEX' || name === 'HEX8') return hexToRgb(source);
+  if (name === 'HEX' || name === 'HEX8') return /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(source) ? hexToRgb(source) : null;
   const values = Array.from(source.matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
   const alpha = source.includes('/') ? (values[values.length - 1] ?? 1) : name.includes('A') ? (values[3] ?? 1) : 1;
   if (name === 'RGB' || name === 'RGBA') return { r: values[0] ?? 0, g: values[1] ?? 0, b: values[2] ?? 0, a: alpha > 1 ? alpha / 255 : alpha };
-  if (name === 'HSL' || name === 'HSLA') return hslToRgb({ h: values[0] ?? 0, s: values[1] ?? 0, l: values[2] ?? 0 });
+  if (name === 'HSL' || name === 'HSLA') return { ...hslToRgb({ h: values[0] ?? 0, s: values[1] ?? 0, l: values[2] ?? 0 }), a: alpha > 1 ? alpha / 100 : alpha };
   if (name === 'HSV/HSB') return hexToRgb(hsvToHex({ h: values[0] ?? 0, s: values[1] ?? 0, v: values[2] ?? 0, a: alpha }));
   if (name === 'HWB') { const hsv = { h: values[0] ?? 0, s: 100, v: 100 }; const white = (values[1] ?? 0) / 100; const black = (values[2] ?? 0) / 100; const scale = white + black > 1 ? 1 / (white + black) : 1; return hexToRgb(hsvToHex({ ...hsv, s: 100 * (1 - white * scale - black * scale), v: 100 * (1 - black * scale), a: alpha })); }
   if (name === 'CMYK') { const c = (values[0] ?? 0) / 100; const m = (values[1] ?? 0) / 100; const y = (values[2] ?? 0) / 100; const k = (values[3] ?? 0) / 100; return { r: Math.round(255 * (1 - c) * (1 - k)), g: Math.round(255 * (1 - m) * (1 - k)), b: Math.round(255 * (1 - y) * (1 - k)), a: alpha }; }
@@ -456,6 +457,15 @@ function parseColorRepresentation(name, text) {
     }
   }
   return null;
+}
+
+function colorInputIsClipped(name, text) {
+  const values = Array.from(String(text).matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
+  if (name === 'RGB' || name === 'RGBA') return values.slice(0, 3).some((value) => value < 0 || value > 255);
+  if (name === 'HSL' || name === 'HSLA' || name === 'HSV/HSB') return values.slice(1, 3).some((value) => value < 0 || value > 100);
+  if (name === 'HWB') return values.slice(1, 3).some((value) => value < 0 || value > 100);
+  if (name === 'CMYK') return values.slice(0, 4).some((value) => value < 0 || value > 100);
+  return false;
 }
 
 function hslFromRgb({ r, g, b }) {
@@ -513,11 +523,14 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
   let current = state;
   let effective = state;
   let lastHistoryJson = JSON.stringify(current);
+  let pendingSuccess = null;
   let refreshTimer;
   let refreshGeneration = 0;
   let editingScheduleId = null;
   let searchMatcher = null;
   let historyMatcher = null;
+  let targetMatcher = null;
+  let colorMatcher = null;
   const search = host.querySelector('[data-logo-search]');
   const status = host.querySelector('[data-logo-status]');
   const source = (targetId) => effective.custom?.variants?.[targetId]?.dataUrl || effective.custom?.dataUrl || PRESETS.find((preset) => preset.id === effective.presetId)?.src || PRESET_MARK;
@@ -525,14 +538,15 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
   const setStatus = (message) => { if (status) status.textContent = message; };
   const recordHistory = () => {
     const json = JSON.stringify(current);
-    if (json === lastHistoryJson) return;
+    if (json === lastHistoryJson) return true;
     lastHistoryJson = json;
     try {
       const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
       const entries = Array.isArray(existing) ? existing.slice(-99) : [];
       entries.push({ changedAt: Date.now(), presetId: current.presetId, customActive: Boolean(current.custom), fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, scheduleCount: current.schedules.length, snapshot: { presetId: current.presetId, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel } });
       localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
-    } catch { /* history is best effort and contains no image bytes */ }
+      return true;
+    } catch { return false; /* history is best effort and contains no image bytes */ }
   };
   const render = () => {
     effective = resolveScheduledState(current);
@@ -557,7 +571,8 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
         }, 180);
       }
     }
-    recordHistory();
+    const historyAcknowledged = recordHistory();
+    if (pendingSuccess) { setStatus(historyAcknowledged ? pendingSuccess : t('logo.historyUnavailable', 'The logo changed, but local history could not acknowledge the mutation.')); pendingSuccess = null; }
     const historyList = host.querySelector('[data-logo-history-list]');
     if (historyList) {
       historyList.textContent = '';
@@ -594,9 +609,10 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
       if (translations) {
         translations.textContent = '';
         for (const [name, representation] of colorRepresentations(current.background === 'transparent' ? '#fff8f6' : current.background)) {
+          if (colorMatcher && !colorMatcher(`${name} ${representation}`)) continue;
           const item = document.createElement('div'); item.setAttribute('role', 'listitem');
           const labelNode = document.createElement('label'); labelNode.textContent = `${name}: `;
-          const value = document.createElement('input'); value.type = 'text'; value.value = representation; value.setAttribute('aria-label', `${name} colour value`); value.addEventListener('change', () => { const parsed = parseColorRepresentation(name, value.value); if (parsed) { current = normalizeState({ ...current, background: hsvToHex({ ...rgbToHsv(parsed), a: parsed.a ?? 1 }) }); render(); } });
+          const value = document.createElement('input'); value.type = 'text'; value.value = representation; value.setAttribute('aria-label', `${name} colour value`); value.addEventListener('change', () => { const parsed = parseColorRepresentation(name, value.value); if (parsed) { if (colorInputIsClipped(name, value.value)) setStatus(t('logo.colorClipped', 'Some color components were outside the supported range and were clipped. Review the value before applying it.')); current = normalizeState({ ...current, background: hsvToHex({ ...rgbToHsv(parsed), a: parsed.a ?? 1 }) }); render(); } else { setStatus(t(name === 'HEX' || name === 'HEX8' ? 'logo.colorInvalid' : 'logo.colorUnsupported', 'Invalid or unsupported color value. The previous color remains active.')); render(); } });
           const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'md-icon-btn md-icon-btn--small'; copy.textContent = t('logo.copy', 'Copy'); copy.setAttribute('aria-label', `${t('logo.copy', 'Copy')} ${name}`);
           copy.addEventListener('click', () => { void navigator.clipboard?.writeText(representation); });
           labelNode.appendChild(value); item.append(labelNode, copy); translations.appendChild(item);
@@ -622,6 +638,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
       stage.style.backgroundColor = current.background === 'transparent' ? '' : current.background;
     }
     host.querySelectorAll('[data-logo-target]').forEach((node) => node.setAttribute('src', source(node.dataset.logoTarget)));
+    host.querySelectorAll('.logo-target-grid figure').forEach((figure) => { const text = figure.textContent || ''; figure.hidden = targetMatcher ? !targetMatcher(text) : false; });
     const schedulePreset = host.querySelector('[data-logo-schedule-preset]');
     if (schedulePreset && !schedulePreset.options.length) PRESETS.forEach((preset) => { const option = document.createElement('option'); option.value = preset.id; option.textContent = t(`logo.${preset.id}`, preset.label); schedulePreset.appendChild(option); });
     const scheduleList = host.querySelector('[data-logo-schedule-list]');
@@ -660,7 +677,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
     current = normalizeState({ ...current, background: hsvToHex({ h, s, v, a }) }); render();
   };
   colorPicker?.querySelectorAll('[data-logo-bg-hue], [data-logo-bg-saturation], [data-logo-bg-brightness]').forEach((control) => control.addEventListener('input', updateFromHsvControls));
-  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(event.target.value)) { current = normalizeState({ ...current, background: event.target.value }); render(); } });
+  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(event.target.value)) { current = normalizeState({ ...current, background: event.target.value }); render(); } else { setStatus(t('logo.colorInvalid', 'Invalid color value. The previous color remains active.')); render(); } });
   colorPicker?.querySelector('[data-logo-color-field]')?.addEventListener('pointerdown', (event) => {
     const field = event.currentTarget; const rect = field.getBoundingClientRect(); if (!rect.width || !rect.height) return;
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
@@ -684,13 +701,13 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
   host.querySelectorAll('[data-logo-crop]').forEach((field) => field.addEventListener('change', (event) => { const name = event.currentTarget.dataset.logoCrop; if (!name) return; current = normalizeState({ ...current, crop: { ...current.crop, [name]: Number(event.currentTarget.value) } }); render(); }));
   host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { current = normalizeState(DEFAULTS); setStatus(t('logo.resetDone', 'Logo selection reset to the shipped mark.')); render(); });
   host.querySelector('[data-logo-export]')?.addEventListener('click', () => { const blob = new Blob([serialize(current)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'material-designer-logo-appearance.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 0); });
-  host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > 4 * 1024 * 1024) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); current = imported; setStatus(t('logo.imported', 'Logo appearance imported locally.')); render(); } catch { setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } event.target.value = ''; });
+  host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > MAX_TRANSFER_BYTES) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); current = imported; setStatus(t('logo.imported', 'Logo appearance imported locally.')); render(); } catch { setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } event.target.value = ''; });
   host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const a = Date.parse(start); const b = Date.parse(end); if (!start || !end || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt: start.slice(0, 16), endAt: end.slice(0, 16), weekdays, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; current = normalizeState({ ...current, schedules: editingScheduleId ? current.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...current.schedules, rule] }); editingScheduleId = null; setStatus(t('logo.scheduleAdded', 'Logo schedule added locally.')); render(); });
   const scheduleTimer = window.setInterval(render, 60_000);
   host.querySelector('[data-logo-upload]')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0]; if (!file) return;
     setStatus(t('logo.validating', 'Validating and converting locally…'));
-    try { const custom = await convert(file, { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background, outputSize: 512 }); current = normalizeState({ ...current, custom: { ...custom, renderFingerprint: logoRenderFingerprint({ crop: DEFAULTS.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background }) }, crop: DEFAULTS.crop }); setStatus(t('logo.converted', `Converted locally to a verified ${custom.width}×${custom.height} PNG.`).replace('{width}', String(custom.width)).replace('{height}', String(custom.height))); render(); }
+    try { const custom = await convert(file, { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background, outputSize: 512 }); current = normalizeState({ ...current, custom: { ...custom, renderFingerprint: logoRenderFingerprint({ crop: DEFAULTS.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background }) }, crop: DEFAULTS.crop }); pendingSuccess = t('logo.converted', `Converted locally to a verified ${custom.width}×${custom.height} PNG.`).replace('{width}', String(custom.width)).replace('{height}', String(custom.height)); render(); }
     catch (error) { setStatus(error instanceof Error ? error.message : t('logo.conversionFailure', 'The image could not be converted locally.')); }
     event.target.value = '';
   });
@@ -700,6 +717,8 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
     refresh: () => render(),
     setSearchMatcher: (matcher) => { searchMatcher = typeof matcher === 'function' ? matcher : null; render(); },
     setHistoryMatcher: (matcher) => { historyMatcher = typeof matcher === 'function' ? matcher : null; render(); },
+    setTargetMatcher: (matcher) => { targetMatcher = typeof matcher === 'function' ? matcher : null; render(); },
+    setColorMatcher: (matcher) => { colorMatcher = typeof matcher === 'function' ? matcher : null; render(); },
     reset: () => { current = normalizeState(DEFAULTS); render(); },
     destroy: () => { window.clearInterval(scheduleTimer); if (refreshTimer !== undefined) window.clearTimeout(refreshTimer); refreshGeneration += 1; },
   };

@@ -321,6 +321,22 @@ function wireLogo() {
     historyInput.addEventListener('input', applyHistory);
     historyBuilder.onChange(applyHistory);
   }
+  const targetInput = $('[data-logo-target-search]', host);
+  const targetTrigger = $('[data-logo-target-builder]', host);
+  if (targetInput && targetTrigger && controller.setTargetMatcher) {
+    const targetBuilder = regex.attachRegexBuilder(targetInput, { trigger: targetTrigger, key: 'logo-target-search' });
+    const applyTarget = () => { const query = targetInput.value.trim(); if (targetBuilder.getState().mode === 'regex') controller.setTargetMatcher(targetBuilder.matcher()); else controller.setTargetMatcher(query ? (text) => text.toLowerCase().includes(query.toLowerCase()) : null); };
+    targetInput.addEventListener('input', applyTarget);
+    targetBuilder.onChange(applyTarget);
+  }
+  const colorInput = $('[data-logo-color-search]', host);
+  const colorTrigger = $('[data-logo-color-builder]', host);
+  if (colorInput && colorTrigger && controller.setColorMatcher) {
+    const colorBuilder = regex.attachRegexBuilder(colorInput, { trigger: colorTrigger, key: 'logo-color-search' });
+    const applyColor = () => { const query = colorInput.value.trim(); controller.setColorMatcher(colorBuilder.getState().mode === 'regex' ? colorBuilder.matcher() : (query ? (text) => text.toLowerCase().includes(query.toLowerCase()) : null)); };
+    colorInput.addEventListener('input', applyColor);
+    colorBuilder.onChange(applyColor);
+  }
 }
 
 /* ------------------------------------------------------------------ *

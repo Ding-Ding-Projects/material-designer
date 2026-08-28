@@ -1835,7 +1835,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
                 <label><span data-i18n="logo.brightness">Brightness</span> <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-brightness></label>
                 <label><span data-i18n="logo.alpha">Alpha</span> <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-alpha></label>
                 <label><span data-i18n="logo.hex">HEX</span> <input type="text" inputmode="text" spellcheck="false" data-logo-bg-hex value="#fff8f6"></label>
-                <div class="logo-color-translations" data-logo-color-translations role="list" data-i18n-attr="aria-label:logo.colorTranslations" aria-label="Colour translations"></div>
+                <div class="md-search"><label class="visually-hidden" for="logo-color-search" data-i18n="logo.colorSearch">Search colour translations</label><input id="logo-color-search" class="md-search__input" type="search" data-logo-color-search placeholder="Search colour translations" data-i18n-attr="placeholder:logo.colorSearch"><button type="button" class="md-icon-btn md-icon-btn--small" data-logo-color-builder aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open">.*</button></div><div class="logo-color-translations" data-logo-color-translations role="list" data-i18n-attr="aria-label:logo.colorTranslations" aria-label="Colour translations"></div>
               </div>
               <label><span data-i18n="logo.focalX">Focal point X</span> <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-x><output data-logo-focal-x-value>50%</output></label>
               <label><span data-i18n="logo.focalY">Focal point Y</span> <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-y><output data-logo-focal-y-value>50%</output></label>
@@ -1845,6 +1845,7 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
           </div>
           <div class="logo-customization__targets" aria-labelledby="logo-targets-title">
             <h4 id="logo-targets-title" data-i18n="logo.targets">Display-target previews</h4>
+            <div class="md-search"><label class="visually-hidden" for="logo-target-search">Search display targets</label><input id="logo-target-search" class="md-search__input" type="search" data-logo-target-search placeholder="Search display targets"><button type="button" class="md-icon-btn md-icon-btn--small" data-logo-target-builder aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open">.*</button></div>
             <div class="logo-target-grid">
               <figure><div class="logo-target-tile"><img data-logo-target="favicon" data-i18n-attr="alt:logo.targetFavicon" alt="Favicon"></div><figcaption><span data-i18n="logo.targetFavicon">Favicon</span> · 16×16</figcaption></figure>
               <figure><div class="logo-target-tile"><img data-logo-target="toolbar" data-i18n-attr="alt:logo.targetToolbar" alt="Toolbar"></div><figcaption><span data-i18n="logo.targetToolbar">Toolbar</span> · 32×32</figcaption></figure>

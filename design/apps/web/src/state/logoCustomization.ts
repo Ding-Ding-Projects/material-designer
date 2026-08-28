@@ -735,8 +735,8 @@ export interface LogoMutationHistoryEntry {
 export function recordLogoMutation(
   action: LogoMutationHistoryEntry['action'],
   state: LogoState,
-): void {
-  if (typeof window === 'undefined') return;
+): boolean {
+  if (typeof window === 'undefined') return false;
   try {
     const raw = window.localStorage.getItem(LOGO_HISTORY_STORAGE_KEY);
     const prior: LogoMutationHistoryEntry[] = raw ? JSON.parse(raw) : [];
@@ -751,8 +751,10 @@ export function recordLogoMutation(
       safeArea: state.safeArea,
     });
     window.localStorage.setItem(LOGO_HISTORY_STORAGE_KEY, JSON.stringify(history));
+    return true;
   } catch {
     // History failure never blocks the presentation change and never leaks the source.
+    return false;
   }
 }
 

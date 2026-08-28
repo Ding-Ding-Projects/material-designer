@@ -83,4 +83,13 @@ describe('app-logo surface inventory', () => {
     expect(daemonConfig).toContain('decodePngDataUrl');
     expect(daemonConfig).toContain('PNG_CRC_TABLE');
   });
+
+  it('keeps exact logo registrations unique instead of trusting substrings', () => {
+    for (const id of ['appearance.logo', 'appearance.logo.upload', 'appearance.logo.fit', 'appearance.logo.crop', 'appearance.logo.safeArea', 'appearance.logo.background', 'appearance.logo.schedule', 'appearance.logo.export']) {
+      expect(component.split(`data-od-setting="${id}"`).length - 1).toBeGreaterThan(0);
+    }
+    for (const marker of ['data-logo-search', 'data-logo-target-search', 'data-logo-color-search', 'data-logo-history-search', 'data-logo-select-search="fit"', 'data-logo-select-search="schedule-preset"']) {
+      expect(siteIndex.split(marker).length - 1).toBe(1);
+    }
+  });
 });

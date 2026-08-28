@@ -5934,7 +5934,16 @@ export function SettingsDialog({
               <div className="settings-general-block">
                 <LogoCustomizationSection
                   initial={cfg.appLogo}
-                  onChange={(next) => setCfg((current) => ({ ...current, appLogo: next }))}
+                  onChange={async (next) => {
+                    const nextConfig = { ...cfg, appLogo: next };
+                    setCfg(nextConfig);
+                    try {
+                      await syncConfigToDaemon(nextConfig, { throwOnError: true });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
                 />
               </div>
 

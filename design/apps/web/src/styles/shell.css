@@ -649,7 +649,6 @@ html[data-logo-preset] .workspace-chrome-logo-swap {
   background-position: var(--app-logo-focal-x, 50%) var(--app-logo-focal-y, 50%);
   background-size: var(--app-logo-background-size, contain);
   background-color: var(--app-logo-background, transparent);
-  border-radius: var(--app-logo-safe-inset, 12%);
 }
 
 /* The app-logo preference is presentation-only. When the local logo module
@@ -664,11 +663,17 @@ html[data-logo-preset] .workspace-tab__rail-toggle {
   background-position: var(--app-logo-focal-x, 50%) var(--app-logo-focal-y, 50%);
   background-color: var(--app-logo-background, transparent);
 }
+html[data-logo-safe-area='on'] .workspace-tabs-home-chrome,
+html[data-logo-safe-area='on'] .workspace-tab__rail-toggle,
+html[data-logo-safe-area='on'] .workspace-chrome-logo,
+html[data-logo-safe-area='on'] .workspace-chrome-logo-swap { background-size: 76% 76%; }
 html[data-logo-rainbow='on'] .workspace-tabs-home-chrome,
 html[data-logo-rainbow='on'] .workspace-tab__rail-toggle,
 html[data-logo-rainbow='on'] .workspace-tabs-home-chrome { background-image: linear-gradient(120deg, hsl(0 90% 60%), hsl(120 90% 60%), hsl(240 90% 60%), hsl(360 90% 60%)), var(--app-logo-image); background-size: 300% 300%, var(--app-logo-background-size, 62% 62%); animation: app-logo-rainbow var(--app-logo-rainbow-speed, 12s) linear infinite; }
 @keyframes app-logo-rainbow { to { filter: hue-rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { html[data-logo-rainbow='on'] .workspace-tabs-home-chrome, html[data-logo-rainbow='on'] .workspace-tab__rail-toggle { animation: none; } }
+html[data-logo-rainbow='on'][data-logo-safe-area='on'] .workspace-tabs-home-chrome,
+html[data-logo-rainbow='on'][data-logo-safe-area='on'] .workspace-tab__rail-toggle { background-size: 300% 300%, 76% 76%; }
 
 html[data-logo-preset] .workspace-tabs-home-chrome > .workspace-chrome-logo,
 html[data-logo-preset] .workspace-tab__rail-toggle > .workspace-chrome-logo,

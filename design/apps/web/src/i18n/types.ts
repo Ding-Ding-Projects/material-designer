@@ -4826,6 +4826,7 @@ export interface Dict {
   'appLogo.resetDone'?: string;
   'appLogo.conversionFailure'?: string;
   'appLogo.errorCode'?: string;
+  'appLogo.historyUnavailable'?: string;
   'appLogo.export'?: string;
   'appLogo.import'?: string;
   'appLogo.importError'?: string;
