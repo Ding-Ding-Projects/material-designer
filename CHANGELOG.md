@@ -45,6 +45,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **Shared menu ownership is now explicit and fail-closed.** `ContextMenu.tsx`
+  requires localized labels plus real appearance and lock callbacks, keeps
+  dangerous actions behind a confirmation handoff, detects duplicate owner ids,
+  preserves builder portal ownership during pointer and scroll activity, and
+  restores active results into view. `CustomSelect.tsx` adds the same stable owner
+  and viewport contract, a locked-trigger wrapper, positive result counts, and
+  48px reduced-motion-safe controls. The collaboration role picker is the first
+  production caller migrated to the shared dropdown. The hand-written inventory
+  now lists all 50 `role="menu"` containers, every current native select, and all
+  direct search fields, with untouched rows remaining explicitly red.
+  See [`5f74ed1`](https://github.com/Ding-Ding-Projects/material-designer/commit/5f74ed17).
+
+  **Shared menu ownership 而家講清楚晒，危險位仲會 fail-closed。** `ContextMenu.tsx`
+  要求本地化 labels 同真正 appearance/lock callbacks，dangerous actions 要先
+  經 confirmation，duplicate owner ids 會報出，builder portal 遇到 pointer 同
+  scroll 都唔會離家出走，active result 會捲返入畫面。`CustomSelect.tsx` 加埋
+  stable owner、viewport contract、locked-trigger wrapper、result count，同
+  48px reduced-motion-safe controls。Collaboration role picker 已係第一個
+  production caller 搬去 shared dropdown。Hand-written inventory 而家列晒
+  50 個 `role="menu"`、所有 native select 同 direct search fields，未搬嘅 rows
+  繼續清楚標紅。
+
+### Changed
+
 - **Shared menus and dropdowns gained field-owned filtering.** `ContextMenu.tsx`
   and `CustomSelect.tsx` now provide isolated plain-text-first queries, adjacent
   anchored regex builders, honest no-match announcements, keyboard navigation,

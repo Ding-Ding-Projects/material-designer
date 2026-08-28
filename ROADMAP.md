@@ -11,7 +11,8 @@
   40 native selects, 21 direct search fields, 49 other `role="menu"` containers,
   and legacy inline context menu adapter are still red rows owned by their feature
   lanes, so this item is not complete. The shared search API remains coordinated
-  with the regex workbench for field-scoped advanced capabilities.
+  with the regex workbench for field-scoped advanced capabilities. The hardening
+  batch is recorded at [`5f74ed1`](https://github.com/Ding-Ding-Projects/material-designer/commit/5f74ed17).
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
