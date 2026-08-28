@@ -76,7 +76,7 @@ lists all 50 `role="menu"` containers, every remaining native select, every
 direct search input, and additional search-like controls. Unmigrated rows stay
 explicitly red, so this section does not claim complete application coverage.
 Source implementation is recorded at
-[`2aade3c`](https://github.com/Ding-Ding-Projects/material-designer/commit/2aade3ca).
+[`127f1230`](https://github.com/Ding-Ding-Projects/material-designer/commit/127f1230ffe095e9aa00d9cdda4085315ddf8bca).
 
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.

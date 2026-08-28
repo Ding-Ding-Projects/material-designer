@@ -81,6 +81,22 @@ version section when a release carries them.
   唔使另起爐灶。Locked dropdown trigger 保留 operable unlock wrapper，duplicate
   option values 會先標記，唔會靜雞雞整出含糊 selection。
 
+- **Shared menu callbacks now carry typed acceptance receipts.** Appearance,
+  locking, destructive confirmation, and locked-dropdown authentication all
+  require target-bound accepted results. Duplicate option, item, and owner ids
+  fail closed with privacy-safe diagnostics. Disabled explanations are visible,
+  small viewports are clamped, reduced-motion chevrons stop animating, active
+  options scroll into view, and the collaboration role picker keeps its shared
+  dropdown route.
+  See [`127f1230`](https://github.com/Ding-Ding-Projects/material-designer/commit/127f1230ffe095e9aa00d9cdda4085315ddf8bca).
+
+  **Shared menu callbacks 而家要 typed acceptance receipts。** Appearance、lock、
+  destructive confirmation 同 locked-dropdown authentication 都要對返 target
+  嘅 accepted result。Duplicate options、items 同 owners 會 fail closed，
+  diagnostic 唔會漏資料。Disabled explanation 會見到，細 viewport 會 clamp，
+  reduced-motion chevron 唔再郁，active option 會捲入畫面，collaboration role
+  picker 繼續用 shared dropdown route。
+
 ### Changed
 
 - **Shared menus and dropdowns gained field-owned filtering.** `ContextMenu.tsx`

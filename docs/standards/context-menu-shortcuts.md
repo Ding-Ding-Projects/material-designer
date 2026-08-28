@@ -8,7 +8,7 @@ menu carries its own search field.
 owns an isolated plain-text-first filter, an anchored regex builder, result
 status, keyboard navigation, focus return, viewport bounds, registry-derived
 shortcuts, and target-specific appearance and lock callback seams in
-`2aade3ca` (building on
+`127f1230ffe095e9aa00d9cdda4085315ddf8bca` (building on
 `20c1fa4605417a07d8ad1d12e1923d7bf4ef667c`). The shared `CustomSelect` primitive
 owns the same field contract for every dropdown instance. The migration
 inventory at [shared-ui-primitives-migration.md](shared-ui-primitives-migration.md)
