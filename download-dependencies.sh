@@ -34,6 +34,7 @@ manifest_value() {
 manifest_validate() {
   [[ "$(awk '/"schemaVersion": 1/{count++} END{print count+0}' "$manifest_path")" == 1 ]] || die 'dependency manifest schemaVersion must be exactly 1'
   [[ "$(grep -c '"format":' "$manifest_path")" == 6 ]] || die 'dependency manifest must contain exactly six platform entries'
+  [[ "$(sed -n '/"platforms"/,/"compiler"/p' "$manifest_path" | sed -nE 's/.*"id": "([^"]+)".*/\1/p' | paste -sd, -)" == git,node,pnpm,python,node,pnpm ]] || die 'dependency manifest platform ids are incomplete or reordered'
   [[ "$(manifest_value git format)" == zip && "$(manifest_value node format)" == zip && "$(manifest_value pnpm format)" == npm-tarball && "$(manifest_value python format)" == zip ]] || die 'dependency manifest formats are invalid'
   grep -q '"format": "tar.xz"' "$manifest_path" || die 'Linux Node format is missing from the dependency manifest'
   [[ "$(manifest_value node url)" == https://nodejs.org/* ]] || die 'Node source is not the canonical HTTPS host'
@@ -45,6 +46,7 @@ manifest_validate() {
   [[ "$(manifest_value python sha256)" =~ ^[0-9a-fA-F]{64}$ ]] || die 'Python SHA-256 is invalid'
   [[ "$(manifest_value pnpm sha512Base64)" =~ ^[A-Za-z0-9+/]+=*$ ]] || die 'pnpm SHA-512 integrity is invalid'
   [[ "$(manifest_value git version)" == 2.55.0.windows.5 && "$(manifest_value node version)" == 24.20.0 && "$(manifest_value pnpm version)" == 10.33.2 && "$(manifest_value python version)" == 3.12.10 ]] || die 'dependency manifest versions are not the supported exact pins'
+  grep -q '"id": "visual-studio-build-tools"' "$manifest_path" && grep -q '"version": "2022"' "$manifest_path" && grep -q '"source": "winget:Microsoft.VisualStudio.2022.BuildTools"' "$manifest_path" && grep -q '"requiredWorkload": "Microsoft.VisualStudio.Workload.VCTools"' "$manifest_path" || die 'compiler manifest entry is not the pinned Visual Studio 2022 C++ workload'
 }
 sha256_file() { sha256sum "$1" | awk '{print $1}'; }
 sha512_b64() { openssl dgst -sha512 -binary "$1" | base64 | tr -d '\n'; }
