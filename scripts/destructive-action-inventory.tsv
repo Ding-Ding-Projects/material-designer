@@ -1,0 +1,19 @@
+id	source	marker	description
+projects.single	design/apps/web/src/components/DesignsTab.tsx	const handleDeleteProject = (project: Project) => {	Single project deletion retains the captured target and confirmation flow.
+projects.bulk	design/apps/web/src/components/DesignsTab.tsx	const handleBatchDelete = () => {	Bulk project deletion captures the selected set before execution.
+projects.recent	design/apps/web/src/components/RecentProjectsStrip.tsx	async function commitDelete() {	Recent-project deletion retains the captured target and failure state.
+brand.single	design/apps/web/src/components/BrandPreviewCard.tsx	import { DestructiveGate } from './destructive/DestructiveGate';	Brand deletion opens the shared gate before the DELETE request.
+design-system.single	design/apps/web/src/components/DesignSystemsTab.tsx	import { DestructiveGate } from './destructive/DestructiveGate';	Design-system deletion opens the shared gate before mutation.
+library.card	design/apps/web/src/components/LibrarySection.tsx	import { DestructiveGate } from './destructive/DestructiveGate';	Card removal uses the shared gate.
+library.preview	design/apps/web/src/components/LibrarySection.tsx	onDelete={requestDelete}	Preview removal uses the same captured card route.
+library.bulk	design/apps/web/src/components/LibrarySection.tsx	const requestDeleteSelected = useCallback	Bulk removal captures every selected asset before the gate.
+memory.entry	design/apps/web/src/components/MemorySection.tsx	import { DestructiveGate } from './destructive/DestructiveGate';	Memory entry deletion uses the shared gate.
+memory.extraction	design/apps/web/src/components/MemorySection.tsx	requestDeleteExtraction	Extraction deletion captures the exact record before the gate.
+memory.clear	design/apps/web/src/components/MemorySection.tsx	clear-extractions	Clear-all extraction deletion uses the shared gate.
+routine.single	design/apps/web/src/components/RoutinesSection.tsx	import { DestructiveGate } from './destructive/DestructiveGate';	Routine deletion uses the shared gate.
+routine.tasks-view	design/apps/web/src/components/TasksView.tsx	const [pendingDelete, setPendingDelete] = useState<Routine | null>(null);	The alternate automation list uses the shared gate.
+project-file.single	design/apps/web/src/components/FileWorkspace.tsx	const [pendingFileDelete, setPendingFileDelete] = useState<string[] | null>(null);	Single project-file removal uses the shared gate.
+project-file.bulk	design/apps/web/src/components/FileWorkspace.tsx	function requestDeleteFiles(names: string[]): void {	Bulk project-file removal captures the selected names before the gate.
+design-system.project	design/apps/web/src/components/FileWorkspace.tsx	const [pendingProjectDelete, setPendingProjectDelete] = useState(false);	The design-system project route uses the shared gate.
+conversation.single	design/apps/web/src/components/ChatPane.tsx	const [deletePending, setDeletePending] = useState(false);	Conversation deletion uses the shared gate.
+conversation.menu	design/apps/web/src/components/ConversationsMenu.tsx	const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);	Topbar conversation deletion uses the shared gate.

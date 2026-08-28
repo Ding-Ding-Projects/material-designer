@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useT } from '../i18n';
 import { conversationMetaLabel } from './ChatPane';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import type { Conversation } from '../types';
 
 interface Props {
@@ -35,6 +36,7 @@ export function ConversationsMenu({
       const target = e.target as Node;
       if (pillRef.current?.contains(target)) return;
       if (menuRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest('[data-testid="destructive-gate"]')) return;
       setOpen(false);
     }
     function onKey(e: KeyboardEvent) {
@@ -117,6 +119,7 @@ function ConversationsDropdown({
   const t = useT();
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState('');
 
   useLayoutEffect(() => {
@@ -198,15 +201,7 @@ function ConversationsDropdown({
                 title={t('conv.delete')}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (
-                    confirm(
-                      t('conv.deleteConfirm', {
-                        title: c.title || t('conv.untitled'),
-                      }),
-                    )
-                  ) {
-                    onDelete(c.id);
-                  }
+                  setDeleteTarget(c);
                 }}
               >
                 ×
@@ -215,6 +210,19 @@ function ConversationsDropdown({
           ))}
         </ul>
       )}
+      {deleteTarget ? (
+        <DestructiveGate
+          action={t('conv.delete')}
+          target={deleteTarget.title || t('conv.untitled')}
+          items={[deleteTarget.title || t('conv.untitled'), 'every message in this conversation']}
+          irreversible
+          onConfirm={() => {
+            onDelete(deleteTarget.id);
+            return true;
+          }}
+          onClose={() => setDeleteTarget(null)}
+        />
+      ) : null}
     </div>
   );
 }

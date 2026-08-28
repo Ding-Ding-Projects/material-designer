@@ -54,6 +54,7 @@ import { DesignKitView, HeaderActionsMenu, type DesignKitActionFeedbackTone, typ
 import { designSystemLogoHost, isUserSystem } from './design-system-metadata';
 import { Icon } from './Icon';
 import { Toast } from './Toast';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import type { DesignSystemDetail, DesignSystemSummary, ProjectTemplate, Surface } from '../types';
 import styles from './DesignSystemsTab.module.css';
 import { workspaceAnalyticsDimensions } from '../analytics/workspace';
@@ -282,6 +283,7 @@ export function DesignSystemsTab({
   // sessionStorage exactly once; applied by the effect below once the system
   // actually shows up in the loaded list (which may arrive after a refresh).
   const [pendingFocus, setPendingFocus] = useState<string | null>(() => takeDesignSystemFocus());
+  const [pendingDelete, setPendingDelete] = useState<DesignSystemSummary | null>(null);
   const q = filter.trim().toLowerCase();
 
   const librarySystems = useMemo(
@@ -741,25 +743,13 @@ export function DesignSystemsTab({
     }
   }
 
-  async function deleteSystem(system: DesignSystemSummary) {
+  function requestDeleteSystem(system: DesignSystemSummary): void {
     if (busyAction) return;
-    const ok = window.confirm(t('dsManager.deleteConfirm', { title: system.title }));
-    if (!ok) {
-      trackDesignSystemStatusResult(analytics.track, {
-        page_name: 'design_systems',
-        area: 'design_system_status',
-        action: 'delete',
-        result: 'cancelled',
-        design_system_id: system.id,
-        resource_scope: resourceScopeForSystem(system),
-        status_before: mapStatusToTracking(system.status),
-        status_after: mapStatusToTracking(system.status),
-        is_default_before: system.id === selectedId,
-        is_default_after: system.id === selectedId,
-        duration_ms: 0,
-      });
-      return;
-    }
+    setPendingDelete(system);
+  }
+
+  async function executeDeleteSystem(system: DesignSystemSummary) {
+    if (busyAction) return;
     setBusyAction({ systemId: system.id, action: 'delete' });
     notifyActionLoading(t('dsManager.deleteSystemAria', { title: system.title }));
     const startedAt = performance.now();
@@ -1141,6 +1131,19 @@ export function DesignSystemsTab({
         {renderPreview()}
       </section>
       </div>
+      {pendingDelete ? (
+        <DestructiveGate
+          action={t('dsManager.deleteSystemAria', { title: pendingDelete.title })}
+          target={pendingDelete.title}
+          items={[
+            t('dsManager.deleteConfirm', { title: pendingDelete.title }),
+            `${pendingDelete.title}: all user-authored design-system files and metadata`,
+          ]}
+          irreversible
+          onConfirm={() => executeDeleteSystem(pendingDelete)}
+          onClose={() => setPendingDelete(null)}
+        />
+      ) : null}
     </>
   );
 
@@ -1220,7 +1223,7 @@ export function DesignSystemsTab({
           onEdit={handleEditSystem}
           onMakeDefault={handleMakeDefaultClick}
           onTogglePublished={togglePublished}
-          onDelete={deleteSystem}
+          onDelete={requestDeleteSystem}
           onSystemsRefresh={onSystemsRefresh}
           onActionFeedback={notifyAction}
           onShareToTeam={handleShareToTeam}

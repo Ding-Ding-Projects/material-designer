@@ -13,7 +13,7 @@
 // rubber-band box drag, Cmd/Ctrl+A — and the selection can be bulk-deleted from
 // the action bar or with Delete / Backspace.
 
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
 import {
   applyLibraryAsset,
@@ -32,7 +32,7 @@ import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { setComposerSeed, setDesignSystemAssetSeed, setHomeComposerAssetSeed } from '../state/libraryHandoff';
-import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import { Button } from '@open-design/components';
 import { Icon } from './Icon';
 import {
   KindIcon,
@@ -55,6 +55,7 @@ import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
+import { DestructiveGate } from './destructive/DestructiveGate';
 
 type Translate = ReturnType<typeof useT>;
 
@@ -516,8 +517,10 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [dragging, setDragging] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [seedFiles, setSeedFiles] = useState<File[] | null>(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-  const confirmDeleteTitleId = useId();
+  const [pendingDelete, setPendingDelete] = useState<{
+    ids: string[];
+    labels: string[];
+  } | null>(null);
   // Asset currently being turned into an editable OD page (spinner gate).
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
@@ -690,10 +693,24 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     });
   }, [assets]);
 
-  const onDelete = useCallback(async (id: string) => {
-    const ok = await deleteLibraryAsset(id);
-    if (ok) setAssets((prev) => prev.filter((a) => a.id !== id));
+  const deleteAssets = useCallback(async (ids: string[]) => {
+    const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
+    const deleted = new Set(ids.filter((_, index) => results[index]));
+    if (!deleted.size) return false;
+    setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
+    setSelectedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id)));
+    setPreviewId((current) => (current && deleted.has(current) ? null : current));
+    return deleted.size === ids.length;
   }, []);
+
+  const requestDelete = useCallback((id: string) => {
+    const asset = assets.find((candidate) => candidate.id === id);
+    const label = asset ? assetTitle(asset) : id;
+    const detail = asset?.storage === 'referenced'
+      ? 'the file stays in the project that owns it'
+      : 'the file stored in your Library is removed';
+    setPendingDelete({ ids: [id], labels: [`${label}: ${detail}`] });
+  }, [assets]);
 
   // "Edit as page": turn a captured html asset into a fresh editable OD project
   // and open it on its index.html. The daemon owns the project creation; here we
@@ -714,28 +731,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     [onOpenProject],
   );
 
-  const deleteSelected = useCallback(async () => {
+  const requestDeleteSelected = useCallback(() => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    const results = await Promise.all(ids.map((id) => deleteLibraryAsset(id)));
-    const deleted = new Set(ids.filter((_, i) => results[i]));
-    if (!deleted.size) return;
-    setAssets((prev) => prev.filter((a) => !deleted.has(a.id)));
-    setSelectedIds(new Set());
-    setPreviewId((cur) => (cur && deleted.has(cur) ? null : cur));
-  }, [selectedIds]);
-
-  // Bulk delete is destructive and easy to trigger (a button or Delete/
-  // Backspace), so it routes through a confirmation dialog instead of removing
-  // the selection immediately.
-  const requestDeleteSelected = useCallback(() => {
-    if (selectedIds.size) setConfirmDeleteOpen(true);
-  }, [selectedIds]);
-
-  const confirmDeleteSelected = useCallback(() => {
-    setConfirmDeleteOpen(false);
-    void deleteSelected();
-  }, [deleteSelected]);
+    const labels = ids.map((id) => {
+      const asset = assets.find((candidate) => candidate.id === id);
+      return asset ? assetTitle(asset) : id;
+    });
+    setPendingDelete({ ids, labels });
+  }, [assets, selectedIds]);
 
   // --- multi-select → design system ---------------------------------------
 
@@ -1049,7 +1053,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const onKey = (e: KeyboardEvent) => {
       // The upload modal, delete-confirm dialog, and the design-system menu own
       // shortcuts while open.
-      if (uploadOpen || confirmDeleteOpen || dsMenuOpen) return;
+      if (uploadOpen || pendingDelete || dsMenuOpen) return;
       const el = document.activeElement as HTMLElement | null;
       const typing =
         !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
@@ -1068,7 +1072,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, assets, selectedIds, previewId, uploadOpen, confirmDeleteOpen, dsMenuOpen, selectAll, requestDeleteSelected]);
+  }, [active, assets, selectedIds, previewId, uploadOpen, pendingDelete, dsMenuOpen, selectAll, requestDeleteSelected]);
 
   // `@font-face` rules for every font asset on screen, so both the grid
   // thumbnails and the preview specimen render in the real typeface.
@@ -1122,7 +1126,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       onToggle={toggleOne}
       onRange={rangeTo}
       onPreview={setPreviewId}
-      onDelete={onDelete}
+      onDelete={requestDelete}
       onEditAsPage={handleEditAsPage}
       onOpenProject={onOpenProject}
     />
@@ -1383,33 +1387,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
         />
       ) : null}
 
-      {confirmDeleteOpen ? (
-        <Dialog
-          className="modal-confirm"
-          role="alertdialog"
-          onClose={() => setConfirmDeleteOpen(false)}
-          closeOnEscape
-          ariaLabelledBy={confirmDeleteTitleId}
-        >
-          <DialogTitle id={confirmDeleteTitleId}>
-            {selectedCount === 1
-              ? t('library.confirmDeleteTitleOne', { count: selectedCount })
-              : t('library.confirmDeleteTitleMany', { count: selectedCount })}
-          </DialogTitle>
-          <DialogDescription className="modal-confirm-message">
-            {selectedCount === 1
-              ? t('library.confirmDeleteBodyOne')
-              : t('library.confirmDeleteBodyMany')}
-          </DialogDescription>
-          <DialogFooter className="row">
-            <button type="button" onClick={() => setConfirmDeleteOpen(false)}>
-              {t('library.cancel')}
-            </button>
-            <button type="button" className="primary danger" autoFocus onClick={confirmDeleteSelected}>
-              {t('library.deleteCount', { count: selectedCount })}
-            </button>
-          </DialogFooter>
-        </Dialog>
+      {pendingDelete ? (
+        <DestructiveGate
+          action={t('library.deleteCount', { count: pendingDelete.ids.length })}
+          target={pendingDelete.ids.length === 1 ? pendingDelete.labels[0] : `${pendingDelete.ids.length} library assets`}
+          items={pendingDelete.labels}
+          irreversible
+          onConfirm={() => deleteAssets(pendingDelete.ids)}
+          onClose={() => setPendingDelete(null)}
+        />
       ) : null}
 
       {previewAsset ? (
@@ -1426,10 +1412,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             if (next) setPreviewId(next.id);
           }}
           onClose={() => setPreviewId(null)}
-          onDelete={(id) => {
-            void onDelete(id);
-            setPreviewId(null);
-          }}
+          onDelete={requestDelete}
           onOpenProject={onOpenProject}
           onEditAsPage={handleEditAsPage}
         />

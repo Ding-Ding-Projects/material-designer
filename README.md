@@ -22,6 +22,14 @@
 > post-publication checks remain mandatory; no exception makes an incomplete
 > release compliant.
 
+> **Destructive-route status: 2026-08-27.** The web application now routes
+> brand, design-system, Library, memory, routine, and conversation removal
+> through the shared two-key, full-slider gate. The hand-written route inventory
+> and its red-then-green source guard live in
+> [`docs/standards/destructive-action-inventory.md`](docs/standards/destructive-action-inventory.md)
+> and [`scripts/verify-destructive-action-inventory.ps1`](scripts/verify-destructive-action-inventory.ps1).
+> Hosted build and installed-surface evidence remain pending.
+
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
 > [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). The working tree is clean and the

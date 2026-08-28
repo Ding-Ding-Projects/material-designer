@@ -1,0 +1,11 @@
+id	source	marker	description
+start	design/clipper/popup.js	chrome.runtime.getURL('download.html')	Installed-extension Figma capture opens the extension-owned Start surface before transfer.
+start-state	design/clipper/download.html	id="start"	Start download is a real decision control.
+progress-state	design/clipper/download.html	id="progress"	Active progress is a separate visible surface state.
+completion-state	design/clipper/download.html	id="complete"	Completion is a separate visible surface state.
+transfer-start	design/clipper/background.js	case 'confirmDownload'	Only explicit Start confirmation begins the browser transfer.
+transfer-events	design/clipper/background.js	chrome.downloads.onChanged.addListener	Progress and terminal state come from browser download events.
+pause-resume-cancel	design/clipper/background.js	chrome.downloads.pause	Active transfer has real pause, resume, and cancel controls.
+completion-notification	design/clipper/background.js	chrome.notifications.create	Completion is also non-blocking and reviewable.
+always-on-top	design/clipper/popup.js	alwaysOnTop: true	The extension window requests always-on-top presentation.
+localized-start	design/clipper/i18n.js	downloadStartOpened	The direct extension handoff has localized start copy.

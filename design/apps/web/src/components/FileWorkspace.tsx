@@ -50,6 +50,7 @@ import {
 } from '../providers/registry';
 import type { Dict } from '../i18n/types';
 import { STAGE_ATTACHMENT_EVENT, type StageAttachmentEventDetail } from './ChatComposer';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
 import { navigate, registerNavigationGuard } from '../router';
 import { downloadDesignSystemArchive, downloadProjectArchive } from '../runtime/exports';
@@ -1435,6 +1436,7 @@ export function FileWorkspace({
 
   const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [pendingFileDelete, setPendingFileDelete] = useState<string[] | null>(null);
   // The folder the Design Files panel is currently viewing (synced via
   // onCurrentDirChange). New files — uploads, pastes, sketches, dropped files —
   // are created under this folder instead of the project root.
@@ -2535,7 +2537,6 @@ export function FileWorkspace({
 
   async function handleDelete(name: string) {
     if (viewerOnly) return; // read-only viewer of a team-shared project
-    if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
     const ok = await deleteProjectFile(projectId, name, workspaceContext);
     if (ok) {
       await onRefreshFiles();
@@ -2563,12 +2564,12 @@ export function FileWorkspace({
         return next;
       });
     }
+    return ok;
   }
 
   async function handleDeleteMany(names: string[]) {
     if (viewerOnly) return; // read-only viewer of a team-shared project
     if (names.length === 0) return;
-    if (!confirm(t('workspace.deleteSelectedFilesConfirm', { n: names.length }))) return;
     const deleted: string[] = [];
     const failed: string[] = [];
     for (const name of names) {
@@ -2602,6 +2603,15 @@ export function FileWorkspace({
     if (failed.length > 0) {
       alert(t('workspace.deleteSelectedFilesPartial', { n: failed.length }));
     }
+    return failed.length === 0;
+  }
+
+  function requestDeleteFile(name: string): void {
+    if (!viewerOnly) setPendingFileDelete([name]);
+  }
+
+  function requestDeleteFiles(names: string[]): void {
+    if (!viewerOnly && names.length > 0) setPendingFileDelete([...names]);
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
@@ -3899,6 +3909,20 @@ export function FileWorkspace({
           }}
         />
       ) : null}
+      {pendingFileDelete ? (
+        <DestructiveGate
+          action={pendingFileDelete.length === 1
+            ? t('workspace.deleteFileConfirm', { name: pendingFileDelete[0] })
+            : t('workspace.deleteSelectedFilesConfirm', { n: pendingFileDelete.length })}
+          target={pendingFileDelete.length === 1 ? pendingFileDelete[0]! : `${pendingFileDelete.length} project files`}
+          items={pendingFileDelete}
+          irreversible
+          onConfirm={() => pendingFileDelete.length === 1
+            ? handleDelete(pendingFileDelete[0]!)
+            : handleDeleteMany(pendingFileDelete)}
+          onClose={() => setPendingFileDelete(null)}
+        />
+      ) : null}
       <SketchEnginePrewarm />
       <div className="ws-tabs-shell">
         {onFocusModeChange && focusMode ? (
@@ -4310,7 +4334,7 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'delete',
               });
-              void handleDelete(name);
+              requestDeleteFile(name);
             }}
             onDeleteFiles={(names) => {
               trackFileManagerClick(analytics.track, {
@@ -4318,7 +4342,7 @@ export function FileWorkspace({
                 area: 'file_manager',
                 element: 'delete',
               });
-              return handleDeleteMany(names);
+              requestDeleteFiles(names);
             }}
             onUpload={() => {
               trackFileManagerClick(analytics.track, {
@@ -4688,6 +4712,7 @@ function DesignSystemProjectPanel({
   const [designMdBody, setDesignMdBody] = useState('');
   const [savingDesignMd, setSavingDesignMd] = useState(false);
   const [kitActionBusy, setKitActionBusy] = useState<string | null>(null);
+  const [pendingProjectDelete, setPendingProjectDelete] = useState(false);
   // Transient feedback for kit edits (upload / refresh / reset / delete) so an
   // action that previously fired-and-forgot now reports success or failure.
   const [kitToast, setKitToast] = useState<{ message: string; tone: DesignKitActionFeedbackTone } | null>(null);
@@ -4875,12 +4900,8 @@ function DesignSystemProjectPanel({
   // handleDeleteProject, which deletes the project, clears local state and
   // navigates home — so the panel unmounts on success and there's no busy reset
   // to do in the happy path.
-  async function deleteDesignSystemProject() {
-    if (kitActionBusy || !onDeleteDesignSystemProject || !editable) return;
-    const ok = window.confirm(
-      t('ds.deleteProjectConfirm', { title: system.title }),
-    );
-    if (!ok) return;
+  async function deleteDesignSystemProject(): Promise<boolean> {
+    if (kitActionBusy || !onDeleteDesignSystemProject || !editable) return false;
     setKitActionBusy('delete');
     notifyKitLoading(t('ds.deleteProjectAction', { title: system.title }));
     try {
@@ -4898,10 +4919,16 @@ function DesignSystemProjectPanel({
       }
       await deleteDesignSystemDraft(system.id, workspaceContext);
       await onDesignSystemsRefresh?.();
+      return true;
     } catch {
       notifyKit('error', t('ds.actionFailed'));
       setKitActionBusy(null);
+      return false;
     }
+  }
+
+  function requestDeleteDesignSystemProject(): void {
+    if (!kitActionBusy && onDeleteDesignSystemProject && editable) setPendingProjectDelete(true);
   }
 
   async function changeKitColor(index: number, hex: string) {
@@ -5443,7 +5470,7 @@ function DesignSystemProjectPanel({
             id: 'delete',
             label: t('ds.deleteProjectAction', { title: system.title }),
             icon: 'trash' as IconName,
-            onClick: () => void deleteDesignSystemProject(),
+            onClick: requestDeleteDesignSystemProject,
             disabled: !editable || Boolean(kitActionBusy) || statusBusy || defaultBusy,
             loading: kitActionBusy === 'delete',
           } satisfies HeaderMenuAction,
@@ -5556,6 +5583,16 @@ function DesignSystemProjectPanel({
           ttlMs={40000}
           role={kitToast.tone === 'error' ? 'alert' : 'status'}
           onDismiss={() => setKitToast(null)}
+        />
+      ) : null}
+      {pendingProjectDelete ? (
+        <DestructiveGate
+          action={t('ds.deleteProjectAction', { title: system.title })}
+          target={system.title}
+          items={[system.title, 'the design-system project and its registered system']}
+          irreversible
+          onConfirm={deleteDesignSystemProject}
+          onClose={() => setPendingProjectDelete(false)}
         />
       ) : null}
       {kit ? (

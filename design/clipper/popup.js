@@ -218,7 +218,24 @@ $('figma').addEventListener('click', async () => {
   setBusy(true);
   setMsg(t('buildingFigma'), 'loading');
   const res = await send({ type: 'downloadFigma', opts: captureOpts() });
-  reportCapture(res, () => t('figmaDownloaded'));
+  reportCapture(res, (r) => {
+    if (r.flowId) {
+      void chrome.windows.create({
+        url: `${chrome.runtime.getURL('download.html')}?flow=${encodeURIComponent(r.flowId)}`,
+        type: 'popup',
+        width: 520,
+        height: 430,
+        focused: true,
+      }).then((win) => {
+        if (win?.id == null) return;
+        return chrome.windows.update(win.id, { focused: true, alwaysOnTop: true });
+      }).catch(() => {
+        // The extension-owned window remains the real handoff surface even
+        // when a browser profile refuses the always-on-top hint.
+      });
+    }
+    return t('downloadStartOpened');
+  });
 });
 
 $('system')?.addEventListener('click', async () => {

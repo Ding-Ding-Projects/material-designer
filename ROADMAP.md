@@ -1,5 +1,20 @@
 # Roadmap
 
+- [ ] **Complete the destructive-action route inventory and installed proof.**
+      The source now converges brand, design-system, Library, memory, routine,
+      and conversation removal on the shared two-key full-slider gate, while
+      the daemon keeps its independent single-use resource-token boundary.
+      `scripts/verify-destructive-action-inventory.ps1` proves the hand-written
+      inventory turns red when one exact gate boundary is removed and green
+      after restoration. Hosted build, complete built-surface interaction, and
+      real capture evidence remain pending.
+
+      **廣東話進度：** Brand、design-system、Library、memory、routine 同
+      conversation removal 而家收埋喺同一個雙 key full-slider gate，daemon
+      亦保留獨立 single-use resource token。PowerShell inventory guard 會
+      逐個 exact boundary 試紅再還原轉綠；hosted build、真實 built surface
+      操作同 capture evidence 仲未完成。
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

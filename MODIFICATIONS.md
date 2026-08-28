@@ -5590,6 +5590,46 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
+### 2026-08-27 — Route destructive actions through the shared confirmation gate
+
+**Reason:** several user-visible removal routes still used one-click or browser
+confirmation even though the shared two-key, full-slider gate and daemon token
+boundary already existed. These routes now capture the exact target, keep the
+real operation behind the gate, preserve failure state, and return focus on
+cancel or completion.
+
+**Changed files:**
+
+- `apps/web/src/components/BrandPreviewCard.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/src/components/DesignSystemsTab.tsx`
+- `apps/web/src/components/LibrarySection.tsx`
+- `apps/web/src/components/MemorySection.tsx`
+- `apps/web/src/components/RoutinesSection.tsx`
+- `apps/web/src/components/ConversationsMenu.tsx`
+- `apps/web/src/components/TasksView.tsx`
+- `apps/web/src/components/FileWorkspace.tsx`
+- `apps/web/tests/components/BrandPreviewCard.test.tsx`
+- `apps/web/tests/components/DesignSystemsTab.test.tsx`
+
+### 2026-08-27 — Add extension-owned download handoff surfaces
+
+**Reason:** the browser-extension Figma capture route now opens a real Start
+download decision, transitions to an active Downloading surface with browser
+event progress and transfer controls, and reports completion through the
+extension window plus a non-blocking notification.
+
+**Changed files:**
+
+- `clipper/background.js`
+- `clipper/content.js`
+- `clipper/download.css`
+- `clipper/download.html`
+- `clipper/download.js`
+- `clipper/i18n.js`
+- `clipper/manifest.json`
+- `clipper/popup.js`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its

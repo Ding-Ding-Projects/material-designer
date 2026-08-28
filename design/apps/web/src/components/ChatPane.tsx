@@ -30,6 +30,7 @@ import {
 } from '../analytics/run-task';
 import { amrHandoffDeviceId, attributedAmrUrl, recordAmrEntry } from '../analytics/amr-attribution';
 import { useI18n, useT } from '../i18n';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import { startersForProduct, type ProductType } from '../onboarding/recommendation';
 import { starterCopyFor } from '../onboarding/starter-copy';
 import {
@@ -4611,6 +4612,7 @@ function ConversationRow({
 }) {
   const displayTitle =
     conversation.title || t('chat.untitledConversation');
+  const [deletePending, setDeletePending] = useState(false);
 
   return (
     <div
@@ -4640,15 +4642,24 @@ function ConversationRow({
         title={t('chat.deleteConversation')}
         onClick={(e) => {
           e.stopPropagation();
-          if (
-            confirm(t('chat.deleteConversationConfirm', { title: displayTitle }))
-          ) {
-            onDelete();
-          }
+          setDeletePending(true);
         }}
       >
         <Icon name="close" size={12} />
       </button>
+      {deletePending ? (
+        <DestructiveGate
+          action={t('chat.deleteConversation')}
+          target={displayTitle}
+          items={[displayTitle, 'every message in this conversation']}
+          irreversible
+          onConfirm={() => {
+            onDelete();
+            return true;
+          }}
+          onClose={() => setDeletePending(false)}
+        />
+      ) : null}
     </div>
   );
 }
