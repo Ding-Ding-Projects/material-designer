@@ -32,7 +32,7 @@ import {
   interceptLockedActivation,
   type ToyLockPolicy,
 } from '../../security/toy-lock-core';
-import { Icon } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import type { SettingsSection } from '../SettingsDialog';
@@ -45,6 +45,39 @@ import styles from './SettingsTabs.module.css';
 
 /** Shared by every tab and by the panel they all control. */
 export const SETTINGS_TABPANEL_ID = 'settings-tabpanel';
+
+/** The edge where this surface docks its settings navigation. */
+export type SettingsTabDockEdge = 'left' | 'right' | 'top' | 'bottom';
+
+export const SETTINGS_TAB_DOCK_STORAGE_KEY = 'od.settings.tabs.dockEdge';
+
+const SETTINGS_TAB_DOCK_EDGES: readonly SettingsTabDockEdge[] = [
+  'left',
+  'right',
+  'top',
+  'bottom',
+];
+
+export function readSettingsTabDockEdge(): SettingsTabDockEdge {
+  if (typeof window === 'undefined') return 'left';
+  try {
+    const value = window.localStorage.getItem(SETTINGS_TAB_DOCK_STORAGE_KEY);
+    return SETTINGS_TAB_DOCK_EDGES.includes(value as SettingsTabDockEdge)
+      ? (value as SettingsTabDockEdge)
+      : 'left';
+  } catch {
+    return 'left';
+  }
+}
+
+export function writeSettingsTabDockEdge(edge: SettingsTabDockEdge): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SETTINGS_TAB_DOCK_STORAGE_KEY, edge);
+  } catch {
+    // Private-mode storage must not stop the settings surface moving.
+  }
+}
 
 export function settingsTabId(section: SettingsSection): string {
   return `settings-tab-${section}`;
@@ -130,13 +163,18 @@ export function SettingsTabStrip({
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [contextMenuPoint, setContextMenuPoint] = useState<{ x: number; y: number } | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
   const [pendingAuthentication, setPendingAuthentication] =
     useState<PendingTabAuthentication | null>(null);
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
+  const [dockEdge, setDockEdge] = useState<SettingsTabDockEdge>(readSettingsTabDockEdge);
 
   const filteredTabs = tabs.filter((tab) =>
     menuSearch.matches(`${t(tab.titleKey)} ${t(tab.hintKey)}`),
+  );
+  const filteredDockEdges = SETTINGS_TAB_DOCK_EDGES.filter((edge) =>
+    menuSearch.matches(`${t('settings.tabsOverflow')} ${edge}`),
   );
 
   const registerTab = useCallback((section: SettingsSection, node: HTMLButtonElement | null) => {
@@ -187,20 +225,28 @@ export function SettingsTabStrip({
 
   const measureMenu = useCallback(() => {
     const button = overflowRef.current;
-    if (!button || typeof window === 'undefined') return;
-    const rect = button.getBoundingClientRect();
+    if ((!button && !contextMenuPoint) || typeof window === 'undefined') return;
+    const buttonRect = button?.getBoundingClientRect();
     const viewportWidth = Math.max(1, window.innerWidth);
     const viewportHeight = Math.max(1, window.innerHeight);
     const width = Math.max(1, Math.min(MENU_WIDTH, viewportWidth - VIEWPORT_MARGIN * 2));
     const horizontalMargin = viewportWidth >= width + VIEWPORT_MARGIN * 2 ? VIEWPORT_MARGIN : 0;
     const maxLeft = Math.max(horizontalMargin, viewportWidth - width - horizontalMargin);
-    const anchorRight = Math.min(viewportWidth, Math.max(0, rect.right));
-    const left = Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
+    const anchorRight = contextMenuPoint
+      ? Math.min(viewportWidth, Math.max(0, contextMenuPoint.x))
+      : Math.min(viewportWidth, Math.max(0, buttonRect?.right ?? 0));
+    const left = contextMenuPoint
+      ? Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width / 2))
+      : Math.min(maxLeft, Math.max(horizontalMargin, anchorRight - width));
     // A trigger can be in a scrolled-away strip while the menu is opening.
     // Measure the visible edge, not the stale document coordinate, or the
     // fixed card can be born with a negative top/bottom value.
-    const anchorTop = Math.min(viewportHeight, Math.max(0, rect.top));
-    const anchorBottom = Math.min(viewportHeight, Math.max(0, rect.bottom));
+    const anchorTop = contextMenuPoint
+      ? Math.min(viewportHeight, Math.max(0, contextMenuPoint.y))
+      : Math.min(viewportHeight, Math.max(0, buttonRect?.top ?? 0));
+    const anchorBottom = contextMenuPoint
+      ? Math.min(viewportHeight, Math.max(0, contextMenuPoint.y))
+      : Math.min(viewportHeight, Math.max(0, buttonRect?.bottom ?? 0));
     const spaceBelow = Math.max(0, viewportHeight - anchorBottom - VIEWPORT_MARGIN - 4);
     const spaceAbove = Math.max(0, anchorTop - VIEWPORT_MARGIN - 4);
     const placement = spaceBelow >= 240 || spaceBelow >= spaceAbove ? 'bottom' : 'top';
@@ -216,7 +262,7 @@ export function SettingsTabStrip({
         ? Math.min(maxTop, Math.max(0, viewportHeight - anchorTop + 4))
         : undefined,
     });
-  }, []);
+  }, [contextMenuPoint]);
 
   useEffect(() => {
     if (!menuOpen || typeof window === 'undefined') return;
@@ -228,7 +274,7 @@ export function SettingsTabStrip({
       window.removeEventListener('resize', onViewportChange);
       window.removeEventListener('scroll', onViewportChange, true);
     };
-  }, [menuOpen, measureMenu]);
+  }, [contextMenuPoint, menuOpen, measureMenu]);
 
   useEffect(() => {
     if (!menuOpen || typeof document === 'undefined') return;
@@ -243,6 +289,7 @@ export function SettingsTabStrip({
       if (!pendingAuthentication && !isInside(event.target)) {
         setMenuOpen(false);
         setMenuQuery('');
+        setContextMenuPoint(null);
       }
     };
     document.addEventListener('mousedown', onPointerDown);
@@ -252,6 +299,7 @@ export function SettingsTabStrip({
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     setMenuQuery('');
+    setContextMenuPoint(null);
   }, []);
 
   const toggleMenu = useCallback(() => {
@@ -260,6 +308,7 @@ export function SettingsTabStrip({
       return;
     }
     setMenuQuery('');
+    setContextMenuPoint(null);
     setMenuOpen(true);
   }, [closeMenu, menuOpen]);
 
@@ -346,8 +395,10 @@ export function SettingsTabStrip({
       const index = tabs.findIndex((tab) => tab.section === activeSection);
       if (index < 0) return;
       let nextIndex: number | null = null;
-      if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
-      else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      const forward = dockEdge === 'left' || dockEdge === 'right' ? 'ArrowDown' : 'ArrowRight';
+      const backward = dockEdge === 'left' || dockEdge === 'right' ? 'ArrowUp' : 'ArrowLeft';
+      if (event.key === forward) nextIndex = (index + 1) % tabs.length;
+      else if (event.key === backward) nextIndex = (index - 1 + tabs.length) % tabs.length;
       else if (event.key === 'Home') nextIndex = 0;
       else if (event.key === 'End') nextIndex = tabs.length - 1;
       if (nextIndex === null) return;
@@ -356,8 +407,20 @@ export function SettingsTabStrip({
       event.preventDefault();
       focusTab(next.section);
     },
-    [activeSection, focusTab, tabs],
+    [activeSection, dockEdge, focusTab, tabs],
   );
+
+  const selectDockEdge = useCallback((edge: SettingsTabDockEdge) => {
+    setDockEdge(edge);
+    writeSettingsTabDockEdge(edge);
+  }, []);
+
+  const dockIcon: Record<SettingsTabDockEdge, IconName> = {
+    left: 'chevron-left',
+    right: 'chevron-right',
+    top: 'arrow-up',
+    bottom: 'chevron-down',
+  };
 
   const hiddenCount = outOfView.size;
 
@@ -374,13 +437,24 @@ export function SettingsTabStrip({
     : { position: 'fixed', top: 0, left: 0, width: MENU_WIDTH };
 
   return (
-    <div className={styles.strip}>
+    <div
+      className={styles.strip}
+      data-settings-tabs-dock={dockEdge}
+      onContextMenu={(event) => {
+        // The edge controls are always visible, and this same filterable
+        // menu is also the strip's keyboard and pointer context menu.
+        event.preventDefault();
+        setMenuQuery('');
+        setContextMenuPoint({ x: event.clientX, y: event.clientY });
+        setMenuOpen(true);
+      }}
+    >
       <div
         ref={listRef}
         className={styles.tablist}
         role="tablist"
         aria-label={t('settings.tabsAria')}
-        aria-orientation="horizontal"
+        aria-orientation={dockEdge === 'left' || dockEdge === 'right' ? 'vertical' : 'horizontal'}
         onKeyDown={onTablistKeyDown}
       >
         {tabs.map((tab) => {
@@ -450,6 +524,30 @@ export function SettingsTabStrip({
             </button>
           );
         })}
+      </div>
+
+      <div
+        className={styles.dockEdges}
+        role="group"
+        aria-label={t('settings.tabsOverflow')}
+        data-testid="settings-tabs-dock-edges"
+        data-od-setting="settings.tabs.dockEdge"
+      >
+        {SETTINGS_TAB_DOCK_EDGES.map((edge) => (
+          <button
+            key={edge}
+            type="button"
+            className={styles.dockEdge}
+            data-settings-tab-dock-edge={edge}
+            data-testid={`settings-tabs-dock-${edge}`}
+            aria-pressed={dockEdge === edge}
+            aria-label={`${t('settings.tabsOverflow')}: ${edge}`}
+            title={`${t('settings.tabsOverflow')}: ${edge}`}
+            onClick={() => selectDockEdge(edge)}
+          >
+            <Icon name={dockIcon[edge]} size={14} />
+          </button>
+        ))}
       </div>
 
       <button
@@ -530,7 +628,25 @@ export function SettingsTabStrip({
                 focusScopeId={menuId}
                 autoFocus
               />
-              {filteredTabs.length === 0 ? (
+              {filteredDockEdges.map((edge) => (
+                <button
+                  key={`dock-${edge}`}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={dockEdge === edge}
+                  className={`${styles.menuItem}${dockEdge === edge ? ` ${styles.menuItemActive}` : ''}`}
+                  data-settings-tab-dock-edge={edge}
+                  data-testid={`settings-tabs-context-dock-${edge}`}
+                  onClick={() => {
+                    selectDockEdge(edge);
+                    closeMenu();
+                  }}
+                >
+                  <Icon name={dockIcon[edge]} size={15} />
+                  <span className={styles.menuItemLabel}>{`${t('settings.tabsOverflow')}: ${edge}`}</span>
+                </button>
+              ))}
+              {filteredTabs.length === 0 && filteredDockEdges.length === 0 ? (
                 <p className={styles.menuEmpty} role="status">
                   {t('settings.searchNoMatches')}
                 </p>

@@ -9,6 +9,14 @@ reviewable bulk-close directions. This lane has not run a local package build,
 browser drive, or installed desktop capture, so those results remain explicitly
 unverified until the parent integration reaches the hosted Chuts.
 
+The settings tab strip now stores its docking edge locally with a left-side
+default and supports left, right, top, and bottom orientations. Side docks use
+vertical tab semantics and Up/Down navigation; top and bottom docks use
+horizontal semantics and Left/Right navigation. The edge choices are available
+as touch-sized controls and from the strip's own searchable context menu. The
+layout remains source-mounted only until the hosted accessibility and narrow
+viewport matrix is run.
+
 ## The requirement
 
 Every user-facing application — **and every documentation or landing site it

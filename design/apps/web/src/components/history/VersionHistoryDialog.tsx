@@ -25,6 +25,7 @@
 // daemon. This file is the surface: layout, keyboard, fetching and copy.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import {
   Button,
@@ -44,6 +45,18 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon } from '../Icon';
+import { BulkActionBar } from '../bulk/BulkActionBar';
+import {
+  describeSelection,
+  emptySelection,
+  extendTo,
+  invertWithin,
+  pruneSelection,
+  selectAllOf,
+  selectOnly,
+  toggleOne,
+  type SelectionState,
+} from '../bulk/selection';
 import { useI18n } from '../../i18n';
 import type { Dict } from '../../i18n/types';
 import { RegexSearchField } from '../regex/RegexSearchField';
@@ -153,6 +166,7 @@ export function VersionHistoryDialog() {
   const [filter, setFilter] = useState<HistoryFilter>(EMPTY_HISTORY_FILTER);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<SelectionState>(emptySelection);
   const [status, setStatus] = useState<string | null>(null);
 
   const titleId = useId();
@@ -234,6 +248,16 @@ export function VersionHistoryDialog() {
     () => filterHistory(load.revisions, filter, regexMatches),
     [filter, load.revisions, regexMatches],
   );
+  const visibleRevisionIds = result.revisions.map((revision) => revision.id);
+  const visibleRevisionKey = visibleRevisionIds.join('\u0000');
+  useEffect(() => {
+    setSelection((current) => pruneSelection(current, visibleRevisionIds));
+  }, [visibleRevisionKey]);
+  const selectionSummary = describeSelection(
+    selection,
+    visibleRevisionIds,
+    visibleRevisionIds,
+  );
 
   const filterActive = historyFilterIsActive(filter);
   const hidden = result.total - result.matched;
@@ -265,19 +289,39 @@ export function VersionHistoryDialog() {
   );
 
   const handleExport = useCallback(
-    (format: HistoryExportFormat) => {
+    (format: HistoryExportFormat, revisions = result.revisions) => {
       const name = `version-history-${new Date().toISOString().slice(0, 10)}.${
         HISTORY_EXPORT_EXTENSIONS[format]
       }`;
       downloadFile(
         name,
-        renderHistoryExport(format, result.revisions, exportLabels),
+        renderHistoryExport(format, revisions, exportLabels),
         HISTORY_EXPORT_MEDIA_TYPES[format],
       );
       flashStatus(t('history.exported', { filename: name }));
     },
     [exportLabels, flashStatus, result.revisions, t],
   );
+
+  const selectRevision = useCallback((
+    id: string,
+    event: Pick<ReactMouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>,
+  ) => {
+    setSelection((current) => {
+      if (event.shiftKey) return extendTo(current, id, visibleRevisionIds);
+      if (event.ctrlKey || event.metaKey) return toggleOne(current, id);
+      return selectOnly(id);
+    });
+  }, [visibleRevisionKey]);
+
+  const selectedRevisions = useCallback(
+    () => result.revisions.filter((revision) => selection.ids.has(revision.id)),
+    [result.revisions, selection.ids],
+  );
+
+  const clearRevisionSelection = useCallback(() => {
+    setSelection(emptySelection());
+  }, []);
 
   const toggleAction = useCallback((action: HistoryActionId) => {
     setFilter((current) => ({
@@ -301,6 +345,7 @@ export function VersionHistoryDialog() {
     setOpen(false);
     setStatus(null);
     setSelectedId(null);
+    setSelection(emptySelection());
   }, []);
 
   if (!open) return null;
@@ -479,6 +524,41 @@ export function VersionHistoryDialog() {
         </p>
       ) : null}
 
+      {result.revisions.length > 0 ? (
+        <BulkActionBar
+          summary={selectionSummary}
+          onSelectPage={() => setSelection(selectAllOf(visibleRevisionIds, 'page'))}
+          onSelectEveryMatch={() => setSelection(selectAllOf(visibleRevisionIds, 'match'))}
+          onInvert={() => setSelection(invertWithin(
+            selection,
+            visibleRevisionIds,
+            selection.scope === 'match' ? 'match' : 'page',
+          ))}
+          onClear={clearRevisionSelection}
+          testId="history-bulk"
+          actions={[
+            {
+              id: 'export-markdown',
+              icon: 'download',
+              label: t('history.exportMarkdown'),
+              onRun: () => handleExport('markdown', selectedRevisions()),
+            },
+            {
+              id: 'export-text',
+              icon: 'download',
+              label: t('history.exportText'),
+              onRun: () => handleExport('text', selectedRevisions()),
+            },
+            {
+              id: 'export-json',
+              icon: 'download',
+              label: t('history.exportJson'),
+              onRun: () => handleExport('json', selectedRevisions()),
+            },
+          ]}
+        />
+      ) : null}
+
       <DialogBody className={styles.body}>
         <div className={styles.list}>
           {result.revisions.length === 0 ? (
@@ -497,7 +577,15 @@ export function VersionHistoryDialog() {
           ) : (
             <ul className={styles.revisions}>
               {result.revisions.map((revision) => (
-                <li key={revision.id}>
+                <li key={revision.id} className={styles.revisionRow}>
+                  <input
+                    type="checkbox"
+                    className={styles.revisionSelect}
+                    checked={selection.ids.has(revision.id)}
+                    aria-label={revision.label}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={(event) => selectRevision(revision.id, event.nativeEvent as MouseEvent)}
+                  />
                   <button
                     aria-current={revision.id === selectedId}
                     className={`${styles.revision}${

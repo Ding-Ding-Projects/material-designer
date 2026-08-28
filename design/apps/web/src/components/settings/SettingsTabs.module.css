@@ -14,6 +14,65 @@
   min-width: 0;
 }
 
+/* The stored edge is also the accessibility orientation. Left is the default
+   and keeps the settings navigation available as a vertical strip. */
+.strip[data-settings-tabs-dock='left'],
+.strip[data-settings-tabs-dock='right'] {
+  align-items: stretch;
+  flex-direction: column;
+  width: min(248px, 100%);
+}
+
+.strip[data-settings-tabs-dock='right'] {
+  order: 2;
+}
+
+.strip[data-settings-tabs-dock='bottom'] {
+  order: 2;
+}
+
+/* The modal body is the strip's layout owner. The search-results card is
+   taken out of the row when a side dock is active, so it cannot become a
+   surprise third column between navigation and content. */
+:global(.modal-body:has([data-settings-tabs-dock='left'])),
+:global(.modal-body:has([data-settings-tabs-dock='right'])) {
+  flex-direction: row !important;
+  align-items: stretch;
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='left'])) .strip,
+:global(.modal-body:has([data-settings-tabs-dock='right'])) .strip {
+  height: 100%;
+  border-bottom: 0;
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='left'])) .strip {
+  border-inline-end: 1px solid var(--md-sys-color-outline-variant);
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='right'])) .strip {
+  border-inline-start: 1px solid var(--md-sys-color-outline-variant);
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='left'])) .results,
+:global(.modal-body:has([data-settings-tabs-dock='right'])) .results {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  width: calc(100% - 248px);
+  max-height: 36%;
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='left'])) .results {
+  inset-inline-end: 0;
+  inset-inline-start: 248px;
+}
+
+:global(.modal-body:has([data-settings-tabs-dock='right'])) .results {
+  inset-inline-end: 248px;
+  inset-inline-start: 0;
+}
+
 /* Horizontal scroll is the floor, not the overflow surface: it guarantees a
    tab is never clipped away with no route to it, while the button beside the
    strip is the surface a user actually reaches for. */
@@ -31,6 +90,45 @@
 
 .tablist::-webkit-scrollbar {
   height: 0;
+}
+
+.strip[data-settings-tabs-dock='left'] .tablist,
+.strip[data-settings-tabs-dock='right'] .tablist {
+  flex-direction: column;
+  align-items: stretch;
+  max-height: min(62vh, 620px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.strip[data-settings-tabs-dock='left'] .tab,
+.strip[data-settings-tabs-dock='right'] .tab {
+  max-width: none;
+  justify-content: flex-start;
+  border-bottom: 0;
+  border-inline-start: 2px solid transparent;
+  border-radius: 0 var(--md-sys-shape-corner-s) var(--md-sys-shape-corner-s) 0;
+}
+
+.strip[data-settings-tabs-dock='right'] .tab {
+  border-inline-start: 0;
+  border-inline-end: 2px solid transparent;
+  border-radius: var(--md-sys-shape-corner-s) 0 0 var(--md-sys-shape-corner-s);
+}
+
+.strip[data-settings-tabs-dock='left'] .tabActive,
+.strip[data-settings-tabs-dock='left'] .tabActive:hover,
+.strip[data-settings-tabs-dock='right'] .tabActive,
+.strip[data-settings-tabs-dock='right'] .tabActive:hover {
+  border-bottom-color: transparent;
+  border-inline-start-color: var(--md-sys-color-primary);
+}
+
+.strip[data-settings-tabs-dock='right'] .tabActive,
+.strip[data-settings-tabs-dock='right'] .tabActive:hover {
+  border-inline-start-color: transparent;
+  border-inline-end-color: var(--md-sys-color-primary);
 }
 
 .tab {
@@ -154,6 +252,47 @@
 .overflowCount {
   font-size: var(--md-sys-typescale-label-medium-size);
   font-weight: 600;
+}
+
+.dockEdges {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.strip[data-settings-tabs-dock='left'] .dockEdges,
+.strip[data-settings-tabs-dock='right'] .dockEdges {
+  justify-content: flex-end;
+}
+
+.dockEdge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+}
+
+.dockEdge:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.dockEdge[aria-pressed='true'] {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.dockEdge:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
 }
 
 /* Portalled, because `.modal-body` clips its overflow — an anchored menu

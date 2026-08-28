@@ -191,6 +191,19 @@ export function markAllNotificationsRead(): void {
   if (changed) commit(next);
 }
 
+/** Mark a reviewed selection as read without changing the rest of the centre. */
+export function markNotificationsRead(ids: readonly string[]): void {
+  const wanted = new Set(ids);
+  if (wanted.size === 0) return;
+  let changed = false;
+  const next = records.map((record) => {
+    if (!wanted.has(record.id) || record.read) return record;
+    changed = true;
+    return { ...record, read: true };
+  });
+  if (changed) commit(next);
+}
+
 /**
  * Empty the history. Every pending TTL goes with it, so a record cannot be
  * resurrected as "dismissed" a moment after it stopped existing.
@@ -199,6 +212,20 @@ export function clearNotifications(): void {
   for (const id of [...timers.keys()]) clearTimer(id);
   if (records.length === 0) return;
   commit(EMPTY);
+}
+
+/** Dismiss a selection while retaining every record in review history. */
+export function dismissNotifications(ids: readonly string[]): void {
+  const wanted = new Set(ids);
+  if (wanted.size === 0) return;
+  let changed = false;
+  for (const id of wanted) clearTimer(id);
+  const next = records.map((record) => {
+    if (!wanted.has(record.id) || !record.live) return record;
+    changed = true;
+    return { ...record, live: false };
+  });
+  if (changed) commit(next);
 }
 
 export function readNotifications(): readonly NotificationRecord[] {
