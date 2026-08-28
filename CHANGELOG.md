@@ -2,6 +2,14 @@
 
 ## Unreleased — Add local Ollama suite manager
 
+Follow-up source work now records the official catalog source identity and
+revision, retains a validated stale cache, reports bounded host hardware facts,
+persists and reconciles the pull queue, exposes pause, resume, retry, and
+cancel actions, gates attachments by model capability, and runs allowlisted
+harness preflight, snapshot, health, launch, and restore paths.
+
+Source commit: [`d0c39b2f`](https://github.com/Ding-Ding-Projects/material-designer/commit/d0c39b2f52bd8f382f675087a84c53f48a515913)
+
 The desktop settings surface now includes a local Ollama suite manager with
 bounded runtime status, catalog pagination, installed-tag reconciliation,
 conservative hardware-fit evidence, streamed pulls and chat, and allowlisted
