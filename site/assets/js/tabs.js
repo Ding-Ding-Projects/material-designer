@@ -286,6 +286,7 @@ const CHROME_KEYS = {
   noMatch:     ['tabs.filter.nomatch',     'No tab matches that search.', '冇分頁夾到你搵嘅嘢。'],
   hiddenNote:  ['tabs.hidden.note',        'Hidden because the strip ran out of room — still reachable here.',
                                            '分頁條唔夠位收埋咗，喺呢度一樣揀到。'],
+  hiddenCount: ['tabs.hidden.count',       '{count} hidden tab(s).', '收埋咗 {count} 個分頁。'],
   emptyQuery:  ['tabs.filter.empty',       'Type to filter the list.', '打字就篩選。'],
   invalid:     ['tabs.pattern.error',      'Pattern error',            'Pattern 有錯'],
   engineNote:  ['tabs.engine.note',        `Engine: ${REGEX_DIALECT}`, `引擎：${REGEX_DIALECT}`],
@@ -1222,7 +1223,7 @@ class TabStrip {
     if (this.destroyed) return;
     this.root.dataset.dockEdge = this.dockEdge;
     this.strip.setAttribute('aria-label', chrome('striplabel'));
-    this.strip.setAttribute('aria-orientation', this.dockEdge === 'left' || this.dockEdge === 'right' ? 'vertical' : 'horizontal');
+    this.strip.setAttribute('aria-orientation', this.#isVerticalDock() ? 'vertical' : 'horizontal');
     this.moreBtn.setAttribute('aria-label', chrome('more'));
     this.moreBtn.title = chrome('more');
     this.findBtn.setAttribute('aria-label', chrome('findTabs'));
@@ -1288,6 +1289,11 @@ class TabStrip {
 
   /* ------------------------------------------------------- overflow layout */
 
+  #isVerticalDock() {
+    return (this.dockEdge === 'left' || this.dockEdge === 'right')
+      && !(window.matchMedia?.('(max-width: 720px)').matches);
+  }
+
   /**
    * Decide which tabs fit. Pinned tabs and the active tab are always shown;
    * everything that does not fit moves into the overflow menu. Nothing is ever
@@ -1297,7 +1303,7 @@ class TabStrip {
     if (this.dragId) return; // no reflow churn mid-drag
 
     const structuralHidden = this.order.filter((id) => this.closed.has(id) || this.isGroupCollapsed(id));
-    const vertical = this.dockEdge === 'left' || this.dockEdge === 'right';
+    const vertical = this.#isVerticalDock();
     const tabs = this.order
       .filter((id) => !this.closed.has(id) && !this.isGroupCollapsed(id))
       .map((id) => this.nodes.get(id));
@@ -1370,7 +1376,7 @@ class TabStrip {
     );
     this.moreBtn.setAttribute('aria-describedby', this.live.id || '');
     this.live.textContent = hiddenIds.length
-      ? `${hiddenIds.length} hidden tab(s). ${chrome('hiddenNote')}`
+      ? chrome('hiddenCount').replace('{count}', String(hiddenIds.length)) + ` ${chrome('hiddenNote')}`
       : '';
     this.emitter.emit('overflow', { hiddenIds: [...hiddenIds] });
   }
@@ -1531,7 +1537,7 @@ class TabStrip {
     node.addEventListener('keydown', (event) => {
       const visible = this.order.filter((tabId) => !this.nodes.get(tabId).hidden);
       const index = visible.indexOf(id);
-      const vertical = this.dockEdge === 'left' || this.dockEdge === 'right';
+      const vertical = this.#isVerticalDock();
       const previousKey = vertical ? 'ArrowUp' : 'ArrowLeft';
       const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
 
@@ -1595,7 +1601,7 @@ class TabStrip {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       const rect = node.getBoundingClientRect();
-      const vertical = this.dockEdge === 'left' || this.dockEdge === 'right';
+      const vertical = this.#isVerticalDock();
       const after = vertical
         ? event.clientY > rect.top + rect.height / 2
         : event.clientX > rect.left + rect.width / 2;

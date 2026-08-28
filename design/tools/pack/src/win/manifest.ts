@@ -24,6 +24,9 @@ function createPackagedConfig(
   return {
     ...(config.amrProfile == null ? {} : { amrProfile: config.amrProfile }),
     appVersion: packagedVersion,
+    ...(config.buildVersion == null ? {} : { buildVersion: config.buildVersion }),
+    ...(config.buildSourceCommit == null ? {} : { buildSourceCommit: config.buildSourceCommit }),
+    ...(config.buildUpdatedAt == null ? {} : { buildUpdatedAt: config.buildUpdatedAt }),
     ...entrypoints,
     namespace: config.namespace,
     ...(config.telemetryRelayUrl == null ? {} : { telemetryRelayUrl: config.telemetryRelayUrl }),

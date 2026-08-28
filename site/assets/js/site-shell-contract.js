@@ -28,6 +28,13 @@ export const REQUIRED_SEARCHES = Object.freeze([
   'tabs-group-members-search', 'tabs-groups-search', 'tabs-master-search',
   'tab-groups-manager-search', 'settings-group-manager-search',
   'tabs-bulk-containing', 'tabs-bulk-not-containing',
+  'nested-overview-status-search', 'nested-overview-what-search', 'nested-overview-adds-search', 'nested-overview-verified-search',
+  'nested-features-today-search', 'nested-features-network-search', 'nested-features-building-search', 'nested-features-design-search',
+  'nested-install-main-search', 'nested-install-will-search', 'nested-install-until-search',
+  'nested-releases-main-search', 'nested-releases-contains-search', 'nested-releases-tag-search', 'nested-releases-codename-search', 'nested-releases-lines-search', 'nested-releases-evidence-search', 'nested-releases-caveat-search',
+  'nested-building-main-search', 'nested-verifying-main-search', 'nested-standards-main-search',
+  'nested-docs-main-search', 'nested-docs-start-search', 'nested-docs-categories-search', 'nested-docs-articles-search', 'nested-docs-convention-search', 'nested-docs-outside-search',
+  'nested-provenance-main-search',
 ]);
 
 function exact(node, selector) {
@@ -40,6 +47,8 @@ export function auditSiteShell(root = document) {
 
   for (const id of REQUIRED_PANELS) check(`panel:${id}`, Boolean(root.querySelector(`[data-tab-panel="${id}"]`)), 'required panel exists');
   for (const id of REQUIRED_SETTINGS) check(`settings:${id}`, Boolean(root.getElementById(id)), 'required settings group exists');
+  const settingsTabIds = [...root.querySelectorAll('#tab-panel-settings [role="tab"][data-shell-settings-tab]')].map((node) => node.getAttribute('data-shell-settings-tab'));
+  check('settings-tab-membership', settingsTabIds.length === REQUIRED_SETTINGS.length && REQUIRED_SETTINGS.every((id) => settingsTabIds.includes(id)), 'exact five settings tabs are registered');
   check('outer-tablist', Boolean(root.querySelector('#tab-strip [role="tablist"]')), 'outer tab list exists');
   check('outer-dock', ['left', 'right', 'top', 'bottom'].includes(root.querySelector('#tab-strip')?.dataset.dockEdge), 'outer tab dock edge is bounded');
   check('outer-relocated', root.querySelector('#tab-strip')?.dataset.relocated === 'true' && Boolean(root.querySelector('.app-body #tab-strip')), 'outer tab wrapper is physically inside the application body');
@@ -51,7 +60,16 @@ export function auditSiteShell(root = document) {
   for (const id of REQUIRED_SEARCHES) {
     const input = root.getElementById(id);
     check(`search:${id}`, Boolean(input), 'required search field exists');
-    if (input) check(`search-builder:${id}`, Boolean(input.closest('.md-shell-search')?.querySelector('[aria-haspopup="dialog"]') || root.querySelector(`input#${CSS.escape(id)}[data-regex-builder]`)), 'field owns a regex builder seam');
+    if (input) {
+      const searchRoot = input.closest('.md-shell-search');
+      const builder = searchRoot?.querySelector('[aria-haspopup="dialog"]') || root.querySelector(`input#${CSS.escape(id)}[data-regex-builder]`);
+      check(`search-builder:${id}`, Boolean(builder), 'field owns a regex builder seam');
+      if (searchRoot) {
+        const unavailable = searchRoot.dataset.builderState === 'unavailable';
+        check(`search-builder-callback:${id}`, searchRoot.dataset.builderCallback === 'owner' || unavailable, 'field reports its builder callback or honest unavailability');
+        check(`search-builder-disabled:${id}`, Boolean(builder?.disabled) === unavailable, 'unavailable builder affordance is disabled');
+      }
+    }
   }
   check('context-shell', root.documentElement?.dataset.contextShellReady === 'true', 'universal context shell is registered');
   check('inventory', root.documentElement?.dataset.siteInventory === 'registered', 'site inventory is registered');

@@ -6,14 +6,17 @@ discovery fields, and previewed inverse bulk-close actions in
 `site/assets/js/tabs.js` and `site/assets/js/site-shell.js`. Built-artifact drive
 and capture receipts remain pending until the final packaged candidate exists.
 
-**Status: partial in code.** The settings dialog now has a real 17-section tab
-strip with a viewport-bounded above/below overflow surface, local search and an
-anchored regex builder
+**Status: partial in code.** The settings dialog now has five explicit settings
+tabs with a viewport-bounded layout, edge-aware orientation, a dedicated pinned
+region, local search and an anchored regex builder
 ([`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a8321e8f6bf1fd1ddae56e95faf39a3e4d58)); the initial geometry and onboarding repair is
 [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621), followed by
 [`ec2c76d7`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec2c76d7) for stacking,
-builder focus scope, stale-anchor clamping and viewport-test isolation. Workspace tab grouping, reordering,
-pinning, the four discovery searches and the bulk-close actions remain open.
+builder focus scope, stale-anchor clamping and viewport-test isolation. Workspace
+tab grouping, reordering, pinning, the four discovery searches, nested section
+searches and the bulk-close actions are implemented in the site shell. Built-surface
+interaction and capture evidence remain open, as do the sibling appearance and
+toy-lock engines.
 
 ## The requirement
 

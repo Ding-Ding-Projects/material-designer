@@ -2,6 +2,11 @@
   "schemaVersion": 1,
   "surface": "documentation-site",
   "description": "Hand-written inventory for the static site's cross-feature shell. A pending evidence field is an honest open item, not a passing claim.",
+  "stateKeys": {
+    "shell": "md-designer.site.shell.v2",
+    "settingsTabs": "md-designer.site.settings-tabs.v2",
+    "tabs": "md-designer.site.tabs"
+  },
   "pages": [
     { "id": "overview", "selector": "[data-tab-panel=overview]", "search": "page-overview-search", "capture": "pending" },
     { "id": "features", "selector": "[data-tab-panel=features]", "search": "page-features-search", "capture": "pending" },
@@ -26,6 +31,36 @@
     { "id": "group-members", "search": "tabs-group-members-search", "scope": "inside each group", "capture": "pending" },
     { "id": "groups", "search": "tabs-groups-search", "scope": "groups by visible name", "capture": "pending" },
     { "id": "master", "search": "tabs-master-search", "scope": "all open tabs owned by this page", "capture": "pending" }
+  ],
+  "nestedSurfaces": [
+    { "id": "overview-status", "selector": "[aria-labelledby=ov-status-title]", "search": "nested-overview-status-search", "capture": "pending" },
+    { "id": "overview-what", "selector": "[aria-labelledby=ov-what-title]", "search": "nested-overview-what-search", "capture": "pending" },
+    { "id": "overview-adds", "selector": "[aria-labelledby=ov-adds-title]", "search": "nested-overview-adds-search", "capture": "pending" },
+    { "id": "overview-verified", "selector": "[aria-labelledby=ov-verified-title]", "search": "nested-overview-verified-search", "capture": "pending" },
+    { "id": "features-today", "selector": "[aria-labelledby=ft-today-title]", "search": "nested-features-today-search", "capture": "pending" },
+    { "id": "features-network", "selector": "[aria-labelledby=ft-network-title]", "search": "nested-features-network-search", "capture": "pending" },
+    { "id": "features-building", "selector": "[aria-labelledby=ft-building-title]", "search": "nested-features-building-search", "capture": "pending" },
+    { "id": "features-design", "selector": "[aria-labelledby=ft-design-title]", "search": "nested-features-design-search", "capture": "pending" },
+    { "id": "install-main", "selector": "[aria-labelledby=in-title]", "search": "nested-install-main-search", "capture": "pending" },
+    { "id": "install-will", "selector": "[aria-labelledby=in-will-title]", "search": "nested-install-will-search", "capture": "pending" },
+    { "id": "install-until", "selector": "[aria-labelledby=in-until-title]", "search": "nested-install-until-search", "capture": "pending" },
+    { "id": "releases-main", "selector": "[aria-labelledby=rl-title]", "search": "nested-releases-main-search", "capture": "pending" },
+    { "id": "releases-contains", "selector": "[aria-labelledby=rl-contains-title]", "search": "nested-releases-contains-search", "capture": "pending" },
+    { "id": "releases-tag", "selector": "[aria-labelledby=rl-tag-title]", "search": "nested-releases-tag-search", "capture": "pending" },
+    { "id": "releases-codename", "selector": "[aria-labelledby=rl-codename-title]", "search": "nested-releases-codename-search", "capture": "pending" },
+    { "id": "releases-lines", "selector": "[aria-labelledby=rl-lines-title]", "search": "nested-releases-lines-search", "capture": "pending" },
+    { "id": "releases-evidence", "selector": "[aria-labelledby=rl-evidence-title]", "search": "nested-releases-evidence-search", "capture": "pending" },
+    { "id": "releases-caveat", "selector": "[aria-labelledby=rl-caveat-title]", "search": "nested-releases-caveat-search", "capture": "pending" },
+    { "id": "building-main", "selector": "[aria-labelledby=bd-title]", "search": "nested-building-main-search", "capture": "pending" },
+    { "id": "verifying-main", "selector": "[aria-labelledby=vf-title]", "search": "nested-verifying-main-search", "capture": "pending" },
+    { "id": "standards-main", "selector": "[aria-labelledby=st-title]", "search": "nested-standards-main-search", "capture": "pending" },
+    { "id": "docs-main", "selector": "[aria-labelledby=dc-title]", "search": "nested-docs-main-search", "capture": "pending" },
+    { "id": "docs-start", "selector": "[aria-labelledby=dc-start-title]", "search": "nested-docs-start-search", "capture": "pending" },
+    { "id": "docs-categories", "selector": "[aria-labelledby=dc-cat-title]", "search": "nested-docs-categories-search", "capture": "pending" },
+    { "id": "docs-articles", "selector": "[aria-labelledby=dc-articles-title]", "search": "nested-docs-articles-search", "capture": "pending" },
+    { "id": "docs-convention", "selector": "[aria-labelledby=dc-convention-title]", "search": "nested-docs-convention-search", "capture": "pending" },
+    { "id": "docs-outside", "selector": "[aria-labelledby=dc-outside-title]", "search": "nested-docs-outside-search", "capture": "pending" },
+    { "id": "provenance-main", "selector": "[aria-labelledby=pv-title]", "search": "nested-provenance-main-search", "capture": "pending" }
   ],
   "menus": [
     { "id": "universal-context", "selector": "document", "actions": ["Edit appearance…", "Lock this element…"], "search": "per-open-instance", "capture": "pending" },

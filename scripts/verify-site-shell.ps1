@@ -30,6 +30,8 @@ $required = @(
   '"overview"', '"features"', '"install"', '"releases"', '"building"',
   '"verifying"', '"standards"', '"docs"', '"provenance"', '"settings"',
   '"strip"', '"group-members"', '"groups"', '"master"',
+  '"stateKeys"', '"md-designer.site.shell.v2"', '"md-designer.site.settings-tabs.v2"', '"md-designer.site.tabs"',
+  '"nestedSurfaces"', 'nested-overview-status-search', 'nested-docs-outside-search', 'nested-provenance-main-search',
   'settings-settings-language-search', 'settings-settings-tone-search',
   'settings-settings-appearance-search', 'settings-settings-toy-locks-search',
   'settings-settings-reset-search'
@@ -38,6 +40,7 @@ foreach ($needle in $required) { Assert-Contains $inventory $needle $needle }
 Assert-Contains $html 'data-site-provenance' 'front provenance fields'
 Assert-Contains $html 'Ctrl+Shift+F' 'palette shortcut'
 Assert-NotContains $html 'Ctrl K' 'legacy palette shortcut'
+Assert-NotContains $main 'window.confirm' 'native destructive confirmation'
 Assert-Contains $tabs ('this.dockEdge = ' + [char]39 + 'left' + [char]39) 'left default docking'
 Assert-Contains $tabs 'closeTabs(ids, { includePinned = false } = {})' 'bulk-close API'
 Assert-Contains $tabs 'createGroup(id, name' 'group API'
@@ -57,15 +60,23 @@ Assert-Contains $shell 'md-shell-context' 'context-menu shell marker'
 Assert-Contains $shell ('keyOne: ' + [char]39 + 'CLOSE TABS' + [char]39) 'action-bound bulk close key'
 Assert-Contains $shell 'keyTwo: `CLOSE ${closeState.ids.length}`' 'count-bound bulk close key'
 Assert-Contains $shell 'validate: latest' 'immediate bulk-close validation'
+Assert-Contains $shell 'md-shell-gate-progress' 'destructive gate progress surface'
+Assert-Contains $shell ('panel.dataset.gateState = ' + [char]39 + 'complete' + [char]39) 'destructive gate completion state'
+Assert-Contains $shell 'requestAnimationFrame(() => { run?.(); gate.destroy(); })' 'destructive gate action completion handoff'
 Assert-Contains $shell 'field.controller?.onChange?.(render)' 'search builder change consumer'
 Assert-Contains $shell 'groupSearch.controller?.onChange?.' 'group-manager builder change consumer'
+Assert-Contains $shell 'root.dataset.builderState = ' 'builder unavailable state'
+Assert-Contains $shell 'root.dataset.builderCallback = controller ? ' 'builder callback ownership state'
 Assert-Contains $shell 'MATERIAL_DESIGNER_APPEARANCE_CONSUMER' 'appearance consumer seam'
 Assert-Contains $shell 'MATERIAL_DESIGNER_TOY_LOCK_CONSUMER' 'toy-lock consumer seam'
+Assert-Contains $shell 'shell.consumer.unavailable' 'localized unavailable consumer state'
 Assert-Contains $shell ([char]39 + 'aria-haspopup' + [char]39 + ': ' + [char]39 + 'listbox' + [char]39) 'custom picker popup semantics'
 Assert-Contains $shell ([char]39 + 'aria-controls' + [char]39 + ': `md-shell-options-${stableId}`') 'custom picker control relationship'
+Assert-Contains $shell 'aria-activedescendant' 'custom picker active option state'
 Assert-Contains $shell ('event.key === ' + [char]39 + 'Home' + [char]39) 'custom picker Home navigation'
 Assert-Contains $shell ('event.key === ' + [char]39 + 'End' + [char]39) 'custom picker End navigation'
 Assert-Contains $shell 'regex.getBuilder?.(input)?.destroy?.()' 'popover regex cleanup'
+Assert-Contains $shell 'installNestedSurfaceSearches()' 'nested surface search installation'
 Assert-Contains $tabs 'truncationStatus' 'visible tab truncation status'
 Assert-Contains $tabs ('id: ' + [char]39 + 'md-tabs-live' + [char]39) 'stable tab live-region id'
 Assert-Contains $tabs ('trigger.setAttribute(' + [char]39 + 'aria-controls' + [char]39 + ', panelId)') 'tab popover control relationship'

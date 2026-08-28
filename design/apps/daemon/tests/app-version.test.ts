@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isValidAppVersion } from '@open-design/contracts';
 import {
   APP_VERSION_FALLBACK,
   isPackagedRuntime,
@@ -20,11 +21,24 @@ describe('app version helpers', () => {
       packaged: false,
       platform: 'linux',
       arch: 'x64',
+      provenance: null,
     });
   });
 
   it('uses a safe fallback when package metadata is missing', () => {
     expect(resolveAppVersionInfo({ packageMetadata: null, env: {} }).version).toBe(APP_VERSION_FALLBACK);
+  });
+
+  it('rejects malformed or unbounded semantic versions at the shared boundary', () => {
+    expect(isValidAppVersion('1.2.3')).toBe(true);
+    expect(isValidAppVersion('1.2.3-beta.4+build.7')).toBe(true);
+    expect(isValidAppVersion('1.2')).toBe(false);
+    expect(isValidAppVersion('v1.2.3')).toBe(false);
+    expect(isValidAppVersion(`1.2.3+${'x'.repeat(128)}`)).toBe(false);
+    expect(resolveAppVersionInfo({
+      packageMetadata: { version: '2.3.4' },
+      env: { OD_APP_VERSION: '1.2' },
+    }).version).toBe('2.3.4');
   });
 
   it('prefers packaged app version metadata from the environment', () => {
@@ -41,6 +55,7 @@ describe('app version helpers', () => {
       packaged: true,
       platform: 'darwin',
       arch: 'arm64',
+      provenance: null,
     });
   });
 
@@ -66,6 +81,50 @@ describe('app version helpers', () => {
       packageMetadata: { version: '1.2.3' },
       env: { OD_RELEASE_CHANNEL: 'beta' },
     }).channel).toBe('beta');
+  });
+
+  it('exposes only provenance bound to the resolved package version', () => {
+    expect(resolveAppVersionInfo({
+      packageMetadata: { version: '1.2.3' },
+      env: {
+        OD_BUILD_VERSION: '1.2.3',
+        OD_BUILD_SOURCE_COMMIT: 'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+        OD_BUILD_UPDATED_AT: '2026-08-27T12:34:56.789Z',
+      },
+    }).provenance).toEqual({
+      schemaVersion: 1,
+      version: '1.2.3',
+      sourceCommit: 'abcdef0123456789abcdef0123456789abcdef01',
+      updatedAt: '2026-08-27T12:34:56.789Z',
+    });
+  });
+
+  it('returns unavailable provenance for missing, malformed, or version-mismatched records', () => {
+    const base = {
+      packageMetadata: { version: '1.2.3' },
+      env: {
+        OD_BUILD_VERSION: '1.2.3',
+        OD_BUILD_SOURCE_COMMIT: 'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+        OD_BUILD_UPDATED_AT: '2026-08-27T12:34:56Z',
+      },
+    };
+    expect(resolveAppVersionInfo(base).provenance).not.toBeNull();
+    expect(resolveAppVersionInfo({
+      ...base,
+      env: { ...base.env, OD_BUILD_UPDATED_AT: '2026-08-27' },
+    }).provenance).toBeNull();
+    expect(resolveAppVersionInfo({
+      ...base,
+      env: { ...base.env, OD_BUILD_UPDATED_AT: '2026-02-31T12:34:56Z' },
+    }).provenance).toBeNull();
+    expect(resolveAppVersionInfo({
+      ...base,
+      env: { ...base.env, OD_BUILD_SOURCE_COMMIT: 'not-a-commit' },
+    }).provenance).toBeNull();
+    expect(resolveAppVersionInfo({
+      ...base,
+      env: { ...base.env, OD_BUILD_VERSION: '9.9.9' },
+    }).provenance).toBeNull();
   });
 
   it('infers prerelease channel from semver metadata', () => {

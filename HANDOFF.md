@@ -23,8 +23,8 @@
 > tabs by default, mounts a custom searchable picker for native select values,
 > and gives each page its own regex-backed search. Popover geometry is bounded,
 > resizable, draggable, keyboard-adjustable, and its regex controllers are
-> destroyed when the popover closes. The exact source Chut remains green; the
-> packaged drive and HuiShot ledger remain pending.
+> destroyed when the popover closes. The exact source check remains green; the
+> packaged drive and screenshot ledger remain pending.
 
 > [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source

@@ -26,6 +26,17 @@
   updated-at values or an explicit unavailable state before navigation.
 - Added target-specific searchable context menus, field-owned regex-builder
   seams for menus and native pickers, and palette discovery for real controls.
+- Added explicit nested-section search inventory and local searches, responsive
+  vertical or horizontal tab semantics that stay aligned with dock rendering,
+  dedicated pinned settings region, exact settings-tab membership validation,
+  and visible empty settings-group actions.
+- Added honest builder-unavailable state, stable geometry identifiers with
+  resize clamping, nested overlay ownership, listbox active-option semantics,
+  visible truncation status, immediate bulk-close label revalidation, and a
+  shared two-key full-slider progress and completion surface.
+- Replaced the site's native confirmation route with the shared destructive
+  confirmation surface and localized the unavailable appearance and lock
+  consumer state. Built interaction and capture evidence remain pending.
 - Changed the palette shortcut to `Ctrl+Shift+F`; `Ctrl+K` is no longer a
   competing default. The current site shell is source-complete for this lane,
   while packaged interaction and capture evidence remain pending.
@@ -75,6 +86,32 @@ Changes land here as they are committed, each with its commit link, and move int
 version section when a release carries them.
 
 ### Changed
+
+- **Show version-bound provenance before front-screen interaction.** The desktop
+  shell now renders the running version and its release-provenance timestamp
+  before tabs, settings, About, and onboarding authentication. Both `/api/health`
+  and `/api/version` have bounded deadlines, so an unavailable daemon settles to
+  an honest unavailable state instead of leaving the interface inert. Packaged
+  provenance must match the package version and source commit, use a strictly
+  valid calendar timestamp with seconds and timezone, and come from external
+  release metadata rather than the host clock. The documentation page resolves
+  the published release for its exact deployed commit, follows annotated tags,
+  and fails closed unless every visible field and immutable installer link is
+  replaced exactly once. Source review is complete in
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1).
+  Hosted packaging and real front-screen capture evidence remain pending.
+
+  **前置畫面先顯示同版本綁實嘅 provenance。** Desktop shell 而家喺 tabs、
+  Settings、About 同 onboarding authentication 之前，先顯示真正運行版本同
+  release provenance timestamp。`/api/health` 同 `/api/version` 都有 deadline，
+  daemon 唔覆就誠實落 unavailable，唔會成個介面企喺度扮雕塑。Packaged
+  provenance 必須對準 package version 同 source commit，日期要真、要有秒同
+  timezone，而且只可以來自外部 release metadata，唔可以攞本機時鐘即場作故仔。
+  Documentation page 會按部署 commit 搵唯一 published release、解 annotated tag，
+  每個 visible field 同 immutable installer link 都要啱啱好換一次，否則即刻收工。
+  Source review 已經喺
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1)
+  完成；hosted packaging 同真正 front-screen capture 仲係 pending。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the

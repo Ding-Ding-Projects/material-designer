@@ -19,6 +19,16 @@ const SETTINGS_DEFAULT_EDGE = 'left';
 const EDGES = Object.freeze(['left', 'right', 'top', 'bottom']);
 let popoverSequence = 0;
 
+const NESTED_SURFACES = Object.freeze([
+  ['overview-status', 'ov-status-title'], ['overview-what', 'ov-what-title'], ['overview-adds', 'ov-adds-title'], ['overview-verified', 'ov-verified-title'],
+  ['features-today', 'ft-today-title'], ['features-network', 'ft-network-title'], ['features-building', 'ft-building-title'], ['features-design', 'ft-design-title'],
+  ['install-main', 'in-title'], ['install-will', 'in-will-title'], ['install-until', 'in-until-title'],
+  ['releases-main', 'rl-title'], ['releases-contains', 'rl-contains-title'], ['releases-tag', 'rl-tag-title'], ['releases-codename', 'rl-codename-title'], ['releases-lines', 'rl-lines-title'], ['releases-evidence', 'rl-evidence-title'], ['releases-caveat', 'rl-caveat-title'],
+  ['building-main', 'bd-title'], ['verifying-main', 'vf-title'], ['standards-main', 'st-title'],
+  ['docs-main', 'dc-title'], ['docs-start', 'dc-start-title'], ['docs-categories', 'dc-cat-title'], ['docs-articles', 'dc-articles-title'], ['docs-convention', 'dc-convention-title'], ['docs-outside', 'dc-outside-title'],
+  ['provenance-main', 'pv-title'],
+]);
+
 const INVENTORY = Object.freeze({
   pages: Object.freeze([
     'overview', 'features', 'install', 'releases', 'building',
@@ -30,6 +40,7 @@ const INVENTORY = Object.freeze({
   ]),
   tabSearches: Object.freeze(['strip', 'group-members', 'groups', 'master']),
   contextActions: Object.freeze(['appearance', 'lock']),
+  nestedSurfaces: Object.freeze(NESTED_SURFACES.map(([id, labelledBy]) => Object.freeze({ id, labelledBy, search: `nested-${id}-search` }))),
 });
 
 const STRINGS = Object.freeze({
@@ -54,6 +65,10 @@ const STRINGS = Object.freeze({
   'shell.settings.move': { en: 'Move into group', yue: '移入群組' },
   'shell.settings.sections': { en: 'Settings sections', yue: '設定部分' },
   'shell.settings.general': { en: 'General', yue: '一般' },
+  'shell.settings.pinned': { en: 'Pinned settings', yue: '釘住嘅設定' },
+  'shell.settings.docking': { en: 'Settings tab docking', yue: '設定分頁停泊位置' },
+  'shell.settings.groups': { en: 'Settings groups', yue: '設定群組' },
+  'se.reset.all.title': { en: 'Confirm reset of site settings', yue: '確認重設網站設定' },
   'shell.settings.emptyGroup': { en: 'This settings group is empty. Move a settings tab into it from its context menu.', yue: '呢個設定群組而家係空嘅，可以喺內容選單將設定分頁移入嚟。' },
   'shell.settings.none': { en: 'No settings match this search.', yue: '冇設定夾到呢個搜尋。' },
   'shell.dock.left': { en: 'Left', yue: '左' },
@@ -62,6 +77,8 @@ const STRINGS = Object.freeze({
   'shell.dock.bottom': { en: 'Bottom', yue: '下' },
   'shell.context.appearance': { en: 'Edit appearance…', yue: '編輯外觀…' },
   'shell.context.lock': { en: 'Lock this element…', yue: '鎖定呢個元素…' },
+  'shell.context.unavailable': { en: 'Editor unavailable', yue: 'Editor 暫時用唔到' },
+  'shell.context.actions': { en: 'Element actions', yue: '元素動作' },
   'shell.context.open': { en: 'Open destination', yue: '開啟目的地' },
   'shell.context.copy': { en: 'Copy accessible name', yue: '複製無障礙名稱' },
   'shell.dropdown.filter': { en: 'Filter choices', yue: '篩選選項' },
@@ -90,15 +107,19 @@ const STRINGS = Object.freeze({
   'shell.close.needsKeys': { en: 'Two independent confirmation keys are required before the slider becomes active.', yue: '滑桿啟用前需要兩個獨立確認鍵。' },
   'shell.close.summary': { en: '{count} tab(s) will close. {excluded} excluded by current protection choices.', yue: '將會關閉 {count} 個分頁，按目前保護選擇排除 {excluded} 個。' },
   'shell.close.newExclusions': { en: 'New exclusions: {items}. Review the protection choices again.', yue: '新排除項目：{items}。請重新檢查保護選擇。' },
+  'shell.close.completed': { en: 'Confirmation completed. Applying the reviewed action.', yue: '確認完成，依家套用已檢查嘅動作。' },
   'shell.context.search': { en: 'Search actions', yue: '搵動作' },
   'shell.context.noMatch': { en: 'No actions match this search.', yue: '冇動作夾到呢個搜尋。' },
+  'shell.consumer.unavailable': { en: 'This editor is not connected on this surface yet. The action was not applied.', yue: '呢個 editor 暫時未接駁到呢個表面，未有套用任何動作。' },
   'shell.context.confirmed': { en: '{count} tab(s) closed. {skipped} skipped.', yue: '已關閉 {count} 個分頁，跳過 {skipped} 個。' },
   'shell.page.matches': { en: '{count} sections match', yue: '有 {count} 個區段夾到' },
   'shell.page.noMatch': { en: 'No content matches this search.', yue: '冇內容夾到呢個搜尋。' },
+  'shell.search.invalid': { en: 'Invalid pattern', yue: '表達式有錯' },
   'shell.group.noMatch': { en: 'No groups match this search.', yue: '冇群組夾到呢個搜尋。' },
   'shell.dropdown.count': { en: '{count} choices', yue: '{count} 個選項' },
   'shell.dropdown.choose': { en: 'Choose an option', yue: '選擇一個選項' },
   'shell.dropdown.choices': { en: 'Choices', yue: '選項' },
+  'shell.search.builderUnavailable': { en: 'Pattern builder unavailable. Plain-text search remains available.', yue: 'Pattern 產生器暫時用唔到，純文字搜尋仍然可以用。' },
   'shell.provenance.version': { en: 'Version', yue: '版本' },
   'shell.provenance.updated': { en: 'Updated at', yue: '更新時間' },
   'shell.provenance.unavailable': { en: 'Unavailable until build provenance is supplied.', yue: '未有建置出處，所以暫時未能提供。' },
@@ -106,6 +127,11 @@ const STRINGS = Object.freeze({
   'shell.provenance.recorded': { en: 'Provenance recorded in the build metadata.', yue: '出處已記錄喺建置 metadata 入面。' },
   'shell.action.changed': { en: 'The action changed while confirmation was open. Review the exclusions and try again.', yue: '確認期間動作有變，請重新檢查排除項目再試。' },
   'shell.destructive.body': { en: 'This action changes {kind}. Review it before confirming.', yue: '呢個動作會改變 {kind}，確認之前請先檢查。' },
+  'shell.destructive.title': { en: 'Confirm destructive action', yue: '確認破壞性動作' },
+  'shell.tabs.pinnedSuffix': { en: 'Pinned', yue: '已釘住' },
+  'shell.tabs.closedSuffix': { en: 'Closed', yue: '已關閉' },
+  'shell.tabs.noLongerMatches': { en: 'no longer matches', yue: '已經唔再相符' },
+  'shell.tabs.noLongerOpen': { en: 'no longer open', yue: '已經唔再開啟' },
 });
 
 function registerStrings() {
@@ -188,8 +214,17 @@ function makeSearchField({ id, label, onChange, sample = '' }) {
     });
   } catch (error) {
     root.dataset.builderError = 'true';
+    root.dataset.builderState = 'unavailable';
+    const unavailable = text('shell.search.builderUnavailable', 'Pattern builder unavailable. Plain-text search remains available.');
+    mode.disabled = true;
+    mode.setAttribute('aria-disabled', 'true');
+    builderButton.disabled = true;
+    builderButton.setAttribute('aria-disabled', 'true');
+    builderButton.setAttribute('aria-label', unavailable);
+    builderButton.title = unavailable;
     console.warn('[site-shell] builder attachment failed', id, error);
   }
+  root.dataset.builderCallback = controller ? 'owner' : 'unavailable';
 
   let api;
   api = {
@@ -217,6 +252,8 @@ function createPopover(anchor, label, contentBuilder) {
   panel.style.minWidth = '280px';
   panel.style.minHeight = '120px';
   document.body.append(panel);
+  const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { if (open) position(); }) : null;
+  resizeObserver?.observe(panel);
   if (anchor instanceof Element) {
     anchor.setAttribute('aria-haspopup', 'dialog');
     anchor.setAttribute('aria-controls', panelId);
@@ -225,7 +262,14 @@ function createPopover(anchor, label, contentBuilder) {
   let open = false;
   let manualPosition = false;
   let drag = null;
-  const geometryKey = String(label).slice(0, 80);
+  const identityAttribute = anchor instanceof Element
+    ? [...anchor.attributes].find((attribute) => attribute.name.startsWith('data-'))
+    : null;
+  const anchorIdentity = anchor instanceof Element
+    ? (anchor.id || (identityAttribute ? `${identityAttribute.name}=${identityAttribute.value}` : ''))
+    : '';
+  const geometryKey = String(anchorIdentity || `shell:${label}`).slice(0, 120);
+  panel.dataset.geometryId = geometryKey;
   const geometry = () => readJson(SHELL_STORAGE_KEY, {}).popovers?.[geometryKey] || null;
   const saveGeometry = () => {
     const all = readJson(SHELL_STORAGE_KEY, {});
@@ -279,11 +323,15 @@ function createPopover(anchor, label, contentBuilder) {
   const outside = (event) => {
     if (!open || panel.contains(event.target) || anchor.contains(event.target)) return;
     if (event.target instanceof Element && event.target.closest('.mdrx-pop')) return;
+    const shellOwner = event.target instanceof Element ? event.target.closest('.md-shell-popover') : null;
+    if (shellOwner && shellOwner !== panel) return;
     close();
   };
   const keydown = (event) => {
     if (event.key === 'Escape') {
       if (event.target instanceof Element && event.target.closest('.mdrx-pop')) return;
+      const shellOwner = event.target instanceof Element ? event.target.closest('.md-shell-popover') : null;
+      if (shellOwner && shellOwner !== panel) return;
       event.preventDefault(); event.stopPropagation(); close();
       return;
     }
@@ -322,7 +370,7 @@ function createPopover(anchor, label, contentBuilder) {
     close,
     toggle() { open ? close() : this.open(); },
     reposition: position,
-    destroy() { close(false); panel.remove(); },
+    destroy(restore = true) { close(restore); resizeObserver?.disconnect(); panel.remove(); },
     get isOpen() { return open; },
   };
 }
@@ -389,7 +437,8 @@ function renderSettingsShell() {
   aside.dataset.edge = state.edge;
   settings.dataset.edge = state.edge;
 
-  const tablist = el('div', { class: 'settings__tablist', role: 'tablist', 'aria-orientation': state.edge === 'left' || state.edge === 'right' ? 'vertical' : 'horizontal' });
+  const isSettingsVertical = () => (state.edge === 'left' || state.edge === 'right') && !(window.matchMedia?.('(max-width: 720px)').matches);
+  const tablist = el('div', { class: 'settings__tablist', role: 'tablist', 'aria-orientation': isSettingsVertical() ? 'vertical' : 'horizontal' });
   const toolbar = el('div', { class: 'settings__tab-tools' });
   const layoutButton = el('button', { type: 'button', class: 'md-btn md-btn--text', text: bilingual('shell.settings.layout', 'Settings layout', '設定版面'), 'data-settings-layout': '' });
   toolbar.append(layoutButton);
@@ -440,7 +489,7 @@ function renderSettingsShell() {
     tab.addEventListener('keydown', (event) => {
       const visible = state.order;
       const index = visible.indexOf(group.id);
-      const vertical = state.edge === 'left' || state.edge === 'right';
+      const vertical = isSettingsVertical();
       const previousKey = vertical ? 'ArrowUp' : 'ArrowLeft';
       const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
       if ((event.ctrlKey || event.metaKey) && event.key === previousKey) {
@@ -469,8 +518,18 @@ function renderSettingsShell() {
 
   function renderSettingsNav() {
     tablist.replaceChildren();
-    const vertical = state.edge === 'left' || state.edge === 'right';
+    const vertical = isSettingsVertical();
     tablist.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
+    const pinnedRegion = el('div', { class: 'settings__pinned-region', role: 'group', 'aria-label': text('shell.settings.pinned', 'Pinned settings') });
+    for (const id of state.order) {
+      if (!state.pinned.has(id)) continue;
+      const tab = settingsTabs.get(id);
+      if (!tab) continue;
+      tab.hidden = false;
+      tab.dataset.pinned = 'true';
+      pinnedRegion.append(tab);
+    }
+    if (pinnedRegion.children.length) tablist.append(pinnedRegion);
     const buckets = Object.values(state.groups).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
     for (const bucket of buckets) {
       const header = el('div', { class: 'settings__group-header', role: 'presentation' }, el('span', { text: bucket.name }), el('button', { type: 'button', class: 'settings__group-collapse', text: bucket.collapsed ? '+' : '−', 'aria-label': `${text(bucket.collapsed ? 'shell.group.expand' : 'shell.group.collapse', bucket.collapsed ? 'Expand' : 'Collapse')} ${bucket.name}`, 'aria-expanded': String(!bucket.collapsed) }));
@@ -482,6 +541,7 @@ function renderSettingsShell() {
       if (!bucket.tabs.length) tablist.append(el('p', { class: 'settings__group-empty', text: text('shell.settings.emptyGroup', 'This settings group is empty. Move a settings tab into it from its context menu.') }));
       for (const id of state.order) {
         if (!bucket.tabs.includes(id)) continue;
+        if (state.pinned.has(id)) continue;
         const tab = settingsTabs.get(id);
         if (!tab) continue;
         tab.hidden = bucket.collapsed && id !== state.active;
@@ -549,14 +609,14 @@ function renderSettingsShell() {
 
   const layoutPopover = createPopover(layoutButton, text('shell.settings.layout', 'Settings layout'), (panel) => {
     panel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: text('shell.settings.layout', 'Settings layout') }));
-    const edgeRow = el('div', { class: 'md-shell-edge-list', role: 'group', 'aria-label': 'Settings tab docking' });
+    const edgeRow = el('div', { class: 'md-shell-edge-list', role: 'group', 'aria-label': text('shell.settings.docking', 'Settings tab docking') });
     for (const edge of EDGES) edgeRow.append(el('button', { type: 'button', class: 'md-btn md-btn--text', text: bilingual(`shell.dock.${edge}`, edge[0].toUpperCase() + edge.slice(1), edge), 'aria-pressed': String(state.edge === edge) }));
     [...edgeRow.children].forEach((button, index) => button.addEventListener('click', () => { state.edge = EDGES[index]; saveSettingsState(state); renderSettingsNav(); layoutPopover.close(); }));
     const groupName = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.settings.groupName', 'New group name'), 'aria-label': text('shell.settings.groupName', 'New group name') });
     const create = el('button', { type: 'button', class: 'md-btn md-btn--outlined', text: text('shell.settings.createGroup', 'Create group') });
     create.addEventListener('click', () => { if (createSettingsGroup(groupName.value)) { groupName.value = ''; layoutPopover.reposition(); } });
     const groupSearch = makeSearchField({ id: 'settings-group-manager-search', label: text('shell.group.search', 'Search tab groups by name') });
-    const groupList = el('div', { class: 'md-shell-list', 'aria-label': 'Settings groups' });
+    const groupList = el('div', { class: 'md-shell-list', 'aria-label': text('shell.settings.groups', 'Settings groups') });
     for (const bucket of Object.values(state.groups)) {
       const memberText = bucket.tabs.map((id) => settingsTabs.get(id)?.textContent || id).join(' ');
       const row = el('div', { class: 'md-shell-group-row', dataset: { shellSettingsGroupId: bucket.id, shellGroupSearchText: `${bucket.name} ${memberText} ${bucket.tabs.length}` } });
@@ -583,6 +643,7 @@ function renderSettingsShell() {
     groupSearch.input.dispatchEvent(new Event('input'));
   });
   layoutButton.addEventListener('click', () => layoutPopover.toggle());
+  window.addEventListener('resize', () => renderSettingsNav(), { passive: true });
 
   function openSettingsContext(id, anchor, x, y) {
     const target = anchor;
@@ -655,6 +716,51 @@ function installPageSearches() {
   return pages;
 }
 
+function installNestedSurfaceSearches() {
+  const installed = [];
+  for (const [surfaceId, labelledBy] of NESTED_SURFACES) {
+    const target = document.querySelector(`[aria-labelledby="${CSS.escape(labelledBy)}"]`);
+    if (!target || target.querySelector(':scope > [data-shell-nested-search]')) continue;
+    const heading = document.getElementById(labelledBy)?.textContent.trim() || surfaceId;
+    let apply = () => {};
+    const field = makeSearchField({
+      id: `nested-${surfaceId}-search`,
+      label: `${bilingual('search.label', 'Search this section', '搵呢個部分')}: ${heading}`,
+      onChange: () => apply(),
+    });
+    field.root.dataset.shellNestedSearch = surfaceId;
+    const status = el('p', { class: 'md-shell-page-search-status', role: 'status', 'aria-live': 'polite' });
+    const children = [...target.children].filter((node) => !node.matches('[data-shell-nested-search], h1, h2, h3, h4, h5, h6'));
+    apply = () => {
+      const matcher = safeMatcher(field);
+      const query = field.input.value.trim();
+      if (!query) {
+        for (const node of children) node.hidden = false;
+        status.textContent = '';
+        return;
+      }
+      if (!matcher.ok) {
+        for (const node of children) node.hidden = true;
+        status.textContent = matcher.error || text('shell.search.invalid', 'Invalid pattern');
+        return;
+      }
+      let visible = 0;
+      for (const node of children) {
+        const matches = matcher.test(node.textContent.replace(/\s+/g, ' ').trim());
+        node.hidden = !matches;
+        if (matches) visible += 1;
+      }
+      status.textContent = visible ? text('shell.page.matches', '{count} sections match').replace('{count}', String(visible)) : text('shell.page.noMatch', 'No content matches this search.');
+    };
+    target.insertBefore(field.root, target.firstChild);
+    target.insertBefore(status, field.root.nextSibling);
+    field.input.addEventListener('input', apply);
+    apply();
+    installed.push({ id: surfaceId, field, target });
+  }
+  return installed;
+}
+
 function safeMatcher(field) {
   const matcher = field.matcher;
   if (!matcher.ok) return { ok: false, empty: false, test: () => false, error: matcher.error || 'Invalid pattern' };
@@ -688,7 +794,9 @@ function invokeConsumer(name, eventName, detail) {
     return true;
   }
   const event = new CustomEvent(eventName, { cancelable: true, detail });
-  return !document.dispatchEvent(event);
+  const handled = !document.dispatchEvent(event);
+  if (!handled) document.dispatchEvent(new CustomEvent('md:toast', { detail: { kind: 'info', title: text('shell.context.unavailable', 'Editor unavailable'), body: text('shell.consumer.unavailable', 'This editor is not connected on this surface yet. The action was not applied.') } }));
+  return handled;
 }
 
 function relocateOuterTabs(root, edge) {
@@ -711,10 +819,20 @@ function openDestructiveGate(anchor, title, body, run, options = {}) {
     const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: `${text('shell.close.keyOne', 'Confirmation key 1')}: ${expectedOne}`, 'aria-label': `${text('shell.close.keyOne', 'Confirmation key 1')}: ${expectedOne}`, autocomplete: 'off' });
     const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: `${text('shell.close.keyTwo', 'Confirmation key 2')}: ${expectedTwo}`, 'aria-label': `${text('shell.close.keyTwo', 'Confirmation key 2')}: ${expectedTwo}`, autocomplete: 'off' });
     const slider = el('input', { type: 'range', class: 'md-slider', min: '0', max: '100', step: '1', value: '0', disabled: true, 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs') });
+    const progress = el('div', { class: 'md-shell-gate-progress', role: 'progressbar', 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs'), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': '0' }, el('span'));
     const status = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite', text: text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.') });
     const cancel = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.close.exit', 'Emergency exit') });
     const confirm = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: text('shell.close.action', 'Confirm'), disabled: true });
-    const update = () => { const ready = keyOne.value.trim() === expectedOne && keyTwo.value.trim() === expectedTwo; slider.disabled = !ready; confirm.disabled = !ready || slider.value !== '100'; status.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.'); };
+    const update = () => {
+      const ready = keyOne.value.trim() === expectedOne && keyTwo.value.trim() === expectedTwo;
+      const percent = Number(slider.value) || 0;
+      slider.disabled = !ready;
+      confirm.disabled = !ready || percent !== 100;
+      panel.dataset.gateState = percent > 0 ? 'progress' : (ready ? 'armed' : 'locked');
+      progress.setAttribute('aria-valuenow', String(percent));
+      progress.firstElementChild.style.width = `${percent}%`;
+      status.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', String(percent)) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.');
+    };
     keyOne.addEventListener('input', update); keyTwo.addEventListener('input', update); slider.addEventListener('input', update);
     cancel.addEventListener('click', () => gate.destroy());
     confirm.addEventListener('click', () => {
@@ -723,12 +841,29 @@ function openDestructiveGate(anchor, title, body, run, options = {}) {
       if (check && check.ok === false) {
         slider.value = '0'; update(); status.textContent = check.message || text('shell.action.changed', 'The action changed while confirmation was open. Review the exclusions and try again.'); return;
       }
-      run?.(); gate.destroy();
+      panel.dataset.gateState = 'complete';
+      status.textContent = text('shell.close.completed', 'Confirmation completed. Applying the reviewed action.');
+      requestAnimationFrame(() => { run?.(); gate.destroy(); });
     });
-    panel.append(keyOne, keyTwo, slider, status, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
+    panel.append(keyOne, keyTwo, slider, progress, status, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
     requestAnimationFrame(() => keyOne.focus());
   });
   gate.open();
+}
+
+function installSharedDestructiveGate() {
+  if (window.MATERIAL_DESIGNER_SHARED_DESTRUCTIVE_GATE?.open) return;
+  window.MATERIAL_DESIGNER_SHARED_DESTRUCTIVE_GATE = {
+    open(detail = {}) {
+      openDestructiveGate(
+        detail.anchor || detail.element,
+        detail.title || text('shell.close.confirm', 'Confirm the tab close'),
+        detail.body || text('shell.destructive.body', 'This action changes {kind}. Review it before confirming.').replace('{kind}', detail.kind || 'the selected site state'),
+        detail.run,
+        { keyOne: detail.keyOne, keyTwo: detail.keyTwo, validate: detail.validate },
+      );
+    },
+  };
 }
 
 function installOuterTabShell() {
@@ -771,13 +906,24 @@ function installOuterTabShell() {
         } else {
           rows = list.filter((tab) => {
             if (id === 'group-members' && !tab.group) return false;
+            if (id === 'master' && tab.closed) return false;
             return matcher.empty || matcher.test(tab.label);
           });
         }
         if (!matcher.ok || !rows.length) section.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? text('shell.tabs.noMatch', 'No tabs match this bounded search.') : matcher.error }));
         for (const row of rows) {
-          const button = el('button', { type: 'button', class: 'md-btn md-btn--text md-shell-result', text: row.group ? row.label : `${row.label}${row.pinned ? ' · Pinned' : ''}${row.closed ? ' · Closed' : ''}` });
-          button.addEventListener('click', () => { if (row.id) { if (strip.getClosed?.().includes(row.id)) strip.reopenTabs([row.id]); strip.goToTab?.(row.id); tabs.goToTab(row.id, { focus: true, highlight: true }); } });
+          const stateSuffix = row.group ? '' : `${row.pinned ? ` · ${text('shell.tabs.pinnedSuffix', 'Pinned')}` : ''}${row.closed ? ` · ${text('shell.tabs.closedSuffix', 'Closed')}` : ''}`;
+          const button = el('button', { type: 'button', class: 'md-btn md-btn--text md-shell-result', text: `${row.label}${stateSuffix}` });
+          button.addEventListener('click', () => {
+            if (row.id) {
+              if (strip.getClosed?.().includes(row.id)) strip.reopenTabs([row.id]);
+              strip.goToTab?.(row.id); tabs.goToTab(row.id, { focus: true, highlight: true });
+            } else if (row.group) {
+              findPopover.close();
+              groupPopover.open();
+              groupPopover.panel.querySelector(`[data-shell-group-id="${CSS.escape(row.group)}"]`)?.scrollIntoView({ block: 'nearest' });
+            }
+          });
           section.append(button);
         }
         resultHost.append(section);
@@ -902,9 +1048,13 @@ function installOuterTabShell() {
         if (!closeState.ids?.length) return;
         const latest = () => {
           const current = strip.listTabs();
-          const newExcluded = current.filter((tab) => closeState.ids.includes(tab.id) && (tab.closed || (!include.checked && tab.pinned) || (!includeLocked.checked && isLocked(tab.id))));
+          const matcher = safeMatcher(field);
+          const currentEligible = matcher.ok && !matcher.empty
+            ? new Set(current.filter((tab) => !tab.closed && (mode === 'containing' ? matcher.test(tab.label) : !matcher.test(tab.label))).map((tab) => tab.id))
+            : new Set();
+          const newExcluded = current.filter((tab) => closeState.ids.includes(tab.id) && (tab.closed || !currentEligible.has(tab.id) || (!include.checked && tab.pinned) || (!includeLocked.checked && isLocked(tab.id))));
           const missing = closeState.ids.filter((id) => !current.some((tab) => tab.id === id));
-          const labels = [...newExcluded.map((tab) => tab.label), ...missing.map((id) => `${id} (no longer open)`)];
+          const labels = [...newExcluded.map((tab) => `${tab.label}${!currentEligible.has(tab.id) ? ` (${text('shell.tabs.noLongerMatches', 'no longer matches')})` : ''}`), ...missing.map((id) => `${id} (${text('shell.tabs.noLongerOpen', 'no longer open')})`)];
           return labels.length ? { ok: false, message: text('shell.close.newExclusions', 'New exclusions: {items}. Review the protection choices again.').replace('{items}', labels.join(', ')) } : { ok: true };
         };
         document.dispatchEvent(new CustomEvent('md:destructive-request', { cancelable: true, detail: {
@@ -941,9 +1091,9 @@ function installUniversalContextMenus() {
   if (document.documentElement.dataset.contextShellReady === 'true') return;
   document.documentElement.dataset.contextShellReady = 'true';
   let current = null;
-  const trigger = el('span', { class: 'md-shell-context-anchor', tabindex: '-1' });
+  const trigger = el('span', { class: 'md-shell-context-anchor', tabindex: '-1', dataset: { shellContextAnchor: 'true' } });
   document.body.append(trigger);
-  const menu = createPopover(trigger, 'Element actions', (panel) => {
+  const menu = createPopover(trigger, text('shell.context.actions', 'Element actions'), (panel) => {
     const field = makeSearchField({ id: `context-${current?.targetId || 'element'}`, label: text('shell.context.search', 'Search actions') });
     const list = el('div', { class: 'md-shell-list' });
     const render = () => {
@@ -979,7 +1129,7 @@ function installUniversalContextMenus() {
       shared.open(event.detail);
       return;
     }
-    openDestructiveGate(target, event.detail.title || 'Confirm destructive action', event.detail.body || text('shell.destructive.body', 'This action changes {kind}. Review it before confirming.').replace('{kind}', event.detail.kind || 'the selected site state'), event.detail.run, { keyOne: event.detail.keyOne, keyTwo: event.detail.keyTwo, validate: event.detail.validate });
+    openDestructiveGate(target, event.detail.title || text('shell.destructive.title', 'Confirm destructive action'), event.detail.body || text('shell.destructive.body', 'This action changes {kind}. Review it before confirming.').replace('{kind}', event.detail.kind || 'the selected site state'), event.detail.run, { keyOne: event.detail.keyOne, keyTwo: event.detail.keyTwo, validate: event.detail.validate });
   });
   document.addEventListener('contextmenu', (event) => { const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target, event.clientX, event.clientY); }, true);
   document.addEventListener('keydown', (event) => { if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return; const target = document.activeElement instanceof Element ? document.activeElement : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target); }, true);
@@ -999,7 +1149,7 @@ function installDropdownSearches() {
     const field = makeSearchField({ id: `dropdown-${stableId}`, label: text('shell.dropdown.filter', 'Filter choices') });
     const status = el('span', { class: 'md-shell-dropdown__status', id: `md-shell-status-${stableId}`, role: 'status', 'aria-live': 'polite' });
     const button = el('button', { type: 'button', class: 'md-shell-select__button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': `md-shell-options-${stableId}`, 'aria-describedby': `md-shell-status-${stableId}`, 'aria-label': select.getAttribute('aria-label') || select.id || text('shell.dropdown.choose', 'Choose an option') });
-    const list = el('div', { class: 'md-shell-select__panel', id: `md-shell-options-${stableId}`, role: 'listbox', 'aria-label': text('shell.dropdown.choices', 'Choices'), hidden: true });
+    const list = el('div', { class: 'md-shell-select__panel', id: `md-shell-options-${stableId}`, role: 'listbox', tabindex: '-1', 'aria-label': text('shell.dropdown.choices', 'Choices'), hidden: true });
     select.parentNode.insertBefore(wrapper, select);
     wrapper.append(button, select, list, status);
     select.hidden = true;
@@ -1018,6 +1168,7 @@ function installDropdownSearches() {
         if (!visible) continue;
         const item = el('button', { type: 'button', class: 'md-shell-option', id: `md-shell-option-${stableId}-${optionIndex}`, role: 'option', 'data-shell-option': option.value, 'aria-selected': String(option.selected), text: option.label || option.textContent });
         item.addEventListener('click', () => { select.value = option.value; select.dispatchEvent(new Event('input', { bubbles: true })); select.dispatchEvent(new Event('change', { bubbles: true })); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); });
+        item.addEventListener('focus', () => list.setAttribute('aria-activedescendant', item.id));
         item.addEventListener('keydown', (event) => {
           const options = [...list.querySelectorAll('[data-shell-option]')]; const index = options.indexOf(item);
           if (event.key === 'ArrowDown') { event.preventDefault(); options[(index + 1) % options.length]?.focus(); }
@@ -1029,6 +1180,7 @@ function installDropdownSearches() {
         });
         list.append(item); count += 1;
       }
+      list.setAttribute('aria-activedescendant', list.querySelector('[aria-selected="true"]')?.id || '');
       status.textContent = count ? text('shell.dropdown.count', '{count} choices').replace('{count}', String(count)) : text('shell.dropdown.empty', 'No choices match this search.');
     };
     button.addEventListener('click', () => { list.hidden = !list.hidden; button.setAttribute('aria-expanded', String(!list.hidden)); if (!list.hidden) { field.input.value = ''; render(); requestAnimationFrame(() => field.input.focus()); } });
@@ -1095,15 +1247,17 @@ function registerPaletteSurface() {
 
 export function initSiteShell() {
   registerStrings();
+  installSharedDestructiveGate();
   initFrontProvenance();
   const settings = renderSettingsShell();
   const outer = installOuterTabShell();
   const pages = installPageSearches();
+  const nested = installNestedSurfaceSearches();
   installUniversalContextMenus();
   installDropdownSearches();
   registerPaletteSurface();
   exposeInventory();
-  return { settings, outer, pages, inventory: INVENTORY };
+  return { settings, outer, pages, nested, inventory: INVENTORY };
 }
 
 export { INVENTORY, SHELL_STORAGE_KEY, SETTINGS_STORAGE_KEY };
