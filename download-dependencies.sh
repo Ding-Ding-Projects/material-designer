@@ -33,7 +33,7 @@ manifest_value() {
 }
 manifest_validate() {
   [[ "$(awk '/"schemaVersion": 1/{count++} END{print count+0}' "$manifest_path")" == 1 ]] || die 'dependency manifest schemaVersion must be exactly 1'
-  [[ "$(grep -c '"id":' "$manifest_path")" == 6 ]] || die 'dependency manifest must contain exactly six platform entries'
+  [[ "$(grep -c '"format":' "$manifest_path")" == 6 ]] || die 'dependency manifest must contain exactly six platform entries'
   [[ "$(manifest_value git format)" == zip && "$(manifest_value node format)" == zip && "$(manifest_value pnpm format)" == npm-tarball && "$(manifest_value python format)" == zip ]] || die 'dependency manifest formats are invalid'
   grep -q '"format": "tar.xz"' "$manifest_path" || die 'Linux Node format is missing from the dependency manifest'
   [[ "$(manifest_value node url)" == https://nodejs.org/* ]] || die 'Node source is not the canonical HTTPS host'

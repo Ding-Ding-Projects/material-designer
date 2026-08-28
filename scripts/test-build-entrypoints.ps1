@@ -60,6 +60,7 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($fetchShell -notmatch 'flock -w 120 9') { $failures.Add('Linux dependency bootstrap does not serialize its cache') }
   if ($fetchShell -notmatch 'mktemp .*download\.XXXXXX') { $failures.Add('Linux dependency bootstrap does not use unique download temps') }
   if ($fetchShell -notmatch 'manifest_validate') { $failures.Add('Linux dependency bootstrap does not validate the strict manifest') }
+  if (-not $fetchShell.Contains('grep -c ''"format":'' "$manifest_path"')) { $failures.Add('Linux dependency bootstrap does not count only platform manifest entries') }
   if ($installerSource -notmatch 'signatureStatus') { $failures.Add('build-installer.ps1 does not retain the unsigned signature verdict') }
   if ($installerSource -notmatch 'provenanceStatus = \$provenance\.status') { $failures.Add('build-installer.ps1 does not bind the installer manifest to provenance state') }
   if ($installerSource -notmatch '\$sourceRecord = Join-Path \$runRoot ''pack-source\.json''') { $failures.Add('build-installer.ps1 does not bind reusable pack output to a source commit') }
