@@ -225,6 +225,11 @@ function normaliseLevel(value, fallback) {
  */
 
 const CATALOGUE = {
+  'frontProvenance.heading': { en: 'Running build', yue: '而家行緊嘅 build' },
+  'frontProvenance.version': { en: 'Version', yue: '版本' },
+  'frontProvenance.updatedAt': { en: 'Updated', yue: '更新時間' },
+  'frontProvenance.verified': { en: 'Provenance verified', yue: '來源資料已驗證' },
+  'frontProvenance.unavailable': { en: 'Unavailable', yue: '未有資料' },
   /* ---- identity ------------------------------------------------------- */
 
   // A product name is a product name at every level, in every language.

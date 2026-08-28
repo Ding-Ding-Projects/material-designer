@@ -112,6 +112,99 @@ function wireLanguage() {
 }
 
 /* ------------------------------------------------------------------ *
+ * 1b. Front-screen build identity and provenance
+ * ------------------------------------------------------------------ */
+
+function isValidAppVersion(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= 128
+    && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9]\d*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$/.test(value);
+}
+
+function wireFrontScreenProvenance() {
+  const root = $('[data-front-screen-provenance]');
+  if (!root) return;
+
+  const versionNode = $('[data-front-provenance-value="version"]', root);
+  const updatedNode = $('[data-front-provenance-value="updated-at"]', root);
+  const statusNode = $('[data-front-provenance-value="status"]', root);
+  const version = root.getAttribute('data-front-version')?.trim() || '';
+  const updatedAt = root.getAttribute('data-front-updated-at')?.trim() || '';
+  const sourceCommit = root.getAttribute('data-front-source-commit')?.trim() || '';
+  const validVersion = isValidAppVersion(version);
+  const validCommit = /^[0-9a-f]{40}$/i.test(sourceCommit);
+  const parsed = new Date(updatedAt);
+  const timestampParts = updatedAt.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  const calendar = timestampParts
+    ? new Date(Date.UTC(
+      Number(timestampParts[1]), Number(timestampParts[2]) - 1, Number(timestampParts[3]),
+      Number(timestampParts[4]), Number(timestampParts[5]), Number(timestampParts[6]),
+    ))
+    : null;
+  const validTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(updatedAt)
+    && timestampParts !== null
+    && calendar !== null
+    && calendar.getUTCFullYear() === Number(timestampParts[1])
+    && calendar.getUTCMonth() === Number(timestampParts[2]) - 1
+    && calendar.getUTCDate() === Number(timestampParts[3])
+    && calendar.getUTCHours() === Number(timestampParts[4])
+    && calendar.getUTCMinutes() === Number(timestampParts[5])
+    && calendar.getUTCSeconds() === Number(timestampParts[6])
+    && Number.isFinite(parsed.getTime());
+  const unavailable = () => label('frontProvenance.unavailable', 'Unavailable');
+
+  if (!validVersion || !validCommit || !validTimestamp) {
+    if (versionNode) versionNode.textContent = validVersion ? version : unavailable();
+    if (updatedNode) updatedNode.textContent = unavailable();
+    if (statusNode) {
+      statusNode.textContent = unavailable();
+      statusNode.setAttribute('role', 'alert');
+    }
+    root.setAttribute('data-provenance-status', 'unavailable');
+    return;
+  }
+
+  if (versionNode) versionNode.textContent = version;
+  if (updatedNode) {
+    try {
+      updatedNode.textContent = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        timeZoneName: 'short',
+      }).format(parsed);
+    } catch {
+      updatedNode.textContent = unavailable();
+      root.setAttribute('data-provenance-status', 'unavailable');
+      if (statusNode) {
+        statusNode.textContent = unavailable();
+        statusNode.setAttribute('role', 'alert');
+      }
+      return;
+    }
+  }
+  if (statusNode) statusNode.textContent = label('frontProvenance.verified', 'Provenance verified');
+  root.setAttribute('data-provenance-status', 'verified');
+}
+
+function wireReleaseLinks() {
+  for (const link of $$('[data-release-href]')) {
+    const pending = link.getAttribute('data-release-pending') === 'true';
+    const href = link.getAttribute('href')?.trim() || '';
+    const unavailable = pending && (href === '' || href === '#');
+    link.hidden = unavailable;
+    if (unavailable) {
+      link.setAttribute('aria-hidden', 'true');
+      link.setAttribute('tabindex', '-1');
+    } else {
+      link.removeAttribute('aria-hidden');
+      link.removeAttribute('tabindex');
+      link.removeAttribute('data-release-pending');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ *
  * 2. Appearance and the colour translator
  * ------------------------------------------------------------------ */
 
@@ -636,6 +729,8 @@ function start() {
   ui.init();
 
   wireLanguage();
+  wireFrontScreenProvenance();
+  wireReleaseLinks();
   wireAppearance();
   wireLogo();
   wireTabs();

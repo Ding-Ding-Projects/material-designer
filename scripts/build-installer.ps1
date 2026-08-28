@@ -55,12 +55,50 @@ function Get-SignatureStatus([string]$Path) {
   throw 'could not obtain a Windows Authenticode status from Windows PowerShell or PowerShell 7'
 }
 
+function Test-ProvenanceTimestamp([string]$Value) {
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+  if ($Value -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$') { return $false }
+  $calendar = [DateTime]::MinValue
+  $calendarText = $Value.Substring(0, 19)
+  if (-not [DateTime]::TryParseExact(
+      $calendarText,
+      'yyyy-MM-ddTHH:mm:ss',
+      [Globalization.CultureInfo]::InvariantCulture,
+      [Globalization.DateTimeStyles]::None,
+      [ref]$calendar)) { return $false }
+  $parsed = [DateTimeOffset]::MinValue
+  return [DateTimeOffset]::TryParse(
+    $Value,
+    [Globalization.CultureInfo]::InvariantCulture,
+    [Globalization.DateTimeStyles]::RoundtripKind,
+    [ref]$parsed)
+}
+
 & (Join-Path $PSScriptRoot 'build.ps1') -Silent
 if ($LASTEXITCODE -ne 0) { throw 'the prerequisite build did not complete' }
 
 $pkg = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
 $base = [version]$pkg.version
 $appVersion = "{0}.{1}.{2}" -f $base.Major, $base.Minor, ($base.Build + $Candidate)
+$buildSourceCommit = (& git -C $repo rev-parse HEAD).Trim()
+if ($buildSourceCommit -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the source commit for the installer manifest' }
+$buildProvenanceVersion = $env:OD_BUILD_VERSION
+$buildProvenanceSourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+$buildProvenanceUpdatedAt = $env:OD_BUILD_UPDATED_AT
+$provenanceIsValid =
+  -not [string]::IsNullOrWhiteSpace($buildProvenanceVersion) -and
+  $buildProvenanceVersion.Trim() -eq $appVersion -and
+  $buildProvenanceSourceCommit -match '^[0-9a-fA-F]{40}$' -and
+  $buildProvenanceSourceCommit.Trim().ToLowerInvariant() -eq $buildSourceCommit.ToLowerInvariant() -and
+  (Test-ProvenanceTimestamp $buildProvenanceUpdatedAt)
+if ($provenanceIsValid) {
+  $env:OD_BUILD_VERSION = $buildProvenanceVersion.Trim()
+  $env:OD_BUILD_SOURCE_COMMIT = $buildProvenanceSourceCommit.Trim().ToLowerInvariant()
+  $env:OD_BUILD_UPDATED_AT = $buildProvenanceUpdatedAt.Trim()
+} else {
+  Remove-Item Env:OD_BUILD_VERSION, Env:OD_BUILD_SOURCE_COMMIT, Env:OD_BUILD_UPDATED_AT -ErrorAction SilentlyContinue
+  Write-Warning 'No externally supplied version-bound build provenance was accepted; the packaged front screen will show provenance unavailable.'
+}
 $packDir = Join-Path $runRoot 'pack'
 $cacheDir = Join-Path $runRoot 'cache'
 $jsonPath = Join-Path $runRoot 'tools-pack.json'
@@ -128,12 +166,10 @@ if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination (J
 $hash = Get-Sha256 (Join-Path $assetDir $setupName)
 "$hash  $setupName" | Set-Content -LiteralPath (Join-Path $assetDir "$setupName.sha256") -Encoding ascii
 
-$sha = (& git -C $repo rev-parse HEAD).Trim()
+$sha = $buildSourceCommit
 $provenancePath = Join-Path $runRoot 'build-provenance.json'
 $provenance = [ordered]@{
   version = 1
-  sourceCommit = $sha
-  builtAt = (Get-Date).ToUniversalTime().ToString('o')
   packagingCommand = 'build-installer.bat --candidate <ordinal> /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
@@ -146,6 +182,13 @@ $provenance = [ordered]@{
     observedSignerInvocations = @()
     controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
   }
+}
+if ($provenanceIsValid) {
+  $provenance.provenanceStatus = 'verified'
+  $provenance.sourceCommit = $env:OD_BUILD_SOURCE_COMMIT
+  $provenance.builtAt = $env:OD_BUILD_UPDATED_AT
+} else {
+  $provenance.provenanceStatus = 'unavailable'
 }
 $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
 $manifest = [ordered]@{
@@ -162,7 +205,6 @@ $manifest = [ordered]@{
   fullPackages = @($full | ForEach-Object Name)
   deltaPackages = @($delta | ForEach-Object Name)
   installerFormat = 'squirrel'
-  generatedAt = (Get-Date).ToUniversalTime().ToString('o')
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
 Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $setupName)))"

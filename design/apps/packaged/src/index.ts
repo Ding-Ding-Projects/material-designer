@@ -446,6 +446,9 @@ async function main(): Promise<void> {
 
   const sidecars = await startPackagedSidecars(runtime, paths, {
     appVersion: activeConfig.appVersion,
+    buildVersion: activeConfig.buildVersion,
+    buildSourceCommit: activeConfig.buildSourceCommit,
+    buildUpdatedAt: activeConfig.buildUpdatedAt,
     amrProfile: deterministicParityRoute == null ? activeConfig.amrProfile : null,
     daemonCliEntry: activeConfig.daemonCliEntry,
     daemonSidecarEntry: activeConfig.daemonSidecarEntry,

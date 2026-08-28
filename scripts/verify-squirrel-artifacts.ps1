@@ -26,11 +26,33 @@ $provenanceFile = [IO.Path]::GetFullPath($ProvenancePath)
 if (-not (Test-Path -LiteralPath $provenanceFile -PathType Leaf)) { throw "Build provenance is missing: $provenanceFile" }
 $provenance = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
 if ($provenance.version -ne 1) { throw 'Build provenance version must be 1' }
-if ($provenance.sourceCommit -ne $ExpectedCommit.ToLowerInvariant()) { throw 'Build provenance source commit does not match the requested commit' }
 if ($provenance.cleanOutput -ne $true) { throw 'Build provenance does not assert a clean output directory' }
 if ([string]::IsNullOrWhiteSpace($provenance.packagingCommand)) { throw 'Build provenance packaging command is missing' }
-$builtAt = [DateTimeOffset]::MinValue
-if (-not [DateTimeOffset]::TryParse([string]$provenance.builtAt, [ref]$builtAt)) { throw 'Build provenance timestamp is invalid' }
+$provenanceStatus = [string]$provenance.provenanceStatus
+if ($provenanceStatus -eq 'unavailable') {
+  if ($null -ne $provenance.sourceCommit -or $null -ne $provenance.builtAt) {
+    throw 'Unavailable build provenance must not carry partial identity fields'
+  }
+} else {
+  if ($provenanceStatus -ne 'verified') { throw 'Build provenance status must be verified or unavailable' }
+  if ($provenance.sourceCommit -ne $ExpectedCommit.ToLowerInvariant()) { throw 'Build provenance source commit does not match the requested commit' }
+  $builtAt = [DateTimeOffset]::MinValue
+  $calendar = [DateTime]::MinValue
+  $builtAtText = [string]$provenance.builtAt
+  if ($builtAtText.Length -lt 19 -or
+      $builtAtText -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$' -or
+      -not [DateTime]::TryParseExact(
+        $builtAtText.Substring(0, 19),
+        'yyyy-MM-ddTHH:mm:ss',
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::None,
+        [ref]$calendar) -or
+      -not [DateTimeOffset]::TryParse(
+        $builtAtText,
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::RoundtripKind,
+        [ref]$builtAt)) { throw 'Build provenance timestamp is invalid' }
+}
 if ([string]::IsNullOrWhiteSpace($provenance.buildLog.path) -or -not (Test-Path -LiteralPath $provenance.buildLog.path -PathType Leaf)) { throw 'Build provenance log is missing' }
 if ($provenance.buildLog.sha256 -ne (Get-LowerHash $provenance.buildLog.path 'SHA256')) { throw 'Build provenance log hash does not match' }
 if ($provenance.package.id -ne $ExpectedPackageId -or $provenance.package.version -ne $ExpectedVersion -or $provenance.package.architecture -ne $ExpectedArchitecture) {

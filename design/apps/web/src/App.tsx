@@ -65,6 +65,7 @@ import {
   WorkspaceTabsBar,
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
+import { FrontScreenProvenance } from './components/FrontScreenProvenance';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
   DesignSystemCreationFlow,
@@ -1245,6 +1246,7 @@ function AppInner() {
   const [appVersionInfo, setAppVersionInfo] = useState<AppVersionInfo | null>(
     null,
   );
+  const [appVersionInfoSettled, setAppVersionInfoSettled] = useState(false);
   const [daemonMediaProviders, setDaemonMediaProviders] = useState<
     AppConfig['mediaProviders'] | null
   >(null);
@@ -2029,6 +2031,8 @@ function AppInner() {
         setPromptTemplatesLoading(false);
         setDaemonConfigLoaded(true);
         setDaemonAppConfigReady(false);
+        setAppVersionInfo(null);
+        setAppVersionInfoSettled(true);
         // Composio hydration also depends on the daemon. With no daemon
         // we just keep whatever localStorage already held; drop the
         // skeleton so the Settings → Connectors input reflects state.
@@ -2151,6 +2155,11 @@ function AppInner() {
       void fetchAppVersionInfo().then((info) => {
         if (cancelled) return;
         setAppVersionInfo(info);
+        setAppVersionInfoSettled(true);
+      }).catch(() => {
+        if (cancelled) return;
+        setAppVersionInfo(null);
+        setAppVersionInfoSettled(true);
       });
 
       // Daemon-persisted config + composio config + media provider config land
@@ -4654,6 +4663,7 @@ function AppInner() {
     section: SettingsSection = 'execution',
     opts?: { highlight?: SettingsHighlight },
   ) => {
+    if (!appVersionInfoSettled) return;
     if (section === 'handoff') {
       settingsReturnTargetRef.current = null;
       setSettingsWelcome(false);
@@ -4686,7 +4696,7 @@ function AppInner() {
     setSettingsInitialSection(section);
     setSettingsHighlight(opts?.highlight ?? null);
     navigate({ kind: 'home', view: 'settings' });
-  }, [identityScopeKey]);
+  }, [appVersionInfoSettled, identityScopeKey]);
 
   // Entry point from the failed-run AMR nudge: open Settings on the execution
   // section and flag the AMR agent card for a one-shot scroll-into-view +
@@ -5349,7 +5359,17 @@ function AppInner() {
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
         data-host-platform={hostPlatform}
+        data-app-version-state={appVersionInfoSettled ? 'settled' : 'loading'}
       >
+        <FrontScreenProvenance
+          info={appVersionInfo}
+          loading={!appVersionInfoSettled}
+        />
+        <div
+          className="workspace-shell__interactive"
+          inert={!appVersionInfoSettled ? true : undefined}
+          aria-hidden={!appVersionInfoSettled}
+        >
         <WorkspaceTabsBar
           route={route}
           // The ambient list may still be loading (or belong to a different
@@ -5412,6 +5432,7 @@ function AppInner() {
         ) : null}
         <div className="workspace-shell__body">
           {appMain}
+        </div>
         </div>
       </div>
       {clientType === 'desktop' ? null : (

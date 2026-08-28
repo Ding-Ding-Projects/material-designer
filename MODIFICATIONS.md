@@ -62,6 +62,62 @@ inventory; packaged interaction evidence remains pending.
 - `apps/web/src/styles/viewer/routines.css`
 - `apps/web/tests/state/logoCustomization.test.ts`
 - `apps/web/tests/components/AppLogoCustomization.contract.test.ts`
+### 2026-08-27 - Show version-bound build provenance on every front screen
+
+**Reason:** The packaged onboarding surface could show upstream identity and
+provided no trustworthy way to identify the running package before sign-in.
+The web shell and documentation site now show the running version before
+navigation, settings, About, or authentication, together with the release or
+build timestamp formatted in the visitor's local timezone with seconds and a
+timezone label. The daemon accepts the timestamp only when it is bound to the
+same package version and a 40-character source commit. Missing, malformed, or
+calendar-overflow records remain visibly unavailable rather than falling back
+to a launch clock. The packaged configuration and sidecar environment carry
+externally supplied release provenance values when available, and focused
+source regressions cover valid, missing, mismatched, and malformed records. The onboarding identity uses Material
+Designer rather than the upstream product name.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/FrontScreenProvenance.module.css` (new)
+- `apps/web/src/components/FrontScreenProvenance.tsx` (new)
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/lib/front-screen-provenance.ts` (new)
+- `apps/web/src/providers/registry.ts`
+- `apps/web/tests/components/EntryShell.front-provenance.test.ts` (new)
+- `apps/web/tests/lib/front-screen-provenance.test.ts` (new)
+- `apps/web/tests/providers/registry.test.ts`
+- `apps/daemon/src/app-version.ts`
+- `apps/daemon/tests/app-version.test.ts`
+- `apps/daemon/tests/version-route.test.ts`
+- `apps/packaged/src/config.ts`
+- `apps/packaged/src/headless-runtime.ts`
+- `apps/packaged/src/index.ts`
+- `apps/packaged/src/sidecars.ts`
+- `apps/packaged/tests/sidecars.test.ts`
+- `packages/contracts/src/api/version.ts`
+- `tools/pack/src/config/index.ts`
+- `tools/pack/src/win/manifest.ts`
 
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
