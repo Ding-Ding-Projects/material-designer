@@ -8,7 +8,7 @@ menu carries its own search field.
 owns an isolated plain-text-first filter, an anchored regex builder, result
 status, keyboard navigation, focus return, viewport bounds, registry-derived
 shortcuts, and target-specific appearance and lock callback seams in
-`127f1230ffe095e9aa00d9cdda4085315ddf8bca` (building on
+`97ef8b98c5a8d65df1ffb02ec424af18ff2ab0a0` (building on
 `20c1fa4605417a07d8ad1d12e1923d7bf4ef667c`). The shared `CustomSelect` primitive
 owns the same field contract for every dropdown instance. The migration
 inventory at [shared-ui-primitives-migration.md](shared-ui-primitives-migration.md)
@@ -17,7 +17,9 @@ menu row explicitly red. The current primitive API requires caller-provided
 localized labels and real appearance and lock callbacks, marks duplicate owner
 ids, keeps dangerous actions behind an explicit confirmation handoff, and exposes
 an operable wrapper for locked dropdown triggers. Its active result scrolls into
-view and its overlay recomputes against small viewport changes.
+view and its overlay recomputes against small viewport changes. Lifecycle receipts
+use explicit `requested`, `opened`, `completed`, or `cancelled` phases, and
+malformed or mismatched receipts are refused before focus or action state changes.
 
 The 2026-08-06 audit fixed the context
 menu's concrete clipping and dismissal defects: long bilingual labels wrap, and
