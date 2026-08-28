@@ -3,10 +3,11 @@
 ## Behaviour
 
 The daemon exposes a same-origin bridge for the desktop Ollama suite. It
-accepts only credential-free loopback origins, rejects redirects, bounds JSON
-responses, and forwards only the local runtime operations used by the settings
-surface: runtime status, installed tags, catalog pages, streamed pulls, and
-streamed chat.
+accepts only credential-free loopback origins for runtime operations, rejects
+redirects, bounds JSON responses, and forwards the local runtime operations
+used by the settings surface: runtime status, hardware facts, installed tags,
+official catalog pages, streamed pulls, durable pull actions, streamed chat,
+and allowlisted harness preflight, launch, health, snapshot, and restore.
 
 ## Configuration
 
@@ -14,7 +15,8 @@ The default local runtime origin is `http://127.0.0.1:11434`. A request may
 select another loopback origin through its request body or query value, but
 credentials, query strings, fragments, non-loopback hosts, and unsupported
 schemes are refused. Request and response limits are enforced before data is
-made visible to the renderer.
+made visible to the renderer. The official catalog route uses the fixed
+provider endpoint and does not accept an arbitrary catalog URL.
 
 ## Failure modes
 

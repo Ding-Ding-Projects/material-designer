@@ -8,24 +8,32 @@ Recovery help. The manager uses the daemon's same-origin `/api/ollama/*`
 boundary. The daemon, rather than the renderer, is responsible for forwarding
 requests to an explicitly configured loopback service.
 
-The Model Store consumes a paginated, revisioned catalog. It records the page
-count, completion status, fetch time, stale state, and every returned variant.
-Installed tags remain visible when catalog metadata is absent, and such rows
-are labelled **Unknown** instead of being treated as safe. Each variant carries
-an evidence-backed **Runs well**, **Runs with limits**, **Unlikely**, or
+The Model Store consumes the official catalog through a paginated, revisioned
+daemon fetch. It records the page count, completion status, fetch time, source
+identity, stale state, and every returned variant. A missing page token, source
+revision, or source identity keeps the snapshot incomplete. Installed tags
+remain visible when official metadata is absent, and such rows are labelled
+**Unknown** instead of being treated as safe. Each variant carries an
+evidence-backed **Runs well**, **Runs with limits**, **Unlikely**, or
 **Unknown** hardware verdict.
 
 Pulls are queued as durable records and consume a streamed progress response.
-The UI preserves queued, pulling, paused, completed, cancelled, and failed
-states. Local chat streams newline-delimited responses, supports cancellation
-through the request signal, and keeps message history in the application-local
-state. Attachments are intentionally capability-gated by the model metadata.
+The host persists queued, pulling, paused, completed, cancelled, and failed
+states, limits active work to two items, records byte progress and attempts, and
+reconciles an interrupted pull after restart. Local chat streams newline-
+delimited responses, supports cancellation through the request signal, and
+keeps message history in application-local state. Attachment controls remain
+visible but are disabled with the exact capability gap when the selected model
+does not advertise vision, text, or file input.
 
-Harness profiles are allowlisted records. They use an executable picker and
-bounded argument values, display a reviewable preflight, and reject shell
-syntax, command concatenation, and unvalidated environment expansion. Recovery
-help distinguishes a missing service, a stopped service, an unhealthy API,
-stale catalog data, and unknown hardware evidence.
+Harness profiles are allowlisted records. They use a semantic executable picker
+and bounded argument values, display a reviewable preflight, snapshot the
+profile before launch, start without a shell, perform a bounded local health
+check, and roll back the snapshot when launch or health fails. Shell syntax,
+command concatenation, arbitrary executables, and unvalidated environment
+expansion are refused. Recovery help distinguishes a missing service, a
+stopped service, an unhealthy API, stale catalog data, and unknown hardware
+evidence.
 
 Every manager tab has its own plain-text-first search field and its own anchored
 regex builder. Search state is isolated per tab, and the builder keeps its
@@ -34,12 +42,18 @@ pattern, flags, sample, and validation state with the originating field.
 ## Configuration
 
 The renderer uses same-origin daemon paths only. No user-entered URL is sent by
-the renderer. The catalog is considered stale after six hours. Responses are
-bounded at 8 MiB, a catalog is bounded at 10,000 pages, and a page is bounded
-at 100,000 variants. Harness profiles accept at most 64 arguments and 64
-environment-key names. The local language selector persists English, Cantonese,
-or bilingual presentation in browser-local application state until the shared
-language control is wired into this surface.
+the renderer. The daemon obtains the official catalog from its documented
+catalog endpoint, preserves the response ETag as source revision and the
+response URL plus page token as source identity, and marks the snapshot
+incomplete when either is absent. The catalog is considered stale after six
+hours. Responses are bounded at 8 MiB, a catalog is bounded at 10,000 pages,
+and a page is bounded at 100,000 variants. The host reports RAM, available RAM,
+free destination storage, architecture, and explicit Unknown GPU, VRAM, driver,
+and backend fields when no verified platform probe exists. Harness profiles
+accept at most 64 arguments and 64 environment-key names. The local language
+selector persists English, Cantonese, or bilingual presentation in
+browser-local application state until the shared language control is wired into
+this surface.
 
 ## Failure modes
 

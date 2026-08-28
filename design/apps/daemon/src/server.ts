@@ -7189,7 +7189,7 @@ export async function startServer({
     appConfig: { readAppConfig },
   });
 
-  registerOllamaSuiteRoutes(app);
+  registerOllamaSuiteRoutes(app, RUNTIME_DATA_DIR);
 
   registerAutomationRoutes(app, {
     paths: { RUNTIME_DATA_DIR },

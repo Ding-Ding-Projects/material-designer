@@ -40,6 +40,8 @@ textarea { width: 100%; min-height: 72px; resize: vertical; font: inherit; }
 .pullRow, .profileRow { flex-wrap: wrap; padding: 12px; border-bottom: 1px solid var(--md-sys-color-outline-variant, #c7c5ca); }
 .pullRow progress { flex: 1; min-width: 100px; }
 .pullRow small { flex-basis: 100%; }
+.pullActions { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.pullActions button { min-height: 36px; border: 1px solid var(--md-sys-color-outline, #777680); border-radius: 12px; background: var(--md-sys-color-surface, #fff); color: inherit; padding: 6px 10px; cursor: pointer; }
 .profileRow code { flex: 1; overflow-wrap: anywhere; }
 .chatLog { min-height: 180px; max-height: 360px; overflow: auto; padding: 12px; border-radius: 16px; background: var(--md-sys-color-surface, #fff); }
 .chatLog p { margin: 0 0 10px; }

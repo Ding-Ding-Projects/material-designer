@@ -4,13 +4,16 @@ import { Icon } from '../Icon';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import {
+  attachmentCapability,
   collectCatalog,
   computeHardwareFit,
   createOllamaSuiteClient,
   markCatalogStaleness,
+  parseCatalogSnapshot,
   reconcileInstalledModels,
   validateHarnessProfile,
   type OllamaCatalogSnapshot,
+  type OllamaHardwareFacts,
   type OllamaHarnessProfile,
   type OllamaModelVariant,
   type OllamaPullRecord,
@@ -89,6 +92,7 @@ export function OllamaSuiteManager() {
   const { mode, choose, text } = useSuiteCopy();
   const [tab, setTab] = useState<SuiteTab>('store');
   const [runtime, setRuntime] = useState<OllamaRuntimeStatus | null>(null);
+  const [hardware, setHardware] = useState<OllamaHardwareFacts | null>(null);
   const [catalog, setCatalog] = useState<OllamaCatalogSnapshot | null>(null);
   const [models, setModels] = useState<OllamaModelVariant[]>([]);
   const [pulls, setPulls] = useState<OllamaPullRecord[]>([]);
@@ -99,6 +103,8 @@ export function OllamaSuiteManager() {
   const [profiles, setProfiles] = useState<OllamaHarnessProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [attachmentNotice, setAttachmentNotice] = useState<string | null>(null);
+  const [harnessNotice, setHarnessNotice] = useState<string | null>(null);
 
   const [storeQuery, setStoreQuery] = useState('');
   const [pullsQuery, setPullsQuery] = useState('');
@@ -118,16 +124,22 @@ export function OllamaSuiteManager() {
     const runtimeResult = await client.runtime();
     if (runtimeResult.ok) setRuntime(runtimeResult.value);
     else setError(readableError(runtimeResult.error));
+    const hardwareResult = await client.hardware();
+    if (hardwareResult.ok) setHardware(hardwareResult.value);
+    const hardwareForFit = hardwareResult.ok ? hardwareResult.value : hardware;
     const installedResult = await client.installed();
     const installedTags = installedResult.ok ? installedResult.value.tags : [];
     const runningTags = installedResult.ok ? installedResult.value.running : [];
+    const pullResult = await client.pulls();
+    if (pullResult.ok) setPulls(pullResult.value.records);
     const catalogResult = await collectCatalog((token, signal) => client.catalogPage(token, signal).then((result) => result.ok ? result.value : Promise.reject(new Error(result.error.message))), new AbortController().signal);
     if (catalogResult.ok) {
       const next = markCatalogStaleness(catalogResult.value);
       setCatalog(next);
+      window.localStorage.setItem('material-designer.ollama.catalog-cache', JSON.stringify(next));
       const reconciled = reconcileInstalledModels(next.variants, installedTags, runningTags);
       setModels(reconciled.map((item) => {
-        const fit = computeHardwareFit(item, { ramBytes: null, vramBytes: null, freeDiskBytes: null, architecture: null });
+        const fit = computeHardwareFit(item, hardwareForFit ?? { ramBytes: null, vramBytes: null, freeDiskBytes: null, architecture: null, backendSupported: null, backend: null, driver: null });
         return { ...item, fit: fit.verdict, fitEvidence: fit.evidence };
       }));
       setSelectedModel((current) => current || reconciled[0]?.tag || '');
@@ -135,9 +147,22 @@ export function OllamaSuiteManager() {
       setError(readableError(catalogResult.error));
     }
     setRefreshing(false);
-  }, [client]);
+  }, [client, hardware]);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('material-designer.ollama.catalog-cache');
+      if (raw) {
+        const cached = parseCatalogSnapshot(JSON.parse(raw));
+        if (cached.ok) {
+          const snapshot = markCatalogStaleness(cached.value);
+          setCatalog(snapshot);
+          setModels(snapshot.variants);
+        }
+      }
+    } catch {
+      // Invalid cache is treated as absent and never blocks a fresh refresh.
+    }
     void refresh();
     try {
       const raw = window.localStorage.getItem('material-designer.ollama.harness-profiles');
@@ -156,10 +181,13 @@ export function OllamaSuiteManager() {
   const filteredModels = models.filter((item) => activeSearch.matches(`${item.tag} ${item.family ?? ''} ${item.quantization ?? ''} ${FIT_LABELS[item.fit]}`));
   const filteredPulls = pulls.filter((item) => activeSearch.matches(`${item.tag} ${item.state} ${item.detail ?? ''}`));
   const filteredProfiles = profiles.filter((item) => activeSearch.matches(`${item.name} ${item.executable} ${item.modelTag}`));
+  const selectedModelInfo = models.find((model) => model.tag === selectedModel);
+  const attachmentEnabled = Boolean(selectedModelInfo?.capabilities.some((capability) => capability === 'vision' || capability === 'text' || capability === 'file'));
 
   const startPull = useCallback(async (tag: string) => {
     const id = `${tag}-${Date.now()}`;
-    setPulls((current) => [...current, { id, tag, state: 'pulling', completedBytes: 0, totalBytes: null, detail: null }]);
+    const now = new Date().toISOString();
+    setPulls((current) => [...current, { id, tag, state: 'pulling', completedBytes: 0, totalBytes: null, detail: null, attempts: 1, queuedAt: now, updatedAt: now, retryable: true }]);
     const result = await client.pull(tag);
     if (!result.ok) {
       setPulls((current) => current.map((pull) => pull.id === id ? { ...pull, state: 'failed', detail: result.error.message } : pull));
@@ -177,6 +205,12 @@ export function OllamaSuiteManager() {
         state: status === 'success' ? 'completed' : 'pulling',
       } : pull));
     });
+  }, [client]);
+
+  const pullAction = useCallback(async (id: string, action: 'cancel' | 'pause' | 'resume' | 'retry') => {
+    const result = await client.pullAction(id, action);
+    if (result.ok) setPulls((current) => current.map((pull) => pull.id === id ? result.value : pull));
+    else setError(result.error.message);
   }, [client]);
 
   const sendChat = useCallback(async () => {
@@ -211,6 +245,15 @@ export function OllamaSuiteManager() {
     setProfiles(next);
     window.localStorage.setItem('material-designer.ollama.harness-profiles', JSON.stringify(next));
   }, [profiles, selectedModel]);
+
+  const runHarness = useCallback(async (profile: OllamaHarnessProfile) => {
+    setHarnessNotice('Running local preflight…');
+    const preflight = await client.harnessPreflight(profile);
+    if (!preflight.ok) { setHarnessNotice(preflight.error.message); return; }
+    setHarnessNotice(`Preflight ready: ${String(preflight.value.executable)} ${String(preflight.value.modelTag)}. Snapshot will be written before launch.`);
+    const launched = await client.harnessLaunch(profile);
+    setHarnessNotice(launched.ok ? `Launch health: ${String(launched.value.health ?? 'unknown')}. Snapshot: ${String(launched.value.snapshot ?? 'not reported')}.` : launched.error.message);
+  }, [client]);
 
   return (
     <section className={styles.root} data-testid="ollama-suite-manager" aria-label={text('Local Ollama suite manager', '本機 Ollama 工具箱')}>
@@ -251,14 +294,14 @@ export function OllamaSuiteManager() {
         <div className={styles.panel} role="tabpanel">
           <div className={styles.panelHead}><div><h4>{text('Verified model catalog', '已驗證模型目錄')}</h4><p>{catalog ? `${catalog.variants.length} variants, ${catalog.pageCount} page(s), ${catalog.complete ? 'complete' : 'incomplete'}${catalog.stale ? ', stale' : ''}.` : text('No verified catalog yet.', '未有已驗證目錄。')}</p></div><span className={styles.badge}>{catalog?.sourceRevision ?? 'unknown revision'}</span></div>
           <div className={styles.modelGrid}>
-            {filteredModels.map((model) => <article key={model.tag} className={styles.modelCard}><div className={styles.modelTitle}><strong>{model.tag}</strong><span className={styles.fit}>{FIT_LABELS[model.fit]}</span></div><p>{model.family ?? 'Family metadata unavailable'} · {model.quantization ?? 'quantization unknown'}</p><small>{model.fitEvidence.join(' ')}</small><button type="button" onClick={() => void startPull(model.tag)} disabled={model.installed || model.fit === 'unlikely'}>{model.installed ? 'Installed' : model.fit === 'unlikely' ? 'Unavailable for this hardware' : 'Queue pull'}</button></article>)}
+            {filteredModels.map((model) => <article key={model.tag} className={styles.modelCard}><div className={styles.modelTitle}><strong>{model.tag}</strong><span className={styles.fit}>{FIT_LABELS[model.fit]}</span></div><p>{model.family ?? 'Family metadata unavailable'} · {model.quantization ?? 'quantization unknown'}</p><small>{model.fitEvidence.join(' ')}</small><button type="button" onClick={() => void startPull(model.tag)} disabled={model.installed || model.fit === 'unlikely' || model.fit === 'unknown' || Boolean(catalog && (catalog.stale || !catalog.complete))}>{model.installed ? 'Installed' : model.fit === 'unlikely' ? 'Unavailable for this hardware' : model.fit === 'unknown' ? 'Hardware evidence required' : catalog?.stale || catalog && !catalog.complete ? 'Refresh verified catalog first' : 'Queue pull'}</button></article>)}
           </div>
           {filteredModels.length === 0 ? <p className={styles.empty}>{text('No models match this search.', '呢個搜尋冇模型。')}</p> : null}
         </div>
       ) : null}
-      {tab === 'pulls' ? <div className={styles.panel} role="tabpanel"><h4>{text('Durable pull queue', '可恢復拉取隊列')}</h4>{filteredPulls.map((pull) => <div className={styles.pullRow} key={pull.id}><strong>{pull.tag}</strong><span>{pull.state}</span><progress max={pull.totalBytes ?? undefined} value={pull.totalBytes ? pull.completedBytes : undefined} /><small>{pull.totalBytes ? `${pull.completedBytes} / ${pull.totalBytes} bytes` : pull.detail ?? 'Waiting for byte totals'}</small></div>)}{filteredPulls.length === 0 ? <p className={styles.empty}>{text('No pulls are queued.', '未有拉取工作。')}</p> : null}</div> : null}
-      {tab === 'chat' ? <div className={styles.panel} role="tabpanel"><h4>{text('Local streamed chat', '本機串流對話')}</h4><label className={styles.field}><span>{text('Model tag', '模型標籤')}</span><select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>{models.filter((model) => model.installed).map((model) => <option key={model.tag} value={model.tag}>{model.tag}</option>)}<option value="">No installed model</option></select></label><div className={styles.chatLog} aria-live="polite">{chatMessages.map((message, index) => <p key={`${message.role}-${index}`}><strong>{message.role}:</strong> {message.content}</p>)}</div><div className={styles.chatComposer}><textarea value={chatInput} onChange={(event) => setChatInput(event.target.value.slice(0, 100_000))} placeholder="Write a local prompt" aria-label="Local chat prompt" /><button type="button" onClick={() => void sendChat()} disabled={chatBusy || !selectedModel || !chatInput.trim()}>{chatBusy ? 'Streaming…' : 'Send'}</button></div></div> : null}
-      {tab === 'harness' ? <div className={styles.panel} role="tabpanel"><h4>{text('Allowlisted harness profiles', '白名單工具設定')}</h4><p>{text('Shell syntax and arbitrary environment expansion are refused. The profile preview is local and reviewable before launch.', '會拒絕 shell 語法同任意環境展開，啟動前會喺本機顯示可審閱預覽。')}</p>{filteredProfiles.map((profile) => <div className={styles.profileRow} key={profile.id}><strong>{profile.name}</strong><code>{profile.executable} {profile.arguments.join(' ')}</code><span>{profile.modelTag}</span></div>)}<button type="button" onClick={saveProfile} disabled={!selectedModel}>Save a safe local profile</button></div> : null}
+      {tab === 'pulls' ? <div className={styles.panel} role="tabpanel"><h4>{text('Durable pull queue', '可恢復拉取隊列')}</h4>{filteredPulls.map((pull) => <div className={styles.pullRow} key={pull.id}><strong>{pull.tag}</strong><span>{pull.state}</span><progress max={pull.totalBytes ?? undefined} value={pull.totalBytes ? pull.completedBytes : undefined} /><small>{pull.totalBytes ? `${pull.completedBytes} / ${pull.totalBytes} bytes` : pull.detail ?? 'Waiting for byte totals'}</small><span className={styles.pullActions}>{pull.state === 'pulling' ? <button type="button" onClick={() => void pullAction(pull.id, 'pause')}>Pause</button> : null}{pull.state === 'paused' ? <button type="button" onClick={() => void pullAction(pull.id, 'resume')}>Resume</button> : null}{pull.state === 'failed' && pull.retryable ? <button type="button" onClick={() => void pullAction(pull.id, 'retry')}>Retry</button> : null}{['queued', 'pulling', 'paused'].includes(pull.state) ? <button type="button" onClick={() => void pullAction(pull.id, 'cancel')}>Cancel</button> : null}</span></div>)}{filteredPulls.length === 0 ? <p className={styles.empty}>{text('No pulls are queued.', '未有拉取工作。')}</p> : null}</div> : null}
+      {tab === 'chat' ? <div className={styles.panel} role="tabpanel"><h4>{text('Local streamed chat', '本機串流對話')}</h4><label className={styles.field}><span>{text('Model tag', '模型標籤')}</span><select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>{models.filter((model) => model.installed).map((model) => <option key={model.tag} value={model.tag}>{model.tag}</option>)}<option value="">No installed model</option></select></label><label className={styles.field}><span>{text('Attachment, capability-gated', '附件，按能力開關')}</span><input type="file" disabled={!attachmentEnabled} aria-describedby="ollama-attachment-status" onChange={(event) => { const file = event.target.files?.[0]; if (!file || !selectedModelInfo) return; const result = attachmentCapability(selectedModelInfo, { mimeType: file.type, bytes: file.size }); setAttachmentNotice(result.reason); }} /><small id="ollama-attachment-status">{attachmentNotice ?? (attachmentEnabled ? text('Choose a bounded local file.', '揀一個有大小限制嘅本機檔案。') : text('This model declares no attachment capability. Filter models to find one that supports this type.', '呢個模型未宣告附件能力，請篩選支援呢種檔案嘅模型。'))}</small></label><div className={styles.chatLog} aria-live="polite">{chatMessages.map((message, index) => <p key={`${message.role}-${index}`}><strong>{message.role}:</strong> {message.content}</p>)}</div><div className={styles.chatComposer}><textarea value={chatInput} onChange={(event) => setChatInput(event.target.value.slice(0, 100_000))} placeholder="Write a local prompt" aria-label="Local chat prompt" /><button type="button" onClick={() => void sendChat()} disabled={chatBusy || !selectedModel || !chatInput.trim()}>{chatBusy ? 'Streaming…' : 'Send'}</button></div></div> : null}
+      {tab === 'harness' ? <div className={styles.panel} role="tabpanel"><h4>{text('Allowlisted harness profiles', '白名單工具設定')}</h4><p>{text('Shell syntax and arbitrary environment expansion are refused. The profile preview is local and reviewable before launch.', '會拒絕 shell 語法同任意環境展開，啟動前會喺本機顯示可審閱預覽。')}</p>{harnessNotice ? <p role="status">{harnessNotice}</p> : null}{filteredProfiles.map((profile) => <div className={styles.profileRow} key={profile.id}><strong>{profile.name}</strong><code>{profile.executable} {profile.arguments.join(' ')}</code><span>{profile.modelTag}</span><button type="button" onClick={() => void runHarness(profile)}>Preflight and launch</button></div>)}<button type="button" onClick={saveProfile} disabled={!selectedModel}>Save a safe local profile</button></div> : null}
       {tab === 'recovery' ? <div className={styles.panel} role="tabpanel"><h4>{text('Recovery and offline states', '恢復同離線狀態')}</h4><p>{text('If the local service is missing, stopped, unhealthy, or offline, the last verified catalog and installed model list remain usable. Refresh after starting the service.', '如果本機服務未安裝、停咗、唔健康或者離線，最後一次已驗證目錄同已安裝模型清單仍然用得。開返服務後再刷新。')}</p><ul><li>Missing service: install it locally and return here.</li><li>Stopped service: start the local service and refresh.</li><li>Stale catalog: inspect the revision and refresh when online.</li><li>Unknown hardware fit: provide bounded hardware facts before pulling.</li></ul></div> : null}
     </section>
   );

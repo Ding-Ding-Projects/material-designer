@@ -13,6 +13,7 @@ export const OLLAMA_MAX_VARIANTS = 100_000;
 export const OLLAMA_MAX_MODEL_NAME = 160;
 export const OLLAMA_MAX_PROFILE_NAME = 120;
 export const OLLAMA_MAX_ARGUMENTS = 64;
+export const OLLAMA_MAX_QUEUE_ITEMS = 10_000;
 
 export type OllamaRuntimeState =
   | 'missing'
@@ -38,6 +39,7 @@ export interface OllamaModelVariant {
   quantization: string | null;
   blobBytes: number | null;
   contextWindow: number | null;
+  contextOverheadBytes: number | null;
   capabilities: string[];
   installed: boolean;
   running: boolean;
@@ -48,6 +50,7 @@ export interface OllamaModelVariant {
 export interface OllamaCatalogSnapshot {
   variants: OllamaModelVariant[];
   sourceRevision: string | null;
+  sourceIdentity: string | null;
   fetchedAt: string;
   pageCount: number;
   complete: boolean;
@@ -62,6 +65,8 @@ export interface OllamaHardwareFacts {
   architecture: string | null;
   gpu: string | null;
   driver: string | null;
+  backend: string | null;
+  backendSupported: boolean | null;
   detectedAt: string;
 }
 
@@ -72,6 +77,21 @@ export interface OllamaPullRecord {
   completedBytes: number;
   totalBytes: number | null;
   detail: string | null;
+  attempts: number;
+  queuedAt: string;
+  updatedAt: string;
+  retryable: boolean;
+}
+
+export interface OllamaAttachment {
+  name: string;
+  mimeType: string;
+  bytes: number;
+}
+
+export interface OllamaQueueStorage {
+  load(): Promise<OllamaPullRecord[]>;
+  save(records: readonly OllamaPullRecord[]): Promise<void>;
 }
 
 export interface OllamaHarnessProfile {
@@ -184,6 +204,7 @@ function parseVariant(value: unknown): OllamaResult<OllamaModelVariant> {
       quantization: boundedString(raw.quantization, 40),
       blobBytes: boundedNumber(raw.blobBytes),
       contextWindow: boundedNumber(raw.contextWindow, 10_000_000),
+      contextOverheadBytes: boundedNumber(raw.contextOverheadBytes),
       capabilities: stringArray(raw.capabilities, 32, 80),
       installed: raw.installed === true,
       running: raw.running === true,
@@ -197,6 +218,7 @@ export function parseCatalogPage(value: unknown): OllamaResult<{
   variants: OllamaModelVariant[];
   nextPageToken: string | null;
   sourceRevision: string | null;
+  sourceIdentity: string | null;
 }> {
   if (!value || typeof value !== 'object') return resultError('malformed-response', 'Catalog page was not an object.');
   const raw = value as Record<string, unknown>;
@@ -213,8 +235,28 @@ export function parseCatalogPage(value: unknown): OllamaResult<{
       variants,
       nextPageToken: boundedString(raw.nextPageToken, 500),
       sourceRevision: boundedString(raw.sourceRevision, 200),
+      sourceIdentity: boundedString(raw.sourceIdentity, 500),
     },
   };
+}
+
+export function parseCatalogSnapshot(value: unknown): OllamaResult<OllamaCatalogSnapshot> {
+  if (!value || typeof value !== 'object') return resultError('malformed-response', 'Catalog snapshot was not an object.');
+  const raw = value as Record<string, unknown>;
+  const page = parseCatalogPage({
+    variants: raw.variants,
+    nextPageToken: null,
+    sourceRevision: raw.sourceRevision,
+    sourceIdentity: raw.sourceIdentity,
+  });
+  if (!page.ok) return page;
+  const fetchedAt = boundedString(raw.fetchedAt, 80);
+  const pageCount = boundedNumber(raw.pageCount, OLLAMA_MAX_CATALOG_PAGES);
+  const staleAfterMs = boundedNumber(raw.staleAfterMs, 7 * 24 * 60 * 60 * 1000);
+  if (!fetchedAt || pageCount === null || staleAfterMs === null || raw.complete !== true || !page.value.sourceRevision || !page.value.sourceIdentity) {
+    return resultError('malformed-response', 'Catalog snapshot metadata is incomplete.');
+  }
+  return { ok: true, value: { variants: page.value.variants, sourceRevision: page.value.sourceRevision, sourceIdentity: page.value.sourceIdentity, fetchedAt, pageCount, complete: true, stale: raw.stale === true, staleAfterMs } };
 }
 
 export async function collectCatalog(
@@ -227,6 +269,7 @@ export async function collectCatalog(
   const seenTokens = new Set<string>();
   let pageToken: string | null = null;
   let sourceRevision: string | null = null;
+  let sourceIdentity: string | null = null;
   let pageCount = 0;
   try {
     while (pageCount < OLLAMA_MAX_CATALOG_PAGES) {
@@ -235,6 +278,7 @@ export async function collectCatalog(
       const parsed = parseCatalogPage(await fetchPage(pageToken, signal));
       if (!parsed.ok) return parsed;
       sourceRevision ??= parsed.value.sourceRevision;
+      sourceIdentity ??= parsed.value.sourceIdentity;
       variants.push(...parsed.value.variants);
       const next = parsed.value.nextPageToken;
       if (!next) break;
@@ -242,13 +286,14 @@ export async function collectCatalog(
       seenTokens.add(next);
       pageToken = next;
     }
-    const complete = pageCount < OLLAMA_MAX_CATALOG_PAGES && pageToken === null;
+    const complete = pageCount < OLLAMA_MAX_CATALOG_PAGES && pageToken === null && sourceRevision !== null && sourceIdentity !== null;
     const fetchedAt = now();
     return {
       ok: true,
       value: {
         variants,
         sourceRevision,
+        sourceIdentity,
         fetchedAt,
         pageCount,
         complete,
@@ -269,22 +314,32 @@ export function markCatalogStaleness(snapshot: OllamaCatalogSnapshot, now = Date
 
 export function computeHardwareFit(
   variant: Pick<OllamaModelVariant, 'blobBytes' | 'parameterCount' | 'quantization' | 'contextWindow'>,
-  hardware: Pick<OllamaHardwareFacts, 'ramBytes' | 'vramBytes' | 'freeDiskBytes' | 'architecture'>,
+  hardware: Pick<OllamaHardwareFacts, 'ramBytes' | 'vramBytes' | 'freeDiskBytes' | 'architecture' | 'backendSupported' | 'backend' | 'driver'>,
 ): { verdict: OllamaFitVerdict; evidence: string[] } {
   const evidence: string[] = [];
   if (!variant.blobBytes || !hardware.ramBytes || !hardware.freeDiskBytes) {
     return { verdict: 'unknown', evidence: ['Blob size, RAM, and free destination storage are required.'] };
   }
   const overhead = Math.max(512 * 1024 * 1024, Math.round(variant.blobBytes * 0.2));
-  const requiredRam = variant.blobBytes + overhead;
+  const contextOverhead = variant.contextWindow ? Math.min(4 * 1024 * 1024 * 1024, variant.contextWindow * 4096) : 0;
+  const requiredRam = variant.blobBytes + overhead + contextOverhead;
   const requiredDisk = variant.blobBytes + Math.round(variant.blobBytes * 0.1);
   evidence.push(`RAM estimate: ${requiredRam} bytes including bounded runtime overhead.`);
   evidence.push(`Storage estimate: ${requiredDisk} bytes including a bounded download margin.`);
+  if (variant.contextWindow) evidence.push(`Context overhead estimate: ${contextOverhead} bytes for ${variant.contextWindow} tokens.`);
   if (hardware.architecture) evidence.push(`Architecture: ${hardware.architecture}.`);
+  if (hardware.backend) evidence.push(`Backend: ${hardware.backend}.`);
+  if (hardware.driver) evidence.push(`Driver: ${hardware.driver}.`);
+  if (hardware.backendSupported === false) return { verdict: 'unlikely', evidence: [...evidence, 'The detected backend does not support this runtime.'] };
+  if (hardware.backendSupported === null) return { verdict: 'runs-with-limits', evidence: [...evidence, 'Backend support is unknown, so the verdict is conservative.'] };
   if (hardware.freeDiskBytes < requiredDisk) return { verdict: 'unlikely', evidence: [...evidence, 'Free destination storage is below the conservative estimate.'] };
   if (hardware.ramBytes < requiredRam) return { verdict: 'unlikely', evidence: [...evidence, 'System RAM is below the conservative estimate.'] };
+  if (hardware.vramBytes !== null && hardware.vramBytes < variant.blobBytes) return { verdict: 'runs-with-limits', evidence: [...evidence, 'VRAM is below the model blob size, so CPU or shared-memory execution may be required.'] };
   if (variant.contextWindow && variant.contextWindow > 131_072) {
     return { verdict: 'runs-with-limits', evidence: [...evidence, 'The declared context window is large and may need a lower setting.'] };
+  }
+  if (variant.parameterCount === null || variant.quantization === null) {
+    return { verdict: 'runs-with-limits', evidence: [...evidence, 'Parameter count or quantization metadata is missing, so the verdict is conservative.'] };
   }
   return { verdict: 'runs-well', evidence: [...evidence, 'Known size and hardware facts meet the conservative estimate.'] };
 }
@@ -307,6 +362,7 @@ export function reconcileInstalledModels(
       quantization: null,
       blobBytes: null,
       contextWindow: null,
+      contextOverheadBytes: null,
       capabilities: [],
       installed: true,
       running: running.has(tag),
@@ -352,12 +408,108 @@ export function validateHarnessProfile(value: unknown): OllamaResult<OllamaHarne
   };
 }
 
+export function attachmentCapability(
+  variant: Pick<OllamaModelVariant, 'capabilities'>,
+  attachment: Pick<OllamaAttachment, 'mimeType' | 'bytes'>,
+): { allowed: boolean; reason: string } {
+  const type = attachment.mimeType.toLowerCase();
+  const capability = type.startsWith('image/')
+    ? 'vision'
+    : type.startsWith('text/') || type === 'application/json'
+      ? 'text'
+      : 'file';
+  if (!variant.capabilities.includes(capability)) {
+    return { allowed: false, reason: `Selected model does not declare ${capability} capability.` };
+  }
+  if (!Number.isFinite(attachment.bytes) || attachment.bytes < 0 || attachment.bytes > 20 * 1024 * 1024) {
+    return { allowed: false, reason: 'Attachment exceeds the bounded 20 MiB limit.' };
+  }
+  return { allowed: true, reason: 'Selected model declares this attachment capability.' };
+}
+
+export function createPullQueue(storage: OllamaQueueStorage, now = () => new Date().toISOString()) {
+  let records: OllamaPullRecord[] = [];
+  let paused = false;
+  let active = 0;
+  const controllers = new Map<string, AbortController>();
+  const ready = storage.load().then((loaded) => {
+    records = loaded.slice(0, OLLAMA_MAX_QUEUE_ITEMS).map((record) => record.state === 'pulling'
+      ? { ...record, state: 'queued', detail: 'Recovered after restart.', updatedAt: now(), retryable: true }
+      : record);
+  });
+  const persist = async () => storage.save(records);
+  const schedule = async () => {
+    await ready;
+    if (paused || active >= 2) return;
+    const next = records.find((record) => record.state === 'queued');
+    if (!next) return;
+    active += 1;
+    next.state = 'pulling';
+    next.attempts += 1;
+    next.updatedAt = now();
+    next.detail = 'Starting local pull.';
+    controllers.set(next.id, new AbortController());
+    await persist();
+  };
+  return {
+    async list(): Promise<OllamaPullRecord[]> { await ready; return records.map((record) => ({ ...record })); },
+    async enqueue(tag: string): Promise<OllamaResult<OllamaPullRecord>> {
+      await ready;
+      if (!boundedString(tag, OLLAMA_MAX_MODEL_NAME)) return resultError('invalid-input', 'A model tag is required.');
+      if (records.length >= OLLAMA_MAX_QUEUE_ITEMS) return resultError('invalid-input', 'The durable pull queue reached its bounded item limit.');
+      const record: OllamaPullRecord = { id: `${tag}-${Date.now()}`, tag, state: 'queued', completedBytes: 0, totalBytes: null, detail: null, attempts: 0, queuedAt: now(), updatedAt: now(), retryable: true };
+      records.push(record);
+      await persist();
+      await schedule();
+      return { ok: true, value: { ...record } };
+    },
+    async update(id: string, patch: Partial<OllamaPullRecord>): Promise<OllamaResult<OllamaPullRecord>> {
+      await ready;
+      const record = records.find((item) => item.id === id);
+      if (!record) return resultError('invalid-input', 'Unknown pull queue item.');
+      Object.assign(record, patch, { updatedAt: now() });
+      await persist();
+      if (record.state === 'completed' || record.state === 'failed' || record.state === 'cancelled') {
+        active = Math.max(0, active - 1);
+        controllers.delete(record.id);
+      }
+      await schedule();
+      return { ok: true, value: { ...record } };
+    },
+    async pause(): Promise<void> {
+      paused = true;
+      await ready;
+      for (const record of records) if (record.state === 'pulling') record.state = 'paused';
+      await persist();
+    },
+    async resume(): Promise<void> { paused = false; await schedule(); },
+    async cancel(id: string): Promise<OllamaResult<OllamaPullRecord>> {
+      controllers.get(id)?.abort();
+      return this.update(id, { state: 'cancelled', detail: 'Cancelled by the user.', retryable: false });
+    },
+    async retry(id: string): Promise<OllamaResult<OllamaPullRecord>> {
+      return this.update(id, { state: 'queued', detail: 'Queued for retry.', retryable: true });
+    },
+    async reconcile(): Promise<OllamaPullRecord[]> {
+      await ready;
+      records = records.filter((record) => record.state !== 'cancelled');
+      await persist();
+      return this.list();
+    },
+  };
+}
+
 export interface OllamaSuiteClient {
   runtime(signal?: AbortSignal): Promise<OllamaResult<OllamaRuntimeStatus>>;
+  hardware(signal?: AbortSignal): Promise<OllamaResult<OllamaHardwareFacts>>;
   installed(signal?: AbortSignal): Promise<OllamaResult<{ tags: string[]; running: string[] }>>;
+  pulls(signal?: AbortSignal): Promise<OllamaResult<{ records: OllamaPullRecord[]; concurrency: number }>>;
+  pullAction(id: string, action: 'cancel' | 'pause' | 'resume' | 'retry', signal?: AbortSignal): Promise<OllamaResult<OllamaPullRecord>>;
   catalogPage(pageToken: string | null, signal?: AbortSignal): Promise<OllamaResult<unknown>>;
   pull(tag: string, signal?: AbortSignal): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
   chat(tag: string, messages: readonly { role: string; content: string }[], signal?: AbortSignal): Promise<OllamaResult<ReadableStream<Uint8Array> | null>>;
+  harnessPreflight(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
+  harnessLaunch(profile: OllamaHarnessProfile, signal?: AbortSignal): Promise<OllamaResult<Record<string, unknown>>>;
 }
 
 async function boundedJson(response: Response): Promise<OllamaResult<unknown>> {
@@ -385,6 +537,15 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       const parsed = await boundedJson(response);
       return parsed.ok ? parseRuntimeStatus(parsed.value) : parsed;
     },
+    async hardware(signal) {
+      const response = await request('/api/ollama/hardware', { signal });
+      if (!response) return resultError('offline', 'Host hardware facts are unavailable.');
+      if (!response.ok) return resultError('request-failed', `Hardware facts returned HTTP ${response.status}.`);
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      const raw = parsed.value as Record<string, unknown>;
+      return { ok: true, value: { ramBytes: boundedNumber(raw.ramBytes), vramBytes: boundedNumber(raw.vramBytes), freeDiskBytes: boundedNumber(raw.freeDiskBytes), architecture: boundedString(raw.architecture, 40), gpu: boundedString(raw.gpu, 160), driver: boundedString(raw.driver, 160), backend: boundedString(raw.backend, 80), backendSupported: typeof raw.backendSupported === 'boolean' ? raw.backendSupported : null, detectedAt: boundedString(raw.detectedAt, 80) ?? new Date(0).toISOString() } };
+    },
     async installed(signal) {
       const response = await request('/api/ollama/installed', { signal });
       if (!response) return resultError('offline', 'Installed model state is unavailable offline.');
@@ -393,6 +554,25 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       if (!parsed.ok) return parsed;
       const raw = parsed.value as Record<string, unknown>;
       return { ok: true, value: { tags: stringArray(raw.tags, OLLAMA_MAX_VARIANTS, OLLAMA_MAX_MODEL_NAME), running: stringArray(raw.running, OLLAMA_MAX_VARIANTS, OLLAMA_MAX_MODEL_NAME) } };
+    },
+    async pulls(signal) {
+      const response = await request('/api/ollama/pulls', { signal });
+      if (!response) return resultError('offline', 'The durable pull queue is unavailable.');
+      if (!response.ok) return resultError('request-failed', `The pull queue returned HTTP ${response.status}.`);
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      const raw = parsed.value as Record<string, unknown>;
+      const records = Array.isArray(raw.records) ? raw.records.filter((item): item is OllamaPullRecord => Boolean(item && typeof item === 'object')) : [];
+      return { ok: true, value: { records, concurrency: typeof raw.concurrency === 'number' ? raw.concurrency : 2 } };
+    },
+    async pullAction(id, action, signal) {
+      if (!/^[a-zA-Z0-9._:-]{1,240}$/.test(id)) return resultError('invalid-input', 'Pull queue id is invalid.');
+      const response = await request(`/api/ollama/pulls/${encodeURIComponent(id)}/${action}`, { method: 'POST', signal });
+      if (!response) return resultError('offline', 'The durable pull queue is unavailable.');
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      if (!response.ok) return resultError('request-failed', `Pull action returned HTTP ${response.status}.`);
+      return { ok: true, value: parsed.value as OllamaPullRecord };
     },
     async catalogPage(pageToken, signal) {
       const query = pageToken ? `?pageToken=${encodeURIComponent(pageToken)}` : '';
@@ -416,6 +596,24 @@ export function createOllamaSuiteClient(fetcher: typeof fetch = fetch): OllamaSu
       if (!response) return resultError('offline', 'The local runtime could not start chat.');
       if (!response.ok) return resultError('request-failed', `The chat request returned HTTP ${response.status}.`);
       return { ok: true, value: response.body };
+    },
+    async harnessPreflight(profile, signal) {
+      const validated = validateHarnessProfile(profile);
+      if (!validated.ok) return validated;
+      const response = await request('/api/ollama/harness/preflight', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value }), signal });
+      if (!response) return resultError('offline', 'Harness preflight is unavailable.');
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      return response.ok ? { ok: true, value: parsed.value as Record<string, unknown> } : resultError('request-failed', 'Harness preflight was refused.');
+    },
+    async harnessLaunch(profile, signal) {
+      const validated = validateHarnessProfile(profile);
+      if (!validated.ok) return validated;
+      const response = await request('/api/ollama/harness/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ profile: validated.value }), signal });
+      if (!response) return resultError('offline', 'Harness launch is unavailable.');
+      const parsed = await boundedJson(response);
+      if (!parsed.ok) return parsed;
+      return response.ok ? { ok: true, value: parsed.value as Record<string, unknown> } : resultError('request-failed', 'Harness launch was refused.');
     },
   };
 }

@@ -980,6 +980,10 @@ status section and linked feature documentation remain the authority for observe
   limits, Unlikely, or Unknown verdict. Batch pulls have progress and partial outcomes, chat
   has streaming and local history, attachments are capability-gated, and harness launch uses
   allowlisted pickers, previews, snapshots, restore, and rollback rather than arbitrary shell.
+  The source implementation for the desktop settings surface is present in
+  `design/apps/web/src/runtime/ollama-suite.ts` and
+  `design/apps/daemon/src/routes/ollama-suite.ts`; hosted type checks, packaged
+  interaction, and per-click capture evidence remain pending.
 - The documentation site is a full user-facing surface, not an exemption. It carries local
   per-visitor state, bundled assets, offline documentation, the same searches, tabs, editors,
   locks, authenticator, converter, Ollama manager, status, notifications, exports, and
