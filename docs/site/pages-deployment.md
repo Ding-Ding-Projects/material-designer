@@ -37,6 +37,27 @@ artifact and deploys it.
 | Upload site | Uploads `site/` as the Pages artifact. |
 | Deploy | Publishes it and records the resulting URL on the run. |
 
+### Front-screen version provenance
+
+The site source keeps the front-screen identity fields empty and displays an
+explicit unavailable state until publication data is available. The Pages
+workflow paginates published releases, dereferences each tag to its actual
+commit, and selects only the release whose actual commit is the exact deployed
+commit. It downloads that release's `build-provenance.json`, validates the
+package version, source commit, and timestamp, and injects the tuple into the
+temporary Pages payload, including the visible version, timestamp, and status
+nodes so the no-JavaScript HTML agrees with the data attributes. A push deployment that races release publication
+therefore remains honestly unavailable, while the subsequent publication event
+refreshes the same deployment with the exact matching release data. No
+visitor-time clock or hand-entered release fact is used.
+
+The substitution helpers count their full matching lines before and after every
+replacement. Installer links require exactly two immutable URLs, and each
+visible provenance field requires exactly one source and one resulting value.
+The committed `scripts/test-front-screen-provenance-pages-fixture.sh` extracts
+and executes those workflow helpers against a temporary copy of `site/index.html`,
+then proves missing and wrong markers turn the helper red.
+
 ### The self-contained-assets gate
 
 Standard 15 forbids CDN scripts, remote stylesheets, remote fonts, remote images
@@ -96,10 +117,10 @@ labelled installer download button:
   release that does not exist is worse than no button, because it fails after the
   click rather than before it.
 
-**The button is present**, on the site's install section. It is built from the
-immutable release-asset URL of the published tag `v0.16.1-r8.1`, states the
-version, the architecture and the download size beside it, and is a plain
-`<a>` so it is keyboard-operable and named by its own text.
+The checked-in source has no active installer button or release facts. The
+workflow injects the immutable release-asset URL, version, architecture and
+download size only after it reads a published release. Until then, the pending
+anchors stay hidden and the visible fields say `Unavailable`.
 
 It deliberately does **not** point at a `latest` redirect. A moving link makes
 the checksum printed next to it meaningless, because the file behind it can
@@ -110,7 +131,7 @@ change without the page changing. See
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Triggers | Pushes to the default branch touching `site/**` or the workflow file; plus manual dispatch | A docs deployment should not run on every unrelated commit |
+| Triggers | Every push, published release, and manual dispatch | A published release event refreshes version-bound facts after a push deployment race |
 | Runner | `[self-hosted, linux, material-designer]` | Dedicated project runner; the workflow cleans the checkout and verifies `gh`, `jq`, Bash and its static-site text utilities before publishing |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |

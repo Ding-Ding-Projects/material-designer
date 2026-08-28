@@ -3266,7 +3266,7 @@ function OnboardingView({
     step,
   ]);
 
-  const primaryActionLabel = t('settings.onboardingContinue');
+  const primaryActionLabel = t('settings.onboardingCloudSignIn');
 
   // Step 1 is identity only: every user signs into OpenDesign Cloud before
   // choosing Hosted, Local, or BYOK on the next screen.
@@ -3280,7 +3280,7 @@ function OnboardingView({
       >
         <div className="onboarding-cloud__pane">
           <div className="onboarding-cloud__center">
-            <h1 className="onboarding-cloud__title">{t('settings.onboardingCloudTitle')}</h1>
+            <h1 className="onboarding-cloud__title">{t('app.brand')}</h1>
             <p className="onboarding-cloud__body">{t('settings.onboardingCloudBody')}</p>
             <button
               type="button"
@@ -3316,7 +3316,7 @@ function OnboardingView({
                     ? t('common.loading')
                     : amrSignedIn
                       ? t('settings.onboardingCloudContinue')
-                      : t('settings.onboardingCloudSignIn')}
+                      : primaryActionLabel}
               </span>
             </button>
             {amrLoginError ? (
@@ -3369,7 +3369,7 @@ function OnboardingView({
           <footer className="onboarding-cloud__footer">
             <LanguageMenu placement="up" align="start" />
             <span>
-              © {new Date().getFullYear()} OpenDesign · {t('settings.onboardingCloudRights')}
+              © {t('app.brand')} · {t('settings.onboardingCloudRights')}
             </span>
           </footer>
         </div>
@@ -3497,7 +3497,7 @@ function OnboardingView({
           <footer className="onboarding-cloud__footer">
             <LanguageMenu placement="up" align="start" />
             <span>
-              © {new Date().getFullYear()} OpenDesign ·{' '}
+              © {t('app.brand')} ·{' '}
               {t('settings.onboardingCloudRights')}
             </span>
           </footer>

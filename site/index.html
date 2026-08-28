@@ -135,6 +135,33 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
     <span class="md-chip md-chip--mono" title="Upstream Open Design v0.16.1, pinned at commit 517f39acde402c1a7af2189167a8d6957a3dac71">upstream 517f39a</span>
   </header>
 
+  <!-- This identity strip is deliberately before the tab strip. Its facts are
+       bound to the verified release provenance for the version documented by
+       this page, not to the visitor's load time or to a file timestamp. The
+       script converts the recorded UTC instant to the visitor's local timezone
+       while retaining seconds and an explicit timezone name. -->
+  <section
+    class="front-provenance"
+    data-front-screen-provenance="true"
+    data-front-version=""
+    data-front-updated-at=""
+    data-front-source-commit=""
+    aria-labelledby="front-provenance-title"
+  >
+    <h2 id="front-provenance-title" data-i18n="frontProvenance.heading">Running build</h2>
+    <dl>
+      <div>
+        <dt data-i18n="frontProvenance.version">Version</dt>
+        <dd data-front-provenance-value="version">Unavailable</dd>
+      </div>
+      <div>
+        <dt data-i18n="frontProvenance.updatedAt">Updated</dt>
+        <dd data-front-provenance-value="updated-at">Unavailable</dd>
+      </div>
+    </dl>
+    <p data-front-provenance-value="status" role="status" aria-live="polite">Unavailable</p>
+  </section>
+
   <!-- The tab strip. tabs.js owns everything inside this element: the tabs
        themselves, the overflow surface, the searchable tab list, reordering,
        pinning, and the persistence of all of it. -->
@@ -550,12 +577,11 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       <h3 class="md-title-medium" data-i18n="in.download.title">Windows, 64-bit</h3>
       <p class="md-body-medium" data-i18n="release.ci.explainer">Continuous integration builds on every push, tests before it publishes, and attaches the installer it actually built. A failed test publishes nothing.</p>
       <div class="row" style="margin-top:0.75rem">
-        <a class="md-btn md-btn--filled" data-release-href="installer"
-           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe">
+        <a class="md-btn md-btn--filled" data-release-href="installer" data-release-pending="true" href="#">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-         <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 348 MB</span>
+         <span class="md-chip md-chip--mono" data-release="chip">Unavailable</span>
         <button type="button" class="md-btn md-btn--text" data-goto-tab="releases">
           <span class="i18n-text" data-i18n="in.cta.releases" data-i18n-inline>Checksum, code name and full notes</span>
         </button>
@@ -612,9 +638,9 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
      can use. Facts live in the markup; only the prose around them is
      translated.
 
-     The figures below are a point-in-time record of the releases that existed
-     when this page was written. The releases page linked from here is the
-     authority, and it is linked from every block that names a version.
+     The source copy keeps release facts unavailable. The Pages workflow injects
+     the current published values after resolving the release against the exact
+     deployed commit, so this file never becomes a stale second authority.
      ====================================================================== -->
 <section class="app-scroll__inner" data-tab-panel="releases" id="tab-panel-releases" hidden>
 
@@ -636,17 +662,17 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
         <table>
           <caption class="visually-hidden" data-i18n="rl.latest.caption">The most recent published release and its assets</caption>
           <tbody>
-            <tr><th scope="row" data-i18n="rl.f.tag">Tag</th><td><code class="mono" data-release="tag">v0.16.1-r71.1</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.version">Application version</th><td><code class="mono" data-release="version">0.16.1</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.codename">Code name</th><td data-release="codename">Bamboo Shoot Har Gow · <span lang="zh-HK">筍尖蝦餃</span></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.commit">Built from</th><td><code class="mono" data-release="commit">5544035</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.installer">Installer</th><td><code class="mono" data-release="installer">material-designer-0.16.1-win-x64-setup.exe</code></td></tr>
-            <tr><th scope="row" data-i18n="rl.f.sha">SHA-256</th><td><code class="mono" style="word-break:break-all" data-release="sha">9a021f02f9689fdae9ea26b8b7938bb4c9716ca11c6d30ee5f685d94b853ae60</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.tag">Tag</th><td><code class="mono" data-release="tag">Unavailable</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.version">Application version</th><td><code class="mono" data-release="version">Unavailable</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.codename">Code name</th><td data-release="codename">Unavailable</td></tr>
+            <tr><th scope="row" data-i18n="rl.f.commit">Built from</th><td><code class="mono" data-release="commit">Unavailable</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.installer">Installer</th><td><code class="mono" data-release="installer">Unavailable</code></td></tr>
+            <tr><th scope="row" data-i18n="rl.f.sha">SHA-256</th><td><code class="mono" style="word-break:break-all" data-release="sha">Unavailable</code></td></tr>
             <tr>
               <th scope="row" data-i18n="rl.f.smoke">Packaged smoke test</th>
               <td>
-                <span class="md-status md-status--shipped" data-i18n="status.passed" data-i18n-inline>Passed</span>
-                <span data-i18n="rl.f.smoke.detail">— the built application installed, launched, answered its own health check, and uninstalled without leaving anything behind.</span>
+                <span class="md-status md-status--planned" data-release="smoke">Unavailable</span>
+                <span>No published release record is loaded in this source copy.</span>
               </td>
             </tr>
           </tbody>
@@ -654,21 +680,19 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
       </div>
 
       <div class="row" style="margin-top:1rem">
-        <a class="md-btn md-btn--filled" data-release-href="installer"
-           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-setup.exe">
+        <a class="md-btn md-btn--filled" data-release-href="installer" data-release-pending="true" href="#">
           <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
           <span class="i18n-text" data-i18n="rl.download.installer" data-i18n-inline>Download the Windows installer</span>
         </a>
-        <span class="md-chip md-chip--mono" data-release="chip">0.16.1 · x64 · 348 MB</span>
+        <span class="md-chip md-chip--mono" data-release="chip">Unavailable</span>
       </div>
 
       <div class="row" style="margin-top:0.5rem">
-        <a class="md-btn md-btn--outlined"
-           href="https://github.com/Ding-Ding-Projects/material-designer/releases/download/v0.16.1-r71.1/material-designer-0.16.1-win-x64-portable.zip">
+        <a class="md-btn md-btn--outlined" data-release-href="portable" data-release-pending="true" href="#">
           <svg aria-hidden="true" focusable="false"><use href="#i-package"/></svg>
           <span class="i18n-text" data-i18n="rl.download.portable" data-i18n-inline>Download the portable archive</span>
         </a>
-        <span class="md-chip md-chip--mono">0.16.1 · x64 · 396 MB</span>
+        <span class="md-chip md-chip--mono" data-release="portable">Unavailable</span>
       </div>
 
       <p style="margin-top:0.75rem">
