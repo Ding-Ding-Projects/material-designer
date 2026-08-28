@@ -78,6 +78,10 @@ version section when a release carries them.
   `design/apps/web/src/components/UpdaterPopup.tsx`,
   `design/packages/download/`, `docs/build/dependency-bootstrap.md`,
   `docs/release/automatic-updates.md`, and `MODIFICATIONS.md`.
+  Follow-up source commit
+  [`5cb71765`](https://github.com/Ding-Ding-Projects/material-designer/commit/5cb7176584831e3feff07da6a1c18ccd72dbabbf)
+  corrects the shell manifest entry count and its literal-safe regression
+  assertion. Hosted verification remains pending.
 
 - **Bind the build process to verified tools and make update cancellation real.**
   The dependency helper now publishes a manifest-digest-bound resolution record,

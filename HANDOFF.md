@@ -2105,6 +2105,10 @@ the installer and hosted packaging job, redirect refusal with final-URL
 validation, streaming byte limits, cancellation checks through promotion and
 payload preparation with rollback, and a persistent popup link and cancel
 control for incoming downloads.
+Follow-up commit
+[`5cb71765`](https://github.com/Ding-Ding-Projects/material-designer/commit/5cb7176584831e3feff07da6a1c18ccd72dbabbf)
+corrects the shell manifest count so the compiler metadata id is not counted
+as a platform tool.
 
 ### Implemented source changes
 
@@ -2170,5 +2174,6 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
 3. Exercise the complete packaged updater flow through the approved headless
    route and retain the required interaction evidence.
 
-The lane has made no release, tag, or external publication. Commit `d08922d3`
-is ready for independent review and integration; it has not been dewed.
+The lane has made no release, tag, or external publication. Commits `d08922d3`
+and `5cb71765` are ready for independent review and integration; they have not
+been pushed to the remote repository.
