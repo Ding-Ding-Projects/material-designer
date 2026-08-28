@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { acknowledgeAppearanceMutation, type AppearanceHistoryAck } from './appearanceHistoryBridge';
 
 export const APPEARANCE_STATES = [
   'normal',
@@ -169,8 +170,10 @@ let appearances: Record<string, ElementAppearance> | null = null;
 let history: AppearanceHistoryEntry[] | null = null;
 let copiedStyle: AppearanceStateStyle | null = null;
 let persistenceFailure = false;
+let historyAckStatus: AppearanceHistoryAck = { status: 'unavailable', reason: 'No mutation has been acknowledged by the host history service.' };
 const undoCursor = new Map<string, number>();
 const redoStack = new Map<string, ElementAppearance[]>();
+const mutationGeneration = new Map<string, number>();
 
 function now(): string {
   return new Date().toISOString();
@@ -382,6 +385,10 @@ export function didAppearancePersistenceFail(): boolean {
   return persistenceFailure;
 }
 
+export function getAppearanceHistoryStatus(): AppearanceHistoryAck {
+  return historyAckStatus;
+}
+
 export function getElementAppearance(targetId: string): ElementAppearance {
   ensureLoaded();
   return cloneAppearance(appearances![targetId] ?? defaultElementAppearance(targetId));
@@ -394,7 +401,8 @@ export function hasElementAppearanceOverride(targetId: string): boolean {
 
 export function setElementAppearance(targetId: string, next: ElementAppearance, action = 'Updated appearance'): void {
   ensureLoaded();
-  const previous = appearances![targetId] ?? defaultElementAppearance(targetId);
+  const previousStored = appearances![targetId];
+  const previous = previousStored ?? defaultElementAppearance(targetId);
   history!.push({ id: `${Date.now()}-${targetId}`, targetId, action, at: now(), snapshot: cloneAppearance(previous) });
   history = history!.slice(-MAX_HISTORY);
   undoCursor.set(targetId, history!.filter((entry) => entry.targetId === targetId && !entry.action.startsWith('Undo ') && !entry.action.startsWith('Redo ')).length);
@@ -402,6 +410,20 @@ export function setElementAppearance(targetId: string, next: ElementAppearance, 
   appearances![targetId] = { ...cloneAppearance(next), targetId, updatedAt: now() };
   persist();
   notify();
+  const generation = (mutationGeneration.get(targetId) ?? 0) + 1;
+  mutationGeneration.set(targetId, generation);
+  const revision = history![history!.length - 1]?.id ?? `${Date.now()}-${targetId}`;
+  void acknowledgeAppearanceMutation({ targetId, action, revision }).then((ack) => {
+    if (mutationGeneration.get(targetId) !== generation) return;
+    historyAckStatus = ack;
+    if (ack.status !== 'acknowledged') {
+      const current = appearances![targetId];
+      if (current) history!.push({ id: `${Date.now()}-${targetId}-rollback`, targetId, action: 'Rolled back unacknowledged appearance', at: now(), snapshot: cloneAppearance(current) });
+      if (previousStored) appearances![targetId] = cloneAppearance(previousStored); else delete appearances![targetId];
+      persist();
+    }
+    notify();
+  });
 }
 
 export function resetElementAppearance(targetId: string): void {
@@ -658,4 +680,6 @@ export function resetElementAppearanceStore(): void {
   persistenceFailure = false;
   undoCursor.clear();
   redoStack.clear();
+  mutationGeneration.clear();
+  historyAckStatus = { status: 'unavailable', reason: 'No mutation has been acknowledged by the host history service.' };
 }

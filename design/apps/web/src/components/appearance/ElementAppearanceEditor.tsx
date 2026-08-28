@@ -32,6 +32,7 @@ import {
   undoElementAppearance,
   redoElementAppearance,
   didAppearancePersistenceFail,
+  getAppearanceHistoryStatus,
   type AppearanceLayer,
   type AppearanceState,
   type AppearanceStateStyle,
@@ -152,7 +153,8 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
       applyAppearanceStateToElement(target.element, resolveAppearanceState(next), next.activeState);
       return next;
     });
-    setStatus(didAppearancePersistenceFail() ? c('Change is live but could not be saved locally.', '修改已即時套用，但未能保存到本機。') : `${action} recorded`);
+    const historyStatus = getAppearanceHistoryStatus();
+    setStatus(didAppearancePersistenceFail() ? c('Change is live but could not be saved locally.', '修改已即時套用，但未能保存到本機。') : historyStatus.status === 'acknowledged' ? `${action} recorded` : c('Change is pending host history acknowledgement.', '修改等待主機歷程確認。'));
   }, [target.id]);
 
   const updateCurrentState = useCallback((patch: Partial<AppearanceStateStyle>, action: string) => {

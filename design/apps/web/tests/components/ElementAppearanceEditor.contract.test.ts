@@ -109,6 +109,15 @@ describe('every-element appearance contract', () => {
     expect(LOCK_ADAPTER).not.toContain('password');
   });
 
+  it('keeps the cross-lane lock event contract exact', () => {
+    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_REQUEST = 'open-design:element-toy-lock-request'");
+    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_CONFIGURATION = 'open-design:element-toy-lock-configuration'");
+    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_STATE = 'open-design:element-toy-lock-state'");
+    expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_ACTIVATION = 'open-design:element-toy-lock-activation'");
+    expect(LOCK_ADAPTER).not.toContain('password:');
+    expect(LOCK_ADAPTER).not.toContain('totpSecret:');
+  });
+
   it('keeps every real state activation route and strict identity policy', () => {
     for (const state of ['hover', 'focus', 'pressed', 'selected', 'disabled', 'dragged', 'validation', 'loading', 'success', 'warning', 'error']) {
       expect(BOUNDARY).toContain(`'${state}'`);

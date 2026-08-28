@@ -45,6 +45,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Connect appearance mutations to acknowledged local history.** The
+  appearance store now sends redacted target metadata through the host history
+  mutation seam and marks a change pending or unavailable until the host
+  acknowledges it. An unacknowledged mutation is rolled back transactionally;
+  no style snapshot, credential, path, or private content crosses the seam.
+  The existing toy-lock request, configuration, state, and activation events
+  remain shared with the authentication surface. The host mutation endpoint,
+  packaged runtime, and screenshot evidence remain pending.
+
+  **廣東話進度：** Appearance mutation 而家經 host history mutation seam 傳送
+  redacted target metadata，等 host acknowledge 先算落實；pending 或 unavailable
+  會老實顯示，未 acknowledge 就 transactional rollback。Style snapshot、
+  credential、path 同 private content 都唔會過條 seam。現有 toy-lock request、
+  configuration、state 同 activation event 繼續同 authentication surface
+  共用。Host mutation endpoint、packaged runtime 同 screenshot evidence 仲等緊。
+
 - **Complete appearance state activation and identity safety.** The desktop
   boundary now activates saved normal, hover, focus, pressed, selected,
   disabled, dragged, validation, loading, success, warning and error states

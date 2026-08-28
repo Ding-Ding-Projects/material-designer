@@ -32,7 +32,8 @@
     "named presets",
     "copy and paste style",
     "validated JSON import and export",
-    "append-only undo and redo history"
+    "append-only undo and redo history",
+    "redacted acknowledged host-history mutation with transactional rollback"
   ],
   "evidence": {
     "focusedSourceTest": "design/apps/web/tests/components/ElementAppearanceEditor.contract.test.ts",
