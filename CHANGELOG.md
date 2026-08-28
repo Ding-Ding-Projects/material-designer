@@ -1054,7 +1054,7 @@ version section when a release carries them.
   coalesced, and runtime-version caches are lifecycle-partitioned; and live
   artifact preview keys include complete identity. Hosted typecheck, built
   rendering, installed launch, and visual parity evidence remain pending.
-  Source commit: [`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8).
+  Source commit: [`38ef3b087`](https://github.com/Ding-Ding-Projects/material-designer/commit/38ef3b08788a7c24b3266e9ceed38e3c1c02c3d3).
 
   Studio capture lifecycle lease 而家會睇實每個 delayed state boundary：fixture
   形狀嘅 `od://` near-miss 會喺 ordinary route/fetch 前拒絕，遲到嘅 fixture
@@ -1064,7 +1064,7 @@ version section when a release carries them.
   exception context；refused capture 只讀安全預設，tab/project/version cache
   分 lifecycle，artifact preview key 亦齊 identity。Hosted typecheck、built
   rendering、installed launch 同 visual parity evidence 仲未驗證。
-  Source commit：[`1c25fa6da`](https://github.com/Ding-Ding-Projects/material-designer/commit/1c25fa6da017359d99e51f6870148d2cf16dc6a8)。
+  Source commit：[`38ef3b087`](https://github.com/Ding-Ding-Projects/material-designer/commit/38ef3b08788a7c24b3266e9ceed38e3c1c02c3d3)。
 
 - **Studio capture lifecycle now fails closed and restores ordinary state.**
   Canonical-path near misses publish an explicit refused/unready state and never
@@ -1117,7 +1117,7 @@ version section when a release carries them.
   are finite and structured 404/400 responses reject foreign or malformed
   values. Text previews are bounded, and direct live-artifact data previews
   carry the reload identity so a refresh remounts the exact fixture bytes.
-  Source commit: [`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26).
+  Source commit: [`b6125638b`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e).
 
   Studio capture isolation 而家喺每次 run 個 boundary fail closed：要有
   desktop-owned capture identity 加 tuple witness，換 file 仍然只留喺同一個
@@ -1125,7 +1125,7 @@ version section when a release carries them.
   metadata 齊晒，`providers: {}` 亦唔會扮成 array。Capture 期間 config、active
   context 同 provider writes 全部收聲；foreign/malformed IDs 同 scope 返
   structured 404/400。Text preview 有界，live-artifact data preview 帶埋
-  reload identity，refresh 唔會食舊 bytes。Source commit：[`ff1f9241e`](https://github.com/Ding-Ding-Projects/material-designer/commit/ff1f9241e96504b510a26e87ce23c415bd982c26)。
+  reload identity，refresh 唔會食舊 bytes。Source commit：[`b6125638b`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6125638b297c48e498b7a4645e6556e43d01c5e)。
 
 - **The Studio parity route now drives the real project workspace components.**
   The desktop foundation owns the frozen `material-designer://studio` launch
@@ -1616,7 +1616,7 @@ version section when a release carries them.
   so the job failed before checkout and never reached the interesting machinery.
   The release workflow now selects the installed Git-for-Windows Bash executable
   explicitly, leaving WSL out of the dependency list
-  ([`99974ae`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974ae2fb9b4bdc2ee6bd80cdc3a1dcb1cf542a)).
+  ([`99974aef`](https://github.com/Ding-Ding-Projects/material-designer/commit/99974aef39011f87f39a1341f7d3a3472ea965da)).
 
   Windows release job 而家明確叫 Git Bash：self-hosted runner 將 bare
   `shell: bash` 誤認成冇 distro 嘅 WSL launcher，未 checkout 就已經收工，
@@ -1631,7 +1631,7 @@ version section when a release carries them.
   and documents the fresh-runner dependency inventory. The installer warning is
   intentional: the code-signing cupboard is permanently empty, but Squirrel's
   update feed still brings its hashes and rollback checks
-  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec5d1cc16312007a40d0c672c9534fdd3f9)).
+  ([`8fb9eec5`](https://github.com/Ding-Ding-Projects/material-designer/commit/8fb9eec52618327bd4db6c923701a3e1694cf2e1)).
 
   發佈流程而家拒絕幫任何嘢簽名：active Squirrel packer 拆走 signer 同
   notarization 入口，清走 certificate/timestamp inputs，發佈前驗證
