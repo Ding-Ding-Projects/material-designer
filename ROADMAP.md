@@ -10,7 +10,13 @@
       The source contract check is red-then-green; hosted verification and
       integration remain open. The current build/updater repair extends this
       lane with exact path propagation, compiler-environment import, bounded
-      update cancellation, and complete Squirrel package relationships.
+      update cancellation, and complete Squirrel package relationships. The
+      current repair adds strict manifest schema and canonical-source checks,
+      null-safe pnpm materialization, exact resolved pnpm use in packaging,
+      redirect and final-URL refusal, streaming byte bounds, cancellation-safe
+      promotion rollback, and red-then-green updater contract cases. Hosted
+      verification, integration, and packaged interaction remain open, so this
+      item stays unchecked.
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and

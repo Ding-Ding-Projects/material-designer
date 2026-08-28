@@ -45,6 +45,40 @@ version section when a release carries them.
 
 ### Changed
 
+- **Close the pinned build and updater review gaps.** The dependency manifest is
+  now strict about schema, platform ids, canonical hosts, formats, versions and
+  digests, with null-safe pnpm materialization and exact resolved-tool use in
+  both local and hosted packaging. Update responses refuse redirects and
+  validate their final URL, streamed downloads enforce a byte bound, and
+  cancellation remains effective through payload preparation and promotion,
+  rolling back a newly promoted release without disturbing the previous one.
+  The persistent updater popup now carries the exact release-notes URL and a
+  real cancel action while a newer release downloads over an older ready one.
+  Source commit
+  [`d08922d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/d08922d3c48b7e290ef30096bf26347a06f66878)
+  carries this repair. Hosted build, installed interaction and visual evidence
+  remain pending.
+
+  **Review gaps 而家收口，build 同 updater 唔再扮 exact。** Manifest schema、
+  platform ids、canonical hosts、formats、versions 同 digests 全部收緊，pnpm
+  materialize 就算搵唔到 command 都唔會拎 null 去撞牆；local 同 hosted
+  packaging 都用返 resolution record 入面嗰條 exact path。Update response
+  唔收 redirect，final URL 都要再驗，streaming download 有 byte 上限，cancel
+  一路行到 payload prepare 同 promote 都有效，半路取消會 rollback 新 output
+  但唔郁舊 ready release。Persistent updater popup 而家有 exact release-notes
+  link，同埋 newer release 蓋住舊 ready 狀態下載時真係可以 cancel。Source
+  commit 係上面嗰個，hosted build、installed interaction 同 visual evidence
+  仲未有。
+
+  **Changed files:** `dependencies.manifest.json`, `download-dependencies.sh`,
+  `scripts/download-dependencies.ps1`, `scripts/build-installer.ps1`,
+  `scripts/test-build-entrypoints.ps1`, `scripts/test-updater-contract.ps1`,
+  `.github/workflows/release.yml`, `design/apps/desktop/src/main/updater.ts`,
+  `design/apps/desktop/src/main/updater/feed.ts`,
+  `design/apps/web/src/components/UpdaterPopup.tsx`,
+  `design/packages/download/`, `docs/build/dependency-bootstrap.md`,
+  `docs/release/automatic-updates.md`, and `MODIFICATIONS.md`.
+
 - **Bind the build process to verified tools and make update cancellation real.**
   The dependency helper now publishes a manifest-digest-bound resolution record,
   imports the compiler environment after a Visual Studio workload install, and

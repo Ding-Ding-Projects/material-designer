@@ -2097,13 +2097,14 @@ are based on `861065bb` and change the
 root build entry points, their dependency helpers, build documentation, and
 the web update dialog's manual release fallback.
 
-The held review requested a second repair batch. The linked checkout now
-also contains uncommitted source changes for verified tool-path propagation,
-compiler environment import, stale package-result rejection, complete Squirrel
-package relationships, bounded feed and checksum requests, a real download
-abort controller, host cancellation, newer-download progress, and updater model
-fields plus stable dialog test targets. These changes are not yet represented
-by a new commit.
+The held review requested a second repair batch. Commit
+[`d08922d3`](https://github.com/Ding-Ding-Projects/material-designer/commit/d08922d3c48b7e290ef30096bf26347a06f66878)
+adds the remaining source repairs: strict manifest schema, canonical host and
+digest validation, null-safe pnpm materialization, exact resolved pnpm use in
+the installer and hosted packaging job, redirect refusal with final-URL
+validation, streaming byte limits, cancellation checks through promotion and
+payload preparation with rollback, and a persistent popup link and cancel
+control for incoming downloads.
 
 ### Implemented source changes
 
@@ -2134,6 +2135,14 @@ by a new commit.
   streaming transfer layers, with bounded allowlisted metadata and checksum
   requests and visible newer-download progress while an older update remains
   ready.
+- Added `scripts/test-updater-contract.ps1`, whose exact red-then-green cases
+  cover cancel, timeout, redirect, streaming byte limits, newer progress, and
+  release-note links. The dependency manifest now has a strict schema and both
+  platform helpers validate ids, formats, versions, hosts, and digests before
+  any cache mutation.
+- The installer and hosted packaging path now consume the exact pnpm executable
+  recorded by the dependency resolution record. The root release workflow
+  exercises `build.bat /s` before packaging.
 - Added `docs/build/dependency-bootstrap.md` and updated the build, release,
   README, roadmap, changelog, and modification notice.
 
@@ -2143,8 +2152,10 @@ PowerShell parsing succeeded for all five changed PowerShell scripts. Git Bash
 syntax parsing succeeded for `download-dependencies.sh`. The entrypoint contract
 check passed and observed its temporary dependency-removal, path, compiler,
 stale-result, provenance, and package-relationship failures before restoration.
-The updater feed and transfer source was reviewed statically. No Node, pnpm,
-Electron, or UI runtime was launched locally.
+The updater feed and transfer source was reviewed statically. The focused
+updater contract and build entrypoint checks both passed their deliberate
+red-then-green cases. No Node, pnpm, Electron, or UI runtime was launched
+locally.
 
 The port verifier was attempted through the installed Git Bash route and did not
 return within the bounded 90-second observation window. The process tree was
@@ -2155,11 +2166,9 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
 
 1. Run the independent review agent against the repair batch and resolve any
    remaining findings.
-2. Commit this repair batch with a public-safe bilingual message and add its
-   commit link to the Unreleased changelog entry.
-3. Run the hosted build and release checks against the integrated commit.
-4. Exercise the complete packaged updater flow through the approved headless
+2. Run the hosted build and release checks against the integrated commit.
+3. Exercise the complete packaged updater flow through the approved headless
    route and retain the required interaction evidence.
 
-The lane has made no release, tag, or external publication. The repair commit
+The lane has made no release, tag, or external publication. Commit `d08922d3`
 is ready for independent review and integration; it has not been dewed.
