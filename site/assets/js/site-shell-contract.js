@@ -26,6 +26,8 @@ export const REQUIRED_SEARCHES = Object.freeze([
   'settings-settings-appearance-search', 'settings-settings-toy-locks-search',
   'settings-settings-reset-search', 'tabs-strip-search',
   'tabs-group-members-search', 'tabs-groups-search', 'tabs-master-search',
+  'tab-groups-manager-search', 'settings-group-manager-search',
+  'tabs-bulk-containing', 'tabs-bulk-not-containing',
 ]);
 
 function exact(node, selector) {

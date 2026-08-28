@@ -45,6 +45,7 @@ export const TABS_STORAGE_KEY = STORAGE_PREFIX + 'tabs';
 
 /** Bumped only when the stored shape changes incompatibly. */
 const STORAGE_VERSION = 2;
+let popoverSequence = 0;
 
 /**
  * The site's pages, in their default order.
@@ -859,13 +860,20 @@ function createSearchField({ owner, placeholder, onChange, compact = false }) {
  * surface opened from a field.
  */
 function createPopover({ trigger, role = 'dialog', label, onOpen, onClose, returnFocusTo }) {
+  const panelId = `md-tabs-popover-${++popoverSequence}`;
   const panel = el('div', {
     class: 'md-pop',
+    id: panelId,
     role,
     'aria-label': label,
     hidden: true,
   });
   document.body.append(panel);
+  if (trigger instanceof Element) {
+    trigger.setAttribute('aria-haspopup', role === 'listbox' ? 'listbox' : 'dialog');
+    trigger.setAttribute('aria-controls', panelId);
+    trigger.setAttribute('aria-expanded', 'false');
+  }
 
   let open = false;
 
@@ -1041,7 +1049,7 @@ class TabStrip {
       dataset: { mdTabs: 'find' },
     }, icon('search', { size: 16 }));
 
-    this.live = el('div', { class: 'md-tabs__live', role: 'status', 'aria-live': 'polite' });
+    this.live = el('div', { class: 'md-tabs__live', id: 'md-tabs-live', role: 'status', 'aria-live': 'polite' });
 
     this.actions = el('div', { class: 'md-tabs__actions' }, this.moreBtn, this.findBtn);
     this.root.append(this.strip, this.actions, this.live);
@@ -1214,6 +1222,7 @@ class TabStrip {
     if (this.destroyed) return;
     this.root.dataset.dockEdge = this.dockEdge;
     this.strip.setAttribute('aria-label', chrome('striplabel'));
+    this.strip.setAttribute('aria-orientation', this.dockEdge === 'left' || this.dockEdge === 'right' ? 'vertical' : 'horizontal');
     this.moreBtn.setAttribute('aria-label', chrome('more'));
     this.moreBtn.title = chrome('more');
     this.findBtn.setAttribute('aria-label', chrome('findTabs'));
@@ -1346,6 +1355,8 @@ class TabStrip {
 
   #applyHidden(hiddenIds) {
     this.hiddenIds = hiddenIds;
+    this.root.dataset.truncationStatus = hiddenIds.length ? 'truncated' : 'complete';
+    this.root.dataset.truncationCount = String(hiddenIds.length);
     for (const id of this.order) {
       const node = this.nodes.get(id);
       const isHidden = this.closed.has(id) || hiddenIds.includes(id);
@@ -1357,6 +1368,10 @@ class TabStrip {
       'aria-label',
       `${chrome('more')} (${hiddenIds.length})`,
     );
+    this.moreBtn.setAttribute('aria-describedby', this.live.id || '');
+    this.live.textContent = hiddenIds.length
+      ? `${hiddenIds.length} hidden tab(s). ${chrome('hiddenNote')}`
+      : '';
     this.emitter.emit('overflow', { hiddenIds: [...hiddenIds] });
   }
 
@@ -1516,12 +1531,15 @@ class TabStrip {
     node.addEventListener('keydown', (event) => {
       const visible = this.order.filter((tabId) => !this.nodes.get(tabId).hidden);
       const index = visible.indexOf(id);
+      const vertical = this.dockEdge === 'left' || this.dockEdge === 'right';
+      const previousKey = vertical ? 'ArrowUp' : 'ArrowLeft';
+      const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
 
       // Ctrl/Cmd + arrows reorder; bare arrows navigate. Both are required —
       // reordering must not be drag-only.
-      if ((event.ctrlKey || event.metaKey) && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      if ((event.ctrlKey || event.metaKey) && (event.key === previousKey || event.key === nextKey)) {
         event.preventDefault();
-        if (this.moveTab(id, event.key === 'ArrowRight' ? 1 : -1)) this.nodes.get(id).focus();
+        if (this.moveTab(id, event.key === nextKey ? 1 : -1)) this.nodes.get(id).focus();
         return;
       }
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p') {
@@ -1533,8 +1551,10 @@ class TabStrip {
 
       let nextId = null;
       switch (event.key) {
-        case 'ArrowLeft':  nextId = visible[(index - 1 + visible.length) % visible.length]; break;
-        case 'ArrowRight': nextId = visible[(index + 1) % visible.length]; break;
+        case 'ArrowLeft':  if (!vertical) nextId = visible[(index - 1 + visible.length) % visible.length]; break;
+        case 'ArrowRight': if (!vertical) nextId = visible[(index + 1) % visible.length]; break;
+        case 'ArrowUp':    if (vertical) nextId = visible[(index - 1 + visible.length) % visible.length]; break;
+        case 'ArrowDown':  if (vertical) nextId = visible[(index + 1) % visible.length]; break;
         case 'Home':       nextId = visible[0]; break;
         case 'End':        nextId = visible[visible.length - 1]; break;
         case 'Enter':

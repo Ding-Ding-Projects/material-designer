@@ -29,7 +29,10 @@
   ],
   "menus": [
     { "id": "universal-context", "selector": "document", "actions": ["Edit appearance…", "Lock this element…"], "search": "per-open-instance", "capture": "pending" },
-    { "id": "select-pickers", "selector": "select", "search": "per-select-instance", "capture": "pending" }
+    { "id": "select-pickers", "selector": "select", "search": "per-select-instance", "capture": "pending" },
+    { "id": "tab-groups-manager", "selector": "[data-shell-tabs-groups]", "search": "tab-groups-manager-search", "capture": "pending" },
+    { "id": "settings-group-manager", "selector": "[data-settings-layout]", "search": "settings-group-manager-search", "capture": "pending" },
+    { "id": "bulk-close", "selector": "[data-shell-tabs-bulk]", "search": "tabs-bulk-containing,tabs-bulk-not-containing", "capture": "pending" }
   ],
   "canonicalFeatures": [
     "language-modes", "funny-levels", "regex-builder", "appearance", "tabs", "notifications", "command-palette", "provenance", "toy-locks", "support-tickets", "authenticator", "file-converter", "ollama-suite", "exports", "bulk-actions", "local-history", "offline-docs", "app-logo", "automatic-updates", "open-graph", "accessibility", "screen-recording"

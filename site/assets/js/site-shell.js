@@ -17,6 +17,7 @@ const SHELL_STORAGE_KEY = 'md-designer.site.shell.v2';
 const SETTINGS_STORAGE_KEY = 'md-designer.site.settings-tabs.v2';
 const SETTINGS_DEFAULT_EDGE = 'left';
 const EDGES = Object.freeze(['left', 'right', 'top', 'bottom']);
+let popoverSequence = 0;
 
 const INVENTORY = Object.freeze({
   pages: Object.freeze([
@@ -51,6 +52,9 @@ const STRINGS = Object.freeze({
   'shell.settings.createGroup': { en: 'Create group', yue: '建立群組' },
   'shell.settings.groupName': { en: 'New group name', yue: '新群組名' },
   'shell.settings.move': { en: 'Move into group', yue: '移入群組' },
+  'shell.settings.sections': { en: 'Settings sections', yue: '設定部分' },
+  'shell.settings.general': { en: 'General', yue: '一般' },
+  'shell.settings.emptyGroup': { en: 'This settings group is empty. Move a settings tab into it from its context menu.', yue: '呢個設定群組而家係空嘅，可以喺內容選單將設定分頁移入嚟。' },
   'shell.settings.none': { en: 'No settings match this search.', yue: '冇設定夾到呢個搜尋。' },
   'shell.dock.left': { en: 'Left', yue: '左' },
   'shell.dock.right': { en: 'Right', yue: '右' },
@@ -85,6 +89,7 @@ const STRINGS = Object.freeze({
   'shell.close.ready': { en: 'Confirmation ready. Slider completion: {percent}%.', yue: '確認完成，滑動進度：{percent}%。' },
   'shell.close.needsKeys': { en: 'Two independent confirmation keys are required before the slider becomes active.', yue: '滑桿啟用前需要兩個獨立確認鍵。' },
   'shell.close.summary': { en: '{count} tab(s) will close. {excluded} excluded by current protection choices.', yue: '將會關閉 {count} 個分頁，按目前保護選擇排除 {excluded} 個。' },
+  'shell.close.newExclusions': { en: 'New exclusions: {items}. Review the protection choices again.', yue: '新排除項目：{items}。請重新檢查保護選擇。' },
   'shell.context.search': { en: 'Search actions', yue: '搵動作' },
   'shell.context.noMatch': { en: 'No actions match this search.', yue: '冇動作夾到呢個搜尋。' },
   'shell.context.confirmed': { en: '{count} tab(s) closed. {skipped} skipped.', yue: '已關閉 {count} 個分頁，跳過 {skipped} 個。' },
@@ -92,14 +97,22 @@ const STRINGS = Object.freeze({
   'shell.page.noMatch': { en: 'No content matches this search.', yue: '冇內容夾到呢個搜尋。' },
   'shell.group.noMatch': { en: 'No groups match this search.', yue: '冇群組夾到呢個搜尋。' },
   'shell.dropdown.count': { en: '{count} choices', yue: '{count} 個選項' },
+  'shell.dropdown.choose': { en: 'Choose an option', yue: '選擇一個選項' },
+  'shell.dropdown.choices': { en: 'Choices', yue: '選項' },
   'shell.provenance.version': { en: 'Version', yue: '版本' },
   'shell.provenance.updated': { en: 'Updated at', yue: '更新時間' },
   'shell.provenance.unavailable': { en: 'Unavailable until build provenance is supplied.', yue: '未有建置出處，所以暫時未能提供。' },
   'shell.provenance.invalid': { en: 'Build provenance is present but invalid.', yue: '建置出處存在，但格式唔啱。' },
+  'shell.provenance.recorded': { en: 'Provenance recorded in the build metadata.', yue: '出處已記錄喺建置 metadata 入面。' },
+  'shell.action.changed': { en: 'The action changed while confirmation was open. Review the exclusions and try again.', yue: '確認期間動作有變，請重新檢查排除項目再試。' },
+  'shell.destructive.body': { en: 'This action changes {kind}. Review it before confirming.', yue: '呢個動作會改變 {kind}，確認之前請先檢查。' },
 });
 
 function registerStrings() {
-  try { i18n.register(STRINGS); } catch (error) { console.warn('[site-shell] string registration failed', error); }
+  try {
+    i18n.register(STRINGS);
+    i18n.applyI18n?.(document);
+  } catch (error) { console.warn('[site-shell] string registration failed', error); }
 }
 
 function text(key, fallback) {
@@ -198,11 +211,17 @@ function makeSearchField({ id, label, onChange, sample = '' }) {
 }
 
 function createPopover(anchor, label, contentBuilder) {
-  const panel = el('div', { class: 'md-shell-popover', role: 'dialog', 'aria-label': label, hidden: true });
+  const panelId = `md-shell-popover-${++popoverSequence}`;
+  const panel = el('div', { class: 'md-shell-popover', id: panelId, role: 'dialog', 'aria-label': label, hidden: true });
   panel.style.resize = 'both';
   panel.style.minWidth = '280px';
   panel.style.minHeight = '120px';
   document.body.append(panel);
+  if (anchor instanceof Element) {
+    anchor.setAttribute('aria-haspopup', 'dialog');
+    anchor.setAttribute('aria-controls', panelId);
+    anchor.setAttribute('aria-expanded', 'false');
+  }
   let open = false;
   let manualPosition = false;
   let drag = null;
@@ -249,6 +268,7 @@ function createPopover(anchor, label, contentBuilder) {
   const close = (restore = true) => {
     if (!open) return;
     open = false; panel.hidden = true;
+    if (anchor instanceof Element) anchor.setAttribute('aria-expanded', 'false');
     panel.querySelectorAll('[data-regex-builder]').forEach((input) => regex.getBuilder?.(input)?.destroy?.());
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', keydown, true);
@@ -298,10 +318,11 @@ function createPopover(anchor, label, contentBuilder) {
   panel.addEventListener('pointerup', (event) => { if (drag) { drag = null; panel.releasePointerCapture?.(event.pointerId); saveGeometry(); } });
   return {
     panel,
-    open() { if (open) return; open = true; panel.hidden = false; contentBuilder?.(panel); position(); document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', keydown, true); window.addEventListener('resize', position); window.addEventListener('scroll', position, true); },
+    open() { if (open) return; open = true; panel.hidden = false; if (anchor instanceof Element) anchor.setAttribute('aria-expanded', 'true'); contentBuilder?.(panel); position(); document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', keydown, true); window.addEventListener('resize', position); window.addEventListener('scroll', position, true); },
     close,
     toggle() { open ? close() : this.open(); },
     reposition: position,
+    destroy() { close(false); panel.remove(); },
     get isOpen() { return open; },
   };
 }
@@ -322,7 +343,7 @@ function loadSettingsState(ids) {
   const order = Array.isArray(saved.order) ? saved.order.filter((id) => ids.includes(id)) : [];
   for (const id of ids) if (!order.includes(id)) order.push(id);
   const groups = saved.groups && typeof saved.groups === 'object' ? saved.groups : {};
-  if (!groups.general) groups.general = { id: 'general', name: 'General', tabs: [], collapsed: false, pinned: false, color: '' };
+  if (!groups.general) groups.general = { id: 'general', name: text('shell.settings.general', 'General'), tabs: [], collapsed: false, pinned: false, color: '' };
   const assigned = new Set();
   for (const [groupId, group] of Object.entries(groups)) {
     if (!group || typeof group !== 'object') { delete groups[groupId]; continue; }
@@ -364,11 +385,11 @@ function renderSettingsShell() {
   const state = loadSettingsState(ids);
   aside.replaceChildren();
   aside.className = 'settings__tabs';
-  aside.setAttribute('aria-label', 'Settings sections');
+  aside.setAttribute('aria-label', text('shell.settings.sections', 'Settings sections'));
   aside.dataset.edge = state.edge;
   settings.dataset.edge = state.edge;
 
-  const tablist = el('div', { class: 'settings__tablist', role: 'tablist', 'aria-orientation': 'vertical' });
+  const tablist = el('div', { class: 'settings__tablist', role: 'tablist', 'aria-orientation': state.edge === 'left' || state.edge === 'right' ? 'vertical' : 'horizontal' });
   const toolbar = el('div', { class: 'settings__tab-tools' });
   const layoutButton = el('button', { type: 'button', class: 'md-btn md-btn--text', text: bilingual('shell.settings.layout', 'Settings layout', '設定版面'), 'data-settings-layout': '' });
   toolbar.append(layoutButton);
@@ -419,17 +440,20 @@ function renderSettingsShell() {
     tab.addEventListener('keydown', (event) => {
       const visible = state.order;
       const index = visible.indexOf(group.id);
-      if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowUp' || (event.ctrlKey || event.metaKey) && event.key === 'ArrowLeft') {
+      const vertical = state.edge === 'left' || state.edge === 'right';
+      const previousKey = vertical ? 'ArrowUp' : 'ArrowLeft';
+      const nextKey = vertical ? 'ArrowDown' : 'ArrowRight';
+      if ((event.ctrlKey || event.metaKey) && event.key === previousKey) {
         event.preventDefault(); moveSettingsTab(group.id, -1); return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key === 'ArrowDown' || (event.ctrlKey || event.metaKey) && event.key === 'ArrowRight') {
+      if ((event.ctrlKey || event.metaKey) && event.key === nextKey) {
         event.preventDefault(); moveSettingsTab(group.id, 1); return;
       }
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'p') {
         event.preventDefault(); state.pinned.has(group.id) ? state.pinned.delete(group.id) : state.pinned.add(group.id); saveSettingsState(state); renderSettingsNav(); tab.focus(); return;
       }
-      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') { event.preventDefault(); activateSettingsTab(visible[(index - 1 + visible.length) % visible.length], true); }
-      else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') { event.preventDefault(); activateSettingsTab(visible[(index + 1) % visible.length], true); }
+      if (event.key === previousKey) { event.preventDefault(); activateSettingsTab(visible[(index - 1 + visible.length) % visible.length], true); }
+      else if (event.key === nextKey) { event.preventDefault(); activateSettingsTab(visible[(index + 1) % visible.length], true); }
       else if (event.key === 'Home') { event.preventDefault(); activateSettingsTab(visible[0], true); }
       else if (event.key === 'End') { event.preventDefault(); activateSettingsTab(visible[visible.length - 1], true); }
       else if (event.key === 'ContextMenu' || event.key === 'F10' && event.shiftKey) { event.preventDefault(); openSettingsContext(group.id, tab); }
@@ -445,15 +469,17 @@ function renderSettingsShell() {
 
   function renderSettingsNav() {
     tablist.replaceChildren();
+    const vertical = state.edge === 'left' || state.edge === 'right';
+    tablist.setAttribute('aria-orientation', vertical ? 'vertical' : 'horizontal');
     const buckets = Object.values(state.groups).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
     for (const bucket of buckets) {
-      if (!bucket.tabs.length) continue;
-      const header = el('div', { class: 'settings__group-header', role: 'presentation' }, el('span', { text: bucket.name }), el('button', { type: 'button', class: 'settings__group-collapse', text: bucket.collapsed ? '+' : '−', 'aria-label': `${bucket.collapsed ? 'Expand' : 'Collapse'} ${bucket.name}` }));
+      const header = el('div', { class: 'settings__group-header', role: 'presentation' }, el('span', { text: bucket.name }), el('button', { type: 'button', class: 'settings__group-collapse', text: bucket.collapsed ? '+' : '−', 'aria-label': `${text(bucket.collapsed ? 'shell.group.expand' : 'shell.group.collapse', bucket.collapsed ? 'Expand' : 'Collapse')} ${bucket.name}`, 'aria-expanded': String(!bucket.collapsed) }));
       header.dataset.shellSettingsGroupId = bucket.id;
       if (bucket.color) header.style.borderInlineStart = `3px solid ${bucket.color}`;
       header.querySelector('button').addEventListener('click', () => { bucket.collapsed = !bucket.collapsed; saveSettingsState(state); renderSettingsNav(); });
       header.addEventListener('contextmenu', (event) => { event.preventDefault(); document.dispatchEvent(new CustomEvent('md:site-context-request', { detail: { element: header, target: `settings-group:${bucket.id}`, x: event.clientX, y: event.clientY } })); });
       tablist.append(header);
+      if (!bucket.tabs.length) tablist.append(el('p', { class: 'settings__group-empty', text: text('shell.settings.emptyGroup', 'This settings group is empty. Move a settings tab into it from its context menu.') }));
       for (const id of state.order) {
         if (!bucket.tabs.includes(id)) continue;
         const tab = settingsTabs.get(id);
@@ -529,9 +555,11 @@ function renderSettingsShell() {
     const groupName = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.settings.groupName', 'New group name'), 'aria-label': text('shell.settings.groupName', 'New group name') });
     const create = el('button', { type: 'button', class: 'md-btn md-btn--outlined', text: text('shell.settings.createGroup', 'Create group') });
     create.addEventListener('click', () => { if (createSettingsGroup(groupName.value)) { groupName.value = ''; layoutPopover.reposition(); } });
+    const groupSearch = makeSearchField({ id: 'settings-group-manager-search', label: text('shell.group.search', 'Search tab groups by name') });
     const groupList = el('div', { class: 'md-shell-list', 'aria-label': 'Settings groups' });
     for (const bucket of Object.values(state.groups)) {
-      const row = el('div', { class: 'md-shell-group-row', dataset: { shellSettingsGroupId: bucket.id } });
+      const memberText = bucket.tabs.map((id) => settingsTabs.get(id)?.textContent || id).join(' ');
+      const row = el('div', { class: 'md-shell-group-row', dataset: { shellSettingsGroupId: bucket.id, shellGroupSearchText: `${bucket.name} ${memberText} ${bucket.tabs.length}` } });
       const name = el('input', { type: 'text', class: 'md-input', value: bucket.name, 'aria-label': `${text('shell.group.rename', 'Rename')}: ${bucket.name}` });
       const color = el('input', { type: 'color', class: 'md-ui-color', value: /^#[0-9a-f]{6}$/i.test(bucket.color) ? bucket.color : '#8F4C34', 'aria-label': `${text('shell.group.color', 'Color')}: ${bucket.name}` });
       const pin = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(bucket.pinned ? 'shell.group.unpin' : 'shell.group.pin', bucket.pinned ? 'Unpin' : 'Pin'), 'aria-pressed': String(bucket.pinned) });
@@ -546,7 +574,13 @@ function renderSettingsShell() {
       remove.addEventListener('click', () => { if (removeSettingsGroup(bucket.id)) { layoutPopover.close(false); layoutPopover.open(); } });
       row.append(name, color, pin, up, down, remove); groupList.append(row);
     }
-    panel.append(edgeRow, el('div', { class: 'md-shell-inline-form' }, groupName, create), groupList);
+    groupSearch.input.addEventListener('input', () => {
+      const matcher = safeMatcher(groupSearch);
+      for (const row of groupList.querySelectorAll('[data-shell-settings-group-id]')) row.hidden = !matcher.ok || (!matcher.empty && !matcher.test(row.dataset.shellGroupSearchText || row.textContent));
+    });
+    groupSearch.controller?.onChange?.(() => groupSearch.input.dispatchEvent(new Event('input')));
+    panel.append(edgeRow, groupSearch.root, el('div', { class: 'md-shell-inline-form' }, groupName, create), groupList);
+    groupSearch.input.dispatchEvent(new Event('input'));
   });
   layoutButton.addEventListener('click', () => layoutPopover.toggle());
 
@@ -562,6 +596,7 @@ function renderSettingsShell() {
       const list = el('div', { class: 'md-shell-list' });
       const render = () => { const matcher = field.matcher; list.replaceChildren(); for (const bucket of Object.values(state.groups)) { if (!matcher.empty && (!matcher.ok || !matcher.test(bucket.name))) continue; const row = el('button', { type: 'button', class: 'md-btn md-btn--text', text: `${bucket.name} (${bucket.tabs.length})` }); row.addEventListener('click', () => { moveSettingsToGroup(id, bucket.id); picker.close(); }); list.append(row); } if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: text('shell.settings.none', 'No settings groups match this search.') })); };
       field.input.addEventListener('input', render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
+      field.controller?.onChange?.(render);
     });
     picker.open();
   });
@@ -583,12 +618,14 @@ function installPageSearches() {
     const heading = panel.querySelector('h1,h2')?.textContent.trim() || id;
     const field = makeSearchField({
       id: `page-${id}-search`,
-      label: `${text('search.label', 'Search this page')}: ${heading}`,
+      label: `${bilingual('search.label', 'Search this page', '搵呢版')}: ${heading}`,
+      onChange: () => apply(),
     });
     field.root.dataset.shellPageSearch = id;
     const status = el('p', { class: 'md-shell-page-search-status', role: 'status', 'aria-live': 'polite' });
     const targets = [...panel.children].filter((node) => node !== field.root && !node.matches('[data-shell-page-search-status]'));
-    const apply = () => {
+    let apply = () => {};
+    apply = () => {
       const matcher = safeMatcher(field);
       const query = field.input.value.trim();
       if (!query) {
@@ -644,6 +681,16 @@ function stableTargetId(element) {
   return id;
 }
 
+function invokeConsumer(name, eventName, detail) {
+  const consumer = window[name];
+  if (consumer && typeof consumer.open === 'function') {
+    consumer.open(detail);
+    return true;
+  }
+  const event = new CustomEvent(eventName, { cancelable: true, detail });
+  return !document.dispatchEvent(event);
+}
+
 function relocateOuterTabs(root, edge) {
   const body = document.querySelector('.app-body');
   const main = document.querySelector('.app-main');
@@ -655,20 +702,29 @@ function relocateOuterTabs(root, edge) {
   root.dataset.relocated = 'true';
 }
 
-function openDestructiveGate(anchor, title, body, run) {
+function openDestructiveGate(anchor, title, body, run, options = {}) {
   if (!(anchor instanceof Element)) return;
+  const expectedOne = String(options.keyOne || 'CONFIRM ACTION');
+  const expectedTwo = String(options.keyTwo || 'CONFIRM COUNT');
   const gate = createPopover(anchor, title, (panel) => {
     panel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: title }), el('p', { class: 'md-shell-preview', text: body }));
-    const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyOne', 'Confirmation key 1'), 'aria-label': text('shell.close.keyOne', 'Confirmation key 1'), autocomplete: 'off' });
-    const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyTwo', 'Confirmation key 2'), 'aria-label': text('shell.close.keyTwo', 'Confirmation key 2'), autocomplete: 'off' });
+    const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: `${text('shell.close.keyOne', 'Confirmation key 1')}: ${expectedOne}`, 'aria-label': `${text('shell.close.keyOne', 'Confirmation key 1')}: ${expectedOne}`, autocomplete: 'off' });
+    const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: `${text('shell.close.keyTwo', 'Confirmation key 2')}: ${expectedTwo}`, 'aria-label': `${text('shell.close.keyTwo', 'Confirmation key 2')}: ${expectedTwo}`, autocomplete: 'off' });
     const slider = el('input', { type: 'range', class: 'md-slider', min: '0', max: '100', step: '1', value: '0', disabled: true, 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs') });
     const status = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite', text: text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.') });
     const cancel = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.close.exit', 'Emergency exit') });
     const confirm = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: text('shell.close.action', 'Confirm'), disabled: true });
-    const update = () => { const ready = Boolean(keyOne.value.trim() && keyTwo.value.trim()); slider.disabled = !ready; confirm.disabled = !ready || slider.value !== '100'; status.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.'); };
+    const update = () => { const ready = keyOne.value.trim() === expectedOne && keyTwo.value.trim() === expectedTwo; slider.disabled = !ready; confirm.disabled = !ready || slider.value !== '100'; status.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.'); };
     keyOne.addEventListener('input', update); keyTwo.addEventListener('input', update); slider.addEventListener('input', update);
-    cancel.addEventListener('click', () => gate.close());
-    confirm.addEventListener('click', () => { if (confirm.disabled) return; run?.(); gate.close(); });
+    cancel.addEventListener('click', () => gate.destroy());
+    confirm.addEventListener('click', () => {
+      if (confirm.disabled) return;
+      const check = options.validate?.();
+      if (check && check.ok === false) {
+        slider.value = '0'; update(); status.textContent = check.message || text('shell.action.changed', 'The action changed while confirmation was open. Review the exclusions and try again.'); return;
+      }
+      run?.(); gate.destroy();
+    });
     panel.append(keyOne, keyTwo, slider, status, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
     requestAnimationFrame(() => keyOne.focus());
   });
@@ -728,6 +784,7 @@ function installOuterTabShell() {
       }
     };
     for (const { field } of fields) field.input.addEventListener('input', render);
+    for (const { field } of fields) field.controller?.onChange?.(render);
     for (const { field } of fields) panel.append(field.root);
     panel.append(resultHost); render(); requestAnimationFrame(() => fields[0].field.input.focus());
   });
@@ -741,8 +798,10 @@ function installOuterTabShell() {
     const list = el('div', { class: 'md-shell-list' });
     create.addEventListener('click', () => { const name = newName.value.trim(); if (!name) return; const id = `group-${Date.now().toString(36)}`; strip.createGroup?.(id, name, ''); newName.value = ''; groupPopover.close(false); groupPopover.open(); });
     panel.append(findField.root, el('div', { class: 'md-shell-inline-form' }, newName, create), list);
+    const tabLabels = new Map(strip.listTabs().map((tab) => [tab.id, tab.label]));
     for (const group of groupsData) {
-      const row = el('div', { class: 'md-shell-group-row', dataset: { shellGroupId: group.id } });
+      const groupSearchText = `${group.name} ${group.tabs.map((id) => tabLabels.get(id) || id).join(' ')} ${group.tabs.length}`;
+      const row = el('div', { class: 'md-shell-group-row', dataset: { shellGroupId: group.id, shellGroupSearchText: groupSearchText } });
       const title = el('strong', { text: `${group.name} (${group.tabs.length})` });
       const pin = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(group.pinned ? 'shell.group.unpin' : 'shell.group.pin', group.pinned ? 'Unpin group' : 'Pin group'), 'aria-pressed': String(group.pinned) });
       const collapse = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(group.collapsed ? 'shell.group.expand' : 'shell.group.collapse', group.collapsed ? 'Expand' : 'Collapse') });
@@ -757,7 +816,7 @@ function installOuterTabShell() {
       down.addEventListener('click', () => { strip.moveGroup?.(group.id, 1); groupPopover.close(false); groupPopover.open(); });
       rename.addEventListener('change', () => { strip.renameGroup?.(group.id, rename.value); groupPopover.close(false); groupPopover.open(); });
       color.addEventListener('input', () => strip.setGroupColor?.(group.id, color.value));
-      remove.addEventListener('click', () => document.dispatchEvent(new CustomEvent('md:destructive-request', { cancelable: true, detail: { kind: 'remove-tab-group', groupId: group.id, element: row, run: () => strip.removeGroup?.(group.id) } })));
+      remove.addEventListener('click', () => document.dispatchEvent(new CustomEvent('md:destructive-request', { cancelable: true, detail: { kind: 'remove-tab-group', groupId: group.id, element: row, anchor: groups, keyOne: 'REMOVE GROUP', keyTwo: `REMOVE ${group.name}`, run: () => strip.removeGroup?.(group.id) } })));
       row.addEventListener('contextmenu', (event) => { event.preventDefault(); document.dispatchEvent(new CustomEvent('md:site-context-request', { detail: { element: row, target: `tab-group:${group.id}`, x: event.clientX, y: event.clientY } })); });
       row.append(title, pin, collapse, up, down, rename, color, remove);
       list.append(row);
@@ -770,13 +829,19 @@ function installOuterTabShell() {
     }
     const closed = strip.listTabs().filter((tab) => tab.closed);
     if (closed.length && findField.input.value.trim() === '') {
-      list.append(el('h3', { class: 'md-shell-scope-title', text: text('shell.tabs.closed', 'Closed tabs') }));
-      for (const tab of closed) { const reopen = el('button', { type: 'button', class: 'md-btn md-btn--text', text: `${text('shell.tabs.reopen', 'Reopen')}: ${tab.label}` }); reopen.addEventListener('click', () => { strip.reopenTabs([tab.id]); groupPopover.close(false); groupPopover.open(); }); list.append(reopen); }
+      const closedHost = el('div', { dataset: { shellClosedTabs: 'true' } });
+      closedHost.append(el('h3', { class: 'md-shell-scope-title', text: text('shell.tabs.closed', 'Closed tabs') }));
+      for (const tab of closed) { const reopen = el('button', { type: 'button', class: 'md-btn md-btn--text', text: `${text('shell.tabs.reopen', 'Reopen')}: ${tab.label}` }); reopen.addEventListener('click', () => { strip.reopenTabs([tab.id]); groupPopover.close(false); groupPopover.open(); }); closedHost.append(reopen); }
+      list.append(closedHost);
     }
     findField.input.addEventListener('input', () => {
       const matcher = safeMatcher(findField);
-      for (const row of list.querySelectorAll('[data-shell-group-id]')) row.hidden = !matcher.ok || (!matcher.empty && !matcher.test(row.textContent));
+      for (const row of list.querySelectorAll('[data-shell-group-id]')) row.hidden = !matcher.ok || (!matcher.empty && !matcher.test(row.dataset.shellGroupSearchText || row.textContent));
+      const closedHost = list.querySelector('[data-shell-closed-tabs]');
+      if (closedHost) closedHost.hidden = !matcher.empty;
     });
+    findField.controller?.onChange?.(() => findField.input.dispatchEvent(new Event('input')));
+    findField.input.dispatchEvent(new Event('input'));
     for (const row of list.querySelectorAll('[data-shell-group-id]')) row.dataset.shellGroupId = row.dataset.shellGroupId || '';
     requestAnimationFrame(() => findField.input.focus());
   });
@@ -798,7 +863,7 @@ function installOuterTabShell() {
         }
         if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? text('shell.group.noMatch', 'No groups match this search.') : matcher.error }));
       };
-      field.input.addEventListener('input', render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
+      field.input.addEventListener('input', render); field.controller?.onChange?.(render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
     });
     picker.open();
   });
@@ -813,37 +878,6 @@ function installOuterTabShell() {
     const isLocked = (id) => {
       const node = document.querySelector(`#tab-${CSS.escape(id)}`);
       return Boolean(node?.dataset.locked === 'true' || node?.dataset.toyLocked === 'true' || node?.getAttribute('aria-disabled') === 'true');
-    };
-    const openCloseGate = (anchor, title, ids, excluded, options) => {
-      const gate = createPopover(anchor, 'Confirm tab close', (gatePanel) => {
-        gatePanel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: text('shell.close.confirm', 'Confirm the tab close') }));
-        gatePanel.append(el('p', { class: 'md-shell-preview', text: `${title}: ${ids.length} tab(s). This changes only the visible tab structure.` }));
-        if (excluded.length) gatePanel.append(el('p', { class: 'md-shell-preview', text: `Excluded: ${excluded.join(', ')}` }));
-        const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyOne', 'Confirmation key 1'), 'aria-label': text('shell.close.keyOne', 'Confirmation key 1'), autocomplete: 'off' });
-        const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyTwo', 'Confirmation key 2'), 'aria-label': text('shell.close.keyTwo', 'Confirmation key 2'), autocomplete: 'off' });
-        const slider = el('input', { type: 'range', class: 'md-slider', min: '0', max: '100', step: '1', value: '0', disabled: true, 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs') });
-        const progress = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite', text: text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.') });
-        const cancel = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.close.exit', 'Emergency exit') });
-        const confirm = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: text('shell.close.action', 'Close reviewed tabs'), disabled: true });
-        const update = () => {
-          const ready = keyOne.value.trim().length > 0 && keyTwo.value.trim().length > 0;
-          slider.disabled = !ready;
-          confirm.disabled = !ready || slider.value !== '100';
-        progress.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.');
-        };
-        keyOne.addEventListener('input', update); keyTwo.addEventListener('input', update); slider.addEventListener('input', update);
-        cancel.addEventListener('click', () => gate.close());
-        confirm.addEventListener('click', () => {
-          if (confirm.disabled) return;
-          const result = strip.closeTabs?.(ids, { includePinned: options.includePinned });
-          document.dispatchEvent(new CustomEvent('md:toast', { detail: { kind: 'success', title: text('shell.tabs.bulk', 'Bulk close'), body: text('shell.context.confirmed', '{count} tab(s) closed. {skipped} skipped.').replace('{count}', String(result?.closed?.length || 0)).replace('{skipped}', String(result?.skipped?.length || 0)) } }));
-          gate.close();
-          bulkPopover.close();
-        });
-        gatePanel.append(keyOne, keyTwo, slider, progress, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
-        requestAnimationFrame(() => keyOne.focus());
-      });
-      gate.open();
     };
     for (const mode of ['containing', 'not-containing']) {
       const title = text(`shell.tabs.close${mode === 'containing' ? 'Containing' : 'NotContaining'}`, mode === 'containing' ? 'Close tabs containing text' : 'Close tabs not containing text');
@@ -862,8 +896,28 @@ function installOuterTabShell() {
         button.disabled = matcher.empty || !matcher.ok || ids.length <= 0;
         button.dataset.closeState = JSON.stringify({ ids, skipped });
       };
-      field.input.addEventListener('input', calculate); include.addEventListener('change', calculate); includeLocked.addEventListener('change', calculate);
-      button.addEventListener('click', () => { const state = JSON.parse(button.dataset.closeState || '{}'); if (!state.ids?.length) return; openCloseGate(button, title, state.ids, state.skipped || [], { includePinned: include.checked }); });
+      field.input.addEventListener('input', calculate); field.controller?.onChange?.(calculate); include.addEventListener('change', calculate); includeLocked.addEventListener('change', calculate);
+      button.addEventListener('click', () => {
+        const closeState = JSON.parse(button.dataset.closeState || '{}');
+        if (!closeState.ids?.length) return;
+        const latest = () => {
+          const current = strip.listTabs();
+          const newExcluded = current.filter((tab) => closeState.ids.includes(tab.id) && (tab.closed || (!include.checked && tab.pinned) || (!includeLocked.checked && isLocked(tab.id))));
+          const missing = closeState.ids.filter((id) => !current.some((tab) => tab.id === id));
+          const labels = [...newExcluded.map((tab) => tab.label), ...missing.map((id) => `${id} (no longer open)`)];
+          return labels.length ? { ok: false, message: text('shell.close.newExclusions', 'New exclusions: {items}. Review the protection choices again.').replace('{items}', labels.join(', ')) } : { ok: true };
+        };
+        document.dispatchEvent(new CustomEvent('md:destructive-request', { cancelable: true, detail: {
+          kind: 'close-tabs', element: button, anchor: bulk, title, keyOne: 'CLOSE TABS', keyTwo: `CLOSE ${closeState.ids.length}`,
+          includePinned: include.checked, includeLocked: includeLocked.checked, excluded: closeState.skipped || [],
+          validate: latest,
+          run: () => {
+            const result = strip.closeTabs?.(closeState.ids, { includePinned: include.checked });
+            document.dispatchEvent(new CustomEvent('md:toast', { detail: { kind: 'success', title: text('shell.tabs.bulk', 'Bulk close'), body: text('shell.context.confirmed', '{count} tab(s) closed. {skipped} skipped.').replace('{count}', String(result?.closed?.length || 0)).replace('{skipped}', String(result?.skipped?.length || 0)) } }));
+            bulkPopover.close();
+          },
+        } }));
+      });
       actionsHost.append(el('h3', { class: 'md-shell-scope-title', text: title }), field.root, preview, button); calculate();
     }
     panel.append(el('div', { class: 'md-shell-checkbox' }, include, includeLabel), el('div', { class: 'md-shell-checkbox' }, includeLocked, includeLockedLabel), actionsHost);
@@ -895,8 +949,8 @@ function installUniversalContextMenus() {
     const render = () => {
       const matcher = safeMatcher(field); list.replaceChildren();
       const actions = [
-        { label: text('shell.context.appearance', 'Edit appearance…'), run: () => document.dispatchEvent(new CustomEvent('md:appearance-request', { detail: current })) },
-        { label: text('shell.context.lock', 'Lock this element…'), run: () => document.dispatchEvent(new CustomEvent('md:lock-request', { detail: current })) },
+        { label: text('shell.context.appearance', 'Edit appearance…'), run: () => invokeConsumer('MATERIAL_DESIGNER_APPEARANCE_CONSUMER', 'md:appearance-request', current) },
+        { label: text('shell.context.lock', 'Lock this element…'), run: () => invokeConsumer('MATERIAL_DESIGNER_TOY_LOCK_CONSUMER', 'md:lock-request', current) },
         { label: text('shell.context.copy', 'Copy accessible name'), run: () => navigator.clipboard?.writeText(current?.element?.getAttribute('aria-label') || current?.element?.textContent?.trim() || '') },
       ];
       if (current?.settingsId) actions.push({ label: text('shell.settings.move', 'Move into group'), run: () => document.dispatchEvent(new CustomEvent('md:settings-group-request', { detail: { id: current.settingsId } })) });
@@ -904,7 +958,7 @@ function installUniversalContextMenus() {
       for (const item of actions) if (matcher.ok && (matcher.empty || matcher.test(item.label))) { const button = el('button', { type: 'button', class: 'md-btn md-btn--text', text: item.label }); button.addEventListener('click', () => { menu.close(); item.run(); }); list.append(button); }
       if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? text('shell.context.noMatch', 'No actions match this search.') : matcher.error }));
     };
-    field.input.addEventListener('input', render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
+    field.input.addEventListener('input', render); field.controller?.onChange?.(render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
   });
   menu.panel.classList.add('md-shell-context');
 
@@ -919,8 +973,13 @@ function installUniversalContextMenus() {
   document.addEventListener('md:destructive-request', (event) => {
     if (event.defaultPrevented || !event.detail?.run) return;
     event.preventDefault();
-    const target = event.detail.element;
-    openDestructiveGate(target, 'Confirm destructive action', `This action changes ${event.detail.kind || 'the selected site state'}. Review it before confirming.`, event.detail.run);
+    const target = event.detail.anchor || event.detail.element;
+    const shared = window.MATERIAL_DESIGNER_SHARED_DESTRUCTIVE_GATE;
+    if (shared && typeof shared.open === 'function') {
+      shared.open(event.detail);
+      return;
+    }
+    openDestructiveGate(target, event.detail.title || 'Confirm destructive action', event.detail.body || text('shell.destructive.body', 'This action changes {kind}. Review it before confirming.').replace('{kind}', event.detail.kind || 'the selected site state'), event.detail.run, { keyOne: event.detail.keyOne, keyTwo: event.detail.keyTwo, validate: event.detail.validate });
   });
   document.addEventListener('contextmenu', (event) => { const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target, event.clientX, event.clientY); }, true);
   document.addEventListener('keydown', (event) => { if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return; const target = document.activeElement instanceof Element ? document.activeElement : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target); }, true);
@@ -938,9 +997,9 @@ function installDropdownSearches() {
     const stableId = select.id || `select-${[...document.querySelectorAll('select')].indexOf(select)}`;
     const wrapper = el('div', { class: 'md-shell-dropdown', 'data-shell-dropdown': stableId });
     const field = makeSearchField({ id: `dropdown-${stableId}`, label: text('shell.dropdown.filter', 'Filter choices') });
-    const status = el('span', { class: 'md-shell-dropdown__status', role: 'status', 'aria-live': 'polite' });
-    const button = el('button', { type: 'button', class: 'md-shell-select__button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': `md-shell-options-${stableId}`, 'aria-label': select.getAttribute('aria-label') || select.id || 'Choose an option' });
-    const list = el('div', { class: 'md-shell-select__panel', id: `md-shell-options-${stableId}`, role: 'listbox', hidden: true });
+    const status = el('span', { class: 'md-shell-dropdown__status', id: `md-shell-status-${stableId}`, role: 'status', 'aria-live': 'polite' });
+    const button = el('button', { type: 'button', class: 'md-shell-select__button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': `md-shell-options-${stableId}`, 'aria-describedby': `md-shell-status-${stableId}`, 'aria-label': select.getAttribute('aria-label') || select.id || text('shell.dropdown.choose', 'Choose an option') });
+    const list = el('div', { class: 'md-shell-select__panel', id: `md-shell-options-${stableId}`, role: 'listbox', 'aria-label': text('shell.dropdown.choices', 'Choices'), hidden: true });
     select.parentNode.insertBefore(wrapper, select);
     wrapper.append(button, select, list, status);
     select.hidden = true;
@@ -951,14 +1010,23 @@ function installDropdownSearches() {
     const render = () => {
       const matcher = safeMatcher(field);
       const selected = select.selectedOptions[0];
-      button.textContent = selected?.label || selected?.textContent || 'Choose an option';
+      button.textContent = selected?.label || selected?.textContent || text('shell.dropdown.choose', 'Choose an option');
       list.querySelectorAll('[data-shell-option]').forEach((node) => node.remove());
       let count = 0;
-      for (const option of select.options) {
+      for (const [optionIndex, option] of [...select.options].entries()) {
         const visible = matcher.ok && (matcher.empty || matcher.test(option.textContent || option.label));
         if (!visible) continue;
-        const item = el('button', { type: 'button', class: 'md-shell-option', role: 'option', 'data-shell-option': option.value, 'aria-selected': String(option.selected), text: option.label || option.textContent });
+        const item = el('button', { type: 'button', class: 'md-shell-option', id: `md-shell-option-${stableId}-${optionIndex}`, role: 'option', 'data-shell-option': option.value, 'aria-selected': String(option.selected), text: option.label || option.textContent });
         item.addEventListener('click', () => { select.value = option.value; select.dispatchEvent(new Event('input', { bubbles: true })); select.dispatchEvent(new Event('change', { bubbles: true })); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); });
+        item.addEventListener('keydown', (event) => {
+          const options = [...list.querySelectorAll('[data-shell-option]')]; const index = options.indexOf(item);
+          if (event.key === 'ArrowDown') { event.preventDefault(); options[(index + 1) % options.length]?.focus(); }
+          else if (event.key === 'ArrowUp') { event.preventDefault(); options[(index - 1 + options.length) % options.length]?.focus(); }
+          else if (event.key === 'Home') { event.preventDefault(); options[0]?.focus(); }
+          else if (event.key === 'End') { event.preventDefault(); options.at(-1)?.focus(); }
+          else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.click(); }
+          else if (event.key === 'Escape') { event.preventDefault(); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); }
+        });
         list.append(item); count += 1;
       }
       status.textContent = count ? text('shell.dropdown.count', '{count} choices').replace('{count}', String(count)) : text('shell.dropdown.empty', 'No choices match this search.');
@@ -966,6 +1034,7 @@ function installDropdownSearches() {
     button.addEventListener('click', () => { list.hidden = !list.hidden; button.setAttribute('aria-expanded', String(!list.hidden)); if (!list.hidden) { field.input.value = ''; render(); requestAnimationFrame(() => field.input.focus()); } });
     button.addEventListener('keydown', (event) => { if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') { event.preventDefault(); button.click(); } });
     field.input.addEventListener('input', render);
+    field.controller?.onChange?.(render);
     field.input.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); }
       else if (event.key === 'ArrowDown') { event.preventDefault(); list.querySelector('[data-shell-option]')?.focus(); }
@@ -996,7 +1065,7 @@ function initFrontProvenance() {
   if (updatedNode) updatedNode.textContent = validDate ? updated : 'Unavailable';
   if (updatedNode) updatedNode.setAttribute('datetime', validDate ? updated : '');
   const status = host.querySelector('[data-provenance-status]');
-  if (status) status.textContent = host.dataset.state === 'verified' ? 'Provenance recorded in the build metadata.' : text(host.dataset.state === 'invalid' ? 'shell.provenance.invalid' : 'shell.provenance.unavailable', host.dataset.state === 'invalid' ? 'Build provenance is present but invalid.' : 'Unavailable until build provenance is supplied.');
+  if (status) status.textContent = host.dataset.state === 'verified' ? text('shell.provenance.recorded', 'Provenance recorded in the build metadata.') : text(host.dataset.state === 'invalid' ? 'shell.provenance.invalid' : 'shell.provenance.unavailable', host.dataset.state === 'invalid' ? 'Build provenance is present but invalid.' : 'Unavailable until build provenance is supplied.');
 }
 
 function exposeInventory() {
