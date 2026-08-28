@@ -55,9 +55,9 @@ version section when a release carries them.
   release metadata rather than the host clock. The documentation page resolves
   the published release for its exact deployed commit, follows annotated tags,
   and fails closed unless every visible field and immutable installer link is
-  replaced exactly once. Source review is complete. Hosted packaging and real
-  front-screen capture evidence remain pending. Commit link: pending this
-  integration commit.
+  replaced exactly once. Source review is complete in
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1).
+  Hosted packaging and real front-screen capture evidence remain pending.
 
   **前置畫面先顯示同版本綁實嘅 provenance。** Desktop shell 而家喺 tabs、
   Settings、About 同 onboarding authentication 之前，先顯示真正運行版本同
@@ -67,8 +67,9 @@ version section when a release carries them.
   timezone，而且只可以來自外部 release metadata，唔可以攞本機時鐘即場作故仔。
   Documentation page 會按部署 commit 搵唯一 published release、解 annotated tag，
   每個 visible field 同 immutable installer link 都要啱啱好換一次，否則即刻收工。
-  Source review 已完成；hosted packaging 同真正 front-screen capture 仲係 pending。
-  Commit link 會喺今次 integration commit 完成後補上。
+  Source review 已經喺
+  [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1)
+  完成；hosted packaging 同真正 front-screen capture 仲係 pending。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
