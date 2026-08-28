@@ -5,11 +5,14 @@ history kept beside the application's own data — documents, records, and the
 settings that configure them — so any creation, edit or deletion can be undone,
 and any undo can itself be undone.
 
-**Status: partial, and the part that exists is narrower than the requirement.**
-The vendored product already versions project files, records a restore as a new
-version rather than a rewrite, and carries a label and an origin per version. It
-is not Git-backed, it does not cover records or settings, and the panel has none
-of the required filters. Nothing here has been exercised in this repository.
+**Status: source-mounted, hosted runtime proof pending.** The application now
+mounts the version-history panel over the daemon's append-only snapshot service,
+with date, action, domain and text filters, derived action counts, diff/detail
+viewing, restore-as-new-revision, retention controls, redacted exports, and
+bulk selection with filtered-view exports. The local Git-backed persistence and
+credential-vault boundary remain owned by the daemon layer. No local package
+build or UI drive was run in this lane, so packaged interaction remains
+unverified.
 
 ## The requirement
 
