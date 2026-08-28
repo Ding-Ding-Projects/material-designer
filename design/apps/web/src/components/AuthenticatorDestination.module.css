@@ -14,7 +14,7 @@
 .empty button, .importActions button { justify-self: start; min-height: 48px; padding: 10px 16px; border: 1px solid var(--md-sys-color-primary, #415f91); border-radius: 24px; background: var(--md-sys-color-primary, #415f91); color: var(--md-sys-color-on-primary, white); cursor: pointer; }
 .entryList { display: grid; gap: 12px; }
 .entryActions { display: flex; flex-wrap: wrap; gap: 10px; }
-.entryActions button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 20px; background: var(--md-sys-color-surface-container, #f0f0f7); color: inherit; }
+.entryActions button, .entryActions select { min-height: 44px; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 20px; background: var(--md-sys-color-surface-container, #f0f0f7); color: inherit; }
 .entry { display: grid; grid-template-columns: 1fr auto auto; gap: 16px; align-items: center; padding: 16px; border: 1px solid var(--md-sys-color-outline-variant, #c6c6ce); border-radius: 16px; }
 .entry h2, .entry p { margin: 0; }
 .entry strong { font-size: 1.5rem; letter-spacing: .1em; }

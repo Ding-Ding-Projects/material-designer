@@ -51,6 +51,14 @@ there is no plaintext fallback. The renderer consumes that probe and keeps
 registration disabled with a concrete reason until the remaining registration
 bridge is present.
 
+`packages/host/src/protocol.ts`, `packages/host/src/detection.ts`, and the
+desktop preload now carry a typed authenticator bridge for list, view,
+registration, reorder, grouping, removal, and protected history operations.
+The main host consumes URI and manual registration through the real vault and
+returns explicit unavailable results for QR image, clipboard, and camera
+decoding until a bounded desktop decoder is connected. Every IPC route checks
+the main window and its main frame before invoking the host.
+
 `history.ts` provides the isolated local Git-backed history seam. It seals a
 redacted snapshot before writing a record, commits each mutation append-only,
 and offers a password-protected manager for reading and restoring encrypted

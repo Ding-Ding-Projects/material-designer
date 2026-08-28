@@ -1,7 +1,7 @@
 # Roadmap
 
 - [ ] **Add the local authenticator destination and host-owned unlock ladder.**
-      Source-only lane `yum-tong-authenticator-lockout-20260827` adds strict
+      Source-mounted lane `yum-tong-authenticator-lockout-20260827` adds strict
       Base32 and `otpauth://totp/` protocol handling, RFC 6238 and HOTP vectors,
       bounded in-process QR, URI/image/clipboard/camera/manual registration,
       vault-only metadata separation, explicit secret-export confirmation,

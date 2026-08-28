@@ -23,6 +23,7 @@ import type {
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostToyLocks,
+  OpenDesignHostAuthenticator,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -424,6 +425,22 @@ const toyLocks: OpenDesignHostToyLocks = {
   verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
 };
 
+const authenticator: OpenDesignHostAuthenticator = {
+  vaultStatus: () => ipcRenderer.invoke('od:authenticator:vault-status'),
+  list: (query) => ipcRenderer.invoke('od:authenticator:list', query ?? null),
+  view: (id, trustedNowMs) => ipcRenderer.invoke('od:authenticator:view', id, trustedNowMs ?? null),
+  register: (input) => ipcRenderer.invoke('od:authenticator:register', input),
+  reorder: (ids) => ipcRenderer.invoke('od:authenticator:reorder', ids),
+  setGroup: (ids, group) => ipcRenderer.invoke('od:authenticator:set-group', ids, group),
+  remove: (ids) => ipcRenderer.invoke('od:authenticator:remove', ids),
+  historyList: (filter) => ipcRenderer.invoke('od:authenticator:history-list', filter ?? null),
+  historyDiff: (id) => ipcRenderer.invoke('od:authenticator:history-diff', id),
+  historyRestore: (id) => ipcRenderer.invoke('od:authenticator:history-restore', id),
+  historySetRetention: (retention) => ipcRenderer.invoke('od:authenticator:history-retention', retention),
+  historyExportRedacted: (filter) => ipcRenderer.invoke('od:authenticator:history-export-redacted', filter ?? null),
+  historyExportSensitive: (filter, confirmationToken) => ipcRenderer.invoke('od:authenticator:history-export-sensitive', filter ?? null, confirmationToken),
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -472,6 +489,7 @@ const hostBridge = {
   },
   uiScale,
   toyLocks,
+  authenticator,
   updater,
   // win32 only: every other platform keeps its native title bar, so the
   // namespace is absent there and the renderer feature-detects rather than
@@ -485,5 +503,5 @@ contextBridge.exposeInMainWorld('openDesignDesktop', {
   exportDiagnostics: (): Promise<DesktopDiagnosticsExportResult> =>
     ipcRenderer.invoke(DESKTOP_DIAGNOSTICS_IPC_CHANNEL) as Promise<DesktopDiagnosticsExportResult>,
   authenticatorVaultStatus: (): Promise<{ available: boolean }> =>
-    ipcRenderer.invoke('od:authenticator:vault-status') as Promise<{ available: boolean }>,
+    authenticator.vaultStatus(),
 });

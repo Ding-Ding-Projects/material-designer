@@ -9,6 +9,7 @@ $files = @{
   store = Join-Path $root 'design/apps/desktop/src/main/authenticator/store.ts'
   history = Join-Path $root 'design/apps/desktop/src/main/authenticator/history.ts'
   vault = Join-Path $root 'design/apps/desktop/src/main/authenticator/electron-vault.ts'
+  host = Join-Path $root 'design/apps/desktop/src/main/authenticator/host.ts'
   ladder = Join-Path $root 'design/apps/desktop/src/main/lockout/service.ts'
   tests = Join-Path $root 'design/apps/desktop/tests/main/authenticator-lockout.test.ts'
   ui = Join-Path $root 'design/apps/web/src/components/AuthenticatorDestination.tsx'
@@ -18,6 +19,8 @@ $files = @{
   app = Join-Path $root 'design/apps/web/src/App.tsx'
   runtime = Join-Path $root 'design/apps/desktop/src/main/runtime.ts'
   preload = Join-Path $root 'design/apps/desktop/src/main/preload.cts'
+  hostProtocol = Join-Path $root 'design/packages/host/src/protocol.ts'
+  hostDetection = Join-Path $root 'design/packages/host/src/detection.ts'
 }
 
 function Read-Text([string]$Path) { [System.IO.File]::ReadAllText($Path) }
@@ -33,6 +36,7 @@ $destination = Read-Text $files.destination
 $store = Read-Text $files.store
 $history = Read-Text $files.history
 $vault = Read-Text $files.vault
+$authHost = Read-Text $files.host
 $ladder = Read-Text $files.ladder
 $tests = Read-Text $files.tests
 $ui = Read-Text $files.ui
@@ -42,6 +46,8 @@ $tabs = Read-Text $files.tabs
 $app = Read-Text $files.app
 $runtime = Read-Text $files.runtime
 $preload = Read-Text $files.preload
+$hostProtocol = Read-Text $files.hostProtocol
+$hostDetection = Read-Text $files.hostDetection
 
 Require $protocol 'export function decodeBase32' 'strict Base32 decoder'
 Require $protocol 'export function parseOtpauthUri' 'otpauth URI parser'
@@ -63,6 +69,10 @@ Require $history 'class PasswordProtectedHistory' 'password-protected history ma
 Require $vault 'safeStorage.isEncryptionAvailable' 'platform vault availability probe'
 Require $vault 'encryptString' 'platform vault encryption'
 Require $vault 'The operating-system credential vault is unavailable.' 'honest vault-unavailable state'
+Require $authHost 'class DesktopAuthenticatorHost' 'typed desktop authenticator host'
+Require $authHost 'historyExportSensitive' 'protected sensitive history export'
+Require $hostProtocol 'export type OpenDesignHostAuthenticator' 'typed authenticator host bridge'
+Require $hostDetection 'hasFunction(authenticator, "historyExportSensitive")' 'bridge method detection'
 Require $ladder 'const MAX_LADDER_USES = 3' 'rolling ladder budget'
 Require $ladder 'this.#nonceIndex.delete(nonce)' 'single-use nonce consumption'
 Require $ladder 'code: "early-submit"' 'early mole-submit refusal'
@@ -79,11 +89,24 @@ Require $ui 'Credential vault: unavailable' 'visible vault unavailable copy'
 Require $ui 'Copy current code' 'current-code copy action'
 Require $ui 'Group selected' 'group bulk action'
 Require $ui 'Reorder selected' 'reorder bulk action'
+Require $ui 'bridge.list(query)' 'renderer list bridge consumption'
+Require $ui 'bridge.register(input)' 'renderer registration bridge consumption'
+Require $ui 'bridge.register({ kind: ''qr-clipboard''' 'renderer clipboard bridge consumption'
+Require $ui 'bridge.setGroup' 'renderer group bridge consumption'
+Require $ui 'bridge.reorder' 'renderer reorder bridge consumption'
+Require $ui 'bridge.remove' 'renderer remove bridge consumption'
+Require $ui 'historySearch' 'isolated history search controller'
+Require $ui 'bridge.historyList' 'renderer history list consumption'
+Require $ui 'bridge.historyDiff' 'renderer history diff consumption'
+Require $ui 'bridge.historyRestore' 'renderer history restore consumption'
+Require $ui 'bridge.historySetRetention' 'renderer history retention consumption'
+Require $ui 'bridge.historyExportRedacted' 'renderer redacted export consumption'
+Require $ui 'bridge.historyExportSensitive' 'renderer sensitive export consumption'
 Require $router "view: 'authenticator'" 'authenticator route'
 Require $commands "id: 'go.authenticator'" 'command-palette route row'
 Require $tabs "authenticator: 'Authenticator'" 'workspace tab title'
 Require $app 'AuthenticatorDestination' 'App destination mount'
-Require $runtime 'new ElectronSecretVault' 'runtime vault adapter consumption'
+Require $runtime 'new DesktopAuthenticatorHost' 'runtime vault adapter consumption'
 Require $runtime 'od:authenticator:vault-status' 'vault status bridge'
 Require $preload 'authenticatorVaultStatus' 'renderer vault status bridge'
 
@@ -123,6 +146,16 @@ if ($SelfTest) {
   if (-not $brokenSession.Contains('emits a session cookie')) { throw 'Negative regression did not turn red for the no-session invariant.' }
   $restoredSession = $brokenSession.Replace('emits a session cookie', 'emits a cookie')
   if (-not $restoredSession.Contains('emits a cookie')) { throw 'Negative regression did not return green for the no-session invariant.' }
+
+  $brokenBridge = $hostDetection.Replace('hasFunction(authenticator, "historyExportSensitive")', 'hasFunction(authenticator, "historyExportSensitive_REMOVED")')
+  if ($brokenBridge.Contains('hasFunction(authenticator, "historyExportSensitive")')) { throw 'Negative regression did not turn red for bridge method detection.' }
+  $restoredBridge = $brokenBridge.Replace('hasFunction(authenticator, "historyExportSensitive_REMOVED")', 'hasFunction(authenticator, "historyExportSensitive")')
+  if (-not $restoredBridge.Contains('hasFunction(authenticator, "historyExportSensitive")')) { throw 'Negative regression did not return green for bridge method detection.' }
+
+  $brokenConsumer = $ui.Replace('bridge.list(query)', 'bridge.list_REMOVED(query)')
+  if ($brokenConsumer.Contains('bridge.list(query)')) { throw 'Negative regression did not turn red for renderer bridge consumption.' }
+  $restoredConsumer = $brokenConsumer.Replace('bridge.list_REMOVED(query)', 'bridge.list(query)')
+  if (-not $restoredConsumer.Contains('bridge.list(query)')) { throw 'Negative regression did not return green for renderer bridge consumption.' }
 }
 
 Write-Output 'PASS: authenticator and unlock-ladder source contracts'

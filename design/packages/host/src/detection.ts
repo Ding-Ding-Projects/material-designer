@@ -60,6 +60,27 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
     return false;
   }
 
+  const authenticator = value.authenticator;
+  if (
+    authenticator != null
+    && (!isRecord(authenticator)
+      || !hasFunction(authenticator, "vaultStatus")
+      || !hasFunction(authenticator, "list")
+      || !hasFunction(authenticator, "view")
+      || !hasFunction(authenticator, "register")
+      || !hasFunction(authenticator, "reorder")
+      || !hasFunction(authenticator, "setGroup")
+      || !hasFunction(authenticator, "remove")
+      || !hasFunction(authenticator, "historyList")
+      || !hasFunction(authenticator, "historyDiff")
+      || !hasFunction(authenticator, "historyRestore")
+      || !hasFunction(authenticator, "historySetRetention")
+      || !hasFunction(authenticator, "historyExportRedacted")
+      || !hasFunction(authenticator, "historyExportSensitive"))
+  ) {
+    return false;
+  }
+
   const shell = value.shell;
   if (!isRecord(shell) || !hasFunction(shell, "openExternal") || !hasFunction(shell, "openPath")) return false;
 

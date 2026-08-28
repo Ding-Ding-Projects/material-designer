@@ -47,8 +47,12 @@ the Settings toy-lock UI, claim a build, or claim packaged interaction.
 - `apps/desktop/src/main/authenticator/history.ts`
 - `apps/desktop/src/main/authenticator/index.ts`
 - `apps/desktop/src/main/authenticator/electron-vault.ts`
+- `apps/desktop/src/main/authenticator/host.ts`
 - `apps/desktop/src/main/runtime.ts`
 - `apps/desktop/src/main/preload.cts`
+- `packages/host/src/protocol.ts`
+- `packages/host/src/detection.ts`
+- `packages/host/src/index.ts`
 - `apps/desktop/src/main/lockout/protocol.ts`
 - `apps/desktop/src/main/lockout/service.ts`
 - `apps/desktop/tests/main/authenticator-lockout.test.ts`

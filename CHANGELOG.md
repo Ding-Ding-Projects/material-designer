@@ -53,7 +53,7 @@ version section when a release carries them.
   a host-owned single-use-nonce ladder for dish, sums, timed moles, and clock
   recovery. Focused source tests and a deliberate red-then-green validator are
   present; no hosted build, packaged interaction, or capture evidence is claimed.
-  The final default-jer integration commit link will be added after this lane is incorporated.
+  The final default branch integration commit link will be added after this lane is incorporated.
 
 - **Mount the authenticator destination and route.** The renderer now exposes an
   `/authenticator` destination with browser-style Codes, Register, and History
@@ -61,7 +61,7 @@ version section when a release carries them.
   credential-vault unavailable states, protected-history controls, and a
   command-palette destination row. Workspace tab title and icon maps preserve
   the route. Hosted build, platform bridge consumption, and packaged interaction
-  remain unverified. The final default-jer integration commit link will be added after this lane is incorporated.
+  remain unverified. The final default branch integration commit link will be added after this lane is incorporated.
 
 ### Changed
 

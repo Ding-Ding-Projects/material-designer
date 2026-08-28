@@ -70,7 +70,7 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
-import { ElectronSecretVault } from "./authenticator/electron-vault.js";
+import { DesktopAuthenticatorHost } from "./authenticator/host.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -2993,7 +2993,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       },
     },
   });
-  const authenticatorVault = new ElectronSecretVault({
+  const authenticatorHost = new DesktopAuthenticatorHost({
     directory: join(app.getPath("userData"), "authenticator-vault"),
     safeStorage: {
       isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
@@ -3009,8 +3009,20 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   });
   ipcMain.handle("od:authenticator:vault-status", async (event) => {
     requireMainWindowSender(event);
-    return { available: authenticatorVault.isAvailable() };
+    return authenticatorHost.vaultStatus();
   });
+  ipcMain.handle("od:authenticator:list", async (event, query: unknown) => { requireMainWindowSender(event); return authenticatorHost.list(typeof query === "string" ? query : undefined); });
+  ipcMain.handle("od:authenticator:view", async (event, id: unknown, trustedNowMs: unknown) => { requireMainWindowSender(event); return authenticatorHost.view(typeof id === "string" ? id : "", typeof trustedNowMs === "number" ? trustedNowMs : undefined); });
+  ipcMain.handle("od:authenticator:register", async (event, input: unknown) => { requireMainWindowSender(event); return authenticatorHost.register(input as never); });
+  ipcMain.handle("od:authenticator:reorder", async (event, ids: unknown) => { requireMainWindowSender(event); return authenticatorHost.reorder(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []); });
+  ipcMain.handle("od:authenticator:set-group", async (event, ids: unknown, group: unknown) => { requireMainWindowSender(event); return authenticatorHost.setGroup(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [], typeof group === "string" ? group : null); });
+  ipcMain.handle("od:authenticator:remove", async (event, ids: unknown) => { requireMainWindowSender(event); return authenticatorHost.remove(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : []); });
+  ipcMain.handle("od:authenticator:history-list", async (event, filter: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyList(filter as never); });
+  ipcMain.handle("od:authenticator:history-diff", async (event, id: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyDiff(typeof id === "string" ? id : ""); });
+  ipcMain.handle("od:authenticator:history-restore", async (event, id: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyRestore(typeof id === "string" ? id : ""); });
+  ipcMain.handle("od:authenticator:history-retention", async (event, retention: unknown) => { requireMainWindowSender(event); return authenticatorHost.historySetRetention(retention as never); });
+  ipcMain.handle("od:authenticator:history-export-redacted", async (event, filter: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyExportRedacted(filter as never); });
+  ipcMain.handle("od:authenticator:history-export-sensitive", async (event, filter: unknown, token: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyExportSensitive(filter as never, typeof token === "string" ? token : ""); });
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);
     return toyLockStore.list();
