@@ -15,15 +15,16 @@
 > captures or receipts exist, and no per-control audit or required matrix row is
 > verified.
 >
-> **Temporary release exception — 2026-08-20.** The repository owner directed
-> the current release to skip its dim-sum photo attachment for now. The workflow
-> records that omission in its warning and release notes and attaches no copied
-> catalog image. Squirrel packaging, unsigned verification, artifact hashes,
-> release targeting and post-publication checks remain mandatory.
+> **Release policy status: 2026-08-20.** A release attempt that lacked the
+> required dim-sum photo attachment was blocked before publication. The workflow
+> records the missing asset and attaches no copied catalog image. Squirrel
+> packaging, unsigned verification, artifact hashes, release targeting and
+> post-publication checks remain mandatory; no exception makes an incomplete
+> release compliant.
 
 > [!IMPORTANT]
 > **Release-shutdown checkpoint — 2026-08-11.** The local `main` and `origin/main` now match
-> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). The working tree is 🧹 and the
+> [`e99f40de`](https://github.com/Ding-Ding-Projects/material-designer/commit/e99f40debb20de1ee7029e5c3106bf50e23489db). The working tree is clean and the
 > pure port verifier has a recorded zero-gap result. Exact-SHA Verify
 > [`31480515255`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515255)
 > and Pages [`31480515281`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31480515281)
@@ -36,10 +37,9 @@
 > path, moving active workflows to a pinned hosted Windows runner, removing
 > test/lint/typecheck/static checks from Actions, and adding release provenance
 > and artifact evidence. A fresh set of installed-build screenshots is now
-> recorded below for the historical local portable artifact. The current
-> owner-authorized release temporarily skips the contradictory dim-sum photo
-> attachment and records that omission explicitly instead of copying a catalog
-> image into this repository's release.
+> recorded below for the historical local portable artifact. The missing
+> required dim-sum photo remains a release blocker, and no release is described
+> as complete until that asset and the other release evidence are present.
 
 ## Build and installer scripts
 
@@ -141,11 +141,12 @@ where clipping appears first; that is why the capture set covers it.</sub>
 > [31186802470](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/31186802470)
 > remains queued; no new Squirrel release is claimed.
 >
-> The Cantonese locale, both tone sliders, the regex builder, the command palette,
-> the changelog viewer, the startup surprise, tab pinning, the notification centre,
-> the destructive-action gate, bulk actions, the appearance editor and the narrator
-> are **in the application**, not only on the site. An earlier version of this note
-> said otherwise and was months behind the tree.
+> The source tree contains work for the Cantonese locale, both tone sliders, the
+> regex builder, the command palette, the changelog viewer, the startup surprise,
+> tab pinning, the notification centre, the destructive-action gate, bulk actions,
+> the appearance editor and the narrator. Complete built-artifact interaction and
+> capture evidence for every one is not established by this note, so the status
+> below does not claim that all of them are shipped or verified.
 >
 > **The honest gap is no longer "is it built" but "has anyone looked".** One capture
 > has been reviewed — the one above — and reviewing it caught the window chrome
@@ -865,6 +866,146 @@ forbids. Those gaps are recorded rather than papered over.
 
 </details>
 
+### Current contract addendum, 2026-08-27
+
+The sixteen baseline standards above remain active. This addendum records the newer
+project-applicable contracts so that this public mirror does not stop at the older summary.
+It is a requirements record, not a claim that every item is already implemented. The
+status section and linked feature documentation remain the authority for observed results.
+
+#### Provenance, inventories, and evidence
+
+- Every user-facing application and every page shows its running version and the exact
+  updated-at local date and time, including seconds and timezone, on its initial screen
+  before navigation, settings, About, or authentication. Both values come from provenance
+  bound to the built artifact, not launch time, file timestamps, or hand-entered labels.
+  Missing or invalid provenance is shown as unavailable. Each surface inventory, focused
+  test, built-artifact interaction, front-screen capture, and negative regression covers
+  the value and its provenance boundary.
+- Every canonical feature has a hand-written per-surface completeness inventory linking
+  implementation, documentation article, localized copy, persistence, focused tests,
+  built-artifact interaction proof, and real capture evidence. The inventory includes the
+  app, every screen, panel, dialog, editor, and the documentation site independently.
+  A negative regression removes one implementation, registration, article, localized
+  string, test, interaction proof, or capture record at a time, proves red, restores it,
+  and proves green using exact identifiers rather than descendant selectors or substrings.
+- Every release-grade shutdown pass generates or refreshes one project-specific operational
+  skill describing the real build, packaging, complete UI drive, per-click capture, evidence,
+  verification, release, and recovery routes. The skill is validated with the skill-creator
+  workflow, its exact currentness is recorded, and any private workflow data stays outside
+  this public repository.
+- A complete built-artifact drive retains one real screenshot after every click, menu action,
+  keyboard action, dialog transition, recovery state, and visible failure. The interaction
+  ledger records the pre-action state, target and accessible name, input method, expected
+  transition, post-action semantic state, screenshot path and hash, source commit, artifact
+  hash, viewport, scale, theme, and privacy result. A final gallery, sampled actions, mock,
+  source preview, or filename-only manifest is not evidence.
+- The project's status surface is live, interactive, keyboard and touch accessible, and
+  shows current state, last update, baseline, lanes, evidence, and next gates. It is updated
+  before chat when available, and a local fallback says plainly when no delivery channel is
+  connected. Every status includes a factual emoji beside its state and never upgrades a
+  pending or failed result.
+
+#### Search, menus, appearance, and locks
+
+- Every user-facing app and page has its own local search field on every page, panel, list,
+  table, grid, tab group, settings surface, properties panel, appearance editor, notification
+  centre, history view, dropdown, picker, and right-click menu. Each field is plain-text-first
+  and has its own adjacent anchored regex builder with isolated query, pattern, flags,
+  validation, history, and saved snippets.
+- The regex builder is a super-advanced construction, explanation, testing, profiling, and
+  debugging workbench. It covers supported literals, escapes, Unicode points, classes,
+  intersections and subtraction, anchors, named and numbered groups, non-capturing and
+  atomic groups, alternation, greedy, lazy and possessive quantifiers, lookaround,
+  backreferences, conditionals, subroutines, inline modifiers, replacements, and
+  engine-specific syntax. It shows the engine and dialect, version, flags, capability matrix,
+  compatibility warnings, parse tree, token annotations, live matches and capture tables,
+  replacement preview, test cases, snippets, import/export, navigation, zero-width handling,
+  timing, backtracking risk, adversarial warnings, and bounded tracing where supported.
+  Unsupported constructs remain visible with an exact capability reason.
+- Every rendered element, state, and pseudo-state has a target-specific right-click menu plus
+  keyboard and touch equivalents. The menu carries real actions, Edit appearance, Lock this
+  element, its own local search, its own adjacent regex builder, and displayed shortcuts that
+  actually work in that context. Short menus and small elements receive no exemption.
+- Every element has a persisted anchored appearance editor covering all states. The editor
+  combines Adobe Photoshop-level layered, non-destructive image editing with Microsoft Word
+  typography: ordered layers and groups, masks, selections, channels, adjustments, effects,
+  fills, strokes, shadows, glows, transforms, crop and focal controls, filters, paths,
+  shape corners, state overrides, zoom, rulers, guides, alignment, installed and bundled
+  fonts, variable axes, text effects, spacing, line height, direction, and accessible
+  contrast. Every property is undoable, resettable, exportable, and visible in a capability
+  matrix. Unsupported properties remain visible with the exact platform reason.
+- Every color control uses a continuous picker plus numeric entry and a bidirectional
+  translator for named colors, HEX and HEX8, RGB and RGBA, HSL and HSLA, HSV or HSB, HWB,
+  Lab and LCH, OKLab and OKLCH, and CMYK. Alpha, gamut, clipping, contrast, recent colors,
+  swatches, presets, import, export, and copy are included without replacing the continuous
+  control. Pickers theme themselves and their own surrounding chrome.
+- Every element has an independently configured toy lock. A locked element is genuinely
+  disabled, including shortcuts and programmatic activation, while its operable wrapper
+  opens the exact anchored authentication prompt. The six policies are PIN, password, PIN
+  plus password, password plus TOTP, PIN plus TOTP, and password plus PIN plus TOTP. PIN
+  offers both an access-control-style keypad and manual entry through one validator and
+  attempt budget. Credentials stay in the operating-system vault, and the user-facing
+  recovery route is Support Tickets, which opens the local application-data folder without
+  deleting anything. Lock configuration is local history, not credential data.
+- Authenticator pairing renders a local QR for an `otpauth://totp/` URI beside copyable
+  manual base32 and exact parameters, confirms one current code before arming, and makes no
+  network request. Each app also ships a local authenticator with URI, image, clipboard,
+  camera, and manual registration paths, live codes, countdown text, next-code preview,
+  searchable entries, RFC 6238 vectors, clock-skew reporting, vault-only storage, and
+  ordinary exports that explicitly state that secrets were omitted.
+- Any surface that can lock a user out provides the unlock ladder: a four-choice dish round,
+  ten easy sums after five wrong dishes, whack-a-mole after one wrong sum, then the clock.
+  It clears only the wait, never credentials or session state, consumes a bounded budget,
+  uses server-side single-use nonces, grades each timed action once, starts after the dish
+  round in School mode, and falls through to the clock honestly.
+
+#### Guided local tools and external surfaces
+
+- Every user-facing app and page has first-class app-logo customization with shipped presets,
+  local custom upload, bounded local conversion, crop and fit choices, focal point, safe area,
+  background treatment, previews at every consumed display size, persistence, reset, and
+  honest conversion-loss and failure states. A custom mark never changes stable package or
+  data identity.
+- Every user-facing app and page has a local file converter with categorized searchable
+  adapters for Documents/PDF, Images, Audio, Video, Archives, Structured Data/Spreadsheets,
+  Code/Text, and Binary Encodings. It lists unavailable formats with exact reasons, uses
+  bundled offline adapters only, detects bounded bytes, validates outputs after atomic writes,
+  supports PDF inspection and edits, batch progress, cancellation, resume, crash recovery,
+  storage preflight, and constant-memory queues. Lossy changes are disclosed before action.
+- Every user-facing app and page independently has a local Ollama suite manager. Its Model
+  Store exhaustively records official models and every published tag at each verified refresh,
+  preserves source identity and staleness, reconciles installed state, and works offline from
+  the last verified catalog. Each variant receives an evidence-backed Runs well, Runs with
+  limits, Unlikely, or Unknown verdict. Batch pulls have progress and partial outcomes, chat
+  has streaming and local history, attachments are capability-gated, and harness launch uses
+  allowlisted pickers, previews, snapshots, restore, and rollback rather than arbitrary shell.
+- The documentation site is a full user-facing surface, not an exemption. It carries local
+  per-visitor state, bundled assets, offline documentation, the same searches, tabs, editors,
+  locks, authenticator, converter, Ollama manager, status, notifications, exports, and
+  accessibility rules as the app. It states that it is not the primary runtime or a playable
+  substitute. It is responsive from about 320 pixels, has no sideways body scroll, keeps wide
+  content in its own scroller, and verifies touch layouts in both orientations.
+- Every GUI app bundles its offline documentation browser and validates that every article on
+  disk is present in the build. Every release has a real product-specific social preview,
+  Open Graph metadata, a committed short screen recording, immutable installer links, a
+  unique dim sum code name when a published catalog image exists, and a CI-produced line-count
+  table with source, tests, markup, generated, vendored, total, non-blank, and surviving-line
+  authorship rows. Root `build.bat`, `build-installer.bat`, and dependency-fetch scripts are
+  touchless, silent-capable, idempotent, and verify unsigned Squirrel.Windows output.
+
+#### Public mirror privacy guard
+
+This repository never carries the private vocabulary list. A maintainer may supply the private
+source to [`scripts/verify-public-mirror-privacy.ps1`](scripts/verify-public-mirror-privacy.ps1)
+outside the checkout; the script scans only `AGENTS.md` and `README.md`, does not print matched
+values, allows the sole public product term, and skips dictionary matching for an outsider with
+no private source. Run
+`pwsh -NoProfile -File scripts/verify-public-mirror-privacy.ps1 -SelfTest` to prove the guard
+turns red when a temporary forbidden sentinel is injected and green after it is removed. Run
+the normal command with `-VocabularySource <path>` for a real mirror check. The self-test is
+the required exact negative red/green proof, and a missing mirror file remains a failure.
+
 ### Provenance and licence
 
 <details>
@@ -932,13 +1073,12 @@ Its Install page links one specific published build — the immutable release-as
 named tag, never a "latest" redirect — so the checksum shown beside it describes exactly the
 file the button hands you.
 
-That caveat used to continue: the Cantonese locale, the tone sliders, the regex builder,
-the startup surprise and the changelog viewer were demonstrated on the site and absent from
-the application. **They are in the application now**, along with the command palette, tab
-pinning, the notification centre, the destructive-action gate, bulk actions, the appearance
-editor and the narrator. [`docs/standards/`](docs/standards/) records the honest position
-for each — and the position that matters is no longer *built or not built* but *seen or not
-seen*: almost none of it has been operated by a human at any display scale but the default.
+The source tree contains work for the Cantonese locale, the tone sliders, the regex builder,
+the startup surprise, the changelog viewer, the command palette, tab pinning, the notification
+centre, the destructive-action gate, bulk actions, the appearance editor and the narrator.
+[`docs/standards/`](docs/standards/) records the honest position for each. A source change is
+not the same as a complete built-artifact interaction, capture, or release verification, and
+almost none of the full surface matrix has been operated at a display scale beyond the default.
 
 ---
 

@@ -45,6 +45,18 @@ version section when a release carries them.
 
 ### Changed
 
+- **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
+  `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
+  current surface contracts and the exact local red-then-green privacy proof.
+  The source review is complete, while hosted verification remains pending.
+  The integration commit link will be added when this Unreleased entry lands.
+
+  **Public-safe instruction mirror 同 privacy guard 一齊更新。** `AGENTS.md`、
+  `README.md` 同 `scripts/verify-public-mirror-privacy.ps1` 而家記錄晒最新
+  surface contract，同埋先轉紅再還原轉綠嘅 privacy proof。Source review 已經
+  完成，但 hosted verification 仲要等；呢段 Unreleased entry 整合落去時，
+  會補返 integration commit link。
+
 - **Windows Squirrel packaging again refuses executable signing and rcedit
   mutation at the producer.** Release
   [`32831335767`](https://github.com/Ding-Ding-Projects/material-designer/actions/runs/32831335767)
