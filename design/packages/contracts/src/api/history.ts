@@ -138,6 +138,25 @@ export interface HistoryListResponse {
   retention: HistoryRetentionPolicy;
 }
 
+/** Redacted acknowledgement sent by appearance settings after a local edit. */
+export interface HistoryMutationRequest {
+  /** Stable history domain slug, never a filesystem path. */
+  domainId: string;
+  /** Stable element or property id, never a filesystem path or style payload. */
+  targetId: string;
+  /** Human-readable bounded action name, for example "updated". */
+  action: string;
+  /** Client-generated idempotency key for this mutation acknowledgement. */
+  revisionId: string;
+}
+
+export interface HistoryMutationResponse {
+  acknowledged: true;
+  duplicate: boolean;
+  /** The newly appended local history revision id. */
+  historyRevisionId: string;
+}
+
 export interface HistoryRevisionResponse {
   revision: HistoryRevision;
   /** Present only when the request asked for one entry's stored bytes. */

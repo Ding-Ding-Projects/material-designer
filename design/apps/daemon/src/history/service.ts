@@ -28,6 +28,8 @@ import type {
   HistoryDomainInfo,
   HistoryListQuery,
   HistoryListResponse,
+  HistoryMutationRequest,
+  HistoryMutationResponse,
   HistoryPruneRequest,
   HistoryPruneResponse,
   HistoryRestoreRequest,
@@ -82,6 +84,8 @@ export interface RecordMutationInput {
    */
   label?: string;
 }
+
+const MUTATION_ACK_LIMIT = 256;
 
 function normalizePolicy(value: unknown): HistoryRetentionPolicy {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return EMPTY_RETENTION;
@@ -138,6 +142,10 @@ export class HistoryService {
   private timer: NodeJS.Timeout | null = null;
 
   private pendingLabels: string[] = [];
+
+  /** Bounded in-process idempotency receipts for appearance acknowledgements. */
+  private readonly mutationAcknowledgements = new Map<string, string>();
+  private readonly mutationAcknowledgementInflight = new Map<string, Promise<string>>();
 
   private queue: Promise<void> = Promise.resolve();
 
@@ -244,6 +252,62 @@ export class HistoryService {
     }
     this.enqueue(() => this.captureNow());
     await this.queue;
+  }
+
+  /**
+   * Append a redacted acknowledgement for an appearance mutation. The target
+   * identity and client revision are used only as bounded idempotency data;
+   * neither style values nor credentials enter the history snapshot.
+   */
+  async acknowledgeMutation(
+    input: HistoryMutationRequest,
+  ): Promise<HistoryMutationResponse> {
+    const key = `${input.domainId}\u0000${input.targetId}\u0000${input.action}\u0000${input.revisionId}`;
+    const existing = this.mutationAcknowledgements.get(key);
+    if (existing) return { acknowledged: true, duplicate: true, historyRevisionId: existing };
+    const inflight = this.mutationAcknowledgementInflight.get(key);
+    if (inflight) {
+      return { acknowledged: true, duplicate: true, historyRevisionId: await inflight };
+    }
+    const work = this.runExclusive(async () => {
+      const persisted = (await this.store.listRevisions()).find(
+        (revision) => revision.domainIds.includes(input.domainId)
+          && revision.details.includes(`Appearance ${input.action} [${input.revisionId}]`),
+      );
+      if (persisted) return { historyRevisionId: persisted.id, duplicate: true };
+      if (this.timer) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
+      const pendingLabels = this.pendingLabels;
+      this.pendingLabels = [];
+      const result = await this.store.appendMetadataEvent({
+        kind: 'mutation',
+        label: `Appearance ${input.action} [${input.revisionId}]`,
+        domainId: input.domainId,
+      });
+      if (pendingLabels.length > 0) {
+        this.pendingLabels.push(...pendingLabels);
+        this.recordMutation();
+      }
+      return { historyRevisionId: result.id, duplicate: false };
+    });
+    const inflightId = work.then((result) => result.historyRevisionId);
+    this.mutationAcknowledgementInflight.set(key, inflightId);
+    let result: { historyRevisionId: string; duplicate: boolean };
+    try {
+      result = await work;
+    } finally {
+      this.mutationAcknowledgementInflight.delete(key);
+    }
+    const historyRevisionId = result.historyRevisionId;
+    this.mutationAcknowledgements.set(key, historyRevisionId);
+    while (this.mutationAcknowledgements.size > MUTATION_ACK_LIMIT) {
+      const oldest = this.mutationAcknowledgements.keys().next().value;
+      if (typeof oldest !== 'string') break;
+      this.mutationAcknowledgements.delete(oldest);
+    }
+    return { acknowledged: true, duplicate: result.duplicate, historyRevisionId };
   }
 
   private async captureNow(): Promise<void> {

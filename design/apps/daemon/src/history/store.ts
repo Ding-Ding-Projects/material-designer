@@ -113,6 +113,12 @@ export interface CaptureResult {
   revision: HistoryRevision | null;
 }
 
+export interface MetadataEventOptions {
+  kind?: HistoryRevisionKind;
+  label: string;
+  domainId: string;
+}
+
 export interface RestoreOptions {
   domainIds?: string[];
   label?: string;
@@ -381,6 +387,18 @@ export class HistoryStore {
 
     const summary = await this.commit(commitOptions);
     return { committed: true, revision: { ...summary, changes } };
+  }
+
+  /** Append a redacted event without mirroring any live source bytes. */
+  async appendMetadataEvent(options: MetadataEventOptions): Promise<HistoryRevisionSummary> {
+    await this.ensureRepo();
+    return this.commit({
+      kind: options.kind ?? 'mutation',
+      labels: [options.label],
+      changeCount: 0,
+      domainIds: [options.domainId],
+      allowEmpty: true,
+    });
   }
 
   /**
