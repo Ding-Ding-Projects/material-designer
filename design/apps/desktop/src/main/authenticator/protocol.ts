@@ -17,7 +17,7 @@ export type OtpParameters = {
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 const BASE32_LOOKUP = new Map([...BASE32_ALPHABET].map((character, index) => [character, index]));
 const MAX_SECRET_BYTES = 128;
-const MAX_URI_BYTES = 106;
+const MAX_URI_BYTES = 134;
 const MAX_PERIOD_SECONDS = 86_400;
 
 export function decodeBase32(value: string): Uint8Array {
@@ -160,60 +160,68 @@ export function clockSkewWarning(localNowMs: number, trustedNowMs: number, toler
   return Math.abs(drift) > toleranceMs ? `Clock differs from the trusted reference by ${Math.round(drift / 1000)} seconds.` : null;
 }
 
-export type QrMatrix = { version: 5; size: 37; modules: readonly (readonly boolean[])[] };
+export type QrMatrix = { version: 5 | 6; size: 37 | 41; modules: readonly (readonly boolean[])[] };
 
 // The QR route is deliberately local and deterministic. It is byte-mode QR version 5-L,
 // enough for the bounded otpauth URI above, and does not call a web service or write an image.
 export function encodeLocalQr(payload: string): QrMatrix {
   const bytes = new TextEncoder().encode(payload);
-  if (bytes.length > 106) throw new Error("QR payload exceeds the local byte bound.");
-  const size = 37;
+  const version = bytes.length <= 106 ? 5 : bytes.length <= 134 ? 6 : null;
+  if (!version) throw new Error("QR payload exceeds the local bounded capacity.");
+  const size = 4 * version + 17;
   const modules = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
   const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
   const mark = (x: number, y: number, value = false) => { if (x >= 0 && y >= 0 && x < size && y < size) { reserved[y][x] = true; modules[y][x] = value; } };
   const finder = (left: number, top: number) => { for (let y = -1; y <= 7; y++) for (let x = -1; x <= 7; x++) { const on = x >= 0 && x <= 6 && y >= 0 && y <= 6 && (x === 0 || x === 6 || y === 0 || y === 6 || (x >= 2 && x <= 4 && y >= 2 && y <= 4)); mark(left + x, top + y, on); } };
   finder(0, 0); finder(size - 7, 0); finder(0, size - 7);
   for (let i = 8; i < size - 8; i++) { mark(i, 6, i % 2 === 0); mark(6, i, i % 2 === 0); }
-  for (let y = 28; y <= 32; y++) for (let x = 28; x <= 32; x++) mark(x, y, Math.max(Math.abs(x - 30), Math.abs(y - 30)) !== 1);
+  const alignment = version === 5 ? [6, 30] : [6, 34];
+  for (const y of alignment) for (const x of alignment) {
+    if ((x <= 8 && y <= 8) || (x >= size - 9 && y <= 8) || (x <= 8 && y >= size - 9)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) mark(x + dx, y + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  }
   for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
   for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
   mark(8, size - 8, true);
   const bitStream: number[] = [];
   const pushBits = (value: number, count: number) => { for (let bit = count - 1; bit >= 0; bit--) bitStream.push((value >>> bit) & 1); };
   pushBits(0b0100, 4); pushBits(bytes.length, 8); for (const byte of bytes) pushBits(byte, 8);
-  while (bitStream.length < 108 * 8 && bitStream.length % 8 !== 0) bitStream.push(0);
+  const dataCodewords = version === 5 ? 108 : 136;
+  while (bitStream.length < dataCodewords * 8 && bitStream.length % 8 !== 0) bitStream.push(0);
   const data: number[] = [];
   for (let i = 0; i < bitStream.length; i += 8) data.push(bitStream.slice(i, i + 8).reduce((value, bit) => (value << 1) | bit, 0));
-  const pads = [0xec, 0x11]; let padIndex = 0; while (data.length < 108) data.push(pads[padIndex++ % 2]);
+  const pads = [0xec, 0x11]; let padIndex = 0; while (data.length < dataCodewords) data.push(pads[padIndex++ % 2]);
   const gfMultiply = (a: number, b: number) => { let result = 0; let left = a; let right = b; while (right) { if (right & 1) result ^= left; left = (left << 1) ^ ((left & 0x80) ? 0x11d : 0); right >>>= 1; } return result & 0xff; };
   const gfPow = (base: number, exponent: number) => { let result = 1; for (let i = 0; i < exponent; i++) result = gfMultiply(result, base); return result; };
-  const generator: number[] = [1]; for (let i = 0; i < 26; i++) { const next = Array(generator.length + 1).fill(0); const root = gfPow(2, i); for (let j = 0; j < generator.length; j++) { next[j] ^= generator[j]; next[j + 1] ^= gfMultiply(generator[j], root); } generator.splice(0, generator.length, ...next); }
-  const ecc = Array(26).fill(0); for (const byte of data) { const factor = byte ^ ecc[0]; ecc.shift(); ecc.push(0); for (let j = 0; j < ecc.length; j++) ecc[j] ^= gfMultiply(generator[j + 1] ?? 0, factor); }
-  const codewords = data.concat(ecc); const bits = codewords.flatMap((byte) => Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1));
+  const blockData = version === 5 ? [data] : [data.slice(0, 68), data.slice(68)]; const eccPerBlock = version === 5 ? 26 : 18;
+  const generator: number[] = [1]; for (let i = 0; i < eccPerBlock; i++) { const next = Array(generator.length + 1).fill(0); const root = gfPow(2, i); for (let j = 0; j < generator.length; j++) { next[j] ^= generator[j]; next[j + 1] ^= gfMultiply(generator[j], root); } generator.splice(0, generator.length, ...next); }
+  const blockEcc = blockData.map((block) => { const ecc = Array(eccPerBlock).fill(0); for (const byte of block) { const factor = byte ^ ecc[0]; ecc.shift(); ecc.push(0); for (let j = 0; j < ecc.length; j++) ecc[j] ^= gfMultiply(generator[j + 1] ?? 0, factor); } return ecc; });
+  const codewords: number[] = []; for (let index = 0; index < Math.max(...blockData.map((block) => block.length)); index++) for (const block of blockData) if (block[index] !== undefined) codewords.push(block[index]!); for (let index = 0; index < eccPerBlock; index++) for (const ecc of blockEcc) codewords.push(ecc[index]!);
+  const bits = codewords.flatMap((byte) => Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1));
   let bitIndex = 0; let upward = true;
   for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) { const raw = bits[bitIndex++] ?? 0; modules[y][x] = Boolean(raw ^ ((x + y) % 2 === 0)); } } upward = !upward; }
   const formatData = (0b01 << 3) | 0; let format = formatData << 10; let remainder = format; for (let bit = 14; bit >= 10; bit--) if ((remainder >>> bit) & 1) remainder ^= 0x537 << (bit - 10); format = (format | remainder) ^ 0x5412;
   for (let i = 0; i < 15; i++) { const value = Boolean((format >>> i) & 1); if (i < 6) modules[i][8] = value; else if (i < 8) modules[i + 1][8] = value; else modules[size - 15 + i][8] = value; if (i < 8) modules[8][size - i - 1] = value; else if (i < 9) modules[8][15 - i] = value; else modules[8][15 - i - 1] = value; }
-  return { version: 5, size, modules: modules.map((row) => Object.freeze(row.slice())) };
+  return { version, size, modules: modules.map((row) => Object.freeze(row.slice())) };
 }
 
 export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]): string {
-  const rows = "modules" in matrix ? matrix.modules : matrix;
-  if (rows.length !== 37 || rows.some((row) => row.length !== 37)) throw new Error("The local QR decoder accepts only a version 5 matrix.");
-  const reserved = Array.from({ length: 37 }, () => Array<boolean>(37).fill(false));
-  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < 37 && y < 37) reserved[y][x] = true; };
+  const rows = "modules" in matrix ? matrix.modules : matrix; const version = rows.length === 37 ? 5 : rows.length === 41 ? 6 : null;
+  if (!version || rows.some((row) => row.length !== rows.length)) throw new Error("The local QR decoder accepts only bounded version 5 or 6 matrices.");
+  const size = rows.length; const reserved = Array.from({ length: size }, () => Array<boolean>(size).fill(false));
+  const mark = (x: number, y: number) => { if (x >= 0 && y >= 0 && x < size && y < size) reserved[y][x] = true; };
   const reserveFinder = (left: number, top: number) => { for (let y = -1; y <= 7; y++) for (let x = -1; x <= 7; x++) mark(left + x, top + y); };
-  reserveFinder(0, 0); reserveFinder(30, 0); reserveFinder(0, 30);
-  for (let i = 8; i < 29; i++) { mark(i, 6); mark(6, i); }
-  for (let y = 28; y <= 32; y++) for (let x = 28; x <= 32; x++) mark(x, y);
+  reserveFinder(0, 0); reserveFinder(size - 7, 0); reserveFinder(0, size - 7);
+  for (let i = 8; i < size - 8; i++) { mark(i, 6); mark(6, i); }
+  const alignment = version === 5 ? [6, 30] : [6, 34]; for (const y of alignment) for (const x of alignment) { if ((x <= 8 && y <= 8) || (x >= size - 9 && y <= 8) || (x <= 8 && y >= size - 9)) continue; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) mark(x + dx, y + dy); }
   for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
-  for (let i = 0; i < 8; i++) { mark(36 - i, 8); mark(8, 36 - i); }
-  mark(8, 29);
+  for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
+  mark(8, size - 8);
   const bits: number[] = []; let upward = true;
-  for (let right = 36; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < 37; offset++) { const y = upward ? 36 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(rows[y][x]) ^ ((x + y) % 2 === 0))); } upward = !upward; }
+  for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(rows[y][x]) ^ ((x + y) % 2 === 0))); } upward = !upward; }
   if (bits.length < 12 || bits.slice(0, 4).join("") !== "0100") throw new Error("The local QR matrix has an unsupported mode.");
   const read = (start: number, count: number) => bits.slice(start, start + count).reduce((value, bit) => (value << 1) | bit, 0);
-  const length = read(4, 8); if (length > 106 || 12 + length * 8 > bits.length) throw new Error("The local QR matrix payload length is invalid.");
+  const length = read(4, 8); const capacity = version === 5 ? 106 : 134; if (length > capacity || 12 + length * 8 > bits.length) throw new Error("The local QR matrix payload length is invalid.");
   const bytes = Array.from({ length }, (_, index) => read(12 + index * 8, 8));
   try { return new TextDecoder("utf-8", { fatal: true }).decode(Uint8Array.from(bytes)); } catch { throw new Error("The local QR matrix payload is not valid UTF-8."); }
 }

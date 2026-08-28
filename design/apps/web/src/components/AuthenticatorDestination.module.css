@@ -26,9 +26,17 @@
 .filePicker { min-height: 48px; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 12px; }
 .filePicker input { max-width: 100%; }
 .disclosure { margin: 0; color: var(--md-sys-color-on-surface-variant, #44474f); }
+.qrPreview { display: grid; width: min(280px, 100%); aspect-ratio: 1; padding: 18px; gap: 0; background: #fff; border: 1px solid var(--md-sys-color-outline, #77777f); image-rendering: pixelated; }
+.qrOn { background: #000; }
+.qrOff { background: #fff; }
 .historyFilters { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(130px, 1fr)); gap: 12px; align-items: end; }
+.historyUnlock { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.historyUnlock label { display: grid; gap: 8px; font-weight: 600; }
+.historyUnlock input { min-height: 48px; padding: 10px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 10px; font: inherit; }
 .historyFilters label { display: grid; gap: 8px; font-weight: 600; }
 .historyFilters input, .historyFilters select { min-height: 48px; box-sizing: border-box; padding: 10px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 10px; background: var(--md-sys-color-surface, white); color: inherit; font: inherit; }
 .historyActions { display: flex; flex-wrap: wrap; gap: 10px; }
 .historyActions button { min-height: 48px; padding: 10px 14px; border: 1px solid var(--md-sys-color-outline, #77777f); border-radius: 24px; background: var(--md-sys-color-surface-container, #f0f0f7); color: inherit; }
+.historyRecord { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 10px 12px; border: 1px solid var(--md-sys-color-outline-variant, #c6c6ce); border-radius: 12px; }
+.historyRecord span { display: grid; gap: 4px; }
 @media (max-width: 700px) { .surface { padding: 18px; } .header { display: grid; } .registrationGrid { grid-template-columns: 1fr; } .entry { grid-template-columns: 1fr; } .entry strong { justify-self: start; } }

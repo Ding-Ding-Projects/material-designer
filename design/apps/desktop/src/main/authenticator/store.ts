@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { encodeBase32, type OtpParameters } from "./protocol.js";
 
+const MAX_ENTRIES = 1000;
+
 export type AuthenticatorEntry = {
   id: string;
   issuer: string;
@@ -43,6 +45,7 @@ export type AuthenticatorStoreOptions = {
 
 function cloneEntry(entry: AuthenticatorEntry): AuthenticatorEntry { return { ...entry }; }
 function safeEntries(entries: AuthenticatorEntry[]): AuthenticatorEntry[] {
+  if (!Array.isArray(entries) || entries.length > MAX_ENTRIES) throw new Error("Authenticator metadata exceeds the bounded entry count.");
   const seen = new Set<string>();
   return entries.map((entry, index) => {
     if (!entry.id || entry.id.length > 128 || seen.has(entry.id) || !Number.isSafeInteger(entry.order) || entry.order < 0
@@ -70,33 +73,35 @@ export class AuthenticatorStore {
   }
 
   list(query = ""): AuthenticatorEntry[] {
+    if (query.length > 256) throw new Error("Authenticator search query exceeds the bounded length.");
     const needle = query.trim().toLocaleLowerCase();
-    return this.#entries.filter((entry) => !needle || `${entry.issuer} ${entry.account} ${entry.group ?? ""}`.toLocaleLowerCase().includes(needle)).sort((a, b) => a.order - b.order).map(cloneEntry);
+    return this.#entries.filter((entry) => !needle || `${entry.issuer} ${entry.account} ${entry.group ?? ""}`.toLocaleLowerCase().includes(needle)).sort((a, b) => a.order - b.order).slice(0, MAX_ENTRIES).map(cloneEntry);
   }
 
   async add(parameters: OtpParameters, group: string | null = null): Promise<AuthenticatorEntry> {
     const id = this.#id();
     const entry: AuthenticatorEntry = { id, issuer: parameters.issuer, account: parameters.account, algorithm: parameters.algorithm, digits: parameters.digits, period: parameters.period, group, order: this.#entries.length };
     await this.#vault.put(`authenticator:${id}`, parameters.secret);
-    this.#entries = [...this.#entries, entry]; await this.#persist("created", entry); return cloneEntry(entry);
+    const previous = this.#entries; this.#entries = [...this.#entries, entry];
+    try { await this.#persist("created", entry); return cloneEntry(entry); } catch (error) { this.#entries = previous; try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* preserve the original persistence failure */ } try { await this.#vault.delete(`authenticator:${id}`); } catch { /* preserve the original persistence failure */ } throw error; }
   }
 
   async secret(id: string): Promise<Uint8Array> { const secret = await this.#vault.get(`authenticator:${id}`); if (!secret) throw new Error("The authenticator secret is unavailable in the operating-system vault."); return secret; }
 
   async reorder(ids: readonly string[]): Promise<void> {
-    const selected = new Set(ids); if (selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id))) throw new Error("Reorder contains an unknown or duplicate entry.");
+    const selected = new Set(ids); if (ids.length > 1000 || selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id))) throw new Error("Reorder contains an unknown or duplicate entry.");
     const moved = ids.map((id) => this.#entries.find((entry) => entry.id === id)!); const rest = this.#entries.filter((entry) => !selected.has(entry.id)); this.#entries = [...moved, ...rest].map((entry, order) => ({ ...entry, order })); await this.#persist("reordered", this.#entries);
   }
 
   async setGroup(ids: readonly string[], group: string | null): Promise<void> {
-    const selected = new Set(ids); if (selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id))) throw new Error("Group action contains an unknown or duplicate entry.");
+    const selected = new Set(ids); if (ids.length > 1000 || selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id)) || (group !== null && (group.length > 256 || group.trim().length === 0))) throw new Error("Group action contains an unknown or duplicate entry.");
     this.#entries = this.#entries.map((entry) => selected.has(entry.id) ? { ...entry, group } : entry); await this.#persist("group changed", { ids: [...ids], group });
   }
 
   async remove(ids: readonly string[]): Promise<void> {
-    const selected = new Set(ids); if (selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id))) throw new Error("Remove contains an unknown or duplicate entry.");
-    for (const id of selected) await this.#vault.delete(`authenticator:${id}`);
-    this.#entries = this.#entries.filter((entry) => !selected.has(entry.id)).map((entry, order) => ({ ...entry, order })); await this.#persist("deleted", { ids: [...ids] });
+    const selected = new Set(ids); if (ids.length > 1000 || selected.size !== ids.length || ids.some((id) => !this.#entries.some((entry) => entry.id === id))) throw new Error("Remove contains an unknown or duplicate entry.");
+    const previous = this.#entries; this.#entries = this.#entries.filter((entry) => !selected.has(entry.id)).map((entry, order) => ({ ...entry, order }));
+    try { await this.#persist("deleted", { ids: [...ids] }); for (const id of selected) await this.#vault.delete(`authenticator:${id}`); } catch (error) { this.#entries = previous; try { await this.#metadata.write(previous.map(cloneEntry)); } catch { /* preserve the original persistence failure */ } throw error; }
   }
 
   exportPublic(): { version: 1; secretsOmitted: true; entries: AuthenticatorEntry[] } { return { version: 1, secretsOmitted: true, entries: this.list() }; }

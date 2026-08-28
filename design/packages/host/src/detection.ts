@@ -68,10 +68,12 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
       || !hasFunction(authenticator, "list")
       || !hasFunction(authenticator, "view")
       || !hasFunction(authenticator, "register")
+      || !hasFunction(authenticator, "qrFor")
       || !hasFunction(authenticator, "reorder")
       || !hasFunction(authenticator, "setGroup")
       || !hasFunction(authenticator, "remove")
       || !hasFunction(authenticator, "historyList")
+      || !hasFunction(authenticator, "historyUnlock")
       || !hasFunction(authenticator, "historyDiff")
       || !hasFunction(authenticator, "historyRestore")
       || !hasFunction(authenticator, "historySetRetention")
@@ -80,6 +82,8 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
   ) {
     return false;
   }
+  const unlockLadder = value.unlockLadder;
+  if (unlockLadder != null && (!isRecord(unlockLadder) || !hasFunction(unlockLadder, "record") || !hasFunction(unlockLadder, "state") || !hasFunction(unlockLadder, "issue") || !hasFunction(unlockLadder, "submit"))) return false;
 
   const shell = value.shell;
   if (!isRecord(shell) || !hasFunction(shell, "openExternal") || !hasFunction(shell, "openPath")) return false;

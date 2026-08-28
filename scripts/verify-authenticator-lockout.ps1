@@ -71,8 +71,12 @@ Require $vault 'encryptString' 'platform vault encryption'
 Require $vault 'The operating-system credential vault is unavailable.' 'honest vault-unavailable state'
 Require $authHost 'class DesktopAuthenticatorHost' 'typed desktop authenticator host'
 Require $authHost 'historyExportSensitive' 'protected sensitive history export'
+Require $authHost 'historyUnlock' 'protected history unlock'
+Require $authHost 'Removing authenticator entries requires the in-app super confirmation.' 'destructive removal confirmation'
 Require $hostProtocol 'export type OpenDesignHostAuthenticator' 'typed authenticator host bridge'
 Require $hostDetection 'hasFunction(authenticator, "historyExportSensitive")' 'bridge method detection'
+Require $hostDetection 'hasFunction(authenticator, "qrFor")' 'QR bridge method detection'
+Require $hostDetection 'hasFunction(unlockLadder, "submit")' 'unlock ladder bridge detection'
 Require $ladder 'const MAX_LADDER_USES = 3' 'rolling ladder budget'
 Require $ladder 'this.#nonceIndex.delete(nonce)' 'single-use nonce consumption'
 Require $ladder 'code: "early-submit"' 'early mole-submit refusal'
@@ -89,14 +93,17 @@ Require $ui 'Credential vault: unavailable' 'visible vault unavailable copy'
 Require $ui 'Copy current code' 'current-code copy action'
 Require $ui 'Group selected' 'group bulk action'
 Require $ui 'Reorder selected' 'reorder bulk action'
-Require $ui 'bridge.list(query)' 'renderer list bridge consumption'
+Require $ui 'bridge.list(listQuery)' 'renderer list bridge consumption'
 Require $ui 'bridge.register(input)' 'renderer registration bridge consumption'
+Require $ui 'bridge.qrFor' 'renderer QR pairing bridge consumption'
 Require $ui 'bridge.register({ kind: ''qr-clipboard''' 'renderer clipboard bridge consumption'
 Require $ui 'bridge.setGroup' 'renderer group bridge consumption'
 Require $ui 'bridge.reorder' 'renderer reorder bridge consumption'
 Require $ui 'bridge.remove' 'renderer remove bridge consumption'
 Require $ui 'historySearch' 'isolated history search controller'
+Require $ui "import { useI18n } from '../i18n';" 'valid React and i18n imports'
 Require $ui 'bridge.historyList' 'renderer history list consumption'
+Require $ui 'bridge.historyUnlock' 'renderer history unlock consumption'
 Require $ui 'bridge.historyDiff' 'renderer history diff consumption'
 Require $ui 'bridge.historyRestore' 'renderer history restore consumption'
 Require $ui 'bridge.historySetRetention' 'renderer history retention consumption'
@@ -109,6 +116,8 @@ Require $app 'AuthenticatorDestination' 'App destination mount'
 Require $runtime 'new DesktopAuthenticatorHost' 'runtime vault adapter consumption'
 Require $runtime 'od:authenticator:vault-status' 'vault status bridge'
 Require $preload 'authenticatorVaultStatus' 'renderer vault status bridge'
+Require $preload 'const unlockLadder' 'renderer unlock ladder bridge'
+Require $runtime 'od:unlock-ladder:submit' 'runtime unlock ladder bridge'
 
 if ($SelfTest) {
   $broken = $ladder.Replace('const MAX_LADDER_USES = 3', 'const MAX_LADDER_USES = 4')
@@ -152,10 +161,10 @@ if ($SelfTest) {
   $restoredBridge = $brokenBridge.Replace('hasFunction(authenticator, "historyExportSensitive_REMOVED")', 'hasFunction(authenticator, "historyExportSensitive")')
   if (-not $restoredBridge.Contains('hasFunction(authenticator, "historyExportSensitive")')) { throw 'Negative regression did not return green for bridge method detection.' }
 
-  $brokenConsumer = $ui.Replace('bridge.list(query)', 'bridge.list_REMOVED(query)')
-  if ($brokenConsumer.Contains('bridge.list(query)')) { throw 'Negative regression did not turn red for renderer bridge consumption.' }
-  $restoredConsumer = $brokenConsumer.Replace('bridge.list_REMOVED(query)', 'bridge.list(query)')
-  if (-not $restoredConsumer.Contains('bridge.list(query)')) { throw 'Negative regression did not return green for renderer bridge consumption.' }
+  $brokenConsumer = $ui.Replace('bridge.list(listQuery)', 'bridge.list_REMOVED(listQuery)')
+  if ($brokenConsumer.Contains('bridge.list(listQuery)')) { throw 'Negative regression did not turn red for renderer bridge consumption.' }
+  $restoredConsumer = $brokenConsumer.Replace('bridge.list_REMOVED(listQuery)', 'bridge.list(listQuery)')
+  if (-not $restoredConsumer.Contains('bridge.list(listQuery)')) { throw 'Negative regression did not return green for renderer bridge consumption.' }
 }
 
 Write-Output 'PASS: authenticator and unlock-ladder source contracts'

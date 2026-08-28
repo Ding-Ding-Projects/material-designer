@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { useEffect, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 import type { OpenDesignHostAuthenticator } from '@open-design/host';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { RegexSearchField } from './regex/RegexSearchField';
@@ -7,6 +7,21 @@ import styles from './AuthenticatorDestination.module.css';
 
 type AuthenticatorTab = 'codes' | 'register' | 'history';
 type Entry = { id: string; issuer: string; account: string; group: string; code: string; nextCode: string; remaining: number };
+type HistoryRecord = { id: string; action: string; createdAt: string; summary: string };
+
+type LocalBarcode = { rawValue?: string };
+type LocalBarcodeDetector = { detect(source: ImageBitmap | HTMLVideoElement): Promise<LocalBarcode[]> };
+type LocalBarcodeDetectorConstructor = new (options?: { formats?: string[] }) => LocalBarcodeDetector;
+
+function localBarcodeDetector(): LocalBarcodeDetector | null {
+  const candidate = (globalThis as typeof globalThis & { BarcodeDetector?: LocalBarcodeDetectorConstructor }).BarcodeDetector;
+  try { return candidate ? new candidate({ formats: ['qr_code'] }) : null; } catch { return null; }
+}
+
+async function decodeLocalQrBlob(blob: Blob): Promise<string> {
+  const detector = localBarcodeDetector(); if (!detector || typeof createImageBitmap !== 'function') throw new Error('This computer has no local QR image decoder.');
+  const bitmap = await createImageBitmap(blob); try { const [result] = await detector.detect(bitmap); if (!result?.rawValue) throw new Error('The selected image has no readable QR payload.'); return result.rawValue; } finally { bitmap.close(); }
+}
 
 declare global {
   interface Window { __od__?: { authenticator?: OpenDesignHostAuthenticator }; }
@@ -22,14 +37,17 @@ export function AuthenticatorDestination() {
   const [entries, setEntries] = useState<Entry[]>(EMPTY_ENTRIES);
   const [query, setQuery] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
+  const [historyPassword, setHistoryPassword] = useState('');
+  const [historyUnlocked, setHistoryUnlocked] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<HistoryRecord[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [vaultAvailable, setVaultAvailable] = useState<boolean | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [qrFileValue, setQrFileValue] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState('General');
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [registration, setRegistration] = useState({ uri: '', issuer: '', account: '', secretBase32: '', algorithm: 'SHA-1' as const, digits: 6 as const, period: 30, confirmationCode: '' });
+  const [qrPreview, setQrPreview] = useState<{ size: 37 | 41; modules: readonly (readonly boolean[])[] } | null>(null);
   const search = useRegexSearch(query, setQuery);
   const historySearch = useRegexSearch(historyQuery, setHistoryQuery);
   const bridge = typeof window !== 'undefined' ? window.__od__?.authenticator : undefined;
@@ -37,21 +55,33 @@ export function AuthenticatorDestination() {
   const bilingual = languageMode === 'bilingual';
   const text = (english: string, chinese: string) => bilingual ? `${english} · ${chinese}` : cantonese ? chinese : english;
   const filtered = useMemo(() => entries.filter((entry) => search.matches(`${entry.issuer} ${entry.account} ${entry.group}`)), [entries, search.matches]);
+  const listQuery = search.mode === 'regex' ? '' : query;
   useEffect(() => {
     if (!bridge) { setEntries([]); return; }
     let active = true;
-    void bridge.list(query).then(async (result) => {
+    void bridge.list(listQuery).then(async (result) => {
       if (!result.ok) { if (active) setNotice(result.reason); return; }
       const views = await Promise.all(result.entries.map(async (entry) => bridge.view(entry.id)));
       if (!active) return;
       setEntries(views.flatMap((view) => view.ok ? [{ id: view.entry.id, issuer: view.entry.issuer, account: view.entry.account, group: view.entry.group ?? '', code: view.entry.currentCode, nextCode: view.entry.nextCode, remaining: view.entry.secondsRemaining }] : []));
     }).catch(() => { if (active) setNotice(text('Authenticator entries could not be loaded.', '驗證器項目未能載入。')); });
     return () => { active = false; };
-  }, [bridge, query, refreshRevision]);
+  }, [bridge, listQuery, refreshRevision]);
   useEffect(() => {
-    if (tab !== 'history' || !bridge) return;
-    void bridge.historyList({ query: historyQuery }).then((result) => { if (!result.ok) setNotice(result.reason); }).catch(() => setNotice(text('Protected history could not be loaded.', '受保護歷史未能載入。')));
-  }, [bridge, historyQuery, tab]);
+    if (!bridge) return;
+    const timer = window.setInterval(() => {
+      void bridge.list(listQuery).then(async (result) => {
+        if (!result.ok) return;
+        const views = await Promise.all(result.entries.map(async (entry) => bridge.view(entry.id)));
+        setEntries(views.flatMap((view) => view.ok ? [{ id: view.entry.id, issuer: view.entry.issuer, account: view.entry.account, group: view.entry.group ?? '', code: view.entry.currentCode, nextCode: view.entry.nextCode, remaining: view.entry.secondsRemaining }] : []));
+      }).catch(() => undefined);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [bridge, listQuery]);
+  useEffect(() => {
+    if (tab !== 'history' || !bridge || !historyUnlocked) return;
+    void bridge.historyList({ query: historyQuery }).then((result) => { if (!result.ok) setNotice(result.reason); else setHistoryRecords(result.records); }).catch(() => setNotice(text('Protected history could not be loaded.', '受保護歷史未能載入。')));
+  }, [bridge, historyQuery, historyUnlocked, tab]);
   useEffect(() => {
     let active = true;
     const probe = window.openDesignDesktop?.authenticatorVaultStatus;
@@ -72,16 +102,14 @@ export function AuthenticatorDestination() {
       ? await bridge.setGroup(selectedIds, selectedGroup)
       : action === 'reorder'
         ? await bridge.reorder(selectedIds)
-        : await bridge.remove(selectedIds);
+        : await bridge.remove(selectedIds, '');
     setNotice(result.ok ? text('Authenticator list updated locally.', '驗證器清單已喺本機更新。') : result.reason);
     if (result.ok) { setSelectedIds([]); setRefreshRevision((current) => current + 1); }
   };
   const submitRegistration = async (event: FormEvent) => {
     event.preventDefault();
     if (!bridge) { setNotice(text('The desktop authenticator bridge is unavailable.', '桌面驗證器橋接未能使用。')); return; }
-    const input = qrFileValue
-      ? { kind: 'qr-image' as const, value: qrFileValue, confirmationCode: registration.confirmationCode }
-      : registration.uri.trim()
+    const input = registration.uri.trim()
       ? { kind: 'otpauth-uri' as const, value: registration.uri.trim(), confirmationCode: registration.confirmationCode }
       : { kind: 'manual' as const, issuer: registration.issuer.trim(), account: registration.account.trim(), secretBase32: registration.secretBase32.trim(), algorithm: registration.algorithm, digits: registration.digits, period: registration.period, confirmationCode: registration.confirmationCode };
     const result = await bridge.register(input);
@@ -90,7 +118,22 @@ export function AuthenticatorDestination() {
   };
   const importClipboardQr = async () => {
     if (!bridge) { setNotice(text('The desktop authenticator bridge is unavailable.', '桌面驗證器橋接未能使用。')); return; }
-    try { const value = await navigator.clipboard.readText(); const result = await bridge.register({ kind: 'qr-clipboard', value, confirmationCode: registration.confirmationCode }); setNotice(result.ok ? text('Authenticator entry armed locally.', '驗證器項目已喺本機啟用。') : result.reason); } catch { setNotice(text('Clipboard QR reading is unavailable on this computer.', '呢部電腦未能讀取剪貼簿 QR。')); }
+    try {
+      if (navigator.clipboard.read) {
+        for (const item of await navigator.clipboard.read()) for (const type of item.types) if (type.startsWith('image/')) { const uri = await decodeLocalQrBlob(await item.getType(type)); setRegistration((current) => ({ ...current, uri })); setNotice(text('Clipboard QR decoded locally. Confirm the current code to arm it.', '剪貼簿 QR 已喺本機解碼，請確認當前碼先啟用。')); return; }
+      }
+      const value = await navigator.clipboard.readText(); const result = await bridge.register({ kind: 'qr-clipboard', value, confirmationCode: registration.confirmationCode }); setNotice(result.ok ? text('Authenticator entry armed locally.', '驗證器項目已喺本機啟用。') : result.reason);
+    } catch { setNotice(text('Clipboard QR reading is unavailable on this computer.', '呢部電腦未能讀取剪貼簿 QR。')); }
+  };
+  const importCameraQr = async () => {
+    if (!bridge || !navigator.mediaDevices?.getUserMedia) { setNotice(text('Camera QR capture is unavailable on this computer.', '呢部電腦未能使用鏡頭 QR 擷取。')); return; }
+    const detector = localBarcodeDetector(); if (!detector) { setNotice(text('This computer has no local camera QR decoder.', '呢部電腦未有本機鏡頭 QR 解碼器。')); return; }
+    let stream: MediaStream | null = null; try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false }); const video = document.createElement('video'); video.srcObject = stream; await video.play(); const deadline = Date.now() + 3_000; while (Date.now() < deadline) { const [result] = await detector.detect(video); if (result?.rawValue) { setRegistration((current) => ({ ...current, uri: result.rawValue ?? '' })); setNotice(text('Camera QR decoded locally. Confirm the current code to arm it.', '鏡頭 QR 已喺本機解碼，請確認當前碼先啟用。')); return; } await new Promise((resolve) => setTimeout(resolve, 100)); } throw new Error('No QR payload was found before the bounded camera scan ended.'); } catch { setNotice(text('Camera QR capture could not read a local payload.', '鏡頭 QR 擷取未能讀取本機資料。')); } finally { stream?.getTracks().forEach((track) => track.stop()); }
+  };
+  const generateQrPreview = async () => {
+    if (!bridge) { setNotice(text('The desktop authenticator bridge is unavailable.', '桌面驗證器橋接未能使用。')); return; }
+    const result = await bridge.qrFor({ issuer: registration.issuer.trim(), account: registration.account.trim(), secretBase32: registration.secretBase32.trim(), algorithm: registration.algorithm, digits: registration.digits, period: registration.period });
+    if (result.ok) { setQrPreview({ size: result.size, modules: result.modules }); setNotice(text('Local QR preview generated. Confirm the current code before arming.', '本機 QR 預覽已生成，啟用前請確認當前碼。')); } else setNotice(result.reason);
   };
   const runHistoryAction = async (action: 'diff' | 'restore' | 'retention' | 'redacted' | 'sensitive') => {
     if (!bridge) { setNotice(text('The protected history bridge is unavailable.', '受保護歷史橋接未能使用。')); return; }
@@ -104,6 +147,12 @@ export function AuthenticatorDestination() {
             ? await bridge.historyExportRedacted({ query: historyQuery })
             : await bridge.historyExportSensitive({ query: historyQuery }, '');
     if (!result.ok) setNotice(result.reason); else setNotice(text('Protected history action completed locally.', '受保護歷史動作已喺本機完成。'));
+  };
+  const unlockHistory = async () => {
+    if (!bridge) { setNotice(text('The protected history bridge is unavailable.', '受保護歷史橋接未能使用。')); return; }
+    const result = await bridge.historyUnlock(historyPassword);
+    setNotice(result.ok ? text('History manager unlocked for this session.', '歷史管理器已為今次工作階段解鎖。') : result.reason);
+    if (result.ok) { setHistoryUnlocked(true); setHistoryPassword(''); }
   };
 
   return (
@@ -141,24 +190,31 @@ export function AuthenticatorDestination() {
             <label>{text('Current code confirmation', '當前驗證碼確認')}<input aria-label={text('Current code confirmation', '當前驗證碼確認')} inputMode="numeric" autoComplete="one-time-code" value={registration.confirmationCode} onChange={(event) => updateRegistration('confirmationCode', event.currentTarget.value)} /></label>
           </div>
           <div className={styles.importActions}>
-            <label className={styles.filePicker}>{text('Choose QR image or JSON file', '選擇 QR 圖片或 JSON 檔案')}<input type="file" accept="image/*,.json" onChange={(event) => { const file = event.currentTarget.files?.[0]; setSelectedFile(file?.name ?? null); if (!file || file.size > 4 * 1024 * 1024) { setQrFileValue(null); if (file) setNotice(text('The selected file exceeds the bounded 4 MB local decoder limit.', '所選檔案超過本機解碼器 4 MB 上限。')); return; } void file.arrayBuffer().then((bytes) => { let binary = ''; for (const byte of new Uint8Array(bytes)) binary += String.fromCharCode(byte); setQrFileValue(btoa(binary)); }).catch(() => setQrFileValue(null)); }} />{selectedFile ? <span role="status">{text(`Selected ${selectedFile}`, `已選擇 ${selectedFile}`)}</span> : null}</label>
+            <button type="button" disabled={!bridge || vaultAvailable !== true} onClick={() => void generateQrPreview()} title={text('Generate a local QR pairing preview from the entered parameters.', '用已輸入參數生成本機 QR 配對預覽。')}>{text('Create local QR preview', '建立本機 QR 預覽')}</button>
+            <label className={styles.filePicker}>{text('Choose QR image or JSON file', '選擇 QR 圖片或 JSON 檔案')}<input type="file" accept="image/*,.json" onChange={(event) => { const file = event.currentTarget.files?.[0]; setSelectedFile(file?.name ?? null); if (!file || file.size > 4 * 1024 * 1024) { if (file) setNotice(text('The selected file exceeds the bounded 4 MB local decoder limit.', '所選檔案超過本機解碼器 4 MB 上限。')); return; } void decodeLocalQrBlob(file).then((uri) => { setRegistration((current) => ({ ...current, uri })); setNotice(text('QR image decoded locally. Confirm the current code to arm it.', 'QR 圖片已喺本機解碼，請確認當前碼先啟用。')); }).catch((error) => setNotice(error instanceof Error ? error.message : text('QR image decoding failed.', 'QR 圖片解碼失敗。'))); }} />{selectedFile ? <span role="status">{text(`Selected ${selectedFile}`, `已選擇 ${selectedFile}`)}</span> : null}</label>
             <button type="button" disabled={!bridge} onClick={() => void importClipboardQr()} title={text('Read a local QR payload from the clipboard.', '從剪貼簿讀取本機 QR 資料。')}>{text('Read clipboard QR', '讀取剪貼簿 QR')}</button>
-            <button type="button" disabled={!bridge} title={text('Camera QR capture is unavailable until a local camera decoder is connected.', '本機相機解碼器接通前，鏡頭 QR 擷取未能使用。')} onClick={() => { if (!bridge) return; void bridge.register({ kind: 'camera', confirmationCode: registration.confirmationCode }).then((result) => setNotice(result.ok ? text('Authenticator entry armed locally.', '驗證器項目已喺本機啟用。') : result.reason)); }}>{text('Use camera', '使用鏡頭')}</button>
+            <button type="button" onClick={() => void importCameraQr()} title={text('Use the local camera when this computer provides a QR decoder.', '如果呢部電腦提供 QR 解碼器，就使用本機鏡頭。')}>{text('Use camera', '使用鏡頭')}</button>
             <button type="submit" disabled={vaultAvailable !== true || !bridge} title={vaultAvailable === true ? text('A current code is required before the entry is armed.', '啟用項目前必須確認當前驗證碼。') : text('The desktop credential vault is unavailable.', '桌面憑證保管庫未能使用。')}>{text('Confirm and arm entry', '確認並啟用項目')}</button>
           </div>
+          {qrPreview ? <div className={styles.qrPreview} role="img" aria-label={text('Local QR pairing preview. The encoded URI remains hidden until deliberate reveal.', '本機 QR 配對預覽，編碼 URI 會保持隱藏直到使用者刻意顯示。')} style={{ gridTemplateColumns: `repeat(${qrPreview.size}, minmax(2px, 1fr))` }}>{qrPreview.modules.flatMap((row, y) => row.map((on, x) => <span key={`${x}-${y}`} className={on ? styles.qrOn : styles.qrOff} aria-hidden />))}</div> : null}
           <p className={styles.disclosure}>{text('A current code is required before an entry is armed. The desktop host must provide an operating-system credential vault; no plaintext fallback is available.', '啟用項目前必須確認當前驗證碼。桌面主機必須提供作業系統憑證保管庫，唔會使用明文後備方案。')}</p>
         </form>
       ) : null}
       {tab === 'history' ? (
         <div className={styles.panel} role="tabpanel">
+          <div className={styles.historyUnlock}>
+            <label>{text('History password', '歷史密碼')}<input type="password" value={historyPassword} onChange={(event) => setHistoryPassword(event.currentTarget.value)} autoComplete="current-password" aria-label={text('History password', '歷史密碼')} /></label>
+            <button type="button" disabled={!bridge || historyPassword.length === 0} onClick={() => void unlockHistory()}>{text('Unlock history manager', '解鎖歷史管理器')}</button>
+          </div>
           <div className={styles.historyFilters}>
             <RegexSearchField search={historySearch} fieldLabel={text('Search history', '搜尋歷史')} placeholder={text('Search actions and labels', '搜尋動作同標籤')} ariaLabel={text('Search history', '搜尋歷史')} testId="authenticator-history-search" />
-            <label>{text('From date', '開始日期')}<input type="date" aria-label={text('From date', '開始日期')} disabled title={text('Protected history bridge unavailable.', '受保護歷史橋接未能使用。')} /></label>
-            <label>{text('To date', '結束日期')}<input type="date" aria-label={text('To date', '結束日期')} disabled title={text('Protected history bridge unavailable.', '受保護歷史橋接未能使用。')} /></label>
-            <label>{text('Filter by action', '按動作篩選')}<select aria-label={text('Filter by action', '按動作篩選')} disabled><option>{text('All recorded actions', '所有已記錄動作')}</option><option>created</option><option>updated</option><option>deleted</option><option>restored</option><option>settings changed</option></select></label>
+            <label>{text('From date', '開始日期')}<input type="date" aria-label={text('From date', '開始日期')} disabled={!historyUnlocked} title={text('Unlock history before filtering.', '解鎖歷史先可以篩選。')} /></label>
+            <label>{text('To date', '結束日期')}<input type="date" aria-label={text('To date', '結束日期')} disabled={!historyUnlocked} title={text('Unlock history before filtering.', '解鎖歷史先可以篩選。')} /></label>
+            <label>{text('Filter by action', '按動作篩選')}<select aria-label={text('Filter by action', '按動作篩選')} disabled={!historyUnlocked}><option>{text('All recorded actions', '所有已記錄動作')}</option><option>created</option><option>updated</option><option>deleted</option><option>restored</option><option>settings changed</option></select></label>
           </div>
+          {historyRecords.length > 0 ? <div className={styles.entryList} aria-label={text('History records', '歷史紀錄')}>{historyRecords.map((record) => <label className={styles.historyRecord} key={record.id}><input type="checkbox" checked={selectedIds.includes(record.id)} onChange={(event) => setSelectedIds((current) => event.currentTarget.checked ? [...current, record.id] : current.filter((id) => id !== record.id))} aria-label={record.summary} /><span><strong>{record.summary}</strong><small>{record.action} · {record.createdAt}</small></span></label>)}</div> : null}
           <div className={styles.historyActions} aria-label={text('Protected history actions', '受保護歷史動作')}>
-            {(['diff', 'restore', 'retention', 'redacted', 'sensitive'] as const).map((action) => { const label = action === 'diff' ? 'Inspect diff' : action === 'restore' ? 'Restore revision' : action === 'retention' ? 'Set retention' : action === 'redacted' ? 'Export redacted' : 'Export sensitive'; const chinese = action === 'diff' ? '檢視差異' : action === 'restore' ? '還原修訂' : action === 'retention' ? '設定保留期限' : action === 'redacted' ? '匯出刪減版' : '匯出敏感資料'; return <button key={action} type="button" disabled={!bridge || (action !== 'retention' && selectedIds.length === 0)} onClick={() => void runHistoryAction(action)} title={text('Protected history is unavailable until its password or factor is verified.', '受保護歷史要先驗證密碼或驗證因素先可以使用。')}>{text(label, chinese)}</button>; })}
+            {(['diff', 'restore', 'retention', 'redacted', 'sensitive'] as const).map((action) => { const label = action === 'diff' ? 'Inspect diff' : action === 'restore' ? 'Restore revision' : action === 'retention' ? 'Set retention' : action === 'redacted' ? 'Export redacted' : 'Export sensitive'; const chinese = action === 'diff' ? '檢視差異' : action === 'restore' ? '還原修訂' : action === 'retention' ? '設定保留期限' : action === 'redacted' ? '匯出刪減版' : '匯出敏感資料'; return <button key={action} type="button" disabled={!bridge || !historyUnlocked || (action !== 'retention' && selectedIds.length === 0)} onClick={() => void runHistoryAction(action)} title={text('Protected history is unavailable until its password or factor is verified.', '受保護歷史要先驗證密碼或驗證因素先可以使用。')}>{text(label, chinese)}</button>; })}
           </div>
           <div className={styles.empty}><strong>{text('History manager is protected', '歷史管理器受保護')}</strong><span>{text('The desktop host must unlock this manager before date, action, text, diff, restore, retention, and export controls can operate. Sensitive export always requires the real in-app super confirmation.', '桌面主機解鎖後，日期、動作、文字、差異、還原、保留期限同匯出控制先可以操作。敏感資料匯出永遠需要應用程式內真正嘅超級確認。')}</span><button type="button" disabled title={text('Protected history bridge unavailable.', '受保護歷史橋接未能使用。')}>{text('Unlock history manager', '解鎖歷史管理器')}</button></div>
         </div>

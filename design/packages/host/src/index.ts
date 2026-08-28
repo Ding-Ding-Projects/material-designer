@@ -90,10 +90,12 @@ export type {
   OpenDesignAuthenticatorEntry,
   OpenDesignAuthenticatorView,
   OpenDesignAuthenticatorRegistration,
+  OpenDesignAuthenticatorQrRequest,
   OpenDesignAuthenticatorResult,
   OpenDesignAuthenticatorHistoryFilter,
   OpenDesignAuthenticatorHistoryRecord,
   OpenDesignHostAuthenticator,
+  OpenDesignHostUnlockLadder,
   OpenDesignHostBridge,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";

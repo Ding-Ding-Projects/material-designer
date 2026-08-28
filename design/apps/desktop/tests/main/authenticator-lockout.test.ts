@@ -16,6 +16,7 @@ describe("local authenticator protocol", () => {
     const parameters = { issuer: "E", account: "a", secret: decodeBase32("JBSWY3DPEHPK3PXP"), algorithm: "SHA-1" as const, digits: 6 as const, period: 30 };
     const uri = buildOtpauthUri(parameters); expect(uri.startsWith("otpauth://totp/")).toBe(true); expect(parseOtpauthUri(uri)).toMatchObject({ issuer: parameters.issuer, account: parameters.account, algorithm: "SHA-1", digits: 6, period: 30 });
     const matrix = encodeLocalQr(uri); expect(matrix.modules).toHaveLength(37); expect(decodeLocalQr(matrix)).toBe(uri);
+    const longer = `${uri}&label=${'x'.repeat(36)}`; const largerMatrix = encodeLocalQr(longer); expect(largerMatrix.version).toBe(6); expect(decodeLocalQr(largerMatrix)).toBe(longer);
   });
 
   test("matches RFC 6238 SHA-1, SHA-256, and SHA-512 vectors", () => {
