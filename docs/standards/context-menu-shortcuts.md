@@ -20,6 +20,9 @@ an operable wrapper for locked dropdown triggers. Its active result scrolls into
 view and its overlay recomputes against small viewport changes. Lifecycle receipts
 use explicit `requested`, `opened`, `completed`, or `cancelled` phases, and
 malformed or mismatched receipts are refused before focus or action state changes.
+The primitives forward each stable `fieldId` to the regex workbench. They do not
+maintain a second snippet or search-history store, so field persistence remains
+owned by that workbench lane.
 
 The 2026-08-06 audit fixed the context
 menu's concrete clipping and dismissal defects: long bilingual labels wrap, and
