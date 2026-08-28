@@ -1,5 +1,11 @@
 # Tabbed navigation
 
+**Site-shell implementation status:** the static documentation surface now owns
+recoverable closed tabs, persisted groups, four-edge docking, four independent
+discovery fields, and previewed inverse bulk-close actions in
+`site/assets/js/tabs.js` and `site/assets/js/site-shell.js`. Built-artifact drive
+and capture receipts remain pending until the final packaged candidate exists.
+
 **Status: partial in code.** The settings dialog now has a real 17-section tab
 strip with a viewport-bounded above/below overflow surface, local search and an
 anchored regex builder
@@ -112,22 +118,22 @@ longest.
 
 | Requirement | Status |
 | --- | --- |
-| Browser-style tab strip | **Designed, not built.** |
+| Browser-style tab strip | **Implemented in the site shell.** The base strip has overflow, reordering, pinning, persistent docking and recoverable closed tabs. |
 | Per-tab close, add button, active-tab lift | Designed. |
 | Inline rename | Designed (double-click). |
 | Per-tab title styling | **Partially designed** — bold/italic/underline, one family button, one size button, two alignments, one colour. Far short of the typography depth the appearance standard requires. |
-| Overflow surface | **Absent from design and code.** Tabs are capped at a maximum width and would clip. |
-| Reordering | **Absent.** |
-| Pinning | **Absent.** |
-| Grouping | **Absent.** |
-| Search: current strip | **Absent.** |
-| Search: within a group | **Absent.** |
-| Search: for groups | **Absent.** |
-| Search: master across all windows | **Absent.** |
-| Close tabs containing text | **Absent.** |
-| Close tabs not containing text | **Absent.** |
-| Persistence of order, pins, groups, collapsed state | **Absent.** |
-| Tabs on the landing page and documentation site | **Absent.** |
+| Overflow surface | **Implemented in the site shell.** Hidden tabs remain in the searchable and reopenable inventory. |
+| Reordering | **Implemented** by drag and keyboard within a group. |
+| Pinning | **Implemented** from the context menu, keyboard path and searchable list. |
+| Grouping | **Implemented** with persistent names, membership and collapse state. |
+| Search: current strip | **Implemented** with an independent anchored builder. |
+| Search: within a group | **Implemented** with an independent anchored builder. |
+| Search: for groups | **Implemented** with an independent anchored builder. |
+| Search: master across all windows | **Implemented** for every open tab owned by this site strip, with a documented single-strip boundary. |
+| Close tabs containing text | **Implemented** with preview, pinned exclusion and reopen recovery. |
+| Close tabs not containing text | **Implemented** as the inverse of the same bounded predicate. |
+| Persistence of order, pins, groups, collapsed state | **Implemented** in the tab controller's versioned local record. |
+| Tabs on the landing page and documentation site | **Implemented** by the static documentation site shell. |
 
 <details>
 <summary><b>What the mockup does specify</b> — the strip's exact anatomy</summary>
@@ -228,7 +234,7 @@ See [regex-builder.md](regex-builder.md).
 
 ## Verification
 
-**Nothing to verify yet.** Conformance requires all of:
+**Source wiring is present, but built-artifact evidence is still pending.** Conformance requires all of:
 
 - [ ] an overflow surface appearing when tabs exceed the strip, with **no** tab
       unreachable at any width
@@ -258,6 +264,8 @@ See [regex-builder.md](regex-builder.md).
 - [ ] validated at the narrowest supported width, at 100/125/150/200% display
       scale, and in bilingual mode
 - [ ] the same tab system on the landing page and the documentation site
+- [ ] the site-shell red-then-green contract self-test has been exercised in the built surface
+- [ ] every listed site-shell action has a retained inspected capture and interaction receipt
 
 The partition test is the one worth writing first. It is a single property —
 `containing(q) ∪ notContaining(q) = all` and their intersection is empty — and it

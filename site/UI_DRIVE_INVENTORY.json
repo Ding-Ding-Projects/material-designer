@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "surface": "documentation-site",
+  "artifact": "pending-final-packaged-commit",
+  "captureMethod": "cheap Lowlevel headless route",
+  "privacy": "Each capture must be inspected before promotion and must contain no private user data.",
+  "actions": [
+    { "id": "front-provenance", "route": "front screen before navigation", "expected": "version and updated-at are factual or explicitly unavailable", "state": "pending" },
+    { "id": "tab-dock-left", "route": "tab strip dock picker", "expected": "left is the default and remains keyboard reachable", "state": "pending" },
+    { "id": "tab-dock-four-edges", "route": "tab strip dock picker", "expected": "left, right, top and bottom reposition without clipping", "state": "pending" },
+    { "id": "tab-overflow", "route": "tab strip overflow", "expected": "hidden tabs remain searchable and reopenable", "state": "pending" },
+    { "id": "tab-reorder-pin", "route": "tab strip and tab list", "expected": "drag, keyboard reorder and pin state persist", "state": "pending" },
+    { "id": "tab-groups", "route": "tab groups manager", "expected": "create, assign, collapse, expand and reopen preserve group state", "state": "pending" },
+    { "id": "tab-search-four-scopes", "route": "tab discovery", "expected": "four independent fields each open its own regex builder", "state": "pending" },
+    { "id": "bulk-close-preview", "route": "bulk close", "expected": "containing and inverse previews share one bounded predicate and exclude pinned tabs by default", "state": "pending" },
+    { "id": "settings-tabs", "route": "Settings", "expected": "five settings sections are browser-style tabs with per-tab search", "state": "pending" },
+    { "id": "universal-context-menu", "route": "any page element", "expected": "searchable context actions expose appearance and lock seams", "state": "pending" },
+    { "id": "dropdown-search", "route": "any native select", "expected": "each picker has isolated filtering and regex builder", "state": "pending" },
+    { "id": "command-palette", "route": "header palette", "expected": "Ctrl+Shift+F opens the palette and Ctrl+K does not", "state": "pending" },
+    { "id": "responsive-narrow", "route": "320px and touch layout", "expected": "tabs, popovers, builders and settings reflow without horizontal body scroll", "state": "pending" }
+  ]
+}

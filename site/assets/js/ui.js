@@ -8,7 +8,7 @@
  *
  *   1. Toasts             — a non-blocking corner stack.
  *   2. Notification centre — the reviewable history of every toast raised.
- *   3. Command palette     — Ctrl/Cmd+K over every command, setting and page.
+ *   3. Command palette     — Ctrl+Shift+F over every command, setting and page.
  *   4. Dim sum surprise    — a 1-in-10 draw on load, from the bundled catalogue.
  *
  * NOTHING here is modal except the command palette, which is modal because the
@@ -30,7 +30,7 @@
  *   * It asks i18n for three tiny things only — the language mode, the two tone
  *     levels, and a change subscription — and probes several plausible function
  *     names for each. If none is found it falls back to `<html>` data
- *     attributes, then to English at level 3.
+ *     attributes, then to English at level 5.
  *   * It carries its OWN copy for the strings it owns (see UI_STRINGS below),
  *     in English and Cantonese at five tone levels, so the interaction layer
  *     reads correctly even standalone. It registers that catalogue with i18n
@@ -76,6 +76,7 @@
  */
 
 import * as i18n from './i18n.js';
+import * as regex from './regex.js';
 
 export const version = '1.0.0';
 
@@ -210,7 +211,7 @@ function langMode() {
   return 'en';
 }
 
-/** 1..5 for one language. Defaults to 3 — playful but still buttoned-up. */
+/** 1..5 for one language. Defaults to 5, the site's maximum playful setting. */
 function toneLevel(lang) {
   const raw =
     probe(['getFunny', 'getFunnyLevel', 'getTone', 'getToneLevel', 'getLevel'], lang) ??
@@ -347,6 +348,8 @@ export const UI_STRINGS = {
   'ui.palette.section.pages': { en: 'Pages', yue: '頁面' },
   'ui.palette.open': { en: 'Open command palette', yue: '打開指令面板' },
   'ui.palette.results': { en: '{n} results', yue: '{n} 個結果' },
+  'ui.palette.regex': { en: 'Use a regular expression', yue: '用正規表達式' },
+  'ui.palette.builder': { en: 'Open the pattern builder', yue: '打開 pattern 產生器' },
 
   /* --- Toast chrome ------------------------------------------------------- */
   'ui.toast.dismiss': { en: 'Dismiss', yue: '閂咗佢' },
@@ -1675,6 +1678,7 @@ let paletteInput = null;
 let paletteList = null;
 let paletteRows = [];
 let paletteActive = 0;
+let paletteRegexController = null;
 let paletteMode = store.get('palette.mode', 'card') === 'full' ? 'full' : 'card';
 
 function setPaletteMode(mode) {
@@ -1728,11 +1732,30 @@ function openPalette(opener) {
   });
   paletteInput.addEventListener('input', () => renderPalette());
 
+  const regexMode = el('button', {
+    type: 'button', class: 'md-ui-iconbtn', text: '.*',
+    'aria-label': text('ui.palette.regex'), 'aria-pressed': 'false',
+  });
+  const regexBuilder = el('button', {
+    type: 'button', class: 'md-ui-iconbtn', text: '⌘',
+    'aria-label': text('ui.palette.builder'), 'aria-haspopup': 'dialog',
+    'aria-expanded': 'false',
+  });
+  try {
+    paletteRegexController = regex.attachRegexBuilder(paletteInput, {
+      key: 'ui.palette.search', trigger: regexBuilder, modeToggle: regexMode,
+      dialect: 'ECMAScript (JavaScript RegExp)', onChange: () => renderPalette(),
+    });
+  } catch (error) {
+    paletteRegexController = null;
+    console.warn('[ui] palette regex builder failed to attach', error);
+  }
+
   const sizeBtn = el('button', { type: 'button', class: 'md-ui-iconbtn', dataset: { paletteSize: 'true' } });
   paintSizeButton(sizeBtn);
   sizeBtn.addEventListener('click', () => setPaletteMode(paletteMode === 'card' ? 'full' : 'card'));
 
-  const search = el('div', { class: 'md-palette__search' }, [icon('search', 22), paletteInput, sizeBtn]);
+  const search = el('div', { class: 'md-palette__search' }, [icon('search', 22), paletteInput, regexMode, regexBuilder, sizeBtn]);
   paletteList = el('ul', { class: 'md-palette__list', id: listId, role: 'listbox', 'aria-label': text('ui.palette.title') });
 
   const foot = el('div', { class: 'md-palette__foot' }, [
@@ -1757,6 +1780,8 @@ function closePalette() {
   paletteInput = null;
   paletteList = null;
   paletteRows = [];
+  paletteRegexController?.destroy?.();
+  paletteRegexController = null;
   paletteActive = 0;
   if (paletteOpener?.isConnected) paletteOpener.focus();
   paletteOpener = null;
@@ -1765,12 +1790,27 @@ function closePalette() {
 
 const SECTION_ORDER = ['ui.palette.section.commands', 'ui.palette.section.settings', 'ui.palette.section.pages'];
 
+function paletteRegexScore(entry, query) {
+  if (!paletteRegexController || paletteRegexController.getState().mode !== 'regex') return scoreEntry(entry, query);
+  const state = paletteRegexController.getState();
+  const matcher = paletteRegexController.matcher();
+  matcher.reset?.();
+  if (!state.valid || !matcher.isUsable()) return -1;
+  const haystack = [
+    titleIn(entry.title, 'en'),
+    titleIn(entry.title, 'yue'),
+    [].concat(entry.keywords || []).join(' '),
+    text(entry.section || ''),
+  ].join(' ');
+  return matcher(haystack) ? 1 : -1;
+}
+
 function renderPalette() {
   if (!paletteList) return;
   const query = paletteInput.value.trim();
 
   const scored = allEntries()
-    .map((entry) => ({ entry, score: scoreEntry(entry, query) }))
+    .map((entry) => ({ entry, score: paletteRegexScore(entry, query) }))
     .filter((row) => row.score >= 0);
 
   // No query: keep the registration/discovery order, grouped by section, so the
@@ -2203,13 +2243,15 @@ export function init() {
     }
   });
 
-  // Ctrl/Cmd+K anywhere. Captured so a focused text field cannot swallow it.
+  // Ctrl+Shift+F is the one global palette shortcut. Captured so a focused
+  // text field cannot swallow it. Ctrl+K is deliberately not a competing
+  // default.
   document.addEventListener(
     'keydown',
     (event) => {
       // `event.key` is absent on some synthetic events; guard rather than throw
       // inside a capture-phase listener bound to the whole document.
-      if ((event.ctrlKey || event.metaKey) && !event.altKey && String(event.key || '').toLowerCase() === 'k') {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && String(event.key || '').toLowerCase() === 'f') {
         event.preventDefault();
         palette.toggle(document.activeElement);
       }

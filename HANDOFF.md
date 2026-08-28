@@ -1,5 +1,22 @@
 ﻿# Handoff
 
+> [!NOTE]
+> **Documentation-site shell lane, source-only, 2026-08-27.** The static site
+> now has a cross-feature shell in `site/assets/js/site-shell.js` and
+> `site/assets/js/site-shell-contract.js`. It adds persisted settings tabs,
+> four-edge docking with a left default, groups, reorder and pin state,
+> recoverable closed tabs, four independent tab-discovery searches, previewed
+> inverse bulk-close actions, front-screen provenance fields, searchable
+> context and picker seams, and the `Ctrl+Shift+F` palette shortcut. The
+> hand-written inventories are `site/SITE_SURFACE_INVENTORY.json` and
+> `site/UI_DRIVE_INVENTORY.json`.
+>
+> Source-level `scripts/verify-site-shell.ps1 -SelfTest` is green, including
+> deliberate red mutations. No local Node, package-manager, desktop-runtime,
+> build, TUI, visible UI, or capture command was run. Packaged interaction,
+> per-action capture receipts, and final hosted verification remain open for
+> the owning integration lane.
+
 > [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by

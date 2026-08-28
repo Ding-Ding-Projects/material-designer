@@ -1,5 +1,17 @@
 # Roadmap
 
+- [ ] **Bring the documentation site's cross-feature shell up to the universal
+      surface contract.** The static site now has a hand-written
+      `site/SITE_SURFACE_INVENTORY.json` and `site/UI_DRIVE_INVENTORY.json`, a
+      `site-shell.js` layer for settings tabs, four-edge docking, tab groups,
+      four independent tab searches, recoverable bulk-close previews, front
+      provenance, universal context-menu and picker-search seams, and a
+      Ctrl+Shift+F-only palette. `site-shell-contract.js` provides exact
+      mutation checks and deliberate red-then-green audit entry points.
+      Built-artifact interaction receipts, final captures, and complete deep
+      feature-engine wiring remain open.
+
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

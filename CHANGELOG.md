@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Documentation-site shell
+
+- Added the cross-feature site shell with persisted settings tabs, four-edge
+  docking with a left default, overflow-safe tab grouping, reorder and pin
+  state, recoverable closed tabs, four independent tab-discovery searches, and
+  inverse bulk-close previews.
+- Added a hand-written page and UI-drive inventory plus exact red-then-green
+  contract entry points in `site/SITE_SURFACE_INVENTORY.json`,
+  `site/UI_DRIVE_INVENTORY.json`, and `site/assets/js/site-shell-contract.js`.
+- Added front-screen build provenance fields that show validated version and
+  updated-at values or an explicit unavailable state before navigation.
+- Added target-specific searchable context menus, field-owned regex-builder
+  seams for menus and native pickers, and palette discovery for real controls.
+- Changed the palette shortcut to `Ctrl+Shift+F`; `Ctrl+K` is no longer a
+  competing default. The current site shell is source-complete for this lane,
+  while packaged interaction and capture evidence remain pending.
+
+
 ## 2026-08-21 — Harden desktop project creation
 
 Desktop application creation now claims only a newly empty project directory with

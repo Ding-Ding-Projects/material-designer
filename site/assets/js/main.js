@@ -16,6 +16,8 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import { initSiteShell } from './site-shell.js';
+import { auditSiteShell, selfTestSiteShellContract } from './site-shell-contract.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -314,6 +316,11 @@ function wireContentSearch() {
           if (scroll) scroll.hidden = false;
           tabs.goToTab(hit.tabId);
           requestAnimationFrame(() => {
+            const settingsPanel = hit.node.closest?.('.settings__panel');
+            const settingsId = settingsPanel?.id?.replace(/^settings-panel-/, '');
+            if (settingsId && typeof window.MATERIAL_DESIGNER_SETTINGS_ACTIVATE === 'function') {
+              window.MATERIAL_DESIGNER_SETTINGS_ACTIVATE(settingsId, false);
+            }
             hit.node.scrollIntoView({ behavior: 'smooth', block: 'center' });
             ui.flash(hit.node);
           });
@@ -556,6 +563,17 @@ function start() {
   wireLanguage();
   wireAppearance();
   wireTabs();
+  initSiteShell();
+  if (new URLSearchParams(location.search).has('siteShellAudit')) {
+    const result = auditSiteShell(document);
+    document.documentElement.dataset.siteShellAudit = result.ok ? 'green' : 'red';
+    console.info('[site-shell] audit', result);
+  }
+  if (new URLSearchParams(location.search).has('siteShellSelfTest')) {
+    const result = selfTestSiteShellContract(document);
+    document.documentElement.dataset.siteShellSelfTest = result.ok ? 'green' : 'red';
+    console.info('[site-shell] self-test', result);
+  }
   wireContentSearch();
   wireSettingsSearch();
   wirePalette();

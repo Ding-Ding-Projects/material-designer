@@ -51,7 +51,11 @@ a site nobody previews before publishing.
 | `site/assets/css/app.css` | The component styles, which consume those tokens rather than restating literal values. |
 | `site/assets/js/i18n.js` | Language modes (`en`, `yue`, `bilingual`, bilingual being the default), the two independent 1–5 funny levels, and the string catalogue. Voice changes with the level; facts do not. |
 | `site/assets/js/appearance.js` | Persisted theme, density, seed colour and UI scale, plus the colour translator and its contrast readout. |
-| `site/assets/js/tabs.js` | The tab strip: rendering, reordering, pinning, the overflow surface, the searchable tab list, persistence and the ARIA relationships. |
+| `site/assets/js/tabs.js` | The tab strip: rendering, reordering, pinning, overflow, closed-tab recovery, groups, docking, four discovery scopes, persistence and the ARIA relationships. |
+| `site/assets/js/site-shell.js` | The cross-feature site shell: settings tabs, per-tab searches, universal context and dropdown search seams, front provenance, tab-group controls and bulk-close previews. |
+| `site/assets/js/site-shell-contract.js` | The hand-written site-shell inventory and deliberate red-then-green audit entry point. |
+| `site/SITE_SURFACE_INVENTORY.json` | The explicit page, settings, search, menu and canonical-feature inventory. |
+| `site/UI_DRIVE_INVENTORY.json` | The per-action built-surface drive ledger, retained with honest pending states until captures exist. |
 | `site/assets/js/regex.js` | The pattern builder, mounted as a popover **anchored beside one specific field**, one instance per field. |
 | `site/assets/js/ui.js` | Toasts, the notification centre, the command palette, and the dim sum draw on load. |
 | `site/assets/js/toy-locks.js` | The representative site-local toy lock: exact six-policy registry, protected-action interception, anchored authentication prompt, shared keypad/manual PIN path, browser-local attempt budget, and fail-closed non-extractable TOTP key storage. |
@@ -71,8 +75,7 @@ Recorded here rather than left as a silent gap, as
 
 | Standard | Position on this surface |
 | --- | --- |
-| Tab **grouping** and the two **bulk-close** actions | Not applicable. The site has a fixed set of permanent sections, so there is nothing to group them into, and closing one would make part of the documentation unreachable with no way to reopen it. |
-| Tab-discovery searches **2, 3 and 4** (inside a group, across group names, across every open tab) | Not applicable for the same reason — there are no groups to search inside of and no second window to search across. Search **1**, over the current strip, is required and present. |
+| None of the tab, grouping, discovery, or bulk-close contracts | No exception is claimed. The site keeps permanent sections recoverable through its closed-tab surface, and the shell implements groups, four search scopes, docking and two previewed bulk-close actions. |
 
 Every other standard applies in full and is tracked in that standard's own file.
 

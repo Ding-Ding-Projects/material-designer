@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "surface": "documentation-site",
+  "description": "Hand-written inventory for the static site's cross-feature shell. A pending evidence field is an honest open item, not a passing claim.",
+  "pages": [
+    { "id": "overview", "selector": "[data-tab-panel=overview]", "search": "site-search-input", "capture": "pending" },
+    { "id": "features", "selector": "[data-tab-panel=features]", "search": "site-search-input", "capture": "pending" },
+    { "id": "install", "selector": "[data-tab-panel=install]", "search": "site-search-input", "capture": "pending" },
+    { "id": "releases", "selector": "[data-tab-panel=releases]", "search": "site-search-input", "capture": "pending" },
+    { "id": "building", "selector": "[data-tab-panel=building]", "search": "site-search-input", "capture": "pending" },
+    { "id": "verifying", "selector": "[data-tab-panel=verifying]", "search": "site-search-input", "capture": "pending" },
+    { "id": "standards", "selector": "[data-tab-panel=standards]", "search": "site-search-input", "capture": "pending" },
+    { "id": "docs", "selector": "[data-tab-panel=docs]", "search": "site-search-input", "capture": "pending" },
+    { "id": "provenance", "selector": "[data-tab-panel=provenance]", "search": "site-search-input", "capture": "pending" },
+    { "id": "settings", "selector": "[data-tab-panel=settings]", "search": "settings-search-input", "capture": "pending" }
+  ],
+  "settingsTabs": [
+    { "id": "settings-language", "search": "settings-settings-language-search", "capture": "pending" },
+    { "id": "settings-tone", "search": "settings-settings-tone-search", "capture": "pending" },
+    { "id": "settings-appearance", "search": "settings-settings-appearance-search", "capture": "pending" },
+    { "id": "settings-toy-locks", "search": "settings-settings-toy-locks-search", "capture": "pending" },
+    { "id": "settings-reset", "search": "settings-settings-reset-search", "capture": "pending" }
+  ],
+  "tabDiscovery": [
+    { "id": "strip", "search": "tabs-strip-search", "scope": "current tab strip", "capture": "pending" },
+    { "id": "group-members", "search": "tabs-group-members-search", "scope": "inside each group", "capture": "pending" },
+    { "id": "groups", "search": "tabs-groups-search", "scope": "groups by visible name", "capture": "pending" },
+    { "id": "master", "search": "tabs-master-search", "scope": "all open tabs owned by this page", "capture": "pending" }
+  ],
+  "menus": [
+    { "id": "universal-context", "selector": "document", "actions": ["Edit appearance…", "Lock this element…"], "search": "per-open-instance", "capture": "pending" },
+    { "id": "select-pickers", "selector": "select", "search": "per-select-instance", "capture": "pending" }
+  ],
+  "canonicalFeatures": [
+    "language-modes", "funny-levels", "regex-builder", "appearance", "tabs", "notifications", "command-palette", "provenance", "toy-locks", "support-tickets", "authenticator", "file-converter", "ollama-suite", "exports", "bulk-actions", "local-history", "offline-docs", "app-logo", "automatic-updates", "open-graph", "accessibility", "screen-recording"
+  ]
+}

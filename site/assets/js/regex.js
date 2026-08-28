@@ -138,7 +138,7 @@ const nextId = (prefix) => `${prefix}-${++uid}`;
    one.
    ----------------------------------------------------------------------------- */
 
-const I18N_STATE = { mode: 'en', funny: { en: 3, yue: 3 } };
+const I18N_STATE = { mode: 'en', funny: { en: 5, yue: 5 } };
 
 /** An optional external translator, set by main.js if i18n.js owns the copy. */
 let externalTranslator = null;
@@ -452,7 +452,7 @@ function pickVariant(entry, lang) {
   const value = entry[lang];
   if (value == null) return lang === 'en' ? '' : pickVariant(entry, 'en');
   if (Array.isArray(value)) {
-    const level = clamp(Math.round(I18N_STATE.funny[lang] || 3), 1, 5);
+    const level = clamp(Math.round(I18N_STATE.funny[lang] || 5), 1, 5);
     return value[level - 1] != null ? value[level - 1] : value[value.length - 1];
   }
   return value;
