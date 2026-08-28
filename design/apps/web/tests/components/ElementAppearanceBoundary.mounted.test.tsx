@@ -13,7 +13,7 @@ import {
   resetElementAppearanceStore,
   setElementAppearance,
 } from '../../src/components/appearance/elementAppearance';
-import { publishElementToyLockState, ELEMENT_TOY_LOCK_ACTIVATION } from '../../src/components/appearance/toyLockAdapter';
+import { publishElementToyLockState, ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_CONFIGURATION, requestElementToyLock } from '../../src/components/appearance/toyLockAdapter';
 
 afterEach(() => {
   cleanup();
@@ -95,5 +95,17 @@ describe('ElementAppearanceBoundary mounted behavior', () => {
     expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(activation).toHaveBeenCalledTimes(1);
     window.removeEventListener(ELEMENT_TOY_LOCK_ACTIVATION, activation);
+  });
+
+  it('forwards element lock configuration requests to the toy-lock lane', () => {
+    const { container } = render(<ElementAppearanceBoundary onLockElement={requestElementToyLock}><button type="button" data-testid="lock-config-target">Configure lock</button></ElementAppearanceBoundary>);
+    const button = container.querySelector('[data-testid="lock-config-target"]') as HTMLButtonElement;
+    const configuration = vi.fn();
+    window.addEventListener(ELEMENT_TOY_LOCK_CONFIGURATION, configuration);
+    fireEvent.contextMenu(button, { clientX: 12, clientY: 12 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Lock this element…' }));
+    expect(configuration).toHaveBeenCalledTimes(1);
+    expect(configuration.mock.calls[0]?.[0]?.detail.targetId).toBe('appearance:lock-config-target');
+    window.removeEventListener(ELEMENT_TOY_LOCK_CONFIGURATION, configuration);
   });
 });

@@ -155,6 +155,7 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
   { id: 'multi-state-preview', label: 'Multi-state preview', group: 'state', supported: true },
   { id: 'contrast', label: 'Contrast diagnostics', group: 'diagnostics', supported: true },
   { id: 'regex-property-search', label: 'Property search with regex builder', group: 'diagnostics', supported: true },
+  { id: 'git-backed-history', label: 'Git-backed local history', group: 'diagnostics', supported: false, reason: 'The renderer cannot spawn the host history repository; this lane keeps an append-only local snapshot log until that host service is connected.' },
 ];
 
 const STORAGE_KEY = 'open-design:element-appearance:v1';
@@ -316,6 +317,8 @@ export function clearAppearanceStateFromElement(element: RenderedElement | null)
   delete element.dataset.elementAppearanceRainbow;
   for (const property of ['--element-appearance-text', '--element-appearance-highlight', '--element-appearance-radius', '--element-appearance-elevation']) element.style.removeProperty(property);
   for (const property of ['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line', 'text-transform', 'letter-spacing', 'word-spacing', 'line-height', 'border-radius', 'box-shadow', 'direction', 'text-align', 'opacity', 'mix-blend-mode', 'background', 'border', 'filter', 'transform', '--element-appearance-selections', '--element-appearance-channels', '--element-appearance-masks', '--element-appearance-overrides']) element.style.removeProperty(property);
+  if (element.dataset.elementAppearanceState) (element as HTMLElement).removeAttribute('dir');
+  delete element.dataset.elementAppearanceState;
 }
 
 function cloneAppearance(value: ElementAppearance): ElementAppearance {

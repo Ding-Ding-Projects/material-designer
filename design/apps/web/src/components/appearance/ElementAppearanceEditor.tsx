@@ -78,12 +78,15 @@ function panelPosition(target: RenderedElement | null): CSSProperties {
   if (typeof window === 'undefined') return { left: VIEWPORT_MARGIN, top: VIEWPORT_MARGIN, width: PANEL_WIDTH };
   const rect = target?.getBoundingClientRect();
   const width = Math.min(PANEL_WIDTH, Math.max(280, window.innerWidth - VIEWPORT_MARGIN * 2));
-  const left = Math.max(
-    VIEWPORT_MARGIN,
-    Math.min(rect?.right ?? VIEWPORT_MARGIN, window.innerWidth - width - VIEWPORT_MARGIN),
-  );
-  const preferredTop = rect?.top ?? VIEWPORT_MARGIN;
-  const top = Math.max(VIEWPORT_MARGIN, Math.min(preferredTop, window.innerHeight - 420));
+  const preferredRight = (rect?.right ?? VIEWPORT_MARGIN) + 6;
+  const left = preferredRight + width <= window.innerWidth - VIEWPORT_MARGIN
+    ? preferredRight
+    : Math.max(VIEWPORT_MARGIN, (rect?.left ?? VIEWPORT_MARGIN) - width - 6);
+  const preferredTop = rect?.bottom ? rect.bottom + 6 : VIEWPORT_MARGIN;
+  const availableBelow = window.innerHeight - preferredTop - VIEWPORT_MARGIN;
+  const top = availableBelow < 420 && (rect?.top ?? VIEWPORT_MARGIN) - 420 >= VIEWPORT_MARGIN
+    ? (rect?.top ?? VIEWPORT_MARGIN) - 420
+    : Math.max(VIEWPORT_MARGIN, Math.min(preferredTop, window.innerHeight - 420));
   return { left, top, width };
 }
 

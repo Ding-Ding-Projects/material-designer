@@ -14,6 +14,7 @@ export const STORAGE_KEY = 'md-designer:element-appearance.v1';
 export const HISTORY_KEY = 'md-designer:element-appearance-history.v1';
 export const PRESETS_KEY = 'md-designer:element-appearance-presets.v1';
 export const RAINBOW_SENTINEL = 'appearance-rainbow-sentinel';
+export const RAINBOW_SPEED_KEY = 'md-designer:appearance-rainbow-speed.v1';
 const MAX_TARGETS = 2000;
 const MAX_HISTORY = 200;
 const MAX_IMPORT_BYTES = 500000;
@@ -34,6 +35,7 @@ const CAPABILITIES = Object.freeze([
   ['channels-masks-adjustments', false, 'The browser surface stores metadata but has no channel or adjustment compositor.'],
   ['smart-embedded-content', false, 'The browser surface cannot host a non-destructive smart object.'],
   ['warp-perspective', false, 'The browser surface consumes affine transforms only.'],
+  ['git-backed-history', false, 'The browser surface keeps append-only local snapshots and cannot create a Git repository.'],
 ]);
 
 function now() { return new Date().toISOString(); }
@@ -45,6 +47,8 @@ function read(key, fallback) {
 function write(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (_) { return false; }
 }
+function rainbowSpeed() { const value = Number(localStorage.getItem(RAINBOW_SPEED_KEY)); return [1, 2, 3, 4, 5].includes(value) ? value : 3; }
+function setRainbowSpeed(value) { try { localStorage.setItem(RAINBOW_SPEED_KEY, String(Math.max(1, Math.min(5, Math.round(Number(value)))))); } catch (_) { /* remain live */ } }
 function styleDefault() {
   return { layers: [{ id: 'base', name: 'Base appearance', kind: 'shape', visible: true, locked: false, opacity: 1, blendMode: 'normal', parentId: null, fill: 'transparent', stroke: 'transparent', effects: [], transform: { x: 0, y: 0, width: 100, height: 100, rotation: 0 } }], selections: [], channels: ['composite'], masks: [], fontFamily: 'system-ui', fontSize: 14, fontWeight: 400, italic: false, underline: 'none', strike: 'none', overline: false, capitalization: 'none', textColor: 'var(--md-sys-color-on-surface)', highlightColor: 'transparent', letterSpacing: 0, wordSpacing: 0, lineHeight: 1.5, baselineOffset: 0, textDirection: 'auto', alignment: 'start', motion: 'default', rainbowSpeedLevel: 3, inheritedFrom: null, overrides: {} };
 }
@@ -102,7 +106,7 @@ function apply(target, style, state) {
   if (top?.fill && top.fill !== 'transparent') element.style.background = top.fill;
   if (top?.stroke && top.stroke !== 'transparent') element.style.border = top.stroke;
   element.style.transform = top ? `translate(${top.transform.x}px, ${top.transform.y}px) rotate(${top.transform.rotation}deg) scale(${top.transform.width / 100}, ${top.transform.height / 100})` : '';
-  element.style.setProperty('--appearance-rainbow-duration', ['30s', '15s', '8s', '4s', '2s'][style.rainbowSpeedLevel - 1] || '8s');
+  element.style.setProperty('--appearance-rainbow-duration', ['30s', '15s', '8s', '4s', '2s'][rainbowSpeed() - 1] || '8s');
   element.dataset.appearanceState = state;
   if (style.textColor === RAINBOW_SENTINEL) element.dataset.appearanceRainbow = 'true'; else delete element.dataset.appearanceRainbow;
 }
@@ -140,15 +144,16 @@ function validImport(value) {
   const keys = ['targetId', 'activeState', 'zoom', 'rulers', 'guides', 'updatedAt', 'states'];
   if (Object.keys(value.appearance).some((key) => !keys.includes(key)) || !STATES.every((state) => value.appearance.states[state] && typeof value.appearance.states[state] === 'object')) return null;
   const styleKeys = ['layers', 'selections', 'channels', 'masks', 'fontFamily', 'fontSize', 'fontWeight', 'italic', 'underline', 'strike', 'overline', 'capitalization', 'textColor', 'highlightColor', 'letterSpacing', 'wordSpacing', 'lineHeight', 'baselineOffset', 'textDirection', 'alignment', 'motion', 'rainbowSpeedLevel', 'inheritedFrom', 'overrides'];
-  if (STATES.some((state) => Object.keys(value.appearance.states[state]).some((key) => !styleKeys.includes(key)))) return null;
+  if (STATES.some((state) => Object.keys(value.appearance.states[state]).some((key) => !styleKeys.includes(key)) || !Array.isArray(value.appearance.states[state].layers) || value.appearance.states[state].layers.length > 200 || new Set(value.appearance.states[state].layers.map((layer) => layer.id)).size !== value.appearance.states[state].layers.length || value.appearance.states[state].layers.some((layer) => !layer || typeof layer.id !== 'string' || typeof layer.name !== 'string' || typeof layer.visible !== 'boolean' || typeof layer.locked !== 'boolean' || !Number.isFinite(layer.opacity) || layer.opacity < 0 || layer.opacity > 1 || !layer.transform || !Number.isFinite(layer.transform.x) || !Number.isFinite(layer.transform.y) || !Number.isFinite(layer.transform.width) || layer.transform.width <= 0 || !Number.isFinite(layer.transform.height) || layer.transform.height <= 0 || !Number.isFinite(layer.transform.rotation)))) return null;
   if (!STATES.includes(value.appearance.activeState) || !Number.isFinite(value.appearance.zoom) || value.appearance.zoom < 0.25 || value.appearance.zoom > 4) return null;
   return value;
 }
 function anchorPosition(element) {
   const rect = element.getBoundingClientRect();
   const width = Math.min(760, Math.max(280, innerWidth - 24));
-  const left = Math.max(12, Math.min(rect.right, innerWidth - width - 12));
-  const top = Math.max(12, Math.min(rect.bottom + 8, innerHeight - 420));
+  const left = rect.right + width + 12 <= innerWidth ? rect.right + 8 : Math.max(12, rect.left - width - 8);
+  const preferredTop = rect.bottom + 8;
+  const top = innerHeight - preferredTop < 420 && rect.top - 420 >= 12 ? rect.top - 420 : Math.max(12, Math.min(preferredTop, innerHeight - 420));
   return { left, top, width };
 }
 function addRegex(input, regex) {
@@ -165,7 +170,7 @@ function editor(target, close, regex, copy) {
   const safeRole = escapeHtml(target.role);
   const host = document.createElement('section'); host.className = 'element-appearance-editor'; host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'false'); host.setAttribute('aria-label', `${copy('Edit appearance', '編輯外觀')} ${target.label}`); host.dataset.appearanceEditor = 'true';
   const place = () => { const position = anchorPosition(target.element); host.style.left = `${position.left}px`; host.style.top = `${position.top}px`; host.style.width = `${position.width}px`; }; place();
-  host.innerHTML = `<header><div><h2>${copy('Edit appearance', '編輯外觀')}</h2><p>${safeLabel} · ${safeRole}</p></div><button type="button" data-close aria-label="${copy('Close appearance editor', '關閉外觀編輯器')}">×</button></header><div class="element-appearance-toolbar"><button type="button" data-undo>Undo</button><button type="button" data-redo>Redo</button><button type="button" data-reset>Reset element</button><button type="button" data-copy>Copy style</button><button type="button" data-paste>Paste style</button><button type="button" data-export>Export appearance</button><button type="button" data-import>Import appearance</button><input type="file" data-import-file accept="application/json,.json" hidden><input data-preset-name placeholder="Preset name" maxlength="120"><button type="button" data-save-preset>Save preset</button><select data-presets aria-label="Apply named preset"><option value="">Apply preset…</option></select></div><div data-editor-body></div>`;
+  host.innerHTML = `<header><div><h2>${copy('Edit appearance', '編輯外觀')}</h2><p>${safeLabel} · ${safeRole}</p></div><button type="button" data-close aria-label="${copy('Close appearance editor', '關閉外觀編輯器')}">×</button></header><div class="element-appearance-toolbar"><button type="button" data-undo>Undo</button><button type="button" data-redo>Redo</button><button type="button" data-reset>Reset element</button><button type="button" data-copy>Copy style</button><button type="button" data-paste>Paste style</button><button type="button" data-export>Export appearance</button><button type="button" data-import>Import appearance</button><input type="file" data-import-file accept="application/json,.json" hidden><input data-preset-name placeholder="Preset name" maxlength="120"><button type="button" data-save-preset>Save preset</button><select data-presets aria-label="Apply named preset"><option value="">Apply preset…</option></select><label>Rainbow speed <input type="range" data-rainbow-speed min="1" max="5" step="1" value="${rainbowSpeed()}"></label></div><div data-editor-body></div>`;
   const body = host.querySelector('[data-editor-body]');
   const render = () => {
     const current = recordValue.states[active];
@@ -203,7 +208,8 @@ export function init({ regex, i18n }) {
   const open = (target, x, y, direct = false) => { if (!target) return; if (direct) { editor(target, () => { document.querySelector('[data-appearance-editor="true"]')?.remove(); target.element.focus(); }, regex, (en, zh) => i18nCopy(en, zh)); return; } const menu = document.createElement('div'); menu.className = 'element-appearance-menu'; menu.dataset.appearanceEditor = 'menu'; menu.style.cssText = `position:fixed;left:${Math.max(12, Math.min(x, innerWidth - 320))}px;top:${Math.max(12, Math.min(y, innerHeight - 280))}px`; menu.setAttribute('role', 'menu'); menu.innerHTML = `<input type="search" id="element-appearance-menu-search" placeholder="Search actions" aria-label="Search actions"><button type="button" role="menuitem" data-edit>Edit appearance…</button><button type="button" role="menuitem" data-lock>Lock this element…</button><p role="status" aria-live="polite">Actions for ${escapeHtml(target.label)}</p>`; document.body.append(menu); addRegex(menu.querySelector('input'), regex); const close = () => { menu.remove(); target.element.focus(); document.removeEventListener('mousedown', outside, true); }; const outside = (event) => { if (!menu.contains(event.target)) close(); }; document.addEventListener('mousedown', outside, true); menu.querySelector('[data-edit]').onclick = () => { menu.remove(); document.removeEventListener('mousedown', outside, true); editor(target, close, regex, (en, zh) => i18nCopy(en, zh)); }; menu.querySelector('[data-lock]').onclick = () => { const detail = { targetId: target.id, targetLabel: target.label, anchor: target.element }; document.dispatchEvent(new CustomEvent('md-element-toy-lock-request', { detail })); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-request', { detail })); close(); }; menu.onkeydown = (event) => { if (event.key === 'Escape') { event.preventDefault(); const input = menu.querySelector('input'); if (input.value) { input.value = ''; input.dispatchEvent(new Event('input', { bubbles: true })); return; } close(); } if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); const items = [...menu.querySelectorAll('[role="menuitem"]')]; const index = items.indexOf(document.activeElement); items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus(); } }; menu.querySelector('input').focus(); };
   const i18nCopy = (english, cantonese) => { const state = i18n?.getState?.() || {}; const mode = state.mode || document.documentElement.dataset.langMode || 'en'; if (mode === 'bilingual') return `${english} · ${cantonese}`; const primary = mode === 'yue' ? cantonese : english; const level = mode === 'yue' ? state.funny?.yue : state.funny?.en; if (mode === 'yue') return [primary, `${primary}，慢慢調`, `${primary}，順手調`, `${primary}，靚靚調`, `${primary}，玩足`][level - 1] || primary; return [primary, `${primary}, gently tuned`, `${primary}, nicely tuned`, `${primary}, polished`, `${primary}, full toolbox`][level - 1] || primary; };
   document.addEventListener('contextmenu', (event) => { const target = targetFor(event.target); if (!target) return; event.preventDefault(); open(target, event.clientX, event.clientY, event.shiftKey); }, true);
-  document.addEventListener('keydown', (event) => { if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return; const target = targetFor(document.activeElement); if (!target) return; event.preventDefault(); const rect = target.element.getBoundingClientRect(); open(target, rect.left, rect.bottom); }, true);
+  document.addEventListener('click', (event) => { const target = targetFor(event.target); const unlockedUntil = Number(target?.element.getAttribute('data-toy-unlocked-until') || 0); if (!target || target.element.getAttribute('data-toy-locked') !== 'true' || unlockedUntil > Date.now()) return; event.preventDefault(); event.stopImmediatePropagation(); const detail = { targetId: target.id, targetLabel: target.label, anchor: target.element }; document.dispatchEvent(new CustomEvent('md-element-toy-lock-activation', { detail })); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); }, true);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { const locked = targetFor(document.activeElement); const unlockedUntil = Number(locked?.element.getAttribute('data-toy-unlocked-until') || 0); if (locked?.element.getAttribute('data-toy-locked') === 'true' && unlockedUntil <= Date.now()) { event.preventDefault(); event.stopImmediatePropagation(); const detail = { targetId: locked.id, targetLabel: locked.label, anchor: locked.element }; document.dispatchEvent(new CustomEvent('md-element-toy-lock-activation', { detail })); document.dispatchEvent(new CustomEvent('open-design:element-toy-lock-activation', { detail })); return; } } if (!(event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) return; const target = targetFor(document.activeElement); if (!target) return; event.preventDefault(); const rect = target.element.getBoundingClientRect(); open(target, rect.left, rect.bottom); }, true);
   let timer = null; document.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; const target = targetFor(event.target); if (!target) return; timer = setTimeout(() => open(target, target.element.getBoundingClientRect().left, target.element.getBoundingClientRect().bottom), 550); }, true); ['pointerup', 'pointercancel', 'pointermove'].forEach((name) => document.addEventListener(name, () => { if (timer) clearTimeout(timer); timer = null; }, true));
   const observer = new MutationObserver(scan); observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['id', 'data-appearance-id', 'aria-label', 'title'] }); scan(); return { scan, registry };
 }

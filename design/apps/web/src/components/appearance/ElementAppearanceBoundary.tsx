@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
-import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_STATE, requestElementToyLockActivation, type ElementToyLockStateDetail } from './toyLockAdapter';
+import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_REQUEST, ELEMENT_TOY_LOCK_STATE, publishElementToyLockConfigurationRequest, requestElementToyLockActivation, type ElementToyLockRequestDetail, type ElementToyLockStateDetail } from './toyLockAdapter';
 import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceState, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
 interface ElementAppearanceBoundaryProps {
@@ -107,6 +107,17 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     };
     window.addEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
     return () => window.removeEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onLockRequest = (event: Event) => {
+      const detail = (event as CustomEvent<ElementToyLockRequestDetail>).detail;
+      if (!detail || typeof detail.targetId !== 'string' || !detail.anchor) return;
+      publishElementToyLockConfigurationRequest(detail);
+    };
+    window.addEventListener(ELEMENT_TOY_LOCK_REQUEST, onLockRequest);
+    return () => window.removeEventListener(ELEMENT_TOY_LOCK_REQUEST, onLockRequest);
   }, []);
 
   useEffect(() => {
