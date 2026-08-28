@@ -72,6 +72,17 @@ restart safety and unsigned-package rules.
 - `packages/host/src/protocol.ts`
 - `packages/sidecar-proto/src/index.ts`
 
+### 2026-08-27 - Keep every release fallback on the project feed
+
+**Reason:** The settings About action and the post-update highlights dialog
+still used the imported product's release page when their own release link was
+missing or manually opened. Both fallbacks now use this project's release page.
+
+**Changed files:**
+
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/WhatsNewPopup.tsx`
+
 ### 2026-08-27 - Bind the build process to verified dependency paths
 
 **Reason:** The dependency helper previously changed PATH only in its own

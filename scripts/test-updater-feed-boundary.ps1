@@ -7,13 +7,18 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Split-Path -Parent $PSScriptRoot }
 
 function Test-UpdateFeedBoundary([string]$ContractRoot) {
-  $path = Join-Path $ContractRoot 'design/apps/web/src/components/UpdateDialog.tsx'
-  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @('UpdateDialog source is missing') }
-  $source = Get-Content -Raw -LiteralPath $path
+  $paths = @(
+    (Join-Path $ContractRoot 'design/apps/web/src/components/UpdateDialog.tsx'),
+    (Join-Path $ContractRoot 'design/apps/web/src/components/SettingsDialog.tsx'),
+    (Join-Path $ContractRoot 'design/apps/web/src/components/WhatsNewPopup.tsx')
+  )
   $failures = [System.Collections.Generic.List[string]]::new()
-  $expected = "const RELEASES_URL = 'https://github.com/Ding-Ding-Projects/material-designer/releases';"
-  if ([regex]::Matches($source, [regex]::Escape($expected)).Count -ne 1) { $failures.Add('the manual update fallback is not bound exactly once to this project release page') }
-  if ($source.Contains('https://github.com/nexu-io/open-design/releases')) { $failures.Add('the manual update fallback still points at the upstream release page') }
+  foreach ($path in $paths) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $failures.Add("release fallback source is missing: $path"); continue }
+    $source = Get-Content -Raw -LiteralPath $path
+    if ($source -notmatch "https://github.com/Ding-Ding-Projects/material-designer/releases") { $failures.Add("release fallback is not bound to this project release page: $path") }
+    if ($source.Contains('https://github.com/nexu-io/open-design/releases')) { $failures.Add("release fallback still points at the upstream release page: $path") }
+  }
   return $failures
 }
 
@@ -25,6 +30,8 @@ try {
   $fixturePath = Join-Path $fixtureRoot 'design/apps/web/src/components/UpdateDialog.tsx'
   New-Item -ItemType Directory -Force -Path (Split-Path -Parent $fixturePath) | Out-Null
   $original = Get-Content -Raw -LiteralPath (Join-Path $Root 'design/apps/web/src/components/UpdateDialog.tsx')
+  Copy-Item -LiteralPath (Join-Path $Root 'design/apps/web/src/components/SettingsDialog.tsx') -Destination (Join-Path $fixtureRoot 'design/apps/web/src/components/SettingsDialog.tsx')
+  Copy-Item -LiteralPath (Join-Path $Root 'design/apps/web/src/components/WhatsNewPopup.tsx') -Destination (Join-Path $fixtureRoot 'design/apps/web/src/components/WhatsNewPopup.tsx')
   [IO.File]::WriteAllText($fixturePath, $original.Replace('https://github.com/Ding-Ding-Projects/material-designer/releases', 'https://github.com/nexu-io/open-design/releases'), [Text.UTF8Encoding]::new($false))
   $negative = @(Test-UpdateFeedBoundary $fixtureRoot)
   if ($negative.Count -eq 0) { throw 'the update-feed boundary stayed green after replacing the project release URL' }
