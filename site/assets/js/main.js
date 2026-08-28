@@ -16,6 +16,13 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import {
+  initPersonalVocabulary,
+  isPersonalVocabularySuppressed,
+  PERSONAL_VOCABULARY_STORAGE_KEY,
+  PERSONAL_VOCABULARY_HISTORY_KEY,
+  PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT,
+} from './personal-vocabulary.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -435,11 +442,14 @@ function wireContentSearch() {
 function wireSettingsSearch() {
   const units = () => $$('#tab-panel-settings [data-setting-unit], .settings-group');
 
-  wireSearch('settings-search-input', 'settings-search-mode', 'settings-search-builder',
+  const control = wireSearch('settings-search-input', 'settings-search-mode', 'settings-search-builder',
     'settings-search-status', (matcher, query) => {
-      const all = units();
+    const all = units();
+    const personalVocabulary = $('#settings-personal-vocabulary');
+    const personalVocabularySuppressed = Boolean(personalVocabulary?.hidden);
       if (!query || matcher === 'invalid') {
         for (const unit of all) unit.hidden = false;
+        if (personalVocabularySuppressed && personalVocabulary) personalVocabulary.hidden = true;
         return;
       }
       for (const unit of all) {
@@ -453,7 +463,12 @@ function wireSettingsSearch() {
         if (!rows.length) continue;
         group.hidden = rows.every((row) => row.hidden);
       }
+      if (personalVocabularySuppressed && personalVocabulary) personalVocabulary.hidden = true;
     });
+  document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, () => {
+    const input = $('#settings-search-input');
+    if (input && control) input.dispatchEvent(new Event('input'));
+  });
 }
 
 /* ------------------------------------------------------------------ *
@@ -525,6 +540,28 @@ function wirePalette() {
     });
   }
 
+  const syncPersonalVocabularyCommand = () => {
+    ui.unregister('cmd.personal-vocabulary');
+    if (isPersonalVocabularySuppressed()) return;
+    ui.registerCommand({
+      id: 'cmd.personal-vocabulary',
+      title: label('personalVocabulary.title', 'Personal wording'),
+      group: label('palette.group.settings', 'Settings'),
+      run: () => {
+        tabs.goToTab('settings');
+        requestAnimationFrame(() => {
+          const target = document.getElementById('settings-personal-vocabulary');
+          if (!target || target.hidden) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          ui.flash(target);
+          document.getElementById('personal-vocabulary-search')?.focus();
+        });
+      },
+    });
+  };
+  syncPersonalVocabularyCommand();
+  document.addEventListener(PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT, syncPersonalVocabularyCommand);
+
   ui.registerCommand({
     id: 'cmd.tabsearch',
     title: label('tabs.search.label', 'Search the tabs'),
@@ -579,7 +616,9 @@ function wireResets() {
       const doomed = [];
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('md-designer')) doomed.push(key);
+        if (key && (key.startsWith('md-designer')
+          || key === PERSONAL_VOCABULARY_STORAGE_KEY
+          || key === PERSONAL_VOCABULARY_HISTORY_KEY)) doomed.push(key);
       }
       for (const key of doomed) localStorage.removeItem(key);
     } catch (e) { /* storage disabled — nothing was stored to clear */ }
@@ -653,6 +692,7 @@ function start() {
   wireTabs();
   wireContentSearch();
   wireSettingsSearch();
+  initPersonalVocabulary();
   wirePalette();
   wireResets();
   initToyLocks({ notify: ui.notify });

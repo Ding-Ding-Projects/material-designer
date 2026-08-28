@@ -1777,6 +1777,94 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="se.appearance.derived">A custom seed derives its dependent colour roles rather than tinting one button, so the whole page moves with it and stays readable in both themes. The translator shows the contrast the derived primary will actually have.</p>
       </section>
 
+      <!-- ---------- Local personal-vocabulary JSON ----------------------
+           This control never contains a built-in mapping. The visitor must
+           choose a valid local file before any private UI replacement can
+           apply, and the module revalidates its browser cache on every load. -->
+      <section class="settings-group personal-vocabulary" id="settings-personal-vocabulary" aria-labelledby="se-personal-vocabulary-title" data-personal-vocabulary>
+        <div class="personal-vocabulary__header">
+          <div>
+            <h3 class="settings-group__title" id="se-personal-vocabulary-title" data-personal-vocabulary-copy="title">Personal wording</h3>
+            <p class="settings-group__sub" data-personal-vocabulary-copy="help">Choose a versioned local JSON file to adapt private UI wording. The original wording stays active until a valid file is supplied.</p>
+          </div>
+          <div class="md-search personal-vocabulary__search">
+            <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+            <label class="visually-hidden" for="personal-vocabulary-search" data-personal-vocabulary-copy="searchLabel">Search personal wording controls</label>
+            <input class="md-search__input" id="personal-vocabulary-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search this surface" data-regex-builder data-regex-key="personal-vocabulary-search" data-personal-vocabulary-search data-md-setting="Personal wording search" data-md-setting-yue="搜尋 personal wording" aria-describedby="personal-vocabulary-search-status">
+          </div>
+        </div>
+        <p class="md-callout md-callout--info personal-vocabulary__disclosure" data-personal-vocabulary-row>
+          <svg width="24" height="24" aria-hidden="true" focusable="false"><use href="#i-info"/></svg>
+          <span data-personal-vocabulary-copy="disclosure">Nothing is uploaded, networked, logged, exported, or written into history. Replacements apply only to this private UI boundary.</span>
+        </p>
+        <p id="personal-vocabulary-search-status" class="md-body-small on-surface-variant" role="status" aria-live="polite"></p>
+        <div class="setting-row personal-vocabulary__row" data-personal-vocabulary-row>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-personal-vocabulary-copy="localFile">Local JSON file</span>
+            <span class="setting-row__desc" data-personal-vocabulary-count>No file loaded. Original wording is active.</span>
+          </div>
+          <div class="setting-row__control">
+            <label class="md-btn md-btn--outlined personal-vocabulary__file-button">
+              <span data-personal-vocabulary-copy="choose">Choose JSON file</span>
+              <input type="file" accept=".json,application/json" data-personal-vocabulary-file>
+            </label>
+            <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-clear data-md-command="Clear and restore original wording" data-md-command-yue="清除並還原原本 wording" disabled data-personal-vocabulary-copy="clear">Clear and restore original wording</button>
+          </div>
+        </div>
+        <div class="setting-row personal-vocabulary__row" data-personal-vocabulary-row>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-personal-vocabulary-copy="preview">Private UI preview</span>
+            <span class="setting-row__desc" data-personal-vocabulary-copy="onlyBoundary">Only this private boundary applies replacements.</span>
+          </div>
+          <div class="personal-vocabulary__preview">
+            <label class="md-field">
+              <span class="md-field__label" data-personal-vocabulary-copy="sample">Sample text</span>
+              <input class="md-input" value="A private UI label can be adapted here." maxlength="2000" data-personal-vocabulary-sample>
+            </label>
+            <output class="md-card md-card--outlined" aria-live="polite" data-personal-vocabulary-output>A private UI label can be adapted here.</output>
+          </div>
+        </div>
+        <p class="md-body-small on-surface-variant" role="status" aria-live="polite" data-personal-vocabulary-status></p>
+        <p class="md-empty__body" role="status" aria-live="polite" data-personal-vocabulary-no-matches data-personal-vocabulary-copy="noMatches" hidden>No matching controls on this surface.</p>
+        <div class="setting-row personal-vocabulary__row personal-vocabulary__history" data-personal-vocabulary-row>
+          <div class="setting-row__text">
+            <span class="setting-row__label" data-personal-vocabulary-copy="historyTitle">Local change history</span>
+            <span class="setting-row__desc" data-personal-vocabulary-copy="historyHelp">Only redacted action and time are kept here. File contents and metadata never enter history.</span>
+          </div>
+          <div class="personal-vocabulary__history-controls">
+            <div class="md-search">
+              <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+              <label class="visually-hidden" for="personal-vocabulary-history-search" data-personal-vocabulary-copy="historySearchLabel">Search local history</label>
+              <input class="md-search__input" id="personal-vocabulary-history-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search history" data-personal-vocabulary-copy="historySearchPlaceholder" data-regex-builder data-regex-key="personal-vocabulary-history-search" data-personal-vocabulary-history-search>
+            </div>
+            <label class="md-field"><span class="md-field__label" data-personal-vocabulary-copy="historyDateFrom">Date from</span><input class="md-input" type="date" data-personal-vocabulary-history-date-from></label>
+            <label class="md-field"><span class="md-field__label" data-personal-vocabulary-copy="historyDateTo">Date to</span><input class="md-input" type="date" data-personal-vocabulary-history-date-to></label>
+            <div class="md-field personal-vocabulary__preset-picker"><span class="md-field__label" data-personal-vocabulary-copy="historyPreset">Date preset</span><button type="button" class="md-select" role="combobox" aria-expanded="false" aria-controls="personal-vocabulary-history-preset-options" data-personal-vocabulary-history-preset-value data-value="" data-personal-vocabulary-copy="historyAnyDate">Any date</button><div class="md-card md-card--outlined" id="personal-vocabulary-history-preset-options" role="listbox" hidden data-personal-vocabulary-history-preset-options><input class="md-input" type="search" placeholder="Search date presets" data-personal-vocabulary-copy="historyPresetSearchPlaceholder" data-regex-builder data-regex-key="personal-vocabulary-history-preset-search" data-personal-vocabulary-history-preset-search><button type="button" class="md-list-item" role="option" data-value="" data-personal-vocabulary-copy="historyAnyDate">Any date</button><button type="button" class="md-list-item" role="option" data-value="today" data-personal-vocabulary-copy="historyToday">Today</button><button type="button" class="md-list-item" role="option" data-value="last7" data-personal-vocabulary-copy="historyLast7">Last 7 days</button></div></div>
+            <div class="md-field"><span class="md-field__label" data-personal-vocabulary-copy="historyActionSearchLabel">Action search</span><input class="md-input" type="search" placeholder="Search actions" data-personal-vocabulary-copy="historyActionSearchPlaceholder" data-regex-builder data-regex-key="personal-vocabulary-history-action-search" data-personal-vocabulary-history-action-search></div>
+            <div class="md-field personal-vocabulary__action-picker"><span class="md-field__label" data-personal-vocabulary-copy="historyAction">Action</span><button type="button" class="md-select" role="combobox" aria-expanded="false" aria-controls="personal-vocabulary-history-action-options" data-personal-vocabulary-history-action-value data-value="" data-personal-vocabulary-copy="historyAll">All actions</button><div class="md-card md-card--outlined" id="personal-vocabulary-history-action-options" role="listbox" hidden data-personal-vocabulary-history-action-options></div></div>
+            <button type="button" class="md-btn md-btn--outlined" data-personal-vocabulary-history-export data-personal-vocabulary-copy="historyExport">Export redacted history</button>
+          </div>
+          <p class="md-body-small on-surface-variant" role="status" aria-live="polite" data-personal-vocabulary-history-status></p>
+          <div class="personal-vocabulary__history-bulk">
+            <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-select-all data-personal-vocabulary-copy="historySelectAll">Select all visible</button>
+            <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-invert data-personal-vocabulary-copy="historyInvert">Invert selection</button>
+            <button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-delete data-personal-vocabulary-copy="historyDelete">Delete selected history</button>
+          </div>
+          <ul class="md-list personal-vocabulary__history-list" data-personal-vocabulary-history-list></ul>
+        </div>
+        <dialog class="md-card md-card--outlined" data-personal-vocabulary-history-confirm>
+          <h4 data-personal-vocabulary-copy="historyConfirmTitle">Confirm history deletion</h4>
+          <p data-personal-vocabulary-copy="historyConfirmHelp">This removes only selected redacted history events. Enter two independent keys and complete the slider.</p>
+          <p><strong data-personal-vocabulary-history-confirm-count>0 selected</strong></p>
+          <label class="md-field"><span data-personal-vocabulary-copy="historyKeyOne">First key</span><input type="password" autocomplete="off" data-personal-vocabulary-history-key-one></label>
+          <label class="md-field"><span data-personal-vocabulary-copy="historyKeyTwo">Second key</span><input type="password" autocomplete="off" data-personal-vocabulary-history-key-two></label>
+          <label class="md-field"><span data-personal-vocabulary-copy="historyConfirmSlider">Confirmation progress</span><input type="range" min="0" max="100" value="0" data-personal-vocabulary-history-slider></label>
+          <progress max="100" value="0" data-personal-vocabulary-history-progress aria-label="Confirmation progress"></progress>
+          <p role="status" aria-live="polite" data-personal-vocabulary-history-confirm-status></p>
+          <div class="button-row"><button type="button" class="md-btn md-btn--text" data-personal-vocabulary-history-cancel data-personal-vocabulary-copy="historyCancel">Cancel</button><button type="button" class="md-btn md-btn--filled" data-personal-vocabulary-history-confirm-action data-personal-vocabulary-copy="historyConfirm" disabled>Delete selected</button></div>
+        </dialog>
+      </section>
+
       <!-- ---------- Site-local toy locks ---------- -->
       <section class="settings-group" id="settings-toy-locks" aria-labelledby="se-toy-lock-title" data-toy-lock-setup>
         <h3 class="settings-group__title" id="se-toy-lock-title">Toy locks</h3>

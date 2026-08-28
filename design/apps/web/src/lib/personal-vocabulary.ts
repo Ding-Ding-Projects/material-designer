@@ -1,0 +1,493 @@
+import {
+  UNIVERSAL_SETTINGS_EVENT,
+  UNIVERSAL_SETTINGS_STORAGE_KEY,
+  readUniversalSettings,
+  subscribeUniversalSettings,
+} from '../components/universal/universalSettings';
+import { getOpenDesignHost } from '@open-design/host';
+
+/**
+ * Local-only personal vocabulary loader.
+ *
+ * This module deliberately knows only the neutral file contract. It never
+ * ships a vocabulary value, reads a bundled vocabulary, or sends a payload
+ * anywhere. Callers must opt into the private UI boundary explicitly; all
+ * other boundaries return their original text unchanged.
+ */
+
+export const PERSONAL_VOCABULARY_SCHEMA_VERSION = 1 as const;
+export const PERSONAL_VOCABULARY_MAX_BYTES = 256 * 1024;
+export const PERSONAL_VOCABULARY_MAX_ENTRIES = 2048;
+export const PERSONAL_VOCABULARY_MAX_KEY_LENGTH = 128;
+export const PERSONAL_VOCABULARY_MAX_VALUE_LENGTH = 256;
+export const PERSONAL_VOCABULARY_MAX_DEPTH = 4;
+export const PERSONAL_VOCABULARY_STORAGE_KEY = 'open-design:personal-vocabulary:v1';
+export const PERSONAL_VOCABULARY_EVENT = 'open-design:personal-vocabulary-changed';
+export const PERSONAL_VOCABULARY_SCHOOL_MODE_KEY = UNIVERSAL_SETTINGS_STORAGE_KEY;
+export const PERSONAL_VOCABULARY_SCHOOL_MODE_EVENT = UNIVERSAL_SETTINGS_EVENT;
+export const PERSONAL_VOCABULARY_HISTORY_KEY = 'open-design:personal-vocabulary-history:v1';
+
+export interface PersonalVocabularyPayload {
+  readonly schemaVersion: typeof PERSONAL_VOCABULARY_SCHEMA_VERSION;
+  readonly entries: Readonly<Record<string, string>>;
+}
+
+export type PersonalVocabularyLoadResult =
+  | { readonly ok: true; readonly payload: PersonalVocabularyPayload }
+  | { readonly ok: false; readonly code: PersonalVocabularyErrorCode; readonly message: string };
+
+export type PersonalVocabularyErrorCode =
+  | 'too-large'
+  | 'malformed-json'
+  | 'duplicate-key'
+  | 'unsupported-schema'
+  | 'unexpected-field'
+  | 'unsafe-key'
+  | 'invalid-shape'
+  | 'too-deep'
+  | 'too-many-entries'
+  | 'entry-too-long'
+  | 'factual-key'
+  | 'non-string-entry';
+
+export type PersonalVocabularyMutationResult =
+  | { readonly ok: true; readonly action: 'loaded' | 'replaced' | 'cleared'; readonly historyRecorded: true }
+  | { readonly ok: false; readonly code: 'storage-unavailable' | 'write-failed' | 'readback-mismatch' | 'history-failed'; readonly message: string };
+
+export interface PersonalVocabularyHistoryEvent {
+  readonly schemaVersion: typeof PERSONAL_VOCABULARY_SCHEMA_VERSION;
+  readonly action: 'loaded' | 'replaced' | 'cleared' | 'deleted';
+  readonly at: number;
+}
+
+const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const PRIVATE_UI_BOUNDARY = 'private-ui' as const;
+const PRIVATE_UI_TRANSLATION_KEYS = new Set([
+  'nav.settings',
+  'nav.about',
+  'settings.general',
+  'settings.generalHint',
+  'settings.appearance',
+  'settings.appearanceHint',
+  'settings.language',
+  'settings.languageHint',
+  'settings.languageHint',
+  'settings.notifications',
+  'settings.notificationsHint',
+  'settings.privacy',
+  'settings.privacyHint',
+  'settings.about',
+  'settings.aboutHint',
+  'settings.languageModeTitle',
+  'settings.languageModeHint',
+  'personalVocabulary.title',
+  'personalVocabulary.description',
+]);
+
+function fail(code: PersonalVocabularyErrorCode, message: string): PersonalVocabularyLoadResult {
+  return { ok: false, code, message };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object') return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * A small JSON structural scanner. JSON.parse discards duplicate keys, so a
+ * schema check after parsing cannot detect the duplicate-key input the
+ * contract explicitly rejects. The scanner parses strings and nested values
+ * without retaining any private data beyond the current key.
+ */
+function hasDuplicateKeys(source: string): boolean {
+  let index = 0;
+  const whitespace = (char: string) => char === ' ' || char === '\n' || char === '\r' || char === '\t';
+
+  const skipWhitespace = () => {
+    while (index < source.length && whitespace(source[index] ?? '')) index += 1;
+  };
+
+  const parseString = (): string => {
+    const start = index;
+    if (source[index] !== '"') throw new Error('string');
+    index += 1;
+    while (index < source.length) {
+      const char = source[index];
+      if (char === '\\') {
+        index += 2;
+        continue;
+      }
+      if (char === '"') {
+        index += 1;
+        return JSON.parse(source.slice(start, index)) as string;
+      }
+      if (char < ' ') throw new Error('control');
+      index += 1;
+    }
+    throw new Error('unterminated');
+  };
+
+  const parseValue = (depth: number): void => {
+    if (depth > PERSONAL_VOCABULARY_MAX_DEPTH) throw new Error('depth');
+    skipWhitespace();
+    const char = source[index];
+    if (char === '{') {
+      index += 1;
+      skipWhitespace();
+      const keys = new Set<string>();
+      if (source[index] === '}') {
+        index += 1;
+        return;
+      }
+      while (index < source.length) {
+        skipWhitespace();
+        const key = parseString();
+        if (keys.has(key)) throw new Error('duplicate');
+        keys.add(key);
+        skipWhitespace();
+        if (source[index] !== ':') throw new Error('colon');
+        index += 1;
+        parseValue(depth + 1);
+        skipWhitespace();
+        if (source[index] === '}') {
+          index += 1;
+          return;
+        }
+        if (source[index] !== ',') throw new Error('comma');
+        index += 1;
+      }
+      throw new Error('object');
+    }
+    if (char === '[') {
+      index += 1;
+      skipWhitespace();
+      if (source[index] === ']') {
+        index += 1;
+        return;
+      }
+      while (index < source.length) {
+        parseValue(depth + 1);
+        skipWhitespace();
+        if (source[index] === ']') {
+          index += 1;
+          return;
+        }
+        if (source[index] !== ',') throw new Error('comma');
+        index += 1;
+      }
+      throw new Error('array');
+    }
+    if (char === '"') {
+      parseString();
+      return;
+    }
+    if (source.startsWith('true', index)) {
+      index += 4;
+      return;
+    }
+    if (source.startsWith('false', index)) {
+      index += 5;
+      return;
+    }
+    if (source.startsWith('null', index)) {
+      index += 4;
+      return;
+    }
+    const number = source.slice(index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u);
+    if (number?.[0]) {
+      index += number[0].length;
+      return;
+    }
+    throw new Error('value');
+  };
+
+  parseValue(0);
+  skipWhitespace();
+  return index !== source.length;
+}
+
+function parseWithoutDuplicateKeys(source: string): unknown | PersonalVocabularyLoadResult {
+  try {
+    if (hasDuplicateKeys(source)) return fail('malformed-json', 'The file contains trailing data.');
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : '';
+    if (reason === 'duplicate') return fail('duplicate-key', 'Duplicate object keys are not accepted.');
+    if (reason === 'depth') return fail('too-deep', 'The file exceeds the supported nesting depth.');
+    return fail('malformed-json', 'The file is not valid JSON.');
+  }
+  try {
+    return JSON.parse(source) as unknown;
+  } catch {
+    return fail('malformed-json', 'The file is not valid JSON.');
+  }
+}
+
+export function validatePersonalVocabularyText(source: string): PersonalVocabularyLoadResult {
+  const bytes = new TextEncoder().encode(source).byteLength;
+  if (bytes > PERSONAL_VOCABULARY_MAX_BYTES) {
+    return fail('too-large', `The file exceeds the ${PERSONAL_VOCABULARY_MAX_BYTES}-byte limit.`);
+  }
+  const parsed = parseWithoutDuplicateKeys(source);
+  if (isPersonalVocabularyFailure(parsed)) return parsed;
+  if (!isPlainObject(parsed)) return fail('invalid-shape', 'The top-level value must be an object.');
+  const keys = Object.keys(parsed);
+  if (keys.some((key) => UNSAFE_KEYS.has(key))) return fail('unsafe-key', 'Unsafe object keys are not accepted.');
+  if (keys.some((key) => key !== 'schemaVersion' && key !== 'entries')) {
+    return fail('unexpected-field', 'Only schemaVersion and entries are accepted.');
+  }
+  if (parsed.schemaVersion !== PERSONAL_VOCABULARY_SCHEMA_VERSION) {
+    return fail('unsupported-schema', 'This vocabulary schema version is not supported.');
+  }
+  if (!isPlainObject(parsed.entries)) return fail('invalid-shape', 'entries must be an object.');
+  const entryKeys = Object.keys(parsed.entries);
+  if (entryKeys.length > PERSONAL_VOCABULARY_MAX_ENTRIES) {
+    return fail('too-many-entries', `The file exceeds the ${PERSONAL_VOCABULARY_MAX_ENTRIES}-entry limit.`);
+  }
+  const entries: Record<string, string> = Object.create(null) as Record<string, string>;
+  for (const key of entryKeys) {
+    if (UNSAFE_KEYS.has(key)) return fail('unsafe-key', 'Unsafe object keys are not accepted.');
+    if (/\d/u.test(key)) return fail('factual-key', 'Keys containing numeric facts are not accepted.');
+    const value = parsed.entries[key];
+    if (key.length === 0 || key.length > PERSONAL_VOCABULARY_MAX_KEY_LENGTH || typeof value !== 'string') {
+      return typeof value === 'string'
+        ? fail('entry-too-long', 'An entry key exceeds its length limit or is empty.')
+        : fail('non-string-entry', 'Every entry replacement must be a string.');
+    }
+    if (value.length === 0 || value.length > PERSONAL_VOCABULARY_MAX_VALUE_LENGTH) {
+      return fail('entry-too-long', 'An entry replacement exceeds its length limit or is empty.');
+    }
+    entries[key] = value;
+  }
+  return { ok: true, payload: { schemaVersion: PERSONAL_VOCABULARY_SCHEMA_VERSION, entries } };
+}
+
+function isPersonalVocabularyFailure(value: unknown): value is Extract<PersonalVocabularyLoadResult, { readonly ok: false }> {
+  return isPlainObject(value) && value.ok === false && typeof value.code === 'string';
+}
+
+export function validatePersonalVocabularyBytes(bytes: Uint8Array): PersonalVocabularyLoadResult {
+  if (bytes.byteLength > PERSONAL_VOCABULARY_MAX_BYTES) {
+    return fail('too-large', `The file exceeds the ${PERSONAL_VOCABULARY_MAX_BYTES}-byte limit.`);
+  }
+  try {
+    return validatePersonalVocabularyText(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
+  } catch {
+    return fail('malformed-json', 'The file is not valid UTF-8 JSON.');
+  }
+}
+
+export function readPersonalVocabularyCache(): PersonalVocabularyPayload | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const source = window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    if (!source) return null;
+    const result = validatePersonalVocabularyText(source);
+    return result.ok ? result.payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function mutationFailure(
+  code: Extract<PersonalVocabularyMutationResult, { readonly ok: false }>['code'],
+  message: string,
+): PersonalVocabularyMutationResult {
+  return { ok: false, code, message };
+}
+
+function readHistory(): PersonalVocabularyHistoryEvent[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(PERSONAL_VOCABULARY_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const valid = parsed.every((event): event is PersonalVocabularyHistoryEvent => (
+      isPlainObject(event)
+      && event.schemaVersion === PERSONAL_VOCABULARY_SCHEMA_VERSION
+      && (event.action === 'loaded' || event.action === 'replaced' || event.action === 'cleared' || event.action === 'deleted')
+      && typeof event.at === 'number'
+      && Number.isSafeInteger(event.at)
+    ));
+    return valid ? parsed.slice(-64) as PersonalVocabularyHistoryEvent[] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readPersonalVocabularyHistory(): readonly PersonalVocabularyHistoryEvent[] {
+  return readHistory() ?? [];
+}
+
+function recordPersonalVocabularyHistory(action: PersonalVocabularyHistoryEvent['action']): boolean {
+  if (typeof window === 'undefined') return false;
+  const current = readHistory();
+  if (current === null) return false;
+  const next = [
+    ...current,
+    { schemaVersion: PERSONAL_VOCABULARY_SCHEMA_VERSION, action, at: Date.now() },
+  ].slice(-64);
+  try {
+    window.localStorage.setItem(PERSONAL_VOCABULARY_HISTORY_KEY, JSON.stringify(next));
+    const readBack = readHistory();
+    return readBack.length === next.length
+      && readBack.at(-1)?.action === action
+      && readBack.at(-1)?.at === next.at(-1)?.at;
+  } catch {
+    return false;
+  }
+}
+
+function restoreCache(raw: string | null): boolean {
+  try {
+    if (raw === null) window.localStorage.removeItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    else window.localStorage.setItem(PERSONAL_VOCABULARY_STORAGE_KEY, raw);
+    return window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY) === raw;
+  } catch {
+    return false;
+  }
+}
+
+export function storePersonalVocabulary(payload: PersonalVocabularyPayload): PersonalVocabularyMutationResult {
+  const result = validatePersonalVocabularyText(JSON.stringify(payload));
+  if (!result.ok) return mutationFailure('write-failed', result.message);
+  if (typeof window === 'undefined') return mutationFailure('storage-unavailable', 'Local storage is unavailable.');
+  let previous: string | null = null;
+  let hadValidCache = false;
+  try {
+    previous = window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    hadValidCache = readPersonalVocabularyCache() !== null;
+    window.localStorage.setItem(PERSONAL_VOCABULARY_STORAGE_KEY, JSON.stringify(result.payload));
+    const readBack = window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    const readBackResult = readBack ? validatePersonalVocabularyText(readBack) : null;
+    if (!readBackResult?.ok || JSON.stringify(readBackResult.payload) !== JSON.stringify(result.payload)) {
+      restoreCache(previous);
+      return mutationFailure('readback-mismatch', 'The local cache did not verify after writing.');
+    }
+    const action = hadValidCache ? 'replaced' : 'loaded';
+    if (!recordPersonalVocabularyHistory(action)) {
+      restoreCache(previous);
+      return mutationFailure('history-failed', 'The local history event did not verify.');
+    }
+    window.dispatchEvent(new Event(PERSONAL_VOCABULARY_EVENT));
+    return { ok: true, action, historyRecorded: true };
+  } catch {
+    restoreCache(previous);
+    return mutationFailure('storage-unavailable', 'Local storage is unavailable.');
+  }
+}
+
+export function clearPersonalVocabulary(): PersonalVocabularyMutationResult {
+  if (typeof window === 'undefined') return mutationFailure('storage-unavailable', 'Local storage is unavailable.');
+  let previous: string | null = null;
+  try {
+    previous = window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    window.localStorage.removeItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    if (window.localStorage.getItem(PERSONAL_VOCABULARY_STORAGE_KEY) !== null) {
+      return mutationFailure('readback-mismatch', 'The local cache did not clear.');
+    }
+    if (!recordPersonalVocabularyHistory('cleared')) {
+      restoreCache(previous);
+      return mutationFailure('history-failed', 'The local history event did not verify.');
+    }
+    window.dispatchEvent(new Event(PERSONAL_VOCABULARY_EVENT));
+    return { ok: true, action: 'cleared', historyRecorded: true };
+  } catch {
+    restoreCache(previous);
+    return mutationFailure('storage-unavailable', 'Local storage is unavailable.');
+  }
+}
+
+/** Restore the previously validated cache after an external history boundary refuses a mutation. */
+export function restorePersonalVocabularyCache(payload: PersonalVocabularyPayload | null): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (payload === null) window.localStorage.removeItem(PERSONAL_VOCABULARY_STORAGE_KEY);
+    else window.localStorage.setItem(PERSONAL_VOCABULARY_STORAGE_KEY, JSON.stringify(payload));
+    const restored = readPersonalVocabularyCache();
+    const matches = payload === null ? restored === null : JSON.stringify(restored) === JSON.stringify(payload);
+    if (matches) window.dispatchEvent(new Event(PERSONAL_VOCABULARY_EVENT));
+    return matches;
+  } catch {
+    return false;
+  }
+}
+
+export function isPersonalVocabularySuppressed(): boolean {
+  if (typeof document !== 'undefined' && document.documentElement.getAttribute('data-universal-school-mode') === 'true') return true;
+  return readUniversalSettings().school.enabled;
+}
+
+type HostUniversalSettingsBridge = {
+  read: () => Promise<{ ok: boolean; state?: { school?: { enabled?: boolean } } }>;
+  subscribe: (listener: (state: { school?: { enabled?: boolean } }) => void) => () => void;
+};
+
+/** Observe the canonical School setting through the desktop host when present, then the shared local adapter. */
+export function subscribeToPersonalVocabularySchoolMode(listener: (enabled: boolean) => void): () => void {
+  const host = (getOpenDesignHost() as unknown as { universalSettings?: HostUniversalSettingsBridge } | null)?.universalSettings;
+  if (host) {
+    let active = true;
+    void host.read().then((result) => {
+      if (active && result.ok) listener(result.state?.school?.enabled === true);
+    }).catch(() => undefined);
+    const unsubscribe = host.subscribe((state) => listener(state.school?.enabled === true));
+    return () => { active = false; unsubscribe(); };
+  }
+  const unsubscribe = subscribeUniversalSettings((state) => listener(state.school.enabled));
+  const onRuntimeEvent = (event: Event) => {
+    const enabled = (event as CustomEvent<{ enabled?: boolean }>).detail?.enabled === true;
+    listener(enabled);
+  };
+  window.addEventListener('material-designer:universal-school-mode', onRuntimeEvent);
+  return () => {
+    unsubscribe();
+    window.removeEventListener('material-designer:universal-school-mode', onRuntimeEvent);
+  };
+}
+
+export function subscribeToPersonalVocabulary(onChange: () => void): () => void {
+  if (typeof window === 'undefined') return () => undefined;
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === PERSONAL_VOCABULARY_STORAGE_KEY) onChange();
+  };
+  window.addEventListener('storage', onStorage);
+  window.addEventListener(PERSONAL_VOCABULARY_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onStorage);
+    window.removeEventListener(PERSONAL_VOCABULARY_EVENT, onChange);
+  };
+}
+
+/**
+ * Personal replacements are intentionally restricted to the private UI text
+ * boundary. Commands, links, paths, identifiers and exported or recorded
+ * text must call this with another boundary and therefore remain unchanged.
+ */
+export function applyPersonalVocabulary(
+  text: string,
+  payload: PersonalVocabularyPayload | null,
+  boundary: typeof PRIVATE_UI_BOUNDARY | 'technical' | 'public' = PRIVATE_UI_BOUNDARY,
+): string {
+  if (!payload || boundary !== PRIVATE_UI_BOUNDARY || text.length === 0) return text;
+  let result = text;
+  for (const [ordinary, replacement] of Object.entries(payload.entries)) {
+    if (!ordinary) continue;
+    result = result.split(ordinary).join(replacement);
+  }
+  return result;
+}
+
+/** Apply replacements to a bounded, known private-UI translation key only. */
+export function applyPersonalVocabularyToPrivateUiKey(
+  key: string,
+  text: string,
+): string {
+  if (!PRIVATE_UI_TRANSLATION_KEYS.has(key)) return text;
+  return applyPersonalVocabulary(text, readPersonalVocabularyCache(), PRIVATE_UI_BOUNDARY);
+}
+
+export function personalVocabularyErrorMessage(result: Extract<PersonalVocabularyLoadResult, { readonly ok: false }>): string {
+  return result.message;
+}

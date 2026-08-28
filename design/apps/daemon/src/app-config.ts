@@ -118,6 +118,12 @@ export interface ExternalEditorPrefs {
   supportsFolders?: boolean;
 }
 
+export interface PersonalVocabularyHistoryMarker {
+  schemaVersion: 1;
+  action: 'loaded' | 'replaced' | 'cleared';
+  revision: number;
+}
+
 export interface AppConfigPrefs {
   onboardingCompleted?: boolean;
   agentId?: string | null;
@@ -146,6 +152,8 @@ export interface AppConfigPrefs {
   // is no longer installed is reported as missing rather than silently
   // replaced with whatever else happens to be on the machine.
   externalEditor?: ExternalEditorPrefs | null;
+  /** Redacted settings-history marker. Never contains vocabulary values or file metadata. */
+  personalVocabularyHistory?: PersonalVocabularyHistoryMarker;
 }
 
 // Cap on how many recent working directories we remember. Keeps the picker's
@@ -172,6 +180,7 @@ const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'defaultProjectLocationId',
   'recentLinkedDirs',
   'externalEditor',
+  'personalVocabularyHistory',
 ] as const);
 
 function configFile(dataDir: string): string {
@@ -590,6 +599,23 @@ export function validateExternalEditor(raw: unknown): ExternalEditorPrefs | null
   };
 }
 
+function validatePersonalVocabularyHistory(
+  raw: unknown,
+): PersonalVocabularyHistoryMarker | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const value = raw as Record<string, unknown>;
+  const action = value.action;
+  const revision = value.revision;
+  if (
+    value.schemaVersion !== 1
+    || (action !== 'loaded' && action !== 'replaced' && action !== 'cleared')
+    || typeof revision !== 'number'
+    || !Number.isSafeInteger(revision)
+    || revision < 0
+  ) return undefined;
+  return { schemaVersion: 1, action, revision };
+}
+
 function applyConfigValue(
   target: Record<string, unknown>,
   key: keyof AppConfigPrefs,
@@ -747,6 +773,12 @@ function applyConfigValue(
     } else {
       target[key] = validated;
     }
+    return;
+  }
+  if (key === 'personalVocabularyHistory') {
+    const validated = validatePersonalVocabularyHistory(value);
+    if (validated === undefined) delete target[key];
+    else target[key] = validated;
     return;
   }
 }

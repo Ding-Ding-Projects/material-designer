@@ -45,6 +45,39 @@ version section when a release carries them.
 
 ### Changed
 
+- **Harden local personal-vocabulary upload and School-mode boundaries.** The
+  desktop and documentation site controls now perform one verified local cache
+  write, preserve the last valid state after a refusal, record only redacted
+  load/replace/clear history events, read page bytes through fatal UTF-8
+  decoding, reset the picker after every selection, and apply validated
+  replacements to actual private UI labels and accessible names. Every funny
+  level remains observable in the control copy, and School mode removes the
+  feature from pixels, settings search, palette entries, and route actions.
+  The source contract gate passes its exact red-then-green checks. Hosted
+  typechecking, packaged interaction, and per-click capture evidence remain
+  unverified.
+
+  The follow-up also adds the canonical host bridge adapter, a daemon history
+  flush acknowledgement with transactional config rollback, and a documentation
+  site history view with filtered redacted export, range dates, presets, derived
+  action search, and gated bulk deletion. These source changes still await
+  hosted typechecking and packaged verification.
+
+  **本地 personal-vocabulary upload 而家先寫、再 readback、再記 redacted
+  load/replace/clear history，documentation site 亦會嚴格用 bytes 同 fatal UTF-8
+  decode，揀 file 每次都 reset。實際私人 UI label 同 accessible name 會套用
+  已驗證 replacement，唔合格就保留上一份。Funny level 五個格都有真變化，
+  School mode 連像素、settings search、palette 同 route 一齊收埋。Source
+  source gate 已經先紅後綠，hosted typecheck、packaged interaction 同逐 click
+  capture 證據仍然未驗證。*
+
+  **Follow-up 仲加埋 canonical host bridge adapter、daemon history flush
+  acknowledgement 同 transactional config rollback，documentation site 就有
+  filtered redacted export、range date、preset、由實際 action 衍生嘅 search，
+  同有 gate 嘅批次刪除。呢啲 source change 仲等 hosted typecheck 同 packaged
+  verification，未當完成。**
+
+  Source commits: [`b6bd4abb`](https://github.com/Ding-Ding-Projects/material-designer/commit/b6bd4abb2652b7f1170270e7a526bc0a4257c684), [`101c0160`](https://github.com/Ding-Ding-Projects/material-designer/commit/101c0160bb8f825f7ffb23b432d76b690bd1d3f4), [`d731ad47`](https://github.com/Ding-Ding-Projects/material-designer/commit/d731ad47a606ce894fb80a281c6efeffd20ad1ce), and [`3c2e0e64`](https://github.com/Ding-Ding-Projects/material-designer/commit/3c2e0e648e1a9e04f55937c42b205c1a46680039)
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`

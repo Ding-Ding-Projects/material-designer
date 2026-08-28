@@ -1,20 +1,21 @@
 # Roadmap
 
-- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
-      emergency handoff in `HANDOFF.md` records every preserved branch, exact
-      commit, review state, release blocker, and missing runtime evidence. No
-      incomplete branch is considered shipped merely because its work was
-      committed and pushed for preservation. A successor must re-read each HOLD
-      finding, reconcile approved source semantically, run hosted verification,
-      drive the installed application, and collect the required screenshots
-      before checking this item.
-
-      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
-      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
-      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
-      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
-      仲要補齊真正 screenshots，先可以 tick 呢項。
-
+- [~] **Add a local personal-vocabulary JSON upload to the desktop and
+      documentation site Settings surfaces.** Commits
+      [`4417e4aee`](https://github.com/Ding-Ding-Projects/material-designer/commit/4417e4aee48f00cf91e8fe764981010c61e5863c) and
+      [`39b7c66f`](https://github.com/Ding-Ding-Projects/material-designer/commit/39b7c66f0b9c255d254eaec3a66c0a7879905e74) added the
+      neutral versioned JSON loader, semantic pickers, local cache, private UI
+      boundary, local search, and public documentation. Commit
+      [`b2e934ab`](https://github.com/Ding-Ding-Projects/material-designer/commit/b2e934abecc9ca85874266e8bd33288aaf2250a0)
+      hardens readback and removal verification, redacted mutation history,
+      strict page byte decoding, picker reset, all funny-level states, and
+      School-mode removal from rendered, search, and palette surfaces. The
+      source contract gate is green with deliberate red-then-green checks.
+      Follow-up commit
+      [`1eecff96`](https://github.com/Ding-Ding-Projects/material-designer/commit/1eecff964f473c4dba58f3048026b50b6f2e473c)
+      adds the final oversized-picker reset and status-boundary repair.
+      Hosted typechecking, packaged interaction, per-click captures, and full
+      surface evidence remain pending, so this item is not complete.
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles

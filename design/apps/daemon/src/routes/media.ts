@@ -627,7 +627,17 @@ export function registerMediaRoutes(app: Express, ctx: RegisterMediaRoutesDeps) 
       }
       const config = await writeAppConfig(RUNTIME_DATA_DIR, req.body);
       orbitService.configure(config.orbit);
-      onAppConfigWritten?.(config);
+      try {
+        await onAppConfigWritten?.(config);
+      } catch (callbackError) {
+        // A history acknowledgement is part of the personal-vocabulary
+        // transaction. Restore the prior config marker before reporting the
+        // refusal, so the renderer can roll its cache back without leaving a
+        // marker that was never recorded by the Git-backed history service.
+        await writeAppConfig(RUNTIME_DATA_DIR, currentConfig).catch(() => undefined);
+        orbitService.configure(currentConfig.orbit);
+        throw callbackError;
+      }
       res.json({ config });
     } catch (err: any) {
       const status = err?.code === 'WORKSPACE_ACCESS_DENIED'

@@ -545,6 +545,9 @@ const CATALOGUE = {
 
   'settings.heading': { en: 'Settings', yue: '設定' },
 
+  'personalVocabulary.title': { en: 'Personal wording', yue: 'Personal wording' },
+  'personalVocabulary.description': { en: 'Load a bounded versioned JSON file locally to adapt private UI wording. Nothing is uploaded.', yue: '載入有版本嘅本地 JSON file，改私人 UI wording；乜都唔會上載。' },
+
   'settings.intro': {
     en: [
       'Every preference on this page is stored in your browser and applied immediately. Nothing is sent anywhere.',
@@ -2483,6 +2486,18 @@ export const MODE_SAMPLES = Object.freeze({
 
 /** Live catalogue. `register()` extends it; the frozen literal above seeds it. */
 const catalogue = Object.assign(Object.create(null), CATALOGUE);
+const PRIVATE_UI_TRANSLATION_KEYS = new Set([
+  'nav.settings', 'nav.about', 'settings.heading', 'settings.intro',
+  'settings.language.heading', 'settings.language.help', 'settings.funny.heading',
+  'settings.funny.help', 'settings.appearance.heading', 'settings.search.label',
+  'settings.search.placeholder', 'personalVocabulary.title', 'personalVocabulary.description',
+]);
+let privateUiAdapter = null;
+
+/** Register the payload-free private UI adapter without coupling the catalogue to it. */
+export function setPrivateUiAdapter(adapter) {
+  privateUiAdapter = typeof adapter === 'function' ? adapter : null;
+}
 
 const warnedKeys = new Set();
 
@@ -2533,7 +2548,10 @@ export function tRaw(key, language, level, params) {
     warnOnce(key + '/' + language, 'key "' + key + '" has no ' + language + ' variant.');
     return null;
   }
-  return format(text, params);
+  const formatted = format(text, params);
+  return PRIVATE_UI_TRANSLATION_KEYS.has(key) && privateUiAdapter
+    ? privateUiAdapter(formatted, key)
+    : formatted;
 }
 
 /**

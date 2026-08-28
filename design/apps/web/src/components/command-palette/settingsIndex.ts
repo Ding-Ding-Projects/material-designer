@@ -125,6 +125,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['general', 'language', 'notifications', 'pet', 'project locations', 'critique theater'],
   },
   {
+    id: 'personalVocabulary',
+    section: 'general',
+    titleKey: 'personalVocabulary.title',
+    hintKey: 'personalVocabulary.description',
+    keywords: ['personal vocabulary', 'local json', 'wording', 'private text', 'upload', 'replace', 'clear'],
+  },
+  {
     id: sectionAnchorFor('execution'),
     section: 'execution',
     titleKey: 'settings.title',

@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const en: Dict = {
+  'personalVocabulary.title': 'Personal wording',
+  'personalVocabulary.description': 'Load a bounded versioned JSON file locally to adapt private UI wording. Nothing is uploaded.',
   'handoff.title': 'Design handoff registry',
   'handoff.tabHint': 'Review current Material Design 3 token and component ownership',
   'handoff.eyebrow': 'Source handoff',

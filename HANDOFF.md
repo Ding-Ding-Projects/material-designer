@@ -1,5 +1,67 @@
 ﻿# Handoff
 
+## Local personal-vocabulary upload lane, source-only
+
+The isolated implementation lane was implemented at commit
+[`b2e934ab`](https://github.com/Ding-Ding-Projects/material-designer/commit/b2e934abecc9ca85874266e8bd33288aaf2250a0)
+on `yum-tong-personal-vocabulary-20260827`. It adds the neutral versioned
+JSON validator and local cache to the desktop-rendered Settings surface and
+the documentation site Settings surface. The implementation rejects malformed
+UTF-8/JSON, duplicate keys, unsafe keys, unexpected fields, unsupported schema
+versions, non-string values, empty or oversized entries, excessive nesting, and
+excessive entry counts. It verifies writes and removals, records only redacted
+load/replace/clear history events, resets the picker after every attempt, and
+keeps the last valid state after a refusal.
+
+The actual private UI boundary now consumes validated replacements for real
+labels, explanatory copy, statuses, and accessible names while technical and
+public boundaries remain unchanged. The desktop panel has an isolated search
+field with an anchored regex builder and row-level filtering. The documentation
+site has the same local search, fatal UTF-8 byte read, localized labels, cache
+verification, redacted history, command-palette route, and School-mode removal
+from rendered, search, and palette surfaces. No private payload or private
+mapping is present in the source.
+
+Source evidence is green from
+`pwsh -NoProfile -File scripts/test-personal-vocabulary-contract.ps1 -SelfTest`,
+including deliberate red-then-green cases for the validator, mount, palette,
+locale, site loader, boundary consumers, history, and evidence record. The
+focused desktop and validator suites are committed but were not run locally
+because the repository's local policy keeps the Node toolchain and desktop
+runtime in hosted verification. The Git-for-Windows port verifier did not
+return a bounded verdict in this lane and was stopped without changing
+`design/`.
+
+Follow-up commit
+[`1eecff96`](https://github.com/Ding-Ding-Projects/material-designer/commit/1eecff964f473c4dba58f3048026b50b6f2e473c)
+adds the oversized-selection picker reset and applies the page's validation and
+mutation statuses through the same private UI boundary. The lane was reconciled
+onto current `main` tip `538f1d4cf8c8c30f6cc71fd949994ab38d6861af` by merge
+commit `3c2e0e648e1a9e04f55937c42b205c1a46680039`. The current lane tip is
+`b6bd4abb2652b7f1170270e7a526bc0a4257c684`.
+
+The latest follow-up adds the shared host bridge adapter for live School-mode
+events, daemon-side Git-backed history recording with a verified flush
+acknowledgement, transactional app-config rollback when that acknowledgement
+fails, and the site's filtered redacted history view. The site history view has
+range date inputs, typed native date values, date presets, action choices derived
+from recorded events, an action search with its own anchored regex builder,
+visible selection, inverse selection, filtered export, and a two-key plus
+full-slider confirmation for deletion. The canonical universal-settings source
+is a separate task dependency at commit
+`f69d39a5`; this lane intentionally does not copy or replace that source.
+
+The consumer inventory now records both the desktop and documentation-site
+personal-vocabulary rows as source-complete but hosted-evidence-pending, with
+implementation and documentation paths. The focused hosted-capable behavior
+suite is `design/apps/web/tests/site/personal-vocabulary.behavior.test.ts`.
+
+Hosted typechecking, packaged UI interaction, full per-click capture evidence,
+and default-branch integration remain owned by the parent release lane. This
+branch has not been pushed. Hosted typechecking, real daemon history flush
+interaction, packaged UI interaction, and full per-click capture evidence remain
+unverified.
+
 > [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by
@@ -2084,83 +2146,3 @@ installer/release work or the parked dim-sum photo lane.
 > localized, persistent while the builder is closed, and connected through
 > `aria-invalid`, `aria-describedby` and a live status. Hosted build, installed
 > interaction and visual parity remain unverified.
-
-## Emergency session handoff, 2026-08-28
-
-> [!IMPORTANT]
-> This session ended under an emergency preservation request. New implementation
-> stopped, every discovered working directory was inspected, and uncommitted work
-> was preserved before any integration or cleanup. The default branch remains at
-> `538f1d4cf8c8c30f6cc71fd949994ab38d6861af` until the handoff commit lands.
-
-### Verified published baseline
-
-- Default-branch source: `538f1d4cf8c8c30f6cc71fd949994ab38d6861af`.
-- Verify run `33138746519`: successful.
-- Release run `33138746497`: successful.
-- Initial Pages run `33138746499`: successful.
-- Published intermediate release: `v0.20.257-r255.1`.
-- Setup SHA-256: `24908a1c10551f96825046703dd452773f62f84bed0c291099005a1b0c84a0b6`.
-- Setup signing state: `NotSigned`.
-- Release-triggered Pages run `33139594474`: failed before runner allocation
-  because tag `v0.20.257-r255.1` is not permitted by the `github-pages`
-  environment's main-only deployment rule.
-
-### Preserved task branches
-
-The following commits are preservation points. They are not all complete or
-approved for default-branch integration. Review each branch's documented HOLD
-findings before merging it.
-
-| Area | Preserved tip | Current state |
-|---|---:|---|
-| Front-screen provenance | `e9b40ad61581f30b548225fc49f896a0ed5e219c` | Source already represented on default branch through `01c2263a` and `538f1d4c`; installed screenshots remain pending |
-| Release integrity and Pages | `7682e8a5f1980c698e68e436a1d12c9ceaa9f063` | Source checks green; publication intentionally blocked by the photo-policy conflict |
-| Build and updater | `65538a62c15dee491f51445de976ff1980b3bc15` | Reconciled source checkpoint; independent final review and hosted packaging remain pending |
-| Documentation evidence | `d7072bfbb844210e75670f935ab09261b302cd56` | Reconciled documentation checkpoint; hosted and installed reader evidence remain pending |
-| Documentation-site parity | `ad5250ebf2ba7622dd4a074dab6c38030d75754b` | Reconciled source checkpoint; runtime parity remains held |
-| Advanced regex workbench | `366616d7fa111c43626485cb6dd039846eb35001` | HOLD due async overflow, timeout classification, mode synchronization, inventory, and fallback issues |
-| Shared UI primitives | `9ed1d752178f15ff84a5365ea4c0fa6c45bffd94` | HOLD due callback-order, locked context-menu, accessibility-name, and DOM-identity issues |
-| Toy-lock public integration | `9b2e9fdda7b3fd8ac1db73087eca5a7b4d1e346d` | HOLD due QR decoding order, persisted tab appearance, editor depth, and unlock-ladder dependency |
-| Appearance source | `1860c895b9a2b7b9322882aff0e4f8438b5ac0bc` | History acknowledgement seam preserved; full appearance contract incomplete |
-| Appearance deep repair | `9327b0b0660a9d5f2c88676a4fd4bc3d65ce72d6` | Emergency checkpoint, incomplete and unverified |
-| Appearance schema child | `64fdfb3c74af2d70d55d4b6c869736e0eb99befa` | Narrow schema checkpoint, source checks only |
-| Universal settings | `7d967f1f247240adcf6bb9d4523320e2dbc3798d` | Emergency schema checkpoint; broad source HOLD findings remain |
-| Personal vocabulary | `4b8fc5d17fbda827d5df04816e9f6272f109be6f` | HOLD, including unresolved universal-settings dependency and history semantics |
-| Logo customization | `cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62` | HOLD due desktop color workbench, history acknowledgement, palette, search, and schedule issues |
-| File converter | `3d8101ff2b93161b009305f7b8acb9620263259e` | Emergency bounded-queue checkpoint; many converter HOLD findings remain |
-| Tabs, history, export | `fd0744de4eb242169af0a68b65f2491cd880b20e` | History mutation endpoint preserved; full lane remains held |
-| Authenticator and lockout | `88f3331765567514d7e199c71fe87b45bd423da8` | Incomplete standards and runtime evidence |
-| Ollama suite | `45df17da5e01e43b8c3da6417344d53617175702` | Incomplete and not approved for integration |
-| Browser downloads and destructive actions | `794e3c5f953ebd8e2eaaa3f9440d77141be31514` | Detached staged work rescued into a local branch, review still required |
-
-Additional historical branches and linked working directories remain present.
-Do not delete them solely because they are old or because another branch appears
-to cover similar files. Prove ancestry and ownership first.
-
-### Known release blocker requiring an owner decision
-
-The release contract currently requires a downloadable dim-sum image asset.
-The public catalog rule separately forbids a consumer repository from copying or
-attaching the catalog bytes. The release-integrity branch stops before requesting
-the image body and refuses publication. A future owner must resolve the policy
-conflict before enabling release publication. Do not silently weaken either rule.
-
-### Verification and evidence still missing
-
-- No complete installed-application drive exists for the preserved feature branches.
-- No per-click screenshot ledger exists for every reachable UI action.
-- The 30-feature desktop and documentation-site inventories remain incomplete.
-- All ten design-reference rows remain structure-only, without complete real-app
-  comparisons and visual-diff evidence.
-- Accessibility, security, narrow-layout, high-scale, localization, update,
-  converter, authenticator, Ollama, and full toy-lock runtime evidence remains open.
-- The imported-tree verifier continues to report two known missing upstream paths:
-  `docs/superpowers/plans/2026-08-21-pricing-deepseek-v4-flash-vision-exp.md`
-  and `docs/superpowers/specs/2026-08-21-pricing-deepseek-v4-flash-vision-exp-design.md`.
-
-### Open issues
-
-Issues `#7`, `#9`, `#10`, `#11`, `#12`, and `#13` remain open. They cover
-release packaging, installed update and removal verification, download and export
-verification, design parity, upstream reconciliation, and splash branding.

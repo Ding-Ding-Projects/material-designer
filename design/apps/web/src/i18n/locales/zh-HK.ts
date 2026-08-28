@@ -31,6 +31,9 @@ import { zhTW } from "./zh-TW";
 export const zhHK: Dict = {
   ...zhTW,
 
+  'personalVocabulary.title': 'Personal wording',
+  'personalVocabulary.description': '載入有版本嘅本地 JSON file，改私人 UI wording；乜都唔會上載。',
+
   'handoff.title': '設計交接登記冊',
   'handoff.tabHint': '睇清楚而家嘅 Material Design 3 token 同元件負責人',
   'handoff.eyebrow': '來源交接',

@@ -141,6 +141,8 @@ export class HistoryService {
 
   private queue: Promise<void> = Promise.resolve();
 
+  private committedSequence = 0;
+
   /** Set while a restore rewrites live files, so the watcher stays quiet. */
   private suspended = false;
 
@@ -169,7 +171,8 @@ export class HistoryService {
    */
   start(): void {
     this.enqueue(async () => {
-      await this.store.capture({ labels: ['Recorded the current state at startup'] });
+      const result = await this.store.capture({ labels: ['Recorded the current state at startup'] });
+      if (result.committed) this.committedSequence += 1;
     });
     if (this.shouldWatch) this.startWatching();
   }
@@ -246,11 +249,21 @@ export class HistoryService {
     await this.queue;
   }
 
+  /** Flush and report whether at least one real Git revision committed. */
+  async flushVerified(): Promise<boolean> {
+    const before = this.committedSequence;
+    await this.flush();
+    return this.committedSequence > before;
+  }
+
   private async captureNow(): Promise<void> {
     const labels = this.pendingLabels;
     this.pendingLabels = [];
     const result = await this.store.capture(labels.length > 0 ? { labels } : {});
-    if (result.committed) await this.applyRetentionInline();
+    if (result.committed) {
+      this.committedSequence += 1;
+      await this.applyRetentionInline();
+    }
   }
 
   /**

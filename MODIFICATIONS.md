@@ -578,6 +578,7 @@ checks run.
 - `apps/web/src/components/regex/RegexSearchField.module.css`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/i18n/locales/en.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
@@ -687,6 +688,9 @@ focused regressions prove complete rows pass and incomplete rows fail closed.
 - `apps/web/src/i18n/locales/uk.ts`
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/tests/lib/personal-vocabulary.test.ts`
+- `apps/web/tests/components/PersonalVocabularySettings.test.tsx`
+- `apps/web/tests/site/personal-vocabulary.behavior.test.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/funny/en.ts`
 - `apps/web/src/i18n/funny/zh-HK.ts`
@@ -5406,6 +5410,9 @@ DTO and an `od` subcommand — so an external agent can drive them without the U
 **Changed files:**
 
 - `apps/daemon/src/app-config.ts`
+- `apps/daemon/src/history/service.ts`
+- `apps/daemon/src/routes/media.ts`
+- `apps/daemon/src/server.ts`
 - `apps/daemon/src/data-export-cli.ts`
 - `apps/daemon/src/data-export/archive.ts`
 - `apps/daemon/src/data-export/datasets.ts`
@@ -5646,6 +5653,35 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
+
+### 2026-08-27 — Add local personal-vocabulary upload boundaries
+
+**Reason:** the Material Designer renderer needed a user-supplied, local-only
+wording file with strict version, size, shape, duplicate-key, and unsafe-key
+validation. The feature now exposes a semantic Settings picker, isolated
+anchored search, cache replace and reset, private-UI-only application, and
+School-mode suppression. The neutral control is also represented in the
+project's command index and the two primary locale dictionaries. No private
+mapping or source payload is included.
+
+**Changed files:**
+
+- `apps/web/src/lib/personal-vocabulary.ts`
+- `apps/web/src/components/PersonalVocabularySettings.tsx`
+- `apps/web/src/components/PersonalVocabularySettings.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/i18n/index.tsx`
+- `apps/web/src/types.ts`
+- `apps/web/src/state/config.ts`
+- `apps/daemon/src/app-config.ts`
+- `packages/contracts/src/api/app-config.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/tests/lib/personal-vocabulary.test.ts`
+- `apps/web/tests/components/PersonalVocabularySettings.test.tsx`
 
 ## Trademarks
 

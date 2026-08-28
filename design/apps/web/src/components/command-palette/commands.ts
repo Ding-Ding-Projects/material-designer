@@ -22,6 +22,7 @@ import type { IconName } from '../Icon';
 import type { Dict } from '../../i18n/types';
 import { LIBRARY_UI_VISIBLE } from '../../features/libraryUi';
 import { SETTINGS_INDEX, type SettingsIndexEntry } from './settingsIndex';
+import { isPersonalVocabularySuppressed } from '../../lib/personal-vocabulary';
 import type { TranslationVars } from '../../i18n';
 
 export type PaletteTranslate = (key: keyof Dict, vars?: TranslationVars) => string;
@@ -246,6 +247,7 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     // must navigate through the real `/library` route.
     if (entry.section === 'library') continue;
     if (entry.section === 'workspace' && ctx.workspaceSettingsVisible === false) continue;
+    if (entry.id === 'personalVocabulary' && isPersonalVocabularySuppressed()) continue;
     rows.push({
       kind: 'setting',
       id: `setting:${entry.id}`,
