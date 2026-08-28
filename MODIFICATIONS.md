@@ -5635,6 +5635,22 @@ an editor refusal is reported without silently substituting the project folder.
 - `apps/web/src/providers/registry.ts`
 - `apps/web/tests/components/HandoffButton.export-path.test.tsx`
 
+### 2026-08-28 — Add a strict appearance-state schema boundary
+
+**Reason:** Appearance state needs a reusable import and restore boundary that
+rejects malformed nested data before any renderer consumer can interpret it.
+The validator enforces exact schema keys, stable scoped identities, finite and
+bounded recursive values, serialized-byte, depth and entry limits, cycles, and
+duplicate JSON keys while they remain observable. A focused source contract
+also proves each boundary disappears under an exact mutation and returns after
+restoration. Runtime and hosted verification remain outside this source-only
+lane.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/appearanceStateSchema.ts`
+- `apps/web/tests/components/appearance/appearance-state-schema.test.ts`
+
 ### 2026-08-25 — Keep capture startup explicit when desktop inspection is skipped
 
 **Reason:** deterministic capture launches deliberately bypass the duplicate
