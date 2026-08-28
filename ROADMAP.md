@@ -1,20 +1,5 @@
 # Roadmap
 
-- [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
-      emergency handoff in `HANDOFF.md` records every preserved branch, exact
-      commit, review state, release blocker, and missing runtime evidence. No
-      incomplete branch is considered shipped merely because its work was
-      committed and pushed for preservation. A successor must re-read each HOLD
-      finding, reconcile approved source semantically, run hosted verification,
-      drive the installed application, and collect the required screenshots
-      before checking this item.
-
-      **廣東話進度：** 2026-08-28 緊急收工已經將每條工作 branch、exact commit、
-      review 狀態、release blocker 同未完成 runtime evidence 寫入 `HANDOFF.md`。
-      保存到 commit 同推上遠端只係防止唔見，唔代表已經出貨。下一手要逐條重讀
-      HOLD finding、語意合併通過嘅 source、跑 hosted verification、實際操作安裝版，
-      仲要補齊真正 screenshots，先可以 tick 呢項。
-
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles
@@ -95,12 +80,37 @@
       scrypt digest, salt, and TOTP secret; strict two-step confirmed TOTP
       enrollment; stale revision rejection; and recoverable generation-published
       attempt/cooldown state behind a narrow optional main-frame-only bridge.
-      Asynchronous scrypt is bounded globally and per target. The live dialog deliberately does
-      not consume this bridge until configuration and pairing surfaces exist.
-      Lock-configuration menus, QR/manual TOTP pairing, central interception of
-      alternate Settings routes, per-element wiring, app-wide coverage,
-      packaged interaction, accessibility runtime verification, and screenshot
-      evidence remain open.
+      Asynchronous scrypt is bounded globally and per target. The live dialog
+      now consumes this bridge: it refreshes non-secret lock metadata, sends
+      complete factor sets with the current revision to the host, and renders
+      host-owned remaining-attempt state. A Settings panel supports all six
+      policies, keypad/manual PIN input, password input, host-owned begin/confirm
+      manual TOTP enrollment, replacement and removal; tab right-click and
+      Shift+F10 routes open the same configuration surface. Search and in-panel
+      connector routes delegate locked targets through the tab activation path.
+      The Settings lock panel now renders a local in-process otpauth QR code,
+      supports explicit manual-secret reveal, caches successful tab authorization
+      for a bounded surface, five-minute, or until-close duration, and exposes
+      local Support Tickets with filtered bulk actions and a host folder-open
+      recovery action. The unlock prompt and Help account menu open Support
+      Tickets directly. Per-element wiring, app-wide coverage, packaged
+      interaction, accessibility runtime verification, and screenshot evidence
+      remain open. The final source repair also routes locked-tab appearance
+      and configuration through the shared authentication callback, validates
+      the host recovery directory and exact returned path, moves active-option
+      semantics onto the focused search input, records legacy ticket-severity
+      migration, and adds focused recovery and deadline-cleanup coverage.
+      Direct Help and unlock support routes now use a support-only view, so an
+      existing lock cannot be replaced or removed without returning through
+      the authenticated configuration route. The local QR decoder also checks
+      Reed-Solomon codewords, and clipboard-unavailable path copy reports a
+      manual-copy recovery route.
+      The desktop host inventory also asserts the recovery channel appears
+      exactly once.
+      Settings now also exposes a disposable typed appearance-consumer registry
+      and cross-lane contract test. The coordinated appearance editor still
+      needs to register its real consumer before this handoff can be claimed as
+      production-complete.
   - [ ] Expand the documentation site's representative toy lock to every
         rendered element and complete deployed interaction evidence.
         One browser-local protected example now covers the exact six policies,

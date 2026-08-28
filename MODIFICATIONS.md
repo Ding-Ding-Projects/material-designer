@@ -29,6 +29,44 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-28 - Complete the Settings toy-lock source integration review
+
+**Reason:** Settings toy locks now authenticate replacement and removal against the existing revisioned policy, preserve support-only routing, connect tab appearance to the real application-owned appearance destination, expose typed recovery-folder inventory, report clipboard refusal, and state the bundled QR encoder's independent-scanner evidence boundary honestly. Focused source tests and exact executable-boundary validators cover the integration. Hosted checks and packaged interaction remain pending.
+
+**Changed files:**
+
+- `apps/desktop/src/main/preload.cts`
+- `apps/desktop/src/main/runtime.ts`
+- `apps/desktop/src/main/toy-lock-store.ts`
+- `apps/desktop/tests/main/toy-lock-host-boundary.test.ts`
+- `apps/desktop/tests/main/toy-lock-recovery-folder.test.ts`
+- `apps/desktop/tests/main/toy-lock-store.test.ts`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryView.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/ToyLockAuthenticationPopover.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
+- `apps/web/src/components/settings/SettingsTabs.module.css`
+- `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsToyLockPanel.tsx`
+- `apps/web/src/components/settings/totp-qr.ts`
+- `apps/web/src/components/settings/toy-lock-host-call.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/tests/components/settings-tab-appearance-consumer.test.ts`
+- `apps/web/tests/components/SettingsTabStrip.toy-lock.test.tsx`
+- `apps/web/tests/components/SettingsToyLockPanel.test.tsx`
+- `apps/web/tests/components/totp-qr.test.ts`
+- `apps/web/tests/components/toy-lock-host-call.test.ts`
+- `packages/host/src/detection.ts`
+- `packages/host/src/index.ts`
+- `packages/host/src/protocol.ts`
+- `packages/host/tests/index.test.ts`
+
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and

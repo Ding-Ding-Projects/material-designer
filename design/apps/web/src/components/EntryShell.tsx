@@ -484,6 +484,7 @@ interface Props {
   onDesignSystemsRefresh?: () => Promise<void> | void;
   onPersistComposioKey: (composio: AppConfig['composio']) => Promise<void> | void;
   onOpenSettings: (section?: EntrySettingsSection) => void;
+  onOpenSupportTickets?: () => void;
   onCompleteOnboarding: () => void;
   onSignedOut?: () => void | Promise<void>;
   onAmrLoginStatusChange?: (status: VelaLoginStatus | null) => void;
@@ -589,6 +590,7 @@ export function EntryShell({
   onDesignSystemsRefresh,
   onPersistComposioKey,
   onOpenSettings,
+  onOpenSupportTickets,
   onCompleteOnboarding,
   onSignedOut,
   onAmrLoginStatusChange,
@@ -1626,6 +1628,7 @@ export function EntryShell({
           billing={workspaceBilling}
           balanceUsd={workspaceBalanceUsd}
           onOpenSettings={onOpenSettings}
+          onOpenSupportTickets={onOpenSupportTickets}
           onInvite={() => changeView('members')}
           onSignInCloud={() => navigate({ kind: 'home', view: 'onboarding' })}
           onSignedOut={onSignedOut}

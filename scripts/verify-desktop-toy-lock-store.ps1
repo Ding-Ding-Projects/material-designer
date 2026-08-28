@@ -8,6 +8,14 @@ function Read-Required([string]$RelativePath) {
     [System.IO.File]::ReadAllText($path)
 }
 function Strip-Comments([string]$Text) { [regex]::Replace([regex]::Replace($Text, '/\*[\s\S]*?\*/', ''), '^\s*//.*$', '', 'Multiline') }
+function Test-ExecutableLiteral([string]$Text, [string]$Literal) {
+    $code = Strip-Comments $Text
+    $needle = [regex]::Escape($Literal)
+    foreach ($line in ($code -split "`r?`n")) {
+        if ([regex]::IsMatch($line, '(?<![A-Za-z0-9_])' + $needle + '(?![A-Za-z0-9_])')) { return $true }
+    }
+    return $false
+}
 function Assert-Exact([object[]]$Actual, [object[]]$Expected, [string]$Label) {
     if (($Actual -join "`u{1f}") -cne ($Expected -join "`u{1f}")) { throw "$Label differs: [$($Actual -join ', ')]" }
 }
@@ -22,7 +30,7 @@ function Extract-Policies([string]$Text) {
     $rows = [regex]::Matches($match.Groups['body'].Value, '"(?<policy>[^"]+)"\s*:\s*Object\.freeze\(\[(?<factors>[^\]]*)\]\s*(?:as const)?\)')
     $result = [ordered]@{}
     foreach ($row in $rows) {
-        if ($result.Contains($row.Groups['policy'].Value)) { throw "Duplicate policy: $($row.Groups['policy'].Value)" }
+        if (@($result.Keys | Where-Object { $_ -ceq $row.Groups['policy'].Value }).Count -gt 0) { throw "Duplicate policy: $($row.Groups['policy'].Value)" }
         $result[$row.Groups['policy'].Value] = @([regex]::Matches($row.Groups['factors'].Value, '"([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
     }
     $result
@@ -43,7 +51,8 @@ function Test-Contract([hashtable]$Sources) {
     Assert-Exact @($policies.Keys) @($expectedPolicies.Keys) 'Policy inventory'
     foreach ($policy in $expectedPolicies.Keys) { Assert-Exact @($policies[$policy]) @($expectedPolicies[$policy]) "Factors for $policy" }
     if (-not [regex]::IsMatch($protocol, 'export type OpenDesignToyLockResult<T extends Record<string, unknown> = Record<never, never>> =')) { throw 'Empty toy-lock success result must remain type-correct' }
-    $channels = @('begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','verify')
+    $channels = @('open-recovery-folder','begin-totp-enrollment','confirm-totp-enrollment','configure','list','remove','verify')
+    if (@($channels | Where-Object { $_ -ceq 'open-recovery-folder' }).Count -ne 1) { throw 'Recovery channel must appear exactly once in the host inventory' }
     $toyLockBlock = [regex]::Match($preload, 'const toyLocks: OpenDesignHostToyLocks = \{(?<body>[\s\S]*?)\n\};')
     if (-not $toyLockBlock.Success) { throw 'Exact preload toyLocks block missing' }
     $preloadChannels = @([regex]::Matches($toyLockBlock.Groups['body'].Value, "'od:toy-locks:([^']+)'") | ForEach-Object { $_.Groups[1].Value })
@@ -58,6 +67,24 @@ function Test-Contract([hashtable]$Sources) {
         $senderChecks = [regex]::Matches($body, '^\s*requireMainWindowSender\(event\);\s*$', 'Multiline')
         if ($senderChecks.Count -ne 1) { throw "Exact sender validation differs: $channel" }
     }
+    $recoveryMarker = 'ipcMain.handle("od:toy-locks:open-recovery-folder", async (event) => {'
+    $recoveryStart = $runtime.IndexOf($recoveryMarker, [StringComparison]::Ordinal)
+    $recoveryEnd = $runtime.IndexOf("`n  });", $recoveryStart, [StringComparison]::Ordinal)
+    if ($recoveryStart -lt 0 -or $recoveryEnd -lt 0) { throw 'Recovery-folder handler boundary missing' }
+    $recoveryBody = $runtime.Substring($recoveryStart, $recoveryEnd - $recoveryStart)
+    foreach ($recoveryRequirement in @(
+        'const recoveryPath = app.getPath("userData");',
+        'const directory = await stat(recoveryPath);',
+        'if (!directory.isDirectory()) return { ok: false, reason: "recovery-folder-invalid" };',
+        'await realpath(recoveryPath);',
+        'const failure = await shell.openPath(recoveryPath);',
+        '{ ok: true, path: recoveryPath }',
+        '{ ok: false, reason: "open-failed" }'
+    )) {
+        if (-not (Test-ExecutableLiteral $recoveryBody $recoveryRequirement)) { throw "Recovery requirement missing: $recoveryRequirement" }
+    }
+    $failureOnly = $recoveryBody.Replace('{ ok: true, path: recoveryPath }', '')
+    if ($failureOnly -match '\b(path|userData)\s*:') { throw 'Recovery failure result must not expose a filesystem path' }
     $requiredPatterns = @(
         'scrypt\(value, salt, HASH_BYTES, SCRYPT_OPTIONS, \(error, derivedKey\) => \{',
         'const MAX_PENDING_OPERATIONS = 32;',
@@ -73,7 +100,9 @@ function Test-Contract([hashtable]$Sources) {
         'protectedEnvelope = this\.#protection\.protect\(JSON\.stringify\(snapshot\.envelope\)\);',
         'credentials\.\$\{generation\}\.bin', 'metadata\.\$\{generation\}\.json',
         'join\(this\.#directory, "previous\.json"\)', 'join\(this\.#directory, "current\.json"\)',
-        'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);'
+        'return failure\("enrollment-mismatch"\);', 'return failure\("enrollment-expired"\);',
+        'const BASE32_UNUSED_BITS_BY_RESIDUE: Readonly<Record<number, number>> = Object.freeze\(',
+        '2:\s*2,\s*4:\s*4,\s*5:\s*1,\s*7:\s*3',
         '"pin": Object\.freeze\(\["pin"\] as const\)',
         '"password": Object\.freeze\(\["password"\] as const\)',
         '"pin-password": Object\.freeze\(\["pin", "password"\] as const\)',
@@ -104,14 +133,20 @@ if ($SelfTest) {
         @{ part='store'; old='Number.isSafeInteger(value) && value >= 0'; new='Number.isFinite(value) && value >= 0' },
         @{ part='store'; old='if (lock == null) return failure("not-configured"); if (lock.revision !== request.revision) return failure("stale-revision");'; new='if (lock == null) return failure("not-configured");' },
         @{ part='store'; old='if (lock.cooldownUntilMs != null && lock.cooldownUntilMs > now) return failure("cooldown-active");'; new='if (false) return failure("cooldown-active");' },
+        @{ part='store'; old='2: 2, 4: 4, 5: 1, 7: 3'; new='2: 3, 4: 4, 5: 1, 7: 3' },
         @{ part='store'; old='protectedEnvelope = this.#protection.protect(JSON.stringify(snapshot.envelope));'; new='protectedEnvelope = Buffer.from(JSON.stringify(snapshot.envelope));' },
         @{ part='store'; old='join(this.#directory, "previous.json")'; new='join(this.#directory, "prior.json")' },
-        @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' }
+        @{ part='runtime'; old="    requireMainWindowSender(event);`n    return toyLockStore.verify(request);"; new='    return toyLockStore.verify(request);' },
+        @{ part='runtime'; old='const recoveryPath = app.getPath("userData");'; new='const recoveryPath = app.getPathRemoved("userData");' },
+        @{ part='runtime'; old='const directory = await stat(recoveryPath);'; new='const directory = await statRemoved(recoveryPath);' },
+        @{ part='runtime'; old='await realpath(recoveryPath);'; new='await realpathRemoved(recoveryPath);' },
+        @{ part='runtime'; old='const failure = await shell.openPath(recoveryPath);'; new='const failure = await shell.openPathRemoved(recoveryPath);' },
+        @{ part='runtime'; old='{ ok: false, reason: "open-failed" }'; new='{ ok: false, reason: "open-failed", path: app.getPath("userData") }' }
     )
     foreach ($mutation in $mutations) {
         $broken = @{} + $sources
         $old = $mutation.old
-        if (-not $broken[$mutation.part].Contains($old)) { throw "Self-test mutation anchor missing: $($mutation.part)" }
+        if ($broken[$mutation.part].IndexOf($old, [StringComparison]::Ordinal) -lt 0) { throw "Self-test mutation anchor missing: $($mutation.part)" }
         $broken[$mutation.part] = $broken[$mutation.part].Replace($old, $mutation.new)
         $red = $false
         try { Test-Contract $broken } catch { $red = $true }

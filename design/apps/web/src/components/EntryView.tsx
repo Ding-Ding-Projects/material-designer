@@ -148,6 +148,7 @@ interface Props {
   onDesignSystemsRefresh?: () => Promise<void> | void;
   onPersistComposioKey: (composio: AppConfig['composio']) => Promise<void> | void;
   onOpenSettings: (section?: 'execution' | 'media' | 'composio' | 'orbit' | 'integrations' | 'mcpClient' | 'language' | 'appearance' | 'notifications' | 'pet' | 'projectLocations' | 'library' | 'about' | 'memory' | 'designSystems') => void;
+  onOpenSupportTickets?: () => void;
   onCompleteOnboarding: () => void;
   onSignedOut?: () => void | Promise<void>;
   onAmrLoginStatusChange?: (status: VelaLoginStatus | null) => void;
@@ -300,6 +301,7 @@ export function EntryView({
   onDesignSystemsRefresh,
   onPersistComposioKey,
   onOpenSettings,
+  onOpenSupportTickets,
   onCompleteOnboarding,
   onSignedOut,
   onAmrLoginStatusChange,
@@ -425,6 +427,7 @@ export function EntryView({
       onDesignSystemsRefresh={onDesignSystemsRefresh}
       onPersistComposioKey={onPersistComposioKey}
       onOpenSettings={onOpenSettings}
+      onOpenSupportTickets={onOpenSupportTickets}
       onCompleteOnboarding={onCompleteOnboarding}
       onSignedOut={onSignedOut}
       onAmrLoginStatusChange={onAmrLoginStatusChange}

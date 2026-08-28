@@ -45,6 +45,10 @@ version section when a release carries them.
 
 ### Changed
 
+- **Settings toy-lock review repairs now authenticate existing-lock replacement and removal, connect tab appearance to the live Settings appearance destination, and state QR evidence limits honestly.** Existing credentials must pass the current revisioned policy before either mutator runs, while support-only routes remain unable to expose those controls. The application-level appearance callback opens and focuses the real appearance controls instead of emitting an unconsumed event. The bundled QR decoder and Reed-Solomon verifier remain useful structural evidence, but independent packaged scanner interoperability is explicitly unverified. Recovery-folder inventory, stable Support Tickets locators, and clipboard-unavailable feedback are covered by focused source contracts. Hosted checks and packaged interaction remain pending.
+
+  **Settings toy lock review 今次補返 existing-lock replace 同 remove 嘅驗證，tab appearance 亦真係去到 live Settings appearance controls，QR 證據邊界就老實講清楚。** Existing credential 要先過 current revision policy，兩個 mutator 先會郁；support-only route 繼續睇唔到呢啲掣。Application-level appearance callback 會開同 focus 真 controls，唔再掉個冇人接嘅 event 落地。Bundled QR decoder 同 Reed-Solomon verifier 可以證明結構，但 independent packaged scanner interoperability 仲未驗，唔會扮綠。Recovery-folder inventory、穩定 Support Tickets locator 同 clipboard unavailable feedback 都有 focused source contract；hosted checks 同 packaged interaction 仍然 pending。
+
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`

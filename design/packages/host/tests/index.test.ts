@@ -118,6 +118,7 @@ describe("open-design host contract", () => {
     expect(isOpenDesignHostBridge({
       ...olderHost,
       toyLocks: {
+        openRecoveryFolder: async () => ({ ok: true, path: "C:/example/app-data" }),
         beginTotpEnrollment: async () => ({ code: "invalid-input", ok: false }),
         confirmTotpEnrollment: async () => ({ code: "enrollment-not-found", ok: false }),
         configure: async () => ({ code: "target-refused", ok: false }),
