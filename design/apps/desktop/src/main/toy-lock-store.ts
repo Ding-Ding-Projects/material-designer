@@ -66,6 +66,12 @@ const isFactor = (value: unknown): value is string => typeof value === "string" 
 const isGeneration = (value: unknown): value is string => typeof value === "string" && /^[a-f0-9]{24}$/.test(value);
 const validClock = (value: number): boolean => Number.isSafeInteger(value) && value >= 0
   && BigInt(Math.floor(value / TOTP_PERIOD_MS)) <= MAX_HOTP_COUNTER;
+// RFC 4648 leaves these zero bits in the final 5-bit symbol: 8 bits of one
+// byte occupy two symbols (2 unused bits), 16 bits occupy four (4), 24 bits
+// occupy five (1), and 32 bits occupy seven (3). Non-zero tails are rejected.
+const BASE32_UNUSED_BITS_BY_RESIDUE: Readonly<Record<number, number>> = Object.freeze({
+  2: 2, 4: 4, 5: 1, 7: 3,
+});
 
 function validMetadata(value: unknown): value is OpenDesignToyLockMetadata {
   if (!isRecord(value) || !hasOnlyKeys(value, ["cooldownUntilMs", "maximumAttempts", "policy", "remainingAttempts", "revision", "targetId"])) return false;
@@ -116,7 +122,8 @@ export function decodeCanonicalBase32(value: unknown): Buffer | null {
     accumulator = (accumulator << 5) | "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".indexOf(character); bitCount += 5;
     while (bitCount >= 8) { bitCount -= 8; output.push((accumulator >>> bitCount) & 0xff); accumulator &= (1 << bitCount) - 1; }
   }
-  if (bitCount > 0 && accumulator !== 0) return null;
+  const unusedBits = BASE32_UNUSED_BITS_BY_RESIDUE[residue] ?? 0;
+  if (bitCount !== unusedBits || (unusedBits > 0 && (accumulator & ((1 << unusedBits) - 1)) !== 0)) return null;
   return output.length > 0 ? Buffer.from(output) : null;
 }
 function hotp(secret: Buffer, counter: number): string {

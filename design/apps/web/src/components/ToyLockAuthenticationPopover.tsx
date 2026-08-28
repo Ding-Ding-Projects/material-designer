@@ -12,6 +12,7 @@ import {
 } from '../security/toy-lock-core';
 
 import styles from './ToyLockAuthenticationPopover.module.css';
+import { withToyLockUiDeadline } from './settings/toy-lock-host-call';
 
 export interface ToyLockVerificationRequest {
   readonly targetId: string;
@@ -19,6 +20,23 @@ export interface ToyLockVerificationRequest {
   readonly factor: ToyLockFactor;
   readonly value: string;
   readonly pinSource?: PinEntrySource;
+}
+
+/**
+ * A completed policy attempt, owned by the credential host.  The renderer uses
+ * the returned metadata only to present the host's persisted budget; it never
+ * derives a budget of its own for a host-backed target.
+ */
+export interface ToyLockPolicyVerificationRequest {
+  readonly targetId: string;
+  readonly policy: ToyLockPolicy;
+  readonly factors: Readonly<Partial<Record<ToyLockFactor, string>>>;
+}
+
+export interface ToyLockPolicyVerificationResult {
+  readonly matched: boolean;
+  readonly maximumAttempts: number;
+  readonly remainingAttempts: number;
 }
 
 export interface ToyLockAuthenticatedEvent {
@@ -39,9 +57,21 @@ export interface ToyLockAuthenticationPopoverProps {
    * authentication. Only an explicit `true` advances the factor sequence.
    */
   readonly verifyFactor: (request: ToyLockVerificationRequest) => boolean | Promise<boolean>;
+  /**
+   * Preferred host-backed contract. All factor values travel together once,
+   * with the host's revisioned lock deciding both the result and the next
+   * persistent attempt budget. The older factor callback remains for the
+   * reusable browser-only component contract.
+   */
+  readonly verifyPolicy?: (
+    request: ToyLockPolicyVerificationRequest,
+  ) => ToyLockPolicyVerificationResult | null | Promise<ToyLockPolicyVerificationResult | null>;
+  /** Host metadata at the time this prompt opened. */
+  readonly attemptRemaining?: number;
   /** Fired once, and only after every factor in the configured policy passed. */
   readonly onAuthenticated: (event: ToyLockAuthenticatedEvent) => void;
   readonly onCancel: () => void;
+  readonly onSupportTickets?: () => void;
 }
 
 type Copy = {
@@ -64,39 +94,11 @@ type Copy = {
   rejected: string;
   verificationFailed: string;
   verifying: string;
+  support: string;
 };
-
-const EN = {
-  title: 'Authentication required', subtitle: 'Unlock {target} before its action can run.',
-  progress: 'Factor {current} of {total}: {factor}', attempts: '{remaining} of {maximum} attempts remaining',
-  exhausted: 'No attempts remain. Cancel and reopen this prompt to try again.', pin: 'PIN', password: 'Password',
-  totp: 'Authenticator code', keypad: 'Access keypad', manual: 'Manual PIN entry', clear: 'Clear',
-  backspace: 'Backspace', continue: 'Continue', cancel: 'Cancel',
-  invalidPin: 'Enter a PIN containing 4 to 12 digits.', required: 'Enter this factor before continuing.',
-  rejected: 'That factor did not match.', verificationFailed: 'The factor could not be checked. Try again.',
-  verifying: 'Checking factor…',
-} satisfies Copy;
-
-const ZH_HK = {
-  title: '需要驗證', subtitle: '要先解鎖「{target}」，先可以執行佢個動作。',
-  progress: '第 {current} 個因素，共 {total} 個：{factor}', attempts: '仲有 {remaining} 次，共 {maximum} 次',
-  exhausted: '次數用晒。取消再開呢個提示先可以再試。', pin: 'PIN', password: '密碼',
-  totp: '驗證器代碼', keypad: '門禁式鍵盤', manual: '手動輸入 PIN', clear: '清除',
-  backspace: '退格', continue: '繼續', cancel: '取消',
-  invalidPin: '請輸入 4 至 12 個數字嘅 PIN。', required: '繼續之前要輸入呢個因素。',
-  rejected: '呢個因素唔吻合。', verificationFailed: '暫時檢查唔到呢個因素。請再試。', verifying: '檢查緊因素…',
-} satisfies Copy;
 
 function fill(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => String(vars[key] ?? `{${key}}`));
-}
-
-function localizedCopy(locale: string, bilingual: boolean): Copy {
-  const primary = locale === 'zh-HK' ? ZH_HK : EN;
-  if (!bilingual) return primary;
-  return Object.fromEntries(
-    (Object.keys(EN) as Array<keyof Copy>).map((key) => [key, `${EN[key]}\n${ZH_HK[key]}`]),
-  ) as Copy;
 }
 
 function factorName(copy: Copy, factor: ToyLockFactor): string {
@@ -125,18 +127,46 @@ export function ToyLockAuthenticationPopover({
   anchor,
   attemptMaximum = 5,
   verifyFactor,
+  verifyPolicy,
+  attemptRemaining,
   onAuthenticated,
   onCancel,
+  onSupportTickets,
 }: ToyLockAuthenticationPopoverProps) {
-  const { locale, languageMode } = useI18n();
-  const copy = useMemo(() => localizedCopy(locale, languageMode === 'bilingual'), [languageMode, locale]);
+  const { t } = useI18n();
+  const copy = useMemo<Copy>(() => ({
+    title: t('settings.toyLock.authTitle'),
+    subtitle: t('settings.toyLock.authSubtitle'),
+    progress: t('settings.toyLock.authProgress'),
+    attempts: t('settings.toyLock.authAttempts'),
+    exhausted: t('settings.toyLock.authExhausted'),
+    pin: t('settings.toyLock.authPin'),
+    password: t('settings.toyLock.authPassword'),
+    totp: t('settings.toyLock.authTotp'),
+    keypad: t('settings.toyLock.authKeypad'),
+    manual: t('settings.toyLock.authManual'),
+    clear: t('settings.toyLock.authClear'),
+    backspace: t('settings.toyLock.authBackspace'),
+    continue: t('settings.toyLock.authContinue'),
+    cancel: t('settings.toyLock.authCancel'),
+    invalidPin: t('settings.toyLock.authInvalidPin'),
+    required: t('settings.toyLock.authRequired'),
+    rejected: t('settings.toyLock.authRejected'),
+    verificationFailed: t('settings.toyLock.authVerificationFailed'),
+    verifying: t('settings.toyLock.authVerifying'),
+    support: t('settings.toyLock.supportOpen'),
+  }), [t]);
   const factors = useMemo(() => factorsForPolicy(policy), [policy]);
   const [factorIndex, setFactorIndex] = useState(0);
-  const [budget, setBudget] = useState(() => createAttemptBudget(attemptMaximum));
+  const [budget, setBudget] = useState(() => Object.freeze({
+    maximum: attemptMaximum,
+    remaining: Math.min(attemptMaximum, Math.max(0, attemptRemaining ?? attemptMaximum)),
+  }));
   const [pinSource, setPinSource] = useState<PinEntrySource>('keypad');
   const [value, setValue] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const valuesRef = useRef<Partial<Record<ToyLockFactor, string>>>({});
   const [position, setPosition] = useState(() => anchorPosition(anchor));
   const panelRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -158,12 +188,16 @@ export function ToyLockAuthenticationPopover({
     completedRef.current = false;
     cancelledRef.current = false;
     setFactorIndex(0);
-    setBudget(createAttemptBudget(attemptMaximum));
+    setBudget(Object.freeze({
+      maximum: attemptMaximum,
+      remaining: Math.min(attemptMaximum, Math.max(0, attemptRemaining ?? attemptMaximum)),
+    }));
+    valuesRef.current = {};
     setPinSource('keypad');
     setValue('');
     setMessage('');
     setSubmitting(false);
-  }, [attemptMaximum, policy, targetId]);
+  }, [attemptMaximum, attemptRemaining, policy, targetId]);
 
   useLayoutEffect(() => {
     const reposition = () => setPosition(anchorPosition(anchor));
@@ -213,13 +247,48 @@ export function ToyLockAuthenticationPopover({
     setMessage(copy.verifying);
     const generation = generationRef.current;
     try {
-      const matched = await verifyFactor({
+      if (verifyPolicy) {
+        valuesRef.current = { ...valuesRef.current, [currentFactor]: normalized };
+        const nextIndex = factorIndex + 1;
+        if (nextIndex < factors.length) {
+          setFactorIndex(nextIndex);
+          setValue('');
+          setMessage('');
+          return;
+        }
+        const result = await withToyLockUiDeadline(() => verifyPolicy({
+          targetId,
+          policy,
+          factors: valuesRef.current,
+        }));
+        if (generation !== generationRef.current) return;
+        if (result == null) {
+          setMessage(copy.verificationFailed);
+          return;
+        }
+        setBudget(Object.freeze({
+          maximum: result.maximumAttempts,
+          remaining: result.remainingAttempts,
+        }));
+        if (!result.matched) {
+          valuesRef.current = {};
+          setFactorIndex(0);
+          setValue('');
+          setMessage(result.remainingAttempts === 0 ? copy.exhausted : copy.rejected);
+          return;
+        }
+        completedRef.current = true;
+        onAuthenticated({ targetId, policy, acceptedFactors: factors });
+        anchor?.focus({ preventScroll: true });
+        return;
+      }
+      const matched = await withToyLockUiDeadline(() => verifyFactor({
         targetId,
         policy,
         factor: currentFactor,
         value: normalized,
         ...(currentFactor === 'pin' ? { pinSource } : {}),
-      });
+      }));
       if (generation !== generationRef.current) return;
       const attempt = recordAttempt(budget, matched);
       setBudget(attempt.budget);
@@ -243,7 +312,7 @@ export function ToyLockAuthenticationPopover({
     } finally {
       if (generation === generationRef.current) setSubmitting(false);
     }
-  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, submitting, targetId, value, verifyFactor]);
+  }, [anchor, budget, copy, currentFactor, factorIndex, factors, onAuthenticated, pinSource, policy, submitting, targetId, value, verifyFactor, verifyPolicy]);
 
   const setPinDigit = (digit: string) => setValue((current) => `${current}${digit}`.slice(0, 12));
   const titleId = `toy-lock-title-${targetId}`;
@@ -315,6 +384,7 @@ export function ToyLockAuthenticationPopover({
       {message && <p id={messageId} className={styles.message} role="status">{message}</p>}
 
       <footer className={styles.actions}>
+        {onSupportTickets ? <button type="button" onClick={onSupportTickets}>{copy.support}</button> : null}
         <button type="button" onClick={cancel}>{copy.cancel}</button>
         <button type="button" className={styles.primary} onClick={() => void submit()} disabled={disabled}>{copy.continue}</button>
       </footer>

@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import {
+  getOpenDesignHost,
+  type OpenDesignSettingsToyLockTarget,
+} from '@open-design/host';
 import { Button, VisuallyHidden } from '@open-design/components';
 import type {
   AmrWalletSnapshot,
@@ -228,7 +232,9 @@ import {
   SettingsTabStrip,
   settingsTabId,
   type SettingsTabToyLock,
+  type UnlockDuration,
 } from './settings/SettingsTabStrip';
+import { emitSettingsTabAppearanceRequest } from './settings/settings-tab-appearance-consumer';
 import { SettingsSearchResults } from './settings/SettingsSearchResults';
 import {
   matchSettingsIndex,
@@ -242,7 +248,12 @@ import {
   writeLastSettingsSection,
 } from './settings/settingsTabs';
 import settingsTabStyles from './settings/SettingsTabs.module.css';
-import type { ToyLockVerificationRequest } from './ToyLockAuthenticationPopover';
+import type {
+  ToyLockPolicyVerificationRequest,
+  ToyLockPolicyVerificationResult,
+} from './ToyLockAuthenticationPopover';
+import { SettingsToyLockPanel, type SettingsToyLockMap } from './settings/SettingsToyLockPanel';
+import { withToyLockUiDeadline } from './settings/toy-lock-host-call';
 
 export type SettingsSection =
   | 'general'
@@ -293,16 +304,6 @@ export type SettingsSection =
 // `privacy` and `about` must not be listed either — they own nav items, and
 // mapping them to General used to send deep links to the wrong section with
 // the wrong nav item highlighted.
-const SETTINGS_TAB_TOY_LOCKS: ReadonlyMap<SettingsSection, SettingsTabToyLock> = new Map();
-
-// Settings does not own a credential backend yet. Keep every tab unlocked and
-// fail closed if controlled lock data is introduced before a real verifier is wired.
-function verifySettingsTabToyLockFactor(
-  _request: ToyLockVerificationRequest,
-): boolean {
-  return false;
-}
-
 interface ByokProviderPreset {
   id: string;
   title: string;
@@ -481,6 +482,10 @@ interface Props {
   appVersionInfo: AppVersionInfo | null;
   welcome?: boolean;
   initialSection?: SettingsSection;
+  /** Open the local Support Tickets panel immediately from a Help action. */
+  initialSupportTicketsOpen?: boolean;
+  /** Production adapter consumed by the shared anchored appearance editor. */
+  onEditTabAppearance?: (section: SettingsSection, anchor: HTMLButtonElement) => void;
   onSectionChange?: (section: SettingsSection) => void;
   initialHighlight?: SettingsHighlight;
   /** Workspace id persisted on the currently-open project, when any. */
@@ -1530,6 +1535,8 @@ export function SettingsDialog({
   appVersionInfo,
   welcome,
   initialSection = 'general',
+  initialSupportTicketsOpen = false,
+  onEditTabAppearance,
   onSectionChange,
   initialHighlight = null,
   persistedProjectWorkspaceId = null,
@@ -1556,6 +1563,13 @@ export function SettingsDialog({
   const { t, locale, setLocale } = useI18n();
   const route = useRoute();
   const pageMode = presentation === 'page';
+  const dispatchTabAppearance = useCallback((section: SettingsSection, anchor: HTMLButtonElement) => {
+    if (onEditTabAppearance) {
+      onEditTabAppearance(section, anchor);
+      return;
+    }
+    emitSettingsTabAppearanceRequest({ section, anchor });
+  }, [onEditTabAppearance]);
   const analytics = useAnalytics();
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
@@ -1663,7 +1677,108 @@ export function SettingsDialog({
       : {},
   );
   const localSectionNavigationRef = useRef<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
+  const [activeSection, setActiveSection] = useState<SettingsSection>('general');
+  const [settingsToyLockStatus, setSettingsToyLockStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+  const [settingsToyLocks, setSettingsToyLocks] = useState<ReadonlyMap<SettingsSection, SettingsTabToyLock>>(
+    () => new Map(),
+  );
+  const [settingsToyLockDurations, setSettingsToyLockDurations] = useState<ReadonlyMap<SettingsSection, UnlockDuration>>(
+    () => {
+      if (typeof window === 'undefined') return new Map();
+      try {
+        const parsed: unknown = JSON.parse(window.localStorage.getItem('open-design:toy-lock-unlock-durations') ?? '{}');
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return new Map();
+        const next = new Map<SettingsSection, UnlockDuration>();
+        for (const [section, duration] of Object.entries(parsed)) {
+          if (duration === 'surface' || duration === '5-minutes' || duration === 'until-close') {
+            next.set(section as SettingsSection, duration);
+          }
+        }
+        return next;
+      } catch {
+        return new Map();
+      }
+    },
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('open-design:toy-lock-unlock-durations', JSON.stringify(Object.fromEntries(settingsToyLockDurations)));
+    } catch { /* a disabled browser store simply returns to surface-only duration */ }
+  }, [settingsToyLockDurations]);
+  const [toyLockConfigurationTarget, setToyLockConfigurationTarget] =
+    useState<{ targetId: OpenDesignSettingsToyLockTarget; anchor: HTMLButtonElement; supportOpen?: boolean; supportOnly?: boolean } | null>(null);
+  const settingsSupportAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const supportOpenConsumedRef = useRef(false);
+  const refreshSettingsToyLocks = useCallback(async (): Promise<void> => {
+    const bridge = getOpenDesignHost()?.toyLocks;
+    if (!bridge) { setSettingsToyLockStatus('unavailable'); return; }
+    let result: Awaited<ReturnType<typeof bridge.list>>;
+    try {
+      result = await withToyLockUiDeadline(() => bridge.list());
+    } catch {
+      setSettingsToyLockStatus('unavailable');
+      return;
+    }
+    if (!result?.ok) {
+      setSettingsToyLockStatus('unavailable');
+      return;
+    }
+    setSettingsToyLocks(new Map(result.locks.map((lock) => [
+      lock.targetId as SettingsSection,
+      { ...lock, locked: true } satisfies SettingsTabToyLock,
+    ] as const)));
+    setSettingsToyLockStatus('ready');
+  }, []);
+  const acceptSettingsToyLocks = useCallback((locks: SettingsToyLockMap) => {
+    setSettingsToyLocks(new Map([...locks.entries()].map(([targetId, lock]) => [
+      targetId as SettingsSection,
+      { ...lock, locked: true } satisfies SettingsTabToyLock,
+    ] as const)));
+  }, []);
+  useEffect(() => { void refreshSettingsToyLocks(); }, [refreshSettingsToyLocks]);
+  useEffect(() => {
+    if (!initialSupportTicketsOpen) {
+      supportOpenConsumedRef.current = false;
+      return;
+    }
+    if (supportOpenConsumedRef.current || toyLockConfigurationTarget || !settingsSupportAnchorRef.current) return;
+    supportOpenConsumedRef.current = true;
+    setToyLockConfigurationTarget({ targetId: 'general', anchor: settingsSupportAnchorRef.current, supportOpen: true, supportOnly: true });
+  }, [initialSupportTicketsOpen, toyLockConfigurationTarget]);
+  const verifySettingsTabToyLockPolicy = useCallback(async (
+    request: ToyLockPolicyVerificationRequest,
+  ): Promise<ToyLockPolicyVerificationResult | null> => {
+    const targetId = request.targetId as OpenDesignSettingsToyLockTarget;
+    const current = settingsToyLocks.get(targetId as SettingsSection);
+    const host = getOpenDesignHost()?.toyLocks;
+    if (!host || !current?.revision) return null;
+    let result: Awaited<ReturnType<typeof host.verify>>;
+    try {
+      result = await withToyLockUiDeadline(() => host.verify({
+        factors: request.factors,
+        revision: current.revision,
+        targetId,
+      }));
+    } catch {
+      setSettingsToyLockStatus('unavailable');
+      return null;
+    }
+    if (!result.ok) {
+      await refreshSettingsToyLocks();
+      return null;
+    }
+    setSettingsToyLocks((previous) => {
+      const next = new Map(previous);
+      next.set(targetId as SettingsSection, { ...result.lock, locked: true });
+      return next;
+    });
+    return {
+      matched: result.matched,
+      maximumAttempts: result.lock.maximumAttempts,
+      remainingAttempts: result.lock.remainingAttempts,
+    };
+  }, [refreshSettingsToyLocks, settingsToyLocks]);
   const settingsPageRouteActive = route.kind === 'home' && route.view === 'settings';
   const [settingsQuery, setSettingsQuery] = useState('');
   const settingsSearch = useRegexSearch(settingsQuery, setSettingsQuery);
@@ -1700,10 +1815,26 @@ export function SettingsDialog({
         : { kind: 'home', view: 'settings' },
     );
   }, [onSectionChange, pageMode, settingsPageRouteActive]);
+  // This is the only alternate-navigation route inside Settings. Commands,
+  // search results, and in-panel links must not bypass a lock merely because
+  // they do not originate from the visible tab button. Delegating a locked
+  // request to that button keeps the exact same anchored prompt and host
+  // verification path as pointer and keyboard activation.
+  const requestSettingsSection = useCallback((section: SettingsSection) => {
+    if (settingsToyLockStatus !== 'ready') return;
+    const lock = settingsToyLocks.get(section);
+    const tab = typeof document === 'undefined' ? null : document.getElementById(settingsTabId(section));
+    if (lock?.locked && tab instanceof HTMLButtonElement) {
+      tab.focus({ preventScroll: true });
+      tab.click();
+      return;
+    }
+    selectSettingsSection(section);
+  }, [selectSettingsSection, settingsToyLocks, settingsToyLockStatus]);
   const handleSettingsSearchPick = useCallback((hit: SettingsSearchHit) => {
-    selectSettingsSection(hit.section);
+    requestSettingsSection(hit.section);
     requestSettingsReveal(hit.entry.id);
-  }, [selectSettingsSection]);
+  }, [requestSettingsSection]);
   // Workspace region gating (E-frontend, D4.3). One shared read of the workspace
   // context; the Workspace section only renders for a team workspace whose
   // viewer may see workspace settings. Gate on the folded permission bits,
@@ -2120,8 +2251,8 @@ export function SettingsDialog({
   // routes through this when the MCP tab is active so the user can press the
   // single Save button at the bottom instead of hunting for the inner one.
   useEffect(() => {
-    setActiveSection(initialSection);
-  }, [initialSection]);
+    if (settingsToyLockStatus === 'ready') requestSettingsSection(initialSection);
+  }, [initialSection, requestSettingsSection, settingsToyLockStatus]);
 
   useEffect(() => {
     writeLastSettingsSection(activeSection);
@@ -4356,6 +4487,7 @@ export function SettingsDialog({
           <button
             type="button"
             className="settings-chrome-btn settings-close"
+            ref={settingsSupportAnchorRef}
             onClick={onClose}
             aria-label={t('common.close')}
             title={t('common.close')}
@@ -4387,8 +4519,17 @@ export function SettingsDialog({
             onSelect={selectSettingsSection}
             matchCounts={settingsSearchCounts}
             tabs={visibleSettingsTabs}
-            toyLocks={SETTINGS_TAB_TOY_LOCKS}
-            verifyToyLockFactor={verifySettingsTabToyLockFactor}
+            toyLocks={settingsToyLocks}
+            toyLockStatus={settingsToyLockStatus}
+            unlockDurations={settingsToyLockDurations}
+            verifyToyLockPolicy={verifySettingsTabToyLockPolicy}
+            onEditTabAppearance={dispatchTabAppearance}
+            onConfigureToyLock={(section, anchor) => {
+              setToyLockConfigurationTarget({ targetId: section as OpenDesignSettingsToyLockTarget, anchor });
+            }}
+            onOpenSupportTickets={(section, anchor) => {
+              setToyLockConfigurationTarget({ targetId: section as OpenDesignSettingsToyLockTarget, anchor, supportOpen: true, supportOnly: true });
+            }}
             searchField={
               <RegexSearchField
                 search={settingsSearch}
@@ -4419,8 +4560,15 @@ export function SettingsDialog({
               SETTINGS_TAB_DEFS[activeSection] ? settingsTabId(activeSection) : undefined
             }
             tabIndex={-1}
+            aria-busy={settingsToyLockStatus === 'loading' || undefined}
+            inert={settingsToyLockStatus !== 'ready'}
             data-od-setting={`section:${activeSection}`}
           >
+            {settingsToyLockStatus !== 'ready' ? (
+              <div role="status" aria-live="polite" className="settings-general-block">
+                {t(settingsToyLockStatus === 'loading' ? 'settings.toyLock.statusLoading' : 'settings.toyLock.statusUnavailable')}
+              </div>
+            ) : null}
             {pageMode ? (
               <div className="settings-page-nav-head">
                 <button
@@ -5877,7 +6025,7 @@ export function SettingsDialog({
               daemonMediaProviders={daemonMediaProviders}
               daemonMediaProvidersFetchState={daemonMediaProvidersFetchState}
               workspaceContext={workspaceContext}
-              onOpenComposioSection={() => setActiveSection('composio')}
+              onOpenComposioSection={() => requestSettingsSection('composio')}
               onLeaveForOrbitProject={(runConfig) => {
                 // Persist any in-flight Orbit edits (toggle / time) before
                 // navigating away so they aren't silently lost. The autosave
@@ -6000,7 +6148,7 @@ export function SettingsDialog({
 
           {activeSection === 'memory' ? (
             <MemorySection
-              onOpenConnectors={() => setActiveSection('composio')}
+              onOpenConnectors={() => requestSettingsSection('composio')}
               chatAgentId={cfg.mode === 'daemon' ? cfg.agentId ?? null : null}
               chatModel={selectedMemoryChatModel}
             />
@@ -6222,6 +6370,25 @@ export function SettingsDialog({
           ) : null}
           </div>
         </div>
+        {toyLockConfigurationTarget ? (
+          <SettingsToyLockPanel
+            initialTarget={toyLockConfigurationTarget.targetId}
+            initialSupportOpen={toyLockConfigurationTarget.supportOpen}
+            supportOnly={toyLockConfigurationTarget.supportOnly}
+            anchor={toyLockConfigurationTarget.anchor}
+            locks={settingsToyLocks as SettingsToyLockMap}
+            unlockDurations={settingsToyLockDurations}
+            onLocksChanged={acceptSettingsToyLocks}
+            onUnlockDurationChanged={(targetId, duration) => {
+              setSettingsToyLockDurations((previous) => {
+                const next = new Map(previous);
+                next.set(targetId as SettingsSection, duration);
+                return next;
+              });
+            }}
+            onClose={() => setToyLockConfigurationTarget(null)}
+          />
+        ) : null}
       </div>
   );
 
