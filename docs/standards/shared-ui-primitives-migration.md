@@ -10,8 +10,8 @@ visible until its owning feature lane migrates it.
 
 | Row | Source | Contract | State |
 | --- | --- | --- | --- |
-| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id forwarded to the regex workbench, isolated menu state, positive result count, keyboard navigation, active scrolling, focus return, viewport recompute, shortcut registry display, typed appearance and lock lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`), duplicate-id refusal, and fail-closed destructive confirmation receipt handoff. Snippet/history persistence is owned by the regex workbench, not duplicated here. | [x] implemented, mounted tests present |
-| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with readonly option/group types, explicit stable option ids, required localized labels, field-owned plain-text-first search, anchored regex builder, stable field id forwarded to the regex workbench, isolated select state, filtered groups, positive result count, keyboard navigation, focus return, active-option scrolling, viewport recompute, duplicate owner/id refusal markers, typed locked-trigger pointer/touch/keyboard/AT/programmatic lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`), visible disabled reasons, context-menu wrapper, and an optional trigger context-menu handoff. Snippet/history persistence is owned by the regex workbench, not duplicated here. | [x] implemented, mounted tests present |
+| primitive-context-menu | `design/apps/web/src/components/ContextMenu.tsx` | Target-specific menu with required localized labels and disabled-reason copy, field-owned plain-text-first search, anchored regex builder, stable field id forwarded to the regex workbench, isolated menu state, positive result count, keyboard navigation that excludes unavailable rows, active scrolling, focus return, viewport recompute, shortcut registry display, typed appearance and lock lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`) with phase-specific authorization, duplicate-id refusal, sanitized DOM identity collision checks, and fail-closed destructive confirmation receipt handoff. Snippet/history persistence is owned by the regex workbench, not duplicated here. | [x] implemented, mounted tests present |
+| primitive-custom-select | `design/apps/web/src/components/CustomSelect.tsx` | Target-specific dropdown with readonly option/group types, explicit stable option ids, required localized labels and duplicate/disabled reason copy, field-owned plain-text-first search, anchored regex builder, stable field id forwarded to the regex workbench, isolated select state, filtered groups, positive result count, keyboard navigation, focus return, active-option scrolling, viewport recompute, duplicate owner/id refusal markers including sanitized DOM identity collisions, typed locked-trigger pointer/touch/keyboard/AT/programmatic lifecycle receipts (`requested`, `opened`, `completed`, `cancelled`), visible disabled reasons, context-menu wrapper, and an optional trigger context-menu handoff. Snippet/history persistence is owned by the regex workbench, not duplicated here. | [x] implemented, mounted tests present |
 | primitive-regex-active-result | `design/apps/web/src/components/regex/RegexSearchField.tsx` | Search fields can expose the active filtered result to their own listbox or menu through `aria-activedescendant` without sharing controller state. | [x] implemented, mounted tests present |
 
 ## Native select rows
@@ -23,7 +23,7 @@ search, and the adjacent anchored regex builder.
 
 | Row | Source location | Owning surface | State |
 | --- | --- | --- | --- |
-| select-collab-role | `design/apps/web/src/collab/CollabDemoView.tsx:145` | Collaboration demo role | [x] migrated to `CustomSelect`, mounted builder coverage added |
+| select-collab-role | `design/apps/web/src/collab/CollabDemoView.tsx:146` | Collaboration demo role | [x] migrated to `CustomSelect`, mounted builder coverage added |
 | select-avatar-account | `design/apps/web/src/components/AvatarMenu.tsx:596` | Avatar account picker | [ ] RED, native select remains |
 | select-avatar-owner | `design/apps/web/src/components/AvatarMenu.tsx:618` | Avatar owner picker | [ ] RED, native select remains |
 | select-design-browser | `design/apps/web/src/components/DesignBrowserPanel.tsx:3075` | Design browser filter | [ ] RED, native select remains |
@@ -163,7 +163,7 @@ unfinished and remain completion blockers.
 | menu-composer-mode | `design/apps/web/src/components/ComposerModePicker.tsx:238` | [ ] RED |
 | menu-composer-plus-1 | `design/apps/web/src/components/ComposerPlusMenu.tsx:601` | [ ] RED |
 | menu-composer-plus-2 | `design/apps/web/src/components/ComposerPlusMenu.tsx:985` | [ ] RED |
-| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:435` | [x] green, shared primitive owns filtering and callbacks |
+| menu-context-primitive | `design/apps/web/src/components/ContextMenu.tsx:467` | [~] partial, shared primitive is covered but no genuine production caller exists in this lane |
 | menu-design-browser-1 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2588` | [ ] RED |
 | menu-design-browser-2 | `design/apps/web/src/components/DesignBrowserPanel.tsx:2791` | [ ] RED |
 | menu-design-files | `design/apps/web/src/components/DesignFilesPanel.tsx:1349` | [ ] RED |

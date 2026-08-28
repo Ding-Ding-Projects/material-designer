@@ -75,6 +75,9 @@ shared dropdown. The hand-written migration inventory at
 lists all 50 `role="menu"` containers, every remaining native select, every
 direct search input, and additional search-like controls. Unmigrated rows stay
 explicitly red, so this section does not claim complete application coverage.
+The shared `ContextMenu` has no genuine production caller in this lane, so its
+inventory row remains partial until an owning integration lane supplies real
+target receipts.
 Source implementation is recorded at
 [`97ef8b98`](https://github.com/Ding-Ding-Projects/material-designer/commit/97ef8b98c5a8d65df1ffb02ec424af18ff2ab0a0).
 

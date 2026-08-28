@@ -84,6 +84,7 @@ function renderMenu(props: Partial<Parameters<typeof ContextMenu>[0]> = {}) {
       lockLabel="Lock this element…"
       onRequestDestructiveConfirmation={acceptDestructive}
       destructiveUnavailableLabel="Confirmation is unavailable."
+      disabledUnavailableLabel="This action is unavailable."
       identityUnavailableLabel="Duplicate identity is unavailable."
       {...props}
     />,
@@ -315,6 +316,51 @@ describe('ContextMenu', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('does not close on a requested or cancelled lifecycle phase', () => {
+    const onClose = vi.fn();
+    renderMenu({
+      onClose,
+      onEditAppearance: (request) => ({ ...request, phase: 'requested' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(onClose).not.toHaveBeenCalled();
+    cleanup();
+
+    const cancelledClose = vi.fn();
+    renderMenu({
+      onClose: cancelledClose,
+      onEditAppearance: (request) => ({ ...request, phase: 'cancelled' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(cancelledClose).not.toHaveBeenCalled();
+  });
+
+  it('requires a completed destructive confirmation before closing', () => {
+    const onClose = vi.fn();
+    const onRequest = vi.fn((request: DestructiveConfirmationRequest) => ({
+      ...request,
+      phase: 'opened' as const,
+    }));
+    renderMenu({
+      onClose,
+      items: [{ id: 'delete', label: 'Delete', danger: true, onSelect: vi.fn() }],
+      onRequestDestructiveConfirmation: onRequest,
+    });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    expect(onRequest).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+
+    cleanup();
+    const completedClose = vi.fn();
+    renderMenu({
+      onClose: completedClose,
+      items: [{ id: 'delete', label: 'Delete', danger: true, onSelect: vi.fn() }],
+      onRequestDestructiveConfirmation: (request) => ({ ...request, phase: 'completed' as const }),
+    });
+    fireEvent.click(screen.getByTestId('menu-delete'));
+    expect(completedClose).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps a portalled builder inside its owning menu for pointer and scroll events', () => {
     const onClose = vi.fn();
     renderMenu({ onClose, ownerId: 'builder-owner' });
@@ -346,6 +392,7 @@ describe('ContextMenu', () => {
           lockLabel="Lock this element…"
           onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
+          disabledUnavailableLabel="This action is unavailable."
           identityUnavailableLabel="Duplicate identity is unavailable."
         />
         <ContextMenu
@@ -366,6 +413,7 @@ describe('ContextMenu', () => {
           lockLabel="Lock this element…"
           onRequestDestructiveConfirmation={acceptDestructive}
           destructiveUnavailableLabel="Confirmation is unavailable."
+          disabledUnavailableLabel="This action is unavailable."
           identityUnavailableLabel="Duplicate identity is unavailable."
         />
       </>,
@@ -396,6 +444,7 @@ describe('ContextMenu', () => {
         lockLabel="Lock this element…"
         onRequestDestructiveConfirmation={acceptDestructive}
         destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
         identityUnavailableLabel="Duplicate identity is unavailable."
       />
     );
@@ -417,6 +466,47 @@ describe('ContextMenu', () => {
     expect(menu).toHaveAttribute('data-item-duplicate', 'true');
     expect(screen.getByText('First same id').closest('button')).toBeDisabled();
     expect(screen.getByText('Second same id').closest('button')).toBeDisabled();
+  });
+
+  it('refuses item ids that collide after DOM sanitization', () => {
+    renderMenu({
+      items: [
+        { id: 'same id', label: 'Space id', onSelect: vi.fn() },
+        { id: 'same-id', label: 'Hyphen id', onSelect: vi.fn() },
+      ],
+    });
+    expect(screen.getByText('Space id').closest('button')).toBeDisabled();
+    expect(screen.getByText('Hyphen id').closest('button')).toBeDisabled();
+  });
+
+  it('refuses owner ids that collide after DOM sanitization', () => {
+    const view = (ownerId: string, testId: string) => (
+      <ContextMenu
+        items={[{ id: 'open', label: 'Open', onSelect: vi.fn() }]}
+        x={0}
+        y={0}
+        ariaLabel={testId}
+        onClose={() => {}}
+        testId={testId}
+        ownerId={ownerId}
+        searchLabel="Actions"
+        searchPlaceholder="Filter actions"
+        noResultsLabel="No actions match."
+        resultCountLabel={(count) => `${count} actions`}
+        onEditAppearance={acceptTargetAction}
+        onLock={acceptTargetAction}
+        editAppearanceLabel="Edit appearance…"
+        lockLabel="Lock this element…"
+        onRequestDestructiveConfirmation={acceptDestructive}
+        destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
+        identityUnavailableLabel="Duplicate identity is unavailable."
+      />
+    );
+    render(<><div>{view('same owner', 'sanitized-a')}</div><div>{view('same-owner', 'sanitized-b')}</div></>);
+    expect(screen.getByTestId('sanitized-a')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('sanitized-b')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('sanitized-a-open')).toBeDisabled();
   });
 
   it('refuses a dangerous action when no confirmation handoff exists', () => {

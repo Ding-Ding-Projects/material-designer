@@ -70,6 +70,7 @@ export interface CustomSelectProps {
   noResultsLabel: string;
   resultCountLabel: (count: number) => string;
   duplicateOptionLabel: string;
+  disabledOptionLabel: string;
   /** Optional target-specific context-menu handoff for the trigger. */
   onContextMenu?: (event: ReactMouseEvent<HTMLElement>) => void;
   /** Stable caller-owned id. Duplicate ids are reported and marked. */
@@ -123,6 +124,12 @@ function hasDuplicateOwnerId(ownerId: string): boolean {
     .filter((node) => node.getAttribute('data-select-owner') === ownerId).length > 1;
 }
 
+function hasDuplicateDomOwnerId(domOwnerId: string): boolean {
+  if (typeof document === 'undefined') return false;
+  return Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
+    .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId).length > 1;
+}
+
 export function CustomSelect({
   value,
   options,
@@ -148,6 +155,7 @@ export function CustomSelect({
   noResultsLabel,
   resultCountLabel,
   duplicateOptionLabel,
+  disabledOptionLabel,
   onContextMenu,
 }: CustomSelectProps) {
   const reactId = useId();
@@ -162,6 +170,9 @@ export function CustomSelect({
   const [activeValue, setActiveValue] = useState(value);
   const [position, setPosition] = useState<MenuPosition | null>(null);
   const [duplicateOwner, setDuplicateOwner] = useState(false);
+  const ownerIdentityCollision = duplicateOwner
+    || hasDuplicateOwnerId(resolvedOwnerId)
+    || hasDuplicateDomOwnerId(domOwnerId);
   const lockedActivationFromKeyRef = useRef(false);
   const pointerActivationRef = useRef(false);
   const [query, setQuery] = useState('');
@@ -196,13 +207,25 @@ export function CustomSelect({
     }
     return duplicates;
   }, [flatOptions]);
+  const duplicateOptionDomIds = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      const domId = option.stableId.replace(/[^A-Za-z0-9_-]/g, '-');
+      if (seen.has(domId)) duplicates.add(domId);
+      seen.add(domId);
+    }
+    return duplicates;
+  }, [flatOptions]);
   const invalidOptionValues = useMemo(
-    () => new Set([...duplicateOptionValues, ...duplicateOptionIds]),
-    [duplicateOptionIds, duplicateOptionValues],
+    () => new Set([...duplicateOptionValues, ...duplicateOptionIds, ...duplicateOptionDomIds]),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
   );
   const isInvalidOption = useCallback(
-    (option: FlatOption) => duplicateOptionValues.has(option.value) || duplicateOptionIds.has(option.stableId),
-    [duplicateOptionIds, duplicateOptionValues],
+    (option: FlatOption) => duplicateOptionValues.has(option.value)
+      || duplicateOptionIds.has(option.stableId)
+      || duplicateOptionDomIds.has(option.stableId.replace(/[^A-Za-z0-9_-]/g, '-')),
+    [duplicateOptionDomIds, duplicateOptionIds, duplicateOptionValues],
   );
   const enabledOptions = useMemo(
     () => visibleOptions.filter((option) =>
@@ -223,9 +246,7 @@ export function CustomSelect({
     () => new Map(flatOptions.map((option) => [option.sourceKey, option])),
     [flatOptions],
   );
-  const activeFlatOption = flatOptions.find((option) =>
-    option.value === activeValue && !isInvalidOption(option),
-  );
+  const activeFlatOption = enabledOptions.find((option) => option.value === activeValue);
   const activeOptionId = open && activeFlatOption
     ? optionIdBySourceKey.get(activeFlatOption.sourceKey)
     : undefined;
@@ -272,7 +293,7 @@ export function CustomSelect({
   }, [restoreFocus]);
 
   const activateLocked = useCallback((input: LockedActivationInput) => {
-    if (!locked) return false;
+    if (!locked || ownerIdentityCollision) return false;
     let receipt: LockedActivationReceipt;
     try {
       receipt = onLockedActivate({ targetId: resolvedOwnerId, input });
@@ -285,8 +306,8 @@ export function CustomSelect({
       console.error('Locked select activation did not return a valid lifecycle receipt.');
       return false;
     }
-    return receipt.phase !== 'cancelled';
-  }, [locked, onLockedActivate, resolvedOwnerId]);
+    return receipt.phase === 'opened' || receipt.phase === 'completed';
+  }, [locked, onLockedActivate, ownerIdentityCollision, resolvedOwnerId]);
 
   useEffect(() => {
     if (!portal) return;
@@ -336,9 +357,12 @@ export function CustomSelect({
   useEffect(() => {
     const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-select-owner]'))
       .filter((node) => node.getAttribute('data-select-owner') === resolvedOwnerId);
-    setDuplicateOwner(matches.length > 1);
-    if (matches.length > 1) console.error('Duplicate select owner id was refused.');
-  }, [resolvedOwnerId]);
+    const domMatches = Array.from(document.querySelectorAll<HTMLElement>('[data-select-dom-owner]'))
+      .filter((node) => node.getAttribute('data-select-dom-owner') === domOwnerId);
+    const collision = matches.length > 1 || domMatches.length > 1;
+    setDuplicateOwner(collision);
+    if (collision) console.error('Duplicate select owner identity was refused.');
+  }, [domOwnerId, resolvedOwnerId]);
 
   useEffect(() => {
     if (invalidOptionValues.size > 0) {
@@ -371,11 +395,11 @@ export function CustomSelect({
 
   const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
-    if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)
+    if (ownerIdentityCollision
       || !next || next.disabled || isInvalidOption(next)) return;
     onChange(next.value);
     closeMenu(true);
-  }, [closeMenu, duplicateOwner, flatOptions, isInvalidOption, onChange, resolvedOwnerId]);
+  }, [closeMenu, flatOptions, isInvalidOption, onChange, ownerIdentityCollision]);
 
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (!enabledOptions.length) return;
@@ -484,6 +508,7 @@ export function CustomSelect({
                     active={option.value === activeValue}
                     invalid={isInvalidOption(option)}
                     invalidReason={duplicateOptionLabel}
+                    disabledReason={disabledOptionLabel}
                     id={optionIdBySourceKey.get(option.sourceKey)}
                     onChoose={choose}
                     onActive={setActiveValue}
@@ -502,6 +527,7 @@ export function CustomSelect({
               active={option.value === activeValue}
               invalid={isInvalidOption(option)}
               invalidReason={duplicateOptionLabel}
+              disabledReason={disabledOptionLabel}
               id={optionIdBySourceKey.get(option.sourceKey)}
               onChoose={choose}
               onActive={setActiveValue}
@@ -513,7 +539,7 @@ export function CustomSelect({
   );
 
   const onButtonKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
-    if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)) {
+    if (ownerIdentityCollision) {
       event.preventDefault();
       event.stopPropagation();
       return;
@@ -574,9 +600,10 @@ export function CustomSelect({
         data-testid={testId}
         data-dropdown-opener="true"
         data-select-owner={resolvedOwnerId}
-        data-owner-duplicate={duplicateOwner || undefined}
+        data-owner-duplicate={ownerIdentityCollision || undefined}
+        data-select-dom-owner={domOwnerId}
         onClick={() => {
-          if (duplicateOwner || hasDuplicateOwnerId(resolvedOwnerId)) return;
+          if (ownerIdentityCollision) return;
           if (locked && activateLocked('programmatic')) return;
           if (open) closeMenu(true);
           else setOpen(true);
@@ -650,6 +677,7 @@ function SelectOptionButton({
   active,
   invalid,
   invalidReason,
+  disabledReason,
   id,
   onChoose,
   onActive,
@@ -659,6 +687,7 @@ function SelectOptionButton({
   active: boolean;
   invalid: boolean;
   invalidReason: string;
+  disabledReason: string;
   id?: string;
   onChoose: (value: string) => void;
   onActive: (value: string) => void;
@@ -677,14 +706,15 @@ function SelectOptionButton({
       data-option-value={option.value}
       tabIndex={-1}
       disabled={option.disabled || invalid}
-      title={invalid ? invalidReason : option.disabledReason}
-      aria-label={invalid ? `${option.label}: ${invalidReason}` : undefined}
+      title={invalid ? invalidReason : option.disabledReason ?? disabledReason}
+      aria-label={invalid ? `${option.label}: ${invalidReason}` : `${option.label}: ${option.disabledReason ?? disabledReason}`}
       onMouseEnter={() => onActive(option.value)}
       onClick={() => onChoose(option.value)}
     >
       <span className="od-select-option-label">
         {option.label}
         {invalid ? <span className="od-select-option-reason"> ({invalidReason})</span> : null}
+        {!invalid && option.disabled ? <span className="od-select-option-reason"> ({option.disabledReason ?? disabledReason})</span> : null}
       </span>
       <span className="od-select-option-check" aria-hidden>
         <Icon name="check" size={14} />

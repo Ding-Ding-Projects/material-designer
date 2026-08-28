@@ -11,6 +11,8 @@ const SEARCH_PROPS = {
   searchPlaceholder: 'Filter options',
   noResultsLabel: 'No options match this filter.',
   resultCountLabel: (count: number) => `${count} options`,
+  duplicateOptionLabel: 'This option is unavailable.',
+  disabledOptionLabel: 'This option is disabled.',
   lockedReason: 'Unlock this control first.',
   onLockedActivate: (request: LockedActivationRequest): LockedActivationReceipt => ({
     targetId: request.targetId,
@@ -263,6 +265,26 @@ describe('CustomSelect', () => {
     expect(screen.getByRole('option', { name: /Duplicate value/ })).toBeDisabled();
   });
 
+  it('refuses owner ids that collide after DOM sanitization', () => {
+    const props = {
+      ...SEARCH_PROPS,
+      ariaLabel: 'Sanitized owner',
+      value: 'one',
+      options: [{ value: 'one', label: 'One' }],
+      onChange: vi.fn(),
+    };
+    render(
+      <>
+        <CustomSelect {...props} ownerId="same owner" testId="sanitized-a" />
+        <CustomSelect {...props} ownerId="same-owner" testId="sanitized-b" />
+      </>,
+    );
+    expect(screen.getByTestId('sanitized-a')).toHaveAttribute('data-owner-duplicate', 'true');
+    expect(screen.getByTestId('sanitized-b')).toHaveAttribute('data-owner-duplicate', 'true');
+    fireEvent.click(screen.getByTestId('sanitized-a'));
+    expect(screen.queryByTestId('sanitized-a-filter')).toBeNull();
+  });
+
   it('uses the caller label as an accessible label, not as a description', () => {
     const label = document.createElement('span');
     label.id = 'select-label';
@@ -316,6 +338,22 @@ describe('CustomSelect', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('refuses option ids that collide after DOM sanitization', () => {
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="sanitized-options"
+        ariaLabel="Sanitized options"
+        value="one"
+        options={[{ id: 'same id', value: 'one', label: 'Space id' }, { id: 'same-id', value: 'two', label: 'Hyphen id' }]}
+        onChange={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('sanitized-options'));
+    expect(screen.getByRole('option', { name: /Space id/ })).toBeDisabled();
+    expect(screen.getByRole('option', { name: /Hyphen id/ })).toBeDisabled();
+  });
+
   it('supports touch selection through the same option action', () => {
     const onChange = vi.fn();
     render(
@@ -339,7 +377,7 @@ describe('CustomSelect', () => {
   it('keeps a locked trigger disabled while its wrapper remains an unlock target', () => {
     const onLockedActivate = vi.fn((request: LockedActivationRequest): LockedActivationReceipt => ({
       targetId: request.targetId,
-      phase: 'requested',
+      phase: 'opened',
     }));
     const onContextMenu = vi.fn();
     render(
@@ -394,6 +432,25 @@ describe('CustomSelect', () => {
     const wrapper = screen.getByRole('button', { name: 'Bad receipt: locked' });
     expect(() => fireEvent.click(wrapper)).not.toThrow();
     expect(screen.queryByTestId('bad-receipt-filter')).toBeNull();
+  });
+
+  it('does not expose a locked context menu until authentication opens', () => {
+    const onContextMenu = vi.fn();
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="requested-lock"
+        locked
+        ariaLabel="Requested lock"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onLockedActivate={(request) => ({ targetId: request.targetId, phase: 'requested' as const })}
+        onContextMenu={onContextMenu}
+        onChange={() => {}}
+      />,
+    );
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Requested lock: locked' }));
+    expect(onContextMenu).not.toHaveBeenCalled();
   });
 
   it('scrolls the active option into view after keyboard movement', () => {

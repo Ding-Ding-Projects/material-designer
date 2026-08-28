@@ -38,6 +38,7 @@ describe('ContextMenu scroll behavior', () => {
         lockLabel="Lock this element…"
         onRequestDestructiveConfirmation={acceptDestructive}
         destructiveUnavailableLabel="Confirmation is unavailable."
+        disabledUnavailableLabel="This action is unavailable."
         identityUnavailableLabel="Duplicate identity is unavailable."
       />,
     );

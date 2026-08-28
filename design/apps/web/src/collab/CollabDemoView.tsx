@@ -153,6 +153,8 @@ export function CollabDemoView({ projectId }: { projectId: string | null }) {
               searchPlaceholder="Filter roles"
               noResultsLabel="No roles match this filter."
               resultCountLabel={(count) => `${count} roles`}
+              duplicateOptionLabel="This role option is unavailable."
+              disabledOptionLabel="This role option is disabled."
               lockedReason="Unlock this role control first."
               onLockedActivate={(request) => ({ targetId: request.targetId, phase: 'requested' as const })}
             />

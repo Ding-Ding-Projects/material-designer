@@ -121,6 +121,20 @@ function inventorySurfaceRows(): string[] {
   return rows.sort();
 }
 
+function inventorySearchLikeRows(): Array<{ id: string; path: string; line: number }> {
+  const inventory = readFileSync(
+    new URL('../../../../../docs/standards/shared-ui-primitives-migration.md', import.meta.url),
+    'utf8',
+  );
+  const rows: Array<{ id: string; path: string; line: number }> = [];
+  for (const line of inventory.split(/\r?\n/)) {
+    const match = line.match(/^\| (searchlike-[^|]+) \| `([^`]+):(\d+)`/);
+    if (!match) continue;
+    rows.push({ id: match[1]!, path: match[2]!, line: Number(match[3]) });
+  }
+  return rows;
+}
+
 describe('shared menu and dropdown primitive source contract', () => {
   it('keeps ContextMenu wired to one field-owned RegexSearchField', () => {
     const menu = source('ContextMenu.tsx');
@@ -128,7 +142,8 @@ describe('shared menu and dropdown primitive source contract', () => {
       menu,
       (value) => hasNamedImport(value, './regex', 'RegexSearchField')
         && hasJsxAttribute(value, 'ariaActiveDescendant')
-        && hasJsxAttribute(value, 'fieldId'),
+        && hasJsxAttribute(value, 'fieldId')
+        && value.includes('data-context-menu-dom-owner'),
       (value) => value.replace("import { RegexSearchField, useRegexSearch } from './regex';", "import { useRegexSearch } from './regex';"),
     );
   });
@@ -139,7 +154,8 @@ describe('shared menu and dropdown primitive source contract', () => {
       select,
       (value) => hasNamedImport(value, './regex', 'RegexSearchField')
         && hasJsxAttribute(value, 'ariaActiveDescendant')
-        && hasJsxAttribute(value, 'fieldId'),
+        && hasJsxAttribute(value, 'fieldId')
+        && value.includes('data-select-dom-owner'),
       (value) => value.replace("import { RegexSearchField, useRegexSearch } from './regex';", "import { useRegexSearch } from './regex';"),
     );
   });
@@ -150,6 +166,11 @@ describe('shared menu and dropdown primitive source contract', () => {
     expect(select).toContain("export type LockedActivationReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';");
     expect(select).toContain("console.error('Locked select activation did not return a valid lifecycle receipt.');");
     expect(select).toContain('data-locked={locked || undefined}');
+    expectRedThenGreen(
+      select,
+      (value) => value.includes('return receipt.phase === \'opened\' || receipt.phase === \'completed\';'),
+      (value) => value.replace('return receipt.phase === \'opened\' || receipt.phase === \'completed\';', 'return true;'),
+    );
   });
 
   it('keeps the active result prop in the shared search field', () => {
@@ -170,6 +191,8 @@ describe('shared menu and dropdown primitive source contract', () => {
         && value.includes("export type ActionReceiptPhase = 'requested' | 'opened' | 'completed' | 'cancelled';")
         && value.includes('readonly onRequestDestructiveConfirmation:')
         && value.includes(') => DestructiveConfirmationReceipt;')
+        && value.includes("receiptCanProceed(receipt.phase, 'completed')")
+        && value.includes('disabledUnavailableLabel')
         && hasJsxAttribute(value, 'data-callback-collision'),
       (value) => value.replace('readonly onEditAppearance: (request: TargetActionRequest) => TargetActionReceipt;', 'readonly onEditAppearanceX: (request: TargetActionRequest) => TargetActionReceipt;'),
     );
@@ -179,5 +202,18 @@ describe('shared menu and dropdown primitive source contract', () => {
     const srcRoot = fileURLToPath(new URL('../../src', import.meta.url));
     expect(scanSurfaceRows(srcRoot)).toEqual(inventorySurfaceRows());
     expect(scanSurfaceRows(srcRoot).filter((row) => row.endsWith(':menu'))).toHaveLength(50);
+  });
+
+  it('keeps all 33 semantic search-like surfaces in the executable inventory', () => {
+    const srcRoot = fileURLToPath(new URL('../../src', import.meta.url));
+    const rows = inventorySearchLikeRows();
+    expect(rows).toHaveLength(33);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(33);
+    for (const row of rows) {
+      const file = join(srcRoot, row.path.replace(/^design\/apps\/web\/src\//, ''));
+      const sourceText = readFileSync(file, 'utf8');
+      const lines = sourceText.split(/\r?\n/);
+      expect(lines[row.line - 1]).toBeTruthy();
+    }
   });
 });

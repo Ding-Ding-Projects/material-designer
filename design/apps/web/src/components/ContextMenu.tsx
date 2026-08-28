@@ -94,6 +94,7 @@ export interface ContextMenuProps {
     request: DestructiveConfirmationRequest,
   ) => DestructiveConfirmationReceipt;
   readonly destructiveUnavailableLabel: string;
+  readonly disabledUnavailableLabel: string;
   readonly identityUnavailableLabel: string;
 }
 
@@ -109,6 +110,10 @@ function uniqueItemId(preferred: string, ids: Set<string>): string {
   let suffix = 2;
   while (ids.has(`${preferred}-${suffix}`)) suffix += 1;
   return `${preferred}-${suffix}`;
+}
+
+function sanitizeDomId(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, '-');
 }
 
 function menuHeight(items: readonly ContextMenuItem[]): number {
@@ -161,6 +166,16 @@ function hasDuplicateOwnerId(attribute: string, ownerId: string): boolean {
     .filter((node) => node.getAttribute(attribute) === ownerId).length > 1;
 }
 
+function hasDuplicateDomOwnerId(attribute: string, domOwnerId: string): boolean {
+  return hasDuplicateOwnerId(attribute, domOwnerId);
+}
+
+function receiptCanProceed(phase: ActionReceiptPhase, required: 'opened' | 'completed'): boolean {
+  return required === 'opened'
+    ? phase === 'opened' || phase === 'completed'
+    : phase === 'completed';
+}
+
 function isTargetActionReceipt(
   value: TargetActionReceipt | DestructiveConfirmationReceipt | undefined,
   targetId: string,
@@ -196,6 +211,7 @@ export function ContextMenu({
   lockLabel,
   onRequestDestructiveConfirmation,
   destructiveUnavailableLabel,
+  disabledUnavailableLabel,
   identityUnavailableLabel,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -233,16 +249,27 @@ export function ContextMenu({
   );
   const duplicateItemIds = useMemo(() => {
     const seen = new Set<string>();
+    const seenDom = new Set<string>();
     const duplicates = new Set<string>();
     for (const item of menuItems) {
       if (seen.has(item.id)) duplicates.add(item.id);
+      const domId = sanitizeDomId(item.id);
+      if (seenDom.has(domId)) {
+        for (const prior of menuItems) {
+          if (sanitizeDomId(prior.id) === domId) duplicates.add(prior.id);
+        }
+      }
       seen.add(item.id);
+      seenDom.add(domId);
     }
     return duplicates;
   }, [menuItems]);
   const menuWidth = widthWithinViewport(width);
   const [position, setPosition] = useState(() => clampToViewport(x, y, menuItems, menuWidth));
   const [duplicateOwner, setDuplicateOwner] = useState(false);
+  const ownerIdentityCollision = duplicateOwner
+    || hasDuplicateOwnerId('data-context-menu-owner', resolvedOwnerId)
+    || hasDuplicateDomOwnerId('data-context-menu-dom-owner', domOwnerId);
 
   const recomputePosition = useCallback(() => {
     setPosition(clampToViewport(x, y, menuItems, widthWithinViewport(width)));
@@ -262,11 +289,14 @@ export function ContextMenu({
   useEffect(() => {
     const matches = Array.from(document.querySelectorAll<HTMLElement>('[data-context-menu-owner]'))
       .filter((node) => node.getAttribute('data-context-menu-owner') === resolvedOwnerId);
-    setDuplicateOwner(matches.length > 1);
-    if (matches.length > 1) {
+    const domMatches = Array.from(document.querySelectorAll<HTMLElement>('[data-context-menu-dom-owner]'))
+      .filter((node) => node.getAttribute('data-context-menu-dom-owner') === domOwnerId);
+    const collision = matches.length > 1 || domMatches.length > 1;
+    setDuplicateOwner(collision);
+    if (collision) {
       console.error('Duplicate context-menu owner id was refused.');
     }
-  }, [resolvedOwnerId]);
+  }, [domOwnerId, resolvedOwnerId]);
 
   const visibleItems = useMemo(
     () => menuItems.filter((item) => search.matches(`${item.label}\n${item.id}`)),
@@ -296,7 +326,7 @@ export function ContextMenu({
   }, [onClose, restoreFocus]);
 
   const activate = useCallback((item: ContextMenuItem) => {
-    if (duplicateOwner || hasDuplicateOwnerId('data-context-menu-owner', resolvedOwnerId)
+    if (ownerIdentityCollision
       || duplicateItemIds.has(item.id)
       || item.disabled || (item.danger && !onRequestDestructiveConfirmation)) return;
     if (item.targetAction) {
@@ -314,6 +344,7 @@ export function ContextMenu({
         console.error('Context menu target action did not return a valid lifecycle receipt.');
         return;
       }
+      if (!receiptCanProceed(receipt.phase, 'opened')) return;
       onClose();
       restoreFocus();
       return;
@@ -334,10 +365,11 @@ export function ContextMenu({
         console.error('Context menu destructive action did not return a valid lifecycle receipt.');
         return;
       }
+      if (!receiptCanProceed(receipt.phase, 'completed')) return;
     } else item.onSelect();
     onClose();
     restoreFocus();
-  }, [duplicateItemIds, duplicateOwner, onClose, onEditAppearance, onLock, onRequestDestructiveConfirmation, resolvedOwnerId, restoreFocus]);
+  }, [duplicateItemIds, onClose, onEditAppearance, onLock, onRequestDestructiveConfirmation, ownerIdentityCollision, resolvedOwnerId, restoreFocus]);
 
   const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (enabledVisibleItems.length === 0) return;
@@ -415,8 +447,8 @@ export function ContextMenu({
     };
   }, [dismiss, domOwnerId]);
 
-  const activeOptionId = activeId && visibleItems.some((item) => item.id === activeId)
-    ? `${domOwnerId}-${activeId}`
+  const activeOptionId = activeId && enabledVisibleItems.some((item) => item.id === activeId)
+    ? `${domOwnerId}-${sanitizeDomId(activeId)}`
     : undefined;
 
   useEffect(() => {
@@ -437,7 +469,8 @@ export function ContextMenu({
       aria-labelledby={ariaLabelledBy}
       data-testid={testId}
       data-context-menu-owner={resolvedOwnerId}
-      data-owner-duplicate={duplicateOwner || undefined}
+      data-owner-duplicate={ownerIdentityCollision || undefined}
+      data-context-menu-dom-owner={domOwnerId}
       data-item-duplicate={duplicateItemIds.size > 0 || undefined}
       data-callback-collision={callbackCollision || undefined}
       onMouseDown={(event) => event.stopPropagation()}
@@ -501,9 +534,9 @@ export function ContextMenu({
           const tokens = item.shortcutId
             ? shortcutKeyTokens(item.shortcutId, { mac: onMac })
             : null;
-          const optionId = `${domOwnerId}-${item.id}`;
+          const optionId = `${domOwnerId}-${sanitizeDomId(item.id)}`;
           const unavailableDestructive = Boolean(item.danger && !onRequestDestructiveConfirmation);
-          const unavailableIdentity = duplicateOwner || duplicateItemIds.has(item.id);
+          const unavailableIdentity = ownerIdentityCollision || duplicateItemIds.has(item.id);
           return (
             <div key={`${item.id}-${index}`} className={styles.row}>
               {item.separatorBefore ? <span className={styles.separator} role="none" /> : null}
@@ -520,7 +553,7 @@ export function ContextMenu({
                   : unavailableIdentity
                     ? identityUnavailableLabel
                   : item.disabled
-                    ? item.disabledReason
+                    ? item.disabledReason ?? disabledUnavailableLabel
                     : undefined}
                 aria-keyshortcuts={
                   item.shortcutId ? ariaKeyShortcuts(item.shortcutId, { mac: onMac }) : undefined
@@ -535,13 +568,13 @@ export function ContextMenu({
                 ) : <span className={styles.icon} aria-hidden />}
                 <span className={styles.label} title={item.label}>
                   {item.label}
-                  {(item.disabled && item.disabledReason) || unavailableDestructive || unavailableIdentity ? (
+                  {(item.disabled && (item.disabledReason ?? disabledUnavailableLabel)) || unavailableDestructive || unavailableIdentity ? (
                     <span className={styles.disabledReason}>
                       {unavailableDestructive
                         ? destructiveUnavailableLabel
                         : unavailableIdentity
                           ? identityUnavailableLabel
-                          : item.disabledReason}
+                          : item.disabledReason ?? disabledUnavailableLabel}
                     </span>
                   ) : null}
                 </span>
