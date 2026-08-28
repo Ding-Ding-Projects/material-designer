@@ -19,6 +19,9 @@ export const REQUIRED_SETTINGS = Object.freeze([
 
 export const REQUIRED_SEARCHES = Object.freeze([
   'site-search-input', 'settings-search-input',
+  'page-overview-search', 'page-features-search', 'page-install-search',
+  'page-releases-search', 'page-building-search', 'page-verifying-search',
+  'page-standards-search', 'page-docs-search', 'page-provenance-search',
   'settings-settings-language-search', 'settings-settings-tone-search',
   'settings-settings-appearance-search', 'settings-settings-toy-locks-search',
   'settings-settings-reset-search', 'tabs-strip-search',
@@ -37,6 +40,7 @@ export function auditSiteShell(root = document) {
   for (const id of REQUIRED_SETTINGS) check(`settings:${id}`, Boolean(root.getElementById(id)), 'required settings group exists');
   check('outer-tablist', Boolean(root.querySelector('#tab-strip [role="tablist"]')), 'outer tab list exists');
   check('outer-dock', ['left', 'right', 'top', 'bottom'].includes(root.querySelector('#tab-strip')?.dataset.dockEdge), 'outer tab dock edge is bounded');
+  check('outer-relocated', root.querySelector('#tab-strip')?.dataset.relocated === 'true' && Boolean(root.querySelector('.app-body #tab-strip')), 'outer tab wrapper is physically inside the application body');
   check('settings-tablist', Boolean(root.querySelector('#tab-panel-settings [role="tablist"]')), 'settings tab list exists');
   check('settings-panel', Boolean(root.querySelector('#tab-panel-settings [role="tabpanel"]')), 'settings tab panel exists');
   check('provenance-front', Boolean(root.querySelector('[data-site-provenance] [data-provenance-version]')) && Boolean(root.querySelector('[data-site-provenance] [data-provenance-updated]')), 'front provenance fields exist before navigation');
@@ -65,14 +69,24 @@ export function selfTestSiteShellContract(root = document) {
     ok: baseline.missing.every((item) => item.id.startsWith('search:')),
   };
   const tab = root.querySelector('#tab-panel-settings [role="tab"]');
-  if (!tab) return { ok: false, baseline: baselineCore, mutation: null, restoration: null };
+  const search = root.getElementById('settings-settings-language-search');
+  if (!tab || !search) return { ok: false, baseline: baselineCore, mutation: null, searchMutation: null, renameMutation: null, restoration: null };
   const parent = tab.parentElement;
   const next = tab.nextSibling;
   tab.remove();
   const mutation = auditSiteShell(root);
   if (next) parent.insertBefore(tab, next); else parent.append(tab);
+  const searchParent = search.parentElement;
+  const searchNext = search.nextSibling;
+  search.remove();
+  const searchMutation = auditSiteShell(root);
+  if (searchNext) searchParent.insertBefore(search, searchNext); else searchParent.append(search);
+  const oldId = tab.id;
+  tab.id = `${oldId}-RENAMED`;
+  const renameMutation = auditSiteShell(root);
+  tab.id = oldId;
   const restoration = auditSiteShell(root);
-  return { ok: baselineCore.ok && !mutation.ok && restoration.ok, baseline: baselineCore, mutation, restoration };
+  return { ok: baselineCore.ok && !mutation.ok && !searchMutation.ok && !renameMutation.ok && restoration.ok, baseline: baselineCore, mutation, searchMutation, renameMutation, restoration };
 }
 
 export function assertSiteShellContract(root = document) {

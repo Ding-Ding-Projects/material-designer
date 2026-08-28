@@ -47,15 +47,22 @@ Assert-Contains $shell 'installUniversalContextMenus()' 'universal context menu 
 Assert-Contains $shell 'installDropdownSearches()' 'dropdown search shell'
 Assert-Contains $shell 'initFrontProvenance()' 'front provenance shell'
 Assert-Contains $contract 'selfTestSiteShellContract' 'red-green self-test'
-Assert-Contains $main "import { initSiteShell } from './site-shell.js';" 'main shell wiring'
+$mainImportPattern = '(?m)^\s*import\s+\{\s*initSiteShell\s*\}\s+from\s+''\.\/site-shell\.js'';\s*$'
+if ($main -notmatch $mainImportPattern) { throw 'Site shell contract missing: exact main shell import.' }
 
 if ($SelfTest) {
   # Mutate exact boundaries in memory. A substring-only check would stay green
   # if an import were commented out or a required panel were removed from the
   # hand-written inventory.
-  $mutatedMain = $main.Replace("import { initSiteShell } from './site-shell.js';", '')
-  if ($mutatedMain.Contains("import { initSiteShell } from './site-shell.js';")) { throw 'Self-test mutation failed to remove the exact main import.' }
-  try { Assert-Contains $mutatedMain "import { initSiteShell } from './site-shell.js';" 'self-test removed main wiring' ; throw 'Self-test did not turn red for removed main wiring.' } catch { if ($_.Exception.Message -notlike 'Site shell contract missing:*') { throw } }
+  $mutatedMain = [regex]::Replace($main, $mainImportPattern, '')
+  if ($mutatedMain -match $mainImportPattern) { throw 'Self-test mutation failed to remove the exact main import.' }
+  try { if ($mutatedMain -notmatch $mainImportPattern) { throw 'Site shell contract missing: self-test removed main wiring' }; throw 'Self-test did not turn red for removed main wiring.' } catch { if ($_.Exception.Message -notlike 'Site shell contract missing:*') { throw } }
+
+  $commentedMain = $main -replace "(?m)^(\s*)import \{ initSiteShell \} from './site-shell\.js';$", '$1// import { initSiteShell } from ''./site-shell.js'';'
+  if ($commentedMain -match $mainImportPattern) { throw 'Self-test incorrectly accepted a commented-out import.' }
+
+  $renamedMain = $main.Replace("import { initSiteShell } from './site-shell.js';", "import { initSiteShellRenamed } from './site-shell.js';")
+  if ($renamedMain -match $mainImportPattern) { throw 'Self-test incorrectly accepted a renamed import.' }
 
   $mutatedInventory = $inventory.Replace('"settings-reset"', '')
   try { Assert-Contains $mutatedInventory '"settings-reset"' 'self-test removed required settings row' ; throw 'Self-test did not turn red for removed inventory row.' } catch { if ($_.Exception.Message -notlike 'Site shell contract missing:*') { throw } }

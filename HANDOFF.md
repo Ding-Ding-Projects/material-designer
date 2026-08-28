@@ -16,6 +16,15 @@
 > build, TUI, visible UI, or capture command was run. Packaged interaction,
 > per-action capture receipts, and final hosted verification remain open for
 > the owning integration lane.
+>
+> **Final review repair, source-only.** The follow-up keeps the outer wrapper
+> relocatable on all four edges, adds group editing and persistent ordering,
+> moves bulk close behind a two-key full-slider confirmation, excludes locked
+> tabs by default, mounts a custom searchable picker for native select values,
+> and gives each page its own regex-backed search. Popover geometry is bounded,
+> resizable, draggable, keyboard-adjustable, and its regex controllers are
+> destroyed when the popover closes. The exact source Chut remains green; the
+> packaged drive and HuiShot ledger remain pending.
 
 > [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source

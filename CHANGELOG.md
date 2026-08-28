@@ -4,6 +4,17 @@
 
 ### Documentation-site shell
 
+- Completed the shell repair by relocating the outer tab wrapper inside the
+  application body for left, right, top, and bottom docking, with orientation-
+  aware overflow measurement and keyboard and pointer movement.
+- Added group rename, color, reorder, remove, pin, collapse, empty-group,
+  context-menu, appearance, lock, and searchable move-picker behavior.
+- Added page-owned searches, resilient target ids, resizable and draggable
+  bounded overlays, two-key full-slider close confirmation, locked-tab
+  exclusion and explicit inclusion preview, and actual custom searchable
+  dropdowns backed by their original native values.
+- Corrected the global and local search wiring so builder changes to pattern,
+  flags, and mode drive the bounded matcher that performs the real filtering.
 - Added the cross-feature site shell with persisted settings tabs, four-edge
   docking with a left default, overflow-safe tab grouping, reorder and pin
   state, recoverable closed tabs, four independent tab-discovery searches, and

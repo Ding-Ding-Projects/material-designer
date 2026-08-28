@@ -3015,6 +3015,9 @@ mark {
 .md-tabs[data-dock-edge="top"], .md-tabs[data-dock-edge="bottom"] { flex-direction:row; }
 .md-tabs[data-dock-edge="bottom"] { order:2; border-top:1px solid var(--md-sys-color-outline-variant); border-bottom:0; align-items:flex-start; }
 .md-tabs[data-dock-edge="bottom"] .md-tabs__strip { align-items:flex-start; }
+.app-body[data-tabs-edge="top"], .app-body[data-tabs-edge="bottom"] { flex-direction:column; }
+.app-body[data-tabs-edge="top"] .md-tabs, .app-body[data-tabs-edge="bottom"] .md-tabs { width:100%; flex:0 0 auto; }
+.app-body[data-tabs-edge="left"] .md-tabs, .app-body[data-tabs-edge="right"] .md-tabs { flex:0 0 260px; min-height:0; }
 
 .md-tabs__shell-btn { font-size:11px; white-space:nowrap; }
 .md-shell-popover {
@@ -3047,11 +3050,21 @@ mark {
 .md-shell-checkbox { display:flex; align-items:center; gap:8px; padding:4px 2px; }
 .md-shell-bulk-actions { min-height:0; overflow:auto; }
 .md-shell-bulk-actions .md-btn { width:100%; justify-content:flex-start; }
+.md-shell-dropdown { position:relative; display:flex; flex-direction:column; gap:6px; min-width:0; }
+.md-shell-select__button { width:100%; min-height:40px; padding:8px 12px; border:1px solid var(--md-sys-color-outline); border-radius:8px; background:var(--md-sys-color-surface-container-lowest); color:var(--md-sys-color-on-surface); text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+.md-shell-select__button:focus-visible { outline:3px solid var(--md-sys-color-primary); outline-offset:2px; }
+.md-shell-select__panel { display:flex; flex-direction:column; gap:4px; max-height:min(50vh,360px); overflow:auto; padding:6px; border:1px solid var(--md-sys-color-outline-variant); border-radius:12px; background:var(--md-sys-color-surface-container-high); box-shadow:var(--md-sys-elevation-level2, 0 4px 12px rgba(0,0,0,.12)); }
+.md-shell-select__panel[hidden] { display:none !important; }
+.md-shell-option { min-height:40px; padding:8px 10px; border:0; border-radius:8px; background:transparent; color:inherit; text-align:left; cursor:pointer; overflow-wrap:anywhere; }
+.md-shell-option:hover, .md-shell-option[aria-selected="true"] { background:var(--md-sys-color-secondary-container); color:var(--md-sys-color-on-secondary-container); }
+.md-shell-option:focus-visible { outline:2px solid var(--md-sys-color-primary); outline-offset:1px; }
+.md-shell-dropdown__status { font-size:11px; color:var(--md-sys-color-on-surface-variant); }
 
 .settings__tabs { flex:0 0 240px; min-width:0; display:flex; flex-direction:column; gap:8px; padding:8px; border-right:1px solid var(--md-sys-color-outline-variant); }
 .settings__tabs[data-edge="right"] { order:2; border-right:0; border-left:1px solid var(--md-sys-color-outline-variant); }
 .settings__tabs[data-edge="top"], .settings__tabs[data-edge="bottom"] { flex-basis:auto; width:100%; border:0; border-bottom:1px solid var(--md-sys-color-outline-variant); }
 .settings__tabs[data-edge="bottom"] { order:2; border-top:1px solid var(--md-sys-color-outline-variant); border-bottom:0; }
+.settings[data-edge="top"], .settings[data-edge="bottom"] { flex-direction:column; }
 .settings__tablist { display:flex; flex-direction:column; gap:2px; min-width:0; overflow:auto; }
 .settings__tabs[data-edge="top"] .settings__tablist, .settings__tabs[data-edge="bottom"] .settings__tablist { flex-direction:row; flex-wrap:wrap; }
 .settings__tab { min-height:40px; min-width:0; padding:0 12px; border:0; border-radius:12px; background:transparent; color:var(--md-sys-color-on-surface-variant); text-align:left; cursor:pointer; font:inherit; font-size:13px; overflow-wrap:anywhere; }
@@ -3071,6 +3084,8 @@ mark {
 .settings__panel > .md-shell-search { margin-bottom:10px; }
 
 @media (max-width: 720px) {
+  .app-body[data-tabs-edge="left"], .app-body[data-tabs-edge="right"] { flex-direction:column; }
+  .app-body[data-tabs-edge="left"] .md-tabs, .app-body[data-tabs-edge="right"] .md-tabs { flex:0 0 auto; width:100%; }
   .md-tabs[data-dock-edge="left"], .md-tabs[data-dock-edge="right"] { flex-direction:row; min-height:42px; border:0; }
   .md-tabs[data-dock-edge="left"] .md-tabs__strip, .md-tabs[data-dock-edge="right"] .md-tabs__strip { flex-direction:row; overflow-x:auto; overflow-y:hidden; }
   .md-tabs[data-dock-edge="left"] .md-tab, .md-tabs[data-dock-edge="right"] .md-tab { width:auto; border-radius:12px 12px 0 0; }

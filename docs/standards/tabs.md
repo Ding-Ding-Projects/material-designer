@@ -130,8 +130,8 @@ longest.
 | Search: within a group | **Implemented** with an independent anchored builder. |
 | Search: for groups | **Implemented** with an independent anchored builder. |
 | Search: master across all windows | **Implemented** for every open tab owned by this site strip, with a documented single-strip boundary. |
-| Close tabs containing text | **Implemented** with preview, pinned exclusion and reopen recovery. |
-| Close tabs not containing text | **Implemented** as the inverse of the same bounded predicate. |
+| Close tabs containing text | **Implemented** with preview, pinned and locked exclusion, two-key full-slider confirmation, and reopen recovery. |
+| Close tabs not containing text | **Implemented** as the inverse of the same bounded predicate with the same confirmation and exclusion rules. |
 | Persistence of order, pins, groups, collapsed state | **Implemented** in the tab controller's versioned local record. |
 | Tabs on the landing page and documentation site | **Implemented** by the static documentation site shell. |
 

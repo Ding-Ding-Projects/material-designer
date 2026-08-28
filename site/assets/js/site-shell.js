@@ -62,6 +62,36 @@ const STRINGS = Object.freeze({
   'shell.context.copy': { en: 'Copy accessible name', yue: '複製無障礙名稱' },
   'shell.dropdown.filter': { en: 'Filter choices', yue: '篩選選項' },
   'shell.dropdown.empty': { en: 'No choices match this search.', yue: '冇選項夾到呢個搜尋。' },
+  'shell.group.search': { en: 'Search tab groups by name', yue: '按名搵分頁群組' },
+  'shell.group.newName': { en: 'New group name', yue: '新群組名' },
+  'shell.group.create': { en: 'Create group', yue: '建立群組' },
+  'shell.group.pin': { en: 'Pin group', yue: '釘住群組' },
+  'shell.group.unpin': { en: 'Unpin group', yue: '解開群組' },
+  'shell.group.expand': { en: 'Expand', yue: '展開' },
+  'shell.group.collapse': { en: 'Collapse', yue: '收埋' },
+  'shell.group.up': { en: 'Up', yue: '上移' },
+  'shell.group.down': { en: 'Down', yue: '下移' },
+  'shell.group.remove': { en: 'Remove group', yue: '移除群組' },
+  'shell.group.rename': { en: 'Rename', yue: '改名' },
+  'shell.group.color': { en: 'Color', yue: '顏色' },
+  'shell.close.confirm': { en: 'Confirm the tab close', yue: '確認關閉分頁' },
+  'shell.close.keyOne': { en: 'Confirmation key 1', yue: '確認鍵 1' },
+  'shell.close.keyTwo': { en: 'Confirmation key 2', yue: '確認鍵 2' },
+  'shell.close.slider': { en: 'Slide to confirm closing tabs', yue: '滑到底確認關閉分頁' },
+  'shell.close.exit': { en: 'Emergency exit', yue: '緊急離開' },
+  'shell.close.action': { en: 'Close reviewed tabs', yue: '關閉已審閱分頁' },
+  'shell.close.includeLocked': { en: 'Include locked tabs', yue: '包括鎖定分頁' },
+  'shell.close.enter': { en: 'Enter text or enable regex before closing tabs.', yue: '關閉分頁前請輸入文字或者開啟 regex。' },
+  'shell.close.ready': { en: 'Confirmation ready. Slider completion: {percent}%.', yue: '確認完成，滑動進度：{percent}%。' },
+  'shell.close.needsKeys': { en: 'Two independent confirmation keys are required before the slider becomes active.', yue: '滑桿啟用前需要兩個獨立確認鍵。' },
+  'shell.close.summary': { en: '{count} tab(s) will close. {excluded} excluded by current protection choices.', yue: '將會關閉 {count} 個分頁，按目前保護選擇排除 {excluded} 個。' },
+  'shell.context.search': { en: 'Search actions', yue: '搵動作' },
+  'shell.context.noMatch': { en: 'No actions match this search.', yue: '冇動作夾到呢個搜尋。' },
+  'shell.context.confirmed': { en: '{count} tab(s) closed. {skipped} skipped.', yue: '已關閉 {count} 個分頁，跳過 {skipped} 個。' },
+  'shell.page.matches': { en: '{count} sections match', yue: '有 {count} 個區段夾到' },
+  'shell.page.noMatch': { en: 'No content matches this search.', yue: '冇內容夾到呢個搜尋。' },
+  'shell.group.noMatch': { en: 'No groups match this search.', yue: '冇群組夾到呢個搜尋。' },
+  'shell.dropdown.count': { en: '{count} choices', yue: '{count} 個選項' },
   'shell.provenance.version': { en: 'Version', yue: '版本' },
   'shell.provenance.updated': { en: 'Updated at', yue: '更新時間' },
   'shell.provenance.unavailable': { en: 'Unavailable until build provenance is supplied.', yue: '未有建置出處，所以暫時未能提供。' },
@@ -169,16 +199,45 @@ function makeSearchField({ id, label, onChange, sample = '' }) {
 
 function createPopover(anchor, label, contentBuilder) {
   const panel = el('div', { class: 'md-shell-popover', role: 'dialog', 'aria-label': label, hidden: true });
+  panel.style.resize = 'both';
+  panel.style.minWidth = '280px';
+  panel.style.minHeight = '120px';
   document.body.append(panel);
   let open = false;
+  let manualPosition = false;
+  let drag = null;
+  const geometryKey = String(label).slice(0, 80);
+  const geometry = () => readJson(SHELL_STORAGE_KEY, {}).popovers?.[geometryKey] || null;
+  const saveGeometry = () => {
+    const all = readJson(SHELL_STORAGE_KEY, {});
+    all.popovers = all.popovers && typeof all.popovers === 'object' ? all.popovers : {};
+    all.popovers[geometryKey] = {
+      left: Number.parseInt(panel.style.left, 10) || undefined,
+      top: Number.parseInt(panel.style.top, 10) || undefined,
+      width: panel.offsetWidth,
+      height: panel.offsetHeight,
+    };
+    writeJson(SHELL_STORAGE_KEY, all);
+  };
+  const clamp = (value, size, limit) => Math.max(10, Math.min(Math.max(10, limit - size - 10), value));
   const position = () => {
     if (!open) return;
+    const saved = geometry();
     const rect = anchor.getBoundingClientRect();
     panel.hidden = false;
     panel.style.visibility = 'hidden';
+    if (saved?.width) panel.style.width = `${saved.width}px`;
+    if (saved?.height) panel.style.height = `${saved.height}px`;
     const width = panel.offsetWidth;
     const height = panel.offsetHeight;
     const margin = 10;
+    if (manualPosition || saved?.left !== undefined && saved?.top !== undefined) {
+      manualPosition = true;
+      panel.style.left = `${clamp(saved?.left ?? (Number.parseInt(panel.style.left, 10) || rect.left), width, window.innerWidth)}px`;
+      panel.style.top = `${clamp(saved?.top ?? (Number.parseInt(panel.style.top, 10) || rect.bottom + 8), height, window.innerHeight)}px`;
+      panel.style.visibility = '';
+      return;
+    }
     let left = Math.min(rect.left, window.innerWidth - width - margin);
     let top = rect.bottom + 8;
     if (left < margin) left = margin;
@@ -190,6 +249,7 @@ function createPopover(anchor, label, contentBuilder) {
   const close = (restore = true) => {
     if (!open) return;
     open = false; panel.hidden = true;
+    panel.querySelectorAll('[data-regex-builder]').forEach((input) => regex.getBuilder?.(input)?.destroy?.());
     document.removeEventListener('pointerdown', outside, true);
     document.removeEventListener('keydown', keydown, true);
     window.removeEventListener('resize', position);
@@ -202,9 +262,40 @@ function createPopover(anchor, label, contentBuilder) {
     close();
   };
   const keydown = (event) => {
-    if (event.key !== 'Escape' || event.target instanceof Element && event.target.closest('.mdrx-pop')) return;
-    event.preventDefault(); event.stopPropagation(); close();
+    if (event.key === 'Escape') {
+      if (event.target instanceof Element && event.target.closest('.mdrx-pop')) return;
+      event.preventDefault(); event.stopPropagation(); close();
+      return;
+    }
+    if (event.altKey && event.key.startsWith('Arrow')) {
+      event.preventDefault(); event.stopPropagation();
+      manualPosition = true;
+      const left = Number.parseInt(panel.style.left, 10) || 10;
+      const top = Number.parseInt(panel.style.top, 10) || 10;
+      if (event.ctrlKey) {
+        panel.style.width = `${Math.max(280, panel.offsetWidth + (event.key === 'ArrowRight' ? 24 : event.key === 'ArrowLeft' ? -24 : 0))}px`;
+        panel.style.height = `${Math.max(120, panel.offsetHeight + (event.key === 'ArrowDown' ? 24 : event.key === 'ArrowUp' ? -24 : 0))}px`;
+      } else {
+        panel.style.left = `${clamp(left + (event.key === 'ArrowRight' ? 16 : event.key === 'ArrowLeft' ? -16 : 0), panel.offsetWidth, window.innerWidth)}px`;
+        panel.style.top = `${clamp(top + (event.key === 'ArrowDown' ? 16 : event.key === 'ArrowUp' ? -16 : 0), panel.offsetHeight, window.innerHeight)}px`;
+      }
+      saveGeometry();
+      return;
+    }
   };
+  panel.addEventListener('pointerdown', (event) => {
+    const handle = event.target instanceof Element ? event.target.closest('.md-shell-popover__head') : null;
+    if (!handle || event.target.closest('button,input,select,textarea')) return;
+    manualPosition = true;
+    drag = { x: event.clientX, y: event.clientY, left: panel.offsetLeft, top: panel.offsetTop };
+    panel.setPointerCapture?.(event.pointerId);
+  });
+  panel.addEventListener('pointermove', (event) => {
+    if (!drag) return;
+    panel.style.left = `${clamp(drag.left + event.clientX - drag.x, panel.offsetWidth, window.innerWidth)}px`;
+    panel.style.top = `${clamp(drag.top + event.clientY - drag.y, panel.offsetHeight, window.innerHeight)}px`;
+  });
+  panel.addEventListener('pointerup', (event) => { if (drag) { drag = null; panel.releasePointerCapture?.(event.pointerId); saveGeometry(); } });
   return {
     panel,
     open() { if (open) return; open = true; panel.hidden = false; contentBuilder?.(panel); position(); document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', keydown, true); window.addEventListener('resize', position); window.addEventListener('scroll', position, true); },
@@ -231,7 +322,7 @@ function loadSettingsState(ids) {
   const order = Array.isArray(saved.order) ? saved.order.filter((id) => ids.includes(id)) : [];
   for (const id of ids) if (!order.includes(id)) order.push(id);
   const groups = saved.groups && typeof saved.groups === 'object' ? saved.groups : {};
-  if (!groups.general) groups.general = { id: 'general', name: 'General', tabs: [], collapsed: false, color: '' };
+  if (!groups.general) groups.general = { id: 'general', name: 'General', tabs: [], collapsed: false, pinned: false, color: '' };
   const assigned = new Set();
   for (const [groupId, group] of Object.entries(groups)) {
     if (!group || typeof group !== 'object') { delete groups[groupId]; continue; }
@@ -240,6 +331,7 @@ function loadSettingsState(ids) {
     group.id = String(group.id || 'general');
     group.name = String(group.name || group.id);
     group.collapsed = Boolean(group.collapsed);
+    group.pinned = Boolean(group.pinned);
     for (const id of group.tabs) assigned.add(id);
   }
   for (const id of order) if (!assigned.has(id)) groups.general.tabs.push(id);
@@ -274,6 +366,7 @@ function renderSettingsShell() {
   aside.className = 'settings__tabs';
   aside.setAttribute('aria-label', 'Settings sections');
   aside.dataset.edge = state.edge;
+  settings.dataset.edge = state.edge;
 
   const tablist = el('div', { class: 'settings__tablist', role: 'tablist', 'aria-orientation': 'vertical' });
   const toolbar = el('div', { class: 'settings__tab-tools' });
@@ -352,10 +445,14 @@ function renderSettingsShell() {
 
   function renderSettingsNav() {
     tablist.replaceChildren();
-    for (const [groupId, bucket] of Object.entries(state.groups)) {
+    const buckets = Object.values(state.groups).sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
+    for (const bucket of buckets) {
       if (!bucket.tabs.length) continue;
       const header = el('div', { class: 'settings__group-header', role: 'presentation' }, el('span', { text: bucket.name }), el('button', { type: 'button', class: 'settings__group-collapse', text: bucket.collapsed ? '+' : '−', 'aria-label': `${bucket.collapsed ? 'Expand' : 'Collapse'} ${bucket.name}` }));
+      header.dataset.shellSettingsGroupId = bucket.id;
+      if (bucket.color) header.style.borderInlineStart = `3px solid ${bucket.color}`;
       header.querySelector('button').addEventListener('click', () => { bucket.collapsed = !bucket.collapsed; saveSettingsState(state); renderSettingsNav(); });
+      header.addEventListener('contextmenu', (event) => { event.preventDefault(); document.dispatchEvent(new CustomEvent('md:site-context-request', { detail: { element: header, target: `settings-group:${bucket.id}`, x: event.clientX, y: event.clientY } })); });
       tablist.append(header);
       for (const id of state.order) {
         if (!bucket.tabs.includes(id)) continue;
@@ -375,6 +472,7 @@ function renderSettingsShell() {
       if (panel) panel.hidden = !selected;
     }
     aside.dataset.edge = state.edge;
+    settings.dataset.edge = state.edge;
   }
 
   function activateSettingsTab(id, focus) {
@@ -398,7 +496,7 @@ function renderSettingsShell() {
   function createSettingsGroup(name) {
     const safe = String(name || '').trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 48);
     if (!safe || state.groups[safe]) return false;
-    state.groups[safe] = { id: safe, name: String(name).trim().slice(0, 120), tabs: [], collapsed: false, color: '' };
+    state.groups[safe] = { id: safe, name: String(name).trim().slice(0, 120), tabs: [], collapsed: false, pinned: false, color: '' };
     saveSettingsState(state); renderSettingsNav(); return true;
   }
   function moveSettingsToGroup(id, groupId) {
@@ -406,6 +504,21 @@ function renderSettingsShell() {
     for (const bucket of Object.values(state.groups)) bucket.tabs = bucket.tabs.filter((tabId) => tabId !== id);
     state.groups[groupId].tabs.push(id); state.groups[groupId].collapsed = false;
     saveSettingsState(state); renderSettingsNav(); return true;
+  }
+  function moveSettingsGroup(groupId, delta) {
+    const ids = Object.keys(state.groups);
+    const from = ids.indexOf(groupId); const to = from + Math.sign(delta);
+    if (from < 0 || to < 0 || to >= ids.length) return false;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    const reordered = {};
+    for (const id of ids) reordered[id] = state.groups[id];
+    state.groups = reordered; saveSettingsState(state); renderSettingsNav(); return true;
+  }
+  function removeSettingsGroup(groupId) {
+    if (groupId === 'general' || !state.groups[groupId]) return false;
+    const fallback = state.groups.general;
+    fallback.tabs.push(...state.groups[groupId].tabs);
+    delete state.groups[groupId]; saveSettingsState(state); renderSettingsNav(); return true;
   }
 
   const layoutPopover = createPopover(layoutButton, text('shell.settings.layout', 'Settings layout'), (panel) => {
@@ -416,7 +529,24 @@ function renderSettingsShell() {
     const groupName = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.settings.groupName', 'New group name'), 'aria-label': text('shell.settings.groupName', 'New group name') });
     const create = el('button', { type: 'button', class: 'md-btn md-btn--outlined', text: text('shell.settings.createGroup', 'Create group') });
     create.addEventListener('click', () => { if (createSettingsGroup(groupName.value)) { groupName.value = ''; layoutPopover.reposition(); } });
-    panel.append(edgeRow, el('div', { class: 'md-shell-inline-form' }, groupName, create));
+    const groupList = el('div', { class: 'md-shell-list', 'aria-label': 'Settings groups' });
+    for (const bucket of Object.values(state.groups)) {
+      const row = el('div', { class: 'md-shell-group-row', dataset: { shellSettingsGroupId: bucket.id } });
+      const name = el('input', { type: 'text', class: 'md-input', value: bucket.name, 'aria-label': `${text('shell.group.rename', 'Rename')}: ${bucket.name}` });
+      const color = el('input', { type: 'color', class: 'md-ui-color', value: /^#[0-9a-f]{6}$/i.test(bucket.color) ? bucket.color : '#8F4C34', 'aria-label': `${text('shell.group.color', 'Color')}: ${bucket.name}` });
+      const pin = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(bucket.pinned ? 'shell.group.unpin' : 'shell.group.pin', bucket.pinned ? 'Unpin' : 'Pin'), 'aria-pressed': String(bucket.pinned) });
+      const up = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.up', 'Up') });
+      const down = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.down', 'Down') });
+      const remove = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.remove', 'Remove group') });
+      name.addEventListener('change', () => { bucket.name = name.value.trim() || bucket.name; saveSettingsState(state); renderSettingsNav(); });
+      color.addEventListener('input', () => { bucket.color = color.value; saveSettingsState(state); });
+      pin.addEventListener('click', () => { bucket.pinned = !bucket.pinned; saveSettingsState(state); });
+      up.addEventListener('click', () => { moveSettingsGroup(bucket.id, -1); layoutPopover.close(false); layoutPopover.open(); });
+      down.addEventListener('click', () => { moveSettingsGroup(bucket.id, 1); layoutPopover.close(false); layoutPopover.open(); });
+      remove.addEventListener('click', () => { if (removeSettingsGroup(bucket.id)) { layoutPopover.close(false); layoutPopover.open(); } });
+      row.append(name, color, pin, up, down, remove); groupList.append(row);
+    }
+    panel.append(edgeRow, el('div', { class: 'md-shell-inline-form' }, groupName, create), groupList);
   });
   layoutButton.addEventListener('click', () => layoutPopover.toggle());
 
@@ -439,7 +569,53 @@ function renderSettingsShell() {
   updateSettingLabels();
   renderSettingsNav();
   window.MATERIAL_DESIGNER_SETTINGS_ACTIVATE = activateSettingsTab;
+  window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH = () => {
+    for (const field of perTabSearches.values()) field.refresh();
+  };
   return { state, renderSettingsNav, activateSettingsTab, moveSettingsToGroup, settingsTabs, perTabSearches };
+}
+
+function installPageSearches() {
+  const pages = [];
+  for (const panel of document.querySelectorAll('[data-tab-panel]')) {
+    const id = panel.getAttribute('data-tab-panel');
+    if (!id || id === 'settings' || id === 'search-results' || panel.querySelector(':scope > [data-shell-page-search]')) continue;
+    const heading = panel.querySelector('h1,h2')?.textContent.trim() || id;
+    const field = makeSearchField({
+      id: `page-${id}-search`,
+      label: `${text('search.label', 'Search this page')}: ${heading}`,
+    });
+    field.root.dataset.shellPageSearch = id;
+    const status = el('p', { class: 'md-shell-page-search-status', role: 'status', 'aria-live': 'polite' });
+    const targets = [...panel.children].filter((node) => node !== field.root && !node.matches('[data-shell-page-search-status]'));
+    const apply = () => {
+      const matcher = safeMatcher(field);
+      const query = field.input.value.trim();
+      if (!query) {
+        for (const node of targets) node.hidden = false;
+        status.textContent = '';
+        return;
+      }
+      if (!matcher.ok) {
+        for (const node of targets) node.hidden = true;
+        status.textContent = matcher.error || 'Invalid pattern';
+        return;
+      }
+      let visible = 0;
+      for (const node of targets) {
+        const matches = matcher.test(node.textContent.replace(/\s+/g, ' ').trim());
+        node.hidden = !matches;
+        if (matches) visible += 1;
+      }
+      status.textContent = visible ? text('shell.page.matches', '{count} sections match').replace('{count}', String(visible)) : text('shell.page.noMatch', 'No content matches this search.');
+    };
+    field.input.addEventListener('input', apply);
+    status.dataset.shellPageSearchStatus = id;
+    panel.insertBefore(field.root, panel.firstChild);
+    panel.insertBefore(status, field.root.nextSibling);
+    pages.push({ id, field, panel });
+  }
+  return pages;
 }
 
 function safeMatcher(field) {
@@ -448,12 +624,64 @@ function safeMatcher(field) {
   return matcher;
 }
 
+function stableTargetId(element) {
+  if (element.id) return element.id;
+  if (element.dataset?.shellTargetId) return element.dataset.shellTargetId;
+  let path = '';
+  let node = element;
+  while (node && node !== document.body) {
+    const parent = node.parentElement;
+    const signature = [node.tagName, node.id, node.getAttribute('role'), node.getAttribute('aria-label'), node.getAttribute('name'), node.getAttribute('data-tab-panel')].filter(Boolean).join(':');
+    const peers = parent ? [...parent.children].filter((candidate) => candidate.tagName === node.tagName && candidate.id === node.id && candidate.getAttribute('role') === node.getAttribute('role') && candidate.getAttribute('aria-label') === node.getAttribute('aria-label')) : [];
+    const occurrence = peers.indexOf(node);
+    path = `${signature}:${Math.max(0, occurrence)}/${path}`;
+    node = parent;
+  }
+  let hash = 2166136261;
+  for (const char of path) { hash ^= char.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+  const id = `shell-${String(element.tagName || 'element').toLowerCase()}-${(hash >>> 0).toString(36)}`;
+  if (element.dataset) element.dataset.shellTargetId = id;
+  return id;
+}
+
+function relocateOuterTabs(root, edge) {
+  const body = document.querySelector('.app-body');
+  const main = document.querySelector('.app-main');
+  if (!body || !main || !root || !EDGES.includes(edge)) return;
+  body.dataset.tabsEdge = edge;
+  if (edge === 'left' || edge === 'top') body.insertBefore(root, main);
+  else body.append(root);
+  root.dataset.dockEdge = edge;
+  root.dataset.relocated = 'true';
+}
+
+function openDestructiveGate(anchor, title, body, run) {
+  if (!(anchor instanceof Element)) return;
+  const gate = createPopover(anchor, title, (panel) => {
+    panel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: title }), el('p', { class: 'md-shell-preview', text: body }));
+    const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyOne', 'Confirmation key 1'), 'aria-label': text('shell.close.keyOne', 'Confirmation key 1'), autocomplete: 'off' });
+    const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyTwo', 'Confirmation key 2'), 'aria-label': text('shell.close.keyTwo', 'Confirmation key 2'), autocomplete: 'off' });
+    const slider = el('input', { type: 'range', class: 'md-slider', min: '0', max: '100', step: '1', value: '0', disabled: true, 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs') });
+    const status = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite', text: text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.') });
+    const cancel = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.close.exit', 'Emergency exit') });
+    const confirm = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: text('shell.close.action', 'Confirm'), disabled: true });
+    const update = () => { const ready = Boolean(keyOne.value.trim() && keyTwo.value.trim()); slider.disabled = !ready; confirm.disabled = !ready || slider.value !== '100'; status.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.'); };
+    keyOne.addEventListener('input', update); keyTwo.addEventListener('input', update); slider.addEventListener('input', update);
+    cancel.addEventListener('click', () => gate.close());
+    confirm.addEventListener('click', () => { if (confirm.disabled) return; run?.(); gate.close(); });
+    panel.append(keyOne, keyTwo, slider, status, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
+    requestAnimationFrame(() => keyOne.focus());
+  });
+  gate.open();
+}
+
 function installOuterTabShell() {
   const root = document.querySelector('#tab-strip');
   const strip = tabs.getTabStrip();
   if (!root || !strip || root.dataset.shellReady === 'true') return null;
   root.dataset.shellReady = 'true';
-  root.dataset.dockEdge = strip.getDockEdge?.() || 'left';
+  const initialEdge = strip.getDockEdge?.() || 'left';
+  relocateOuterTabs(root, initialEdge);
   const actions = root.querySelector('.md-tabs__actions');
   if (!actions) return null;
 
@@ -507,17 +735,31 @@ function installOuterTabShell() {
   const groupPopover = createPopover(groups, text('shell.tabs.groups', 'Tab groups'), (panel) => {
     const groupsData = strip.listGroups?.() || [];
     panel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: text('shell.tabs.groups', 'Tab groups') }));
-    const newName = el('input', { type: 'text', class: 'md-input', placeholder: 'New group name', 'aria-label': 'New group name' });
-    const create = el('button', { type: 'button', class: 'md-btn md-btn--outlined', text: 'Create group' });
+    const findField = makeSearchField({ id: 'tab-groups-manager-search', label: text('shell.group.search', 'Search tab groups by name') });
+    const newName = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.group.newName', 'New group name'), 'aria-label': text('shell.group.newName', 'New group name') });
+    const create = el('button', { type: 'button', class: 'md-btn md-btn--outlined', text: text('shell.group.create', 'Create group') });
     const list = el('div', { class: 'md-shell-list' });
     create.addEventListener('click', () => { const name = newName.value.trim(); if (!name) return; const id = `group-${Date.now().toString(36)}`; strip.createGroup?.(id, name, ''); newName.value = ''; groupPopover.close(false); groupPopover.open(); });
-    panel.append(el('div', { class: 'md-shell-inline-form' }, newName, create), list);
+    panel.append(findField.root, el('div', { class: 'md-shell-inline-form' }, newName, create), list);
     for (const group of groupsData) {
-      const row = el('div', { class: 'md-shell-group-row' });
+      const row = el('div', { class: 'md-shell-group-row', dataset: { shellGroupId: group.id } });
       const title = el('strong', { text: `${group.name} (${group.tabs.length})` });
-      const collapse = el('button', { type: 'button', class: 'md-btn md-btn--text', text: group.collapsed ? 'Expand' : 'Collapse' });
+      const pin = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(group.pinned ? 'shell.group.unpin' : 'shell.group.pin', group.pinned ? 'Unpin group' : 'Pin group'), 'aria-pressed': String(group.pinned) });
+      const collapse = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text(group.collapsed ? 'shell.group.expand' : 'shell.group.collapse', group.collapsed ? 'Expand' : 'Collapse') });
+      const up = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.up', 'Up'), 'aria-label': `${text('shell.group.up', 'Up')}: ${group.name}` });
+      const down = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.down', 'Down'), 'aria-label': `${text('shell.group.down', 'Down')}: ${group.name}` });
+      const rename = el('input', { type: 'text', class: 'md-input', value: group.name, 'aria-label': `${text('shell.group.rename', 'Rename')}: ${group.name}` });
+      const color = el('input', { type: 'color', class: 'md-ui-color', value: /^#[0-9a-f]{6}$/i.test(group.color) ? group.color : '#8F4C34', 'aria-label': `${text('shell.group.color', 'Color')}: ${group.name}` });
+      const remove = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.group.remove', 'Remove group') });
+      pin.addEventListener('click', () => { strip.setGroupPinned?.(group.id, !group.pinned); groupPopover.close(false); groupPopover.open(); });
       collapse.addEventListener('click', () => { strip.setGroupCollapsed?.(group.id, !group.collapsed); groupPopover.close(false); groupPopover.open(); });
-      row.append(title, collapse);
+      up.addEventListener('click', () => { strip.moveGroup?.(group.id, -1); groupPopover.close(false); groupPopover.open(); });
+      down.addEventListener('click', () => { strip.moveGroup?.(group.id, 1); groupPopover.close(false); groupPopover.open(); });
+      rename.addEventListener('change', () => { strip.renameGroup?.(group.id, rename.value); groupPopover.close(false); groupPopover.open(); });
+      color.addEventListener('input', () => strip.setGroupColor?.(group.id, color.value));
+      remove.addEventListener('click', () => document.dispatchEvent(new CustomEvent('md:destructive-request', { cancelable: true, detail: { kind: 'remove-tab-group', groupId: group.id, element: row, run: () => strip.removeGroup?.(group.id) } })));
+      row.addEventListener('contextmenu', (event) => { event.preventDefault(); document.dispatchEvent(new CustomEvent('md:site-context-request', { detail: { element: row, target: `tab-group:${group.id}`, x: event.clientX, y: event.clientY } })); });
+      row.append(title, pin, collapse, up, down, rename, color, remove);
       list.append(row);
       for (const tabId of group.tabs) {
         const tab = strip.listTabs().find((candidate) => candidate.id === tabId); if (!tab) continue;
@@ -527,33 +769,104 @@ function installOuterTabShell() {
       }
     }
     const closed = strip.listTabs().filter((tab) => tab.closed);
-    if (closed.length) {
+    if (closed.length && findField.input.value.trim() === '') {
       list.append(el('h3', { class: 'md-shell-scope-title', text: text('shell.tabs.closed', 'Closed tabs') }));
       for (const tab of closed) { const reopen = el('button', { type: 'button', class: 'md-btn md-btn--text', text: `${text('shell.tabs.reopen', 'Reopen')}: ${tab.label}` }); reopen.addEventListener('click', () => { strip.reopenTabs([tab.id]); groupPopover.close(false); groupPopover.open(); }); list.append(reopen); }
     }
+    findField.input.addEventListener('input', () => {
+      const matcher = safeMatcher(findField);
+      for (const row of list.querySelectorAll('[data-shell-group-id]')) row.hidden = !matcher.ok || (!matcher.empty && !matcher.test(row.textContent));
+    });
+    for (const row of list.querySelectorAll('[data-shell-group-id]')) row.dataset.shellGroupId = row.dataset.shellGroupId || '';
+    requestAnimationFrame(() => findField.input.focus());
+  });
+
+  document.addEventListener('md:tab-group-request', (event) => {
+    const id = event.detail?.id;
+    const anchor = document.querySelector(`#tab-${CSS.escape(id || '')}`);
+    if (!id || !anchor) return;
+    const picker = createPopover(anchor, text('shell.settings.move', 'Move into group'), (panel) => {
+      const field = makeSearchField({ id: `tab-move-${id}`, label: text('shell.settings.move', 'Move into group') });
+      const list = el('div', { class: 'md-shell-list' });
+      const render = () => {
+        const matcher = safeMatcher(field); list.replaceChildren();
+        for (const group of strip.listGroups?.() || []) {
+          if (!matcher.ok || !matcher.empty && !matcher.test(group.name)) continue;
+          const row = el('button', { type: 'button', class: 'md-btn md-btn--text', text: `${group.name} (${group.tabs.length})` });
+          row.addEventListener('click', () => { strip.assignTabToGroup?.(id, group.id); picker.close(); });
+          list.append(row);
+        }
+        if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? text('shell.group.noMatch', 'No groups match this search.') : matcher.error }));
+      };
+      field.input.addEventListener('input', render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
+    });
+    picker.open();
   });
 
   const bulkPopover = createPopover(bulk, text('shell.tabs.bulk', 'Bulk close'), (panel) => {
     panel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: text('shell.tabs.bulk', 'Bulk close') }));
     const include = el('input', { type: 'checkbox', id: 'shell-include-pinned' });
     const includeLabel = el('label', { for: include.id, text: text('shell.tabs.includePinned', 'Include pinned tabs') });
+    const includeLocked = el('input', { type: 'checkbox', id: 'shell-include-locked' });
+    const includeLockedLabel = el('label', { for: includeLocked.id, text: text('shell.close.includeLocked', 'Include locked tabs') });
     const actionsHost = el('div', { class: 'md-shell-bulk-actions' });
+    const isLocked = (id) => {
+      const node = document.querySelector(`#tab-${CSS.escape(id)}`);
+      return Boolean(node?.dataset.locked === 'true' || node?.dataset.toyLocked === 'true' || node?.getAttribute('aria-disabled') === 'true');
+    };
+    const openCloseGate = (anchor, title, ids, excluded, options) => {
+      const gate = createPopover(anchor, 'Confirm tab close', (gatePanel) => {
+        gatePanel.replaceChildren(el('div', { class: 'md-shell-popover__head', text: text('shell.close.confirm', 'Confirm the tab close') }));
+        gatePanel.append(el('p', { class: 'md-shell-preview', text: `${title}: ${ids.length} tab(s). This changes only the visible tab structure.` }));
+        if (excluded.length) gatePanel.append(el('p', { class: 'md-shell-preview', text: `Excluded: ${excluded.join(', ')}` }));
+        const keyOne = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyOne', 'Confirmation key 1'), 'aria-label': text('shell.close.keyOne', 'Confirmation key 1'), autocomplete: 'off' });
+        const keyTwo = el('input', { type: 'text', class: 'md-input', placeholder: text('shell.close.keyTwo', 'Confirmation key 2'), 'aria-label': text('shell.close.keyTwo', 'Confirmation key 2'), autocomplete: 'off' });
+        const slider = el('input', { type: 'range', class: 'md-slider', min: '0', max: '100', step: '1', value: '0', disabled: true, 'aria-label': text('shell.close.slider', 'Slide to confirm closing tabs') });
+        const progress = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite', text: text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.') });
+        const cancel = el('button', { type: 'button', class: 'md-btn md-btn--text', text: text('shell.close.exit', 'Emergency exit') });
+        const confirm = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: text('shell.close.action', 'Close reviewed tabs'), disabled: true });
+        const update = () => {
+          const ready = keyOne.value.trim().length > 0 && keyTwo.value.trim().length > 0;
+          slider.disabled = !ready;
+          confirm.disabled = !ready || slider.value !== '100';
+        progress.textContent = ready ? text('shell.close.ready', 'Confirmation ready. Slider completion: {percent}%.').replace('{percent}', slider.value) : text('shell.close.needsKeys', 'Two independent confirmation keys are required before the slider becomes active.');
+        };
+        keyOne.addEventListener('input', update); keyTwo.addEventListener('input', update); slider.addEventListener('input', update);
+        cancel.addEventListener('click', () => gate.close());
+        confirm.addEventListener('click', () => {
+          if (confirm.disabled) return;
+          const result = strip.closeTabs?.(ids, { includePinned: options.includePinned });
+          document.dispatchEvent(new CustomEvent('md:toast', { detail: { kind: 'success', title: text('shell.tabs.bulk', 'Bulk close'), body: text('shell.context.confirmed', '{count} tab(s) closed. {skipped} skipped.').replace('{count}', String(result?.closed?.length || 0)).replace('{skipped}', String(result?.skipped?.length || 0)) } }));
+          gate.close();
+          bulkPopover.close();
+        });
+        gatePanel.append(keyOne, keyTwo, slider, progress, el('div', { class: 'md-shell-inline-form' }, cancel, confirm));
+        requestAnimationFrame(() => keyOne.focus());
+      });
+      gate.open();
+    };
     for (const mode of ['containing', 'not-containing']) {
       const title = text(`shell.tabs.close${mode === 'containing' ? 'Containing' : 'NotContaining'}`, mode === 'containing' ? 'Close tabs containing text' : 'Close tabs not containing text');
       const field = makeSearchField({ id: `tabs-bulk-${mode}`, label: title });
       const preview = el('p', { class: 'md-shell-preview', role: 'status', 'aria-live': 'polite' });
       const button = el('button', { type: 'button', class: 'md-btn md-btn--danger', text: title });
       const calculate = () => {
-        const matcher = safeMatcher(field); const list = strip.listTabs(); const matches = list.filter((tab) => !tab.closed && (matcher.empty ? false : matcher.ok && matcher.test(tab.label))); const ids = list.filter((tab) => !tab.closed && (mode === 'containing' ? matches.some((candidate) => candidate.id === tab.id) : !matches.some((candidate) => candidate.id === tab.id))).map((tab) => tab.id); const skipped = ids.filter((id) => !include.checked && strip.getPinned?.().includes(id));
-        preview.textContent = matcher.empty ? 'Enter text or enable regex before closing tabs.' : !matcher.ok ? matcher.error : text('shell.tabs.preview', 'Tabs match.') .replace('{count}', String(Math.max(0, ids.length - skipped.length)));
-        button.disabled = matcher.empty || !matcher.ok || ids.length - skipped.length <= 0;
-        button.dataset.closeIds = JSON.stringify(ids);
+        const matcher = safeMatcher(field); const list = strip.listTabs();
+        const matches = list.filter((tab) => !tab.closed && (matcher.empty ? false : matcher.ok && matcher.test(tab.label)));
+        const matched = list.filter((tab) => !tab.closed && (mode === 'containing' ? matches.some((candidate) => candidate.id === tab.id) : !matches.some((candidate) => candidate.id === tab.id)));
+        const skippedPinned = matched.filter((tab) => !include.checked && tab.pinned);
+        const skippedLocked = matched.filter((tab) => !includeLocked.checked && isLocked(tab.id));
+        const skipped = [...skippedPinned, ...skippedLocked].map((tab) => `${tab.label}${tab.pinned ? ' (pinned)' : ''}${isLocked(tab.id) ? ' (locked)' : ''}`);
+        const ids = matched.filter((tab) => !skippedPinned.includes(tab) && !skippedLocked.includes(tab)).map((tab) => tab.id);
+        preview.textContent = matcher.empty ? text('shell.close.enter', 'Enter text or enable regex before closing tabs.') : !matcher.ok ? matcher.error : text('shell.close.summary', '{count} tab(s) will close. {excluded} excluded by current protection choices.').replace('{count}', String(ids.length)).replace('{excluded}', String(skipped.length));
+        button.disabled = matcher.empty || !matcher.ok || ids.length <= 0;
+        button.dataset.closeState = JSON.stringify({ ids, skipped });
       };
-      field.input.addEventListener('input', calculate); include.addEventListener('change', calculate);
-      button.addEventListener('click', () => { const ids = JSON.parse(button.dataset.closeIds || '[]'); if (!ids.length || !window.confirm(`${title}: ${ids.length}?`)) return; strip.closeTabs?.(ids, { includePinned: include.checked }); calculate(); });
+      field.input.addEventListener('input', calculate); include.addEventListener('change', calculate); includeLocked.addEventListener('change', calculate);
+      button.addEventListener('click', () => { const state = JSON.parse(button.dataset.closeState || '{}'); if (!state.ids?.length) return; openCloseGate(button, title, state.ids, state.skipped || [], { includePinned: include.checked }); });
       actionsHost.append(el('h3', { class: 'md-shell-scope-title', text: title }), field.root, preview, button); calculate();
     }
-    panel.append(el('div', { class: 'md-shell-checkbox' }, include, includeLabel), actionsHost);
+    panel.append(el('div', { class: 'md-shell-checkbox' }, include, includeLabel), el('div', { class: 'md-shell-checkbox' }, includeLocked, includeLockedLabel), actionsHost);
   });
 
   const dockPopover = createPopover(dock, text('shell.tabs.dock', 'Dock tabs'), (panel) => {
@@ -566,7 +879,7 @@ function installOuterTabShell() {
   dock.addEventListener('click', () => dockPopover.toggle());
 
   strip.on?.('groups', () => { root.dataset.groupCount = String(strip.listGroups?.().length || 0); });
-  strip.on?.('dock', ({ edge }) => { root.dataset.dockEdge = edge; });
+  strip.on?.('dock', ({ edge }) => { relocateOuterTabs(root, edge); });
   return { root, findPopover, groupPopover, bulkPopover, dockPopover };
 }
 
@@ -577,7 +890,7 @@ function installUniversalContextMenus() {
   const trigger = el('span', { class: 'md-shell-context-anchor', tabindex: '-1' });
   document.body.append(trigger);
   const menu = createPopover(trigger, 'Element actions', (panel) => {
-    const field = makeSearchField({ id: `context-${current?.targetId || 'element'}`, label: 'Search actions' });
+    const field = makeSearchField({ id: `context-${current?.targetId || 'element'}`, label: text('shell.context.search', 'Search actions') });
     const list = el('div', { class: 'md-shell-list' });
     const render = () => {
       const matcher = safeMatcher(field); list.replaceChildren();
@@ -589,24 +902,31 @@ function installUniversalContextMenus() {
       if (current?.settingsId) actions.push({ label: text('shell.settings.move', 'Move into group'), run: () => document.dispatchEvent(new CustomEvent('md:settings-group-request', { detail: { id: current.settingsId } })) });
       if (current?.element?.matches?.('[data-goto-tab]')) actions.push({ label: text('shell.context.open', 'Open destination'), run: () => current.element.click() });
       for (const item of actions) if (matcher.ok && (matcher.empty || matcher.test(item.label))) { const button = el('button', { type: 'button', class: 'md-btn md-btn--text', text: item.label }); button.addEventListener('click', () => { menu.close(); item.run(); }); list.append(button); }
-      if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? 'No actions match this search.' : matcher.error }));
+      if (!list.children.length) list.append(el('p', { class: 'md-shell-empty', text: matcher.ok ? text('shell.context.noMatch', 'No actions match this search.') : matcher.error }));
     };
     field.input.addEventListener('input', render); panel.append(field.root, list); render(); requestAnimationFrame(() => field.input.focus());
   });
+  menu.panel.classList.add('md-shell-context');
 
   function openFor(element, x, y) {
-    if (!(element instanceof HTMLElement) || element === document.body || element.closest('#tab-strip,[role="tab"],.md-shell-popover,.mdrx-pop,.md-palette,.md-notif')) return;
+    if (!(element instanceof Element) || element === document.body || element.closest('#tab-strip .md-tab,.md-shell-context')) return;
     const rect = element.getBoundingClientRect();
     Object.assign(trigger.style, { position: 'fixed', left: `${x ?? rect.left + 12}px`, top: `${y ?? rect.bottom}px`, width: '1px', height: '1px' });
-    current = { element, targetId: element.id || element.dataset?.setting || element.tagName.toLowerCase(), settingsId: element.dataset?.shellSettingsTab || null, x, y };
+    current = { element, targetId: stableTargetId(element), settingsId: element.dataset?.shellSettingsTab || null, x, y };
     menu.close(false); menu.open();
   }
   document.addEventListener('md:site-context-request', (event) => openFor(event.detail?.element, event.detail?.x, event.detail?.y));
-  document.addEventListener('contextmenu', (event) => { const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip,[role="tab"],.md-shell-popover,.mdrx-pop,.md-palette,.md-notif')) return; event.preventDefault(); openFor(target, event.clientX, event.clientY); }, true);
-  document.addEventListener('keydown', (event) => { if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return; const target = document.activeElement instanceof HTMLElement ? document.activeElement : null; if (!target || target.closest('#tab-strip,[role="tab"],.md-shell-popover,.mdrx-pop,.md-palette,.md-notif')) return; event.preventDefault(); openFor(target); }, true);
+  document.addEventListener('md:destructive-request', (event) => {
+    if (event.defaultPrevented || !event.detail?.run) return;
+    event.preventDefault();
+    const target = event.detail.element;
+    openDestructiveGate(target, 'Confirm destructive action', `This action changes ${event.detail.kind || 'the selected site state'}. Review it before confirming.`, event.detail.run);
+  });
+  document.addEventListener('contextmenu', (event) => { const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target, event.clientX, event.clientY); }, true);
+  document.addEventListener('keydown', (event) => { if (event.key !== 'ContextMenu' && !(event.key === 'F10' && event.shiftKey)) return; const target = document.activeElement instanceof Element ? document.activeElement : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; event.preventDefault(); openFor(target); }, true);
 
   let longPress = 0;
-  document.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip,[role="tab"],.md-shell-popover,.mdrx-pop,.md-palette,.md-notif')) return; longPress = window.setTimeout(() => openFor(target, event.clientX, event.clientY), 650); }, true);
+  document.addEventListener('pointerdown', (event) => { if (event.pointerType !== 'touch') return; const target = event.target instanceof Element ? event.target.closest('*') : null; if (!target || target.closest('#tab-strip .md-tab,.md-shell-context')) return; longPress = window.setTimeout(() => openFor(target, event.clientX, event.clientY), 650); }, true);
   document.addEventListener('pointerup', () => { window.clearTimeout(longPress); }, true);
   document.addEventListener('pointercancel', () => { window.clearTimeout(longPress); }, true);
 }
@@ -619,13 +939,42 @@ function installDropdownSearches() {
     const wrapper = el('div', { class: 'md-shell-dropdown', 'data-shell-dropdown': stableId });
     const field = makeSearchField({ id: `dropdown-${stableId}`, label: text('shell.dropdown.filter', 'Filter choices') });
     const status = el('span', { class: 'md-shell-dropdown__status', role: 'status', 'aria-live': 'polite' });
-    select.parentNode.insertBefore(wrapper, select); wrapper.append(field.root, select, status);
+    const button = el('button', { type: 'button', class: 'md-shell-select__button', 'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-controls': `md-shell-options-${stableId}`, 'aria-label': select.getAttribute('aria-label') || select.id || 'Choose an option' });
+    const list = el('div', { class: 'md-shell-select__panel', id: `md-shell-options-${stableId}`, role: 'listbox', hidden: true });
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.append(button, select, list, status);
+    select.hidden = true;
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    wrapper.append(field.root);
+    list.append(field.root);
     const render = () => {
-      const matcher = safeMatcher(field); let count = 0;
-      for (const option of select.options) { const visible = matcher.ok && (matcher.empty || matcher.test(option.textContent || option.label)); option.hidden = !visible; if (visible) count += 1; }
-      status.textContent = count ? `${count} choices` : text('shell.dropdown.empty', 'No choices match this search.');
+      const matcher = safeMatcher(field);
+      const selected = select.selectedOptions[0];
+      button.textContent = selected?.label || selected?.textContent || 'Choose an option';
+      list.querySelectorAll('[data-shell-option]').forEach((node) => node.remove());
+      let count = 0;
+      for (const option of select.options) {
+        const visible = matcher.ok && (matcher.empty || matcher.test(option.textContent || option.label));
+        if (!visible) continue;
+        const item = el('button', { type: 'button', class: 'md-shell-option', role: 'option', 'data-shell-option': option.value, 'aria-selected': String(option.selected), text: option.label || option.textContent });
+        item.addEventListener('click', () => { select.value = option.value; select.dispatchEvent(new Event('input', { bubbles: true })); select.dispatchEvent(new Event('change', { bubbles: true })); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); });
+        list.append(item); count += 1;
+      }
+      status.textContent = count ? text('shell.dropdown.count', '{count} choices').replace('{count}', String(count)) : text('shell.dropdown.empty', 'No choices match this search.');
     };
-    field.input.addEventListener('input', render); render();
+    button.addEventListener('click', () => { list.hidden = !list.hidden; button.setAttribute('aria-expanded', String(!list.hidden)); if (!list.hidden) { field.input.value = ''; render(); requestAnimationFrame(() => field.input.focus()); } });
+    button.addEventListener('keydown', (event) => { if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') { event.preventDefault(); button.click(); } });
+    field.input.addEventListener('input', render);
+    field.input.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { event.preventDefault(); list.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); }
+      else if (event.key === 'ArrowDown') { event.preventDefault(); list.querySelector('[data-shell-option]')?.focus(); }
+    });
+    select.addEventListener('change', render);
+    const optionObserver = new MutationObserver(render);
+    optionObserver.observe(select, { childList: true, subtree: true });
+    document.addEventListener('pointerdown', (event) => { if (!wrapper.contains(event.target)) { list.hidden = true; button.setAttribute('aria-expanded', 'false'); } }, true);
+    render();
   };
   document.querySelectorAll('select').forEach(attach);
   const observer = new MutationObserver(() => document.querySelectorAll('select').forEach(attach));
@@ -680,11 +1029,12 @@ export function initSiteShell() {
   initFrontProvenance();
   const settings = renderSettingsShell();
   const outer = installOuterTabShell();
+  const pages = installPageSearches();
   installUniversalContextMenus();
   installDropdownSearches();
   registerPaletteSurface();
   exposeInventory();
-  return { settings, outer, inventory: INVENTORY };
+  return { settings, outer, pages, inventory: INVENTORY };
 }
 
 export { INVENTORY, SHELL_STORAGE_KEY, SETTINGS_STORAGE_KEY };

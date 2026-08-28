@@ -228,32 +228,38 @@ function wireSearch(fieldId, modeId, builderId, statusId, onQuery) {
     builder = regex.attachRegexBuilder(input, {
       trigger: builderBtn,
       translate: (k, f) => label(k, f),
-      onApply: (pattern, flags) => {
-        state.mode = 'regex';
-        input.value = pattern;
-        if (modeBtn) modeBtn.setAttribute('aria-pressed', 'true');
-        run(flags);
+      onChange: (payload) => {
+        state.mode = payload?.mode === 'regex' ? 'regex' : 'plain';
+        if (modeBtn) modeBtn.setAttribute('aria-pressed', String(state.mode === 'regex'));
+        run(payload?.flags);
       },
     });
   }
 
   function currentMatcher(flags) {
-    const query = input.value.trim();
+    const builderState = builder?.getState?.();
+    const mode = builderState?.mode || state.mode;
+    const query = mode === 'regex' && builderState?.pattern ? builderState.pattern : input.value.trim();
     if (!query) return null;
-    if (state.mode !== 'regex') {
+    if (mode !== 'regex') {
       const needle = query.toLowerCase();
       return (text) => text.toLowerCase().includes(needle);
     }
-    try {
-      const re = new RegExp(query, flags || 'i');
-      if (status) status.textContent = '';
-      return (text) => { re.lastIndex = 0; return re.test(text); };
-    } catch (error) {
-      // An invalid pattern reports itself and stops matching, rather than
-      // silently returning nothing and looking like "no results".
-      if (status) status.textContent = label('search.invalid', 'Invalid pattern') + ': ' + error.message;
+    if (builder && builderState) {
+      const bounded = builder.matcher();
+      bounded.reset?.();
+      if (!builderState.valid || !bounded.isUsable()) {
+        if (status) status.textContent = label('search.invalid', 'Invalid pattern') + (builderState.error ? ': ' + builderState.error : '');
+        return 'invalid';
+      }
+      return (text) => { bounded.reset?.(); return bounded(text); };
+    }
+    const fallback = tabs.createTabMatcher({ query, mode, flags: builderState?.flags || flags || 'i' });
+    if (!fallback.ok) {
+      if (status) status.textContent = label('search.invalid', 'Invalid pattern') + (fallback.error ? ': ' + fallback.error : '');
       return 'invalid';
     }
+    return (text) => fallback.test(text);
   }
 
   function run(flags) {
@@ -288,6 +294,7 @@ function wireContentSearch() {
   const results = $('#search-results');
   const list = $('#search-results-list');
   const scroll = $('#app-scroll');
+  const status = $('#site-search-status');
 
   wireSearch('site-search-input', 'site-search-mode', 'site-search-builder', 'site-search-status',
     (matcher, query) => {
@@ -299,8 +306,12 @@ function wireContentSearch() {
         return;
       }
 
-      const hits = index.filter((entry) => matcher(entry.text)).slice(0, 60);
+      const allHits = index.filter((entry) => matcher(entry.text));
+      const hits = allHits.slice(0, 60);
       list.textContent = '';
+      if (status) status.textContent = allHits.length > hits.length
+        ? `${allHits.length} matches found. Showing the first ${hits.length}; narrow the search to see fewer.`
+        : `${hits.length} matches found.`;
 
       for (const hit of hits) {
         const item = document.createElement('li');
@@ -354,6 +365,7 @@ function wireSettingsSearch() {
       const all = units();
       if (!query || matcher === 'invalid') {
         for (const unit of all) unit.hidden = false;
+        window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH?.();
         return;
       }
       for (const unit of all) {
@@ -367,6 +379,10 @@ function wireSettingsSearch() {
         if (!rows.length) continue;
         group.hidden = rows.every((row) => row.hidden);
       }
+      // The settings tab owns its own query and regex state. Reapply it after
+      // global filtering so clearing the global field never erases a local
+      // filter the visitor deliberately kept.
+      window.MATERIAL_DESIGNER_SETTINGS_LOCAL_REFRESH?.();
     });
 }
 

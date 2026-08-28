@@ -981,6 +981,7 @@ class TabStrip {
     this.#buildChrome();
     this.#restore();
     this.#normaliseGroups();
+    this.#normalise();
     this.#findPanels();
     this.render();
     this.#bindGlobal();
@@ -1112,9 +1113,10 @@ class TabStrip {
         this.groups.set(groupId, {
           id: groupId,
           name: typeof group.name === 'string' && group.name.trim() ? group.name.trim() : groupId,
-          color: typeof group.color === 'string' ? group.color : '',
+          color: typeof group.color === 'string' && /^#[0-9a-f]{6,8}$/i.test(group.color) ? group.color.toUpperCase() : '',
           tabs: ids,
           collapsed: Boolean(group.collapsed),
+          pinned: Boolean(group.pinned),
         });
       }
     }
@@ -1127,6 +1129,7 @@ class TabStrip {
     if (this.closed.has(this.activeId)) this.closed.delete(this.activeId);
     this.#normalise();
     this.#normaliseGroups();
+    this.#normalise();
   }
 
   #persist() {
@@ -1141,6 +1144,7 @@ class TabStrip {
         color: group.color,
         tabs: [...group.tabs],
         collapsed: Boolean(group.collapsed),
+        pinned: Boolean(group.pinned),
       }])),
       active: this.activeId,
     }));
@@ -1150,7 +1154,11 @@ class TabStrip {
   #normalise() {
     const pinned = this.order.filter((id) => this.pinned.has(id));
     const rest = this.order.filter((id) => !this.pinned.has(id));
-    this.order = [...pinned, ...rest];
+    const groupPinned = rest.filter((id) => this.groups.get(this.groupFor(id))?.pinned);
+    const groupRank = new Map([...this.groups.keys()].map((id, index) => [id, index]));
+    groupPinned.sort((a, b) => (groupRank.get(this.groupFor(a)) ?? 999) - (groupRank.get(this.groupFor(b)) ?? 999));
+    const ordinary = rest.filter((id) => !groupPinned.includes(id));
+    this.order = [...pinned, ...groupPinned, ...ordinary];
   }
 
   #normaliseGroups() {
@@ -1881,7 +1889,7 @@ class TabStrip {
   listGroups() {
     return [...this.groups.values()].map((group) => ({
       id: group.id, name: group.name, color: group.color,
-      tabs: [...group.tabs], collapsed: Boolean(group.collapsed),
+      tabs: [...group.tabs], collapsed: Boolean(group.collapsed), pinned: Boolean(group.pinned),
     }));
   }
   groupFor(id) {
@@ -1891,13 +1899,14 @@ class TabStrip {
   isGroupCollapsed(id) {
     if (this.pinned.has(id)) return false;
     const group = this.groups.get(this.groupFor(id));
+    if (group?.pinned) return false;
     return Boolean(group?.collapsed) && id !== this.activeId;
   }
   createGroup(id, name, color = '', { silent = false } = {}) {
     const safeId = String(id || '').trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64);
     if (!safeId || this.groups.has(safeId)) return false;
     this.groups.set(safeId, { id: safeId, name: String(name || safeId).trim() || safeId,
-      color: String(color || ''), tabs: [], collapsed: false });
+      color: String(color || ''), tabs: [], collapsed: false, pinned: false });
     if (!silent) { this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() }); }
     return true;
   }
@@ -1908,6 +1917,24 @@ class TabStrip {
     this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
     return true;
   }
+  setGroupColor(id, color) {
+    const group = this.groups.get(id);
+    if (!group) return false;
+    const value = String(color || '');
+    group.color = /^#[0-9a-f]{6,8}$/i.test(value) ? value.toUpperCase() : '';
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
+  moveGroup(id, delta) {
+    const ids = [...this.groups.keys()];
+    const from = ids.indexOf(id); const to = from + Math.sign(delta);
+    if (from < 0 || to < 0 || to >= ids.length) return false;
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    const next = new Map(ids.map((groupId) => [groupId, this.groups.get(groupId)]));
+    this.groups = next;
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
   setGroupCollapsed(id, collapsed) {
     const group = this.groups.get(id);
     if (!group) return false;
@@ -1915,11 +1942,20 @@ class TabStrip {
     this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
     return true;
   }
+  setGroupPinned(id, pinned) {
+    const group = this.groups.get(id);
+    if (!group) return false;
+    group.pinned = Boolean(pinned);
+    if (group.pinned) group.collapsed = false;
+    this.#normalise();
+    this.#persist(); this.render(); this.emitter.emit('groups', { groups: this.listGroups() });
+    return true;
+  }
   assignTabToGroup(tabId, groupId) {
     if (!this.definitions.has(tabId) || !this.groups.has(groupId)) return false;
     for (const group of this.groups.values()) group.tabs = group.tabs.filter((id) => id !== tabId);
     this.groups.get(groupId).tabs.push(tabId);
-    this.#normaliseGroups(); this.#persist(); this.render();
+    this.#normaliseGroups(); this.#normalise(); this.#persist(); this.render();
     this.emitter.emit('groups', { groups: this.listGroups() });
     return true;
   }
@@ -1929,7 +1965,7 @@ class TabStrip {
     const fallback = [...this.groups.values()].find((item) => item.id !== groupId);
     fallback.tabs.push(...group.tabs);
     this.groups.delete(groupId);
-    this.#normaliseGroups(); this.#persist(); this.render();
+    this.#normaliseGroups(); this.#normalise(); this.#persist(); this.render();
     this.emitter.emit('groups', { groups: this.listGroups() });
     return true;
   }
