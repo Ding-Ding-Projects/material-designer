@@ -45,6 +45,24 @@ version section when a release carries them.
 
 ### Changed
 
+- **Add a source-level every-element appearance editor foundation.** The web
+  appearance surface now registers rendered descendants as stable targets and
+  provides target-specific context actions through pointer, keyboard and touch
+  routes. Its bounded anchored editor stores twelve visual states, a layered
+  non-destructive workspace, Word-depth typography, image and geometry metadata,
+  state inheritance, capability explanations, property search, reset and
+  append-only undo history. Built-artifact interaction, full application
+  coverage and capture evidence remain pending. The integration commit link
+  will be added when this lane is incorporated into the default branch.
+
+  **廣東話進度：** Appearance surface 而家會將所有 render 出嚟嘅元素登記做
+  穩定 target，pointer、keyboard 同 touch 都有 target-specific context action。
+  Anchored editor 收好十二種 visual state、layered non-destructive workspace、
+  Word-depth typography、image 同 geometry metadata、state inheritance、
+  capability explanation、property search、reset 同 append-only undo history。
+  Built artifact interaction、全 app coverage 同 capture evidence 仲未完成；
+  lane integrate 落 default branch 之後先補 validated commit link。
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.

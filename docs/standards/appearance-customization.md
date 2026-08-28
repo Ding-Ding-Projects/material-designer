@@ -162,19 +162,45 @@ is bound to.
 | Density control | **Source implemented.** The real Appearance tab mounts the persisted three-step control. Hosted and installed behavior remain unverified. |
 | Seed colour with scheme regeneration | **Source implemented.** The real Appearance tab mounts the persisted seed control and live runtime. Hosted and installed behavior remain unverified. |
 | Full font control | **Source implemented.** The real Appearance tab mounts the persisted font, size, weight, line-height and tracking controls, including visible unsupported values. Hosted and installed behavior remain unverified. |
-| Per-element **Edit appearance…** | **Not started, and not designed.** Absent from the mockup entirely. |
+| Per-element **Edit appearance…** | **Partial source implementation at the current lane.** `ElementAppearanceBoundary` registers every rendered descendant and opens a target-specific menu through pointer, Shift+F10/Context Menu, and touch long-press paths. `ElementAppearanceEditor` is a bounded anchored non-modal editor. Built-artifact interaction and per-action capture evidence remain unverified. |
 | Infinite colour picker | **Source implemented.** The real Appearance tab mounts the continuous picker beside the accent swatches. Hosted and installed behavior remain unverified. |
 | Colour translator | **Source implemented.** The mounted picker owns the translation and contrast readout; runtime evidence remains open. |
-| Word-depth typography editor | **Partial source implementation.** The mounted controls cover the shipped supported properties and keep unsupported properties visible with reasons; the full per-element editor remains open. |
+| Word-depth typography editor | **Partial source implementation.** Global controls cover the existing supported properties, while the per-element editor adds family preview choices, size, weight, line height, colors, underline, strike, overline, capitalization, direction, alignment and spacing. Unsupported variable-font axes stay visible with an exact reason. Hosted and packaged evidence remain open. |
 | Named presets, export/import | **Source implemented for built-in presets.** The mounted section applies the existing preset store; user-saved preset export/import remains open. |
-| Per-element and global reset | **Source implemented for global appearance reset.** Per-element reset remains open. |
-| Search bar on every appearance control | **Partial.** The settings surface and overflow menu each retain independent anchored regex builders; a complete per-element appearance-search inventory remains open. |
+| Per-element and global reset | **Partial source implementation.** The per-element editor records reset, undo and redo snapshots in an append-only local history and the existing global reset remains available. Cross-restart and packaged proof remain open. |
+| Search bar on every appearance control | **Partial.** Each target context menu and the property inspector own an independent `RegexSearchField`; the editor's capability matrix is filtered through that field. The full application-wide search inventory and built interaction remain open. |
 | Native theme acknowledgement | **Source implemented.** The optional desktop bridge returns a validated action result with a bounded timeout; the startup witness is withheld on rejection or timeout. Hosted and installed behavior remain unverified. |
 | Settings route and panel ownership | **Source implemented.** Appearance is the typed settings sub-route; Workspace, Orbit and Routines are real SettingsDialog tabs with labelled panels. Workspace is removed from the strip and palette when its permission snapshot is not authorized, while Library remains owned by the entry route. |
 | Appearance/settings hit areas | **Source implemented.** Appearance rows, theme and seed choices, picker controls, copy actions, settings tabs, search results, reset actions, regex toggles, overflow and page-back controls carry 48px hit-area floors. Hosted display-scale measurements remain unverified. |
 | Native capability compatibility | **Source implemented.** Acknowledgement capability version 1 distinguishes the current promise-returning theme action from a legacy void setter; the latter cannot satisfy the desktop startup witness and produces a truthful incompatibility result. |
 | Renderer recovery witness | **Source implemented.** Crash-screen recovery clears the visible/readiness latches, re-arms the splash, and runs the same acknowledged theme witness on every reload before revealing the application surface. |
 | Narrow and bilingual appearance rows | **Source implemented.** Unsupported typography rows and colour-translation rows wrap or stack instead of clipping; the 2D colour field exposes live saturation, brightness and RGBA text to assistive technology. |
+
+### Current every-element editor matrix
+
+The current source lane keeps one hand-written capability and state matrix in
+`design/apps/web/src/components/appearance/elementAppearance.ts`. The registry
+is runtime-owned, so it can address dynamically mounted controls without
+inventing a second list of product elements. `ElementAppearanceBoundary` scans
+the live subtree and maintains target identity from the element's test id,
+DOM id, accessible label, or a deterministic fallback. Each target has an
+independent state record for normal, hover, focus, pressed, selected, disabled,
+dragged, validation, loading, success, warning and error.
+
+| Contract area | Source owner | Persistence and history | Accessibility and evidence |
+| --- | --- | --- | --- |
+| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, and touch long-press routes resolve one exact target. Built-artifact drive and per-click HuiShot receipts remain pending. |
+| Layered workspace | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Ordered layers and groups, visibility, lock, duplicate, rename, reorder, opacity, blend mode, fill, stroke, effects and geometry are stored per target and state | Keyboard-focusable controls, live status, bounded scroll panel. Runtime and display-scale evidence remain pending. |
+| Image editing | `ElementAppearanceEditor.tsx` | Selections, channels, masks, adjustment metadata, smart embedded content, crop/focal/safe-area values, filters, paths and warp metadata are retained in the state snapshot | Unsupported capability entries remain visible with an exact reason. Actual renderer fidelity and packaged evidence are not claimed. |
+| Word-depth typography | `ElementAppearanceEditor.tsx` | Family, size, weight, style, text effects, color, highlight, spacing, line height, baseline, direction and alignment are stored per state | Installed-family choices are rendered as previews; variable axes remain visible as unavailable where the renderer lacks the API. |
+| State inheritance and preview | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Each state records an explicit parent state or overrides; updates append history | State tabs expose all twelve states and the active target remains the focus return point. |
+| Resets, undo and redo | `elementAppearance.ts` | Bounded append-only local history; reset and inverse changes create new entries rather than rewriting prior entries | Status text confirms each mutation. No built runtime claim is made until the UI drive lands. |
+| Property search | `ElementAppearanceEditor.tsx` | Query is owned by the editor instance and is not persisted with target style | Uses the existing `RegexSearchField` contract, plain text first with an anchored builder. The regex implementation is intentionally untouched in this lane. |
+
+This matrix is a source implementation record, not a conformance claim. The
+application still needs a fresh built package, exhaustive interaction ledger,
+per-click HuiShot set, and a red-then-green completeness run before any row can
+be called verified.
 
 ### What the documentation site implements
 

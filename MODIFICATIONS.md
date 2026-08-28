@@ -29,6 +29,27 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Add every-element appearance editor foundation
+
+**Reason:** The existing global appearance controls could not address a
+specific rendered element. The new source lane registers every descendant on
+the live appearance surface, gives each target pointer, keyboard and touch
+context actions, and opens a bounded anchored non-modal editor. The editor
+keeps twelve visual states, a layered non-destructive workspace, Word-depth
+typography, image and geometry metadata, state inheritance, an explicit
+capability matrix, property search, reset, and append-only undo history.
+Built-artifact interaction and capture evidence remain pending, so this entry
+does not claim runtime conformance.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/AppearanceControls.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceBoundary.tsx`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.module.css`
+- `apps/web/src/components/appearance/ElementAppearanceEditor.tsx`
+- `apps/web/src/components/appearance/elementAppearance.ts`
+- `apps/web/tests/components/ElementAppearanceEditor.contract.test.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh
