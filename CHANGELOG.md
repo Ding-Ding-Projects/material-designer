@@ -2,6 +2,12 @@
 
 ## Unreleased — Add local Ollama suite manager
 
+The final review repair also preserves the literal chat role union at the
+session boundary, keeping the persisted transcript type-safe without changing
+the user-visible conversation.
+
+Source commit: [`7e54c5b4`](https://github.com/Ding-Ding-Projects/material-designer/commit/7e54c5b455d90301318d0beb4a35e1406fb145c5)
+
 The review repair hardens official catalog pagination, source identity and
 revision checks, installed-state reconciliation, hardware evidence ordering,
 collision-safe durable pull records, provider terminal-status handling, abort
