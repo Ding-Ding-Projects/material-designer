@@ -59,7 +59,7 @@ image query string so crawlers can distinguish a meaningful preview change.
 | --- | --- | --- |
 | An article is added without a manifest entry | Documentation validation fails on exact path-set comparison. | Regenerate the manifest and review the new article. |
 | An article changes without a manifest refresh | The stored SHA-256 is stale. | Regenerate, inspect the diff, and rerun the validation. |
-| A renderer accepts raw article markup | The renderer safety Shek Q fails. | Escape the provider-authored body and add a red-then-green regression. |
+| A renderer accepts raw article markup | The renderer safety guard fails. | Escape the provider-authored body and add a red-then-green regression. |
 | A source link points outside the article bundle | The internal-link resolver refuses it. | Use a local article target or a labelled HTTPS external link. |
 | Root and served preview bytes differ | Metadata validation fails before publication. | Run the one-source generator again and inspect both hashes. |
 | Metadata points at a relative or unversioned image | Metadata validation fails. | Use the generated served image URL and update its version query. |
