@@ -16,6 +16,17 @@ import type { FunnyOverrides } from '../types';
  * given level gets the same energy on both sides of the separator.
  */
 export const ZH_HK_FUNNY: FunnyOverrides = {
+  'appLogo.hint': { 3: '揀內置標誌或者本機圖片，標誌只改外觀，唔會改身份。', 5: '揀個內置標誌或者餵張本機圖片，佢只係換衫，身份照舊。' },
+  'appLogo.uploadHelp': { 3: '只接受靜態 PNG、JPEG 或 WebP，來源上限 8 MiB；損壞或者動畫輸入會喺 decode 前拒絕。', 5: '只接受靜態 PNG、JPEG 或 WebP，來源上限 8 MiB；可疑像素未入門口已經攔低。' },
+  'appLogo.validating': { 3: '本機驗證緊所選圖片…', 5: '本機像素保安檢查緊張相…' },
+  'appLogo.converted': { 3: '本機已轉換成驗證過嘅 {width}×{height} PNG（{bytes} bytes）。', 5: '本機轉成驗證過嘅 {width}×{height} PNG（{bytes} bytes），啲像素捱過大改造喇。' },
+  'appLogo.resetDone': { 3: '標誌選擇已重設為出廠標誌。', 5: '個標誌返咗出廠衫，繼續返工。' },
+  'appLogo.conversionFailure': { 3: '圖片未能喺本機轉換。', 5: '張相唔肯喺本機變身，所以之前個標誌繼續頂住先。' },
+  'appLogo.errorCode': { 3: '圖片驗證（{code}）：{detail}', 5: '像素保安報告（{code}）：{detail}' },
+  'appLogo.lossDisclosure': { 3: '來源披露：轉換 PNG 唔會保留 {losses}，來源檔案保持不變。', 5: '來源披露：轉換 PNG 唔會保留 {losses}，原檔案有骨氣，保持不變。' },
+  'appLogo.scheduleAdded': { 3: '標誌預約已喺本機加入。', 5: '標誌預約已喺本機加入，個月曆而家有細細個藝術總監。' },
+  'appLogo.scheduleInvalid': { 3: '請輸入有效開始同結束時間，結束要遲過開始。', 5: '請輸入有效開始同結束時間，結束要遲過開始，時間唔可以倒流。' },
+  'appLogo.installerPreviewOnly': { 3: '只係安裝程式預覽：標誌唔會改 package identity、安裝程式身份、更新 feed 或簽署狀態。', 5: '只係安裝程式預覽：標誌戴頂帽，package identity、安裝程式身份、更新 feed 同簽署狀態照企定。' },
   'handoff.downloadSucceeded': { 3: '交接匯出下載咗', 5: '份登記冊自己行咗出去喇' },
   'handoff.downloadFailed': { 3: '交接匯出下載唔到', 5: '份下載唔肯出門口' },
   'handoff.statusImplemented': { 3: '已實作', 5: '實作咗，仲有文件做證' },

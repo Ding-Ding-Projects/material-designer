@@ -471,9 +471,15 @@ a:hover {
 .logo-customization__upload { display: flex; flex-wrap: wrap; gap: .65rem; align-items: center; }
 .logo-customization__upload input { min-height: 3rem; max-width: 100%; }
 .logo-customization__upload span { color: var(--md-sys-color-on-surface-variant); font-size: .75rem; line-height: 1.5; }
+.logo-customization__export { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.logo-customization__export label { position: relative; cursor: pointer; }
+.logo-customization__export input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .logo-customization__stage { display: grid; place-items: center; min-height: 15rem; border: 1px solid var(--md-sys-color-outline-variant); border-radius: var(--md-sys-shape-corner-l); background-image: linear-gradient(45deg, #eee 25%, transparent 25%), linear-gradient(-45deg, #eee 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #eee 75%), linear-gradient(-45deg, transparent 75%, #eee 75%); background-position: 0 0, 0 12px, 12px -12px, -12px 0; background-size: 24px 24px; background-color: var(--md-sys-color-surface); }
 .logo-customization__stage[data-safe-area="on"]::after { content: ""; position: absolute; inset: 12%; border: 2px dashed var(--md-sys-color-primary); pointer-events: none; }
 .logo-customization__stage { position: relative; overflow: hidden; }
+.logo-customization__stage[data-logo-rainbow="on"], [data-logo-rainbow="on"] .logo-customization__stage { background-image: linear-gradient(120deg, hsl(0 90% 60%), hsl(120 90% 60%), hsl(240 90% 60%), hsl(360 90% 60%)); background-size: 300% 300%; animation: logo-rainbow 12s linear infinite; }
+@keyframes logo-rainbow { to { background-position: 300% 0; } }
+@media (prefers-reduced-motion: reduce) { .logo-customization__stage[data-logo-rainbow="on"], [data-logo-rainbow="on"] .logo-customization__stage { animation: none; background-position: 50% 50%; } }
 .logo-customization__stage img { width: 70%; height: 70%; object-fit: contain; }
 .logo-customization__controls { display: flex; flex-direction: column; gap: .8rem; }
 .logo-customization__controls label { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; min-height: 3rem; color: var(--md-sys-color-on-surface); }
@@ -496,6 +502,11 @@ a:hover {
 .logo-target-tile { display: grid; place-items: center; min-height: 5rem; border: 1px solid var(--md-sys-color-outline-variant); border-radius: .5rem; background: var(--md-sys-color-surface); }
 .logo-target-tile img { width: 76%; height: 76%; object-fit: contain; }
 .logo-target-grid figcaption { margin-top: .35rem; color: var(--md-sys-color-on-surface-variant); font-size: .7rem; overflow-wrap: anywhere; }
+.logo-schedule { display: flex; flex-direction: column; gap: .6rem; margin: 0; padding: .75rem; border: 1px solid var(--md-sys-color-outline-variant); border-radius: .5rem; }
+.logo-schedule legend { padding: 0 .25rem; font-weight: 600; }
+.logo-schedule label { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; min-height: 3rem; }
+.logo-schedule input, .logo-schedule select { min-height: 2.5rem; padding: .35rem .5rem; border: 1px solid var(--md-sys-color-outline); border-radius: .5rem; background: var(--md-sys-color-surface); color: inherit; }
+.logo-schedule ul { margin: 0; padding-left: 1.25rem; color: var(--md-sys-color-on-surface-variant); font-size: .75rem; overflow-wrap: anywhere; }
 
 @media (max-width: 48rem) {
   .logo-customization__head,

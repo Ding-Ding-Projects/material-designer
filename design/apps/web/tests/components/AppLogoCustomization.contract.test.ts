@@ -7,6 +7,11 @@ const component = readFileSync(resolve(sourceRoot, 'components/logo/LogoCustomiz
 const moduleSource = readFileSync(resolve(sourceRoot, 'state/logoCustomization.ts'), 'utf8');
 const appSource = readFileSync(resolve(sourceRoot, 'App.tsx'), 'utf8');
 const chromeStyles = readFileSync(resolve(sourceRoot, 'styles/shell.css'), 'utf8');
+const siteLogo = readFileSync(resolve(__dirname, '../../../../site/assets/js/logo.js'), 'utf8');
+const siteIndex = readFileSync(resolve(__dirname, '../../../../site/index.html'), 'utf8');
+const configState = readFileSync(resolve(sourceRoot, 'state/config.ts'), 'utf8');
+const palette = readFileSync(resolve(sourceRoot, 'components/command-palette/CommandPalette.tsx'), 'utf8');
+const settingsIndex = readFileSync(resolve(sourceRoot, 'components/command-palette/settingsIndex.ts'), 'utf8');
 
 describe('app-logo surface inventory', () => {
   it('keeps the hand-written feature surface and safe local routes present', () => {
@@ -21,6 +26,19 @@ describe('app-logo surface inventory', () => {
       'safeArea',
       'focalPoint',
       'variants',
+      'renderFingerprint',
+      'logoRenderFingerprint',
+      'sourceDataUrl',
+      'redactLogoStateForDaemon',
+      'scheduleWeekdays',
+      'scheduleDelete',
+      'rainbowSpeedLevel',
+      'parseLogoStateFile',
+      'serializeLogoState',
+      'resolveScheduledLogoState',
+      'isSafeBundledSvgPreset',
+      'installerPreviewOnly',
+      'onChangeRef',
     ]) expect(component).toContain(marker);
   });
 
@@ -39,8 +57,22 @@ describe('app-logo surface inventory', () => {
   });
 
   it('restores the stored selection before the app renders chrome', () => {
-    expect(appSource).toContain('applyLogoStateToDocument(readStoredLogoState())');
+    expect(appSource).toContain('readStoredLogoState()');
+    expect(appSource).toContain('resolveScheduledLogoState(source)');
+    expect(appSource).toContain('window.setInterval(applyScheduledLogo, 60_000)');
     expect(chromeStyles).toContain('var(--app-logo-image)');
     expect(chromeStyles).toContain('html[data-logo-preset]');
+  });
+
+  it('keeps the Day Teet Hui binary and persistence boundaries wired', () => {
+    for (const marker of ['HISTORY_KEY', 'MAX_SOURCE_BYTES', 'file.size > MAX_SOURCE_BYTES', 'CRC_TABLE', 'createImageBitmap', 'roundTrip', 'data-logo-color-translations', 'installerPreviewOnly']) {
+      expect(siteLogo).toContain(marker);
+    }
+    expect(siteIndex).toContain('data-logo-color-field');
+    expect(siteIndex).toContain('targets.every');
+    expect(configState).toContain('normalizeLogoState(daemonConfig.appLogo)');
+    expect(configState).toContain('appLogo: config.appLogo');
+    expect(palette).toContain("case 'appearance.logo'");
+    expect(settingsIndex).toContain("control: 'appearance.logo'");
   });
 });

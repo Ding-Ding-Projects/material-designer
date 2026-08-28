@@ -37,6 +37,7 @@ export type SettingsControlId =
   | 'appearance.density'
   | 'appearance.uiScale'
   | 'appearance.autoFit'
+  | 'appearance.logo'
   | 'appearance.fontFamily'
   | 'appearance.fontSize'
   | 'appearance.fontWeight'
@@ -247,6 +248,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     titleKey: 'brandDetail.logo',
     hintKey: 'ds.manualEditModuleHint',
     keywords: ['logo', 'app logo', 'brand mark', 'custom image', 'icon', 'preset'],
+    control: 'appearance.logo',
   },
   {
     id: 'appearance.theme',

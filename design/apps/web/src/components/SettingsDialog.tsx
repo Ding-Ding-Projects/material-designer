@@ -5932,7 +5932,10 @@ export function SettingsDialog({
               </div>
 
               <div className="settings-general-block">
-                <LogoCustomizationSection />
+                <LogoCustomizationSection
+                  initial={cfg.appLogo}
+                  onChange={(next) => setCfg((current) => ({ ...current, appLogo: next }))}
+                />
               </div>
 
               <div className="settings-general-block">

@@ -1,4 +1,5 @@
 import type { AppConfigPrefs } from '@open-design/contracts';
+import { normalizeLogoState, redactLogoStateForDaemon } from './logoCustomization';
 import { MEDIA_PROVIDERS } from '../media/models';
 import { isOpenAICompatible } from '../providers/openai-compatible';
 import type {
@@ -1157,6 +1158,9 @@ export function mergeDaemonConfig(
   if (daemonConfig.defaultProjectLocationId !== undefined) {
     next.defaultProjectLocationId = daemonConfig.defaultProjectLocationId ?? 'default';
   }
+  if (daemonConfig.appLogo !== undefined) {
+    next.appLogo = normalizeLogoState(daemonConfig.appLogo);
+  }
   return next;
 }
 
@@ -1282,6 +1286,7 @@ export async function syncConfigToDaemon(
     customInstructions: config.customInstructions ?? null,
     projectLocations: config.projectLocations ?? [],
     defaultProjectLocationId: config.defaultProjectLocationId ?? 'default',
+    appLogo: config.appLogo ? redactLogoStateForDaemon(config.appLogo) : undefined,
   };
   try {
     const response = await fetch('/api/app-config', {

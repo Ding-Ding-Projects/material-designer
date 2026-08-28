@@ -95,6 +95,8 @@ import type {
   UpdateDeployConfigRequest,
 } from '@open-design/contracts';
 
+import type { LogoState } from './state/logoCustomization';
+
 export type {
   CloudflarePagesDeploySelection,
   CloudflarePagesDeploymentInfo,
@@ -470,6 +472,8 @@ export interface AppConfig {
   customInstructions?: string;
   projectLocations?: ProjectLocationPrefs[];
   defaultProjectLocationId?: string | null;
+  /** Presentation-only logo state, mirrored through daemon app-config history. */
+  appLogo?: LogoState;
 }
 
 export interface TelemetryConfig {

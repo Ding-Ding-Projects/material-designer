@@ -1551,8 +1551,9 @@ labels are longest — and when no legacy design element remains in them.
       bundled presets, local static-image upload with signature-first bounded
       validation, PNG conversion roundtrip checks, crop and fit controls,
       focal point, safe-area preview, transparent or infinite-picker background,
-      five display-target previews, local persistence, replace and reset. The
-      application and documentation site surfaces are wired at source level;
+      five display-target previews, local persistence, replace/reset, versioned
+      appearance export/import, local schedules, and daemon app-config history.
+      The application and documentation site surfaces are wired at source level;
       packaged runtime drive, every-click capture receipts, and hosted evidence
       remain open, so this item is deliberately not ticked.
 - [x] **Persist every control across restarts** and apply changes to the live

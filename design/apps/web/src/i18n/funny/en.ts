@@ -19,6 +19,17 @@ import type { FunnyOverrides } from '../types';
  * "permanently". That part is on whoever writes the line.
  */
 export const EN_FUNNY: FunnyOverrides = {
+  'appLogo.hint': { 3: 'Choose a bundled mark or a local image. The mark changes presentation only, never identity.', 5: 'Pick a bundled mark or feed it a local image. The mark gets a costume change, not a new identity.' },
+  'appLogo.uploadHelp': { 3: 'Static PNG, JPEG, or WebP only. Maximum source size is 8 MiB; malformed or animated input is refused before decoding.', 5: 'Static PNG, JPEG, or WebP only. Maximum source size is 8 MiB; animated or suspicious pixels are stopped at the door before decoding.' },
+  'appLogo.validating': { 3: 'Validating the selected image locally…', 5: 'The local pixel bouncer is checking the image…' },
+  'appLogo.converted': { 3: 'Converted locally to a verified {width}×{height} PNG ({bytes} bytes).', 5: 'Converted locally to a verified {width}×{height} PNG ({bytes} bytes); the pixels survived the makeover.' },
+  'appLogo.resetDone': { 3: 'Logo selection reset to the shipped mark.', 5: 'The logo has returned to its factory outfit.' },
+  'appLogo.conversionFailure': { 3: 'The image could not be converted locally.', 5: 'The image declined its local makeover, so the previous logo stays on duty.' },
+  'appLogo.errorCode': { 3: 'Image validation ({code}): {detail}', 5: 'The pixel bouncer reports ({code}): {detail}' },
+  'appLogo.lossDisclosure': { 3: 'Source disclosure: {losses} are not retained by the converted PNG. The source remains unchanged.', 5: 'Source disclosure: {losses} are not retained by the converted PNG. The original file keeps its dignity and stays unchanged.' },
+  'appLogo.scheduleAdded': { 3: 'Logo schedule added locally.', 5: 'Logo schedule added locally; the calendar now has a tiny art director.' },
+  'appLogo.scheduleInvalid': { 3: 'Enter a valid start and end, with the end after the start.', 5: 'Enter a valid start and end, with the end after the start; time cannot travel backwards here.' },
+  'appLogo.installerPreviewOnly': { 3: 'Installer preview only: this mark does not change package identity, installer identity, update feed, or signing state.', 5: 'Installer preview only: the mark gets a hat, while package identity, installer identity, update feed, and signing state stay put.' },
   'handoff.downloadSucceeded': { 3: 'Handoff export downloaded', 5: 'The registry has left the building' },
   'handoff.downloadFailed': { 3: 'Handoff export could not be downloaded', 5: 'The download declined its little trip' },
   'handoff.statusImplemented': { 3: 'Implemented', 5: 'Implemented, with paperwork' },

@@ -99,6 +99,8 @@ export interface AppConfigPrefs {
    * installed is reported as missing rather than silently replaced.
    */
   externalEditor?: ExternalEditorPrefs | null;
+  /** Presentation-only logo state, bounded and revalidated by the web surface. */
+  appLogo?: unknown;
 }
 
 export interface AppConfigResponse {

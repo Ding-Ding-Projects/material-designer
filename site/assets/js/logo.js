@@ -8,8 +8,10 @@
  */
 
 export const STORAGE_KEY = 'md-designer:app-logo:v1';
+export const HISTORY_KEY = 'md-designer:app-logo-history:v1';
 export const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 export const MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
+export const MAX_AGGREGATE_BYTES = 8 * 1024 * 1024;
 export const MAX_DIMENSION = 4096;
 export const MAX_PIXELS = 16 * 1024 * 1024;
 export const MAX_DECODE_TIME_MS = 2000;
@@ -43,10 +45,18 @@ export const DEFAULTS = Object.freeze({
   focalPoint: { x: 0.5, y: 0.5 },
   background: 'transparent',
   safeArea: true,
+  rainbowSpeedLevel: 3,
+  schedules: [],
 });
 
-const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+function logoRenderFingerprint(options) {
+  return JSON.stringify({ crop: safeCrop(options.crop), fit: options.fit, focalPoint: options.focalPoint, safeArea: options.safeArea, background: options.background });
+}
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const CRC_TABLE = (() => { const table = new Uint32Array(256); for (let n = 0; n < 256; n += 1) { let c = n; for (let k = 0; k < 8; k += 1) c = (c & 1) ? 0xedb88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; } return table; })();
+const crc32 = (bytes, start, end) => { let value = 0xffffffff; for (let i = start; i < end; i += 1) value = CRC_TABLE[(value ^ (bytes[i] || 0)) & 0xff] ^ (value >>> 8); return (value ^ 0xffffffff) >>> 0; };
 
 function bounds(width, height) {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) return { ok: false, code: 'malformed', detail: 'The image dimensions are invalid.' };
@@ -56,61 +66,85 @@ function bounds(width, height) {
 }
 
 function pngInfo(bytes) {
-  if (bytes.length < 33) return { ok: false, code: 'malformed', detail: 'The PNG header is incomplete.' };
+  if (bytes.length < 57) return { ok: false, code: 'malformed', detail: 'The PNG header or required chunks are incomplete.' };
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const width = view.getUint32(16, false);
-  const height = view.getUint32(20, false);
-  const limit = bounds(width, height);
-  if (limit) return limit;
-  const colorType = bytes[25];
-  let offset = 8;
-  let animated = false;
-  while (offset + 12 <= bytes.length) {
-    const length = view.getUint32(offset, false);
-    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
-    const next = offset + length + 12;
-    if (next < offset || next > bytes.length) return { ok: false, code: 'malformed', detail: 'A PNG chunk exceeds the input.' };
-    if (type === 'acTL') animated = true;
-    offset = next;
-    if (type === 'IEND') break;
+  let width = 0; let height = 0; let bitDepth = -1; let colorType = -1; let hasAlpha = false;
+  let seenIHDR = false; let seenIDAT = false; let seenIEND = false; let seenPLTE = false; let animated = false; let offset = 8;
+  while (offset < bytes.length) {
+    if (offset + 12 > bytes.length) return { ok: false, code: 'malformed', detail: 'A PNG chunk header is truncated.' };
+    const length = view.getUint32(offset, false); const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8)); const next = offset + length + 12;
+    if (next < offset || next > bytes.length || !/^[A-Za-z]{4}$/.test(type)) return { ok: false, code: 'malformed', detail: 'A PNG chunk is invalid or exceeds the input.' };
+    if (view.getUint32(next - 4, false) !== crc32(bytes, offset + 4, offset + 8 + length)) return { ok: false, code: 'malformed', detail: `PNG chunk ${type} has an invalid CRC.` };
+    const dataStart = offset + 8;
+    if (!seenIHDR && type !== 'IHDR') return { ok: false, code: 'malformed', detail: 'PNG IHDR must be first.' };
+    if (type === 'IHDR') {
+      if (seenIHDR || length !== 13) return { ok: false, code: 'malformed', detail: 'PNG requires one 13-byte IHDR.' };
+      seenIHDR = true; width = view.getUint32(dataStart, false); height = view.getUint32(dataStart + 4, false); bitDepth = bytes[dataStart + 8]; colorType = bytes[dataStart + 9];
+      const validDepths = { 0: [1, 2, 4, 8, 16], 2: [8, 16], 3: [1, 2, 4, 8], 4: [8, 16], 6: [8, 16] };
+      if (!validDepths[colorType] || !validDepths[colorType].includes(bitDepth) || bytes[dataStart + 10] !== 0 || bytes[dataStart + 11] !== 0 || (bytes[dataStart + 12] !== 0 && bytes[dataStart + 12] !== 1)) return { ok: false, code: 'malformed', detail: 'PNG bit depth, colour type, or method is invalid.' };
+      const limit = bounds(width, height); if (limit) return limit; hasAlpha = colorType === 4 || colorType === 6;
+    } else if (type === 'PLTE') {
+      if (seenIDAT || seenPLTE || !length || length % 3 || length > 768) return { ok: false, code: 'malformed', detail: 'PNG PLTE is late or malformed.' }; seenPLTE = true;
+    } else if (type === 'tRNS') {
+      const validTransparencyLength = colorType === 3 ? seenPLTE && length <= 256 : colorType === 0 ? length <= 2 : colorType === 2 ? length <= 6 : false;
+      if (seenIDAT || !validTransparencyLength || colorType === 4 || colorType === 6) return { ok: false, code: 'malformed', detail: 'PNG tRNS is late, oversized, or invalid with this colour type.' }; hasAlpha = true;
+    } else if (type === 'IDAT') {
+      if (colorType === 3 && !seenPLTE) return { ok: false, code: 'malformed', detail: 'PNG palette data must precede IDAT.' }; seenIDAT = true;
+    } else if (type === 'acTL' || type === 'fcTL' || type === 'fdAT') animated = true;
+    else if (type === 'IEND') {
+      if (length || !seenIDAT || (colorType === 3 && !seenPLTE)) return { ok: false, code: 'malformed', detail: 'PNG IEND arrived before required image data.' }; seenIEND = true;
+    } else if (type.charCodeAt(0) >= 65 && type.charCodeAt(0) <= 90) return { ok: false, code: 'unsupported-format', detail: `Unsupported critical PNG chunk ${type}.` };
+    offset = next; if (seenIEND) break;
   }
+  if (!seenIHDR || !seenIDAT || !seenIEND || offset !== bytes.length) return { ok: false, code: 'malformed', detail: 'PNG must end with one validated IEND chunk.' };
   if (animated) return { ok: false, code: 'animated', detail: 'Animated PNG input is not accepted.' };
-  return { ok: true, mimeType: 'image/png', width, height, hasAlpha: colorType === 4 || colorType === 6, frameCount: 1 };
+  return { ok: true, mimeType: 'image/png', width, height, hasAlpha, frameCount: 1 };
 }
 
 function jpegInfo(bytes) {
-  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return { ok: false, code: 'malformed', detail: 'The JPEG signature is incomplete.' };
-  let offset = 2;
-  while (offset + 3 < bytes.length) {
-    if (bytes[offset] !== 0xff) { offset += 1; continue; }
-    const marker = bytes[offset + 1]; offset += 2;
-    if (marker === 0xd8 || marker === 0xd9 || marker === 0x01) continue;
-    const length = (bytes[offset] << 8) | bytes[offset + 1];
-    if (length < 2 || offset + length > bytes.length) break;
-    const frame = (marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf);
-    if (frame && length >= 7) {
-      const height = (bytes[offset + 3] << 8) | bytes[offset + 4];
-      const width = (bytes[offset + 5] << 8) | bytes[offset + 6];
-      const limit = bounds(width, height);
-      if (limit) return limit;
-      return { ok: true, mimeType: 'image/jpeg', width, height, hasAlpha: false, frameCount: 1 };
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) return { ok: false, code: 'malformed', detail: 'The JPEG signature or EOI is incomplete.' };
+  let offset = 2; let width = 0; let height = 0; let sawFrame = false; let sawSos = false;
+  while (offset + 1 < bytes.length) {
+    if (bytes[offset] !== 0xff) return { ok: false, code: 'malformed', detail: 'JPEG marker alignment is invalid.' };
+    while (offset < bytes.length && bytes[offset] === 0xff) offset += 1;
+    const marker = bytes[offset++];
+    if (marker === 0xd9) break;
+    if (marker === 0xda) {
+      if (offset + 2 > bytes.length) return { ok: false, code: 'malformed', detail: 'JPEG scan header is truncated.' };
+      const length = (bytes[offset] << 8) | bytes[offset + 1]; if (length < 2 || offset + length > bytes.length) return { ok: false, code: 'malformed', detail: 'JPEG scan length is invalid.' }; sawSos = true; offset += length;
+      while (offset + 1 < bytes.length) { if (bytes[offset] !== 0xff) { offset += 1; continue; } let markerOffset = offset; while (markerOffset < bytes.length && bytes[markerOffset] === 0xff) markerOffset += 1; if (bytes[markerOffset] === 0x00) { offset = markerOffset + 1; continue; } if (bytes[markerOffset] !== 0xd9) return { ok: false, code: 'malformed', detail: 'JPEG entropy marker is invalid.' }; offset = markerOffset + 1; break; }
+      break;
     }
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 2 > bytes.length) return { ok: false, code: 'malformed', detail: 'JPEG segment length is truncated.' };
+    const length = (bytes[offset] << 8) | bytes[offset + 1]; if (length < 2 || offset + length > bytes.length) return { ok: false, code: 'malformed', detail: 'JPEG segment length is invalid.' };
+    const frame = (marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf);
+    if (frame) { if (sawFrame || length < 7 || bytes[offset + 2] !== 8) return { ok: false, code: 'malformed', detail: 'JPEG frame precision or ordering is unsupported.' }; height = (bytes[offset + 3] << 8) | bytes[offset + 4]; width = (bytes[offset + 5] << 8) | bytes[offset + 6]; const limit = bounds(width, height); if (limit) return limit; sawFrame = true; }
     offset += length;
   }
-  return { ok: false, code: 'malformed', detail: 'The JPEG frame header could not be read.' };
+  if (!sawFrame || !sawSos || offset !== bytes.length) return { ok: false, code: 'malformed', detail: 'JPEG requires one frame, one scan, and a final EOI.' };
+  return { ok: true, mimeType: 'image/jpeg', width, height, hasAlpha: false, frameCount: 1 };
 }
 
 function webpInfo(bytes) {
-  if (bytes.length < 16) return { ok: false, code: 'malformed', detail: 'The WebP header is incomplete.' };
-  const chunk = String.fromCharCode(...bytes.subarray(12, 16));
-  if (chunk !== 'VP8X' || bytes.length < 30) return { ok: false, code: 'unsupported-format', detail: 'Only static VP8X WebP is accepted.' };
-  const flags = bytes[20];
-  if ((flags & 0x02) !== 0) return { ok: false, code: 'animated', detail: 'Animated WebP input is not accepted.' };
-  const width = 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16);
-  const height = 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16);
-  const limit = bounds(width, height);
-  if (limit) return limit;
-  return { ok: true, mimeType: 'image/webp', width, height, hasAlpha: (flags & 0x10) !== 0, frameCount: 1 };
+  if (bytes.length < 20) return { ok: false, code: 'malformed', detail: 'The WebP RIFF header is incomplete.' };
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.getUint32(4, true) !== bytes.length - 8 || String.fromCharCode(...bytes.subarray(8, 12)) !== 'WEBP') return { ok: false, code: 'malformed', detail: 'WebP RIFF size or signature is invalid.' };
+  let offset = 12; let width = 0; let height = 0; let imageWidth = 0; let imageHeight = 0; let alpha = false; let image = false; let extended = false; let animated = false;
+  while (offset < bytes.length) {
+    if (offset + 8 > bytes.length) return { ok: false, code: 'malformed', detail: 'WebP chunk header is truncated.' };
+    const type = String.fromCharCode(...bytes.subarray(offset, offset + 4)); const length = view.getUint32(offset + 4, true); const data = offset + 8; const end = data + length + (length % 2);
+    if (end < data || end > bytes.length) return { ok: false, code: 'malformed', detail: `WebP chunk ${type} exceeds the RIFF payload.` };
+    if (type === 'VP8X') { if (extended || length !== 10) return { ok: false, code: 'malformed', detail: 'WebP VP8X is duplicated or malformed.' }; extended = true; const flags = bytes[data]; if (flags & 0x01) return { ok: false, code: 'malformed', detail: 'WebP VP8X reserved flag is set.' }; animated ||= Boolean(flags & 0x02); alpha ||= Boolean(flags & 0x10); width = 1 + bytes[data + 4] + (bytes[data + 5] << 8) + (bytes[data + 6] << 16); height = 1 + bytes[data + 7] + (bytes[data + 8] << 8) + (bytes[data + 9] << 16); }
+    else if (type === 'VP8 ') { if (image || length < 10 || bytes[data + 3] !== 0x9d || bytes[data + 4] !== 0x01 || bytes[data + 5] !== 0x2a) return { ok: false, code: 'malformed', detail: 'WebP VP8 image header is invalid or duplicated.' }; imageWidth = view.getUint16(data + 6, true) & 0x3fff; imageHeight = view.getUint16(data + 8, true) & 0x3fff; width = imageWidth; height = imageHeight; image = true; }
+    else if (type === 'VP8L') { if (image || length < 5 || bytes[data] !== 0x2f) return { ok: false, code: 'malformed', detail: 'WebP VP8L image header is invalid or duplicated.' }; const bits = bytes[data + 1] | (bytes[data + 2] << 8) | (bytes[data + 3] << 16) | (bytes[data + 4] << 24); imageWidth = 1 + (bits & 0x3fff); imageHeight = 1 + ((bits >>> 14) & 0x3fff); width = imageWidth; height = imageHeight; alpha = true; image = true; }
+    else if (type === 'ANIM' || type === 'ANMF') animated = true;
+    offset = end;
+  }
+  if (animated) return { ok: false, code: 'animated', detail: 'Animated WebP input is not accepted.' };
+  if (!image || (extended && (!width || !height || width !== imageWidth || height !== imageHeight))) return { ok: false, code: 'malformed', detail: 'WebP must contain one valid image chunk matching its VP8X canvas.' };
+  const limit = bounds(width, height); if (limit) return limit;
+  return { ok: true, mimeType: 'image/webp', width, height, hasAlpha: alpha, frameCount: 1 };
 }
 
 export function validateBytes(input) {
@@ -129,32 +163,120 @@ function safeCrop(crop) {
   return { x, y, width: clamp(Number(crop?.width) || 1, 0.01, 1 - x), height: clamp(Number(crop?.height) || 1, 0.01, 1 - y) };
 }
 
+function validSourceDataUrl(value) {
+  if (typeof value !== 'string' || value.length > MAX_SOURCE_BYTES * 2 || !/^data:image\/(?:png|jpeg|webp);base64,/iu.test(value)) return false;
+  try {
+    const comma = value.indexOf(',');
+    const bytes = Uint8Array.from(atob(value.slice(comma + 1)), (char) => char.charCodeAt(0));
+    return validateBytes(bytes).ok;
+  } catch { return false; }
+}
+
 export function normalizeState(value) {
   const raw = value && typeof value === 'object' ? value : {};
+  if (raw.schemaVersion !== undefined && raw.schemaVersion !== 1) return { ...DEFAULTS };
   const presetId = PRESETS.some((preset) => preset.id === raw.presetId) ? raw.presetId : DEFAULTS.presetId;
   let custom = null;
-  if (raw.custom && typeof raw.custom === 'object' && raw.custom.mimeType === 'image/png' && typeof raw.custom.dataUrl === 'string' && raw.custom.dataUrl.startsWith('data:image/png;base64,') && raw.custom.dataUrl.length <= MAX_OUTPUT_BYTES * 2) {
+  if (raw.custom && typeof raw.custom === 'object' && raw.custom.mimeType === 'image/png' && typeof raw.custom.dataUrl === 'string' && raw.custom.dataUrl.startsWith('data:image/png;base64,') && raw.custom.dataUrl.length <= MAX_OUTPUT_BYTES * 2 && raw.custom.variants !== undefined) {
     try {
       const encoded = raw.custom.dataUrl.slice(raw.custom.dataUrl.indexOf(',') + 1);
       const bytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
       const validation = validateBytes(bytes);
-      if (validation.ok && validation.mimeType === 'image/png' && validation.width === Number(raw.custom.width) && validation.height === Number(raw.custom.height) && bytes.length <= MAX_OUTPUT_BYTES) custom = { ...raw.custom, byteLength: bytes.length, width: validation.width, height: validation.height, hasAlpha: validation.hasAlpha, frameCount: 1 };
+      if (validation.ok && validation.mimeType === 'image/png' && validation.width === Number(raw.custom.width) && validation.height === Number(raw.custom.height) && bytes.length <= MAX_OUTPUT_BYTES) {
+        if (raw.custom.sourceDataUrl !== undefined && !validSourceDataUrl(raw.custom.sourceDataUrl)) throw new Error('invalid source cache');
+        let variants;
+        if (raw.custom.variants !== undefined) {
+          if (!raw.custom.variants || typeof raw.custom.variants !== 'object') throw new Error('invalid variants');
+          variants = {};
+          for (const target of DISPLAY_TARGETS) {
+            const candidate = raw.custom.variants[target.id];
+            if (!candidate || typeof candidate.dataUrl !== 'string' || !candidate.dataUrl.startsWith('data:image/png;base64,')) throw new Error('missing variant');
+            const candidateBytes = Uint8Array.from(atob(candidate.dataUrl.slice(candidate.dataUrl.indexOf(',') + 1)), (char) => char.charCodeAt(0));
+            const candidateValidation = validateBytes(candidateBytes);
+            if (!candidateValidation.ok || candidateValidation.mimeType !== 'image/png' || candidateValidation.width !== target.width || candidateValidation.height !== target.height || candidateBytes.length > MAX_OUTPUT_BYTES) throw new Error('invalid variant');
+            variants[target.id] = { ...candidate, byteLength: candidateBytes.length, width: target.width, height: target.height, hasAlpha: candidateValidation.hasAlpha, frameCount: 1 };
+          }
+          const aggregateBytes = bytes.length + Object.values(variants).reduce((total, asset) => total + (asset?.byteLength || 0), 0);
+          if (aggregateBytes > MAX_AGGREGATE_BYTES) throw new Error('aggregate variants exceed bound');
+        }
+        custom = { ...raw.custom, byteLength: bytes.length, width: validation.width, height: validation.height, hasAlpha: validation.hasAlpha, frameCount: 1, variants };
+      }
     } catch { custom = null; }
   }
+  const schedules = Array.isArray(raw.schedules) ? raw.schedules.slice(0, 12).filter((rule) => rule && typeof rule === 'object' && typeof rule.id === 'string' && typeof rule.startAt === 'string' && typeof rule.endAt === 'string').map((rule) => ({ id: rule.id.slice(0, 80), label: typeof rule.label === 'string' && rule.label.trim() ? rule.label.trim().slice(0, 120) : rule.id.slice(0, 80), enabled: rule.enabled !== false, startAt: rule.startAt.slice(0, 32), endAt: rule.endAt.slice(0, 32), weekdays: Array.isArray(rule.weekdays) && rule.weekdays.length ? Array.from(new Set(rule.weekdays.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))) : [0, 1, 2, 3, 4, 5, 6], timezone: typeof rule.timezone === 'string' && rule.timezone ? rule.timezone.slice(0, 80) : 'local', patch: { ...(PRESETS.some((preset) => preset.id === rule.patch?.presetId) ? { presetId: rule.patch.presetId } : {}), ...(rule.patch?.fit === 'contain' || rule.patch?.fit === 'cover' || rule.patch?.fit === 'fill' ? { fit: rule.patch.fit } : {}), ...(rule.patch?.background === 'transparent' || rule.patch?.background === 'rainbow' || (typeof rule.patch?.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(rule.patch.background)) ? { background: rule.patch.background } : {}), ...(typeof rule.patch?.safeArea === 'boolean' ? { safeArea: rule.patch.safeArea } : {}), ...(typeof rule.patch?.rainbowSpeedLevel === 'number' ? { rainbowSpeedLevel: clamp(Math.round(rule.patch.rainbowSpeedLevel), 1, 5) } : {}), ...(rule.patch?.crop && typeof rule.patch.crop === 'object' ? { crop: safeCrop(rule.patch.crop) } : {}), ...(rule.patch?.focalPoint && typeof rule.patch.focalPoint === 'object' ? { focalPoint: { x: clamp(Number(rule.patch.focalPoint.x), 0, 1), y: clamp(Number(rule.patch.focalPoint.y), 0, 1) } } : {}) } })) : [];
   return {
     ...DEFAULTS,
     presetId,
     custom,
     fit: raw.fit === 'cover' || raw.fit === 'fill' ? raw.fit : DEFAULTS.fit,
     crop: safeCrop(raw.crop),
-    focalPoint: { x: clamp(Number(raw.focalPoint?.x) || 0.5, 0, 1), y: clamp(Number(raw.focalPoint?.y) || 0.5, 0, 1) },
-    background: raw.background === 'transparent' || (typeof raw.background === 'string' && /^#[0-9a-f]{6}$/iu.test(raw.background)) ? raw.background : DEFAULTS.background,
+    focalPoint: { x: clamp(typeof raw.focalPoint?.x === 'number' && Number.isFinite(raw.focalPoint.x) ? raw.focalPoint.x : 0.5, 0, 1), y: clamp(typeof raw.focalPoint?.y === 'number' && Number.isFinite(raw.focalPoint.y) ? raw.focalPoint.y : 0.5, 0, 1) },
+    background: raw.background === 'transparent' || raw.background === 'rainbow' || (typeof raw.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(raw.background)) ? raw.background : DEFAULTS.background,
     safeArea: raw.safeArea !== false,
+    rainbowSpeedLevel: typeof raw.rainbowSpeedLevel === 'number' && Number.isFinite(raw.rainbowSpeedLevel) ? clamp(Math.round(raw.rainbowSpeedLevel), 1, 5) : DEFAULTS.rainbowSpeedLevel,
+    schedules,
   };
 }
 
+export function resolveScheduledState(state, now = new Date()) {
+  const current = now.getTime(); let resolved = normalizeState(state);
+  for (const rule of resolved.schedules) {
+    const start = Date.parse(rule.startAt); const end = Date.parse(rule.endAt);
+    if (!rule.enabled || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || current < start || current >= end || !rule.weekdays.includes(now.getDay())) continue;
+    resolved = normalizeState({ ...resolved, ...rule.patch, ...(rule.patch.presetId ? { custom: null } : {}), schedules: state.schedules });
+  }
+  return resolved;
+}
+
 export function read() {
-  try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? normalizeState(JSON.parse(raw)) : normalizeState(DEFAULTS); } catch { return normalizeState(DEFAULTS); }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY); if (!raw) return normalizeState(DEFAULTS);
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && parsed.schemaVersion === 1 ? normalizeState(parsed) : normalizeState(DEFAULTS);
+  } catch { return normalizeState(DEFAULTS); }
+}
+
+export const FILE_KIND = 'material-designer.app-logo';
+export function serialize(state) {
+  const normalized = normalizeState(state);
+  const safe = normalized.custom ? { ...normalized, custom: { ...normalized.custom } } : normalized;
+  if (safe.custom) delete safe.custom.sourceDataUrl;
+  return JSON.stringify({ kind: FILE_KIND, version: 1, state: safe }, null, 2) + '\n';
+}
+export function parse(text) {
+  try {
+    const file = JSON.parse(text);
+    if (!file || typeof file !== 'object' || file.kind !== FILE_KIND || file.version !== 1 || !file.state || typeof file.state !== 'object' || file.state.schemaVersion !== 1 || typeof file.state.rainbowSpeedLevel !== 'number' || !Number.isInteger(file.state.rainbowSpeedLevel) || file.state.rainbowSpeedLevel < 1 || file.state.rainbowSpeedLevel > 5) return null;
+    const allowed = new Set(['schemaVersion', 'presetId', 'custom', 'fit', 'crop', 'focalPoint', 'background', 'safeArea', 'rainbowSpeedLevel', 'schedules']);
+    if (Object.keys(file.state).some((key) => !allowed.has(key))) return null;
+    if (file.state.custom !== null) {
+      if (!file.state.custom || typeof file.state.custom !== 'object' || Array.isArray(file.state.custom)) return null;
+      const customAllowed = new Set(['dataUrl', 'mimeType', 'byteLength', 'width', 'height', 'hasAlpha', 'frameCount', 'sourceMimeType', 'sourceHasAlpha', 'losses', 'renderFingerprint', 'sourceDataUrl', 'variants']);
+      if (Object.keys(file.state.custom).some((key) => !customAllowed.has(key))) return null;
+    }
+    if (!Array.isArray(file.state.schedules) || file.state.schedules.length > 12 || file.state.schedules.some((rule) => {
+      if (!rule || typeof rule !== 'object' || Array.isArray(rule)) return true;
+      const candidate = rule;
+      return typeof candidate.id !== 'string' || !candidate.id || candidate.id.length > 80
+        || typeof candidate.label !== 'string' || !candidate.label || candidate.label.length > 120
+        || typeof candidate.enabled !== 'boolean' || typeof candidate.startAt !== 'string' || typeof candidate.endAt !== 'string'
+        || !Number.isFinite(Date.parse(candidate.startAt)) || !Number.isFinite(Date.parse(candidate.endAt)) || Date.parse(candidate.endAt) <= Date.parse(candidate.startAt)
+        || typeof candidate.timezone !== 'string' || !candidate.timezone || !Array.isArray(candidate.weekdays) || candidate.weekdays.length === 0 || candidate.weekdays.length > 7
+        || candidate.weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6) || !candidate.patch || typeof candidate.patch !== 'object' || Array.isArray(candidate.patch)
+        || Object.keys(candidate.patch).some((key) => !['presetId', 'fit', 'background', 'safeArea', 'rainbowSpeedLevel', 'crop', 'focalPoint'].includes(key))
+        || (candidate.patch.presetId !== undefined && !PRESETS.some((preset) => preset.id === candidate.patch.presetId))
+        || (candidate.patch.fit !== undefined && !['contain', 'cover', 'fill'].includes(candidate.patch.fit))
+        || (candidate.patch.safeArea !== undefined && typeof candidate.patch.safeArea !== 'boolean')
+        || (candidate.patch.rainbowSpeedLevel !== undefined && (typeof candidate.patch.rainbowSpeedLevel !== 'number' || !Number.isInteger(candidate.patch.rainbowSpeedLevel) || candidate.patch.rainbowSpeedLevel < 1 || candidate.patch.rainbowSpeedLevel > 5))
+        || (candidate.patch.crop !== undefined && (!candidate.patch.crop || typeof candidate.patch.crop !== 'object' || Array.isArray(candidate.patch.crop) || !['x', 'y', 'width', 'height'].every((key) => typeof candidate.patch.crop[key] === 'number' && Number.isFinite(candidate.patch.crop[key]))))
+        || (candidate.patch.focalPoint !== undefined && (!candidate.patch.focalPoint || typeof candidate.patch.focalPoint !== 'object' || Array.isArray(candidate.patch.focalPoint) || typeof candidate.patch.focalPoint.x !== 'number' || typeof candidate.patch.focalPoint.y !== 'number' || !Number.isFinite(candidate.patch.focalPoint.x) || !Number.isFinite(candidate.patch.focalPoint.y)))
+        || (candidate.patch.background !== undefined && candidate.patch.background !== 'transparent' && !(typeof candidate.patch.background === 'string' && /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(candidate.patch.background)));
+    })) return null;
+    const normalized = normalizeState(file.state);
+    if (file.state.custom !== null && normalized.custom === null) return null;
+    if (Array.isArray(file.state.schedules) && normalized.schedules.length !== file.state.schedules.length) return null;
+    return normalized;
+  } catch { return null; }
 }
 
 function write(state) {
@@ -162,12 +284,15 @@ function write(state) {
 }
 
 export function apply(state) {
-  const next = normalizeState(state);
+  const stored = normalizeState(state);
+  const next = resolveScheduledState(stored);
   const root = document.documentElement;
   const source = next.custom?.dataUrl || PRESETS.find((preset) => preset.id === next.presetId)?.src || PRESET_MARK;
   root.dataset.logoPreset = next.custom ? 'custom' : next.presetId;
   root.style.setProperty('--app-logo-image', `url(${JSON.stringify(source)})`);
-  root.style.setProperty('--app-logo-background', next.background);
+  root.dataset.logoRainbow = next.background === 'rainbow' ? 'on' : 'off';
+  root.style.setProperty('--app-logo-background', next.background === 'rainbow' ? 'linear-gradient(120deg, hsl(0 90% 60%), hsl(120 90% 60%), hsl(240 90% 60%), hsl(360 90% 60%))' : next.background);
+  root.style.setProperty('--app-logo-rainbow-speed', `${[0, 24, 18, 12, 8, 5][next.rainbowSpeedLevel] || 12}s`);
   const image = document.querySelector('[data-app-logo-image]');
   if (image) image.setAttribute('src', source);
   document.querySelectorAll('[data-app-logo-preview]').forEach((node) => {
@@ -175,14 +300,22 @@ export function apply(state) {
     node.style.objectFit = next.fit;
     node.style.objectPosition = `${next.focalPoint.x * 100}% ${next.focalPoint.y * 100}%`;
   });
-  write(next);
+  write(stored);
   document.dispatchEvent(new CustomEvent('md-logo-change', { detail: { state: next } }));
 }
 
-export async function convert(file, crop = DEFAULTS.crop, outputSize = 512) {
+export async function convert(file, options = {}) {
+  const crop = options.crop || DEFAULTS.crop;
+  const fit = options.fit || DEFAULTS.fit;
+  const focalPoint = options.focalPoint || DEFAULTS.focalPoint;
+  const safeArea = options.safeArea !== false;
+  const background = options.background || DEFAULTS.background;
+  const outputSize = options.outputSize || 512;
+  if (file.size > MAX_SOURCE_BYTES) throw new Error(`The selected file exceeds ${MAX_SOURCE_BYTES} bytes.`);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const info = validateBytes(bytes);
   if (!info.ok) throw new Error(info.detail);
+  const sourceDataUrl = await readSourceDataUrl(file);
   if (typeof createImageBitmap !== 'function') throw new Error('Local image decoding is unavailable in this browser.');
   const bitmapPromise = createImageBitmap(file);
   let decodeTimer;
@@ -191,31 +324,69 @@ export async function convert(file, crop = DEFAULTS.crop, outputSize = 512) {
   try {
     if (bitmap.width !== info.width || bitmap.height !== info.height) throw new Error('The decoded dimensions do not match the validated image header.');
     const canvas = document.createElement('canvas');
-    canvas.width = clamp(Math.round(outputSize), 1, MAX_DIMENSION);
-    canvas.height = canvas.width;
     const context = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
     if (!context) throw new Error('The local pixel surface could not be created.');
     const x = Math.round(bitmap.width * crop.x);
     const y = Math.round(bitmap.height * crop.y);
     const width = Math.max(1, Math.round(bitmap.width * crop.width));
     const height = Math.max(1, Math.round(bitmap.height * crop.height));
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, x, y, width, height, 0, 0, canvas.width, canvas.height);
-    const dataUrl = await new Promise((resolve, reject) => canvas.toBlob((blob) => {
-      if (!blob || blob.size > MAX_OUTPUT_BYTES) { reject(new Error(`Converted output exceeds ${MAX_OUTPUT_BYTES} bytes.`)); return; }
-      const reader = new FileReader(); reader.onerror = () => reject(new Error('The converted image could not be read back.')); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob);
-    }, 'image/png'));
-    const encoded = dataUrl.slice(dataUrl.indexOf(',') + 1);
-    const outBytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
-    const output = validateBytes(outBytes);
-    if (!output.ok || output.mimeType !== 'image/png') throw new Error('The converted image failed its signature roundtrip.');
-    return { dataUrl, mimeType: 'image/png', byteLength: outBytes.length, width: output.width, height: output.height, hasAlpha: true, frameCount: 1 };
+    const renderOutput = async (targetWidth, targetHeight) => {
+      canvas.width = targetWidth; canvas.height = targetHeight;
+      const targetRatio = targetWidth / targetHeight;
+      const sourceRatio = width / height;
+      let sx = x; let sy = y; let sw = width; let sh = height;
+      if (fit === 'cover') {
+        if (sourceRatio > targetRatio) { sw = height * targetRatio; sx += (width - sw) * clamp(focalPoint.x, 0, 1); }
+        else if (sourceRatio < targetRatio) { sh = width / targetRatio; sy += (height - sh) * clamp(focalPoint.y, 0, 1); }
+      }
+      const inset = safeArea ? 0.12 : 0;
+      context.clearRect(0, 0, targetWidth, targetHeight);
+      if (background !== 'transparent' && background !== 'rainbow') { context.fillStyle = background; context.fillRect(0, 0, targetWidth, targetHeight); }
+      if (fit === 'contain') {
+        const scale = Math.min((targetWidth * (1 - inset * 2)) / sw, (targetHeight * (1 - inset * 2)) / sh);
+        const dw = sw * scale; const dh = sh * scale;
+        context.drawImage(bitmap, sx, sy, sw, sh, (targetWidth - dw) / 2, (targetHeight - dh) / 2, dw, dh);
+      } else {
+        context.drawImage(bitmap, sx, sy, sw, sh, targetWidth * inset, targetHeight * inset, targetWidth * (1 - inset * 2), targetHeight * (1 - inset * 2));
+      }
+      const blob = await new Promise((resolve, reject) => canvas.toBlob((candidate) => {
+        if (!candidate || candidate.size > MAX_OUTPUT_BYTES) { reject(new Error(`Converted output exceeds ${MAX_OUTPUT_BYTES} bytes.`)); return; }
+        resolve(candidate);
+      }, 'image/png'));
+      const roundTripPromise = createImageBitmap(blob);
+      let roundTripTimer;
+      const roundTrip = await Promise.race([roundTripPromise, new Promise((resolve, reject) => { roundTripTimer = window.setTimeout(() => reject(new Error('Generated logo validation exceeded the bounded time limit.')), MAX_DECODE_TIME_MS); })]).catch((error) => { if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer); void roundTripPromise.then((lateBitmap) => lateBitmap.close(), () => undefined); throw error; });
+      if (roundTripTimer !== undefined) window.clearTimeout(roundTripTimer);
+      if (roundTrip.width !== targetWidth || roundTrip.height !== targetHeight) { roundTrip.close(); throw new Error('The generated image failed decoder dimension roundtrip.'); }
+      roundTrip.close();
+      const dataUrl = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onerror = () => reject(new Error('The converted image could not be read back.')); reader.onload = () => resolve(String(reader.result)); reader.readAsDataURL(blob); });
+      const encoded = dataUrl.slice(dataUrl.indexOf(',') + 1);
+      const outBytes = Uint8Array.from(atob(encoded), (char) => char.charCodeAt(0));
+      const output = validateBytes(outBytes);
+      if (!output.ok || output.mimeType !== 'image/png' || output.width !== targetWidth || output.height !== targetHeight) throw new Error('The converted image failed its signature or dimension roundtrip.');
+      return { dataUrl, byteLength: outBytes.length, width: output.width, height: output.height, hasAlpha: output.hasAlpha, frameCount: 1 };
+    };
+    const primary = await renderOutput(clamp(Math.round(outputSize), 1, MAX_DIMENSION), clamp(Math.round(outputSize), 1, MAX_DIMENSION));
+    const variants = {};
+    for (const target of DISPLAY_TARGETS) variants[target.id] = await renderOutput(target.width, target.height);
+    const aggregateBytes = primary.byteLength + Object.values(variants).reduce((total, asset) => total + (asset?.byteLength || 0), 0);
+    if (aggregateBytes > MAX_AGGREGATE_BYTES) throw new Error(`The generated logo variants exceed the aggregate ${MAX_AGGREGATE_BYTES}-byte bound.`);
+    return { ...primary, mimeType: 'image/png', sourceMimeType: info.mimeType, sourceHasAlpha: info.hasAlpha, sourceDataUrl, renderFingerprint: logoRenderFingerprint({ crop, fit, focalPoint, safeArea, background }), losses: Array.from(new Set([info.mimeType === 'image/png' ? 'metadata' : 'format', 'metadata', 'profile', ...(crop.x || crop.y || crop.width !== 1 || crop.height !== 1 ? ['crop'] : [])])), variants };
   } finally { bitmap.close(); }
 }
 
+function readSourceDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('The local source could not be retained safely.'));
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(file);
+  });
+}
+
 function hexToRgb(hex) {
-  const value = /^#[0-9a-f]{6}$/iu.test(hex) ? hex.slice(1) : 'fff8f6';
-  return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16) };
+  const value = /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(hex) ? hex.slice(1) : 'fff8f6';
+  return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16), a: value.length === 8 ? parseInt(value.slice(6, 8), 16) / 255 : 1 };
 }
 
 function rgbToHsv({ r, g, b }) {
@@ -231,22 +402,124 @@ function rgbToHsv({ r, g, b }) {
   return { h, s: max ? (delta / max) * 100 : 0, v: max * 100 };
 }
 
-function hsvToHex({ h, s, v }) {
+function hsvToHex({ h, s, v, a = 1 }) {
   const saturation = clamp(s, 0, 100) / 100; const value = clamp(v, 0, 100) / 100;
   const c = value * saturation; const x = c * (1 - Math.abs(((h / 60) % 2) - 1)); const m = value - c;
   const rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-  return '#' + rgb.map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('');
+  const hex = '#' + rgb.map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('');
+  return a >= 0.999 ? hex : hex + Math.round(clamp(a, 0, 1) * 255).toString(16).padStart(2, '0');
 }
 
-function mount(host, { label = 'Logo' } = {}) {
+function hslFromRgb({ r, g, b }) {
+  const rn = r / 255; const gn = g / 255; const bn = b / 255;
+  const max = Math.max(rn, gn, bn); const min = Math.min(rn, gn, bn); const delta = max - min;
+  const l = (max + min) / 2;
+  if (!delta) return { h: 0, s: 0, l: l * 100 };
+  const s = delta / (1 - Math.abs(2 * l - 1));
+  let h = max === rn ? 60 * (((gn - bn) / delta) % 6) : max === gn ? 60 * ((bn - rn) / delta + 2) : 60 * ((rn - gn) / delta + 4);
+  if (h < 0) h += 360;
+  return { h, s: s * 100, l: l * 100 };
+}
+
+function srgbToLab({ r, g, b }) {
+  const linear = (channel) => { const value = channel / 255; return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; };
+  const rl = linear(r); const gl = linear(g); const bl = linear(b);
+  const x = (rl * 0.4124 + gl * 0.3576 + bl * 0.1805) / 0.95047;
+  const y = (rl * 0.2126 + gl * 0.7152 + bl * 0.0722);
+  const z = (rl * 0.0193 + gl * 0.1192 + bl * 0.9505) / 1.08883;
+  const pivot = (value) => value > 0.008856 ? value ** (1 / 3) : 7.787 * value + 16 / 116;
+  const fx = pivot(x); const fy = pivot(y); const fz = pivot(z);
+  return { l: 116 * fy - 16, a: 500 * (fx - fy), b: 200 * (fy - fz) };
+}
+
+function srgbToOklab({ r, g, b }) {
+  const linear = (channel) => { const value = channel / 255; return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; };
+  const rl = linear(r); const gl = linear(g); const bl = linear(b);
+  const l = 0.4122214708 * rl + 0.5363325363 * gl + 0.0514459929 * bl;
+  const m = 0.2119034982 * rl + 0.6806995451 * gl + 0.1073969566 * bl;
+  const s = 0.0883024619 * rl + 0.2817188376 * gl + 0.6299787005 * bl;
+  const lRoot = Math.cbrt(l); const mRoot = Math.cbrt(m); const sRoot = Math.cbrt(s);
+  return { l: 0.2104542553 * lRoot + 0.793617785 * mRoot - 0.0040720468 * sRoot, a: 1.9779984951 * lRoot - 2.428592205 * mRoot + 0.4505937099 * sRoot, b: 0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.808675766 * sRoot };
+}
+
+function colorRepresentations(value) {
+  const rgb = hexToRgb(value); const hsl = hslFromRgb(rgb); const hsv = rgbToHsv(rgb);
+  const max = Math.max(rgb.r, rgb.g, rgb.b) / 255; const min = Math.min(rgb.r, rgb.g, rgb.b) / 255;
+  const lab = srgbToLab(rgb); const lch = { l: lab.l, c: Math.hypot(lab.a, lab.b), h: (Math.atan2(lab.b, lab.a) * 180 / Math.PI + 360) % 360 };
+  const oklab = srgbToOklab(rgb); const oklch = { l: oklab.l, c: Math.hypot(oklab.a, oklab.b), h: (Math.atan2(oklab.b, oklab.a) * 180 / Math.PI + 360) % 360 };
+  const k = 1 - max; const c = max === 0 ? 0 : (max - rgb.r / 255) / (1 - k); const m = max === 0 ? 0 : (max - rgb.g / 255) / (1 - k); const y = max === 0 ? 0 : (max - rgb.b / 255) / (1 - k);
+  const alpha = Math.round((rgb.a ?? 1) * 1000) / 1000;
+  return [
+    ['HEX', value], ['HEX8', value.length === 9 ? value : `${value}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`],
+    ['RGB', `rgb(${rgb.r} ${rgb.g} ${rgb.b})`], ['RGBA', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`],
+    ['HSL', `hsl(${Math.round(hsl.h)} ${Math.round(hsl.s)}% ${Math.round(hsl.l)}%)`], ['HSLA', `hsla(${Math.round(hsl.h)}, ${Math.round(hsl.s)}%, ${Math.round(hsl.l)}%, ${alpha})`],
+    ['HSV/HSB', `hsv(${Math.round(hsv.h)} ${Math.round(hsv.s)}% ${Math.round(hsv.v)}%)`], ['HWB', `hwb(${Math.round(hsv.h)} ${Math.round(min * 100)}% ${Math.round((1 - max) * 100)}% / ${alpha})`],
+    ['CIELAB', `lab(${lab.l.toFixed(2)}% ${lab.a.toFixed(2)} ${lab.b.toFixed(2)} / ${alpha})`], ['LCH', `lch(${lch.l.toFixed(2)}% ${lch.c.toFixed(2)} ${lch.h.toFixed(2)} / ${alpha})`],
+    ['OKLab', `oklab(${oklab.l.toFixed(4)} ${oklab.a.toFixed(4)} ${oklab.b.toFixed(4)} / ${alpha})`], ['OKLCH', `oklch(${oklch.l.toFixed(4)} ${oklch.c.toFixed(4)} ${oklch.h.toFixed(2)} / ${alpha})`],
+    ['CMYK', `cmyk(${Math.round(c * 100)}% ${Math.round(m * 100)}% ${Math.round(y * 100)}% ${Math.round(k * 100)}% / ${alpha})`],
+  ];
+}
+
+function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback } = {}) {
   const state = read();
   let current = state;
+  let effective = state;
+  let lastHistoryJson = JSON.stringify(current);
+  let refreshTimer;
+  let refreshGeneration = 0;
+  let editingScheduleId = null;
   let searchMatcher = null;
+  let historyMatcher = null;
   const search = host.querySelector('[data-logo-search]');
   const status = host.querySelector('[data-logo-status]');
-  const source = () => current.custom?.dataUrl || PRESETS.find((preset) => preset.id === current.presetId)?.src || PRESET_MARK;
+  const source = (targetId) => effective.custom?.variants?.[targetId]?.dataUrl || effective.custom?.dataUrl || PRESETS.find((preset) => preset.id === effective.presetId)?.src || PRESET_MARK;
+  const t = (key, fallback) => { try { const value = translate(key, fallback); return typeof value === 'string' && value ? value : fallback; } catch { return fallback; } };
   const setStatus = (message) => { if (status) status.textContent = message; };
+  const recordHistory = () => {
+    const json = JSON.stringify(current);
+    if (json === lastHistoryJson) return;
+    lastHistoryJson = json;
+    try {
+      const existing = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      const entries = Array.isArray(existing) ? existing.slice(-99) : [];
+      entries.push({ changedAt: Date.now(), presetId: current.presetId, customActive: Boolean(current.custom), fit: current.fit, background: current.background, safeArea: current.safeArea, scheduleCount: current.schedules.length });
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+    } catch { /* history is best effort and contains no image bytes */ }
+  };
   const render = () => {
+    effective = resolveScheduledState(current);
+    if (current.custom) {
+      const options = { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background };
+      const fingerprint = logoRenderFingerprint(options);
+      if (current.custom.renderFingerprint !== fingerprint) {
+        const custom = current.custom; const generation = ++refreshGeneration;
+        if (refreshTimer !== undefined) window.clearTimeout(refreshTimer);
+        refreshTimer = window.setTimeout(() => {
+          try {
+            const source = custom.sourceDataUrl || custom.dataUrl;
+            const comma = source.indexOf(',');
+            const bytes = Uint8Array.from(atob(source.slice(comma + 1)), (char) => char.charCodeAt(0));
+            const file = new File([bytes], 'local-logo-source', { type: custom.sourceMimeType || 'image/png' });
+            void convert(file, { ...options, outputSize: custom.width }).then((refreshed) => {
+              if (generation !== refreshGeneration) return;
+              current = normalizeState({ ...current, custom: { ...refreshed, sourceDataUrl: custom.sourceDataUrl, sourceMimeType: custom.sourceMimeType, sourceHasAlpha: custom.sourceHasAlpha, losses: custom.losses } });
+              render();
+            }).catch(() => setStatus(t('logo.conversionFailure', 'The image could not be converted locally.')));
+          } catch { setStatus(t('logo.conversionFailure', 'The image could not be converted locally.')); }
+        }, 180);
+      }
+    }
+    recordHistory();
+    const historyList = host.querySelector('[data-logo-history-list]');
+    if (historyList) {
+      historyList.textContent = '';
+      let entries = [];
+      try { const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); entries = Array.isArray(parsed) ? parsed : []; } catch { entries = []; }
+      const query = host.querySelector('[data-logo-history-search]')?.value?.trim().toLowerCase() || '';
+      const visibleHistory = entries.filter((entry) => { const text = `${entry.action || ''} ${entry.presetId || ''} ${entry.changedAt || ''}`; return historyMatcher ? historyMatcher(text) : !query || text.toLowerCase().includes(query); });
+      if (!visibleHistory.length) { const empty = document.createElement('li'); empty.textContent = t('logo.historyEmpty', 'No logo changes recorded locally.'); historyList.appendChild(empty); }
+      else visibleHistory.slice().reverse().forEach((entry) => { const item = document.createElement('li'); item.textContent = `${new Date(entry.changedAt).toLocaleString()} · ${entry.action || 'updated'} · ${entry.presetId || 'custom'}`; historyList.appendChild(item); });
+    }
     host.querySelectorAll('[data-logo-preset]').forEach((button) => {
       const active = !current.custom && button.dataset.logoPreset === current.presetId;
       button.setAttribute('aria-pressed', String(active));
@@ -256,7 +529,9 @@ function mount(host, { label = 'Logo' } = {}) {
     host.querySelectorAll('[data-logo-live], [data-app-logo-preview]').forEach((node) => node.setAttribute('src', source()));
     const fit = host.querySelector('[data-logo-fit]'); if (fit) fit.value = current.fit;
     const transparent = host.querySelector('[data-logo-transparent]'); if (transparent) transparent.checked = current.background === 'transparent';
-    const bg = host.querySelector('[data-logo-background]'); if (bg && current.background !== 'transparent') bg.value = current.background;
+    const rainbow = host.querySelector('[data-logo-rainbow]'); if (rainbow) rainbow.checked = current.background === 'rainbow';
+    const rainbowSpeed = host.querySelector('[data-logo-rainbow-speed]'); if (rainbowSpeed) rainbowSpeed.value = String(current.rainbowSpeedLevel);
+    const rainbowSpeedWrap = host.querySelector('[data-logo-rainbow-speed-wrap]'); if (rainbowSpeedWrap) rainbowSpeedWrap.hidden = current.background !== 'rainbow';
     const picker = host.querySelector('[data-logo-color-picker]');
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
     if (picker) {
@@ -265,7 +540,19 @@ function mount(host, { label = 'Logo' } = {}) {
       const hue = picker.querySelector('[data-logo-bg-hue]'); if (hue) hue.value = String(Math.round(hsv.h));
       const saturation = picker.querySelector('[data-logo-bg-saturation]'); if (saturation) saturation.value = String(Math.round(hsv.s));
       const brightness = picker.querySelector('[data-logo-bg-brightness]'); if (brightness) brightness.value = String(Math.round(hsv.v));
+      const alpha = picker.querySelector('[data-logo-bg-alpha]'); if (alpha) alpha.value = String(Math.round((hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background).a || 1) * 100));
       const hex = picker.querySelector('[data-logo-bg-hex]'); if (hex) hex.value = current.background === 'transparent' ? '#fff8f6' : current.background;
+      const translations = picker.querySelector('[data-logo-color-translations]');
+      if (translations) {
+        translations.textContent = '';
+        for (const [name, representation] of colorRepresentations(current.background === 'transparent' ? '#fff8f6' : current.background)) {
+          const item = document.createElement('div'); item.setAttribute('role', 'listitem');
+          const value = document.createElement('span'); value.textContent = `${name}: ${representation}`;
+          const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'md-icon-btn md-icon-btn--small'; copy.textContent = t('logo.copy', 'Copy'); copy.setAttribute('aria-label', `${t('logo.copy', 'Copy')} ${name}`);
+          copy.addEventListener('click', () => { void navigator.clipboard?.writeText(representation); });
+          item.append(value, copy); translations.appendChild(item);
+        }
+      }
     }
     const focalX = host.querySelector('[data-logo-focal-x]'); if (focalX) focalX.value = String(current.focalPoint.x);
     const focalY = host.querySelector('[data-logo-focal-y]'); if (focalY) focalY.value = String(current.focalPoint.y);
@@ -282,63 +569,95 @@ function mount(host, { label = 'Logo' } = {}) {
     }
     if (stage) {
       stage.dataset.safeArea = current.safeArea ? 'on' : 'off';
+      stage.dataset.logoRainbow = current.background === 'rainbow' ? 'on' : 'off';
       stage.style.backgroundColor = current.background === 'transparent' ? '' : current.background;
     }
-    host.querySelectorAll('[data-logo-target]').forEach((node) => node.setAttribute('src', source()));
+    host.querySelectorAll('[data-logo-target]').forEach((node) => node.setAttribute('src', source(node.dataset.logoTarget)));
+    const schedulePreset = host.querySelector('[data-logo-schedule-preset]');
+    if (schedulePreset && !schedulePreset.options.length) PRESETS.forEach((preset) => { const option = document.createElement('option'); option.value = preset.id; option.textContent = t(`logo.${preset.id}`, preset.label); schedulePreset.appendChild(option); });
+    const scheduleList = host.querySelector('[data-logo-schedule-list]');
+    if (scheduleList) {
+      scheduleList.textContent = '';
+      current.schedules.forEach((rule) => {
+        const item = document.createElement('li');
+        const title = document.createElement('strong'); title.textContent = `${rule.label}: ${rule.startAt} → ${rule.endAt}`;
+        const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = rule.enabled; enabled.setAttribute('aria-label', t('logo.scheduleEnabled', 'Enabled')); enabled.addEventListener('change', () => { current = normalizeState({ ...current, schedules: current.schedules.map((entry) => entry.id === rule.id ? { ...entry, enabled: enabled.checked } : entry) }); render(); });
+        const toggleLabel = document.createElement('label'); toggleLabel.append(enabled, document.createTextNode(` ${t('logo.scheduleEnabled', 'Enabled')}`));
+        const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'md-btn md-btn--text'; remove.textContent = t('logo.scheduleDelete', 'Delete schedule'); remove.addEventListener('click', () => { current = normalizeState({ ...current, schedules: current.schedules.filter((entry) => entry.id !== rule.id) }); render(); });
+        const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'md-btn md-btn--text'; edit.textContent = t('logo.scheduleEdit', 'Edit schedule'); edit.addEventListener('click', () => { editingScheduleId = rule.id; host.querySelector('[data-logo-schedule-label]').value = rule.label; host.querySelector('[data-logo-schedule-start]').value = rule.startAt.slice(0, 16); host.querySelector('[data-logo-schedule-end]').value = rule.endAt.slice(0, 16); host.querySelector('[data-logo-schedule-preset]').value = rule.patch.presetId || 'material'; host.querySelectorAll('[data-logo-weekday]').forEach((field) => { field.checked = rule.weekdays.includes(Number(field.dataset.logoWeekday)); }); });
+        item.append(title, document.createTextNode(' '), toggleLabel, document.createTextNode(' '), edit, document.createTextNode(' '), remove); scheduleList.appendChild(item);
+      });
+    }
+    const timezone = host.querySelector('[data-logo-timezone]'); if (timezone) timezone.textContent = t('logo.timezone', 'Timezone: {timezone}. Daylight-saving changes follow the platform clock.').replace('{timezone}', Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time');
+    const sourceInfo = host.querySelector('[data-logo-source-info]');
+    if (sourceInfo) sourceInfo.textContent = effective.custom
+      ? `${effective.custom.sourceHasAlpha ? t('logo.sourceAlpha', 'Source includes transparency; generated output alpha is reported separately.') : t('logo.sourceOpaque', 'Source is opaque; generated output alpha is reported separately.')} ${effective.custom.hasAlpha ? t('logo.outputAlpha', 'Output alpha present.') : t('logo.outputOpaque', 'Output opaque.')}`
+      : '';
     apply(current);
   };
-  host.querySelectorAll('[data-logo-preset]').forEach((button) => button.addEventListener('click', () => { current = normalizeState({ ...current, presetId: button.dataset.logoPreset, custom: null }); setStatus('Preset applied locally.'); render(); }));
+  host.querySelectorAll('[data-logo-preset]').forEach((button) => button.addEventListener('click', () => { current = normalizeState({ ...current, presetId: button.dataset.logoPreset, custom: null }); setStatus(t('logo.presetApplied', 'Preset applied locally.')); render(); }));
   search?.addEventListener('input', render);
   host.querySelector('[data-logo-fit]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, fit: event.target.value }); render(); });
   host.querySelector('[data-logo-transparent]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, background: event.target.checked ? 'transparent' : '#fff8f6' }); render(); });
-  host.querySelector('[data-logo-background]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, background: event.target.value }); render(); });
+  host.querySelector('[data-logo-rainbow]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, background: event.target.checked ? 'rainbow' : 'transparent' }); render(); });
+  host.querySelector('[data-logo-rainbow-speed]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, rainbowSpeedLevel: Number(event.target.value) }); render(); });
   const colorPicker = host.querySelector('[data-logo-color-picker]');
   const updateFromHsvControls = () => {
     if (!colorPicker) return;
     const h = Number(colorPicker.querySelector('[data-logo-bg-hue]')?.value || 0);
     const s = Number(colorPicker.querySelector('[data-logo-bg-saturation]')?.value || 0);
     const v = Number(colorPicker.querySelector('[data-logo-bg-brightness]')?.value || 0);
-    current = normalizeState({ ...current, background: hsvToHex({ h, s, v }) }); render();
+    const a = Number(colorPicker.querySelector('[data-logo-bg-alpha]')?.value || 100) / 100;
+    current = normalizeState({ ...current, background: hsvToHex({ h, s, v, a }) }); render();
   };
   colorPicker?.querySelectorAll('[data-logo-bg-hue], [data-logo-bg-saturation], [data-logo-bg-brightness]').forEach((control) => control.addEventListener('input', updateFromHsvControls));
-  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}$/iu.test(event.target.value)) { current = normalizeState({ ...current, background: event.target.value }); render(); } });
+  colorPicker?.querySelector('[data-logo-bg-hex]')?.addEventListener('change', (event) => { if (/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu.test(event.target.value)) { current = normalizeState({ ...current, background: event.target.value }); render(); } });
   colorPicker?.querySelector('[data-logo-color-field]')?.addEventListener('pointerdown', (event) => {
     const field = event.currentTarget; const rect = field.getBoundingClientRect(); if (!rect.width || !rect.height) return;
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
-    current = normalizeState({ ...current, background: hsvToHex({ h: hsv.h, s: clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100, v: (1 - clamp((event.clientY - rect.top) / rect.height, 0, 1)) * 100 }) }); render();
+    const alpha = hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background).a || 1;
+    current = normalizeState({ ...current, background: hsvToHex({ h: hsv.h, s: clamp((event.clientX - rect.left) / rect.width, 0, 1) * 100, v: (1 - clamp((event.clientY - rect.top) / rect.height, 0, 1)) * 100, a: alpha }) }); render();
   });
   colorPicker?.querySelector('[data-logo-color-field]')?.addEventListener('keydown', (event) => {
     const hsv = rgbToHsv(hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background));
+    const alpha = hexToRgb(current.background === 'transparent' ? '#fff8f6' : current.background).a || 1;
     const step = event.shiftKey ? 10 : 1;
     if (event.key === 'ArrowLeft') hsv.s = clamp(hsv.s - step, 0, 100);
     else if (event.key === 'ArrowRight') hsv.s = clamp(hsv.s + step, 0, 100);
     else if (event.key === 'ArrowUp') hsv.v = clamp(hsv.v + step, 0, 100);
     else if (event.key === 'ArrowDown') hsv.v = clamp(hsv.v - step, 0, 100);
     else return;
-    event.preventDefault(); current = normalizeState({ ...current, background: hsvToHex(hsv) }); render();
+    event.preventDefault(); current = normalizeState({ ...current, background: hsvToHex({ ...hsv, a: alpha }) }); render();
   });
   host.querySelector('[data-logo-focal-x]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, focalPoint: { ...current.focalPoint, x: Number(event.target.value) } }); render(); });
   host.querySelector('[data-logo-focal-y]')?.addEventListener('input', (event) => { current = normalizeState({ ...current, focalPoint: { ...current.focalPoint, y: Number(event.target.value) } }); render(); });
   host.querySelector('[data-logo-safe-area]')?.addEventListener('change', (event) => { current = normalizeState({ ...current, safeArea: event.target.checked }); render(); });
   host.querySelectorAll('[data-logo-crop]').forEach((field) => field.addEventListener('change', (event) => { const name = event.currentTarget.dataset.logoCrop; if (!name) return; current = normalizeState({ ...current, crop: { ...current.crop, [name]: Number(event.currentTarget.value) } }); render(); }));
-  host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { current = normalizeState(DEFAULTS); setStatus('Logo selection reset to the shipped mark.'); render(); });
+  host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { current = normalizeState(DEFAULTS); setStatus(t('logo.resetDone', 'Logo selection reset to the shipped mark.')); render(); });
+  host.querySelector('[data-logo-export]')?.addEventListener('click', () => { const blob = new Blob([serialize(current)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'material-designer-logo-appearance.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 0); });
+  host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > 4 * 1024 * 1024) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); current = imported; setStatus(t('logo.imported', 'Logo appearance imported locally.')); render(); } catch { setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } event.target.value = ''; });
+  host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const a = Date.parse(start); const b = Date.parse(end); if (!start || !end || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt: new Date(a).toISOString(), endAt: new Date(b).toISOString(), weekdays, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; current = normalizeState({ ...current, schedules: editingScheduleId ? current.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...current.schedules, rule] }); editingScheduleId = null; setStatus(t('logo.scheduleAdded', 'Logo schedule added locally.')); render(); });
+  const scheduleTimer = window.setInterval(render, 60_000);
   host.querySelector('[data-logo-upload]')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0]; if (!file) return;
-    setStatus('Validating and converting locally…');
-    try { const custom = await convert(file, current.crop); current = normalizeState({ ...current, custom, crop: DEFAULTS.crop }); setStatus(`Converted locally to a verified ${custom.width}×${custom.height} PNG.`); render(); }
-    catch (error) { setStatus(error instanceof Error ? error.message : 'The image could not be converted locally.'); }
+    setStatus(t('logo.validating', 'Validating and converting locally…'));
+    try { const custom = await convert(file, { crop: current.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background, outputSize: 512 }); current = normalizeState({ ...current, custom: { ...custom, renderFingerprint: logoRenderFingerprint({ crop: DEFAULTS.crop, fit: current.fit, focalPoint: current.focalPoint, safeArea: current.safeArea, background: current.background }) }, crop: DEFAULTS.crop }); setStatus(t('logo.converted', `Converted locally to a verified ${custom.width}×${custom.height} PNG.`).replace('{width}', String(custom.width)).replace('{height}', String(custom.height))); render(); }
+    catch (error) { setStatus(error instanceof Error ? error.message : t('logo.conversionFailure', 'The image could not be converted locally.')); }
     event.target.value = '';
   });
   render();
   return {
     getState: () => ({ ...current }),
+    refresh: () => render(),
     setSearchMatcher: (matcher) => { searchMatcher = typeof matcher === 'function' ? matcher : null; render(); },
+    setHistoryMatcher: (matcher) => { historyMatcher = typeof matcher === 'function' ? matcher : null; render(); },
     reset: () => { current = normalizeState(DEFAULTS); render(); },
+    destroy: () => { window.clearInterval(scheduleTimer); if (refreshTimer !== undefined) window.clearTimeout(refreshTimer); refreshGeneration += 1; },
   };
 }
 
-export function init() {
+export function init(options = {}) {
   const host = document.querySelector('[data-logo-customization]');
   if (!host) return null;
-  return mount(host);
+  return mount(host, options);
 }

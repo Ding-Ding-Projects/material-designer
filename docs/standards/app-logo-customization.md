@@ -15,13 +15,37 @@ by packaging, updates, storage, or diagnostics.
   decompression-bomb-shaped input without partially applying it.
 - Local conversion to a validated PNG with signature, dimension, alpha, and
   decoder round-trip checks.
+- Complete PNG chunk order and CRC checks, JPEG segment framing and EOI checks,
+  and RIFF/WebP chunk and image checks before decoding.
 - Crop with numeric values, fit modes (contain, cover, and fill), focal point,
-  safe-area preview, transparent background, and an infinite colour picker for
-  an opaque background.
+  safe-area preview, transparent or animated-rainbow background, and an
+  infinite colour picker for an opaque background. Rainbow is a sentinel with
+  one global speed level and settles to one hue when reduced motion is active.
 - Favicon, toolbar, title-bar, sidebar, and installer target previews.
+- Target-specific derived PNGs are generated with the selected crop, fit, focal
+  point, safe-area, background, and transparency choices, and each variant is
+  independently signature- and decoder-validated. A render-options fingerprint
+  refreshes the bounded variants after later editor changes, with cancellation
+  of superseded generations so stale output never replaces the latest choice.
 - Local persistence, replacement, reset, and a failure path that keeps the
-  previously valid selection active.
+  previously valid selection active. The application mirrors the validated
+  presentation state through daemon `app-config.json`, so the existing local
+  append-only settings history captures logo changes without capturing source
+  paths or credentials.
+- Versioned appearance JSON export/import with unknown-schema refusal and a
+  bounded local schedule editor that applies temporary presets in the local
+  timezone without rewriting the base selection. Rules have labels, enabled
+  state, start/end, weekdays, timezone, edit and delete actions, and capture
+  every exposed logo value. Every persisted custom state
+  must include all five target variants; malformed or incomplete cached variants
+  are rejected as one state rather than partially applied.
 - A local search field with an adjacent anchored regular-expression builder.
+- The command palette owns a live preset selector for this setting, so changing
+  the mark from the palette and from Settings reaches the same persisted state.
+- The canonical validated source is retained only in the private bounded cache,
+  while daemon app-config history and appearance exports receive a redacted
+  derivative-only state. Later editor changes regenerate every target variant
+  from that source, never from a prior derivative.
 
 The web application restores the selected mark before its first interactive
 frame through `App.tsx`, and the existing home chrome consumes the bounded CSS
@@ -33,13 +57,16 @@ their catalogue supplies a translated logo namespace.
 ## Security and privacy
 
 The upload is read locally and never sent to a server. The source path is not
-stored. Only a bounded derived PNG data URL and presentation metadata are kept
-in the private local store. No uploaded bytes, source path, custom mark, or
-private cache is included in logs, telemetry, exports, history, captures, or
-public records. The validator does not trust a file extension or MIME claim.
+stored. Only bounded validated source and derived PNG data URLs plus
+presentation metadata are kept in the private local cache. The original source
+is retained only to regenerate derivatives after later edits, and is stripped
+before app-config history, export, logs, telemetry, captures, or public records.
+The validator does not trust a file extension or MIME claim.
 
 Custom marks do not alter the package identifier, executable name, installer
 identity, update feed, application-data location, or code-signing state.
+Source format, metadata, profile, transparency, and crop loss are disclosed
+before the converted mark becomes active; the source file remains unchanged.
 
 ## Failure behavior
 

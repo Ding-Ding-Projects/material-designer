@@ -48,8 +48,11 @@ version section when a release carries them.
 - **Add a bounded local app-logo customization surface.** The application now
   exposes four bundled presets, a signature-first local PNG/JPEG/WebP upload,
   crop and fit controls, focal point and safe-area previews, an infinite
-  background colour picker, five display-target previews, local persistence and
-  reset. Malformed, animated, over-sized and unsupported input is rejected
+  background colour picker with translated colour spaces and alpha, five
+  target-specific display previews, canonical-source regeneration after edits,
+  animated-rainbow and reduced-motion controls, local persistence through app-config history,
+  schedules, appearance export/import, and reset. Malformed, animated,
+  over-sized and unsupported input is rejected
   before decoding, and converted output is validated by signature, dimensions,
   alpha handling and round-trip checks. The documentation site carries the
   same local-only contract and its own anchored search builder. Source
@@ -58,8 +61,8 @@ version section when a release carries them.
 
   **本地 app logo customization 加咗落嚟。** Application 有四款 bundled
   presets，local PNG/JPEG/WebP upload 先驗 signature 再 decode，仲有 crop、fit、
-  focal point、safe-area、infinite background colour picker、五個 display target
-  preview、local persistence 同 reset。Malformed、animated、過大同 unsupported
+  focal point、safe-area、infinite background colour picker with alpha and
+  translated colour formats、五個 target-specific display preview、編輯後由原始來源重新生成、彩虹動畫同 reduced-motion 控制、local app-config history、schedules、appearance export/import 同 reset。Malformed、animated、過大同 unsupported
   input 會喺 decode 前拒絕，轉換後仲會驗 signature、dimensions、alpha 同
   round-trip。Documentation site 亦有同一套 local-only contract 同自己嘅
   anchored search builder。Source implementation 已喺 task branch，packaged

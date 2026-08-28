@@ -154,7 +154,7 @@ function wireAppearance() {
  * ------------------------------------------------------------------ */
 
 function wireLogo() {
-  const controller = logo.init();
+  const controller = logo.init({ translate: (key, fallback) => label(key, fallback) });
   const host = $('[data-logo-customization]');
   const input = $('[data-logo-search]', host);
   if (!controller || !host || !input) return;
@@ -189,14 +189,45 @@ function wireLogo() {
     },
   });
   input.dataset.regexMode = 'plain';
-  input.addEventListener('input', () => applyMatcher(builder?.getState?.().flags));
+  const logoFlags = () => builder?.getState?.().flags ?? builder?.state?.flags;
+  input.addEventListener('input', () => applyMatcher(logoFlags()));
   modeToggle?.addEventListener('click', () => {
     window.setTimeout(() => {
       input.dataset.regexMode = modeToggle.getAttribute('aria-pressed') === 'true' ? 'regex' : 'plain';
-      applyMatcher(builder?.getState?.().flags);
+      applyMatcher(logoFlags());
     }, 0);
   });
-  document.addEventListener('md-logo-change', () => applyMatcher(builder?.state?.flags));
+  document.addEventListener('md-logo-change', () => applyMatcher(logoFlags()));
+  document.addEventListener('md-i18n-applied', () => controller.refresh?.());
+  for (const kind of ['fit', 'schedule-preset']) {
+    const select = host.querySelector(`[data-logo-${kind}]`);
+    const selectSearch = host.querySelector(`[data-logo-select-search="${kind}"]`);
+    const selectBuilder = host.querySelector(`[data-logo-select-builder="${kind}"]`);
+    if (!select || !selectSearch || !selectBuilder) continue;
+    const selectRegex = regex.attachRegexBuilder(selectSearch, { trigger: selectBuilder, key: `logo-${kind}-search` });
+    const filterSelect = () => {
+      const matcher = selectRegex.matcher();
+      Array.from(select.options).forEach((option) => { option.hidden = !matcher(`${option.textContent || ''} ${option.value}`); });
+    };
+    selectSearch.addEventListener('input', filterSelect);
+    selectRegex.onChange(filterSelect);
+  }
+  const historyInput = $('[data-logo-history-search]', host);
+  const historyTrigger = $('[data-logo-history-builder]', host);
+  if (historyInput && historyTrigger && controller.setHistoryMatcher) {
+    const historyBuilder = regex.attachRegexBuilder(historyInput, { trigger: historyTrigger, key: 'logo-history-search' });
+    const applyHistory = () => {
+      if (historyBuilder.getState().mode !== 'regex') {
+        const needle = historyInput.value.trim().toLowerCase();
+        controller.setHistoryMatcher(needle ? (text) => text.toLowerCase().includes(needle) : null);
+      } else {
+        const matcher = historyBuilder.matcher();
+        controller.setHistoryMatcher(matcher);
+      }
+    };
+    historyInput.addEventListener('input', applyHistory);
+    historyBuilder.onChange(applyHistory);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -214,8 +245,8 @@ function wireTabs() {
     el.addEventListener('click', (event) => {
       event.preventDefault();
       tabs.goToTab(el.getAttribute('data-goto-tab'));
-    });
-  }
+  });
+}
 
   // "Jump to this setting" links land on the section and flash it, so a user
   // who teleported can see where they arrived.

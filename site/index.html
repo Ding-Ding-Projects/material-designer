@@ -69,6 +69,21 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
 }catch(e){}})();
 </script>
 
+<!-- Restore a bounded, previously validated local logo before first paint.
+     logo.js revalidates the complete PNG after modules load; this early hint
+     prevents a custom selection from flashing back to the preset. -->
+<script>
+(function(){try{
+var r=JSON.parse(localStorage.getItem('md-designer:app-logo:v1')||'null');
+var c=r&&r.schemaVersion===1&&r.custom;
+var targets=['favicon','toolbar','titlebar','sidebar','installer'];
+var png=function(v,w,h){if(!v||v.mimeType!=='image/png'||typeof v.dataUrl!=='string'||v.dataUrl.indexOf('data:image/png;base64,')!==0||v.dataUrl.length>4194304)return false;try{var b=atob(v.dataUrl.slice(v.dataUrl.indexOf(',')+1));if(b.length<33||b.charCodeAt(0)!==137||b.charCodeAt(1)!==80||b.charCodeAt(2)!==78||b.charCodeAt(3)!==71||b.slice(12,16)!=='IHDR')return false;var rw=(b.charCodeAt(16)<<24)|(b.charCodeAt(17)<<16)|(b.charCodeAt(18)<<8)|b.charCodeAt(19);var rh=(b.charCodeAt(20)<<24)|(b.charCodeAt(21)<<16)|(b.charCodeAt(22)<<8)|b.charCodeAt(23);return rw===w&&rh===h;}catch(e){return false;}};
+var sizes={favicon:[16,16],toolbar:[32,32],titlebar:[48,48],sidebar:[128,128],installer:[256,256]};
+var complete=c&&png(c,c.width,c.height)&&c.variants&&targets.every(function(id){return png(c.variants[id],sizes[id][0],sizes[id][1]);});
+if(complete){document.documentElement.dataset.logoPreset='custom';document.documentElement.style.setProperty('--app-logo-image','url('+JSON.stringify(c.dataUrl)+')');}
+}catch(e){}})();
+</script>
+
 <link rel="stylesheet" href="assets/css/tokens.css">
 <link rel="stylesheet" href="assets/css/app.css">
 
@@ -127,7 +142,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
        ================================================================== -->
   <header class="app-topbar">
     <span class="app-topbar__brand">
-      <img data-app-logo-image class="app-topbar__logo" alt="Material Designer logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E">
+      <img data-app-logo-image class="app-topbar__logo" data-i18n-attr="alt:logo.title" alt="App logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E">
       <span data-i18n="site.name">Material Designer</span>
     </span>
     <span class="app-topbar__subtitle" data-i18n="chrome.subtitle" data-i18n-inline>Documentation and honest status</span>
@@ -1755,57 +1770,69 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         <div class="logo-customization" data-logo-customization data-setting-unit aria-labelledby="se-logo-title">
           <div class="logo-customization__head">
             <div>
-              <h4 id="se-logo-title">App logo</h4>
-              <p class="settings-group__sub">Choose a bundled mark or select a local image. The mark changes presentation only, never application identity.</p>
+              <h4 id="se-logo-title" data-i18n="logo.title">App logo</h4>
+              <p class="settings-group__sub" data-i18n="logo.hint">Choose a bundled mark or select a local image. The mark changes presentation only, never application identity.</p>
             </div>
-            <button type="button" class="md-btn md-btn--text" data-logo-reset>Reset logo</button>
+            <button type="button" class="md-btn md-btn--text" data-logo-reset data-i18n="logo.reset">Reset logo</button>
           </div>
           <div class="md-search logo-customization__search" data-mode="plain">
             <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
-            <label class="visually-hidden" for="logo-preset-search">Search logo presets</label>
-            <input class="md-search__input" id="logo-preset-search" data-logo-search type="search" autocomplete="off" placeholder="Search logo presets">
-            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-mode aria-pressed="false" aria-label="Use regular expression for logo preset search">.*</button>
-            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-builder aria-haspopup="dialog" aria-label="Open the advanced regex builder for logo preset search"><svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg></button>
+            <label class="visually-hidden" for="logo-preset-search" data-i18n="logo.search">Search logo presets</label>
+            <input class="md-search__input" id="logo-preset-search" data-logo-search type="search" autocomplete="off" placeholder="Search logo presets" data-i18n-attr="placeholder:logo.search">
+            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-mode aria-pressed="false" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open">.*</button>
+            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-builder aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open"><svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg></button>
           </div>
-          <div class="logo-customization__presets" role="list" aria-label="Logo presets">
-            <button type="button" class="logo-preset" data-logo-preset="material" aria-pressed="true"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Material mark</button>
-            <button type="button" class="logo-preset" data-logo-preset="warm" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%2300696d'/%3E%3Cpath fill='%23b2ebeb' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Warm mark</button>
-            <button type="button" class="logo-preset" data-logo-preset="monochrome" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%23252525'/%3E%3Cpath fill='white' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Monochrome mark</button>
-            <button type="button" class="logo-preset" data-logo-preset="outline" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='1' width='22' height='22' rx='7' fill='none' stroke='%238f4c34' stroke-width='2'/%3E%3Cpath fill='none' stroke='%238f4c34' stroke-width='2' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16'/%3E%3C/svg%3E" alt="">Outline mark</button>
+          <div class="logo-customization__presets" role="list" aria-label="Logo presets" data-i18n-attr="aria-label:logo.presets">
+            <button type="button" class="logo-preset" data-logo-preset="material" aria-pressed="true"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt=""><span data-i18n="logo.material">Material mark</span></button>
+            <button type="button" class="logo-preset" data-logo-preset="warm" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%2300696d'/%3E%3Cpath fill='%23b2ebeb' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt=""><span data-i18n="logo.warm">Warm mark</span></button>
+            <button type="button" class="logo-preset" data-logo-preset="monochrome" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%23252525'/%3E%3Cpath fill='white' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt=""><span data-i18n="logo.monochrome">Monochrome mark</span></button>
+            <button type="button" class="logo-preset" data-logo-preset="outline" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='1' width='22' height='22' rx='7' fill='none' stroke='%238f4c34' stroke-width='2'/%3E%3Cpath fill='none' stroke='%238f4c34' stroke-width='2' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16'/%3E%3C/svg%3E" alt=""><span data-i18n="logo.outline">Outline mark</span></button>
           </div>
           <div class="logo-customization__upload">
-            <input type="file" data-logo-upload accept="image/png,image/jpeg,image/webp" aria-describedby="logo-upload-help">
-            <span id="logo-upload-help">Static PNG, JPEG or WebP. Maximum 8 MiB, one frame, 4096px per side and 16 megapixels.</span>
+            <label class="visually-hidden" for="logo-upload" data-i18n="logo.upload">Choose a local logo image</label><input id="logo-upload" type="file" data-logo-upload accept="image/png,image/jpeg,image/webp" aria-describedby="logo-upload-help">
+            <span id="logo-upload-help" data-i18n="logo.uploadHelp">Static PNG, JPEG or WebP. Maximum 8 MiB, one frame, 4096px per side and 16 megapixels.</span>
+            <span data-i18n="logo.lossBefore">Before activation, conversion may omit the source format, metadata, colour profile, and cropped pixels. The original file stays unchanged.</span>
+          </div>
+          <div class="logo-customization__export">
+            <button type="button" class="md-btn md-btn--text" data-logo-export data-i18n="logo.export">Export logo appearance</button>
+            <label class="md-btn md-btn--text"><span data-i18n="logo.import">Import logo appearance</span><input type="file" data-logo-import accept="application/json,.json"></label>
           </div>
           <div class="logo-customization__editor">
             <div class="logo-customization__stage" data-logo-stage><img data-logo-live alt="Selected application logo preview"></div>
             <div class="logo-customization__controls">
-              <label>Fit mode <select data-logo-fit><option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Fill</option></select></label>
-              <label><input type="checkbox" data-logo-transparent checked> Transparent background</label>
-              <label>Background <input type="color" data-logo-background value="#fff8f6"></label>
+              <label><span data-i18n="logo.fit">Fit mode</span> <select data-logo-fit><option value="contain" data-i18n="logo.contain">Contain</option><option value="cover" data-i18n="logo.cover">Cover</option><option value="fill" data-i18n="logo.fill">Fill</option></select></label>
+              <div class="md-search logo-select-search"><label class="visually-hidden" for="logo-fit-search" data-i18n="logo.fit">Fit mode</label><input class="md-search__input" id="logo-fit-search" type="search" data-logo-select-search="fit" placeholder="Fit mode" data-i18n-attr="placeholder:logo.fit"><button type="button" class="md-icon-btn md-icon-btn--small" data-logo-select-builder="fit" aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open"><svg aria-hidden="true"><use href="#i-build"/></svg></button></div>
+              <label><input type="checkbox" data-logo-transparent checked> <span data-i18n="logo.transparent">Transparent background</span></label>
+              <label><input type="checkbox" data-logo-rainbow> <span data-i18n="logo.rainbow">Animated rainbow background</span></label><label data-logo-rainbow-speed-wrap hidden><span data-i18n="logo.rainbowSpeed">Rainbow speed level, 1 is fastest and 5 is slowest</span> <input type="range" min="1" max="5" step="1" value="3" data-logo-rainbow-speed></label>
               <div class="logo-infinite-picker" data-logo-color-picker role="group" aria-label="Logo background colour">
                 <div class="logo-infinite-picker__field" data-logo-color-field role="slider" tabindex="0" aria-label="Logo background saturation and brightness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div>
-                <label>Hue <input type="range" min="0" max="360" step="1" value="0" data-logo-bg-hue></label>
-                <label>Saturation <input type="range" min="0" max="100" step="1" value="0" data-logo-bg-saturation></label>
-                <label>Brightness <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-brightness></label>
-                <label>HEX <input type="text" inputmode="text" spellcheck="false" data-logo-bg-hex value="#fff8f6"></label>
+                <label><span data-i18n="logo.hue">Hue</span> <input type="range" min="0" max="360" step="1" value="0" data-logo-bg-hue></label>
+                <label><span data-i18n="logo.saturation">Saturation</span> <input type="range" min="0" max="100" step="1" value="0" data-logo-bg-saturation></label>
+                <label><span data-i18n="logo.brightness">Brightness</span> <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-brightness></label>
+                <label><span data-i18n="logo.alpha">Alpha</span> <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-alpha></label>
+                <label><span data-i18n="logo.hex">HEX</span> <input type="text" inputmode="text" spellcheck="false" data-logo-bg-hex value="#fff8f6"></label>
+                <div class="logo-color-translations" data-logo-color-translations role="list" data-i18n-attr="aria-label:logo.colorTranslations" aria-label="Colour translations"></div>
               </div>
-              <label>Focal point X <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-x><output data-logo-focal-x-value>50%</output></label>
-              <label>Focal point Y <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-y><output data-logo-focal-y-value>50%</output></label>
-              <label><input type="checkbox" data-logo-safe-area checked> Show safe-area preview</label>
-              <fieldset class="logo-crop-fields"><legend>Crop, normalized 0–1</legend><label>X <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="x"></label><label>Y <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="y"></label><label>Width <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="width"></label><label>Height <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="height"></label></fieldset>
+              <label><span data-i18n="logo.focalX">Focal point X</span> <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-x><output data-logo-focal-x-value>50%</output></label>
+              <label><span data-i18n="logo.focalY">Focal point Y</span> <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-y><output data-logo-focal-y-value>50%</output></label>
+              <label><input type="checkbox" data-logo-safe-area checked> <span data-i18n="logo.safeArea">Show safe-area preview</span></label>
+              <fieldset class="logo-crop-fields"><legend data-i18n="logo.crop">Crop, normalized 0–1</legend><label>X <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="x"></label><label>Y <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="y"></label><label>Width <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="width"></label><label>Height <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="height"></label></fieldset>
             </div>
           </div>
           <div class="logo-customization__targets" aria-labelledby="logo-targets-title">
-            <h4 id="logo-targets-title">Display-target previews</h4>
+            <h4 id="logo-targets-title" data-i18n="logo.targets">Display-target previews</h4>
             <div class="logo-target-grid">
-              <figure><div class="logo-target-tile"><img data-logo-target="favicon" alt="Favicon logo preview"></div><figcaption>Favicon · 16×16</figcaption></figure>
-              <figure><div class="logo-target-tile"><img data-logo-target="toolbar" alt="Toolbar logo preview"></div><figcaption>Toolbar · 32×32</figcaption></figure>
-              <figure><div class="logo-target-tile"><img data-logo-target="titlebar" alt="Title bar logo preview"></div><figcaption>Title bar · 48×48</figcaption></figure>
-              <figure><div class="logo-target-tile"><img data-logo-target="sidebar" alt="Sidebar logo preview"></div><figcaption>Sidebar · 128×128</figcaption></figure>
-              <figure><div class="logo-target-tile"><img data-logo-target="installer" alt="Installer logo preview"></div><figcaption>Installer · 256×256</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="favicon" data-i18n-attr="alt:logo.targetFavicon" alt="Favicon"></div><figcaption><span data-i18n="logo.targetFavicon">Favicon</span> · 16×16</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="toolbar" data-i18n-attr="alt:logo.targetToolbar" alt="Toolbar"></div><figcaption><span data-i18n="logo.targetToolbar">Toolbar</span> · 32×32</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="titlebar" data-i18n-attr="alt:logo.targetTitlebar" alt="Title bar"></div><figcaption><span data-i18n="logo.targetTitlebar">Title bar</span> · 48×48</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="sidebar" data-i18n-attr="alt:logo.targetSidebar" alt="Sidebar"></div><figcaption><span data-i18n="logo.targetSidebar">Sidebar</span> · 128×128</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="installer" data-i18n-attr="alt:logo.targetInstaller" alt="Installer"></div><figcaption><span data-i18n="logo.targetInstaller">Installer</span> · 256×256</figcaption><p class="settings-group__sub" data-i18n="logo.installerPreviewOnly">Installer preview only: this mark does not change package identity, installer identity, update feed, or signing state.</p></figure>
             </div>
           </div>
+          <fieldset class="logo-schedule" data-logo-schedule><legend data-i18n="logo.schedule">Scheduled logo appearance</legend><p class="settings-group__sub" data-i18n="logo.scheduleHint">Use local date and time. Matching rules apply temporarily and never rewrite the base selection.</p><label><span data-i18n="logo.scheduleStart">Starts</span> <input type="datetime-local" data-logo-schedule-start></label><label><span data-i18n="logo.scheduleEnd">Ends</span> <input type="datetime-local" data-logo-schedule-end></label><label><span data-i18n="logo.scheduleLabel">Schedule label</span> <input type="text" data-logo-schedule-label></label><fieldset class="logo-weekdays"><legend data-i18n="logo.scheduleWeekdays">Weekdays</legend><label><input type="checkbox" data-logo-weekday="0" checked>Sun</label><label><input type="checkbox" data-logo-weekday="1" checked>Mon</label><label><input type="checkbox" data-logo-weekday="2" checked>Tue</label><label><input type="checkbox" data-logo-weekday="3" checked>Wed</label><label><input type="checkbox" data-logo-weekday="4" checked>Thu</label><label><input type="checkbox" data-logo-weekday="5" checked>Fri</label><label><input type="checkbox" data-logo-weekday="6" checked>Sat</label></fieldset><label><span data-i18n="logo.schedulePreset">Preset</span> <select data-logo-schedule-preset></select></label><div class="md-search logo-select-search"><label class="visually-hidden" for="logo-schedule-preset-search" data-i18n="logo.schedulePreset">Preset</label><input class="md-search__input" id="logo-schedule-preset-search" type="search" data-logo-select-search="schedule-preset" placeholder="Preset" data-i18n-attr="placeholder:logo.schedulePreset"><button type="button" class="md-icon-btn md-icon-btn--small" data-logo-select-builder="schedule-preset" aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open"><svg aria-hidden="true"><use href="#i-build"/></svg></button></div><button type="button" class="md-btn md-btn--text" data-logo-schedule-add data-i18n="logo.scheduleAdd">Add schedule</button><ul data-logo-schedule-list></ul></fieldset>
+          <p class="settings-group__sub" data-logo-timezone></p>
+          <p class="md-body-small on-surface-variant" data-logo-source-info aria-live="polite"></p>
+          <details class="logo-history"><summary data-i18n="logo.history">Logo change history</summary><div class="md-search"><label class="visually-hidden" for="logo-history-search">Logo history search</label><input id="logo-history-search" class="md-search__input" type="search" data-logo-history-search placeholder="Search logo history"><button type="button" class="md-icon-btn md-icon-btn--small" data-logo-history-builder aria-haspopup="dialog" data-i18n-attr="aria-label:regex.builder.open;title:regex.builder.open">.*</button></div><ul data-logo-history-list></ul></details>
           <p class="md-body-small on-surface-variant" data-logo-status role="status" aria-live="polite"></p>
         </div>
       </section>

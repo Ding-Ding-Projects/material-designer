@@ -146,6 +146,8 @@ export interface AppConfigPrefs {
   // is no longer installed is reported as missing rather than silently
   // replaced with whatever else happens to be on the machine.
   externalEditor?: ExternalEditorPrefs | null;
+  /** Presentation-only logo state, validated and bounded below. */
+  appLogo?: unknown;
 }
 
 // Cap on how many recent working directories we remember. Keeps the picker's
@@ -172,6 +174,7 @@ const ALLOWED_KEYS: ReadonlySet<keyof AppConfigPrefs> = new Set([
   'defaultProjectLocationId',
   'recentLinkedDirs',
   'externalEditor',
+  'appLogo',
 ] as const);
 
 function configFile(dataDir: string): string {
@@ -590,6 +593,104 @@ export function validateExternalEditor(raw: unknown): ExternalEditorPrefs | null
   };
 }
 
+const APP_LOGO_PRESETS = new Set(['material', 'warm', 'monochrome', 'outline']);
+const APP_LOGO_FITS = new Set(['contain', 'cover', 'fill']);
+const APP_LOGO_BACKGROUND_RE = /^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/iu;
+const APP_LOGO_DATA_URL_MAX = 2 * 1024 * 1024 * 2;
+const APP_LOGO_VARIANTS = new Set(['favicon', 'toolbar', 'titlebar', 'sidebar', 'installer']);
+const APP_LOGO_VARIANT_DIMS: Readonly<Record<string, readonly [number, number]>> = { favicon: [16, 16], toolbar: [32, 32], titlebar: [48, 48], sidebar: [128, 128], installer: [256, 256] };
+const APP_LOGO_KEYS = new Set(['schemaVersion', 'presetId', 'custom', 'fit', 'crop', 'focalPoint', 'background', 'safeArea', 'rainbowSpeedLevel', 'schedules']);
+const APP_LOGO_PATCH_KEYS = new Set(['presetId', 'fit', 'background', 'safeArea', 'rainbowSpeedLevel', 'crop', 'focalPoint']);
+const APP_LOGO_CUSTOM_KEYS = new Set(['dataUrl', 'mimeType', 'byteLength', 'width', 'height', 'hasAlpha', 'frameCount', 'sourceMimeType', 'sourceHasAlpha', 'losses', 'renderFingerprint', 'variants']);
+
+function finiteFraction(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+/** Keep the durable daemon copy schema-safe and bounded for settings history. */
+function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  if (Object.keys(raw).some((key) => !APP_LOGO_KEYS.has(key))) return undefined;
+  if (raw.schemaVersion !== 1 || typeof raw.presetId !== 'string' || !APP_LOGO_PRESETS.has(raw.presetId)
+    || typeof raw.fit !== 'string' || !APP_LOGO_FITS.has(raw.fit)
+    || (raw.background !== 'transparent' && raw.background !== 'rainbow' && (typeof raw.background !== 'string' || !APP_LOGO_BACKGROUND_RE.test(raw.background)))
+    || typeof raw.safeArea !== 'boolean' || typeof raw.rainbowSpeedLevel !== 'number' || !Number.isInteger(raw.rainbowSpeedLevel) || raw.rainbowSpeedLevel < 1 || raw.rainbowSpeedLevel > 5) return undefined;
+  const crop = raw.crop;
+  if (!crop || typeof crop !== 'object' || Array.isArray(crop)) return undefined;
+  const cropRecord = crop as Record<string, unknown>;
+  if (![cropRecord.x, cropRecord.y, cropRecord.width, cropRecord.height].every(finiteFraction)) return undefined;
+  const focal = raw.focalPoint;
+  if (!focal || typeof focal !== 'object' || Array.isArray(focal)) return undefined;
+  const focalRecord = focal as Record<string, unknown>;
+  if (!finiteFraction(focalRecord.x) || !finiteFraction(focalRecord.y)) return undefined;
+  if (!Array.isArray(raw.schedules) || raw.schedules.length > 12) return undefined;
+  for (const schedule of raw.schedules) {
+    if (!schedule || typeof schedule !== 'object' || Array.isArray(schedule)) return undefined;
+    const entry = schedule as Record<string, unknown>;
+    if (typeof entry.id !== 'string' || entry.id.length === 0 || entry.id.length > 80
+      || typeof entry.label !== 'string' || entry.label.length === 0 || entry.label.length > 120
+      || typeof entry.startAt !== 'string' || entry.startAt.length > 32
+      || typeof entry.endAt !== 'string' || entry.endAt.length > 32
+      || typeof entry.enabled !== 'boolean'
+      || typeof entry.timezone !== 'string' || entry.timezone.length === 0 || entry.timezone.length > 80
+      || !Array.isArray(entry.weekdays) || entry.weekdays.length === 0 || entry.weekdays.length > 7
+      || entry.weekdays.some((day) => !Number.isInteger(day) || (day as number) < 0 || (day as number) > 6)
+      || !entry.patch || typeof entry.patch !== 'object' || Array.isArray(entry.patch)) return undefined;
+    const patch = entry.patch as Record<string, unknown>;
+    if (Object.keys(patch).some((key) => !APP_LOGO_PATCH_KEYS.has(key))) return undefined;
+    if (patch.presetId !== undefined && (typeof patch.presetId !== 'string' || !APP_LOGO_PRESETS.has(patch.presetId))) return undefined;
+    if (patch.fit !== undefined && (typeof patch.fit !== 'string' || !APP_LOGO_FITS.has(patch.fit))) return undefined;
+    if (patch.background !== undefined && patch.background !== 'transparent' && patch.background !== 'rainbow' && (typeof patch.background !== 'string' || !APP_LOGO_BACKGROUND_RE.test(patch.background))) return undefined;
+    if (patch.safeArea !== undefined && typeof patch.safeArea !== 'boolean') return undefined;
+    if (patch.rainbowSpeedLevel !== undefined && (typeof patch.rainbowSpeedLevel !== 'number' || !Number.isInteger(patch.rainbowSpeedLevel) || patch.rainbowSpeedLevel < 1 || patch.rainbowSpeedLevel > 5)) return undefined;
+    const patchCrop = patch.crop as Record<string, unknown> | undefined;
+    if (patch.crop !== undefined && (!patchCrop || Array.isArray(patchCrop) || ![patchCrop.x, patchCrop.y, patchCrop.width, patchCrop.height].every(finiteFraction))) return undefined;
+    const patchFocal = patch.focalPoint as Record<string, unknown> | undefined;
+    if (patch.focalPoint !== undefined && (!patchFocal || Array.isArray(patchFocal) || !finiteFraction(patchFocal.x) || !finiteFraction(patchFocal.y))) return undefined;
+  }
+  if (raw.custom !== null) {
+    if (!raw.custom || typeof raw.custom !== 'object' || Array.isArray(raw.custom)) return undefined;
+    const custom = raw.custom as Record<string, unknown>;
+    if (Object.keys(custom).some((key) => !APP_LOGO_CUSTOM_KEYS.has(key))) return undefined;
+    if (custom.mimeType !== 'image/png' || typeof custom.dataUrl !== 'string'
+      || !custom.dataUrl.startsWith('data:image/png;base64,') || custom.dataUrl.length > APP_LOGO_DATA_URL_MAX
+      || typeof custom.byteLength !== 'number' || custom.byteLength < 1 || custom.byteLength > 2 * 1024 * 1024) return undefined;
+    if (!Number.isInteger(custom.width) || !Number.isInteger(custom.height) || (custom.width as number) < 1 || (custom.height as number) < 1
+      || (custom.width as number) > 4096 || (custom.height as number) > 4096
+      || typeof custom.hasAlpha !== 'boolean' || custom.frameCount !== 1
+      || (custom.sourceMimeType !== undefined && (custom.sourceMimeType !== 'image/png' && custom.sourceMimeType !== 'image/jpeg' && custom.sourceMimeType !== 'image/webp'))
+      || (custom.sourceHasAlpha !== undefined && typeof custom.sourceHasAlpha !== 'boolean')
+      || (custom.renderFingerprint !== undefined && (typeof custom.renderFingerprint !== 'string' || custom.renderFingerprint.length > 256))
+      || (custom.losses !== undefined && (!Array.isArray(custom.losses) || custom.losses.some((loss) => !['format', 'metadata', 'profile', 'crop', 'transparency'].includes(String(loss))))) return undefined;
+    if (custom.variants !== undefined) {
+      if (!custom.variants || typeof custom.variants !== 'object' || Array.isArray(custom.variants)) return undefined;
+      const variants = custom.variants as Record<string, unknown>;
+      if (Object.keys(variants).some((key) => !APP_LOGO_VARIANTS.has(key))) return undefined;
+      let aggregateBytes = custom.byteLength as number;
+      for (const target of APP_LOGO_VARIANTS) {
+        const candidate = variants[target];
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return undefined;
+        const asset = candidate as Record<string, unknown>;
+        if (typeof asset.dataUrl !== 'string' || !asset.dataUrl.startsWith('data:image/png;base64,')
+          || asset.dataUrl.length > APP_LOGO_DATA_URL_MAX || typeof asset.byteLength !== 'number'
+          || asset.byteLength < 1 || asset.byteLength > 2 * 1024 * 1024 || asset.frameCount !== 1
+          || typeof asset.width !== 'number' || typeof asset.height !== 'number' || typeof asset.hasAlpha !== 'boolean'
+          || asset.width !== APP_LOGO_VARIANT_DIMS[target][0] || asset.height !== APP_LOGO_VARIANT_DIMS[target][1]) return undefined;
+        aggregateBytes += asset.byteLength as number;
+      }
+      if (aggregateBytes > 8 * 1024 * 1024) return undefined;
+    }
+  }
+  try {
+    const serialized = JSON.stringify(raw);
+    if (!serialized || serialized.length > 12 * 1024 * 1024) return undefined;
+  } catch {
+    return undefined;
+  }
+  return raw;
+}
+
 function applyConfigValue(
   target: Record<string, unknown>,
   key: keyof AppConfigPrefs,
@@ -747,6 +848,12 @@ function applyConfigValue(
     } else {
       target[key] = validated;
     }
+    return;
+  }
+  if (key === 'appLogo') {
+    const validated = validateAppLogoPrefs(value);
+    if (validated !== undefined) target[key] = validated;
+    else delete target[key];
     return;
   }
 }

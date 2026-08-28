@@ -48,6 +48,12 @@ inventory; packaged interaction evidence remains pending.
 - `apps/web/src/components/logo/LogoCustomizationSection.module.css`
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/state/config.ts`
+- `apps/web/src/types.ts`
+- `apps/web/src/i18n/funny/en.ts`
+- `apps/web/src/i18n/funny/zh-HK.ts`
+- `apps/daemon/src/app-config.ts`
+- `packages/contracts/src/api/app-config.ts`
 - `apps/web/src/components/command-palette/settingsIndex.ts`
 - `apps/web/src/i18n/types.ts`
 - `apps/web/src/i18n/locales/en.ts`
