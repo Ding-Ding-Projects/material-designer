@@ -413,7 +413,7 @@ export function setElementAppearance(targetId: string, next: ElementAppearance, 
   const generation = (mutationGeneration.get(targetId) ?? 0) + 1;
   mutationGeneration.set(targetId, generation);
   const revision = history![history!.length - 1]?.id ?? `${Date.now()}-${targetId}`;
-  void acknowledgeAppearanceMutation({ targetId, action, revision }).then((ack) => {
+  void acknowledgeAppearanceMutation({ domainId: 'appearance', targetId, action, revisionId: revision }).then((ack) => {
     if (mutationGeneration.get(targetId) !== generation) return;
     historyAckStatus = ack;
     if (ack.status !== 'acknowledged') {

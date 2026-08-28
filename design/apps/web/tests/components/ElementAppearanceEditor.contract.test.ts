@@ -24,6 +24,7 @@ const BOUNDARY = source('src/components/appearance/ElementAppearanceBoundary.tsx
 const APP = source('src/App.tsx');
 const LOCK_ADAPTER = source('src/components/appearance/toyLockAdapter.ts');
 const SETTINGS_CONSUMER = source('src/components/settings/settings-tab-appearance-consumer.ts');
+const HISTORY_BRIDGE = source('src/components/appearance/appearanceHistoryBridge.ts');
 
 describe('every-element appearance contract', () => {
   it('keeps a hand-written state matrix and capability matrix', () => {
@@ -117,6 +118,16 @@ describe('every-element appearance contract', () => {
     expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_ACTIVATION = 'open-design:element-toy-lock-activation'");
     expect(LOCK_ADAPTER).not.toContain('password:');
     expect(LOCK_ADAPTER).not.toContain('totpSecret:');
+  });
+
+  it('keeps the history lane acknowledgement payload and timeout contract exact', () => {
+    expect(HISTORY_BRIDGE).toContain('domainId: string');
+    expect(HISTORY_BRIDGE).toContain('revisionId: string');
+    expect(HISTORY_BRIDGE).toContain('historyRevisionId');
+    expect(HISTORY_BRIDGE).toContain('APPEARANCE_HISTORY_TIMEOUT_MS = 10_000');
+    expect(HISTORY_BRIDGE).toContain('signal: controller.signal');
+    expect(HISTORY_BRIDGE).toContain('globalThis.clearTimeout(timer)');
+    expect(HISTORY_BRIDGE).not.toContain('styleSnapshot');
   });
 
   it('keeps the Settings tab appearance consumer contract source-complete', () => {
