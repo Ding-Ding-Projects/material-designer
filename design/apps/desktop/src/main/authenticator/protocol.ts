@@ -164,7 +164,9 @@ export type QrMatrix = { version: 5 | 6; size: 37 | 41; modules: readonly (reado
 
 // The QR route is deliberately local and deterministic. It is byte-mode QR version 5-L,
 // enough for the bounded otpauth URI above, and does not call a web service or write an image.
-export function encodeLocalQr(payload: string): QrMatrix {
+function qrMaskBit(mask: number, x: number, y: number): boolean { switch (mask) { case 0: return (x + y) % 2 === 0; case 1: return y % 2 === 0; case 2: return x % 3 === 0; case 3: return (x + y) % 3 === 0; case 4: return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0; case 5: return (x * y) % 2 + (x * y) % 3 === 0; case 6: return ((x * y) % 2 + (x * y) % 3) % 2 === 0; default: return ((x + y) % 2 + (x * y) % 3) % 2 === 0; } }
+
+export function encodeLocalQr(payload: string, mask: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 = 0): QrMatrix {
   const bytes = new TextEncoder().encode(payload);
   const version = bytes.length <= 106 ? 5 : bytes.length <= 134 ? 6 : null;
   if (!version) throw new Error("QR payload exceeds the local bounded capacity.");
@@ -199,8 +201,8 @@ export function encodeLocalQr(payload: string): QrMatrix {
   const codewords: number[] = []; for (let index = 0; index < Math.max(...blockData.map((block) => block.length)); index++) for (const block of blockData) if (block[index] !== undefined) codewords.push(block[index]!); for (let index = 0; index < eccPerBlock; index++) for (const ecc of blockEcc) codewords.push(ecc[index]!);
   const bits = codewords.flatMap((byte) => Array.from({ length: 8 }, (_, index) => (byte >>> (7 - index)) & 1));
   let bitIndex = 0; let upward = true;
-  for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) { const raw = bits[bitIndex++] ?? 0; modules[y][x] = Boolean(raw ^ ((x + y) % 2 === 0)); } } upward = !upward; }
-  const formatData = (0b01 << 3) | 0; let format = formatData << 10; let remainder = format; for (let bit = 14; bit >= 10; bit--) if ((remainder >>> bit) & 1) remainder ^= 0x537 << (bit - 10); format = (format | remainder) ^ 0x5412;
+  for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) { const raw = bits[bitIndex++] ?? 0; modules[y][x] = Boolean(raw ^ qrMaskBit(mask, x, y)); } } upward = !upward; }
+  const formatData = (0b01 << 3) | mask; let format = formatData << 10; let remainder = format; for (let bit = 14; bit >= 10; bit--) if ((remainder >>> bit) & 1) remainder ^= 0x537 << (bit - 10); format = (format | remainder) ^ 0x5412;
   for (let i = 0; i < 15; i++) { const value = Boolean((format >>> i) & 1); if (i < 6) modules[i][8] = value; else if (i < 8) modules[i + 1][8] = value; else modules[size - 15 + i][8] = value; if (i < 8) modules[8][size - i - 1] = value; else if (i < 9) modules[8][15 - i] = value; else modules[8][15 - i - 1] = value; }
   return { version, size, modules: modules.map((row) => Object.freeze(row.slice())) };
 }
@@ -217,8 +219,12 @@ export function decodeLocalQr(matrix: QrMatrix | readonly (readonly boolean[])[]
   for (let i = 0; i < 9; i++) { mark(8, i); mark(i, 8); }
   for (let i = 0; i < 8; i++) { mark(size - 1 - i, 8); mark(8, size - 1 - i); }
   mark(8, size - 8);
+  const readFormat = (second: boolean): number => { let value = 0; for (let i = 0; i < 15; i++) { const bit = second ? (i < 8 ? rows[8][size - i - 1] : i < 9 ? rows[8][15 - i] : rows[8][15 - i - 1]) : (i < 6 ? rows[i][8] : i < 8 ? rows[i + 1][8] : rows[size - 15 + i][8]); value |= Number(bit) << i; } return value; };
+  const hamming = (left: number, right: number) => { let value = left ^ right; let count = 0; while (value) { count += value & 1; value >>>= 1; } return count; };
+  const formatCandidates = Array.from({ length: 32 }, (_, data) => { let value = data << 10; for (let bit = 14; bit >= 10; bit--) if ((value >>> bit) & 1) value ^= 0x537 << (bit - 10); return ((data << 10) | value) ^ 0x5412; }); const formatA = readFormat(false); const formatB = readFormat(true); let formatIndex = -1; let bestDistance = 16; for (let index = 0; index < formatCandidates.length; index++) { const distance = Math.min(hamming(formatA, formatCandidates[index]!), hamming(formatB, formatCandidates[index]!)); if (distance < bestDistance) { bestDistance = distance; formatIndex = index; } } if (formatIndex < 0 || bestDistance > 3) throw new Error("The local QR format information is invalid."); const mask = formatIndex & 7;
+  const maskBit = (x: number, y: number): boolean => { switch (mask) { case 0: return (x + y) % 2 === 0; case 1: return y % 2 === 0; case 2: return x % 3 === 0; case 3: return (x + y) % 3 === 0; case 4: return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0; case 5: return (x * y) % 2 + (x * y) % 3 === 0; case 6: return ((x * y) % 2 + (x * y) % 3) % 2 === 0; default: return ((x + y) % 2 + (x * y) % 3) % 2 === 0; } };
   const bits: number[] = []; let upward = true;
-  for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(rows[y][x]) ^ ((x + y) % 2 === 0))); } upward = !upward; }
+  for (let right = size - 1; right >= 1; right -= 2) { if (right === 6) right--; for (let offset = 0; offset < size; offset++) { const y = upward ? size - 1 - offset : offset; for (const x of [right, right - 1]) if (!reserved[y][x]) bits.push(Number(Boolean(rows[y][x]) ^ maskBit(x, y))); } upward = !upward; }
   if (bits.length < 12 || bits.slice(0, 4).join("") !== "0100") throw new Error("The local QR matrix has an unsupported mode.");
   const read = (start: number, count: number) => bits.slice(start, start + count).reduce((value, bit) => (value << 1) | bit, 0);
   const length = read(4, 8); const capacity = version === 5 ? 106 : 134; if (length > capacity || 12 + length * 8 > bits.length) throw new Error("The local QR matrix payload length is invalid.");
