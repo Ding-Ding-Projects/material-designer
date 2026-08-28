@@ -29,6 +29,21 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-28 - Add a strict appearance export schema boundary
+
+**Reason:** Portable appearance exports now have one renderer-independent
+validation boundary. It requires exact nested keys, finite bounded numbers,
+UTF-8 string limits, bounded serialized bytes, depth and entry limits, safe
+object keys, duplicate-key detection, cyclic-object rejection, layer-parent
+acyclicity, state-inheritance acyclicity, and complete cross-reference checks.
+A focused source mutation list keeps each load-bearing boundary fail-closed
+when its implementation is removed.
+
+**Changed files:**
+
+- `apps/web/src/components/appearance/appearanceExportSchema.ts` (new)
+- `apps/web/tests/components/appearance/appearance-export-schema.test.ts` (new)
+
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and
