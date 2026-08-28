@@ -7,7 +7,7 @@
     "scope": "document body descendants owned by the desktop renderer, including body-owned portals",
     "states": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"],
     "inputRoutes": ["pointer context menu", "Shift+F10 or Context Menu", "touch long press"],
-    "collisionPolicy": "explicit product-owned data-testid or id only; duplicate identities and elements without a safe identity are visibly unsupported and receive no saved-style application",
+    "collisionPolicy": "explicit product-owned ids first; anonymous targets receive deterministic semantic digests; unresolved duplicate identities are visibly unsupported and receive no saved-style application",
     "builtInteraction": "pending",
     "rendererConsumer": "design/apps/web/src/components/appearance/elementAppearance.ts#applyAppearanceStateToElement",
     "captureEvidence": "pending"

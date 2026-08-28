@@ -108,4 +108,14 @@ describe('every-element appearance contract', () => {
     expect(LOCK_ADAPTER).toContain('targetId: target.id');
     expect(LOCK_ADAPTER).not.toContain('password');
   });
+
+  it('keeps every real state activation route and strict identity policy', () => {
+    for (const state of ['hover', 'focus', 'pressed', 'selected', 'disabled', 'dragged', 'validation', 'loading', 'success', 'warning', 'error']) {
+      expect(BOUNDARY).toContain(`'${state}'`);
+    }
+    expect(BOUNDARY).toContain('deterministic semantic digest fallback');
+    expect(BOUNDARY).not.toContain('first-seen ordinal');
+    expect(source('src/components/appearance/elementAppearance.ts')).toContain('MAX_APPEARANCE_INHERIT_DEPTH');
+    expect(source('src/components/appearance/elementAppearance.ts')).toContain('hasDuplicateJsonKeys');
+  });
 });

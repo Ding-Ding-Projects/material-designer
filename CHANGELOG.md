@@ -45,6 +45,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Complete appearance state activation and identity safety.** The desktop
+  boundary now activates saved normal, hover, focus, pressed, selected,
+  disabled, dragged, validation, loading, success, warning and error states
+  from real DOM events, while deterministic semantic identities prevent a
+  reorder from retargeting a saved style. The documentation site now owns the
+  same browser-local target editor and consumes the shared toy-lock request
+  event. Both surfaces reject malformed or colliding state records and report
+  unsupported image operations honestly. Built runtime interaction and
+  screenshot evidence remain pending. The integration commit link will be
+  added when this lane reaches the default branch.
+
+  **廣東話進度：** Desktop boundary 而家會由真實 DOM event 啟動 normal、hover、
+  focus、pressed、selected、disabled、dragged、validation、loading、success、
+  warning 同 error state；deterministic semantic identity 亦唔會畀 reorder
+  將保存咗嘅樣式油錯落另一粒掣。Documentation site 用返同一套 browser-local
+  target editor，仲食 shared toy-lock request event。兩邊都會拒絕 malformed
+  或撞 identity 嘅 state record，未支援嘅 image operation 老實寫清楚。Built
+  runtime interaction 同 screenshot evidence 仲等緊；lane 落 default branch
+  後先補 integration commit link。
+
 - **Add target-specific appearance editing to the documentation site.** The
   browser-local surface now targets explicit product-owned ids, opens a
   searchable context menu from pointer, keyboard, Shift+right-click, and touch

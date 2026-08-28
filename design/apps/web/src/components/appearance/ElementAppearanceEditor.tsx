@@ -26,6 +26,8 @@ import {
   readNamedAppearancePresets,
   saveNamedAppearancePreset,
   RAINBOW_COLOR_SENTINEL,
+  getRainbowSpeedLevel,
+  setRainbowSpeedLevel,
   setElementAppearance,
   undoElementAppearance,
   redoElementAppearance,
@@ -107,7 +109,12 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
   const currentState = appearance.states[appearance.activeState];
   const fontFamilies = useMemo(() => [...new Set([...installedFonts, ...FONT_FAMILIES])], [installedFonts]);
   const selectedLayer = currentState.layers.find((layer) => layer.id === selectedLayerId) ?? currentState.layers[0];
-  const rgbaFor = (value: string): Rgba => parseColor(value, CSS_COLOR_NAMES)?.rgba ?? { r: 0, g: 0, b: 0, a: 1 };
+  const rgbaFor = (value: string): Rgba => {
+    const direct = parseColor(value, CSS_COLOR_NAMES)?.rgba;
+    if (direct) return direct;
+    const computed = target.element && typeof window !== 'undefined' ? window.getComputedStyle(target.element).color : '';
+    return parseColor(computed, CSS_COLOR_NAMES)?.rgba ?? { r: 143, g: 76, b: 52, a: 1 };
+  };
 
   useEffect(() => {
     if (hasElementAppearanceOverride(target.id)) applyAppearanceStateToElement(target.element, resolveAppearanceState(appearance), appearance.activeState);
@@ -338,6 +345,7 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
         <input type="text" value={presetName} onChange={(event) => setPresetName(event.target.value)} placeholder={c('Preset name', '預設名稱')} aria-label={c('Preset name', '預設名稱')} maxLength={120} />
         <button type="button" onClick={savePreset}>{c('Save named preset', '儲存命名預設')}</button>
         <AppearanceSelect id="appearance-preset" label={c('Apply named preset', '套用命名預設')} value="" options={[{ value: '', label: c('Apply preset…', '套用預設…') }, ...presets.map((preset) => ({ value: preset.id, label: preset.name }))]} onChange={(value) => { if (value) applyPreset(value); }} />
+        <AppearanceSelect id="appearance-reset-property" label={c('Reset property', '重設屬性')} value="fontFamily" options={['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'wordSpacing', 'textColor', 'highlightColor', 'underline', 'strike', 'overline', 'capitalization', 'textDirection', 'alignment', 'borderRadius', 'elevation', 'motion', 'rainbowSpeedLevel'].map((value) => ({ value, label: value }))} onChange={(value) => resetProperty(value as keyof AppearanceStateStyle)} />
         <button type="button" onClick={() => update({ rulers: !appearance.rulers }, 'Changed rulers')}>{appearance.rulers ? 'Hide rulers' : 'Show rulers'}</button>
         <button type="button" onClick={() => update({ guides: !appearance.guides }, 'Changed guides')}>{appearance.guides ? 'Hide guides' : 'Show guides'}</button>
         <label>Zoom <input type="range" min="0.25" max="4" step="0.25" value={appearance.zoom} onChange={(event) => update({ zoom: Number(event.target.value) }, 'Changed zoom')} aria-label="Preview zoom" /></label>
@@ -414,7 +422,7 @@ export function ElementAppearanceEditor({ target, onClose }: ElementAppearanceEd
               <label className={styles.field}><span>Border radius</span><input type="number" min="0" max="200" value={currentState.borderRadius} onChange={(event) => setNumber('borderRadius', event)} /></label>
               <label className={styles.field}><span>Elevation</span><input type="number" min="0" max="24" value={currentState.elevation} onChange={(event) => setNumber('elevation', event)} /></label>
               <AppearanceSelect id="appearance-motion" label={c('Motion', '動態')} value={currentState.motion} options={['default', 'reduced', 'none'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ motion: value as AppearanceStateStyle['motion'] }, 'Changed motion')} />
-              <label className={styles.field}><span>Rainbow speed level</span><input type="range" min="1" max="5" step="1" value={currentState.rainbowSpeedLevel} onChange={(event) => setNumber('rainbowSpeedLevel', event)} /><small>1 is slowest, 5 is fastest. One duration is shared across all rainbow targets.</small></label>
+              <label className={styles.field}><span>Rainbow speed level</span><input type="range" min="1" max="5" step="1" value={getRainbowSpeedLevel()} onChange={(event) => { setRainbowSpeedLevel(Number(event.target.value)); updateCurrentState({ rainbowSpeedLevel: getRainbowSpeedLevel() }, 'Changed global rainbow speed'); }} /><small>1 is slowest, 5 is fastest. One duration is shared across all rainbow targets.</small></label>
               <AppearanceSelect id="appearance-inheritance" label={c('Inheritance', '繼承')} value={currentState.inheritedFrom ?? ''} options={[{ value: '', label: 'Explicit values' }, ...APPEARANCE_STATES.filter((state) => state !== appearance.activeState).map((state) => ({ value: state, label: state }))]} onChange={(value) => updateCurrentState({ inheritedFrom: value ? value as AppearanceState : null }, 'Changed state inheritance')} />
               <AppearanceSelect id="appearance-selection" label={c('Selection type', '選取類型')} value="rectangular" options={['rectangular', 'elliptical', 'freehand', 'path', 'colour-range'].map((value) => ({ value, label: value }))} onChange={(value) => updateCurrentState({ selections: [...currentState.selections, { kind: value as AppearanceStateStyle['selections'][number]['kind'], bounds: { x: 0, y: 0, width: 100, height: 100 } }] }, 'Added selection')} />
               <label className={styles.field}><span>Effects</span><input type="text" value={currentState.layers.find((layer) => layer.id === selectedLayerId)?.effects.join(', ') ?? ''} onChange={(event) => updateLayer(selectedLayerId, { effects: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) }, 'Changed layer effects')} placeholder="Blur, glow, shadow" /></label>

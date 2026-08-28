@@ -6,7 +6,7 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
 import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_STATE, requestElementToyLockActivation, type ElementToyLockStateDetail } from './toyLockAdapter';
-import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceTarget, type RenderedElement } from './elementAppearance';
+import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceState, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
 interface ElementAppearanceBoundaryProps {
   children: ReactNode;
@@ -19,11 +19,19 @@ interface MenuPosition {
   left: number;
 }
 
-export const TARGET_ID_COLLISION_POLICY = 'explicit product-owned data-testid or id only; collisions are reported unsupported';
+export const TARGET_ID_COLLISION_POLICY = 'explicit product-owned ids first; deterministic semantic digest fallback; unresolved collisions are visibly unsupported';
 
-function targetBaseFor(element: RenderedElement): string | null {
+function stableDigest(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function targetBaseFor(element: RenderedElement): string {
   const stable = element.getAttribute('data-testid') || element.id || (element.getAttribute('data-appearance-surface') === 'true' ? 'appearance-surface' : null);
-  return stable ? `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}` : null;
+  if (stable) return `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const semantic = [element.tagName, element.getAttribute('role') || '', element.getAttribute('aria-label') || '', element.getAttribute('title') || '', element.getAttribute('name') || '', element.getAttribute('placeholder') || '', (element.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 160)].join('|');
+  return `appearance:generated-${stableDigest(semantic)}`;
 }
 
 function labelFor(element: RenderedElement, index: number): string {
@@ -120,9 +128,9 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     elements.forEach((element, index) => {
       const existing = elementIdsRef.current.get(element);
       const id = existing ?? targetBaseFor(element);
-      if (!id) { unsupported += 1; return; }
       const owner = identityOwners.get(id);
-      if (owner && owner !== element) { unsupported += 1; live.delete(id); unregister(id); return; }
+      if (owner && owner !== element) { unsupported += 1; element.setAttribute('data-appearance-identity-unsupported', 'true'); live.delete(id); unregister(id); return; }
+      element.removeAttribute('data-appearance-identity-unsupported');
       identityOwners.set(id, element);
       elementIdsRef.current.set(element, id);
       const target = buildTarget(element, index, id);
@@ -270,6 +278,55 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       document.removeEventListener('pointercancel', cancelLongPress, true);
     };
   }, [cancelLongPress, lockedTargetIds, openMenu, resolveEventTarget]);
+
+  const applyInteractionState = useCallback((element: EventTarget | null, state: AppearanceState) => {
+    const target = resolveEventTarget(element);
+    if (!target || !hasElementAppearanceOverride(target.id)) return;
+    const saved = getElementAppearance(target.id);
+    applyAppearanceStateToElement(target.element, resolveAppearanceState(saved, state), state);
+  }, [resolveEventTarget]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onPointerOver = (event: PointerEvent) => applyInteractionState(event.target, 'hover');
+    const onPointerOut = (event: PointerEvent) => applyInteractionState(event.target, 'normal');
+    const onFocusIn = (event: FocusEvent) => applyInteractionState(event.target, 'focus');
+    const onFocusOut = (event: FocusEvent) => applyInteractionState(event.target, 'normal');
+    const onPointerDown = (event: PointerEvent) => applyInteractionState(event.target, 'pressed');
+    const onPointerUp = (event: PointerEvent) => applyInteractionState(event.target, 'selected');
+    const onDragStart = (event: DragEvent) => applyInteractionState(event.target, 'dragged');
+    const onDragEnd = (event: DragEvent) => applyInteractionState(event.target, 'normal');
+    const onInvalid = (event: Event) => applyInteractionState(event.target, 'validation');
+    const onLoadStart = (event: Event) => applyInteractionState(event.target, 'loading');
+    const onLoad = (event: Event) => applyInteractionState(event.target, 'success');
+    const onError = (event: Event) => applyInteractionState(event.target, 'error');
+    document.addEventListener('pointerover', onPointerOver, true);
+    document.addEventListener('pointerout', onPointerOut, true);
+    document.addEventListener('focusin', onFocusIn, true);
+    document.addEventListener('focusout', onFocusOut, true);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('dragstart', onDragStart, true);
+    document.addEventListener('dragend', onDragEnd, true);
+    document.addEventListener('invalid', onInvalid, true);
+    document.addEventListener('loadstart', onLoadStart, true);
+    document.addEventListener('load', onLoad, true);
+    document.addEventListener('error', onError, true);
+    return () => {
+      document.removeEventListener('pointerover', onPointerOver, true);
+      document.removeEventListener('pointerout', onPointerOut, true);
+      document.removeEventListener('focusin', onFocusIn, true);
+      document.removeEventListener('focusout', onFocusOut, true);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
+      document.removeEventListener('dragstart', onDragStart, true);
+      document.removeEventListener('dragend', onDragEnd, true);
+      document.removeEventListener('invalid', onInvalid, true);
+      document.removeEventListener('loadstart', onLoadStart, true);
+      document.removeEventListener('load', onLoad, true);
+      document.removeEventListener('error', onError, true);
+    };
+  }, [applyInteractionState]);
 
   const visibleActions = useMemo(() => [
     { id: 'edit', label: 'Edit appearance…', available: true },

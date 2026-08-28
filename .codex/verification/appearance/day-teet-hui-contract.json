@@ -3,8 +3,8 @@
   "surface": "documentation-site",
   "implementation": "site/assets/js/element-appearance.js",
   "wiring": "site/assets/js/main.js#elementAppearance.init",
-  "targetIdentity": "explicit data-appearance-id or id only",
-  "unsupportedIdentity": "visible status text, no saved-style application",
+  "targetIdentity": "explicit data-appearance-id or id first, deterministic semantic digest fallback",
+  "unsupportedIdentity": "visible status text for unresolved duplicate digests, no saved-style application",
   "requiredInteractions": [
     "pointer context menu",
     "Shift+F10 or Context Menu",

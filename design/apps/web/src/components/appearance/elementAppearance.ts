@@ -14,6 +14,7 @@ export const APPEARANCE_STATES = [
   'warning',
   'error',
 ] as const;
+export const MAX_APPEARANCE_INHERIT_DEPTH = APPEARANCE_STATES.length;
 
 export const RAINBOW_COLOR_SENTINEL = 'appearance-rainbow-sentinel';
 
@@ -145,6 +146,9 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
   { id: 'filters', label: 'Filters and colour adjustments', group: 'image', supported: false, reason: 'Filter metadata is retained; only the bounded blur projection is currently consumed.' },
   { id: 'typography', label: 'Word-depth typography', group: 'typography', supported: true },
   { id: 'variable-font-axes', label: 'Variable font axes', group: 'typography', supported: false, reason: 'This renderer exposes no variable-font axis API.' },
+  { id: 'typography-outline-shadow', label: 'Text outline, shadow and glow', group: 'typography', supported: false, reason: 'The renderer keeps text effects metadata but does not expose an isolated typography effect compositor.' },
+  { id: 'typography-script', label: 'Superscript and subscript', group: 'typography', supported: false, reason: 'The renderer has no per-target baseline script compositor.' },
+  { id: 'typography-baseline', label: 'Baseline offset', group: 'typography', supported: false, reason: 'Baseline offsets are retained as metadata and are not applied by this renderer.' },
   { id: 'layout', label: 'Spacing, layout and elevation', group: 'layout', supported: true },
   { id: 'motion', label: 'Motion and reduced-motion policy', group: 'layout', supported: true },
   { id: 'state-overrides', label: 'State inheritance and overrides', group: 'state', supported: true },
@@ -156,6 +160,7 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
 const STORAGE_KEY = 'open-design:element-appearance:v1';
 const HISTORY_KEY = 'open-design:element-appearance-history:v1';
 const PRESETS_KEY = 'open-design:element-appearance-presets:v1';
+const RAINBOW_SPEED_KEY = 'open-design:appearance-rainbow-speed:v1';
 export const MAX_APPEARANCE_TARGETS = 2000;
 const MAX_HISTORY = 200;
 const listeners = new Set<() => void>();
@@ -239,9 +244,14 @@ export function defaultElementAppearance(targetId: string): ElementAppearance {
  * local controls. Unsupported values remain in the snapshot, while supported
  * values become renderer-visible properties immediately. */
 export function resolveAppearanceState(appearance: ElementAppearance, state: AppearanceState = appearance.activeState): AppearanceStateStyle {
+  return resolveAppearanceStateBounded(appearance, state, new Set(), 0);
+}
+
+function resolveAppearanceStateBounded(appearance: ElementAppearance, state: AppearanceState, seen: Set<AppearanceState>, depth: number): AppearanceStateStyle {
   const current = appearance.states[state];
-  if (!current?.inheritedFrom || current.inheritedFrom === state) return current;
-  const parent = resolveAppearanceState(appearance, current.inheritedFrom);
+  if (!current?.inheritedFrom || current.inheritedFrom === state || depth >= MAX_APPEARANCE_INHERIT_DEPTH || seen.has(state)) return current;
+  seen.add(state);
+  const parent = resolveAppearanceStateBounded(appearance, current.inheritedFrom, seen, depth + 1);
   return { ...parent, ...current, layers: current.layers.length > 0 ? current.layers : parent.layers, selections: current.selections.length > 0 ? current.selections : parent.selections, channels: current.channels.length > 0 ? current.channels : parent.channels, masks: current.masks.length > 0 ? current.masks : parent.masks };
 }
 
@@ -254,7 +264,7 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   if (state.textColor === RAINBOW_COLOR_SENTINEL) element.dataset.elementAppearanceRainbow = 'true';
   else delete element.dataset.elementAppearanceRainbow;
   const rainbowDurations = ['30s', '15s', '8s', '4s', '2s'] as const;
-  element.style.setProperty('--element-appearance-rainbow-duration', rainbowDurations[state.rainbowSpeedLevel - 1] ?? '8s');
+  element.style.setProperty('--element-appearance-rainbow-duration', rainbowDurations[getRainbowSpeedLevel() - 1] ?? '8s');
   element.style.color = state.textColor === RAINBOW_COLOR_SENTINEL ? 'transparent' : state.textColor;
   element.style.fontFamily = state.fontFamily;
   element.style.fontSize = `${state.fontSize}px`;
@@ -288,6 +298,17 @@ export function applyAppearanceStateToElement(element: RenderedElement | null, s
   element.style.setProperty('--element-appearance-masks', state.masks.join(','));
   element.style.setProperty('--element-appearance-overrides', JSON.stringify(state.overrides));
   element.dataset.elementAppearanceState = stateId;
+}
+
+export function getRainbowSpeedLevel(): 1 | 2 | 3 | 4 | 5 {
+  if (typeof window === 'undefined') return 3;
+  const value = Number(window.localStorage.getItem(RAINBOW_SPEED_KEY));
+  return [1, 2, 3, 4, 5].includes(value) ? value as 1 | 2 | 3 | 4 | 5 : 3;
+}
+
+export function setRainbowSpeedLevel(value: number): void {
+  const level = Math.max(1, Math.min(5, Math.round(value))) as 1 | 2 | 3 | 4 | 5;
+  try { window.localStorage.setItem(RAINBOW_SPEED_KEY, String(level)); } catch { /* live renderer remains usable */ }
 }
 
 export function clearAppearanceStateFromElement(element: RenderedElement | null): void {
@@ -445,7 +466,9 @@ export function parseElementAppearanceExport(value: unknown): ElementAppearanceE
     if (!value || typeof value !== 'object' || !Array.isArray(value.layers) || value.layers.length > 200) return false;
     const styleKeys = ['layers', 'selections', 'channels', 'masks', 'fontFamily', 'fontSize', 'fontWeight', 'italic', 'underline', 'strike', 'overline', 'capitalization', 'textColor', 'highlightColor', 'letterSpacing', 'wordSpacing', 'lineHeight', 'baselineOffset', 'textDirection', 'alignment', 'borderRadius', 'elevation', 'motion', 'rainbowSpeedLevel', 'inheritedFrom', 'overrides'];
     if (Object.keys(value).some((key) => !styleKeys.includes(key))) return false;
-    return value.layers.every((layer) => Boolean(layer && typeof layer === 'object' && Object.keys(layer as object).every((key) => ['id', 'name', 'kind', 'visible', 'locked', 'opacity', 'blendMode', 'parentId', 'fill', 'stroke', 'shadow', 'transform', 'effects'].includes(key))));
+    if (typeof value.fontFamily !== 'string' || value.fontFamily.length > 200 || !Number.isFinite(value.fontSize) || value.fontSize < 6 || value.fontSize > 160 || !Number.isFinite(value.fontWeight) || value.fontWeight < 100 || value.fontWeight > 900 || !Number.isFinite(value.lineHeight) || value.lineHeight < 0.5 || value.lineHeight > 4 || !Number.isFinite(value.letterSpacing) || !Number.isFinite(value.wordSpacing) || !Number.isFinite(value.borderRadius) || value.borderRadius < 0 || value.borderRadius > 500 || !Number.isFinite(value.elevation) || value.elevation < 0 || value.elevation > 48 || ![1, 2, 3, 4, 5].includes(value.rainbowSpeedLevel) || (value.inheritedFrom !== null && !APPEARANCE_STATES.includes(value.inheritedFrom))) return false;
+    const layerIds = new Set<string>();
+    return value.layers.every((layer) => Boolean(layer && typeof layer === 'object' && Object.keys(layer as object).every((key) => ['id', 'name', 'kind', 'visible', 'locked', 'opacity', 'blendMode', 'parentId', 'fill', 'stroke', 'shadow', 'transform', 'effects'].includes(key)) && typeof layer.id === 'string' && layer.id.length <= 120 && !layerIds.has(layer.id) && layerIds.add(layer.id) && typeof layer.name === 'string' && layer.name.length <= 120 && typeof layer.visible === 'boolean' && typeof layer.locked === 'boolean' && Number.isFinite(layer.opacity) && layer.opacity >= 0 && layer.opacity <= 1 && layer.transform && Number.isFinite(layer.transform.x) && Number.isFinite(layer.transform.y) && Number.isFinite(layer.transform.width) && layer.transform.width > 0 && Number.isFinite(layer.transform.height) && layer.transform.height > 0 && Number.isFinite(layer.transform.rotation)));
   })) return null;
   if (!APPEARANCE_STATES.includes(appearance.activeState) || typeof appearance.zoom !== 'number' || !Number.isFinite(appearance.zoom) || appearance.zoom < 0.25 || appearance.zoom > 4) return null;
   if (JSON.stringify(appearance).length > 500_000) return null;
