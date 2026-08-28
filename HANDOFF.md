@@ -2086,6 +2086,32 @@ installer/release work or the parked dim-sum photo lane.
 > interaction and visual parity remain unverified.
 # Current lane handoff
 
+## Reconciled build and updater review, 2026-08-28
+
+Current main `538f1d4c` was fetched and semantically merged before the repair
+work. Merge commit
+[`eab07115`](https://github.com/Ding-Ding-Projects/material-designer/commit/eab07115774d735dcdae466929cbdce35ca7e06b)
+preserves the front-screen provenance implementation while restoring the exact
+root build and installer route.
+
+The reconciled source now has strict manifest validation, exact resolved tool
+paths, serialized installer candidate allocation, clean candidate outputs,
+compiler-environment import in the installer parent, shared Squirrel validation,
+redirect refusal with streamed feed byte counting, cancellation-safe promotion
+rollback, and project-owned release links in all three web producers. The
+workflow exercises `build.bat /s`, passes externally supplied provenance into
+that root path, packages with the resolved pnpm executable, and invokes the
+shared Squirrel validator with signer observation required. Invalid or absent
+external provenance remains explicitly unavailable, with no host-clock
+timestamp fallback.
+
+Focused local source checks passed after reconciliation: PowerShell parsing,
+Git Bash syntax parsing, the build entrypoint red-then-green checks, updater
+contract red-then-green checks, and independent release-link mutations for
+UpdateDialog, SettingsDialog, and WhatsNewPopup. No Node, pnpm, Electron, or UI
+runtime was launched locally. Hosted build, installed interaction, and visual
+evidence remain pending. This checkout has not been pushed to the remote repository.
+
 ## Root build bootstrap and updater fallback, 2026-08-27
 
 The build-and-updater lane is source-complete but not yet integrated into the

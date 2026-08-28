@@ -1,5 +1,14 @@
 # Roadmap
 
+- [ ] **Complete the reconciled build and updater review.** Merge commit
+      [`eab07115`](https://github.com/Ding-Ding-Projects/material-designer/commit/eab07115774d735dcdae466929cbdce35ca7e06b)
+      preserves front-screen provenance and restores strict fresh-machine
+      bootstrap, exact tool-path propagation, serialized candidate allocation,
+      shared Squirrel validation, streamed feed bounds, cancellation-safe
+      rollback, and project-owned release links. Local source checks are green;
+      hosted packaging, installed interaction, and visual evidence remain open,
+      so this item is intentionally unchecked.
+
 - [ ] **Verify version-bound provenance on every initial surface.** The desktop
       source now places version and release-provenance time before navigation and
       authentication, rejects host-clock and malformed provenance, and settles

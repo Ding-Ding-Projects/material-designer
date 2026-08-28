@@ -38,6 +38,10 @@ installer entry point calls the same build path, so a person does not need to
 know an internal bootstrap command or invent a candidate number.
 The installer then reads the resolution record and invokes that exact resolved
 pnpm path for packaging. It never falls back to a machine `PATH` command.
+It imports the recorded compiler environment in the installer process as well,
+so packaging cannot accidentally lose the native toolchain boundary inherited
+from the build. Candidate allocation is serialized and the candidate output
+directory is cleared before `cleanOutput: true` is recorded.
 
 ## Configuration
 
@@ -81,6 +85,10 @@ launch time, file timestamps, or a hand-entered time.
 - A response or installer download that exceeds its declared byte bound is
   cancelled while streaming. Redirects are refused, and the final response
   URL is checked against the same production host allowlist.
+- Local installer validation uses the same `scripts/verify-squirrel-artifacts.ps1`
+  route as the hosted release workflow. Local validation deliberately omits the
+  hosted signer-observer requirement and records that boundary as unverified;
+  hosted validation enables it.
 
 ## Security considerations
 

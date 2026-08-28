@@ -52,6 +52,8 @@ Cancel download stops the actual transfer and reports a cancelled state rather
 than merely hiding the progress surface. Promotion and payload preparation
 check cancellation again and remove a promoted release on cancellation or
 preparation failure, preserving the prior active release.
+Feed bodies use a reader-level counter instead of relying only on
+`content-length`, so a missing or dishonest header cannot bypass the bound.
 
 When an older installer is already ready and a newer release is downloading,
 the update model preserves the ready restart action and exposes the newer
@@ -83,6 +85,9 @@ or `SILENT=1` suppresses that prompt. `build-installer.bat` computes a safe
 candidate ordinal when the caller does not supply one, invokes the same build
 path, validates the unsigned Squirrel outputs, and writes a SHA-256 sidecar.
 Neither script publishes a release.
+`build-installer.bat` uses the same shared Squirrel validator as the hosted
+workflow. Local runs record signer observation as incomplete, while the hosted
+workflow enables the independent signer-observer requirement.
 The hosted release workflow exercises `build.bat /s` and the packaging step
 uses the exact pnpm executable recorded by that root build, so the release path
 does not silently switch to a machine-installed command.

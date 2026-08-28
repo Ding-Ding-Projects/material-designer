@@ -45,6 +45,29 @@ version section when a release carries them.
 
 ### Changed
 
+- **Reconcile front-screen provenance with the exact build and updater path.**
+  Current main’s externally bound front-screen provenance is preserved while
+  the root build and installer regain strict manifest validation, exact resolved
+  tool paths, serialized candidate allocation, clean candidate outputs,
+  compiler-environment import, and one shared Squirrel validator. Feed bodies
+  now use a hard streaming byte counter, redirects are refused, cancellation
+  remains safe through promotion and preparation, and all three web release
+  fallbacks use the project release page. Invalid or absent external provenance
+  remains unavailable rather than using a host clock. Merge commit
+  [`eab07115`](https://github.com/Ding-Ding-Projects/material-designer/commit/eab07115774d735dcdae466929cbdce35ca7e06b)
+  carries the reconciled source. Hosted packaging and installed evidence remain
+  pending.
+
+  **Front-screen provenance 同 exact build/updater path 而家接返埋。** Current
+  main 嘅 external provenance 保留，root build 同 installer 就收返 strict
+  manifest validation、exact resolved tool path、serialized candidate allocation、
+  clean candidate output、compiler environment import，同一套 shared Squirrel
+  validator。Feed body 而家有 hard streaming byte counter，redirect 會拒絕，
+  cancel 行到 promotion 同 preparation 都安全，三個 web release fallback 全部
+  用返 project release page。External provenance 無或者唔合格就 unavailable，
+  唔會攞 host clock 扮真。Merge commit 係上面嗰個，hosted packaging 同
+  installed evidence 仲係 pending。
+
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`
