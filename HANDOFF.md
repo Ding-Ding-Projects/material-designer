@@ -2091,7 +2091,9 @@ installer/release work or the parked dim-sum photo lane.
 The build-and-updater lane is source-complete but not yet integrated into the
 default branch. Source commit
 [`1f473e7d`](https://github.com/Ding-Ding-Projects/material-designer/commit/1f473e7dde135337fb9ff03c77a7a68b1985743e)
-is based on `861065bb` and changes the
+and repair commit
+[`ed68118a`](https://github.com/Ding-Ding-Projects/material-designer/commit/ed68118abad2136d3dc21cf52bab81cc4411bc5a)
+are based on `861065bb` and change the
 root build entry points, their dependency helpers, build documentation, and
 the web update dialog's manual release fallback.
 
@@ -2159,4 +2161,5 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
 4. Exercise the complete packaged updater flow through the approved headless
    route and retain the required interaction evidence.
 
-The lane has made no release, tag, or external publication.
+The lane has made no release, tag, or external publication. The repair commit
+is ready for independent review and integration; it has not been dewed.

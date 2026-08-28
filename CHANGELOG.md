@@ -73,7 +73,8 @@ version section when a release carries them.
   `design/apps/desktop/src/main/runtime.ts`, `design/apps/desktop/src/main/preload.cts`,
   `design/apps/web/src/lib/updater.ts`, `design/apps/web/src/components/UpdateDialog.tsx`,
   `design/apps/web/tests/lib/updater.test.ts`, and `design/packages/download/`.
-  The source commit link will be added after review.
+  Source commit [`ed68118a`](https://github.com/Ding-Ding-Projects/material-designer/commit/ed68118abad2136d3dc21cf52bab81cc4411bc5a)
+  carries this repair batch. Hosted verification remains pending.
 
 - **Root builds now bootstrap their pinned toolchain and refuse invented local provenance.**
   `download-dependencies.bat` and `download-dependencies.sh` use canonical
