@@ -2114,6 +2114,10 @@ Commit
 also replaces the remaining imported release-page fallbacks in Settings and
 post-update highlights, and expands the fallback boundary check to all three
 web producers.
+Commit
+[`28d3933c`](https://github.com/Ding-Ding-Projects/material-designer/commit/28d3933c57dc2fceb198882d958c452836c4030c)
+extends the shell companion with exact platform-id ordering and compiler
+workload validation, keeping both bootstrap routes aligned.
 
 ### Implemented source changes
 
@@ -2180,5 +2184,5 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
    route and retain the required interaction evidence.
 
 The lane has made no release, tag, or external publication. Commits `d08922d3`,
-`5cb71765`, and `88cd35e3` are ready for independent review and integration;
+`5cb71765`, `88cd35e3`, and `28d3933c` are ready for independent review and integration;
 they have not been pushed to the remote repository.

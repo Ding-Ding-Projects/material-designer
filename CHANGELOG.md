@@ -87,6 +87,10 @@ version section when a release carries them.
   replaces the remaining imported release-page fallbacks in Settings and
   post-update highlights, and expands the boundary check to all three web
   producers. Hosted verification remains pending.
+  Commit
+  [`28d3933c`](https://github.com/Ding-Ding-Projects/material-designer/commit/28d3933c57dc2fceb198882d958c452836c4030c)
+  extends the shell companion with exact platform-id ordering and compiler
+  workload validation. Hosted verification remains pending.
 
 - **Bind the build process to verified tools and make update cancellation real.**
   The dependency helper now publishes a manifest-digest-bound resolution record,
