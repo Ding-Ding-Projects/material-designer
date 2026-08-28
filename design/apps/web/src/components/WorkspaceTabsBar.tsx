@@ -222,6 +222,7 @@ function reviveTab(value: unknown): WorkspaceChromeTab | null {
       || view === 'plugins'
       || view === 'design-systems'
       || view === 'integrations'
+      || view === 'documentation'
     ) {
       return { id, kind: 'entry', view, createdAt, lastActiveAt };
     }
@@ -1980,6 +1981,7 @@ function displayTabFor(
     board: t('entry.navBoard'),
     'workspace-settings': t('entry.navWorkspaceSettings'),
     handoff: t('handoff.title'),
+    documentation: t('entry.navDocumentation'),
     settings: t('settings.title'),
   };
   const entryIcon: Record<EntryHomeView, IconName> = {
@@ -1999,6 +2001,7 @@ function displayTabFor(
     board: 'kanban',
     'workspace-settings': 'settings',
     handoff: 'layers-filled',
+    documentation: 'file-text',
     settings: 'settings',
   };
   return {

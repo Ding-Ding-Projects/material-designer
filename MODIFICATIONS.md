@@ -86,6 +86,55 @@ Designer rather than the upstream product name.
 - `tools/pack/src/config/index.ts`
 - `tools/pack/src/win/manifest.ts`
 
+### 2026-08-27 - Add the installed application's offline documentation browser
+
+**Reason:** The documentation site already bundled and rendered the complete
+Markdown article tree, but the installed application had no local documentation
+destination. The application now carries the exact generated 68-entry manifest
+at build time, validates the bundle before use, exposes a Documentation route in
+the navigation rail and workspace tab strip, and indexes that destination in the
+command palette. The reader uses the existing isolated Markdown renderer, keeps
+internal article links inside the application, searches titles, paths and body
+text through the shared field-owned regex builder, provides accessible
+browser-style Articles and Recently read tabs, persists a bounded local reading
+history, and renders deterministic suggested reading. A current packaged
+recording remains pending and is not fabricated.
+
+**Changed files:**
+
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx`
+- `apps/web/src/components/documentation/DocumentationBrowserView.module.css`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/router.ts`
+- `apps/web/src/lib/docs/generated.ts`
+- `apps/web/src/lib/docs/manifest.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx`
+- `apps/web/tests/lib/docs/manifest.test.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh

@@ -2284,6 +2284,19 @@ export interface Dict {
   'mcpClient.notForwardedNote': string;
   // Bottom-of-rail help menu
   'entry.helpAria': string;
+  'entry.navDocumentation': string;
+  'documentation.title': string;
+  'documentation.offlineDescription': string;
+  'documentation.articlesTab': string;
+  'documentation.historyTab': string;
+  'documentation.articleCount': string;
+  'documentation.source': string;
+  'documentation.suggested': string;
+  'documentation.articleSearch': string;
+  'documentation.historySearch': string;
+  'documentation.empty': string;
+  'documentation.loading': string;
+  'documentation.manifestError': string;
   'entry.helpMenuAria': string;
   'entry.helpGetHelp': string;
   'entry.helpSubmitFeature': string;
