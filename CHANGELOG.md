@@ -65,6 +65,16 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair the authenticator host review boundary.** The follow-up adds
+  version-aware local QR capacity, bounded browser image, clipboard, and camera
+  decoding, typed QR pairing, safeStorage-backed host consumption, protected
+  history unlock and record operations, IPC deadlines, regex-safe unfiltered
+  loading, transactional vault and metadata rollback, scoped one-use
+  destructive confirmation tokens, and an unlock-ladder bridge. Source checks
+  are green. Hosted typecheck, packaged interaction, and screenshot evidence
+  remain unverified. The final default branch integration commit link will be
+  added after incorporation.
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.

@@ -80,8 +80,8 @@ export function AuthenticatorDestination() {
   }, [bridge, listQuery]);
   useEffect(() => {
     if (tab !== 'history' || !bridge || !historyUnlocked) return;
-    void bridge.historyList({ query: historyQuery }).then((result) => { if (!result.ok) setNotice(result.reason); else setHistoryRecords(result.records); }).catch(() => setNotice(text('Protected history could not be loaded.', '受保護歷史未能載入。')));
-  }, [bridge, historyQuery, historyUnlocked, tab]);
+    void bridge.historyList({ query: historySearch.mode === 'regex' ? '' : historyQuery }).then((result) => { if (!result.ok) setNotice(result.reason); else setHistoryRecords(result.records); }).catch(() => setNotice(text('Protected history could not be loaded.', '受保護歷史未能載入。')));
+  }, [bridge, historyQuery, historySearch.mode, historyUnlocked, tab]);
   useEffect(() => {
     let active = true;
     const probe = window.openDesignDesktop?.authenticatorVaultStatus;

@@ -70,6 +70,12 @@ unavailable explanations, and an honest protected-history state. The real
 desktop vault adapter and protected history actions still need to be wired and
 exercised in the packaged application.
 
+`super-confirmation.ts` is the host-owned one-use token verifier used by
+destructive removal and sensitive history export. Tokens bind the action and
+ordered ids, expire after a bounded interval, and are consumed before a retry
+can replay them. An absent or mismatched token is refused; no destructive
+operation silently falls back to an unconfirmed call.
+
 ## Unlock ladder contract
 
 `design/apps/desktop/src/main/lockout/service.ts` is host-owned. It issues

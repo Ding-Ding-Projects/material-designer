@@ -4,3 +4,4 @@ export * from "./history.js";
 export * from "./destination.js";
 export * from "./electron-vault.js";
 export * from "./host.js";
+export * from "./super-confirmation.js";

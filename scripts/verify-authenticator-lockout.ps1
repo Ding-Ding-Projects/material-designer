@@ -10,6 +10,7 @@ $files = @{
   history = Join-Path $root 'design/apps/desktop/src/main/authenticator/history.ts'
   vault = Join-Path $root 'design/apps/desktop/src/main/authenticator/electron-vault.ts'
   host = Join-Path $root 'design/apps/desktop/src/main/authenticator/host.ts'
+  confirmation = Join-Path $root 'design/apps/desktop/src/main/authenticator/super-confirmation.ts'
   ladder = Join-Path $root 'design/apps/desktop/src/main/lockout/service.ts'
   tests = Join-Path $root 'design/apps/desktop/tests/main/authenticator-lockout.test.ts'
   ui = Join-Path $root 'design/apps/web/src/components/AuthenticatorDestination.tsx'
@@ -37,6 +38,7 @@ $store = Read-Text $files.store
 $history = Read-Text $files.history
 $vault = Read-Text $files.vault
 $authHost = Read-Text $files.host
+$confirmation = Read-Text $files.confirmation
 $ladder = Read-Text $files.ladder
 $tests = Read-Text $files.tests
 $ui = Read-Text $files.ui
@@ -73,6 +75,9 @@ Require $authHost 'class DesktopAuthenticatorHost' 'typed desktop authenticator 
 Require $authHost 'historyExportSensitive' 'protected sensitive history export'
 Require $authHost 'historyUnlock' 'protected history unlock'
 Require $authHost 'Removing authenticator entries requires the in-app super confirmation.' 'destructive removal confirmation'
+Require $confirmation 'class SuperConfirmationVerifier' 'one-use scoped confirmation verifier'
+Require $confirmation 'pending.expiresAtMs' 'confirmation expiry check'
+Require $confirmation 'this.#tokens.delete(token)' 'confirmation one-use consumption'
 Require $hostProtocol 'export type OpenDesignHostAuthenticator' 'typed authenticator host bridge'
 Require $hostDetection 'hasFunction(authenticator, "historyExportSensitive")' 'bridge method detection'
 Require $hostDetection 'hasFunction(authenticator, "qrFor")' 'QR bridge method detection'
@@ -109,6 +114,7 @@ Require $ui 'bridge.historyRestore' 'renderer history restore consumption'
 Require $ui 'bridge.historySetRetention' 'renderer history retention consumption'
 Require $ui 'bridge.historyExportRedacted' 'renderer redacted export consumption'
 Require $ui 'bridge.historyExportSensitive' 'renderer sensitive export consumption'
+Require $ui "historySearch.mode === 'regex' ? '' : historyQuery" 'history regex does not literal-prefilter host data'
 Require $router "view: 'authenticator'" 'authenticator route'
 Require $commands "id: 'go.authenticator'" 'command-palette route row'
 Require $tabs "authenticator: 'Authenticator'" 'workspace tab title'
