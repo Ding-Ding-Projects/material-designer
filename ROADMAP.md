@@ -36,6 +36,11 @@
       亦有限量存本機。Bundle 同 route guards 先轉紅再轉綠都完成，hosted build、
       packaged runtime interaction 同逐 click capture 仍然未有，所以保持 partial。
 
+      Review repair commit: [`e27d34ad`](https://github.com/Ding-Ding-Projects/material-designer/commit/e27d34addf3bf02eff9ac02cebbca5b5f71bada9), including exact bundle parsing,
+      invalid-regex messaging, heading-anchor support, and current site evidence
+      registration. Hosted type, package, runtime interaction, and per-click
+      capture evidence remain open.
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

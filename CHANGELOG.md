@@ -45,6 +45,24 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair offline documentation evidence and reader safety.** Reconciled the
+  docs lane with current `main`, restored the site reader mount and deterministic
+  manifest tooling, parsed the exact installed-app bundle object, normalized
+  suggested-article paths, bound recording evidence to in-repository media,
+  source Git SHA, built output, and per-action receipts, and corrected stale
+  shortcut, funny-level, tab, image, link, runner, and installer facts. Hosted
+  packaging and runtime capture remain pending. Source commit:
+  [`e27d34ad`](https://github.com/Ding-Ding-Projects/material-designer/commit/e27d34addf3bf02eff9ac02cebbca5b5f71bada9).
+
+  **Offline documentation evidence 同 reader safety 修理完成。** Docs lane 已經
+  對返 current `main`，site reader mount 同 deterministic manifest tooling 重新
+  接好，installed-app bundle 改用 exact object parsing，suggested article paths
+  統一，recording evidence 對準 repo 入面嘅 media、source Git SHA、built output
+  同逐 action receipts，shortcut、funny-level、tab、image、link、runner 同
+  installer facts 亦改返最新。Hosted packaging 同 runtime capture 仲係 pending。
+  Source commit 係
+  [`e27d34ad`](https://github.com/Ding-Ding-Projects/material-designer/commit/e27d34addf3bf02eff9ac02cebbca5b5f71bada9)。
+
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`
