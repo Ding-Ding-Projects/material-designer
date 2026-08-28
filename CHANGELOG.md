@@ -45,6 +45,34 @@ version section when a release carries them.
 
 ### Changed
 
+- **Root builds now bootstrap their pinned toolchain and refuse invented local provenance.**
+  `download-dependencies.bat` and `download-dependencies.sh` use canonical
+  sources, exact digests, user-scoped caches, idempotent silent mode, and a
+  bounded compiler check. `build.bat` calls the helper before the package build,
+  while `build-installer.bat` computes a candidate ordinal when none is supplied.
+  Local manifests now report provenance as unavailable unless an external record
+  is bound to the exact source commit and package version. The build entrypoint
+  contract check proves red after the dependency call is removed and green after
+  restoration. Hosted verification remains pending for this source-only lane.
+
+  **Root build 而家會自己 bootstrap pinned toolchain，仲唔會扮有 provenance。**
+  `download-dependencies.bat` 同 `download-dependencies.sh` 用 canonical source、
+  exact digest、user-scoped cache，同埋 idempotent silent mode，仲會檢查 compiler。
+  `build.bat` 先叫 helper 再 build，`build-installer.bat` 無 candidate 都會自己
+  揀下一個。Local manifest 無 external record 就老實寫 unavailable；有 exact
+  commit 同 package version 綁住先可以報 verified。Contract check 刪走 dependency
+  call 會轉紅，還原就轉綠；hosted verification 仲未完成。
+
+  **Changed files:** `build.bat`, `build-installer.bat`, `dependencies.manifest.json`,
+  `download-dependencies.bat`, `download-dependencies.sh`,
+  `scripts/build.ps1`, `scripts/build-installer.ps1`,
+  `scripts/download-dependencies.ps1`, `scripts/test-build-entrypoints.ps1`,
+  `scripts/test-updater-feed-boundary.ps1`,
+  `docs/build/dependency-bootstrap.md`, `docs/build/README.md`,
+  `docs/build/from-source.md`, `docs/release/automatic-updates.md`,
+  `design/apps/web/src/components/UpdateDialog.tsx`, and `MODIFICATIONS.md`.
+  The integration commit link will be added after review and merge.
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.

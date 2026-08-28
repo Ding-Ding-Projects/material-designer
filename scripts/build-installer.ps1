@@ -1,16 +1,31 @@
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory = $true)]
-  [ValidateRange(1, 2147483647)]
-  [int]$Candidate,
+  [ValidateRange(0, 2147483647)]
+  [int]$Candidate = 0,
   [switch]$Silent,
-  [switch]$ReusePackResult
+  [switch]$ReusePackResult,
+  [string]$ProvenanceFile
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $design = Join-Path $repo 'design'
 $stateRoot = Join-Path $repo '.yum-tong\installer'
+
+function Resolve-Candidate([int]$Requested) {
+  if ($Requested -gt 0) { return $Requested }
+  $fromEnvironment = $env:YUM_TONG_CANDIDATE
+  if ([string]::IsNullOrWhiteSpace($fromEnvironment) -eq $false -and $fromEnvironment -match '^[1-9][0-9]*$') {
+    return [int]$fromEnvironment
+  }
+  if ($env:GITHUB_RUN_NUMBER -match '^[1-9][0-9]*$') { return [int]$env:GITHUB_RUN_NUMBER }
+  $existing = @(Get-ChildItem -LiteralPath $stateRoot -Directory -Filter 'candidate-*' -ErrorAction SilentlyContinue |
+    ForEach-Object { if ($_.Name -match '^candidate-([1-9][0-9]*)$') { [int]$Matches[1] } })
+  if ($existing.Count -eq 0) { return 1 }
+  return (($existing | Measure-Object -Maximum).Maximum + 1)
+}
+
+$Candidate = Resolve-Candidate $Candidate
 $runRoot = Join-Path $stateRoot ("candidate-{0}" -f $Candidate)
 New-Item -ItemType Directory -Force -Path $runRoot | Out-Null
 
@@ -56,7 +71,7 @@ function Get-SignatureStatus([string]$Path) {
 }
 
 & (Join-Path $PSScriptRoot 'build.ps1') -Silent
-if ($LASTEXITCODE -ne 0) { throw 'the prerequisite build did not complete' }
+if (-not $?) { throw 'the prerequisite build did not complete' }
 
 $pkg = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
 $base = [version]$pkg.version
@@ -133,11 +148,12 @@ $provenancePath = Join-Path $runRoot 'build-provenance.json'
 $provenance = [ordered]@{
   version = 1
   sourceCommit = $sha
-  builtAt = (Get-Date).ToUniversalTime().ToString('o')
-  packagingCommand = 'build-installer.bat --candidate <ordinal> /s'
+  status = 'unavailable'
+  reason = 'No externally supplied build provenance record was provided to this local build'
+  packagingCommand = 'build-installer.bat /s'
   cleanOutput = $true
   package = [ordered]@{ id = 'open-design-packaged-app'; version = $appVersion; architecture = 'x64' }
-  buildLog = [ordered]@{ path = $buildLogPath; sha256 = Get-Sha256 $buildLogPath }
+  buildLog = [ordered]@{ path = 'installer-build.log'; sha256 = Get-Sha256 $buildLogPath }
   signing = [ordered]@{
     inputsCleared = $true
     certificateAutoDiscoveryDisabled = $true
@@ -146,6 +162,17 @@ $provenance = [ordered]@{
     observedSignerInvocations = @()
     controls = [ordered]@{ forceCodeSigning = $false; signExecutable = $false; signAndEditExecutable = $false }
   }
+}
+if ([string]::IsNullOrWhiteSpace($ProvenanceFile)) { $ProvenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE }
+if (-not [string]::IsNullOrWhiteSpace($ProvenanceFile)) {
+  if (-not (Test-Path -LiteralPath $ProvenanceFile -PathType Leaf)) { throw "external provenance file was not found: $ProvenanceFile" }
+  $external = Get-Content -Raw -LiteralPath $ProvenanceFile | ConvertFrom-Json
+  if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $appVersion -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
+    throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value'
+  }
+  try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch { throw 'external provenance updatedAt is not a valid timestamp' }
+  $provenance.status = 'verified'
+  $provenance.external = [ordered]@{ schemaVersion = 1; sourceCommit = $sha; version = $appVersion; updatedAt = $external.updatedAt; source = 'external-record' }
 }
 $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $provenancePath -Encoding utf8
 $manifest = [ordered]@{
@@ -162,11 +189,14 @@ $manifest = [ordered]@{
   fullPackages = @($full | ForEach-Object Name)
   deltaPackages = @($delta | ForEach-Object Name)
   installerFormat = 'squirrel'
-  generatedAt = (Get-Date).ToUniversalTime().ToString('o')
+  provenanceStatus = $provenance.status
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $runRoot 'installer-manifest.json') -Encoding utf8
 Write-Host "Unsigned installer: $([IO.Path]::GetFullPath((Join-Path $assetDir $setupName)))"
 Write-Host "SHA-256: $hash"
 Write-Host "Manifest: $([IO.Path]::GetFullPath((Join-Path $runRoot 'installer-manifest.json')))"
 Write-Host "Provenance: $([IO.Path]::GetFullPath($provenancePath))"
-Write-Warning 'The manual build recorded package and signing controls, but signer-process observation is incomplete; run the hosted artifact validator before publication.'
+if ($provenance.status -eq 'unavailable') {
+  Write-Warning 'No external build provenance record was supplied; updated-at is unavailable and the local artifact is not a provenance-bound release.'
+}
+Write-Warning 'The local artifact is unsigned. Run the hosted artifact validator before publication.'

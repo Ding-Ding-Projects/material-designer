@@ -19,9 +19,12 @@ echo Unknown option: %~1
 goto usage
 :parsed
 
-if not defined CANDIDATE goto usage
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\build-installer.ps1" -Candidate "%CANDIDATE%" %SILENT_FLAG%
+if defined CANDIDATE (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\build-installer.ps1" -Candidate "%CANDIDATE%" %SILENT_FLAG%
+) else (
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%scripts\build-installer.ps1" %SILENT_FLAG%
+)
 exit /b %ERRORLEVEL%
 :usage
-echo Usage: build-installer.bat --candidate ^<positive ordinal^> [/s]
+echo Usage: build-installer.bat [--candidate ^<positive ordinal^>] [/s]
 exit /b 2

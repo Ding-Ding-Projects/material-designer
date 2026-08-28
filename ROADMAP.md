@@ -1,5 +1,15 @@
 # Roadmap
 
+- [~] **Make the root build and installer entry points fresh-machine safe.** The
+      new dependency helpers pin and hash Node `24.20.0`, pnpm `10.33.2`, Python
+      `3.12.10`, and MinGit `2.55.0.5`, use user-scoped caches, support silent
+      mode, and check the native compiler workload. `build.bat` invokes the
+      helper, while `build-installer.bat` derives a candidate when none is
+      supplied. Local manifests now report provenance as unavailable unless an
+      external record is bound to the exact source commit and package version.
+      The source contract check is red-then-green; hosted verification and
+      integration remain open.
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

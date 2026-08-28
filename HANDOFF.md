@@ -2084,3 +2084,62 @@ installer/release work or the parked dim-sum photo lane.
 > localized, persistent while the builder is closed, and connected through
 > `aria-invalid`, `aria-describedby` and a live status. Hosted build, installed
 > interaction and visual parity remain unverified.
+# Current lane handoff
+
+## Root build bootstrap and updater fallback, 2026-08-27
+
+The build-and-updater lane is source-complete but not yet integrated into the
+default branch. The isolated candidate is based on `861065bb` and changes the
+root build entry points, their dependency helpers, build documentation, and
+the web update dialog's manual release fallback.
+
+### Implemented source changes
+
+- Added `dependencies.manifest.json` with exact canonical inputs and digests for
+  Windows x64 and Linux x64.
+- Added `download-dependencies.bat`, `download-dependencies.sh`, and
+  `scripts/download-dependencies.ps1` with user-scoped caches, exclusive cache
+  locking, verified temporary downloads, silent mode, interactive pre-elevation,
+  and explicit native compiler failure reporting.
+- Made `build.bat` invoke the dependency helper before the build.
+- Made `build-installer.bat` accept no candidate and made
+  `scripts/build-installer.ps1` derive one from explicit environment state or
+  the next owned local candidate directory.
+- Removed host-clock timestamps from local build and installer provenance.
+  Local output reports provenance as unavailable unless
+  `MATERIAL_DESIGNER_PROVENANCE_FILE` provides schema version `1`, the exact
+  source commit, the exact package version, and a valid `updatedAt` value.
+- Changed the web update dialog's manual fallback to this project's release
+  page instead of the upstream release page.
+- Added `scripts/test-build-entrypoints.ps1` with a deliberate red-then-green
+  dependency-invocation regression.
+- Added `scripts/test-updater-feed-boundary.ps1` with a deliberate red-then-green
+  project-release-URL regression.
+- Added `docs/build/dependency-bootstrap.md` and updated the build, release,
+  README, roadmap, changelog, and modification notice.
+
+### Verification completed
+
+PowerShell parsing succeeded for all four changed PowerShell scripts. Git Bash
+syntax parsing succeeded for `download-dependencies.sh`. The entrypoint contract
+check passed and observed its temporary dependency-removal failure before
+restoration. `git diff --check` passed. No Node, pnpm, Electron, or UI runtime
+was launched locally.
+
+The port verifier was attempted through the installed Git Bash route and did not
+return within the bounded 90-second observation window. The process tree was
+stopped by exact process id. Prior zero-gap evidence exists for the unchanged
+imported tree, but a fresh verifier verdict for this candidate is still open.
+
+### Remaining work for the next owner
+
+1. Independently review the root dependency and installer scripts, especially
+   the MinGit archive layout, package-manager materialization, compiler setup,
+   and PowerShell 5.1 behavior.
+2. Integrate this file state into a public-safe bilingual commit and add its
+   commit link to the Unreleased changelog entry.
+3. Run the hosted build and release Chuts against the integrated commit.
+4. Exercise the complete packaged updater flow through the approved headless
+   route and retain the required interaction evidence.
+
+The lane has made no release, tag, or external publication.

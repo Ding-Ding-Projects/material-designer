@@ -36,6 +36,11 @@ package and any delta packages produced by the build. `Setup.exe` is the
 bootstrapper used by the user-facing install and restart path; the native
 Squirrel package files remain available for its distribution/update contract.
 
+The manual fallback in the update dialog opens this project's release page when
+the installed channel cannot use an in-app installer. It never redirects to the
+upstream product's release page, and it does not claim that a release is
+available when the feed did not provide one.
+
 The HTML editor uses the same renderer preparation callback as sketch and
 Markdown. Its debounced style write and inline-text acknowledgement are
 settled before the host reports success. Switching files keys the viewer and
@@ -43,6 +48,31 @@ keeps the old renderer's callback registered until that final write settles, so
 a restart cannot leave the previous document's draft behind.
 
 ## Configuration
+
+### Fresh-machine build entry points
+
+The repository root provides `download-dependencies.bat` and
+`download-dependencies.sh`. The Windows helper uses the user-scoped
+`MaterialDesigner` toolchain cache, verifies the exact Node `24.20.0`, pnpm
+`10.33.2`, Python `3.12.10`, and MinGit `2.55.0.5` inputs against
+`dependencies.manifest.json`, and then checks for the Visual Studio 2022 C++
+workload. The Linux companion verifies the pinned Node and pnpm inputs and
+uses the checkout's existing Git installation. Both helpers are idempotent,
+accept `/s` or `--silent`, and never install credentials or signing tools.
+
+`build.bat` invokes the dependency helper before the package build. Its final
+interactive step asks whether to launch the built program; `/s`, `--silent`,
+or `SILENT=1` suppresses that prompt. `build-installer.bat` computes a safe
+candidate ordinal when the caller does not supply one, invokes the same build
+path, validates the unsigned Squirrel outputs, and writes a SHA-256 sidecar.
+Neither script publishes a release.
+
+Local build output does not invent provenance from the host clock. Without an
+external record, its manifest explicitly says provenance is unavailable. A
+validated record may be supplied through `MATERIAL_DESIGNER_PROVENANCE_FILE`;
+it must name schema version `1`, the exact source commit, the exact package
+version, and a valid `updatedAt` value before the local manifest can report
+verified provenance.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
@@ -130,6 +160,16 @@ self-hosted Windows `Release` workflow
 outputs, install, launch, health check and uninstall before publishing a new
 feed. Until that run lands, the implementation is committed but the public feed
 is not claimed as verified.
+
+The manual release-page fallback boundary is checked separately without
+launching the application:
+
+```text
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-updater-feed-boundary.ps1
+```
+
+That check replaces the project release URL in a temporary fixture, observes a
+failure, restores the exact source, and observes a pass.
 
 ## Suggested reading
 

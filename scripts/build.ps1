@@ -12,6 +12,13 @@ $stateRoot = Join-Path $repo '.yum-tong\build'
 New-Item -ItemType Directory -Force -Path $stateRoot | Out-Null
 $started = Get-Date
 
+# The root entry point owns dependency acquisition. Calling the same helper
+# here keeps direct PowerShell callers on the same fresh-machine path.
+if ($env:YUM_TONG_DEPENDENCIES_READY -ne '1') {
+  & (Join-Path $PSScriptRoot 'download-dependencies.ps1') -Silent
+  if (-not $?) { throw 'dependency bootstrap did not complete successfully' }
+}
+
 function Write-Phase([string]$Message) {
   $elapsed = ((Get-Date) - $started).ToString('hh\:mm\:ss')
   Write-Host "[$elapsed] $Message"
@@ -211,10 +218,32 @@ if (-not $SkipBuild) {
   Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/web', 'run', 'build:sidecar') 'Building the web sidecar'
   Invoke-Checked 'pnpm.cmd' @('--dir', $design, '--filter', '@open-design/tools-pack', 'run', 'build') 'Building the supported packaging tool'
   $sha = (& git -C $repo rev-parse HEAD).Trim()
+  $provenance = [ordered]@{
+    status = 'unavailable'
+    reason = 'No externally supplied build provenance record was provided to this local build'
+  }
+  $provenanceFile = $env:MATERIAL_DESIGNER_PROVENANCE_FILE
+  if (-not [string]::IsNullOrWhiteSpace($provenanceFile)) {
+    if (-not (Test-Path -LiteralPath $provenanceFile -PathType Leaf)) { throw "external provenance file was not found: $provenanceFile" }
+    $external = Get-Content -Raw -LiteralPath $provenanceFile | ConvertFrom-Json
+    $package = Get-Content -Raw -LiteralPath (Join-Path $design 'package.json') | ConvertFrom-Json
+    if ($null -eq $external -or $external.schemaVersion -ne 1 -or $external.sourceCommit -ne $sha -or $external.version -ne $package.version -or [string]::IsNullOrWhiteSpace($external.updatedAt)) {
+      throw 'external provenance must contain schemaVersion 1, the exact source commit, the exact package version, and a non-empty updatedAt value'
+    }
+    try { [DateTimeOffset]::Parse($external.updatedAt) | Out-Null } catch { throw 'external provenance updatedAt is not a valid timestamp' }
+    $provenance = [ordered]@{
+      status = 'verified'
+      source = 'external-record'
+      schemaVersion = 1
+      sourceCommit = $sha
+      version = $external.version
+      updatedAt = $external.updatedAt
+    }
+  }
   $manifest = [ordered]@{
     schemaVersion = 1
     commit = $sha
-    completedAt = (Get-Date).ToUniversalTime().ToString('o')
+    provenance = $provenance
     node = (& node.exe --version).Trim()
     pnpm = (& pnpm.cmd --version).Trim()
     python = (& python.exe --version 2>&1).ToString().Trim()

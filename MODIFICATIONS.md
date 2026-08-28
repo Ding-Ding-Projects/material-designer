@@ -29,6 +29,18 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Keep the manual update fallback on the project release feed
+
+**Reason:** The desktop update dialog used the upstream release page when an
+update was unavailable or unsupported. That fallback could send a Material
+Designer user to a different product's releases. The fallback now opens this
+project's release page, while the feed, package identity, and update behavior
+remain unchanged.
+
+**Changed files:**
+
+- `apps/web/src/components/UpdateDialog.tsx`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh
