@@ -176,6 +176,7 @@ import { canShowWorkspaceSettings } from '../collab/settings-access';
 import { ConnectorsBrowser } from './ConnectorsBrowser';
 import { MemoryModelInline } from './MemoryModelInline';
 import { MemorySection } from './MemorySection';
+import { OllamaSuiteManager } from './ollama/OllamaSuiteManager';
 import { ByokConnectionTestControl } from './byok/ByokConnectionTestControl';
 import { ByokKeyField } from './byok/ByokKeyField';
 import { ByokModelField } from './byok/ByokModelField';
@@ -5822,6 +5823,7 @@ export function SettingsDialog({
                 </label>
               ) : null}
             </section>
+            <OllamaSuiteManager />
           )}
             </>
           ) : null}

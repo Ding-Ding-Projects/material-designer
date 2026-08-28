@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] **Local Ollama suite manager source lane.** The bounded local API domain, catalog pagination validation, conservative hardware-fit logic, streamed pull and chat client, allowlisted harness validation, five-tab settings surface, and per-tab regex search fields are present on `yum-tong-ollama-suite-20260827`. Daemon wiring, packaged UI drive, per-click HuiShot evidence, and final release proof remain open.
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

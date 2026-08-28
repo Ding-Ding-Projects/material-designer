@@ -5590,6 +5590,27 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
+### 2026-08-27 — Add the local Ollama suite manager source surface
+
+**Reason:** The desktop application had only a cloud-oriented Ollama provider
+path and no local suite surface. This lane adds a bounded same-origin client
+domain, exhaustive catalog pagination and staleness state, installed-model
+reconciliation, conservative hardware-fit evidence, streamed pull and chat
+handling, shell-free harness profile validation, five settings tabs, and an
+independent regex search field for each tab. Source tests cover the primary
+validation and refusal boundaries. Daemon registration and packaged interaction
+evidence remain open and are not claimed here.
+
+**Changed files:**
+
+- `apps/web/src/runtime/ollama-suite.ts`
+- `apps/daemon/src/routes/ollama-suite.ts`
+- `apps/daemon/src/server.ts`
+- `apps/web/src/components/ollama/OllamaSuiteManager.tsx`
+- `apps/web/src/components/ollama/OllamaSuiteManager.module.css`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/tests/runtime/ollama-suite.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its
