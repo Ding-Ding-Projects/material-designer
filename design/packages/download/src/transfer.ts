@@ -45,6 +45,16 @@ function contentLength(response: Response): number | undefined {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
+function assertWithinByteLimit(bytes: number | undefined, target: NormalizedTarget): void {
+  if (target.maxBytes != null && bytes != null && bytes > target.maxBytes) {
+    throw new ManagedDownloadError(
+      MANAGED_DOWNLOAD_ERROR_CODES.SIZE_LIMIT,
+      `download exceeds the ${target.maxBytes}-byte limit`,
+      { bytes, maxBytes: target.maxBytes },
+    );
+  }
+}
+
 /**
  * @internal Extract resume validators (etag/last-modified) from a response.
  */
@@ -113,6 +123,14 @@ async function writeResponseBodyToPartial(
     transform(chunk: Buffer, _encoding, callback) {
       receivedBytes += chunk.byteLength;
       sessionReceivedBytes += chunk.byteLength;
+      if (target.maxBytes != null && receivedBytes > target.maxBytes) {
+        callback(new ManagedDownloadError(
+          MANAGED_DOWNLOAD_ERROR_CODES.SIZE_LIMIT,
+          `download exceeds the ${target.maxBytes}-byte limit`,
+          { receivedBytes, maxBytes: target.maxBytes },
+        ));
+        return;
+      }
       options.emit({
         receivedBytes,
         sessionReceivedBytes,
@@ -143,12 +161,14 @@ async function tryResumeDownload(
 ): Promise<DownloadAttemptResult | "restart"> {
   const partialBytes = await statFileSize(target.partialPath);
   if (partialBytes == null || partialBytes <= 0) return "restart";
+  assertWithinByteLimit(partialBytes, target);
   const response = await fetchImpl(target.url, {
     headers: {
       ...(requestHeaders ?? {}),
       ...(manifest.validators?.etag == null ? {} : { "If-Range": manifest.validators.etag }),
       Range: `bytes=${partialBytes}-`,
     },
+    redirect: "error",
     signal,
   });
   if (response.status !== 206) return "restart";
@@ -157,6 +177,7 @@ async function tryResumeDownload(
     return "restart";
   }
   const totalBytes = range.totalBytes ?? manifest.totalBytes ?? partialBytes + (contentLength(response) ?? 0);
+  assertWithinByteLimit(totalBytes, target);
   await emitExistingProgress(target.partialPath, totalBytes, emit);
   await writeJson(target.manifestPath, {
     ...manifest,
@@ -181,9 +202,10 @@ async function downloadFromZero(
   signal: AbortSignal | undefined,
 ): Promise<DownloadAttemptResult> {
   await rm(target.partialPath, { force: true }).catch(() => undefined);
-  const response = await fetchImpl(target.url, { headers: requestHeaders, signal });
+  const response = await fetchImpl(target.url, { headers: requestHeaders, redirect: "error", signal });
   if (!response.ok) throw new Error(`download request returned HTTP ${response.status}`);
   const totalBytes = contentLength(response);
+  assertWithinByteLimit(totalBytes, target);
   const validators = validatorsFromResponse(response);
   await writeJson(target.manifestPath, createManifest(target, "partial", { totalBytes, validators }));
   await writeResponseBodyToPartial(response, target, { emit, signal, startBytes: 0, totalBytes });

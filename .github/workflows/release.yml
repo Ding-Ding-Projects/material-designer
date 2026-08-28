@@ -113,29 +113,20 @@ jobs:
           "tag=v$appVersion-r${{ github.run_number }}.${{ github.run_attempt }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           Write-Host "base $($pkg.version), build version $appVersion"
 
-      - name: Install dependencies
-        working-directory: design
-        timeout-minutes: 45
-        env:
-          OPEN_DESIGN_POSTINSTALL_CONCURRENCY: 4
-        run: pnpm install --frozen-lockfile
-
-      - name: Build packaging prerequisites
-        working-directory: design
-        run: |
-          $ErrorActionPreference = "Stop"
-          pnpm --filter @open-design/daemon run build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --filter @open-design/desktop run build
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          pnpm --filter @open-design/web run build:sidecar
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run the root build entrypoint
+        timeout-minutes: 60
+        run: .\build.bat /s
 
       - name: Build the Windows Squirrel installer
         id: pack
         working-directory: design
         run: |
           $ErrorActionPreference = "Stop"
+          $resolutionPath = Join-Path $env:GITHUB_WORKSPACE '.yum-tong\build\dependency-resolution.json'
+          if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) { throw "root build did not write $resolutionPath" }
+          $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
+          $pnpmPath = [string]$resolution.tools.pnpm.executable
+          if ([string]::IsNullOrWhiteSpace($pnpmPath) -or -not (Test-Path -LiteralPath $pnpmPath -PathType Leaf)) { throw 'root build did not resolve an exact pnpm executable' }
           $runnerTemp = [IO.Path]::GetFullPath($env:RUNNER_TEMP)
           $runnerInstallParent = Split-Path -Parent $runnerTemp
           if ([string]::IsNullOrWhiteSpace($runnerInstallParent) -or -not (Test-Path -LiteralPath $runnerInstallParent) -or [IO.Path]::GetPathRoot($runnerInstallParent) -eq $runnerInstallParent) {
@@ -195,7 +186,7 @@ jobs:
             New-Item -ItemType Directory -Force -Path $squirrelTemp | Out-Null
             $env:SQUIRREL_TEMP = $squirrelTemp
 
-            pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
+            & $pnpmPath exec tools-pack win cleanup --dir $toolsPackDir --namespace "$env:PACK_NAMESPACE" --json
             if ($LASTEXITCODE -ne 0) { throw "tools-pack win cleanup exited with code $LASTEXITCODE" }
 
             $signerAuditJob = Start-Job -ArgumentList $signerStopPath, $signerReadyPath -ScriptBlock {
@@ -226,7 +217,7 @@ jobs:
                 $buildLogWriter = [IO.StreamWriter]::new($buildLogPath, $false, $utf8NoBom)
                 try {
                   $buildOutput = @(
-                    pnpm.cmd exec tools-pack win build `
+                    & $pnpmPath exec tools-pack win build `
                       --dir $toolsPackDir `
                       --cache-dir $cacheDir `
                       --namespace "$env:PACK_NAMESPACE" `
@@ -265,7 +256,7 @@ jobs:
             $buildJson | Set-Content -LiteralPath $buildJsonPath -Encoding utf8
 
           if (-not [string]::IsNullOrWhiteSpace($build.payloadPath)) {
-            pnpm.cmd exec tools-pack win validate-payload `
+            & $pnpmPath exec tools-pack win validate-payload `
               --namespace "$env:PACK_NAMESPACE" `
               --payload-path $build.payloadPath `
               --expected-version "${{ steps.version.outputs.app_version }}" `
@@ -344,7 +335,7 @@ jobs:
             version = 1
             sourceCommit = "${{ github.sha }}"
             builtAt = (Get-Date).ToUniversalTime().ToString('o')
-            packagingCommand = "pnpm.cmd exec tools-pack win build --to squirrel"
+            packagingCommand = "resolved manifest pnpm exec tools-pack win build --to squirrel"
             cleanOutput = $true
             package = [ordered]@{ id = "open-design-packaged-app"; version = "${{ steps.version.outputs.app_version }}"; architecture = "x64" }
             buildLog = [ordered]@{ path = $buildLogPath; sha256 = (Get-FileHash -LiteralPath $buildLogPath -Algorithm SHA256).Hash.ToLowerInvariant() }

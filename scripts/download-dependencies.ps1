@@ -10,6 +10,45 @@ $manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
 $started = Get-Date
 $interactive = -not $Silent
 
+function Assert-ManifestUrl([object]$Spec, [string[]]$AllowedHosts) {
+  if ([string]::IsNullOrWhiteSpace($Spec.id) -or [string]::IsNullOrWhiteSpace($Spec.version) -or
+      [string]::IsNullOrWhiteSpace($Spec.url) -or [string]::IsNullOrWhiteSpace($Spec.format)) {
+    throw "dependency manifest entry is incomplete: $($Spec.id)"
+  }
+  try { $uri = [Uri]$Spec.url } catch { throw "dependency manifest URL is invalid for $($Spec.id): $($Spec.url)" }
+  if ($uri.Scheme -ne 'https' -or $uri.UserInfo.Length -ne 0 -or $uri.Port -notin @(-1, 443) -or $AllowedHosts -notcontains $uri.Host.ToLowerInvariant()) {
+    throw "dependency manifest URL is not an approved canonical HTTPS source for $($Spec.id): $($Spec.url)"
+  }
+  $hasSha256 = -not [string]::IsNullOrWhiteSpace([string]$Spec.sha256)
+  $hasSha512 = -not [string]::IsNullOrWhiteSpace([string]$Spec.sha512Base64)
+  if (($hasSha256 -and $hasSha512) -or (-not $hasSha256 -and -not $hasSha512)) {
+    throw "dependency manifest entry must contain exactly one digest for $($Spec.id)"
+  }
+  if ($hasSha256 -and [string]$Spec.sha256 -notmatch '^[0-9a-fA-F]{64}$') { throw "dependency manifest SHA-256 is invalid for $($Spec.id)" }
+  if ($hasSha512 -and [string]$Spec.sha512Base64 -notmatch '^[A-Za-z0-9+/]+={0,2}$') { throw "dependency manifest SHA-512 is invalid for $($Spec.id)" }
+}
+
+function Assert-DependencyManifest {
+  if ($null -eq $manifest -or $manifest.schemaVersion -ne 1) { throw 'dependency manifest schemaVersion must be exactly 1' }
+  $windows = @($manifest.platforms.'windows-x64')
+  $linux = @($manifest.platforms.'linux-x64')
+  if ($windows.Count -ne 4 -or (@($windows.id) -join ',') -ne 'git,node,pnpm,python') { throw 'windows-x64 manifest must contain exactly git,node,pnpm,python in order' }
+  if ($linux.Count -ne 2 -or (@($linux.id) -join ',') -ne 'node,pnpm') { throw 'linux-x64 manifest must contain exactly node,pnpm in order' }
+  Assert-ManifestUrl $windows[0] @('github.com')
+  Assert-ManifestUrl $windows[1] @('nodejs.org')
+  Assert-ManifestUrl $windows[2] @('registry.npmjs.org')
+  Assert-ManifestUrl $windows[3] @('python.org')
+  Assert-ManifestUrl $linux[0] @('nodejs.org')
+  Assert-ManifestUrl $linux[1] @('registry.npmjs.org')
+  if ($windows[0].format -ne 'zip' -or $windows[1].format -ne 'zip' -or $windows[2].format -ne 'npm-tarball' -or $windows[3].format -ne 'zip') { throw 'windows-x64 manifest formats are invalid' }
+  if ($linux[0].format -ne 'tar.xz' -or $linux[1].format -ne 'npm-tarball') { throw 'linux-x64 manifest formats are invalid' }
+  if ($manifest.compiler.id -ne 'visual-studio-build-tools' -or $manifest.compiler.version -ne '2022' -or
+      $manifest.compiler.source -ne 'winget:Microsoft.VisualStudio.2022.BuildTools' -or
+      $manifest.compiler.requiredWorkload -ne 'Microsoft.VisualStudio.Workload.VCTools') {
+    throw 'compiler manifest entry is not the pinned Visual Studio 2022 C++ workload'
+  }
+}
+
 function Write-Phase([string]$Message) {
   if ($Silent) { return }
   $elapsed = ((Get-Date) - $started).ToString('hh\:mm\:ss')
@@ -143,6 +182,7 @@ function Resolve-CompilerEnvironment {
 }
 
 Ensure-InteractiveElevation
+Assert-DependencyManifest
 $toolRoot = Join-Path $env:LOCALAPPDATA 'MaterialDesigner\toolchain'
 $lock = Ensure-ExclusiveLock (Join-Path $toolRoot '.download-dependencies.lock')
 try {
@@ -196,16 +236,25 @@ try {
 
   $pnpmSpec = $specs | Where-Object id -eq 'pnpm'
   $pnpmRoot = Join-Path $toolRoot "pnpm-$($pnpmSpec.version)"
-  $pnpmCmd = @(
-    (Join-Path $pnpmRoot 'pnpm.cmd'),
-    (Join-Path $pnpmRoot 'node_modules\.bin\pnpm.cmd'),
-    (Join-Path $pnpmRoot 'bin\pnpm.cmd')
-  ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  function Find-PnpmExecutable([string]$Root) {
+    $candidates = @(
+      (Join-Path $Root 'pnpm.cmd'),
+      (Join-Path $Root 'node_modules\.bin\pnpm.cmd'),
+      (Join-Path $Root 'bin\pnpm.cmd')
+    )
+    foreach ($candidate in $candidates) {
+      if (Test-Path -LiteralPath $candidate -PathType Leaf) { return [IO.Path]::GetFullPath($candidate) }
+    }
+    $discovered = @(Get-ChildItem -LiteralPath $Root -Filter 'pnpm.cmd' -File -Recurse -ErrorAction SilentlyContinue)
+    if ($discovered.Count -gt 0) { return [IO.Path]::GetFullPath([string]$discovered[0].FullName) }
+    return $null
+  }
+  [string]$pnpmCmd = Find-PnpmExecutable $pnpmRoot
   $pnpmTarball = Join-Path $toolRoot "pnpm-$($pnpmSpec.version).tgz"
   if (-not (Test-Path -LiteralPath $pnpmTarball -PathType Leaf) -or (Get-Sha512Base64 $pnpmTarball) -ne $pnpmSpec.sha512Base64) {
     Download-Verified $pnpmSpec $pnpmTarball
   }
-  if (-not (Test-Path -LiteralPath $pnpmCmd)) {
+  if ([string]::IsNullOrWhiteSpace($pnpmCmd) -or -not (Test-Path -LiteralPath $pnpmCmd -PathType Leaf)) {
     Write-Phase "Using verified cached pnpm $($pnpmSpec.version) tarball"
     New-Item -ItemType Directory -Force -Path $pnpmRoot | Out-Null
     $npm = Join-Path $nodeRoot 'npm.cmd'
@@ -213,9 +262,7 @@ try {
     & $npm install --prefix $pnpmRoot --global $pnpmTarball --ignore-scripts --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) { throw "npm could not materialize pnpm $($pnpmSpec.version), exit code $LASTEXITCODE" }
   }
-  if ([string]::IsNullOrWhiteSpace($pnpmCmd)) {
-    $pnpmCmd = Get-ChildItem -LiteralPath $pnpmRoot -Filter 'pnpm.cmd' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
-  }
+  $pnpmCmd = Find-PnpmExecutable $pnpmRoot
   if ([string]::IsNullOrWhiteSpace($pnpmCmd)) { throw "pnpm $($pnpmSpec.version) was installed but pnpm.cmd was not materialized" }
   $env:Path = "$(Split-Path -Parent $pnpmCmd);$pnpmRoot;$pnpmRoot\node_modules\.bin;$env:Path"
   $pnpmVersion = (& $pnpmCmd --version 2>$null).Trim()

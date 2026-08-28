@@ -17,6 +17,14 @@ materialization. A second invocation rechecks cached archives and skips
 extraction when the pinned executable is already present. A partial download
 stays in a `.download` path until verification succeeds.
 
+Before any cache work, the Windows helper validates the manifest schema, exact
+platform entry ids and order, canonical HTTPS host, format, version, and
+exactly one SHA-256 or SHA-512 digest per entry. The Linux companion performs
+the same structural and host checks for its supported entries. The pnpm
+materializer resolves a concrete executable after extraction and fails closed
+when the cache contains no usable command, rather than passing a null path to
+the next phase.
+
 The Windows helper writes an ignored `dependency-resolution.json` record under
 `.yum-tong/build/`. It contains the manifest digest, exact executable paths, and
 the safe compiler environment values. `scripts/build.ps1` reads that record and
@@ -28,6 +36,8 @@ path for the build process.
 The root `build.bat` calls the Windows helper before `scripts/build.ps1`. The
 installer entry point calls the same build path, so a person does not need to
 know an internal bootstrap command or invent a candidate number.
+The installer then reads the resolution record and invokes that exact resolved
+pnpm path for packaging. It never falls back to a machine `PATH` command.
 
 ## Configuration
 
@@ -68,6 +78,9 @@ launch time, file timestamps, or a hand-entered time.
   No host-clock value is written as a substitute.
 - `/s`, `--silent`, and `SILENT=1` never open a prompt. A real bootstrap error
   returns nonzero so CI or another caller can stop safely.
+- A response or installer download that exceeds its declared byte bound is
+  cancelled while streaming. Redirects are refused, and the final response
+  URL is checked against the same production host allowlist.
 
 ## Security considerations
 
@@ -97,7 +110,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/test-build-entry
 
 The check first passes the intact entry points, removes the dependency call
 from a temporary fixture, observes a failure, restores the exact bytes, and
-observes a pass. The build and installer commands themselves are intentionally
+observes a pass. `scripts/test-updater-contract.ps1` similarly exercises exact
+red-then-green source boundaries for cancellation, timeout, redirect refusal,
+streaming limits, progress, and release-note links. The build and installer commands themselves are intentionally
 not run by this local lane because the repository's local rules reserve the
 heavy toolchain build for continuous integration.
 

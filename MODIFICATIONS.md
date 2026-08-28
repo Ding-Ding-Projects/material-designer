@@ -62,8 +62,11 @@ restart safety and unsigned-package rules.
 - `apps/web/src/components/UpdaterPopup.tsx`
 - `apps/web/src/lib/updater.ts`
 - `packages/download/src/managed-download.ts`
+- `packages/download/src/errors.ts`
 - `packages/download/src/run.ts`
+- `packages/download/src/target.ts`
 - `packages/download/src/transfer.ts`
+- `packages/download/src/types.ts`
 - `packages/host/src/actions.ts`
 - `packages/host/src/index.ts`
 - `packages/host/src/protocol.ts`

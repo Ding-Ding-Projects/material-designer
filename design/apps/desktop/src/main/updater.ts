@@ -412,6 +412,15 @@ export function createDesktopUpdater(
 ): DesktopUpdater {
   const config = resolveDesktopUpdaterConfig(configInput);
   const fetchImpl = deps.fetch ?? globalThis.fetch;
+  const validatedDownloadFetch: typeof globalThis.fetch = async (input, init) => {
+    const requested = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const response = await fetchImpl(input, { ...init, redirect: "error" });
+    const finalUrl = response.url || requested;
+    if (!isAllowedUpdateUrl(finalUrl, deps.fetch != null)) {
+      throw new Error("update download final URL host is not allowlisted");
+    }
+    return response;
+  };
   const logger = deps.logger ?? console;
   const now = deps.now ?? (() => new Date());
   const openPath = deps.openPath ?? (async () => "openPath is not available");
@@ -911,9 +920,16 @@ export function createDesktopUpdater(
     setState(activeRelease == null ? DESKTOP_UPDATE_STATES.DOWNLOADING : DESKTOP_UPDATE_STATES.DOWNLOADED);
     let tmpPath: string | null = null;
     let stagingDir: string | null = null;
+    let promotedReleaseDir: string | null = null;
+    const throwIfAborted = () => {
+      if (abortController.signal.aborted) {
+        throw new ManagedDownloadError(MANAGED_DOWNLOAD_ERROR_CODES.ABORTED, "update download was cancelled");
+      }
+    };
     const failDownload = async (nextError: DesktopUpdateErrorSnapshot): Promise<DesktopUpdateStatusSnapshot> => {
       if (downloadAbortController === abortController) downloadAbortController = null;
       if (stagingDir != null) await rm(stagingDir, { force: true, recursive: true }).catch(() => undefined);
+      if (promotedReleaseDir != null) await rm(promotedReleaseDir, { force: true, recursive: true }).catch(() => undefined);
       incomingRelease = null;
       progress = undefined;
       await writeStoreMetadata(opened.root, {
@@ -923,6 +939,7 @@ export function createDesktopUpdater(
       return setFailurePreservingActive(nextError);
     };
     try {
+      throwIfAborted();
       const stagingRoot = await ensureOwnedSubdir(opened.root.realRoot, STAGING_DIR);
       const downloadsRoot = await ensureOwnedSubdir(opened.root.realRoot, DOWNLOADS_DIR);
       const releasesRoot = await ensureOwnedSubdir(opened.root.realRoot, RELEASES_DIR);
@@ -931,6 +948,7 @@ export function createDesktopUpdater(
         return await failDownload(createError("download-path-escaped", "resolved update staging path escaped update root"));
       }
       await mkdir(stagingDir, { recursive: true });
+      throwIfAborted();
       tmpPath = join(stagingDir, outputName);
       if (!containsPath(opened.root.realRoot, tmpPath)) {
         return await failDownload(createError("download-path-escaped", "resolved update download path escaped update root"));
@@ -939,13 +957,14 @@ export function createDesktopUpdater(
         allowCustomTransport: deps.fetch != null,
         signal: abortController.signal,
       });
+      throwIfAborted();
       if (!isAllowedUpdateUrl(nextCandidate.artifact.url, deps.fetch != null)) {
         return await failDownload(createError("artifact-url-not-allowlisted", "update artifact URL host is not allowlisted"));
       }
       await downloadCopyAndClear({
         basePath: downloadsRoot,
         bucket: "package-launcher",
-        fetch: fetchImpl,
+        fetch: validatedDownloadFetch,
         fileName: outputName,
         maxAttempts: ARTIFACT_DOWNLOAD_MAX_ATTEMPTS,
         onProgress: (nextProgress) => {
@@ -956,10 +975,13 @@ export function createDesktopUpdater(
         signal: abortController.signal,
         payload: {
           checksum: managedChecksum(resolvedChecksum),
+          maxBytes: Math.min(nextCandidate.artifact.size ?? 2 * 1024 * 1024 * 1024, 2 * 1024 * 1024 * 1024),
           url: nextCandidate.artifact.url,
         },
       });
+      throwIfAborted();
       const digest = await hashFile(tmpPath, resolvedChecksum.algorithm);
+      throwIfAborted();
       if (resolvedChecksum.value == null || digest.toLowerCase() !== resolvedChecksum.value.toLowerCase()) {
         return await failDownload(
           createError("checksum-mismatch", "downloaded update checksum did not match release metadata", {
@@ -973,10 +995,14 @@ export function createDesktopUpdater(
       if (!containsPath(opened.root.realRoot, releaseDir)) {
         return await failDownload(createError("download-path-escaped", "resolved release path escaped update root"));
       }
+      throwIfAborted();
       await writeJson(join(stagingDir, "metadata.json"), nextCandidate.metadata);
       await writeJson(join(stagingDir, "checksum.json"), resolvedChecksum);
+      throwIfAborted();
       try {
         await rename(stagingDir, releaseDir);
+        promotedReleaseDir = releaseDir;
+        stagingDir = null;
       } catch (renameError) {
         return await failDownload(createError("release-promote-failed", renameError instanceof Error ? renameError.message : String(renameError)));
       }
@@ -1000,9 +1026,15 @@ export function createDesktopUpdater(
       });
       const downloadedRelease = { path: join(opened.root.realRoot, releaseRef.artifactPath), ref: releaseRef };
       const previousActiveRelease = activeRelease;
+      throwIfAborted();
       const prepareError = await preparePayloadReleaseForReady(downloadedRelease);
+      throwIfAborted();
       if (prepareError != null) {
         downloadAbortController = null;
+        if (promotedReleaseDir != null) {
+          await rm(promotedReleaseDir, { force: true, recursive: true }).catch(() => undefined);
+          promotedReleaseDir = null;
+        }
         incomingRelease = null;
         progress = undefined;
         await writeStoreMetadata(opened.root, {
@@ -1018,6 +1050,7 @@ export function createDesktopUpdater(
         }
         return prepareError;
       }
+      throwIfAborted();
       logUpdateEvent("payload-ready", {
         key,
         version: nextCandidate.version,
@@ -1035,6 +1068,7 @@ export function createDesktopUpdater(
         lastCheckedAt,
         version: STORE_METADATA_VERSION,
       });
+      promotedReleaseDir = null;
       const readyLifecycle = await runUpdateReleaseLifecycle({
         config,
         layout: opened.root.layout,
@@ -1066,6 +1100,7 @@ export function createDesktopUpdater(
     } catch (downloadError) {
       downloadAbortController = null;
       if (stagingDir != null) await rm(stagingDir, { force: true, recursive: true }).catch(() => undefined);
+      if (promotedReleaseDir != null) await rm(promotedReleaseDir, { force: true, recursive: true }).catch(() => undefined);
       incomingRelease = null;
       progress = undefined;
       await writeMetadataPatch((current) => ({ ...current, incoming: undefined }));

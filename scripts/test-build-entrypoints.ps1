@@ -35,6 +35,8 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($installer -match 'goto usage' -and $installer -match 'not defined CANDIDATE') { $failures.Add('build-installer.bat still requires a caller-supplied candidate') }
   if ($installerSource -match '\[Parameter\(Mandatory\s*=\s*\$true\)\]') { $failures.Add('build-installer.ps1 still requires a candidate') }
   if ($installerSource -notmatch 'function Resolve-Candidate') { $failures.Add('build-installer.ps1 has no automatic candidate resolver') }
+  if ($installerSource -notmatch '\$pnpmPath = \[string\]\$resolution\.tools\.pnpm\.executable') { $failures.Add('build-installer.ps1 does not bind the manifest-resolved pnpm executable') }
+  if ($installerSource -notmatch '& \$pnpmPath .*tools-pack win build') { $failures.Add('build-installer.ps1 does not invoke the resolved pnpm executable') }
   if ($buildSource -notmatch 'dependency-resolution\.json') { $failures.Add('build.ps1 does not consume the helper resolution record') }
   if ($buildSource -notmatch '\$nodePath = \[string\]\$resolution\.tools\.node\.executable') { $failures.Add('build.ps1 does not use the manifest-resolved Node executable') }
   if ($buildSource -notmatch 'resolved Node version') { $failures.Add('build.ps1 does not validate the exact resolved Node version') }
@@ -44,6 +46,11 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($installerSource -notmatch "status = 'unavailable'") { $failures.Add('build-installer.ps1 has no honest unavailable provenance state') }
   if ($fetchSource -notmatch 'Download-Verified') { $failures.Add('dependency bootstrap has no digest-verifying download path') }
   if ($fetchSource -notmatch 'Ensure-InteractiveElevation') { $failures.Add('dependency bootstrap has no interactive pre-elevation path') }
+  if ($fetchSource -notmatch 'if \(-not \$interactive\) \{ return \}') { $failures.Add('dependency bootstrap does not preserve silent user-scoped execution') }
+  if ($fetchSource -notmatch '(?m)^Ensure-InteractiveElevation\s*\r?\nAssert-DependencyManifest\s*$') { $failures.Add('dependency bootstrap does not pre-elevate before manifest work') }
+  if ($fetchSource -notmatch 'Assert-DependencyManifest') { $failures.Add('dependency bootstrap does not validate the strict manifest schema') }
+  if ($fetchSource -notmatch 'Assert-ManifestUrl') { $failures.Add('dependency bootstrap does not validate canonical manifest hosts and digests') }
+  if ($fetchSource -notmatch 'Find-PnpmExecutable') { $failures.Add('dependency bootstrap does not use a null-safe pnpm resolver') }
   if ($fetchSource -notmatch 'Microsoft.VisualStudio.2022.BuildTools') { $failures.Add('dependency bootstrap has no canonical MSVC workload route') }
   if ($fetchSource -notmatch 'return Import-CompilerEnvironment \$vcvars') { $failures.Add('dependency bootstrap does not import the compiler environment') }
   if ($fetchSource -notmatch 'vcvars64\.bat') { $failures.Add('dependency bootstrap does not resolve the x64 compiler environment') }
@@ -52,12 +59,16 @@ function Test-BuildContract([string]$ContractRoot) {
   if ($fetchShell -notmatch 'manifest_value\(\)') { $failures.Add('Linux dependency bootstrap does not read the pinned manifest') }
   if ($fetchShell -notmatch 'flock -w 120 9') { $failures.Add('Linux dependency bootstrap does not serialize its cache') }
   if ($fetchShell -notmatch 'mktemp .*download\.XXXXXX') { $failures.Add('Linux dependency bootstrap does not use unique download temps') }
+  if ($fetchShell -notmatch 'manifest_validate') { $failures.Add('Linux dependency bootstrap does not validate the strict manifest') }
   if ($installerSource -notmatch 'signatureStatus') { $failures.Add('build-installer.ps1 does not retain the unsigned signature verdict') }
   if ($installerSource -notmatch 'provenanceStatus = \$provenance\.status') { $failures.Add('build-installer.ps1 does not bind the installer manifest to provenance state') }
   if ($installerSource -notmatch '\$sourceRecord = Join-Path \$runRoot ''pack-source\.json''') { $failures.Add('build-installer.ps1 does not bind reusable pack output to a source commit') }
   if ($installerSource -notmatch 'Assert-SquirrelPackageSet \$squirrelRoot') { $failures.Add('build-installer.ps1 does not validate the complete Squirrel package set') }
   if ($installerSource -notmatch 'RELEASES') { $failures.Add('build-installer.ps1 does not validate the Squirrel RELEASES relationship') }
   if ($installerSource -notmatch 'nuspec') { $failures.Add('build-installer.ps1 does not validate package identity metadata') }
+  if ($manifest.schemaVersion -ne 1) { $failures.Add('dependency manifest schemaVersion is not exactly 1') }
+  if ((@($manifest.platforms.'windows-x64').id -join ',') -ne 'git,node,pnpm,python') { $failures.Add('windows-x64 manifest ids are incomplete or reordered') }
+  if ((@($manifest.platforms.'linux-x64').id -join ',') -ne 'node,pnpm') { $failures.Add('linux-x64 manifest ids are incomplete or reordered') }
   foreach ($spec in @($manifest.platforms.'windows-x64')) {
     if ([string]::IsNullOrWhiteSpace($spec.version) -or [string]::IsNullOrWhiteSpace($spec.url)) { $failures.Add("manifest entry $($spec.id) lacks an exact version or canonical URL") }
     if ([string]::IsNullOrWhiteSpace($spec.sha256) -and [string]::IsNullOrWhiteSpace($spec.sha512Base64)) { $failures.Add("manifest entry $($spec.id) lacks a digest") }
@@ -100,8 +111,10 @@ try {
     @{ File = 'scripts/build-installer.ps1'; Needle = 'provenanceStatus = $provenance.status'; Replacement = 'provenanceStatus = $null'; Name = 'provenance binding' },
     @{ File = 'scripts/build-installer.ps1'; Needle = '$sourceRecord = Join-Path $runRoot ''pack-source.json'''; Replacement = '$sourceRecord = Join-Path $runRoot ''pack-source-missing.json'''; Name = 'stale pack source binding' },
     @{ File = 'scripts/build-installer.ps1'; Needle = 'Assert-SquirrelPackageSet $squirrelRoot'; Replacement = 'Assert-SquirrelPackageSet_REMOVED $squirrelRoot'; Name = 'Squirrel package relationship validation' }
+    ,@{ File = 'scripts/build-installer.ps1'; Needle = '$pnpmPath = [string]$resolution.tools.pnpm.executable'; Replacement = '$resolvedPackageTool = [string]$resolution.tools.pnpm.executable'; Name = 'installer exact pnpm binding' }
     ,@{ File = 'download-dependencies.sh'; Needle = 'manifest_value()'; Replacement = 'manifest_value_REMOVED()'; Name = 'Linux manifest binding' },
-    @{ File = 'download-dependencies.sh'; Needle = 'flock -w 120 9'; Replacement = 'flock_REMOVED -w 120 9'; Name = 'Linux cache lock' }
+    @{ File = 'download-dependencies.sh'; Needle = 'flock -w 120 9'; Replacement = 'flock_REMOVED -w 120 9'; Name = 'Linux cache lock' },
+    @{ File = 'dependencies.manifest.json'; Needle = '"schemaVersion": 1'; Replacement = '"schemaVersion": 2'; Name = 'strict manifest schema' }
   )
   foreach ($mutation in $mutations) {
     $mutationPath = Join-Path $fixtureRoot $mutation.File

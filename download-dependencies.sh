@@ -31,6 +31,21 @@ manifest_value() {
     }
   ' "$manifest_path"
 }
+manifest_validate() {
+  [[ "$(awk '/"schemaVersion": 1/{count++} END{print count+0}' "$manifest_path")" == 1 ]] || die 'dependency manifest schemaVersion must be exactly 1'
+  [[ "$(grep -c '"id":' "$manifest_path")" == 6 ]] || die 'dependency manifest must contain exactly six platform entries'
+  [[ "$(manifest_value git format)" == zip && "$(manifest_value node format)" == zip && "$(manifest_value pnpm format)" == npm-tarball && "$(manifest_value python format)" == zip ]] || die 'dependency manifest formats are invalid'
+  grep -q '"format": "tar.xz"' "$manifest_path" || die 'Linux Node format is missing from the dependency manifest'
+  [[ "$(manifest_value node url)" == https://nodejs.org/* ]] || die 'Node source is not the canonical HTTPS host'
+  [[ "$(manifest_value pnpm url)" == https://registry.npmjs.org/* ]] || die 'pnpm source is not the canonical HTTPS host'
+  [[ "$(manifest_value git url)" == https://github.com/git-for-windows/* ]] || die 'Git source is not the canonical HTTPS host'
+  [[ "$(manifest_value python url)" == https://www.python.org/* ]] || die 'Python source is not the canonical HTTPS host'
+  [[ "$(manifest_value git sha256)" =~ ^[0-9a-fA-F]{64}$ ]] || die 'Git SHA-256 is invalid'
+  [[ "$(manifest_value node sha256)" =~ ^[0-9a-fA-F]{64}$ ]] || die 'Node SHA-256 is invalid'
+  [[ "$(manifest_value python sha256)" =~ ^[0-9a-fA-F]{64}$ ]] || die 'Python SHA-256 is invalid'
+  [[ "$(manifest_value pnpm sha512Base64)" =~ ^[A-Za-z0-9+/]+=*$ ]] || die 'pnpm SHA-512 integrity is invalid'
+  [[ "$(manifest_value git version)" == 2.55.0.windows.5 && "$(manifest_value node version)" == 24.20.0 && "$(manifest_value pnpm version)" == 10.33.2 && "$(manifest_value python version)" == 3.12.10 ]] || die 'dependency manifest versions are not the supported exact pins'
+}
 sha256_file() { sha256sum "$1" | awk '{print $1}'; }
 sha512_b64() { openssl dgst -sha512 -binary "$1" | base64 | tr -d '\n'; }
 download_verified() {
@@ -47,6 +62,7 @@ download_verified() {
 }
 
 [[ -f "$manifest_path" ]] || die "dependency manifest is missing: $manifest_path"
+manifest_validate
 exec 9>"$tool_root/.download-dependencies.lock"
 flock -w 120 9 || die "timed out waiting for dependency bootstrap lock"
 

@@ -44,10 +44,14 @@ available when the feed did not provide one.
 Feed metadata and checksum text are fetched over a bounded request with a
 response-size limit. Production updater URLs must use HTTPS and an allowlisted
 release host, while loopback HTTP is reserved for bounded development fixtures.
-URLs with embedded credentials are rejected. The staged installer download has
-an abort controller that reaches the streaming response and file pipeline, so
+URLs with embedded credentials and redirects are rejected, and the final
+response URL is checked against the same allowlist. The staged installer
+download has an abort controller that reaches the streaming response and file
+pipeline, plus a hard byte bound that is enforced for every streamed chunk, so
 Cancel download stops the actual transfer and reports a cancelled state rather
-than merely hiding the progress surface.
+than merely hiding the progress surface. Promotion and payload preparation
+check cancellation again and remove a promoted release on cancellation or
+preparation failure, preserving the prior active release.
 
 When an older installer is already ready and a newer release is downloading,
 the update model preserves the ready restart action and exposes the newer
@@ -79,6 +83,9 @@ or `SILENT=1` suppresses that prompt. `build-installer.bat` computes a safe
 candidate ordinal when the caller does not supply one, invokes the same build
 path, validates the unsigned Squirrel outputs, and writes a SHA-256 sidecar.
 Neither script publishes a release.
+The hosted release workflow exercises `build.bat /s` and the packaging step
+uses the exact pnpm executable recorded by that root build, so the release path
+does not silently switch to a machine-installed command.
 
 Local build output does not invent provenance from the host clock. Without an
 external record, its manifest explicitly says provenance is unavailable. A

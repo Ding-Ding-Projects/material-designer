@@ -81,6 +81,8 @@ if (-not (Test-Path -LiteralPath $resolutionPath -PathType Leaf)) { throw 'depen
 $resolution = Get-Content -Raw -LiteralPath $resolutionPath | ConvertFrom-Json
 $gitPath = [string]$resolution.tools.git.executable
 if ([string]::IsNullOrWhiteSpace($gitPath) -or -not (Test-Path -LiteralPath $gitPath -PathType Leaf)) { throw 'dependency resolution record has no usable Git executable' }
+$pnpmPath = [string]$resolution.tools.pnpm.executable
+if ([string]::IsNullOrWhiteSpace($pnpmPath) -or -not (Test-Path -LiteralPath $pnpmPath -PathType Leaf)) { throw 'dependency resolution record has no usable pnpm executable' }
 $sha = (& $gitPath -C $repo rev-parse HEAD 2>$null).Trim()
 if ($sha -notmatch '^[0-9a-fA-F]{40}$') { throw 'could not resolve the exact source commit for installer provenance' }
 $packDir = Join-Path $runRoot 'pack'
@@ -107,7 +109,7 @@ if (-not ($ReusePackResult -and (Test-Path -LiteralPath $jsonPath))) {
     # without turning a healthy pack into a false failure; the exit code remains
     # the deciding result.
     $ErrorActionPreference = 'Continue'
-    $output = & pnpm.cmd --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --app-version $appVersion --to squirrel --json 2>&1
+    $output = & $pnpmPath --dir $design exec tools-pack win build --dir $packDir --cache-dir $cacheDir --namespace release-stable-win --app-version $appVersion --to squirrel --json 2>&1
     $exitCode = $LASTEXITCODE
   } finally {
     $ErrorActionPreference = $previousErrorAction

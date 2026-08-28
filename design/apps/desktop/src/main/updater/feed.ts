@@ -458,7 +458,9 @@ async function fetchTextBounded(
   signal?.addEventListener("abort", onAbort, { once: true });
   const timeout = setTimeout(() => controller.abort(), UPDATE_REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetchImpl(url, { signal: controller.signal });
+    const response = await fetchImpl(url, { redirect: "error", signal: controller.signal });
+    const finalUrl = response.url || url;
+    if (!isAllowedUpdateUrl(finalUrl, allowCustomTransport)) throw new Error(`${label} final URL host is not allowlisted`);
     if (!response.ok) throw new Error(`${label} request returned HTTP ${response.status}`);
     const declaredBytes = response.headers.get("content-length");
     if (declaredBytes != null && Number.isFinite(Number(declaredBytes)) && Number(declaredBytes) > maxBytes) {
