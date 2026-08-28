@@ -1102,12 +1102,18 @@ export async function fetchPromptTemplate(
   }
 }
 
+export const DAEMON_HEALTH_REQUEST_TIMEOUT_MS = 5_000;
+
 export async function daemonIsLive(): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DAEMON_HEALTH_REQUEST_TIMEOUT_MS);
   try {
-    const resp = await fetch('/api/health');
+    const resp = await fetch('/api/health', { signal: controller.signal });
     return resp.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

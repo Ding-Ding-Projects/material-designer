@@ -54,6 +54,8 @@ version section when a release carries them.
   release and manual installer paths accept externally supplied timestamps only
   after strict calendar validation, and otherwise preserve an unavailable
   state. Missing or malformed data remains unavailable. The initial onboarding identity also
+  has bounded `/api/version` and `/api/health` lookups, so a hung boot dependency
+  settles to unavailable instead of leaving navigation inert forever.
   uses Material Designer copy instead of upstream identity strings. This entry
   describes the unmerged source lane; the parent integration must replace this
   note with the exact integration commit link before publication.
@@ -64,6 +66,8 @@ version section when a release carries them.
   將 tag 解返真正 commit，對準部署 commit 之後先注入對應資料。Release 同手動
   installer path 只接受外部提供、通過嚴格日期驗證嘅 timestamp，否則照樣留低
   unavailable；資料欠缺或者格式唔啱就照實顯示 unavailable。
+  `/api/version` 同 `/api/health` 都有 deadline，boot dependency 吊住唔覆時會照樣
+  落 unavailable，唔會令 navigation 永遠卡住。
   初始 onboarding identity 亦改用 Material Designer 文案，唔再將 upstream identity
   當成產品身份。呢段係未合併 source lane 嘅記錄，正式 publication 前要由 parent
   integration 補返 exact commit link。

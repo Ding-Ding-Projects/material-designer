@@ -12,6 +12,12 @@ export interface AppVersionInfo {
   provenance?: AppVersionProvenance | null;
 }
 
+const APP_VERSION_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
+
+export function isValidAppVersion(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 128 && APP_VERSION_RE.test(value);
+}
+
 export interface AppVersionProvenance {
   schemaVersion: 1;
   /** The package version this provenance record describes. */

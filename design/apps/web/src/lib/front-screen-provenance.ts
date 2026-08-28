@@ -1,4 +1,4 @@
-import type { AppVersionInfo, AppVersionProvenance } from '@open-design/contracts';
+import { isValidAppVersion, type AppVersionInfo, type AppVersionProvenance } from '@open-design/contracts';
 
 const APP_VERSION_PLACEHOLDER = '0.0.0';
 const SOURCE_COMMIT_RE = /^[0-9a-f]{40}$/i;
@@ -43,7 +43,7 @@ export interface ResolvedFrontScreenProvenance {
 export function resolveFrontScreenProvenance(
   info: AppVersionInfo | null | undefined,
 ): ResolvedFrontScreenProvenance {
-  const version = typeof info?.version === 'string' && info.version.trim().length > 0
+  const version = isValidAppVersion(info?.version) && info.version.trim().length > 0
     && info.version.trim() !== APP_VERSION_PLACEHOLDER
     ? info.version.trim()
     : null;

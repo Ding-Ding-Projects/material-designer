@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, parse as parsePath } from 'node:path';
 import { releaseChannelFromVersion } from '@open-design/release';
+import { isValidAppVersion } from '@open-design/contracts';
 
 export const APP_VERSION_FALLBACK = '0.0.0';
 
@@ -81,6 +82,11 @@ async function findNearestPackageJsonUrl(startUrl: URL): Promise<URL | null> {
 
 function cleanString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function resolveVersion(value: unknown): string | null {
+  const candidate = cleanString(value);
+  return candidate != null && isValidAppVersion(candidate) ? candidate : null;
 }
 
 const SOURCE_COMMIT_RE = /^[0-9a-f]{40}$/i;
@@ -174,8 +180,8 @@ export function resolveAppVersionInfo({
   arch = process.arch,
 }: ResolveAppVersionInfoOptions = {}): AppVersionInfo {
   const packaged = isPackagedRuntime({ resourcesPath, execPath, platform });
-  const version = cleanString(env.OD_APP_VERSION)
-    ?? cleanString(packageMetadata?.version)
+  const version = resolveVersion(env.OD_APP_VERSION)
+    ?? resolveVersion(packageMetadata?.version)
     ?? APP_VERSION_FALLBACK;
   const inferredChannel = inferReleaseChannelFromVersion(version);
   const channel = cleanString(env.OD_RELEASE_CHANNEL)

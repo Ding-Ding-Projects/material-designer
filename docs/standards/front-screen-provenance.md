@@ -33,7 +33,11 @@ Focused source checks cover:
 
 - bound version and provenance acceptance;
 - `/api/version` unavailable and verified response cases;
+- `/api/health` and `/api/version` bounded deadlines, so a hung boot dependency
+  settles to unavailable instead of leaving the shell inert forever;
 - placeholder, version mismatch, malformed commit, and malformed timestamp refusal;
+- the shared bounded semantic-version validator rejecting malformed and
+  overlong package versions;
 - bounded version-request cancellation that settles a hung lookup to unavailable;
 - local formatting with seconds;
 - packaged sidecar forwarding of both provenance values;

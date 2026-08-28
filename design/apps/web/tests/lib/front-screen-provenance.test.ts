@@ -48,6 +48,7 @@ describe('front-screen version provenance', () => {
     expect(resolveFrontScreenProvenance({ ...base, provenance: { ...base.provenance, updatedAt: '2026-08-27' } }).provenance).toBeNull();
     expect(resolveFrontScreenProvenance({ ...base, provenance: { ...base.provenance, updatedAt: '2026-02-31T12:34:56Z' } }).provenance).toBeNull();
     expect(resolveFrontScreenProvenance({ ...base, provenance: { ...base.provenance, updatedAt: '2026-04-31T12:34:56Z' } }).provenance).toBeNull();
+    expect(resolveFrontScreenProvenance({ ...base, version: '1.2' }).version).toBeNull();
     expect(resolveFrontScreenProvenance({ ...base, version: '0.0.0' }).version).toBeNull();
     expect(resolveFrontScreenProvenance(null)).toEqual({ version: null, provenance: null });
   });

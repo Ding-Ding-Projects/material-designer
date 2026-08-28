@@ -82,6 +82,12 @@ jobs:
             date -u -d "$value" '+%s' >/dev/null 2>&1
           }
 
+          valid_semver() {
+            local value="$1"
+            [ -n "$value" ] && [ "${#value}" -le 128 ] || return 1
+            [[ "$value" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]
+          }
+
           releases=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" 2>/dev/null | jq -s 'add') || {
             echo "::warning::could not read a published release; keeping the checked-in page facts"
             exit 0
@@ -104,6 +110,10 @@ jobs:
 
           version=$(printf '%s' "$installer" | sed -n 's/.*-\([0-9][0-9.]*\)-win-x64-setup\.exe/\1/p')
           [ -z "$version" ] && version="unknown"
+          valid_semver "$version" || {
+            echo "::warning::the published installer filename has no valid semantic version; keeping the checked-in page facts"
+            exit 0
+          }
 
           sha_dir="${RUNNER_TEMP//\\//}/pages-sha-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           rm -rf "$sha_dir"
@@ -123,9 +133,55 @@ jobs:
           url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${tag}/${installer}"
 
           set_field() {
-            local key=$1 value=$2
+            local key=$1 value=$2 expected=${3:-1} marker count updated
+            local raw_value=$value
+            marker="data-release=\"$key\""
+            count=$(grep -oF "$marker" "$f" | wc -l | tr -d ' ')
+            if [ "$count" -ne "$expected" ]; then
+              echo "::error::expected $expected visible release fields for $key, found $count"
+              return 1
+            fi
             value=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
             sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$value|g" "$f"
+            updated=$(grep -oF "$marker" "$f" | grep -oF ">$raw_value" | wc -l | tr -d ' ')
+            if [ "$updated" -ne "$expected" ]; then
+              echo "::error::release field substitution for $key changed $updated visible values, expected $expected"
+              return 1
+            fi
+          }
+
+          set_release_href() {
+            local kind=$1 url=$2 expected=$3 marker escaped count updated
+            marker="data-release-href=\"$kind\""
+            count=$(grep -oF "$marker" "$f" | wc -l | tr -d ' ')
+            if [ "$count" -ne "$expected" ]; then
+              echo "::error::expected $expected pending release links for $kind, found $count"
+              return 1
+            fi
+            escaped=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
+            sed -i "/$marker/s|href=\"#\"|href=\"$escaped\"|" "$f"
+            updated=$(grep -oF "$marker" "$f" | grep -oF "href=\"$url\"" | wc -l | tr -d ' ')
+            if [ "$updated" -ne "$expected" ]; then
+              echo "::error::release link substitution for $kind changed $updated links, expected $expected"
+              return 1
+            fi
+          }
+
+          set_front_value() {
+            local source=$1 replacement=$2 expected=${3:-1} escaped_source escaped_replacement count updated
+            count=$(grep -oF "$source" "$f" | wc -l | tr -d ' ')
+            if [ "$count" -ne "$expected" ]; then
+              echo "::error::expected $expected front-screen substitutions for $source, found $count"
+              return 1
+            fi
+            escaped_source=$(printf '%s' "$source" | sed 's/[&|\\]/\\&/g')
+            escaped_replacement=$(printf '%s' "$replacement" | sed 's/[&|\\]/\\&/g')
+            sed -i "s|$escaped_source|$escaped_replacement|g" "$f"
+            updated=$(grep -oF "$replacement" "$f" | wc -l | tr -d ' ')
+            if [ "$updated" -ne "$expected" ]; then
+              echo "::error::front-screen substitution for $source did not produce $expected visible values"
+              return 1
+            fi
           }
 
           set_field tag       "$tag"
@@ -133,13 +189,11 @@ jobs:
           set_field commit    "$commit"
           set_field installer "$installer"
           set_field sha       "$sha"
-          set_field chip      "$chip"
+          set_field chip      "$chip" 2
 
-          cn=$(printf '%s' "$codename" | sed 's/[&|\\]/\\&/g')
-          sed -i "s|\(data-release=\"codename\"[^>]*>\).*\(</td>\)|\1$cn\2|g" "$f"
+          set_field codename "$codename"
 
-          esc_url=$(printf '%s' "$url" | sed 's/[&|\\]/\\&/g')
-          sed -i "s|href=\"https://github.com/[^"]*/releases/download/[^"]*setup\.exe\"|href=\"$esc_url\"|g" "$f"
+          set_release_href installer "$url" 2
 
           # The front-screen identity tuple is injected only when a published
           # release tag resolves to this exact deployment commit. The checked-in
@@ -163,19 +217,22 @@ jobs:
               front_version=$(jq -r '.package.version // empty' "$front_provenance")
               front_commit=$(jq -r '.sourceCommit // empty' "$front_provenance")
               front_updated_at=$(jq -r '.builtAt // empty' "$front_provenance")
-              if printf '%s' "$front_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$' \
+              front_provenance_status=$(jq -r '.provenanceStatus // empty' "$front_provenance")
+              if valid_semver "$front_version" \
                 && printf '%s' "$front_commit" | grep -Eq '^[0-9a-fA-F]{40}$' \
                 && [ "$front_commit" = "$TARGET_COMMIT" ] \
+                && [ "$front_version" = "$version" ] \
+                && [ "$front_provenance_status" = "verified" ] \
                 && valid_iso_timestamp "$front_updated_at"; then
                 safe_front_version=$(printf '%s' "$front_version" | sed 's/[&|\\]/\\&/g')
                 safe_front_commit=$(printf '%s' "$front_commit" | sed 's/[&|\\]/\\&/g')
                 safe_front_updated_at=$(printf '%s' "$front_updated_at" | sed 's/[&|\\]/\\&/g')
-                sed -i "s|data-front-version=\"\"|data-front-version=\"$safe_front_version\"|" "$f"
-                sed -i "s|data-front-updated-at=\"\"|data-front-updated-at=\"$safe_front_updated_at\"|" "$f"
-                sed -i "s|data-front-source-commit=\"\"|data-front-source-commit=\"$safe_front_commit\"|" "$f"
-                sed -i "s|data-front-provenance-value=\"version\">Unavailable|data-front-provenance-value=\"version\">$safe_front_version|" "$f"
-                sed -i "s|data-front-provenance-value=\"updated-at\">Unavailable|data-front-provenance-value=\"updated-at\">$safe_front_updated_at|" "$f"
-                sed -i "s|data-front-provenance-value=\"status\" role=\"status\" aria-live=\"polite\">Unavailable|data-front-provenance-value=\"status\" role=\"status\" aria-live=\"polite\">Provenance verified|" "$f"
+                set_front_value 'data-front-version=""' "data-front-version=\"$safe_front_version\""
+                set_front_value 'data-front-updated-at=""' "data-front-updated-at=\"$safe_front_updated_at\""
+                set_front_value 'data-front-source-commit=""' "data-front-source-commit=\"$safe_front_commit\""
+                set_front_value 'data-front-provenance-value="version">Unavailable' "data-front-provenance-value=\"version\">$safe_front_version"
+                set_front_value 'data-front-provenance-value="updated-at">Unavailable' "data-front-provenance-value=\"updated-at\">$safe_front_updated_at"
+                set_front_value 'data-front-provenance-value="status" role="status" aria-live="polite">Unavailable' 'data-front-provenance-value="status" role="status" aria-live="polite">Provenance verified'
                 echo "Front-screen provenance refreshed from $front_tag for $TARGET_COMMIT"
               else
                 echo "::warning::the matching release provenance was malformed or not bound to $GITHUB_SHA; front-screen identity remains unavailable"
