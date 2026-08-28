@@ -24,7 +24,7 @@
 > and returns the restored fixture to green. The JavaScript release-contract
 > source check was updated for the new boundaries but was not run locally because
 > this lane does not run Node. Hosted Release and Pages evidence at this source
-> state remains pending. Source commit link: **to be filled after this lane commits**.
+> state remains pending. Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc).
 >
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by
