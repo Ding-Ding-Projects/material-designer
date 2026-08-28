@@ -5,6 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
+import { SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, type SettingsTabAppearanceRequest } from '../settings/settings-tab-appearance-consumer';
 import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_REQUEST, ELEMENT_TOY_LOCK_STATE, publishElementToyLockConfigurationRequest, requestElementToyLockActivation, type ElementToyLockRequestDetail, type ElementToyLockStateDetail } from './toyLockAdapter';
 import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceState, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
@@ -289,6 +290,18 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       document.removeEventListener('pointercancel', cancelLongPress, true);
     };
   }, [cancelLongPress, lockedTargetIds, openMenu, resolveEventTarget]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onSettingsAppearanceRequest = (event: Event) => {
+      const detail = (event as CustomEvent<SettingsTabAppearanceRequest>).detail;
+      if (!detail || !detail.anchor || detail.section !== 'appearance') return;
+      const target = resolveEventTarget(detail.anchor);
+      if (target) setEditorTarget(target);
+    };
+    window.addEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, onSettingsAppearanceRequest);
+    return () => window.removeEventListener(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, onSettingsAppearanceRequest);
+  }, [resolveEventTarget]);
 
   const applyInteractionState = useCallback((element: EventTarget | null, state: AppearanceState) => {
     const target = resolveEventTarget(element);

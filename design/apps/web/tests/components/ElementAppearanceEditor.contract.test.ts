@@ -23,6 +23,7 @@ const EDITOR = source('src/components/appearance/ElementAppearanceEditor.tsx');
 const BOUNDARY = source('src/components/appearance/ElementAppearanceBoundary.tsx');
 const APP = source('src/App.tsx');
 const LOCK_ADAPTER = source('src/components/appearance/toyLockAdapter.ts');
+const SETTINGS_CONSUMER = source('src/components/settings/settings-tab-appearance-consumer.ts');
 
 describe('every-element appearance contract', () => {
   it('keeps a hand-written state matrix and capability matrix', () => {
@@ -116,6 +117,15 @@ describe('every-element appearance contract', () => {
     expect(LOCK_ADAPTER).toContain("ELEMENT_TOY_LOCK_ACTIVATION = 'open-design:element-toy-lock-activation'");
     expect(LOCK_ADAPTER).not.toContain('password:');
     expect(LOCK_ADAPTER).not.toContain('totpSecret:');
+  });
+
+  it('keeps the Settings tab appearance consumer contract source-complete', () => {
+    expect(SETTINGS_CONSUMER).toContain("SETTINGS_TAB_APPEARANCE_REQUEST_EVENT = 'od:settings-tab-appearance-request'");
+    expect(SETTINGS_CONSUMER).toContain('section: SettingsSection');
+    expect(SETTINGS_CONSUMER).toContain('anchor: HTMLButtonElement');
+    expect(SETTINGS_CONSUMER).toContain('registerSettingsTabAppearanceConsumer');
+    expect(SETTINGS_CONSUMER).toContain('emitSettingsTabAppearanceRequest');
+    expect(SETTINGS_CONSUMER.split('registerSettingsTabAppearanceConsumer').join('')).not.toContain('registerSettingsTabAppearanceConsumer');
   });
 
   it('keeps every real state activation route and strict identity policy', () => {

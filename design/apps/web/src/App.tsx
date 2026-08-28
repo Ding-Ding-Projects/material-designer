@@ -83,6 +83,7 @@ import {
 } from './components/SettingsDialog';
 import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
 import { requestElementToyLock } from './components/appearance/toyLockAdapter';
+import { registerSettingsTabAppearanceConsumer, SETTINGS_TAB_APPEARANCE_EDITOR_EVENT } from './components/settings/settings-tab-appearance-consumer';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -845,6 +846,9 @@ export function App() {
   // motion: reduce)` block covers the CSS-keyframe surfaces, but the dialogs,
   // toasts and popovers that moved to motion/react need this gate too — without
   // it they keep springing/sliding for users who asked us not to animate.
+  useEffect(() => registerSettingsTabAppearanceConsumer(({ section, anchor }) => {
+    window.dispatchEvent(new CustomEvent(SETTINGS_TAB_APPEARANCE_EDITOR_EVENT, { detail: { section, anchor } }));
+  }), []);
   return (
     <MotionConfig reducedMotion="user">
       <ElementAppearanceBoundary onLockElement={requestElementToyLock}>

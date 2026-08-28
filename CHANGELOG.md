@@ -45,6 +45,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Connect the Settings appearance consumer to the shared editor boundary.**
+  A typed `{ section, anchor }` registry now lets the Settings-tab lane request
+  the existing appearance editor without importing or duplicating its engine.
+  The application root registers that consumer, and the appearance boundary
+  resolves the exact `appearance` anchor before opening the editor. Toy-lock
+  credentials remain owned by the authentication lane. Hosted type-checking,
+  packaged interaction, and screenshot evidence remain pending.
+
+  **廣東話進度：** Settings appearance consumer 而家用 typed `{ section, anchor }`
+  registry 搵返現有 appearance editor，唔使 Settings lane 搬多一份 engine。App
+  root register 個 consumer，appearance boundary 會對準 exact `appearance`
+  anchor 先開 editor。Toy-lock credential 繼續由 authentication lane 保管；
+  hosted type-check、packaged interaction 同 screenshot evidence 仲等緊。
+
 - **Connect appearance mutations to acknowledged local history.** The
   appearance store now sends redacted target metadata through the host history
   mutation seam and marks a change pending or unavailable until the host
