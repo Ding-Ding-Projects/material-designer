@@ -613,7 +613,7 @@ const CATALOGUE = {
   'logo.monochrome': { en: 'Monochrome mark', yue: '單色標誌' },
   'logo.outline': { en: 'Outline mark', yue: '線框標誌' },
   'logo.uploadHelp': { en: 'Static PNG, JPEG or WebP. Maximum 8 MiB, one frame, 4096px per side and 16 megapixels.', yue: '只接受靜態 PNG、JPEG 或 WebP。最多 8 MiB、1 frame、每邊 4096px、總共 16 megapixels。' },
-  'logo.lossBefore': { en: 'Before activation, conversion may omit the source format, metadata, colour profile, and cropped pixels. The original file stays unchanged.', yue: '套用之前請留意：轉換可能唔保留來源格式、metadata、colour profile 同裁走嘅 pixels。原檔案保持不變。' },
+  'logo.lossBefore': { en: 'Before activation, conversion may omit the source format, metadata, colour profile, cropped pixels, or transparency when an opaque background is chosen. The original file stays unchanged.', yue: '套用之前請留意：轉換可能唔保留來源格式、metadata、colour profile、裁走嘅 pixels，或者揀不透明背景時唔保留透明度。原檔案保持不變。' },
   'logo.fit': { en: 'Fit mode', yue: '適合模式' },
   'logo.contain': { en: 'Contain', yue: '完整顯示' },
   'logo.cover': { en: 'Cover', yue: '填滿裁切' },

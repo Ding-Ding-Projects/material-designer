@@ -13,6 +13,7 @@ const configState = readFileSync(resolve(sourceRoot, 'state/config.ts'), 'utf8')
 const palette = readFileSync(resolve(sourceRoot, 'components/command-palette/CommandPalette.tsx'), 'utf8');
 const settingsIndex = readFileSync(resolve(sourceRoot, 'components/command-palette/settingsIndex.ts'), 'utf8');
 const colorPicker = readFileSync(resolve(sourceRoot, 'components/appearance/InfiniteColorPicker.tsx'), 'utf8');
+const daemonConfig = readFileSync(resolve(__dirname, '../../../daemon/src/app-config.ts'), 'utf8');
 
 describe('app-logo surface inventory', () => {
   it('keeps the hand-written feature surface and safe local routes present', () => {
@@ -79,5 +80,7 @@ describe('app-logo surface inventory', () => {
     expect(palette).toContain("case 'appearance.logo'");
     expect(settingsIndex).toContain("control: 'appearance.logo'");
     expect(colorPicker).toContain("appearance.color.editValue");
+    expect(daemonConfig).toContain('decodePngDataUrl');
+    expect(daemonConfig).toContain('PNG_CRC_TABLE');
   });
 });

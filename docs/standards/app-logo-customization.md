@@ -36,7 +36,9 @@ by packaging, updates, storage, or diagnostics.
   credentials remain excluded.
 - Versioned appearance JSON export/import with unknown-schema refusal and a
   bounded local schedule editor that applies temporary presets in the local
-  timezone without rewriting the base selection. Rules have labels, enabled
+  timezone without rewriting the base selection. Rules store local wall-clock
+  values together with their IANA timezone, so daylight-saving transitions do
+  not reinterpret a saved clock time through the host timezone. Rules have labels, enabled
   state, start/end, weekdays, timezone, edit and delete actions, and capture
   every exposed logo value. Every persisted custom state
   must include all five target variants; malformed or incomplete cached variants

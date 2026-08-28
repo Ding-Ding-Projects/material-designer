@@ -582,9 +582,11 @@ export function resolveScheduledLogoState(state: LogoState, now: Date = new Date
   let resolved = state;
   for (const rule of state.schedules) {
     if (!rule.enabled) continue;
-    const start = Date.parse(rule.startAt);
-    const end = Date.parse(rule.endAt);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || timestamp < start || timestamp >= end || !rule.weekdays.includes(now.getDay())) continue;
+    const startKey = scheduleWallKey(rule.startAt, rule.timezone);
+    const endKey = scheduleWallKey(rule.endAt, rule.timezone);
+    const currentKey = scheduleNowWallKey(timestamp, rule.timezone);
+    const currentWeekday = scheduleWeekday(timestamp, rule.timezone);
+    if (!startKey || !endKey || !currentKey || startKey >= endKey || currentKey < startKey || currentKey >= endKey || !rule.weekdays.includes(currentWeekday)) continue;
     resolved = normalizeLogoState({
       ...resolved,
       ...rule.patch,
@@ -593,6 +595,34 @@ export function resolveScheduledLogoState(state: LogoState, now: Date = new Date
     });
   }
   return resolved;
+}
+
+function scheduleParts(timestamp: number, timezone: string): Record<string, string> | null {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: timezone || undefined, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date(timestamp));
+    return Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+  } catch { return null; }
+}
+
+function scheduleWallKey(value: string, timezone: string): string | null {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(value)) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
+    if (match && Number(match[2]) >= 1 && Number(match[2]) <= 12 && Number(match[3]) >= 1 && Number(match[3]) <= new Date(Number(match[1]), Number(match[2]), 0).getDate() && Number(match[4]) < 24 && Number(match[5]) < 60) return value;
+    return null;
+  }
+  const timestamp = Date.parse(value);
+  const parts = Number.isFinite(timestamp) ? scheduleParts(timestamp, timezone) : null;
+  return parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : null;
+}
+
+function scheduleNowWallKey(timestamp: number, timezone: string): string | null {
+  const parts = scheduleParts(timestamp, timezone);
+  return parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : null;
+}
+
+function scheduleWeekday(timestamp: number, timezone: string): number {
+  const weekday = scheduleParts(timestamp, timezone)?.weekday;
+  return ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 } as Record<string, number>)[weekday ?? ''] ?? new Date(timestamp).getDay();
 }
 
 export function readStoredLogoState(): LogoState {
@@ -734,6 +764,11 @@ export function applyLogoStateToDocument(state: LogoState): void {
   root.dataset.logoFit = state.fit;
   root.dataset.logoSafeArea = state.safeArea ? 'on' : 'off';
   root.dataset.logoRainbow = state.background === 'rainbow' ? 'on' : 'off';
+  root.style.setProperty('--app-logo-fit', state.fit);
+  root.style.setProperty('--app-logo-background-size', state.fit === 'fill' ? '100% 100%' : state.fit);
+  root.style.setProperty('--app-logo-focal-x', `${Math.round(state.focalPoint.x * 100)}%`);
+  root.style.setProperty('--app-logo-focal-y', `${Math.round(state.focalPoint.y * 100)}%`);
+  root.style.setProperty('--app-logo-safe-inset', state.safeArea ? '12%' : '0%');
   root.style.setProperty('--app-logo-background', state.background === 'rainbow' ? 'linear-gradient(120deg, hsl(0 90% 60%), hsl(120 90% 60%), hsl(240 90% 60%), hsl(360 90% 60%))' : state.background === 'transparent' ? 'transparent' : state.background);
   root.style.setProperty('--app-logo-rainbow-speed', `${[0, 24, 18, 12, 8, 5][state.rainbowSpeedLevel] ?? 12}s`);
   root.style.setProperty('--app-logo-focal-x', `${Math.round(state.focalPoint.x * 100)}%`);
@@ -916,6 +951,7 @@ export async function convertLogoFile(
       'metadata',
       'profile',
       ...(crop.x !== 0 || crop.y !== 0 || crop.width !== 1 || crop.height !== 1 ? ['crop' as const] : []),
+      ...(validation.hasAlpha && renderOptions.background !== 'transparent' && renderOptions.background !== 'rainbow' ? ['transparency' as const] : []),
     ];
     return {
       ...primary,

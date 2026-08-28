@@ -1208,7 +1208,9 @@ html[data-logo-preset] .workspace-tabs-home-chrome:hover {
   background-image: var(--app-logo-image);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 62% 62%;
+  background-size: var(--app-logo-background-size, 62% 62%);
+  background-position: var(--app-logo-focal-x, 50%) var(--app-logo-focal-y, 50%);
+  background-color: var(--app-logo-background, transparent);
 }
 .app .split-chat-slot {
   /* Column: the docked strip sits above the chat card. */

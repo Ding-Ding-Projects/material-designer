@@ -49,6 +49,8 @@ import {
 import { CSS_COLOR_NAMES, colorNameFor } from './colorNames';
 import { describeContrast, formatRatio } from './contrast';
 import { translateColor, type ColorLoss, type ColorRepresentation } from './translate';
+import { useRegexSearch } from '../regex/useRegexSearch';
+import { RegexSearchField } from '../regex/RegexSearchField';
 import styles from './InfiniteColorPicker.module.css';
 
 interface Hsva {
@@ -130,6 +132,8 @@ export function InfiniteColorPicker({
   const [clippedComponents, setClippedComponents] = useState<string[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [translationQuery, setTranslationQuery] = useState('');
+  const translationSearch = useRegexSearch(translationQuery, setTranslationQuery);
   const fieldRef = useRef<HTMLDivElement | null>(null);
   const lastEmittedRef = useRef<string>(formatHex8(value));
 
@@ -510,8 +514,10 @@ export function InfiniteColorPicker({
         </p>
       </div>
 
-      <ul className={styles.translations}>
-        {representations.map((representation) => (
+      <div className={styles.translations}>
+        <RegexSearchField search={translationSearch} fieldLabel={t('appearance.color.translations')} ariaLabel={t('appearance.color.translations')} placeholder={t('appearance.color.translations')} testId="appearance-color-translation-search" />
+        <ul>
+        {representations.filter((representation) => translationSearch.matches(`${representation.label} ${representation.value}`)).map((representation) => (
           <li className={styles.translation} key={representation.id}>
             <span className={styles.translationLabel}>{representation.label}</span>
             <input
@@ -542,7 +548,8 @@ export function InfiniteColorPicker({
             </button>
           </li>
         ))}
-      </ul>
+        </ul>
+      </div>
     </div>
   );
 }

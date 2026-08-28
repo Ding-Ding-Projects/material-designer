@@ -221,12 +221,22 @@ export function normalizeState(value) {
 export function resolveScheduledState(state, now = new Date()) {
   const current = now.getTime(); let resolved = normalizeState(state);
   for (const rule of resolved.schedules) {
-    const start = Date.parse(rule.startAt); const end = Date.parse(rule.endAt);
-    if (!rule.enabled || !Number.isFinite(start) || !Number.isFinite(end) || end <= start || current < start || current >= end || !rule.weekdays.includes(now.getDay())) continue;
+    const start = scheduleWallKey(rule.startAt, rule.timezone); const end = scheduleWallKey(rule.endAt, rule.timezone); const currentKey = scheduleNowWallKey(current, rule.timezone);
+    if (!rule.enabled || !start || !end || !currentKey || start >= end || currentKey < start || currentKey >= end || !rule.weekdays.includes(scheduleWeekday(current, rule.timezone))) continue;
     resolved = normalizeState({ ...resolved, ...rule.patch, ...(rule.patch.presetId ? { custom: null } : {}), schedules: state.schedules });
   }
   return resolved;
 }
+
+function scheduleParts(timestamp, timezone) {
+  try { return Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: timezone || undefined, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(new Date(timestamp)).filter((part) => part.type !== 'literal').map((part) => [part.type, part.value])); } catch { return null; }
+}
+function scheduleWallKey(value, timezone) {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/u.test(value)) { const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value); if (match && Number(match[2]) >= 1 && Number(match[2]) <= 12 && Number(match[3]) >= 1 && Number(match[3]) <= new Date(Number(match[1]), Number(match[2]), 0).getDate() && Number(match[4]) < 24 && Number(match[5]) < 60) return value; return null; }
+  const parts = scheduleParts(Date.parse(value), timezone); return parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : null;
+}
+function scheduleNowWallKey(timestamp, timezone) { const parts = scheduleParts(timestamp, timezone); return parts ? `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` : null; }
+function scheduleWeekday(timestamp, timezone) { return ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[scheduleParts(timestamp, timezone)?.weekday] ?? new Date(timestamp).getDay()); }
 
 export function read() {
   try {
@@ -291,6 +301,10 @@ export function apply(state) {
   root.dataset.logoPreset = next.custom ? 'custom' : next.presetId;
   root.style.setProperty('--app-logo-image', `url(${JSON.stringify(source)})`);
   root.dataset.logoRainbow = next.background === 'rainbow' ? 'on' : 'off';
+  root.style.setProperty('--app-logo-background-size', next.fit === 'fill' ? '100% 100%' : next.fit);
+  root.style.setProperty('--app-logo-focal-x', `${next.focalPoint.x * 100}%`);
+  root.style.setProperty('--app-logo-focal-y', `${next.focalPoint.y * 100}%`);
+  root.style.setProperty('--app-logo-safe-inset', next.safeArea ? '12%' : '0%');
   root.style.setProperty('--app-logo-background', next.background === 'rainbow' ? 'linear-gradient(120deg, hsl(0 90% 60%), hsl(120 90% 60%), hsl(240 90% 60%), hsl(360 90% 60%))' : next.background);
   root.style.setProperty('--app-logo-rainbow-speed', `${[0, 24, 18, 12, 8, 5][next.rainbowSpeedLevel] || 12}s`);
   const image = document.querySelector('[data-app-logo-image]');
@@ -371,7 +385,7 @@ export async function convert(file, options = {}) {
     for (const target of DISPLAY_TARGETS) variants[target.id] = await renderOutput(target.width, target.height);
     const aggregateBytes = primary.byteLength + Object.values(variants).reduce((total, asset) => total + (asset?.byteLength || 0), 0);
     if (aggregateBytes > MAX_AGGREGATE_BYTES) throw new Error(`The generated logo variants exceed the aggregate ${MAX_AGGREGATE_BYTES}-byte bound.`);
-    return { ...primary, mimeType: 'image/png', sourceMimeType: info.mimeType, sourceHasAlpha: info.hasAlpha, sourceDataUrl, renderFingerprint: logoRenderFingerprint({ crop, fit, focalPoint, safeArea, background }), losses: Array.from(new Set([info.mimeType === 'image/png' ? 'metadata' : 'format', 'metadata', 'profile', ...(crop.x || crop.y || crop.width !== 1 || crop.height !== 1 ? ['crop'] : [])])), variants };
+    return { ...primary, mimeType: 'image/png', sourceMimeType: info.mimeType, sourceHasAlpha: info.hasAlpha, sourceDataUrl, renderFingerprint: logoRenderFingerprint({ crop, fit, focalPoint, safeArea, background }), losses: Array.from(new Set([info.mimeType === 'image/png' ? 'metadata' : 'format', 'metadata', 'profile', ...(crop.x || crop.y || crop.width !== 1 || crop.height !== 1 ? ['crop'] : []), ...(info.hasAlpha && background !== 'transparent' && background !== 'rainbow' ? ['transparency'] : [])])), variants };
   } finally { bitmap.close(); }
 }
 
@@ -414,6 +428,34 @@ function hsvToHex({ h, s, v, a = 1 }) {
   const rgb = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
   const hex = '#' + rgb.map((channel) => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('');
   return a >= 0.999 ? hex : hex + Math.round(clamp(a, 0, 1) * 255).toString(16).padStart(2, '0');
+}
+
+function hslToRgb({ h, s, l }) {
+  const saturation = clamp(s, 0, 100) / 100; const lightness = clamp(l, 0, 100) / 100;
+  const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation; const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1)); const m = lightness - chroma / 2;
+  const channels = h < 60 ? [chroma, x, 0] : h < 120 ? [x, chroma, 0] : h < 180 ? [0, chroma, x] : h < 240 ? [0, x, chroma] : h < 300 ? [x, 0, chroma] : [chroma, 0, x];
+  return { r: Math.round((channels[0] + m) * 255), g: Math.round((channels[1] + m) * 255), b: Math.round((channels[2] + m) * 255), a: 1 };
+}
+
+function parseColorRepresentation(name, text) {
+  const source = String(text).trim();
+  if (name === 'HEX' || name === 'HEX8') return hexToRgb(source);
+  const values = Array.from(source.matchAll(/-?\d+(?:\.\d+)?/g), (match) => Number(match[0]));
+  const alpha = source.includes('/') ? (values[values.length - 1] ?? 1) : name.includes('A') ? (values[3] ?? 1) : 1;
+  if (name === 'RGB' || name === 'RGBA') return { r: values[0] ?? 0, g: values[1] ?? 0, b: values[2] ?? 0, a: alpha > 1 ? alpha / 255 : alpha };
+  if (name === 'HSL' || name === 'HSLA') return hslToRgb({ h: values[0] ?? 0, s: values[1] ?? 0, l: values[2] ?? 0 });
+  if (name === 'HSV/HSB') return hexToRgb(hsvToHex({ h: values[0] ?? 0, s: values[1] ?? 0, v: values[2] ?? 0, a: alpha }));
+  if (name === 'HWB') { const hsv = { h: values[0] ?? 0, s: 100, v: 100 }; const white = (values[1] ?? 0) / 100; const black = (values[2] ?? 0) / 100; const scale = white + black > 1 ? 1 / (white + black) : 1; return hexToRgb(hsvToHex({ ...hsv, s: 100 * (1 - white * scale - black * scale), v: 100 * (1 - black * scale), a: alpha })); }
+  if (name === 'CMYK') { const c = (values[0] ?? 0) / 100; const m = (values[1] ?? 0) / 100; const y = (values[2] ?? 0) / 100; const k = (values[3] ?? 0) / 100; return { r: Math.round(255 * (1 - c) * (1 - k)), g: Math.round(255 * (1 - m) * (1 - k)), b: Math.round(255 * (1 - y) * (1 - k)), a: alpha }; }
+  if (name === 'CIELAB' || name === 'LCH' || name === 'OKLab' || name === 'OKLCH') {
+    const canvas = document.createElement('canvas'); const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = '#000'; context.fillStyle = source;
+      const match = String(context.fillStyle).match(/rgba?\((\d+),?\s*(\d+),?\s*(\d+)/i);
+      if (match) return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]), a: alpha };
+    }
+  }
+  return null;
 }
 
 function hslFromRgb({ r, g, b }) {
@@ -553,10 +595,11 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
         translations.textContent = '';
         for (const [name, representation] of colorRepresentations(current.background === 'transparent' ? '#fff8f6' : current.background)) {
           const item = document.createElement('div'); item.setAttribute('role', 'listitem');
-          const value = document.createElement('span'); value.textContent = `${name}: ${representation}`;
+          const labelNode = document.createElement('label'); labelNode.textContent = `${name}: `;
+          const value = document.createElement('input'); value.type = 'text'; value.value = representation; value.setAttribute('aria-label', `${name} colour value`); value.addEventListener('change', () => { const parsed = parseColorRepresentation(name, value.value); if (parsed) { current = normalizeState({ ...current, background: hsvToHex({ ...rgbToHsv(parsed), a: parsed.a ?? 1 }) }); render(); } });
           const copy = document.createElement('button'); copy.type = 'button'; copy.className = 'md-icon-btn md-icon-btn--small'; copy.textContent = t('logo.copy', 'Copy'); copy.setAttribute('aria-label', `${t('logo.copy', 'Copy')} ${name}`);
           copy.addEventListener('click', () => { void navigator.clipboard?.writeText(representation); });
-          item.append(value, copy); translations.appendChild(item);
+          labelNode.appendChild(value); item.append(labelNode, copy); translations.appendChild(item);
         }
       }
     }
@@ -642,7 +685,7 @@ function mount(host, { label = 'Logo', translate = (_key, fallback) => fallback 
   host.querySelector('[data-logo-reset]')?.addEventListener('click', () => { current = normalizeState(DEFAULTS); setStatus(t('logo.resetDone', 'Logo selection reset to the shipped mark.')); render(); });
   host.querySelector('[data-logo-export]')?.addEventListener('click', () => { const blob = new Blob([serialize(current)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'material-designer-logo-appearance.json'; anchor.click(); window.setTimeout(() => URL.revokeObjectURL(url), 0); });
   host.querySelector('[data-logo-import]')?.addEventListener('change', async (event) => { const file = event.target.files?.[0]; if (!file || file.size > 4 * 1024 * 1024) { setStatus(t('logo.importError', 'The logo appearance file is invalid or too large.')); return; } try { const imported = parse(await file.text()); if (!imported) throw new Error('invalid'); current = imported; setStatus(t('logo.imported', 'Logo appearance imported locally.')); render(); } catch { setStatus(t('logo.importError', 'The logo appearance file is invalid or uses an unknown schema. Nothing changed.')); } event.target.value = ''; });
-  host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const a = Date.parse(start); const b = Date.parse(end); if (!start || !end || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt: new Date(a).toISOString(), endAt: new Date(b).toISOString(), weekdays, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; current = normalizeState({ ...current, schedules: editingScheduleId ? current.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...current.schedules, rule] }); editingScheduleId = null; setStatus(t('logo.scheduleAdded', 'Logo schedule added locally.')); render(); });
+  host.querySelector('[data-logo-schedule-add]')?.addEventListener('click', () => { const start = host.querySelector('[data-logo-schedule-start]')?.value; const end = host.querySelector('[data-logo-schedule-end]')?.value; const label = host.querySelector('[data-logo-schedule-label]')?.value; const preset = host.querySelector('[data-logo-schedule-preset]')?.value; const weekdays = Array.from(host.querySelectorAll('[data-logo-weekday]:checked')).map((field) => Number(field.dataset.logoWeekday)); const a = Date.parse(start); const b = Date.parse(end); if (!start || !end || !Number.isFinite(a) || !Number.isFinite(b) || b <= a || weekdays.length === 0) { setStatus(t('logo.scheduleInvalid', 'Enter a valid start and end, with the end after the start.')); return; } const id = editingScheduleId || `logo-schedule-${Date.now().toString(36)}`; const rule = { id, label: label?.trim() || 'Logo schedule', enabled: true, startAt: start.slice(0, 16), endAt: end.slice(0, 16), weekdays, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: preset, fit: current.fit, background: current.background, safeArea: current.safeArea, rainbowSpeedLevel: current.rainbowSpeedLevel, crop: current.crop, focalPoint: current.focalPoint } }; current = normalizeState({ ...current, schedules: editingScheduleId ? current.schedules.map((entry) => entry.id === editingScheduleId ? rule : entry) : [...current.schedules, rule] }); editingScheduleId = null; setStatus(t('logo.scheduleAdded', 'Logo schedule added locally.')); render(); });
   const scheduleTimer = window.setInterval(render, 60_000);
   host.querySelector('[data-logo-upload]')?.addEventListener('change', async (event) => {
     const file = event.target.files?.[0]; if (!file) return;

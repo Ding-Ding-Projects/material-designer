@@ -143,6 +143,8 @@ export function LogoCustomizationSection({
   const importRef = useRef<HTMLInputElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const search = useRegexSearch(searchQuery, setSearchQuery);
+  const [targetSearchQuery, setTargetSearchQuery] = useState('');
+  const targetSearch = useRegexSearch(targetSearchQuery, setTargetSearchQuery);
   const priorStateJsonRef = useRef(JSON.stringify(state));
   const onChangeRef = useRef(onChange);
   const refreshGenerationRef = useRef(0);
@@ -318,7 +320,7 @@ export function LogoCustomizationSection({
       return;
     }
     const id = editingScheduleId ?? `logo-schedule-${Date.now().toString(36)}`;
-    const nextRule = { id, label: scheduleLabel.trim() || id, enabled: true, startAt: new Date(start).toISOString(), endAt: new Date(end).toISOString(), weekdays: scheduleWeekdays.length ? scheduleWeekdays : [0, 1, 2, 3, 4, 5, 6], timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: schedulePreset, fit: state.fit, background: state.background, safeArea: state.safeArea, rainbowSpeedLevel: state.rainbowSpeedLevel, crop: state.crop, focalPoint: state.focalPoint } };
+    const nextRule = { id, label: scheduleLabel.trim() || id, enabled: true, startAt: start.slice(0, 16), endAt: end.slice(0, 16), weekdays: scheduleWeekdays.length ? scheduleWeekdays : [0, 1, 2, 3, 4, 5, 6], timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local', patch: { presetId: schedulePreset, fit: state.fit, background: state.background, safeArea: state.safeArea, rainbowSpeedLevel: state.rainbowSpeedLevel, crop: state.crop, focalPoint: state.focalPoint } };
     update({ schedules: editingScheduleId ? state.schedules.map((rule) => rule.id === editingScheduleId ? nextRule : rule) : [...state.schedules, nextRule] });
     setEditingScheduleId(null);
     setStatus(t('appLogo.scheduleAdded'));
@@ -368,7 +370,7 @@ export function LogoCustomizationSection({
         </button>
       </div>
 
-      <div className={styles.exportRow}>
+      <div className={styles.exportRow} data-od-setting="appearance.logo.export">
         <button type="button" className={styles.reset} onClick={exportAppearance}>{t('appLogo.export')}</button>
         <label className={styles.importButton}>
           {t('appLogo.import')}
@@ -376,7 +378,7 @@ export function LogoCustomizationSection({
         </label>
       </div>
 
-      <fieldset className={styles.scheduleFieldset}>
+      <fieldset className={styles.scheduleFieldset} data-od-setting="appearance.logo.schedule">
         <legend>{t('appLogo.schedule')}</legend>
         <p className={styles.hint}>{t('appLogo.scheduleHint')}</p>
         <p className={styles.hint}>{t('appLogo.timezone', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time' })}</p>
@@ -417,7 +419,7 @@ export function LogoCustomizationSection({
         ))}
       </div>
 
-      <div className={styles.uploadRow}>
+      <div className={styles.uploadRow} data-od-setting="appearance.logo.upload">
         <label htmlFor="app-logo-upload" className={styles.hint}>{t('appLogo.upload')}</label>
         <input
           ref={fileRef}
@@ -467,7 +469,7 @@ export function LogoCustomizationSection({
         </div>
 
         <div className={styles.controls}>
-          <div className={styles.field}>
+          <div className={styles.field} data-od-setting="appearance.logo.fit">
             <span>{t('appLogo.fit')}</span>
             <SearchableLogoChoice
               id="logo-fit"
@@ -478,16 +480,16 @@ export function LogoCustomizationSection({
             />
           </div>
           <label className={styles.field}>
-            <span>{t('appLogo.focalX')}</span>
+            <span data-od-setting="appearance.logo.focal">{t('appLogo.focalX')}</span>
             <input type="range" min="0" max="1" step="0.01" value={state.focalPoint.x} onChange={(event) => update({ focalPoint: { ...state.focalPoint, x: clampFraction(Number(event.target.value), 0.5) } })} />
             <output>{Math.round(state.focalPoint.x * 100)}%</output>
           </label>
           <label className={styles.field}>
-            <span>{t('appLogo.focalY')}</span>
+            <span data-od-setting="appearance.logo.focal">{t('appLogo.focalY')}</span>
             <input type="range" min="0" max="1" step="0.01" value={state.focalPoint.y} onChange={(event) => update({ focalPoint: { ...state.focalPoint, y: clampFraction(Number(event.target.value), 0.5) } })} />
             <output>{Math.round(state.focalPoint.y * 100)}%</output>
           </label>
-          <fieldset className={styles.cropFieldset}>
+          <fieldset className={styles.cropFieldset} data-od-setting="appearance.logo.crop">
             <legend>{t('appLogo.crop')}</legend>
             {(['x', 'y', 'width', 'height'] as const).map((field) => (
               <label className={styles.numeric} key={field}>
@@ -496,13 +498,13 @@ export function LogoCustomizationSection({
               </label>
             ))}
           </fieldset>
-          <label className={styles.check}>
+          <label className={styles.check} data-od-setting="appearance.logo.safeArea">
             <input type="checkbox" checked={state.safeArea} onChange={(event) => update({ safeArea: event.target.checked })} />
             <span>{t('appLogo.safeArea')}</span>
           </label>
           <label className={styles.check}>
             <input type="checkbox" checked={state.background === 'transparent'} onChange={(event) => update({ background: event.target.checked ? 'transparent' : '#fff8f6' })} />
-            <span>{t('appLogo.transparent')}</span>
+            <span data-od-setting="appearance.logo.background">{t('appLogo.transparent')}</span>
           </label>
           <label className={styles.check}>
             <input type="checkbox" checked={state.background === 'rainbow'} onChange={(event) => update({ background: event.target.checked ? 'rainbow' : 'transparent' })} />
@@ -525,8 +527,9 @@ export function LogoCustomizationSection({
 
       <div className={styles.targets}>
         <h4>{t('appLogo.targets')}</h4>
+        <RegexSearchField search={targetSearch} fieldLabel={t('appLogo.targets')} ariaLabel={`${t('appLogo.targets')} search`} placeholder={t('appLogo.targets')} testId="logo-target-search" />
         <div className={styles.targetGrid}>
-          {LOGO_DISPLAY_TARGETS.map((target) => (
+          {LOGO_DISPLAY_TARGETS.filter((target) => targetSearch.matches(`${t(TARGET_LABEL_KEY[target.id])} ${target.id}`)).map((target) => (
             <figure key={target.id} className={styles.target} data-testid={`logo-target-${target.id}`}>
               <div className={styles.targetTile} style={{ width: Math.min(target.width, 128), height: Math.min(target.height, 128) }}>
                 <img src={displayedState.custom?.variants?.[target.id]?.dataUrl ?? activeSource} alt={`${t(TARGET_LABEL_KEY[target.id])} logo preview`} style={{ objectFit: displayedState.fit, objectPosition: `${displayedState.focalPoint.x * 100}% ${displayedState.focalPoint.y * 100}%` }} />

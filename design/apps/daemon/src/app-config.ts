@@ -607,16 +607,73 @@ function finiteFraction(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
-function decodePngDataUrl(value: unknown, maxBytes: number): Buffer | undefined {
+const PNG_CRC_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let index = 0; index < 256; index += 1) {
+    let value = index;
+    for (let bit = 0; bit < 8; bit += 1) value = (value & 1) ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    table[index] = value >>> 0;
+  }
+  return table;
+})();
+
+function pngCrc(bytes: Buffer, start: number, end: number): number {
+  let value = 0xffffffff;
+  for (let index = start; index < end; index += 1) value = PNG_CRC_TABLE[(value ^ (bytes[index] ?? 0)) & 0xff] ^ (value >>> 8);
+  return (value ^ 0xffffffff) >>> 0;
+}
+
+function decodePngDataUrl(value: unknown, maxBytes: number, expected?: readonly [number, number]): Buffer | undefined {
   if (typeof value !== 'string' || !value.startsWith('data:image/png;base64,')) return undefined;
   const encoded = value.slice('data:image/png;base64,'.length);
   if (!encoded || encoded.length > maxBytes * 2 || !/^[A-Za-z0-9+/]*={0,2}$/u.test(encoded)) return undefined;
   try {
     const bytes = Buffer.from(encoded, 'base64');
-    if (bytes.length < 33 || bytes.length > maxBytes
+    if (bytes.length < 57 || bytes.length > maxBytes
       || bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47
       || bytes[4] !== 0x0d || bytes[5] !== 0x0a || bytes[6] !== 0x1a || bytes[7] !== 0x0a
       || bytes.subarray(12, 16).toString('ascii') !== 'IHDR') return undefined;
+    let offset = 8;
+    let seenIhdr = false;
+    let seenIdat = false;
+    let seenIend = false;
+    let width = 0;
+    let height = 0;
+    while (offset < bytes.length) {
+      if (offset + 12 > bytes.length) return undefined;
+      const length = bytes.readUInt32BE(offset);
+      const type = bytes.subarray(offset + 4, offset + 8).toString('ascii');
+      const next = offset + 12 + length;
+      if (next > bytes.length || !/^[A-Za-z]{4}$/u.test(type)) return undefined;
+      if (bytes.readUInt32BE(next - 4) !== pngCrc(bytes, offset + 4, offset + 8 + length)) return undefined;
+      if (!seenIhdr && type !== 'IHDR') return undefined;
+      if (type === 'IHDR') {
+        if (seenIhdr || length !== 13) return undefined;
+        seenIhdr = true;
+        width = bytes.readUInt32BE(offset + 8);
+        height = bytes.readUInt32BE(offset + 12);
+        const depth = bytes[offset + 20] ?? 0;
+        const color = bytes[offset + 21] ?? 255;
+        if (!((color === 6 && (depth === 8 || depth === 16)) || (color === 2 && (depth === 8 || depth === 16)))) return undefined;
+        if (bytes[offset + 22] !== 0 || bytes[offset + 23] !== 0 || bytes[offset + 24] !== 0) return undefined;
+        if (width < 1 || height < 1 || width > 4096 || height > 4096 || width * height > 16 * 1024 * 1024) return undefined;
+        if (expected && (width !== expected[0] || height !== expected[1])) return undefined;
+      } else if (type === 'IDAT') {
+        if (length === 0 || seenIend) return undefined;
+        seenIdat = true;
+      } else if (type === 'IEND') {
+        if (length !== 0 || !seenIdat || seenIend || next !== bytes.length) return undefined;
+        seenIend = true;
+      } else if (type === 'acTL' || type === 'fcTL' || type === 'fdAT') {
+        return undefined;
+      } else if (type.charCodeAt(0) >= 65 && type.charCodeAt(0) <= 90 && !['PLTE', 'tRNS', 'pHYs', 'sRGB', 'gAMA', 'cHRM', 'iCCP', 'tEXt', 'zTXt', 'iTXt'].includes(type)) {
+        return undefined;
+      }
+      offset = next;
+      if (seenIend) break;
+    }
+    if (!seenIhdr || !seenIdat || !seenIend) return undefined;
+    if (bytes.toString('base64') !== encoded) return undefined;
     return bytes;
   } catch {
     return undefined;
@@ -670,7 +727,8 @@ function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefin
     const custom = raw.custom as Record<string, unknown>;
     if (Object.keys(custom).some((key) => !APP_LOGO_CUSTOM_KEYS.has(key))) return undefined;
     const customBytes = decodePngDataUrl(custom.dataUrl, 2 * 1024 * 1024);
-    if (custom.mimeType !== 'image/png' || typeof custom.dataUrl !== 'string' || !customBytes
+    if (custom.mimeType !== 'image/png' || typeof custom.dataUrl !== 'string' || !customBytes || customBytes.length !== custom.byteLength
+      || customBytes.readUInt32BE(16) !== custom.width || customBytes.readUInt32BE(20) !== custom.height
       || custom.dataUrl.length > APP_LOGO_DATA_URL_MAX
       || typeof custom.byteLength !== 'number' || custom.byteLength < 1 || custom.byteLength > 2 * 1024 * 1024) return undefined;
     if (!Number.isInteger(custom.width) || !Number.isInteger(custom.height) || (custom.width as number) < 1 || (custom.height as number) < 1
@@ -689,8 +747,8 @@ function validateAppLogoPrefs(value: unknown): Record<string, unknown> | undefin
         const candidate = variants[target];
         if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return undefined;
         const asset = candidate as Record<string, unknown>;
-        const variantBytes = decodePngDataUrl(asset.dataUrl, 2 * 1024 * 1024);
-        if (typeof asset.dataUrl !== 'string' || !variantBytes || asset.dataUrl.length > APP_LOGO_DATA_URL_MAX || typeof asset.byteLength !== 'number'
+        const variantBytes = decodePngDataUrl(asset.dataUrl, 2 * 1024 * 1024, APP_LOGO_VARIANT_DIMS[target]);
+        if (typeof asset.dataUrl !== 'string' || !variantBytes || variantBytes.length !== asset.byteLength || asset.dataUrl.length > APP_LOGO_DATA_URL_MAX || typeof asset.byteLength !== 'number'
           || asset.byteLength < 1 || asset.byteLength > 2 * 1024 * 1024 || asset.frameCount !== 1
           || typeof asset.width !== 'number' || typeof asset.height !== 'number' || typeof asset.hasAlpha !== 'boolean'
           || asset.width !== APP_LOGO_VARIANT_DIMS[target][0] || asset.height !== APP_LOGO_VARIANT_DIMS[target][1]) return undefined;
