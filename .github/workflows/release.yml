@@ -513,8 +513,13 @@ jobs:
           done
           [ "$CATALOG_ID" = "$CATALOG_IMAGE_DISH" ] || { echo "::error::image_dish does not match the selected dish id" >&2; exit 1; }
           printf '%s' "$CATALOG_IMAGE" | grep -Eq '^hk-dish-[0-9]{4}-[a-z0-9-]+\.png$' || { echo "::error::the selected image filename is outside the bounded catalog format" >&2; exit 1; }
+          case "$CATALOG_IMAGE" in "$CATALOG_IMAGE_DISH"-*.png) ;; *) echo "::error::the selected image filename is not bound to the selected dish id" >&2; exit 1 ;; esac
           [ "$CATALOG_IMAGE_CONTENT_TYPE" = "image/png" ] || { echo "::error::the selected catalog asset is not an image/png" >&2; exit 1; }
-          case "$CATALOG_IMAGE_URL" in https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/catalog-v1*/*) ;; *) echo "::error::the selected image URL is not a published catalog-v1 asset" >&2; exit 1 ;; esac
+          printf '%s' "$CATALOG_IMAGE_TAG" | grep -Eq '^catalog-v1([.-][a-z0-9]+)*$' || { echo "::error::the selected catalog tag is outside the published catalog-v1 format" >&2; exit 1; }
+          expected_catalog_image_url="https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/${CATALOG_IMAGE_TAG}/${CATALOG_IMAGE}"
+          [ "$CATALOG_IMAGE_URL" = "$expected_catalog_image_url" ] || { echo "::error::the selected image URL is not exactly bound to the selected catalog tag and filename" >&2; exit 1; }
+          printf '%s' "$CATALOG_IMAGE_BYTES" | grep -Eq '^[1-9][0-9]{0,7}$' || { echo "::error::the selected catalog image byte count is not numeric and bounded" >&2; exit 1; }
+          [ "$CATALOG_IMAGE_BYTES" -le 16777216 ] || { echo "::error::the selected catalog image exceeds the 16 MiB safety bound" >&2; exit 1; }
           # No-copy mode verifies only the selected public asset metadata. It
           # must stop before requesting the image body, because attaching a
           # copied photo would violate the governing public-source policy.

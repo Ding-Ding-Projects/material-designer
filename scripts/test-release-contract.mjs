@@ -56,6 +56,11 @@ requireText(release, 'cat "$raw" >> "$GITHUB_OUTPUT"', "release.yml does not for
 requireText(release, 'id: dim_sum_contract', "release.yml does not expose the required catalog-image check");
 requireText(release, 'CATALOG_IMAGE: ${{ steps.codename.outputs.image }}', "release.yml does not wire the image output");
 requireText(release, 'CATALOG_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}', "release.yml does not wire the image_dish output");
+requireText(release, 'case "$CATALOG_IMAGE" in "$CATALOG_IMAGE_DISH"-*.png)', "release.yml does not bind the image filename to the selected dish id");
+requireText(release, 'expected_catalog_image_url="https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/${CATALOG_IMAGE_TAG}/${CATALOG_IMAGE}"', "release.yml does not derive the exact catalog image URL");
+requireText(release, '[ "$CATALOG_IMAGE_URL" = "$expected_catalog_image_url" ]', "release.yml does not compare the exact catalog image URL");
+requireText(release, "grep -Eq '^[1-9][0-9]{0,7}$'", "release.yml does not validate a numeric catalog image byte count");
+requireText(release, 'CATALOG_IMAGE_BYTES" -le 16777216', "release.yml does not enforce the 16 MiB catalog image bound");
 requireText(release, 'Verify public catalog image metadata without copying bytes', "release.yml does not verify catalog image metadata");
 requireText(release, 'status=blocked-no-copy-policy', "release.yml does not expose the explicit no-copy policy block");
 requireText(release, "printf 'asset_sha256=%s\\n' 'not-computed-no-copy'", "release.yml does not record that the no-copy image hash was not computed");
@@ -145,11 +150,14 @@ forbid(codename, /bundled_index|assets\/dim-sum\/images/, "release-codename.sh s
 
 requireText(pages, "Wait for the current successful release", "pages.yml does not wait for the current release run");
 requireText(pages, "workflow_run:", "pages.yml does not listen for completed Release runs");
+requireText(pages, "branches:\n      - main", "pages.yml push trigger is not limited to main");
 requireText(pages, "workflows:\n      - Release", "pages.yml does not bind workflow_run to Release");
 requireText(pages, "github.event.workflow_run.head_branch == 'main'", "pages.yml does not restrict workflow_run deployment to main");
 requireText(pages, "github.event.workflow_run.conclusion == 'success'", "pages.yml does not require a successful Release workflow_run");
 requireText(pages, "EXPECTED_RELEASE_SHA:", "pages.yml does not use the workflow_run head SHA for release binding");
 requireText(pages, "ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}", "pages.yml does not check out the exact workflow_run head SHA");
+requireText(pages, "set_front_attr()", "pages.yml does not safely mutate front-screen provenance attributes");
+requireText(pages, "set_front_text()", "pages.yml does not safely mutate front-screen provenance text");
 requireText(pages, "github.ref == 'refs/heads/main'", "pages.yml allows a non-main environment ref to deploy");
 requireText(pages, 'gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$expected_sha"', "pages.yml does not resolve the release run for the checked-out SHA");
 requireText(pages, 'gh run view "$RELEASE_RUN_ID"', "pages.yml does not independently verify the selected release run");

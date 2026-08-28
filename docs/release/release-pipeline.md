@@ -13,8 +13,8 @@ release lane.
 > release. Any successful publication still has to be exactly one unique,
 > non-draft release targeted at the workflow SHA, with timing, hashes, required
 > Squirrel files and post-publication verification. The workflow now selects an
-> unused public-catalog id, verifies the matching published PNG through its
-> authoritative link in run-scoped storage, records the metadata, and then stops
+> unused public-catalog id, verifies the matching published PNG URL and metadata
+> without requesting the photo body, records the metadata, and then stops
 > at the governing downloadable-photo row because the no-copy rule forbids
 > attaching copied bytes. Code-name-only unavailability remains an honest empty
 > selector result, while missing required image evidence blocks.
@@ -26,11 +26,11 @@ at the commit it claims. Tests, lint, typecheck, static analysis and screenshot
 checks are local/manual evidence and are not workflow steps or publication gates.
 
 > [!IMPORTANT]
-> **Status: run, and publishing.** Two legacy releases exist —
+> **Status: source verified, publication blocked.** Two historical releases exist:
 > `v0.16.1-r7.1` and `v0.16.1-r8.1` — each carrying a Windows installer built by
 > the run that published it. The packaged smoke test has installed a built
 > application, launched it, had the running process answer its own health
-> endpoint, screenshotted it, uninstalled it and asserted zero residue. Code
+> endpoint, captured it, uninstalled it and asserted zero residue. Code
 > signing is permanently prohibited: the new workflow clears signer inputs and
 > requires `NotSigned` before publication. What has **not** been demonstrated is
 > any platform other than Windows or a post-migration Squirrel feed run. Commit

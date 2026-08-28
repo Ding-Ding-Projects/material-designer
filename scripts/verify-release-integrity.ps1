@@ -48,6 +48,40 @@ function Extract-Block([string]$Text, [string]$Start, [string]$End, [string]$Lab
   return ($lines[$startIndex..($endIndex - 1)] -join "`n")
 }
 
+function Extract-YamlStep([string]$Text, [string]$StepId, [string]$Label) {
+  $lines = $Text -split "`r`n|`n|`r"
+  $idLine = (' ' * 8) + "id: $StepId"
+  $idIndex = -1
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i] -ceq $idLine) { $idIndex = $i; break }
+  }
+  if ($idIndex -lt 0) { throw "$Label is missing the exact step id: $StepId" }
+  $startIndex = -1
+  for ($i = $idIndex; $i -ge 0; $i--) {
+    if ($lines[$i].StartsWith((' ' * 6) + '- name: ', [StringComparison]::Ordinal)) { $startIndex = $i; break }
+  }
+  if ($startIndex -lt 0) { throw "$Label has no step boundary for id: $StepId" }
+  $endIndex = $lines.Count
+  for ($i = $startIndex + 1; $i -lt $lines.Count; $i++) {
+    if ($lines[$i].StartsWith((' ' * 6) + '- name: ', [StringComparison]::Ordinal)) { $endIndex = $i; break }
+  }
+  return ($lines[$startIndex..($endIndex - 1)] -join "`n")
+}
+
+function Require-RunLine([string]$StepText, [string]$Prefix, [string]$Label) {
+  $executable = Remove-CommentOnlyLines $StepText
+  $runIndex = -1
+  $lines = $executable -split "`n"
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($lines[$i].Trim() -ceq 'run: |') { $runIndex = $i; break }
+  }
+  if ($runIndex -lt 0) { throw "$Label has no run block" }
+  $found = $lines[($runIndex + 1)..($lines.Count - 1)] | Where-Object {
+    $_.TrimStart().StartsWith($Prefix, [StringComparison]::Ordinal)
+  } | Select-Object -First 1
+  if ($null -eq $found) { throw "$Label run block is missing executable line beginning with: $Prefix" }
+}
+
 function Forbid-Literal([string]$Text, [string]$Needle, [string]$Label) {
   if ($Text.IndexOf($Needle, [StringComparison]::Ordinal) -ge 0) {
     throw "$Label contains forbidden contract text: $Needle"
@@ -70,11 +104,27 @@ $pagesExecutable = Remove-CommentOnlyLines $pages
 $codenameExecutable = Remove-CommentOnlyLines $codename
 $dimSumBlock = Extract-Block $release 'id: dim_sum_contract' '- name:' 'release.yml dim_sum_contract'
 $dimSumExecutable = Remove-CommentOnlyLines $dimSumBlock
+$codenameStep = Extract-YamlStep $release 'codename' 'release.yml'
+$dimSumStep = Extract-YamlStep $release 'dim_sum_contract' 'release.yml'
+$releaseClaimStep = Extract-YamlStep $release 'release_claim' 'release.yml'
+$pagesRunStep = Extract-YamlStep $pages 'current_release_run' 'pages.yml'
+$pagesFactsStep = Extract-YamlStep $pages 'release_facts' 'pages.yml'
+
+Require-Literal $pages "on:`n  push:`n    branches:`n      - main" 'pages.yml'
 
 Require-ExecutableLine $codenameExecutable 'if grep -Fqx "$id" "$tmp/used.txt"' 'release-codename.sh'
 $imageDishOutputLine = 'printf ''image_dish=%s\n'' "$id"'
 Require-ExecutableLine $codenameExecutable $imageDishOutputLine 'release-codename.sh'
 Require-ExecutableLine $releaseExecutable 'cat "$raw" >> "$GITHUB_OUTPUT"' 'release.yml'
+$duplicateTagLine = 'if printf ''%s\n'' "$tags" | grep -Fqx "$TAG"; then'
+Require-ExecutableLine $releaseExecutable $duplicateTagLine 'release.yml'
+$exactOneReleaseLine = '[ "$match_count" = "1" ] || {'
+Require-ExecutableLine $pagesExecutable $exactOneReleaseLine 'pages.yml'
+Require-RunLine $codenameStep 'if ! gh api --paginate' 'release.yml codename step'
+Require-RunLine $dimSumStep 'expected_catalog_image_url=' 'release.yml dim_sum_contract step'
+Require-RunLine $releaseClaimStep 'if printf ''%s\n'' "$tags" | grep -Fqx "$TAG"; then' 'release.yml release_claim step'
+Require-RunLine $pagesRunStep 'runs=$(gh run list --repo "$GITHUB_REPOSITORY"' 'pages.yml current_release_run step'
+Require-RunLine $pagesFactsStep 'expected_installer_url=' 'pages.yml release_facts step'
 
 @(
   'grep -Fqx "$id" "$tmp/used.txt"'
@@ -104,6 +154,11 @@ Forbid-Literal $codename 'assets/dim-sum/images' 'release-codename.sh'
   'Verify public catalog image metadata without copying bytes'
   'CATALOG_IMAGE: ${{ steps.codename.outputs.image }}'
   'CATALOG_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}'
+  'case "$CATALOG_IMAGE" in "$CATALOG_IMAGE_DISH"-*.png)'
+  'expected_catalog_image_url="https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/${CATALOG_IMAGE_TAG}/${CATALOG_IMAGE}"'
+  'the selected image URL is not exactly bound to the selected catalog tag and filename'
+  '^[1-9][0-9]{0,7}$'
+  'the selected catalog image exceeds the 16 MiB safety bound'
   'status=blocked-no-copy-policy'
   'no copied image is attached'
   "steps.codename.outcome == 'success'"
@@ -153,6 +208,7 @@ Forbid-Literal $release 'temporarily skipped by the repository owner' 'release.y
 @(
   'Wait for the current successful release'
   'workflow_run:'
+  "branches:`n      - main"
   'workflows:'
   '- Release'
   "github.event.workflow_run.head_branch == 'main'"

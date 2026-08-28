@@ -28,8 +28,8 @@
 > required downloadable-photo row remains blocked.
 >
 > `scripts/verify-release-integrity.ps1` is green. Its companion
-> `scripts/test-release-integrity-negative.ps1` turns twelve exact mutations,
-> including comment-out and duplicate-field mutations, red and returns the
+> `scripts/test-release-integrity-negative.ps1` turns fourteen exact mutations,
+> including behavior-removal, comment-out, and duplicate-field mutations, red and returns the
 > restored fixture to green. `rl.f.photo` now has five English and five
 > Cantonese tone variants. The JavaScript release-contract source check was
 > updated for the new boundaries but was not run locally because this lane does

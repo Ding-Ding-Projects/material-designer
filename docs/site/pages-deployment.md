@@ -115,8 +115,9 @@ labelled installer download button:
   release that does not exist is worse than no button, because it fails after the
   click rather than before it.
 
-**The button is present**, on the site's install section. It is built from the
-immutable release-asset URL of the published tag `v0.16.1-r8.1`, states the
+**The button is present as historical evidence**, on the site's install section.
+It is built from the immutable release-asset URL of the historical published tag
+`v0.16.1-r8.1`, states the
 version, the architecture and the download size beside it, and is a plain
 `<a>` so it is keyboard-operable and named by its own text.
 
@@ -183,7 +184,8 @@ itself.
 **Verified from the tree:** that `.github/workflows/pages.yml` exists; that it
 waits for a successful `Release` run for the exact checkout SHA; that it rejects
 duplicate current releases and stale release markers; that it verifies the
-installer, image, image hash, timing, line-count, and required asset set; that it
+installer, public image metadata, front-screen provenance, timing, line-count,
+and required asset set; that it
 uploads `site/`; that its permissions and concurrency are as tabulated above; and
 that `site/` contains `index.html`, `assets/css/{tokens,app}.css`,
 `assets/js/{main,i18n,appearance,tabs,regex,ui}.js` and `.nojekyll`.

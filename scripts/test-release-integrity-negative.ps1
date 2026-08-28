@@ -84,7 +84,9 @@ try {
     param($fixture)
     $path = Join-Path $fixture '.github/workflows/pages.yml'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('expected exactly one published release', 'expected one published release'))
+    $needle = '          [ "$match_count" = "1" ] || { echo "::error::expected exactly one published release for $expected_sha, found $match_count" >&2; exit 1; }'
+    if (-not $text.Contains($needle)) { throw 'exact-one release operation was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, '          # exact-one release resolution removed'))
   }
   Expect-Red 'allow-tag-ref-pages-deployment' {
     param($fixture)
@@ -94,11 +96,21 @@ try {
     if (-not $text.Contains($needle)) { throw 'main-only workflow_run policy was not found in fixture' }
     [IO.File]::WriteAllText($path, $text.Replace($needle, "github.event.workflow_run.head_branch == 'refs/tags/v'"))
   }
+  Expect-Red 'allow-non-main-pages-trigger' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    $needle = "on:`n  push:`n    branches:`n      - main"
+    if (-not $text.Contains($needle)) { throw 'main-only push trigger was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, "on:`n  push:`n    branches:`n      - '**'"))
+  }
   Expect-Red 'remove-duplicate-release-check' {
     param($fixture)
     $path = Join-Path $fixture '.github/workflows/release.yml'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('grep -Fqx "$TAG"', 'grep -Fxq "$TAG"'))
+    $needle = '          if printf ''%s\n'' "$tags" | grep -Fqx "$TAG"; then'
+    if (-not $text.Contains($needle)) { throw 'duplicate-release operation was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, '          if false; then'))
   }
   Expect-Red 'remove-timing-evidence' {
     param($fixture)
@@ -152,7 +164,7 @@ try {
   } finally {
     if (Test-Path -LiteralPath $restored) { Remove-Item -LiteralPath $restored -Recurse -Force }
   }
-  Write-Output 'PASS: twelve exact release-integrity mutations, including comment-out, duplicate-field, and page-parser mutations, turned red, then the restored contract returned green.'
+  Write-Output 'PASS: fourteen exact release-integrity mutations, including behavior-removal, comment-out, duplicate-field, and page-parser mutations, turned red, then the restored contract returned green.'
 } finally {
   if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
   Set-Location $root
