@@ -8,6 +8,8 @@
  * merely because a filename extension was typed into it.
  */
 
+import { buildZip } from './zip';
+
 export type ExportCategory =
   | 'documents-pdf'
   | 'images'
@@ -98,7 +100,7 @@ export const UNIVERSAL_EXPORT_ADAPTERS: readonly ExportAdapterDescriptor[] = [
   { format: 'rust', category: 'code-text', extension: 'rs', mediaType: 'text/x-rust;charset=utf-8', bundled: false, available: false, fidelity: 'unsupported', capabilityNote: 'A source projection needs a schema-specific adapter.' },
   { format: 'json-schema', category: 'structured-data', extension: 'schema.json', mediaType: 'application/schema+json', bundled: true, available: true, fidelity: 'loss-aware', capabilityNote: 'Schema describes the exported record shape, while runtime values remain in JSON.' },
   { format: 'protobuf', category: 'binary-encodings', extension: 'proto', mediaType: 'text/plain;charset=utf-8', bundled: false, available: false, fidelity: 'unsupported', capabilityNote: 'A schema-specific protobuf adapter is not bundled.' },
-  { format: 'zip', category: 'archives', extension: 'zip', mediaType: 'application/zip', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'ZIP packaging is available through the existing local archive adapter.', archiveOptions: ARCHIVE_OPTION_KEYS },
+  { format: 'zip', category: 'archives', extension: 'zip', mediaType: 'application/zip', bundled: true, available: true, fidelity: 'lossless', capabilityNote: 'ZIP packaging is available locally in stored mode. Compression, encryption, and split volumes are not available in this adapter.', archiveOptions: ['compression'] },
   { format: '7z', category: 'archives', extension: '7z', mediaType: 'application/x-7z-compressed', bundled: false, available: false, fidelity: 'unsupported', capabilityNote: 'No bundled 7z adapter is available. The picker must keep this option visible and disabled.', archiveOptions: ARCHIVE_OPTION_KEYS },
 ];
 
@@ -170,6 +172,11 @@ export type ExportResult = {
 };
 
 export type ExportRecord = Readonly<Record<string, unknown>>;
+
+export interface ZipExportResult {
+  readonly blob: Blob;
+  readonly warnings: readonly string[];
+}
 
 function stableKeys(records: readonly ExportRecord[]): string[] {
   const keys = new Set<string>();
@@ -296,4 +303,25 @@ export function serializeFaithfulExport(
   } catch (error) {
     return { ok: false, format, error: error instanceof Error ? error.message : String(error) };
   }
+}
+
+/**
+ * Build the enabled ZIP format through the same local adapter used by the
+ * existing viewer exporters. The catalogue is intentionally explicit about
+ * the capability boundary: this adapter stores UTF-8 entries and does not
+ * claim compression, encryption, or split-volume support.
+ */
+export function buildFaithfulZipExport(records: readonly ExportRecord[]): ZipExportResult {
+  const json = serializeFaithfulExport('json', records);
+  const jsonl = serializeFaithfulExport('jsonl', records);
+  if (!json.ok || !jsonl.ok) {
+    throw new Error(json.ok ? jsonl.error : json.error);
+  }
+  return {
+    blob: buildZip([
+      { path: 'export.json', content: json.body },
+      { path: 'export.jsonl', content: jsonl.body },
+    ]),
+    warnings: ['ZIP uses stored entries. Compression, encryption, and split volumes are not available in this build.'],
+  };
 }

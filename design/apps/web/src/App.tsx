@@ -83,6 +83,7 @@ import {
   type SettingsHighlight,
 } from './components/SettingsDialog';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
+import { VersionHistoryDialog } from './components/history/VersionHistoryDialog';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
@@ -5425,6 +5426,7 @@ function AppInner() {
         onDismiss={() => trackExperienceSurveyDismissed(analytics.track)}
         onSubmit={(answers) => trackExperienceSurveySent(analytics.track, answers)}
       />
+      <VersionHistoryDialog />
       <AnimatePresence>
       {settingsOpen ? (
         renderSettingsSurface('modal')

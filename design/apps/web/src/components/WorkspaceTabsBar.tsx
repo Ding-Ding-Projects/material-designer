@@ -185,6 +185,21 @@ interface Props {
 }
 
 const STORAGE_KEY = 'open-design:workspace-tabs:v1';
+const DOCK_EDGE_STORAGE_KEY = 'open-design:workspace-tabs:dock-edge:v1';
+type WorkspaceTabDockEdge = 'left' | 'right' | 'top' | 'bottom';
+const WORKSPACE_TAB_DOCK_EDGES: readonly WorkspaceTabDockEdge[] = ['left', 'right', 'top', 'bottom'];
+
+function readWorkspaceTabDockEdge(): WorkspaceTabDockEdge {
+  if (typeof window === 'undefined') return 'left';
+  try {
+    const value = window.localStorage.getItem(DOCK_EDGE_STORAGE_KEY);
+    return WORKSPACE_TAB_DOCK_EDGES.includes(value as WorkspaceTabDockEdge)
+      ? value as WorkspaceTabDockEdge
+      : 'left';
+  } catch {
+    return 'left';
+  }
+}
 /**
  * The id of the element every tab controls.
  *
@@ -499,7 +514,12 @@ function tabDropEdgeFromElement(
   event: DragEvent<HTMLElement>,
   strip: HTMLElement,
   element: HTMLElement,
+  vertical = false,
 ): TabDropEdge {
+  if (vertical) {
+    const rect = element.getBoundingClientRect();
+    return event.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
+  }
   return event.clientX > tabLayoutSpan(strip, element).mid ? 'after' : 'before';
 }
 
@@ -786,11 +806,34 @@ interface GroupAppearanceTarget {
   anchor: DOMRect;
 }
 
+interface HoverPreviewState {
+  tabId: string;
+  anchorLeft: number;
+  anchorBottom: number;
+  anchorWidth: number;
+}
+
 const HOVER_PREVIEW_DELAY_MS = 380;
 const TAB_CONTEXT_MENU_WIDTH = 208;
 const GROUP_CONTEXT_MENU_WIDTH = 232;
 /** Rows a bulk-close preview shows before it says "and N more". */
 const BULK_CLOSE_PREVIEW_LIMIT = 12;
+
+function describePreviewDetail(
+  tab: WorkspaceChromeTab,
+  projects: Map<string, Project>,
+): string | null {
+  if (tab.kind === 'project') {
+    const project = projects.get(tab.projectId);
+    const file = tab.fileName?.trim();
+    if (file) return file;
+    return project?.name?.trim() || null;
+  }
+  if (tab.kind === 'marketplace') {
+    return tab.pluginId ? `Plugin ${tab.pluginId}` : 'Marketplace';
+  }
+  return tab.view === 'home' ? 'Start a new project' : 'Workspace section';
+}
 
 /** Corner home glyph (per product: the brand tile gave way to a plain home
  *  icon). `currentColor` so it follows the button's muted/hover ink. */
@@ -910,6 +953,36 @@ function TabGroupMovePicker({
   );
 }
 
+interface WorkspaceContextMenuSearchProps {
+  fieldLabel: string;
+  testId: string;
+  onMatchesChange: (matches: (value: string) => boolean) => void;
+}
+
+/** Every workspace context menu owns an isolated filter and regex builder. */
+function WorkspaceContextMenuSearch({
+  fieldLabel,
+  testId,
+  onMatchesChange,
+}: WorkspaceContextMenuSearchProps) {
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
+  useEffect(() => {
+    onMatchesChange(search.matches);
+  }, [onMatchesChange, search.matches]);
+  return (
+    <RegexSearchField
+      search={search}
+      fieldLabel={fieldLabel}
+      ariaLabel={fieldLabel}
+      placeholder={fieldLabel}
+      ariaControls={`${testId}-items`}
+      testId={testId}
+      hostClassName={styles.contextMenuSearch}
+    />
+  );
+}
+
 export function WorkspaceTabsBar({
   route,
   projects,
@@ -958,7 +1031,13 @@ export function WorkspaceTabsBar({
     };
   }, [radialMenu]);
   const [tabsOverflowing, setTabsOverflowing] = useState(false);
+  const [tabDockEdge, setTabDockEdge] = useState<WorkspaceTabDockEdge>(readWorkspaceTabDockEdge);
   const [tabContextMenu, setTabContextMenu] = useState<TabContextMenuState | null>(null);
+  const [tabContextMatcher, setTabContextMatcher] = useState<(value: string) => boolean>(() => () => true);
+  const updateTabContextMatcher = useCallback(
+    (matches: (value: string) => boolean) => setTabContextMatcher(() => matches),
+    [],
+  );
   const [bulkCloseOpen, setBulkCloseOpen] = useState(false);
   const [bulkCloseQuery, setBulkCloseQuery] = useState('');
   const [bulkCloseMode, setBulkCloseMode] = useState<BulkCloseMatchMode>('text');
@@ -978,6 +1057,11 @@ export function WorkspaceTabsBar({
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
   const [dragOverTarget, setDragOverTarget] = useState<TabDragTarget | null>(null);
   const [groupContextMenu, setGroupContextMenu] = useState<GroupContextMenuState | null>(null);
+  const [groupContextMatcher, setGroupContextMatcher] = useState<(value: string) => boolean>(() => () => true);
+  const updateGroupContextMatcher = useCallback(
+    (matches: (value: string) => boolean) => setGroupContextMatcher(() => matches),
+    [],
+  );
   const [groupMoveTabId, setGroupMoveTabId] = useState<string | null>(null);
   const [groupMoveAnchor, setGroupMoveAnchor] = useState<{ x: number; y: number } | null>(null);
   const [groupAppearanceTarget, setGroupAppearanceTarget] =
@@ -1008,6 +1092,40 @@ export function WorkspaceTabsBar({
   // itself trigger a render — the incoming `projects`/`state.tabs` change
   // that recomputes `displayTabs` already will.
   const knownProjectNamesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(DOCK_EDGE_STORAGE_KEY, tabDockEdge);
+    } catch {
+      // Navigation and tab state remain usable when storage is unavailable.
+    }
+  }, [tabDockEdge]);
+
+  function dismissHoverPreview() {
+    if (hoverTimerRef.current !== null) {
+      window.clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setHoverPreview(null);
+  }
+
+  function scheduleHoverPreview(tabId: string, anchor: HTMLElement) {
+    if (hoverTimerRef.current !== null) window.clearTimeout(hoverTimerRef.current);
+    const rect = anchor.getBoundingClientRect();
+    hoverTimerRef.current = window.setTimeout(() => {
+      hoverTimerRef.current = null;
+      setHoverPreview({
+        tabId,
+        anchorLeft: rect.left,
+        anchorBottom: rect.bottom,
+        anchorWidth: rect.width,
+      });
+    }, HOVER_PREVIEW_DELAY_MS);
+  }
+
+  useEffect(() => () => {
+    if (hoverTimerRef.current !== null) window.clearTimeout(hoverTimerRef.current);
+  }, []);
 
   // Liquid-glass glide indicator: one persistent pill that slides to the
   // active tab (see useGlideIndicator + .workspace-tabs-glide in routines.css).
@@ -1813,12 +1931,6 @@ export function WorkspaceTabsBar({
     });
     setTabsMenuOpen(false);
     dismissHoverPreview();
-    setState((current) => ({
-      tabs: normalizeTabsState(current).tabs.map((item) =>
-        item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
-      ),
-      activeTabId: tab.id,
-    }));
     navigate(routeForTab(tab));
   }
 
@@ -2026,6 +2138,7 @@ export function WorkspaceTabsBar({
   function findTabDropTarget(event: DragEvent<HTMLElement>, sourceId: string): TabDragTarget | null {
     const strip = stripRef.current;
     if (!strip) return null;
+    const vertical = tabDockEdge === 'left' || tabDockEdge === 'right';
 
     // A drag may only reorder WITHIN its own region. The strip has three, in
     // this order: the permanent entry tab, the pinned tabs, then the rest. A
@@ -2056,9 +2169,7 @@ export function WorkspaceTabsBar({
       if (tabElement && strip.contains(tabElement)) {
         const tabId = tabElement.dataset.workspaceTabId;
         if (tabId && tabId !== sourceId && sameRegion(tabId)) {
-          return { tabId, edge: tabDropEdgeFromElement(event, tabElement) };
-        if (tabId && tabId !== sourceId) {
-          return resolveTarget({ tabId, edge: tabDropEdgeFromElement(event, strip, tabElement) });
+          return { tabId, edge: tabDropEdgeFromElement(event, strip, tabElement, vertical) };
         }
       }
     }
@@ -2068,12 +2179,17 @@ export function WorkspaceTabsBar({
       const tabId = tabElement.dataset.workspaceTabId;
       if (!tabId || tabId === sourceId || !sameRegion(tabId)) continue;
       const rect = tabElement.getBoundingClientRect();
+      if (vertical) {
+        if (event.clientY <= rect.top + rect.height / 2) return { tabId, edge: 'before' };
+        if (event.clientY <= rect.bottom) return { tabId, edge: 'after' };
+        lastTarget = { tabId, edge: 'after' };
+        continue;
+      }
       if (event.clientX <= rect.left + rect.width / 2) return { tabId, edge: 'before' };
       if (event.clientX <= rect.right) return { tabId, edge: 'after' };
-      if (!tabId || tabId === sourceId) continue;
       const span = tabLayoutSpan(strip, tabElement);
-      if (event.clientX <= span.mid) return resolveTarget({ tabId, edge: 'before' });
-      if (event.clientX <= span.right) return resolveTarget({ tabId, edge: 'after' });
+      if (event.clientX <= span.mid) return { tabId, edge: 'before' };
+      if (event.clientX <= span.right) return { tabId, edge: 'after' };
       lastTarget = { tabId, edge: 'after' };
     }
     return lastTarget;
@@ -2193,8 +2309,9 @@ export function WorkspaceTabsBar({
     const index = ids.indexOf(tabId);
     if (index < 0) return;
     let nextIndex: number | null = null;
-    if (event.key === 'ArrowRight') nextIndex = (index + 1) % ids.length;
-    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + ids.length) % ids.length;
+    const vertical = tabDockEdge === 'left' || tabDockEdge === 'right';
+    if (event.key === (vertical ? 'ArrowDown' : 'ArrowRight')) nextIndex = (index + 1) % ids.length;
+    else if (event.key === (vertical ? 'ArrowUp' : 'ArrowLeft')) nextIndex = (index - 1 + ids.length) % ids.length;
     else if (event.key === 'Home') nextIndex = 0;
     else if (event.key === 'End') nextIndex = ids.length - 1;
     if (nextIndex === null) return;
@@ -2316,6 +2433,7 @@ export function WorkspaceTabsBar({
   function openTabContextMenu(tabId: string, event: React.MouseEvent) {
     event.preventDefault();
     dismissHoverPreview();
+    setTabContextMatcher(() => () => true);
     setTabContextMenu({ tabId, x: event.clientX, y: event.clientY });
   }
 
@@ -2342,6 +2460,7 @@ export function WorkspaceTabsBar({
       });
       return;
     }
+    setGroupContextMatcher(() => () => true);
     setGroupContextMenu({ groupId, x: event.clientX, y: event.clientY });
   }
 
@@ -2350,6 +2469,16 @@ export function WorkspaceTabsBar({
     if (!tab) return null;
     const display = displayTabById.get(tab.id) ?? displayTabFor(tab, projectById, t);
     const pinned = isTabPinned(state.pinnedTabIds, tab.id);
+    const tabMenuLabels = tab.kind === 'entry'
+      ? [t('workspaceTabs.permanentTab'), t('workspaceTabs.bulkCloseTitle')]
+      : [
+          pinned ? t('workspaceTabs.unpin') : t('workspaceTabs.pin'),
+          t('common.close'),
+          t('workspaceTabs.bulkCloseTitle'),
+          t('workspaceTabs.groupMoveTabHeading'),
+          t('workspaceTabs.groupNewFromTab'),
+        ];
+    const tabMenuHasMatches = tabMenuLabels.some((label) => tabContextMatcher(label));
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
     return (
@@ -2357,18 +2486,26 @@ export function WorkspaceTabsBar({
         className={styles.contextMenu}
         style={{
           left: Math.max(4, Math.min(viewportWidth - TAB_CONTEXT_MENU_WIDTH - 4, menu.x)),
-          top: Math.max(4, Math.min(viewportHeight - 160, menu.y)),
+          top: Math.max(4, Math.min(viewportHeight - 330, menu.y)),
           width: TAB_CONTEXT_MENU_WIDTH,
         }}
         role="menu"
         aria-label={display.title}
         ref={contextMenuRef}
       >
+        <WorkspaceContextMenuSearch
+          fieldLabel={display.title}
+          testId="workspace-tab-context-search"
+          onMatchesChange={updateTabContextMatcher}
+        />
+        <div id="workspace-tab-context-search-items">
         {tab.kind === 'entry' ? (
+          tabContextMatcher(t('workspaceTabs.permanentTab')) ? (
           <p className={styles.contextMenuNote}>{t('workspaceTabs.permanentTab')}</p>
+          ) : null
         ) : (
           <>
-            <button
+            {tabContextMatcher(pinned ? t('workspaceTabs.unpin') : t('workspaceTabs.pin')) ? <button
               type="button"
               role="menuitem"
               className={styles.contextMenuItem}
@@ -2376,8 +2513,8 @@ export function WorkspaceTabsBar({
             >
               <Icon name="star" size={13} aria-hidden />
               <span>{pinned ? t('workspaceTabs.unpin') : t('workspaceTabs.pin')}</span>
-            </button>
-            <button
+            </button> : null}
+            {tabContextMatcher(t('common.close')) ? <button
               type="button"
               role="menuitem"
               className={styles.contextMenuItem}
@@ -2388,10 +2525,10 @@ export function WorkspaceTabsBar({
             >
               <Icon name="close" size={13} aria-hidden />
               <span>{t('common.close')}</span>
-            </button>
+            </button> : null}
           </>
         )}
-        <button
+        {tabContextMatcher(t('workspaceTabs.bulkCloseTitle')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2403,11 +2540,11 @@ export function WorkspaceTabsBar({
         >
           <Icon name="search" size={13} aria-hidden />
           <span>{t('workspaceTabs.bulkCloseTitle')}</span>
-        </button>
+        </button> : null}
         {tab.kind === 'entry' ? null : (
           <>
-            <p className={styles.contextMenuNote}>{t('workspaceTabs.groupMoveTabHeading')}</p>
-            <button
+            {tabContextMatcher(t('workspaceTabs.groupMoveTabHeading')) ? <p className={styles.contextMenuNote}>{t('workspaceTabs.groupMoveTabHeading')}</p> : null}
+            {tabContextMatcher(`${t('workspaceTabs.groupMoveTabHeading')}…`) ? <button
               type="button"
               role="menuitem"
               className={styles.contextMenuItem}
@@ -2419,8 +2556,8 @@ export function WorkspaceTabsBar({
             >
               <Icon name="folder" size={13} aria-hidden />
               <span>{t('workspaceTabs.groupMoveTabHeading')}…</span>
-            </button>
-            <button
+            </button> : null}
+            {tabContextMatcher(t('workspaceTabs.groupNewFromTab')) ? <button
               type="button"
               role="menuitem"
               className={styles.contextMenuItem}
@@ -2431,9 +2568,11 @@ export function WorkspaceTabsBar({
             >
               <Icon name="plus" size={13} aria-hidden />
               <span>{t('workspaceTabs.groupNewFromTab')}</span>
-            </button>
+            </button> : null}
           </>
         )}
+        {!tabMenuHasMatches ? <p className={styles.contextMenuNote} role="status">{t('homeHero.footer.noMatches')}</p> : null}
+        </div>
       </div>
     );
   }
@@ -2443,6 +2582,15 @@ export function WorkspaceTabsBar({
     if (!group) return null;
     const name = tabGroupDisplayName(group, t('workspaceTabs.groupUntitled'));
     const index = groups.findIndex((item) => item.id === group.id);
+    const groupMenuLabels = [
+      group.collapsed ? t('workspaceTabs.groupExpand') : t('workspaceTabs.groupCollapse'),
+      t('workspaceTabs.groupMoveEarlier'),
+      t('workspaceTabs.groupMoveLater'),
+      t('workspaceTabs.searchGroupsHeading'),
+      t('workspaceTabs.groupEditAppearance'),
+      t('workspaceTabs.groupRemove'),
+    ];
+    const groupMenuHasMatches = groupMenuLabels.some((label) => groupContextMatcher(label));
     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
     return (
@@ -2450,14 +2598,20 @@ export function WorkspaceTabsBar({
         className={styles.contextMenu}
         style={{
           left: Math.max(4, Math.min(viewportWidth - GROUP_CONTEXT_MENU_WIDTH - 4, menu.x)),
-          top: Math.max(4, Math.min(viewportHeight - 200, menu.y)),
+          top: Math.max(4, Math.min(viewportHeight - 360, menu.y)),
           width: GROUP_CONTEXT_MENU_WIDTH,
         }}
         role="menu"
         aria-label={name}
         ref={groupContextMenuRef}
       >
-        <button
+        <WorkspaceContextMenuSearch
+          fieldLabel={name}
+          testId="workspace-group-context-search"
+          onMatchesChange={updateGroupContextMatcher}
+        />
+        <div id="workspace-group-context-search-items">
+        {groupContextMatcher(group.collapsed ? t('workspaceTabs.groupExpand') : t('workspaceTabs.groupCollapse')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2472,8 +2626,8 @@ export function WorkspaceTabsBar({
               ? t('workspaceTabs.groupExpand')
               : t('workspaceTabs.groupCollapse')}
           </span>
-        </button>
-        <button
+        </button> : null}
+        {groupContextMatcher(t('workspaceTabs.groupMoveEarlier')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2482,8 +2636,8 @@ export function WorkspaceTabsBar({
         >
           <Icon name="chevron-left" size={13} aria-hidden />
           <span>{t('workspaceTabs.groupMoveEarlier')}</span>
-        </button>
-        <button
+        </button> : null}
+        {groupContextMatcher(t('workspaceTabs.groupMoveLater')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2492,8 +2646,8 @@ export function WorkspaceTabsBar({
         >
           <Icon name="chevron-right" size={13} aria-hidden />
           <span>{t('workspaceTabs.groupMoveLater')}</span>
-        </button>
-        <button
+        </button> : null}
+        {groupContextMatcher(t('workspaceTabs.searchGroupsHeading')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2504,8 +2658,8 @@ export function WorkspaceTabsBar({
         >
           <Icon name="search" size={13} aria-hidden />
           <span>{t('workspaceTabs.searchGroupsHeading')}</span>
-        </button>
-        <button
+        </button> : null}
+        {groupContextMatcher(t('workspaceTabs.groupEditAppearance')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2519,8 +2673,8 @@ export function WorkspaceTabsBar({
         >
           <Icon name="palette" size={13} aria-hidden />
           <span>{t('workspaceTabs.groupEditAppearance')}</span>
-        </button>
-        <button
+        </button> : null}
+        {groupContextMatcher(t('workspaceTabs.groupRemove')) ? <button
           type="button"
           role="menuitem"
           className={styles.contextMenuItem}
@@ -2528,7 +2682,9 @@ export function WorkspaceTabsBar({
         >
           <Icon name="close" size={13} aria-hidden />
           <span>{t('workspaceTabs.groupRemove')}</span>
-        </button>
+        </button> : null}
+        {!groupMenuHasMatches ? <p className={styles.contextMenuNote} role="status">{t('homeHero.footer.noMatches')}</p> : null}
+        </div>
       </div>
     );
   }
@@ -2885,11 +3041,17 @@ export function WorkspaceTabsBar({
   }
 
   return (
-    <header className="app-chrome-header workspace-tabs-chrome" aria-label={t('workspaceTabs.searchStripHeading')}>
+    <header
+      className={`app-chrome-header workspace-tabs-chrome workspace-tabs-chrome--${tabDockEdge}`}
+      data-tab-dock-edge={tabDockEdge}
+      aria-label={t('workspaceTabs.searchStripHeading')}
+    >
       <div className="app-chrome-traffic-space workspace-tabs-traffic" aria-hidden />
       <div
         className={`workspace-tabs-strip${tabsOverflowing ? ' is-overflowing' : ''}`}
+        data-tab-dock-edge={tabDockEdge}
         role="tablist"
+        aria-orientation={tabDockEdge === 'left' || tabDockEdge === 'right' ? 'vertical' : 'horizontal'}
         aria-label={t('workspaceTabs.searchStripHeading')}
         ref={stripRef}
         onDragOver={handleStripDragOver}
@@ -2969,6 +3131,20 @@ export function WorkspaceTabsBar({
                 aria-label={t('workspaceTabs.searchStripHeading')}
                 ref={popoverRef}
               >
+                <div className={styles.dockControls} role="group" aria-label="Tab strip position">
+                  {WORKSPACE_TAB_DOCK_EDGES.map((edge) => (
+                    <button
+                      key={edge}
+                      type="button"
+                      role="radio"
+                      aria-checked={tabDockEdge === edge}
+                      data-testid={`workspace-tabs-dock-${edge}`}
+                      onClick={() => setTabDockEdge(edge)}
+                    >
+                      {edge}
+                    </button>
+                  ))}
+                </div>
                 {/* All four discovery searches, each with its own controller
                     and therefore its own anchored builder. See the header
                     comment in `WorkspaceTabDiscovery.tsx` for why a single

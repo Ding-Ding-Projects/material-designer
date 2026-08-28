@@ -878,6 +878,35 @@
   border-color: transparent;
 }
 .share-menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.export-adapter-catalog {
+  display: grid;
+  gap: 6px;
+  margin: 4px 0 10px;
+  padding: 8px;
+  border: 1px solid var(--md-sys-color-outline-variant, #c5c5c5);
+  border-radius: 12px;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.export-adapter-catalog [role="listitem"] {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.export-adapter-catalog [aria-disabled="true"] {
+  opacity: 0.62;
+}
+
+.export-adapter-catalog small {
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  text-align: right;
+}
 .share-menu-icon {
   flex: 0 0 auto;
   width: 18px;

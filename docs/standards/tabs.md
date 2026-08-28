@@ -14,8 +14,11 @@ default and supports left, right, top, and bottom orientations. Side docks use
 vertical tab semantics and Up/Down navigation; top and bottom docks use
 horizontal semantics and Left/Right navigation. The edge choices are available
 as touch-sized controls and from the strip's own searchable context menu. The
-layout remains source-mounted only until the hosted accessibility and narrow
-viewport matrix is run.
+workspace strip stores the same edge choice, advertises its axis through
+`aria-orientation`, uses axis-aware drag hit testing, and gives tab and group
+context menus isolated local searches with their own anchored regex builders.
+The layout remains source-mounted only until the hosted accessibility and
+narrow viewport matrix is run.
 
 ## The requirement
 

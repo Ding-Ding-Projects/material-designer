@@ -172,6 +172,7 @@ import {
 } from '../runtime/exports';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { buildReactComponentSrcdoc } from '../runtime/react-component';
+import { exportCapabilitySummary } from '../runtime/export-adapters';
 import { shouldConsumeSlideNav } from '../runtime/slide-nav';
 import { findHtmlEntriesReferencing } from '../runtime/jsx-module-refs';
 import {
@@ -7128,6 +7129,30 @@ function ReactComponentViewer({
                     ) : null}
                     {unifiedActionTab === 'export' ? (
                       <div className="chrome-unified-panel">
+                        <div
+                          className="export-adapter-catalog"
+                          data-testid="export-adapter-catalog"
+                          aria-label="Export format catalogue"
+                          role="list"
+                        >
+                          {exportCapabilitySummary().enabled.map((adapter) => (
+                            <div key={adapter.format} role="listitem" data-export-format={adapter.format}>
+                              <span>{adapter.format.toUpperCase()}</span>
+                              <small>{adapter.capabilityNote}</small>
+                            </div>
+                          ))}
+                          {exportCapabilitySummary().unavailable.map((adapter) => (
+                            <div
+                              key={adapter.format}
+                              role="listitem"
+                              aria-disabled="true"
+                              data-export-format={adapter.format}
+                            >
+                              <span>{adapter.format.toUpperCase()}</span>
+                              <small>{adapter.capabilityNote}</small>
+                            </div>
+                          ))}
+                        </div>
                         <button
                           type="button"
                           className="share-menu-item"

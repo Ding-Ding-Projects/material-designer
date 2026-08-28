@@ -23,6 +23,7 @@ import type { Dict } from '../../i18n/types';
 import { LIBRARY_UI_VISIBLE } from '../../features/libraryUi';
 import { SETTINGS_INDEX, type SettingsIndexEntry } from './settingsIndex';
 import type { TranslationVars } from '../../i18n';
+import { openVersionHistory } from '../history/open-history';
 
 export type PaletteTranslate = (key: keyof Dict, vars?: TranslationVars) => string;
 
@@ -179,6 +180,16 @@ export function buildPaletteRows(ctx: PaletteRegistryContext): PaletteRow[] {
     icon: 'plus',
     keywords: ['new tab', 'workspace tab'],
     run: () => ctx.openInNewTab({ kind: 'home', view: 'home' }),
+  });
+  rows.push({
+    kind: 'command',
+    id: 'command.openVersionHistory',
+    title: t('history.title'),
+    hint: t('history.subtitle'),
+    group: commandGroup,
+    icon: 'history',
+    keywords: ['history', 'versions', 'revisions', 'restore', 'local git'],
+    run: () => openVersionHistory(),
   });
   rows.push({
     kind: 'command',

@@ -13,6 +13,12 @@ multi-select and the full set of its actions in bulk.
 > packaged interaction matrix, including every surface's format menu, remains
 > unverified because no local package build or UI drive was run here.
 
+The adapter catalogue is mounted in the file export surface. Enabled structured
+formats use the complete key union for uneven records, and ZIP now has a real
+local stored-entry writer containing JSON and JSONL exports. Compression,
+encryption, and split volumes remain explicitly unavailable for that adapter;
+7z remains visible but disabled until a bundled writer exists.
+
 The production Library route is a scoped exception to that broad inventory: its
 destructive bulk action now uses a bounded worker pool, records each selected id
 as deleted or failed, keeps failed rows selected, and leaves the destructive gate

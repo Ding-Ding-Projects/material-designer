@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildVsCodeHandoffRequest,
+  buildFaithfulZipExport,
   exportAdapterFor,
   exportCapabilitySummary,
   serializeFaithfulExport,
@@ -41,6 +42,14 @@ describe('universal export adapter catalogue', () => {
       format: 'yaml',
       error: 'No bundled YAML adapter is available in this build.',
     });
+  });
+
+  it('builds the enabled ZIP format through the local adapter', async () => {
+    const result = buildFaithfulZipExport(records);
+    expect(result.blob.type).toBe('application/zip');
+    expect(result.blob.size).toBeGreaterThan(40);
+    expect(new Uint8Array(await result.blob.arrayBuffer()).slice(0, 2)).toEqual(new Uint8Array([0x50, 0x4b]));
+    expect(result.warnings[0]).toContain('stored entries');
   });
 });
 
