@@ -153,6 +153,7 @@ export function CollabDemoView({ projectId }: { projectId: string | null }) {
               searchPlaceholder="Filter roles"
               noResultsLabel="No roles match this filter."
               resultCountLabel={(count) => `${count} roles`}
+              lockedReason="Unlock this role control first."
             />
           </div>
 

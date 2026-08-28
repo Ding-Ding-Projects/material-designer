@@ -23,7 +23,7 @@ export interface CustomSelectOption {
   /** A locked trigger remains an unlock target through its operable wrapper. */
   locked?: boolean;
   onLockedActivate?: () => void;
-  lockedReason?: string;
+  lockedReason: string;
 }
 
 export interface CustomSelectGroup {
@@ -101,7 +101,7 @@ export function CustomSelect({
   disabledReason,
   locked = false,
   onLockedActivate,
-  lockedReason = 'This control is locked. Unlock it to continue.',
+  lockedReason,
   placeholder,
   portal = true,
   title,
@@ -146,6 +146,15 @@ export function CustomSelect({
   const enabledOptionsRef = useRef(enabledOptions);
   flatOptionsRef.current = flatOptions;
   enabledOptionsRef.current = enabledOptions;
+  const duplicateOptionValues = useMemo(() => {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const option of flatOptions) {
+      if (seen.has(option.value)) duplicates.add(option.value);
+      seen.add(option.value);
+    }
+    return duplicates;
+  }, [flatOptions]);
   const optionIdByValue = useMemo(
     () => new Map(flatOptions.map((option, index) => [option.value, `${domOwnerId}-option-${index}`])),
     [domOwnerId, flatOptions],
@@ -241,6 +250,12 @@ export function CustomSelect({
     setDuplicateOwner(matches.length > 1);
     if (matches.length > 1) console.error(`Duplicate select owner id: ${resolvedOwnerId}`);
   }, [resolvedOwnerId]);
+
+  useEffect(() => {
+    if (duplicateOptionValues.size > 0) {
+      console.error(`Duplicate select option values: ${Array.from(duplicateOptionValues).join(',')}`);
+    }
+  }, [duplicateOptionValues]);
 
   useEffect(() => {
     if (!open) return;
@@ -344,6 +359,7 @@ export function CustomSelect({
           ariaLabel={searchLabel}
           ariaControls={`${domOwnerId}-options`}
           ariaActiveDescendant={activeOptionId}
+          fieldId={`${resolvedOwnerId}-filter`}
           placeholder={searchPlaceholder}
           testId={testId ? `${testId}-filter` : undefined}
           focusScopeId={`${domOwnerId}-filter`}
@@ -475,7 +491,11 @@ export function CustomSelect({
   );
 
   return (
-    <div className={['od-select', className].filter(Boolean).join(' ')} data-locked={locked || undefined}>
+    <div
+      className={['od-select', className].filter(Boolean).join(' ')}
+      data-locked={locked || undefined}
+      data-option-duplicate={duplicateOptionValues.size > 0 || undefined}
+    >
       {locked ? (
         <span
           className="od-select-locked-wrapper"

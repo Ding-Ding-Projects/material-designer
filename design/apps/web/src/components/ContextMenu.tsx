@@ -356,6 +356,7 @@ export function ContextMenu({
           ariaLabel={searchLabel}
           ariaControls={`${domOwnerId}-items`}
           ariaActiveDescendant={activeOptionId}
+          fieldId={`${resolvedOwnerId}-filter`}
           placeholder={searchPlaceholder}
           hostClassName={styles.searchHost}
           className={styles.searchInput}

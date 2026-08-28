@@ -47,6 +47,7 @@ those feature-owned rows are migrated.
 - `apps/web/src/components/ContextMenu.module.css`
 - `apps/web/src/components/ContextMenu.tsx`
 - `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/regex/RegexBuilder.tsx`
 - `apps/web/src/components/regex/RegexSearchField.tsx`
 - `apps/web/src/styles/primitives.css`
 - `apps/web/src/styles/entrance.css`

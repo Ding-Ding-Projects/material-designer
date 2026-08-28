@@ -58,6 +58,8 @@ export interface RegexSearchFieldProps {
   ariaControls?: string;
   /** Optional active result id, used by listbox/menu owners while this field has focus. */
   ariaActiveDescendant?: string;
+  /** Stable field id forwarded to field-scoped regex persistence. */
+  fieldId?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -86,6 +88,7 @@ export function RegexSearchField({
   ariaLabel,
   ariaControls,
   ariaActiveDescendant,
+  fieldId,
   testId,
   autoFocus,
   spellCheck = false,
@@ -304,6 +307,7 @@ export function RegexSearchField({
                 fieldLabel={fieldLabel}
                 onClose={() => close(true)}
                 testIdPrefix={testId ? `${testId}-regex` : undefined}
+                fieldId={fieldId}
               />
             </div>,
             document.body,

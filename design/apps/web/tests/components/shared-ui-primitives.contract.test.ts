@@ -127,7 +127,8 @@ describe('shared menu and dropdown primitive source contract', () => {
     expectRedThenGreen(
       menu,
       (value) => hasNamedImport(value, './regex', 'RegexSearchField')
-        && hasJsxAttribute(value, 'ariaActiveDescendant'),
+        && hasJsxAttribute(value, 'ariaActiveDescendant')
+        && hasJsxAttribute(value, 'fieldId'),
       (value) => value.replace("import { RegexSearchField, useRegexSearch } from './regex';", "import { useRegexSearch } from './regex';"),
     );
   });
@@ -137,7 +138,8 @@ describe('shared menu and dropdown primitive source contract', () => {
     expectRedThenGreen(
       select,
       (value) => hasNamedImport(value, './regex', 'RegexSearchField')
-        && hasJsxAttribute(value, 'ariaActiveDescendant'),
+        && hasJsxAttribute(value, 'ariaActiveDescendant')
+        && hasJsxAttribute(value, 'fieldId'),
       (value) => value.replace("import { RegexSearchField, useRegexSearch } from './regex';", "import { useRegexSearch } from './regex';"),
     );
   });

@@ -11,6 +11,7 @@ const SEARCH_PROPS = {
   searchPlaceholder: 'Filter options',
   noResultsLabel: 'No options match this filter.',
   resultCountLabel: (count: number) => `${count} options`,
+  lockedReason: 'Unlock this control first.',
 };
 
 describe('CustomSelect', () => {
@@ -231,6 +232,20 @@ describe('CustomSelect', () => {
     );
     expect(screen.getByTestId('duplicate-a')).toHaveAttribute('data-owner-duplicate', 'true');
     expect(screen.getByTestId('duplicate-b')).toHaveAttribute('data-owner-duplicate', 'true');
+  });
+
+  it('marks duplicate option values before an ambiguous selection can ship', () => {
+    render(
+      <CustomSelect
+        {...SEARCH_PROPS}
+        testId="duplicate-options"
+        ariaLabel="Duplicate options"
+        value="same"
+        options={[{ value: 'same', label: 'First' }, { value: 'same', label: 'Second' }]}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('duplicate-options')).toHaveAttribute('data-option-duplicate', 'true');
   });
 
   it('supports touch selection through the same option action', () => {
