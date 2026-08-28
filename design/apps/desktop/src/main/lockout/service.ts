@@ -12,6 +12,7 @@ const MAX_PINNED_ANSWER_LENGTH = 128;
 type ChallengeRecord = { challenge: LadderChallenge; answer: unknown; used: boolean };
 type BudgetRecord = { windowStartedAtMs: number; uses: number };
 type LockoutRecord = { state: LadderState; schoolMode: boolean; wrongDishes: number; challenge: ChallengeRecord | null; budgetKey: string };
+export type UnlockLadderDurableSnapshot = { version: 1; budgets: Record<string, BudgetRecord>; lockouts: Record<string, Omit<LockoutRecord, "challenge">> };
 
 export interface LadderClock { now(): number; }
 export interface LadderRandom { uuid(): string; integer(maxExclusive: number): number; }
@@ -43,6 +44,8 @@ export class UnlockLadderHost {
   }
 
   state(lockoutId: string): LadderState | null { const record = this.#records.get(lockoutId); return record ? cloneState(record.state) : null; }
+  exportState(): UnlockLadderDurableSnapshot { return { version: 1, budgets: Object.fromEntries(this.#budgets), lockouts: Object.fromEntries([...this.#records].map(([id, record]) => [id, { state: cloneState(record.state), schoolMode: record.schoolMode, wrongDishes: record.wrongDishes, budgetKey: record.budgetKey }])) }; }
+  restoreState(snapshot: UnlockLadderDurableSnapshot): void { if (!snapshot || snapshot.version !== 1 || typeof snapshot.budgets !== "object" || typeof snapshot.lockouts !== "object") throw new Error("Unlock ladder snapshot is invalid."); this.#budgets.clear(); this.#records.clear(); for (const [key, budget] of Object.entries(snapshot.budgets)) { if (!key || !validNow(budget.windowStartedAtMs) || !Number.isSafeInteger(budget.uses) || budget.uses < 0 || budget.uses > MAX_LADDER_USES) throw new Error("Unlock ladder budget snapshot is invalid."); this.#budgets.set(key, { ...budget }); } for (const [id, record] of Object.entries(snapshot.lockouts)) { if (!id || !record || !record.state || !validNow(record.state.waitingUntilMs) || !validNow(record.state.windowStartedAtMs) || !Number.isSafeInteger(record.state.remainingAttempts) || record.state.remainingAttempts < 0 || !Number.isSafeInteger(record.state.consecutiveLockouts) || record.state.consecutiveLockouts < 1 || !Number.isSafeInteger(record.wrongDishes) || record.wrongDishes < 0 || typeof record.budgetKey !== "string") throw new Error("Unlock ladder lockout snapshot is invalid."); this.#records.set(id, { ...record, challenge: null }); } }
 
   issue(lockoutId: string): LadderChallenge | LadderResult {
     const record = this.#records.get(lockoutId); if (!record) return { ok: false, code: "not-locked" };

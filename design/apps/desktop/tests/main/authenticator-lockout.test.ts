@@ -80,4 +80,8 @@ describe("host-owned unlock ladder", () => {
     for (let index = 0; index < 3; index++) { host.recordLockout(`lock-${index}`, { budgetKey: "account", waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: index + 1 }); const challenge = host.issue(`lock-${index}`); if ("nonce" in challenge) expect(host.submit(`lock-${index}`, challenge.nonce, 0)).toMatchObject({ ok: true, clearedWait: true }); }
     host.recordLockout("lock-3", { budgetKey: "account", waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: 4 }); expect(host.issue("lock-3")).toMatchObject({ ok: false, code: "budget-exhausted" });
   });
+
+  test("exports and restores durable ladder budget and lockout state without persisting a challenge nonce", () => {
+    const clock = new FakeClock(); const random = { uuid: () => "nonce-1", integer: () => 0 }; const host = new UnlockLadderHost({ clock, random }); host.recordLockout("lock", { budgetKey: "account", waitingUntilMs: clock.value + 60_000, remainingAttempts: 2, consecutiveLockouts: 3 }); const snapshot = host.exportState(); const restored = new UnlockLadderHost({ clock, random }); restored.restoreState(snapshot); expect(restored.state("lock")).toMatchObject({ remainingAttempts: 2, consecutiveLockouts: 3 }); expect(restored.issue("lock")).toMatchObject({ stage: "dish" });
+  });
 });

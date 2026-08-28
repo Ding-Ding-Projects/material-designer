@@ -67,14 +67,22 @@ user project. The renderer destination is mounted at `/authenticator` with
 Codes, Register, and History tabs. It has a local entry search with its own
 anchored pattern builder, semantic file selection, explicit camera and vault
 unavailable explanations, and an honest protected-history state. The real
-desktop vault adapter and protected history actions still need to be wired and
-exercised in the packaged application.
+desktop vault adapter, protected history actions, and packaged interaction
+remain unverified. Restore applies a validated metadata set and appends a new
+revision; retention is persisted and pruning is recorded as its own local Git
+commit.
 
 `super-confirmation.ts` is the host-owned one-use token verifier used by
 destructive removal and sensitive history export. Tokens bind the action and
 ordered ids, expire after a bounded interval, and are consumed before a retry
 can replay them. An absent or mismatched token is refused; no destructive
 operation silently falls back to an unconfirmed call.
+
+The ladder host can export and restore its durable lockout and rolling-budget
+snapshot. Restored challenges are discarded and must be freshly issued, so a
+previous nonce cannot be replayed after restart. Runtime persistence and every
+actual lockout surface remain unverified until the packaged application is
+driven.
 
 ## Unlock ladder contract
 
