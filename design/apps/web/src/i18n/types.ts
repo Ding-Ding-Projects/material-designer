@@ -4788,6 +4788,38 @@ export interface Dict {
   'brandDetail.refining': string;
   'brandDetail.notFound': string;
   'brandDetail.logo': string;
+  // App-logo customization. Secondary locales use the canonical English
+  // fallback until they provide their own wording.
+  'appLogo.title'?: string;
+  'appLogo.hint'?: string;
+  'appLogo.reset'?: string;
+  'appLogo.search'?: string;
+  'appLogo.presets'?: string;
+  'appLogo.material'?: string;
+  'appLogo.warm'?: string;
+  'appLogo.monochrome'?: string;
+  'appLogo.outline'?: string;
+  'appLogo.uploadHelp'?: string;
+  'appLogo.fit'?: string;
+  'appLogo.contain'?: string;
+  'appLogo.cover'?: string;
+  'appLogo.fill'?: string;
+  'appLogo.focalX'?: string;
+  'appLogo.focalY'?: string;
+  'appLogo.safeArea'?: string;
+  'appLogo.transparent'?: string;
+  'appLogo.background'?: string;
+  'appLogo.crop'?: string;
+  'appLogo.targets'?: string;
+  'appLogo.selectedPreview'?: string;
+  'appLogo.staticPreset'?: string;
+  'appLogo.alphaPreserved'?: string;
+  'appLogo.opaque'?: string;
+  'appLogo.frame'?: string;
+  'appLogo.validating'?: string;
+  'appLogo.converted'?: string;
+  'appLogo.resetDone'?: string;
+  'appLogo.conversionFailure'?: string;
   'brandDetail.typography': string;
   'brandDetail.palette': string;
   'brandDetail.voiceTone': string;

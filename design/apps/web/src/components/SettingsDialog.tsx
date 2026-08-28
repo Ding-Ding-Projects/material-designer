@@ -161,6 +161,7 @@ import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
 import { DesignSystemsSection } from './DesignSystemsSection';
 import { PrivacySection } from './PrivacySection';
+import { LogoCustomizationSection } from './logo/LogoCustomizationSection';
 import { ProjectLocationsSection } from './ProjectLocationsSection';
 import { RoutinesSection } from './RoutinesSection';
 import { SettingsWorkspaceSection } from './SettingsWorkspaceSection';
@@ -5928,6 +5929,10 @@ export function SettingsDialog({
                     <Icon name="chevron-down" size={14} />
                   </label>
                 </div>
+              </div>
+
+              <div className="settings-general-block">
+                <LogoCustomizationSection />
               </div>
 
               <div className="settings-general-block">

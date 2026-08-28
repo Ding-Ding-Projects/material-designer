@@ -16,6 +16,7 @@ import * as appearance from './appearance.js';
 import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
+import * as logo from './logo.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -146,6 +147,56 @@ function wireAppearance() {
   };
   document.addEventListener(appearance.CHANGE_EVENT, paintStatus);
   paintStatus();
+}
+
+/* ------------------------------------------------------------------ *
+ * 2b. App-logo customization
+ * ------------------------------------------------------------------ */
+
+function wireLogo() {
+  const controller = logo.init();
+  const host = $('[data-logo-customization]');
+  const input = $('[data-logo-search]', host);
+  if (!controller || !host || !input) return;
+  const modeToggle = $('[data-logo-search-mode]', host);
+  const builderTrigger = $('[data-logo-search-builder]', host);
+  const applyMatcher = (flags) => {
+    const query = input.value.trim();
+    if (!query) {
+      controller.setSearchMatcher(null);
+      return;
+    }
+    if (input.dataset.regexMode !== 'regex') {
+      const needle = query.toLowerCase();
+      controller.setSearchMatcher((text) => text.toLowerCase().includes(needle));
+      return;
+    }
+    try {
+      const re = new RegExp(query, flags || 'i');
+      controller.setSearchMatcher((text) => { re.lastIndex = 0; return re.test(text); });
+    } catch {
+      controller.setSearchMatcher(() => false);
+    }
+  };
+  const builder = regex.attachRegexBuilder(input, {
+    trigger: builderTrigger,
+    modeToggle,
+    key: 'logo-preset-search',
+    onApply: (pattern, flags) => {
+      input.value = pattern;
+      input.dataset.regexMode = 'regex';
+      applyMatcher(flags);
+    },
+  });
+  input.dataset.regexMode = 'plain';
+  input.addEventListener('input', () => applyMatcher(builder?.getState?.().flags));
+  modeToggle?.addEventListener('click', () => {
+    window.setTimeout(() => {
+      input.dataset.regexMode = modeToggle.getAttribute('aria-pressed') === 'true' ? 'regex' : 'plain';
+      applyMatcher(builder?.getState?.().flags);
+    }, 0);
+  });
+  document.addEventListener('md-logo-change', () => applyMatcher(builder?.state?.flags));
 }
 
 /* ------------------------------------------------------------------ *
@@ -555,6 +606,7 @@ function start() {
 
   wireLanguage();
   wireAppearance();
+  wireLogo();
   wireTabs();
   wireContentSearch();
   wireSettingsSearch();

@@ -127,7 +127,7 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
        ================================================================== -->
   <header class="app-topbar">
     <span class="app-topbar__brand">
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-logo"/></svg>
+      <img data-app-logo-image class="app-topbar__logo" alt="Material Designer logo" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E">
       <span data-i18n="site.name">Material Designer</span>
     </span>
     <span class="app-topbar__subtitle" data-i18n="chrome.subtitle" data-i18n-inline>Documentation and honest status</span>
@@ -1751,6 +1751,63 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
         <p class="settings-group__sub" data-i18n="se.appearance.help">Changes apply to the live page as you make them, and survive a reload. The seed colour accepts any colour at all, not just the four presets.</p>
         <div data-appearance-controls></div>
         <p class="md-body-small on-surface-variant" style="margin-top:0.5rem" data-i18n="se.appearance.derived">A custom seed derives its dependent colour roles rather than tinting one button, so the whole page moves with it and stays readable in both themes. The translator shows the contrast the derived primary will actually have.</p>
+
+        <div class="logo-customization" data-logo-customization data-setting-unit aria-labelledby="se-logo-title">
+          <div class="logo-customization__head">
+            <div>
+              <h4 id="se-logo-title">App logo</h4>
+              <p class="settings-group__sub">Choose a bundled mark or select a local image. The mark changes presentation only, never application identity.</p>
+            </div>
+            <button type="button" class="md-btn md-btn--text" data-logo-reset>Reset logo</button>
+          </div>
+          <div class="md-search logo-customization__search" data-mode="plain">
+            <svg class="md-search__icon" aria-hidden="true" focusable="false"><use href="#i-search"/></svg>
+            <label class="visually-hidden" for="logo-preset-search">Search logo presets</label>
+            <input class="md-search__input" id="logo-preset-search" data-logo-search type="search" autocomplete="off" placeholder="Search logo presets">
+            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-mode aria-pressed="false" aria-label="Use regular expression for logo preset search">.*</button>
+            <button type="button" class="md-icon-btn md-icon-btn--small" data-logo-search-builder aria-haspopup="dialog" aria-label="Open the advanced regex builder for logo preset search"><svg aria-hidden="true" focusable="false"><use href="#i-build"/></svg></button>
+          </div>
+          <div class="logo-customization__presets" role="list" aria-label="Logo presets">
+            <button type="button" class="logo-preset" data-logo-preset="material" aria-pressed="true"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%238f4c34'/%3E%3Cpath fill='%23ffdbcf' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Material mark</button>
+            <button type="button" class="logo-preset" data-logo-preset="warm" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%2300696d'/%3E%3Cpath fill='%23b2ebeb' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Warm mark</button>
+            <button type="button" class="logo-preset" data-logo-preset="monochrome" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%23252525'/%3E%3Cpath fill='white' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16h-3.4v-9.4L12 19l-4.6-8.4V20H4Z'/%3E%3C/svg%3E" alt="">Monochrome mark</button>
+            <button type="button" class="logo-preset" data-logo-preset="outline" aria-pressed="false"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='1' y='1' width='22' height='22' rx='7' fill='none' stroke='%238f4c34' stroke-width='2'/%3E%3Cpath fill='none' stroke='%238f4c34' stroke-width='2' d='M4 20V4h3.6l4.4 8.2L16.4 4H20v16'/%3E%3C/svg%3E" alt="">Outline mark</button>
+          </div>
+          <div class="logo-customization__upload">
+            <input type="file" data-logo-upload accept="image/png,image/jpeg,image/webp" aria-describedby="logo-upload-help">
+            <span id="logo-upload-help">Static PNG, JPEG or WebP. Maximum 8 MiB, one frame, 4096px per side and 16 megapixels.</span>
+          </div>
+          <div class="logo-customization__editor">
+            <div class="logo-customization__stage" data-logo-stage><img data-logo-live alt="Selected application logo preview"></div>
+            <div class="logo-customization__controls">
+              <label>Fit mode <select data-logo-fit><option value="contain">Contain</option><option value="cover">Cover</option><option value="fill">Fill</option></select></label>
+              <label><input type="checkbox" data-logo-transparent checked> Transparent background</label>
+              <label>Background <input type="color" data-logo-background value="#fff8f6"></label>
+              <div class="logo-infinite-picker" data-logo-color-picker role="group" aria-label="Logo background colour">
+                <div class="logo-infinite-picker__field" data-logo-color-field role="slider" tabindex="0" aria-label="Logo background saturation and brightness" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div>
+                <label>Hue <input type="range" min="0" max="360" step="1" value="0" data-logo-bg-hue></label>
+                <label>Saturation <input type="range" min="0" max="100" step="1" value="0" data-logo-bg-saturation></label>
+                <label>Brightness <input type="range" min="0" max="100" step="1" value="100" data-logo-bg-brightness></label>
+                <label>HEX <input type="text" inputmode="text" spellcheck="false" data-logo-bg-hex value="#fff8f6"></label>
+              </div>
+              <label>Focal point X <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-x><output data-logo-focal-x-value>50%</output></label>
+              <label>Focal point Y <input type="range" min="0" max="1" step="0.01" value="0.5" data-logo-focal-y><output data-logo-focal-y-value>50%</output></label>
+              <label><input type="checkbox" data-logo-safe-area checked> Show safe-area preview</label>
+              <fieldset class="logo-crop-fields"><legend>Crop, normalized 0–1</legend><label>X <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="x"></label><label>Y <input type="number" min="0" max="1" step="0.01" value="0" data-logo-crop="y"></label><label>Width <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="width"></label><label>Height <input type="number" min="0.01" max="1" step="0.01" value="1" data-logo-crop="height"></label></fieldset>
+            </div>
+          </div>
+          <div class="logo-customization__targets" aria-labelledby="logo-targets-title">
+            <h4 id="logo-targets-title">Display-target previews</h4>
+            <div class="logo-target-grid">
+              <figure><div class="logo-target-tile"><img data-logo-target="favicon" alt="Favicon logo preview"></div><figcaption>Favicon · 16×16</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="toolbar" alt="Toolbar logo preview"></div><figcaption>Toolbar · 32×32</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="titlebar" alt="Title bar logo preview"></div><figcaption>Title bar · 48×48</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="sidebar" alt="Sidebar logo preview"></div><figcaption>Sidebar · 128×128</figcaption></figure>
+              <figure><div class="logo-target-tile"><img data-logo-target="installer" alt="Installer logo preview"></div><figcaption>Installer · 256×256</figcaption></figure>
+            </div>
+          </div>
+          <p class="md-body-small on-surface-variant" data-logo-status role="status" aria-live="polite"></p>
+        </div>
       </section>
 
       <!-- ---------- Site-local toy locks ---------- -->

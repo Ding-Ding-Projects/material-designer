@@ -29,6 +29,34 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Add local app-logo customization surfaces
+
+**Reason:** The project needs a first-class logo choice on both user-facing
+surfaces. The new implementation keeps stable application identity separate
+from presentation state, validates static image signatures and dimensions
+before decoding, refuses animated or unsafe input, converts accepted input to
+a bounded PNG with a read-back check, and exposes crop, fit, focal point,
+safe-area, background and display-target previews. The application mounts the
+surface in Settings and the documentation site mounts its independent browser
+state. Focused source contracts cover the limits and the hand-written surface
+inventory; packaged interaction evidence remains pending.
+
+**Changed files:**
+
+- `apps/web/src/state/logoCustomization.ts`
+- `apps/web/src/components/logo/LogoCustomizationSection.tsx`
+- `apps/web/src/components/logo/LogoCustomizationSection.module.css`
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/SettingsDialog.tsx`
+- `apps/web/src/components/command-palette/settingsIndex.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/styles/shell.css`
+- `apps/web/src/styles/viewer/routines.css`
+- `apps/web/tests/state/logoCustomization.test.ts`
+- `apps/web/tests/components/AppLogoCustomization.contract.test.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh

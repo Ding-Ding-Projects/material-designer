@@ -1547,6 +1547,14 @@ labels are longest — and when no legacy design element remains in them.
       too, and the four properties this platform cannot honour keep their
       control, their saved value and an explanation of which kind of "no" they
       are.
+- [~] **App-logo customization** — source implementation now provides four
+      bundled presets, local static-image upload with signature-first bounded
+      validation, PNG conversion roundtrip checks, crop and fit controls,
+      focal point, safe-area preview, transparent or infinite-picker background,
+      five display-target previews, local persistence, replace and reset. The
+      application and documentation site surfaces are wired at source level;
+      packaged runtime drive, every-click capture receipts, and hosted evidence
+      remain open, so this item is deliberately not ticked.
 - [x] **Persist every control across restarts** and apply changes to the live
       interface, not only after a restart. Every control writes through the
       appearance store, which persists to `localStorage` and applies to the

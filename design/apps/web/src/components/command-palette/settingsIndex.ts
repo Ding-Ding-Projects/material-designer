@@ -242,6 +242,13 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ['appearance', 'theme', 'colour', 'color'],
   },
   {
+    id: 'appearance.logo',
+    section: 'appearance',
+    titleKey: 'brandDetail.logo',
+    hintKey: 'ds.manualEditModuleHint',
+    keywords: ['logo', 'app logo', 'brand mark', 'custom image', 'icon', 'preset'],
+  },
+  {
     id: 'appearance.theme',
     section: 'appearance',
     titleKey: 'settings.appearance',

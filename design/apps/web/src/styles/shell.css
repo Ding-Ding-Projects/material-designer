@@ -628,6 +628,23 @@ html.od-radial-open .workspace-shell {
   flex: 0 0 auto;
   user-select: none;
 }
+
+/* The app-logo preference is presentation-only. When the local logo module
+   has resolved a selection, chrome consumes its bounded CSS image while the
+   button's accessible name and navigation action remain unchanged. */
+html[data-logo-preset] .workspace-tabs-home-chrome,
+html[data-logo-preset] .workspace-tab__rail-toggle {
+  background-image: var(--app-logo-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 62% 62%;
+}
+
+html[data-logo-preset] .workspace-tabs-home-chrome > .workspace-chrome-logo,
+html[data-logo-preset] .workspace-tab__rail-toggle > .workspace-chrome-logo,
+html[data-logo-preset] .workspace-tab__rail-toggle > .workspace-chrome-logo-swap {
+  opacity: 0;
+}
 /* Home view with the rail open: the logo has nothing to do (collapse lives in
    the rail's search row) — drop the button affordance so it reads as a mark,
    not a control. */

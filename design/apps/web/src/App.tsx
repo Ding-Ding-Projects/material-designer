@@ -163,6 +163,7 @@ import {
 } from './state/config';
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import { applyAppearanceToDocument } from './state/appearance';
+import { applyLogoStateToDocument, readStoredLogoState } from './state/logoCustomization';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -1819,6 +1820,13 @@ function AppInner() {
   useLayoutEffect(() => {
     applyAppearanceToDocument({ accentColor: config.accentColor });
   }, [config.accentColor]);
+
+  // Restore the presentation-only logo before the first interactive frame.
+  // The logo module never contributes package identity, update-feed identity,
+  // or the application-data location; those remain owned by the desktop host.
+  useLayoutEffect(() => {
+    applyLogoStateToDocument(readStoredLogoState());
+  }, []);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in

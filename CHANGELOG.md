@@ -45,6 +45,28 @@ version section when a release carries them.
 
 ### Changed
 
+- **Add a bounded local app-logo customization surface.** The application now
+  exposes four bundled presets, a signature-first local PNG/JPEG/WebP upload,
+  crop and fit controls, focal point and safe-area previews, an infinite
+  background colour picker, five display-target previews, local persistence and
+  reset. Malformed, animated, over-sized and unsupported input is rejected
+  before decoding, and converted output is validated by signature, dimensions,
+  alpha handling and round-trip checks. The documentation site carries the
+  same local-only contract and its own anchored search builder. Source
+  implementation is present on the task branch; packaged interaction and
+  per-click capture evidence remain pending.
+
+  **本地 app logo customization 加咗落嚟。** Application 有四款 bundled
+  presets，local PNG/JPEG/WebP upload 先驗 signature 再 decode，仲有 crop、fit、
+  focal point、safe-area、infinite background colour picker、五個 display target
+  preview、local persistence 同 reset。Malformed、animated、過大同 unsupported
+  input 會喺 decode 前拒絕，轉換後仲會驗 signature、dimensions、alpha 同
+  round-trip。Documentation site 亦有同一套 local-only contract 同自己嘅
+  anchored search builder。Source implementation 已喺 task branch，packaged
+  interaction 同 per-click capture evidence 仍然要等。
+
+  The integration commit will be linked when this task lane lands on `main`.
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.
