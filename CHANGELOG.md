@@ -45,6 +45,20 @@ version section when a release carries them.
 
 ### Changed
 
+- **Run documentation evidence checks in the release workflow.** Release now
+  regenerates and validates the site reader, exact installed-app bundle, and
+  pending recording inventory. The site guard also checks the current
+  `Ctrl+Shift+F` palette shortcut, 5/5 funny defaults, initial provenance strip,
+  48px controls, and non-truncating tab styles. Source commit:
+  [`9ef322a5`](https://github.com/Ding-Ding-Projects/material-designer/commit/9ef322a5f42b95b587fb34ff793db1feb73b0e34).
+
+  **Documentation evidence checks 而家入埋 release workflow。** Release 會重新
+  生成同驗證 site reader、exact installed-app bundle 同 pending recording
+  inventory。Site guard 亦會睇實 `Ctrl+Shift+F` palette shortcut、5/5 funny
+  defaults、initial provenance strip、48px controls 同 tabs 唔可以斬字。Source
+  commit 係
+  [`9ef322a5`](https://github.com/Ding-Ding-Projects/material-designer/commit/9ef322a5f42b95b587fb34ff793db1feb73b0e34)。
+
 - **Repair offline documentation evidence and reader safety.** Reconciled the
   docs lane with current `main`, restored the site reader mount and deterministic
   manifest tooling, parsed the exact installed-app bundle object, normalized

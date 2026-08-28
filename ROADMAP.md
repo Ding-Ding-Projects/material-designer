@@ -41,6 +41,11 @@
       registration. Hosted type, package, runtime interaction, and per-click
       capture evidence remain open.
 
+      The release workflow now runs the same documentation and recording
+      evidence checks after generation at commit
+      [`9ef322a5`](https://github.com/Ding-Ding-Projects/material-designer/commit/9ef322a5f42b95b587fb34ff793db1feb73b0e34). Hosted packaging and runtime
+      interaction remain pending.
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current
