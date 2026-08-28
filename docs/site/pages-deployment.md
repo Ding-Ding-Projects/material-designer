@@ -45,7 +45,8 @@ workflow paginates published releases, dereferences each tag to its actual
 commit, and selects only the release whose actual commit is the exact deployed
 commit. It downloads that release's `build-provenance.json`, validates the
 package version, source commit, and timestamp, and injects the tuple into the
-temporary Pages payload. A push deployment that races release publication
+temporary Pages payload, including the visible version, timestamp, and status
+nodes so the no-JavaScript HTML agrees with the data attributes. A push deployment that races release publication
 therefore remains honestly unavailable, while the subsequent publication event
 refreshes the same deployment with the exact matching release data. No
 visitor-time clock or hand-entered release fact is used.

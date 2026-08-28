@@ -39,7 +39,13 @@ function Assert-ExecutableLine([string]$Text, [string]$Needle, [string]$Label) {
   }
   $target = $matches[0]
   $allLines = @(Read-Lines $Text)
-  $targetIndex = [array]::IndexOf($allLines, $target.Raw)
+  $targetIndex = -1
+  for ($index = 0; $index -lt $allLines.Count; $index++) {
+    if ($allLines[$index] -ceq $target.Raw) {
+      $targetIndex = $index
+      break
+    }
+  }
   if ($targetIndex -lt 0) { throw "Self-test could not locate source boundary: $Label" }
 
   $removedLines = @($allLines)
@@ -79,7 +85,21 @@ function Assert-NoSourceFact([string]$Text, [string]$Pattern, [string]$Injection
 
 function Assert-NoHostClockProvenance([string]$Text, [string]$InjectionNeedle, [string]$InjectionValue, [string]$Label) {
   $hostClockPattern = '(?im)^\s*\$[^\r\n#]*(?:builtAt|updatedAt|generatedAt)[^\r\n#]*=\s*[^\r\n#]*(?:Get-Date|DateTime::Now)'
-  if ([regex]::IsMatch($Text, $hostClockPattern)) {
+  $hostClockVariables = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $provenanceAssignments = @()
+  foreach ($line in (Get-ExecutableLines $Text)) {
+    if ($line.Code -match '^\$(\w+)\s*=\s*[^#]*(?:Get-Date|DateTime::Now)') {
+      [void]$hostClockVariables.Add($Matches[1])
+    }
+    if ($line.Code -match '(?:builtAt|updatedAt|generatedAt)\s*=\s*\$(\w+)\b') {
+      $provenanceAssignments += $Matches[1]
+    }
+  }
+  $hasIndirectHostClock = @($provenanceAssignments | Where-Object {
+    $candidate = $_
+    @($hostClockVariables | Where-Object { $_ -ieq $candidate }).Count -gt 0
+  }).Count -gt 0
+  if ([regex]::IsMatch($Text, $hostClockPattern) -or $hasIndirectHostClock) {
     throw "Front-screen provenance source uses a host clock: $Label"
   }
   $mutated = $Text.Replace($InjectionNeedle, $InjectionValue)
@@ -87,11 +107,42 @@ function Assert-NoHostClockProvenance([string]$Text, [string]$InjectionNeedle, [
   if (-not [regex]::IsMatch($mutated, $hostClockPattern)) {
     throw "Negative regression stayed green for host clock provenance: $Label"
   }
+  $indirectLines = @(Read-Lines $Text)
+  $indirectIndex = -1
+  for ($index = 0; $index -lt $indirectLines.Count; $index++) {
+    if ($indirectLines[$index].Trim().StartsWith($InjectionNeedle, [StringComparison]::Ordinal)) {
+      $indirectIndex = $index
+      break
+    }
+  }
+  if ($indirectIndex -lt 0) { throw "Self-test could not inject an indirect host clock: $Label" }
+  $indirectLines[$indirectIndex] = '$stamp = (Get-Date).ToUniversalTime().ToString(''o'')'
+  $indirectLines += '$provenance.builtAt = $stamp'
+  $indirectText = $indirectLines -join "`n"
+  $indirectVariables = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $indirectAssignments = @()
+  foreach ($line in (Get-ExecutableLines $indirectText)) {
+    if ($line.Code -match '^\$(\w+)\s*=\s*[^#]*(?:Get-Date|DateTime::Now)') {
+      [void]$indirectVariables.Add($Matches[1])
+    }
+    if ($line.Code -match '(?:builtAt|updatedAt|generatedAt)\s*=\s*\$(\w+)\b') {
+      $indirectAssignments += $Matches[1]
+    }
+  }
+  $indirectMatchCount = @($indirectAssignments | Where-Object {
+    $candidate = $_
+    @($indirectVariables | Where-Object { $_ -ieq $candidate }).Count -gt 0
+  }).Count
+  if ($indirectMatchCount -eq 0) {
+    throw "Negative regression stayed green for indirect host clock provenance: $Label"
+  }
 }
 
 $boundaries = @(
   [pscustomobject]@{ path = 'design/packages/contracts/src/api/version.ts'; needle = 'provenance?: AppVersionProvenance | null;'; label = 'contract provenance field' },
   [pscustomobject]@{ path = 'design/apps/daemon/src/app-version.ts'; needle = 'provenance: resolveBuildProvenance(version, env),'; label = 'daemon provenance resolution' },
+  [pscustomobject]@{ path = 'design/apps/daemon/tests/version-route.test.ts'; needle = 'provenance: null,'; label = 'version route unavailable provenance test' },
+  [pscustomobject]@{ path = 'design/apps/daemon/tests/version-route.test.ts'; needle = "it('returns verified provenance when the external record matches the package', async () => {"; label = 'version route verified provenance test' },
   [pscustomobject]@{ path = 'design/apps/daemon/src/app-version.ts'; needle = 'const ISO_TIMESTAMP_WITH_SECONDS_RE ='; label = 'daemon timestamp validation' },
   [pscustomobject]@{ path = 'design/apps/packaged/src/config.ts'; needle = 'buildUpdatedAt?: string;'; label = 'packaged provenance input' },
   [pscustomobject]@{ path = 'design/apps/packaged/src/sidecars.ts'; needle = 'OD_BUILD_UPDATED_AT'; label = 'sidecar provenance forwarding' },
@@ -103,12 +154,16 @@ $boundaries = @(
   [pscustomobject]@{ path = 'design/apps/web/src/App.tsx'; needle = '<FrontScreenProvenance'; label = 'desktop front-screen mount' },
   [pscustomobject]@{ path = 'design/apps/web/src/components/FrontScreenProvenance.tsx'; needle = 'data-front-screen-provenance="true"'; label = 'desktop visible provenance marker' },
   [pscustomobject]@{ path = 'design/apps/web/src/lib/front-screen-provenance.ts'; needle = 'formatFrontScreenUpdatedAt('; label = 'desktop local timestamp formatter' },
+  [pscustomobject]@{ path = 'design/apps/web/src/providers/registry.ts'; needle = 'const timeout = setTimeout(() => controller.abort(), APP_VERSION_REQUEST_TIMEOUT_MS);'; label = 'version request deadline' },
+  [pscustomobject]@{ path = 'design/apps/web/tests/providers/registry.test.ts'; needle = "it('aborts a hung version response and settles to unavailable', async () => {"; label = 'version request deadline test' },
   [pscustomobject]@{ path = 'site/index.html'; needle = 'data-front-updated-at=""'; label = 'site generated provenance instant boundary' },
   [pscustomobject]@{ path = 'site/assets/js/main.js'; needle = 'wireFrontScreenProvenance();'; label = 'site front-screen wiring' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'release:'; label = 'Pages release-publication trigger' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'TARGET_COMMIT=$(git rev-parse HEAD)'; label = 'Pages exact target commit selection' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'map(select(.draft == false and .prerelease == false and .published_at != null))'; label = 'Pages published release filter' },
   [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'valid_iso_timestamp() {'; label = 'Pages canonical timestamp validation' },
+  [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'data-front-provenance-value=\"updated-at\">Unavailable'; label = 'Pages visible timestamp injection' },
+  [pscustomobject]@{ path = '.github/workflows/pages.yml'; needle = 'data-front-provenance-value=\"status\" role=\"status\" aria-live=\"polite\">Unavailable'; label = 'Pages visible status injection' },
   [pscustomobject]@{ path = '.codex/verification/ui-drive/inventory.json'; needle = '"id": "front-screen-provenance", "status": "partial", "statusReason": "The shell'; label = 'per-surface inventory feature' }
 )
 

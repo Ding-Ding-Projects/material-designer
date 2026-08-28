@@ -70,10 +70,13 @@ Designer rather than the upstream product name.
 - `apps/web/src/i18n/locales/zh-CN.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/lib/front-screen-provenance.ts` (new)
+- `apps/web/src/providers/registry.ts`
 - `apps/web/tests/components/EntryShell.front-provenance.test.ts` (new)
 - `apps/web/tests/lib/front-screen-provenance.test.ts` (new)
+- `apps/web/tests/providers/registry.test.ts`
 - `apps/daemon/src/app-version.ts`
 - `apps/daemon/tests/app-version.test.ts`
+- `apps/daemon/tests/version-route.test.ts`
 - `apps/packaged/src/config.ts`
 - `apps/packaged/src/headless-runtime.ts`
 - `apps/packaged/src/index.ts`

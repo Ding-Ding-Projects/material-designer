@@ -32,12 +32,15 @@ The record contains public build facts only. It carries no credentials, local pa
 Focused source checks cover:
 
 - bound version and provenance acceptance;
+- `/api/version` unavailable and verified response cases;
 - placeholder, version mismatch, malformed commit, and malformed timestamp refusal;
+- bounded version-request cancellation that settles a hung lookup to unavailable;
 - local formatting with seconds;
 - packaged sidecar forwarding of both provenance values;
 - the empty site source tuple, visible fields, local formatter, and unavailable fallback;
 - strict calendar validation that rejects overflow dates such as February 31;
-- the manual installer route's externally supplied-or-unavailable provenance boundary.
+- the manual installer route's externally supplied-or-unavailable provenance boundary;
+- the Pages workflow's no-JavaScript injection of every visible provenance value and status.
 
 The relevant files are `design/apps/web/src/lib/front-screen-provenance.ts`, `design/apps/web/src/components/FrontScreenProvenance.tsx`, `design/apps/daemon/src/app-version.ts`, `design/apps/packaged/src/config.ts`, `design/apps/packaged/src/sidecars.ts`, and `site/assets/js/main.js`. Hosted build and packaged interaction remain separate evidence requirements and must be rerun against the commit that contains this feature.
 

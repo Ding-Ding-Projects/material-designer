@@ -20,6 +20,7 @@ import {
   fetchCloudflarePagesZones,
   fetchDeployConfig,
   fetchDesignSystemsResult,
+  APP_VERSION_REQUEST_TIMEOUT_MS,
   fetchAppVersionInfo,
   fetchConnectorDetail,
   fetchConnectorDiscovery,
@@ -48,6 +49,7 @@ describe('skill operation diagnostics', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('preserves the top-level remote-install error code and status', async () => {
@@ -572,6 +574,7 @@ describe('fetchAppVersionInfo', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it('returns version info from the daemon response', async () => {
@@ -598,6 +601,25 @@ describe('fetchAppVersionInfo', () => {
     );
 
     await expect(fetchAppVersionInfo()).resolves.toBeNull();
+  });
+
+  it('aborts a hung version response and settles to unavailable', async () => {
+    vi.useFakeTimers();
+    let observedSignal: AbortSignal | undefined;
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (_input, init) => {
+      observedSignal = init?.signal;
+      return await new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('aborted', 'AbortError'));
+        }, { once: true });
+      });
+    }));
+
+    const result = fetchAppVersionInfo();
+    await vi.advanceTimersByTimeAsync(APP_VERSION_REQUEST_TIMEOUT_MS);
+
+    await expect(result).resolves.toBeNull();
+    expect(observedSignal?.aborted).toBe(true);
   });
 });
 

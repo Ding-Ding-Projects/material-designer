@@ -174,6 +174,8 @@ jobs:
                 sed -i "s|data-front-updated-at=\"\"|data-front-updated-at=\"$safe_front_updated_at\"|" "$f"
                 sed -i "s|data-front-source-commit=\"\"|data-front-source-commit=\"$safe_front_commit\"|" "$f"
                 sed -i "s|data-front-provenance-value=\"version\">Unavailable|data-front-provenance-value=\"version\">$safe_front_version|" "$f"
+                sed -i "s|data-front-provenance-value=\"updated-at\">Unavailable|data-front-provenance-value=\"updated-at\">$safe_front_updated_at|" "$f"
+                sed -i "s|data-front-provenance-value=\"status\" role=\"status\" aria-live=\"polite\">Unavailable|data-front-provenance-value=\"status\" role=\"status\" aria-live=\"polite\">Provenance verified|" "$f"
                 echo "Front-screen provenance refreshed from $front_tag for $TARGET_COMMIT"
               else
                 echo "::warning::the matching release provenance was malformed or not bound to $GITHUB_SHA; front-screen identity remains unavailable"
