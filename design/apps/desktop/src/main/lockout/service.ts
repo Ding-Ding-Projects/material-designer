@@ -1,4 +1,6 @@
 import { randomInt, randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { LadderChallenge, LadderResult, LadderStage, LadderState } from "./protocol.js";
 
 const WINDOW_MS = 60 * 60 * 1000;
@@ -16,6 +18,7 @@ export type UnlockLadderDurableSnapshot = { version: 1; budgets: Record<string, 
 
 export interface LadderClock { now(): number; }
 export interface LadderRandom { uuid(): string; integer(maxExclusive: number): number; }
+export interface LadderPersistence { load(): Promise<UnlockLadderDurableSnapshot | null>; save(snapshot: UnlockLadderDurableSnapshot): Promise<void>; }
 
 const systemClock: LadderClock = Object.freeze({ now: () => Date.now() });
 const systemRandom: LadderRandom = Object.freeze({ uuid: randomUUID, integer: (maxExclusive) => randomInt(maxExclusive) });
@@ -109,4 +112,24 @@ export class UnlockLadderHost {
     }
     return false;
   }
+}
+
+export class JsonUnlockLadderPersistence implements LadderPersistence {
+  readonly #path: string;
+  constructor(path: string) { this.#path = path; }
+  async load(): Promise<UnlockLadderDurableSnapshot | null> { try { return JSON.parse(await readFile(this.#path, "utf8")) as UnlockLadderDurableSnapshot; } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return null; throw error; } }
+  async save(snapshot: UnlockLadderDurableSnapshot): Promise<void> { await mkdir(dirname(this.#path), { recursive: true }); await writeFile(this.#path, JSON.stringify(snapshot) + "\n", "utf8"); }
+}
+
+export class DurableUnlockLadderHost {
+  readonly #host: UnlockLadderHost;
+  readonly #persistence: LadderPersistence;
+  #ready: Promise<void>;
+  constructor(options: { persistence: LadderPersistence; clock?: LadderClock; random?: LadderRandom }) { this.#host = new UnlockLadderHost(options); this.#persistence = options.persistence; this.#ready = this.#restore(); }
+  async recordLockout(lockoutId: string, options: Parameters<UnlockLadderHost["recordLockout"]>[1]): Promise<LadderState> { await this.#ready; const state = this.#host.recordLockout(lockoutId, options); await this.#save(); return state; }
+  async state(lockoutId: string): Promise<LadderState | null> { await this.#ready; return this.#host.state(lockoutId); }
+  async issue(lockoutId: string): Promise<ReturnType<UnlockLadderHost["issue"]>> { await this.#ready; const result = this.#host.issue(lockoutId); if ("nonce" in result) await this.#save(); return result; }
+  async submit(lockoutId: string, nonce: string, answer: unknown): Promise<ReturnType<UnlockLadderHost["submit"]>> { await this.#ready; const result = this.#host.submit(lockoutId, nonce, answer); await this.#save(); return result; }
+  async #restore(): Promise<void> { const snapshot = await this.#persistence.load(); if (snapshot) this.#host.restoreState(snapshot); }
+  async #save(): Promise<void> { await this.#persistence.save(this.#host.exportState()); }
 }

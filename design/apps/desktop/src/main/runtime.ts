@@ -71,7 +71,7 @@ import {
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
 import { DesktopAuthenticatorHost } from "./authenticator/host.js";
-import { UnlockLadderHost } from "./lockout/service.js";
+import { DurableUnlockLadderHost, JsonUnlockLadderPersistence } from "./lockout/service.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -3008,7 +3008,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       },
     },
   });
-  const unlockLadderHost = new UnlockLadderHost();
+  const unlockLadderHost = new DurableUnlockLadderHost({ persistence: new JsonUnlockLadderPersistence(join(app.getPath("userData"), "authenticator-vault", "unlock-ladder.json")) });
   ipcMain.handle("od:authenticator:vault-status", async (event) => {
     requireMainWindowSender(event);
     return authenticatorHost.vaultStatus();
@@ -3028,10 +3028,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.handle("od:authenticator:history-retention", async (event, retention: unknown) => { requireMainWindowSender(event); return authenticatorHost.historySetRetention(retention as never); });
   ipcMain.handle("od:authenticator:history-export-redacted", async (event, filter: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyExportRedacted(filter as never); });
   ipcMain.handle("od:authenticator:history-export-sensitive", async (event, filter: unknown, token: unknown) => { requireMainWindowSender(event); return authenticatorHost.historyExportSensitive(filter as never, typeof token === "string" ? token : ""); });
-  ipcMain.handle("od:unlock-ladder:record", async (event, lockoutId: unknown, waitingUntilMs: unknown, remainingAttempts: unknown, consecutiveLockouts: unknown, schoolMode: unknown, budgetKey: unknown) => { requireMainWindowSender(event); try { const state = unlockLadderHost.recordLockout(typeof lockoutId === "string" ? lockoutId : "", { waitingUntilMs: Number(waitingUntilMs), remainingAttempts: Number(remainingAttempts), consecutiveLockouts: Number(consecutiveLockouts), schoolMode: schoolMode === true, budgetKey: typeof budgetKey === "string" ? budgetKey : undefined }); return { ok: true, stage: state.stage }; } catch { return { ok: false, code: "invalid-input", reason: "Unlock ladder state is invalid." }; } });
-  ipcMain.handle("od:unlock-ladder:state", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const state = unlockLadderHost.state(typeof lockoutId === "string" ? lockoutId : ""); return state ? { ok: true, ...state } : { ok: false, code: "not-found", reason: "Unlock ladder state was not found." }; });
-  ipcMain.handle("od:unlock-ladder:issue", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const result = unlockLadderHost.issue(typeof lockoutId === "string" ? lockoutId : ""); return "nonce" in result ? { ok: true, challenge: result } : { ok: false, code: result.code, reason: "Unlock ladder challenge is unavailable." }; });
-  ipcMain.handle("od:unlock-ladder:submit", async (event, lockoutId: unknown, nonce: unknown, answer: unknown) => { requireMainWindowSender(event); const result = unlockLadderHost.submit(typeof lockoutId === "string" ? lockoutId : "", typeof nonce === "string" ? nonce : "", answer); return result.ok ? { ok: true, clearedWait: "clearedWait" in result && result.clearedWait, remainingAttempts: result.state.remainingAttempts, consecutiveLockouts: result.state.consecutiveLockouts } : { ok: false, code: result.code, reason: "Unlock ladder answer was not accepted." }; });
+  ipcMain.handle("od:unlock-ladder:record", async (event, lockoutId: unknown, waitingUntilMs: unknown, remainingAttempts: unknown, consecutiveLockouts: unknown, schoolMode: unknown, budgetKey: unknown) => { requireMainWindowSender(event); try { const state = await unlockLadderHost.recordLockout(typeof lockoutId === "string" ? lockoutId : "", { waitingUntilMs: Number(waitingUntilMs), remainingAttempts: Number(remainingAttempts), consecutiveLockouts: Number(consecutiveLockouts), schoolMode: schoolMode === true, budgetKey: typeof budgetKey === "string" ? budgetKey : undefined }); return { ok: true, stage: state.stage }; } catch { return { ok: false, code: "invalid-input", reason: "Unlock ladder state is invalid." }; } });
+  ipcMain.handle("od:unlock-ladder:state", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const state = await unlockLadderHost.state(typeof lockoutId === "string" ? lockoutId : ""); return state ? { ok: true, ...state } : { ok: false, code: "not-found", reason: "Unlock ladder state was not found." }; });
+  ipcMain.handle("od:unlock-ladder:issue", async (event, lockoutId: unknown) => { requireMainWindowSender(event); const result = await unlockLadderHost.issue(typeof lockoutId === "string" ? lockoutId : ""); return "nonce" in result ? { ok: true, challenge: result } : { ok: false, code: result.code, reason: "Unlock ladder challenge is unavailable." }; });
+  ipcMain.handle("od:unlock-ladder:submit", async (event, lockoutId: unknown, nonce: unknown, answer: unknown) => { requireMainWindowSender(event); const result = await unlockLadderHost.submit(typeof lockoutId === "string" ? lockoutId : "", typeof nonce === "string" ? nonce : "", answer); return result.ok ? { ok: true, clearedWait: "clearedWait" in result && result.clearedWait, remainingAttempts: result.state.remainingAttempts, consecutiveLockouts: result.state.consecutiveLockouts } : { ok: false, code: result.code, reason: "Unlock ladder answer was not accepted." }; });
   ipcMain.handle("od:toy-locks:list", async (event) => {
     requireMainWindowSender(event);
     return toyLockStore.list();
