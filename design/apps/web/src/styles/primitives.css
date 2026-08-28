@@ -263,6 +263,8 @@ textarea { resize: vertical; font-family: inherit; }
 }
 .od-select-menu {
   z-index: 9000;
+  display: flex;
+  flex-direction: column;
   padding: 4px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -274,6 +276,33 @@ textarea { resize: vertical; font-family: inherit; }
   border: 1px solid var(--material-separator);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-lg);
+}
+.od-select-search {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 4px;
+  background: var(--glass-regular);
+  border-bottom: 1px solid var(--material-separator);
+}
+.od-select-search > span {
+  width: 100%;
+}
+.od-select-search input {
+  min-height: 36px;
+  min-width: 0;
+}
+.od-select-options {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.od-select-no-results {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--text-faint);
+  font-size: 13px;
 }
 .od-select-menu.portal {
   position: fixed;

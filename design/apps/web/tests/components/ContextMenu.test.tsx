@@ -156,17 +156,18 @@ describe('ContextMenu', () => {
     const opener = createOpener();
     renderMenu({ onClose, restoreFocusTo: opener });
 
-    // The first enabled item takes focus on open, so the menu is operable for
-    // whoever opened it with the context-menu key.
-    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    // The menu-owned search field takes focus on open, so filtering is the
+    // first keyboard action for whoever opened it with the context-menu key.
+    const filter = screen.getByTestId('menu-filter');
+    expect(document.activeElement).toBe(filter);
 
-    fireEvent.keyDown(screen.getByTestId('menu-open'), { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(screen.getByTestId('menu-rename'));
+    fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('menu-rename');
 
-    fireEvent.keyDown(screen.getByTestId('menu-rename'), { key: 'ArrowUp' });
-    expect(document.activeElement).toBe(screen.getByTestId('menu-open'));
+    fireEvent.keyDown(filter, { key: 'ArrowUp' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('menu-open');
 
-    fireEvent.keyDown(screen.getByTestId('menu-open'), { key: 'Tab' });
+    fireEvent.keyDown(filter, { key: 'Tab' });
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(opener);
 
@@ -227,6 +228,31 @@ describe('ContextMenu', () => {
   it('skips a disabled item rather than parking focus on it', () => {
     renderMenu({ items: items([{ disabled: true }]) });
 
-    expect(document.activeElement).toBe(screen.getByTestId('menu-rename'));
+    expect(screen.getByTestId('menu-filter')).toHaveAttribute('aria-activedescendant', 'menu-rename');
+  });
+
+  it('filters locally and exposes an honest no-match state', () => {
+    renderMenu();
+    const filter = screen.getByTestId('menu-filter');
+    fireEvent.change(filter, { target: { value: 'delete' } });
+
+    expect(screen.queryByTestId('menu-open')).toBeNull();
+    expect(screen.queryByTestId('menu-rename')).toBeNull();
+    expect(screen.getByTestId('menu-delete')).toBeTruthy();
+    expect(filter.getAttribute('data-regex-mode')).toBe('text');
+
+    fireEvent.change(filter, { target: { value: 'does-not-exist' } });
+    expect(screen.getByTestId('menu-no-results')).toHaveTextContent('No actions match');
+  });
+
+  it('adds real target-specific appearance and lock callbacks', () => {
+    const onEditAppearance = vi.fn();
+    const onLock = vi.fn();
+    renderMenu({ onEditAppearance, onLock });
+
+    fireEvent.click(screen.getByTestId('menu-edit-appearance'));
+    expect(onEditAppearance).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('menu-lock-element'));
+    expect(onLock).toHaveBeenCalledTimes(1);
   });
 });

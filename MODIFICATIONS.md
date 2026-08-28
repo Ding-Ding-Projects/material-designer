@@ -29,6 +29,30 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-27 - Add field-owned search to shared menus and dropdowns
+
+**Reason:** The shared context-menu and custom-select primitives previously
+rendered actions and options without their own search field, so short and long
+menus could not provide consistent local filtering or an adjacent regex builder.
+The primitives now own isolated plain-text-first search controllers, anchored
+regex builders, result announcements, keyboard navigation, focus restoration,
+viewport bounds, and explicit target-action seams. Focused mounted tests cover
+filtering, no-match states, keyboard selection, callback execution, and
+dismissal. The hand-written migration inventory records every remaining native
+select, direct search field, and legacy context-menu adapter instead of claiming
+those feature-owned rows are migrated.
+
+**Changed files:**
+
+- `apps/web/src/components/ContextMenu.module.css`
+- `apps/web/src/components/ContextMenu.tsx`
+- `apps/web/src/components/CustomSelect.tsx`
+- `apps/web/src/components/regex/RegexSearchField.tsx`
+- `apps/web/src/styles/primitives.css`
+- `apps/web/tests/components/ContextMenu.test.tsx`
+- `apps/web/tests/components/CustomSelect.test.tsx`
+- `apps/web/tests/components/shared-ui-primitives.contract.test.ts`
+
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 
 **Reason:** Release run `32831335767` reached electron-builder with a fresh

@@ -11,6 +11,7 @@ describe('CustomSelect', () => {
     const onChange = vi.fn();
     render(
       <CustomSelect
+        testId="model"
         ariaLabel="Model"
         value="gpt-image-2"
         options={[
@@ -35,6 +36,7 @@ describe('CustomSelect', () => {
     const onChange = vi.fn();
     render(
       <CustomSelect
+        testId="provider"
         ariaLabel="Provider"
         value="openai"
         options={[
@@ -71,6 +73,7 @@ describe('CustomSelect', () => {
     ];
     const { rerender } = render(
       <CustomSelect
+        testId="template"
         ariaLabel="Template"
         value="first"
         options={options()}
@@ -98,5 +101,82 @@ describe('CustomSelect', () => {
     expect(rerenderedTrigger.getAttribute('aria-activedescendant')).toBe(
       screen.getByRole('option', { name: /Second/ }).id,
     );
+  });
+
+  it('gives every opened dropdown an isolated search field and anchored builder', () => {
+    const onChange = vi.fn();
+    render(
+      <CustomSelect
+        testId="format"
+        ariaLabel="Format"
+        value="json"
+        options={[
+          { value: 'json', label: 'JSON' },
+          { value: 'yaml', label: 'YAML' },
+          { value: 'xml', label: 'XML' },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('format'));
+    const filter = screen.getByTestId('format-filter');
+    expect(document.activeElement).toBe(filter);
+    expect(screen.getByTestId('format-filter-regex-toggle')).toBeTruthy();
+
+    fireEvent.change(filter, { target: { value: 'yaml' } });
+    expect(screen.getByRole('option', { name: 'YAML' })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: 'JSON' })).toBeNull();
+    expect(filter.getAttribute('data-regex-mode')).toBe('text');
+
+    fireEvent.change(filter, { target: { value: 'missing' } });
+    expect(screen.getByTestId('format-no-results')).toHaveTextContent('No options match');
+  });
+
+  it('uses the same active-option path for filtered keyboard selection', () => {
+    const onChange = vi.fn();
+    render(
+      <CustomSelect
+        testId="engine"
+        ariaLabel="Engine"
+        value="one"
+        options={[
+          { value: 'one', label: 'One' },
+          { value: 'two', label: 'Two' },
+          { value: 'three', label: 'Three' },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('engine'));
+    const filter = screen.getByTestId('engine-filter');
+    fireEvent.change(filter, { target: { value: 't' } });
+    expect(filter.getAttribute('aria-activedescendant')).toBe(
+      screen.getByRole('option', { name: 'Two' }).id,
+    );
+    fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe(
+      screen.getByRole('option', { name: 'Three' }).id,
+    );
+    fireEvent.keyDown(filter, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('three');
+    expect(document.activeElement).toBe(screen.getByTestId('engine'));
+  });
+
+  it('returns focus to the trigger when the dropdown is dismissed', () => {
+    render(
+      <CustomSelect
+        testId="dismiss"
+        ariaLabel="Dismiss"
+        value="one"
+        options={[{ value: 'one', label: 'One' }]}
+        onChange={() => {}}
+      />,
+    );
+    const trigger = screen.getByTestId('dismiss');
+    fireEvent.click(trigger);
+    fireEvent.keyDown(screen.getByTestId('dismiss-filter'), { key: 'Escape' });
+    expect(document.activeElement).toBe(trigger);
   });
 });

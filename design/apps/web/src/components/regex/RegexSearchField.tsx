@@ -56,6 +56,8 @@ export interface RegexSearchFieldProps {
   ariaLabel?: string;
   /** Stable menu/list id for the owning field's result collection. */
   ariaControls?: string;
+  /** Optional active result id, used by listbox/menu owners while this field has focus. */
+  ariaActiveDescendant?: string;
   testId?: string;
   autoFocus?: boolean;
   spellCheck?: boolean;
@@ -81,6 +83,7 @@ export function RegexSearchField({
   placeholder,
   ariaLabel,
   ariaControls,
+  ariaActiveDescendant,
   testId,
   autoFocus,
   spellCheck = false,
@@ -212,6 +215,7 @@ export function RegexSearchField({
         placeholder={placeholder}
         aria-label={ariaLabel}
         aria-controls={ariaControls}
+        aria-activedescendant={ariaActiveDescendant}
         aria-describedby={[
           regexOn ? `${popoverId}-mode` : null,
           ariaDescribedBy ?? null,

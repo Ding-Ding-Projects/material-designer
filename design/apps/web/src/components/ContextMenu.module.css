@@ -33,6 +33,57 @@
   overscroll-behavior: contain;
 }
 
+/* The filter is part of the menu's own surface. It is not a global search
+   field, so its controller and its anchored builder stay scoped to this menu. */
+.searchRow {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.searchHost {
+  width: 100%;
+  gap: 4px;
+}
+
+.searchInput {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--md-sys-color-surface-container);
+  color: var(--text);
+  font: inherit;
+}
+
+.searchInput:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
+}
+
+.searchToggle {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.itemList {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.noResults {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+
 .row {
   display: contents;
 }

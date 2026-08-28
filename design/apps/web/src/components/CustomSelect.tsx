@@ -1,7 +1,19 @@
+// Accessible select primitive with a field-owned filter.
+//
+// The filter stays plain text until regex is explicitly enabled. Its
+// RegexSearchField owns the query, flags, validation, snippets, history, and
+// anchored builder, so every select instance remains isolated from every
+// other one.
+
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
+
 import { Icon } from './Icon';
+import { RegexSearchField, useRegexSearch } from './regex';
 
 export interface CustomSelectOption {
   value: string;
@@ -16,7 +28,7 @@ export interface CustomSelectGroup {
 
 export type CustomSelectItem = CustomSelectOption | CustomSelectGroup;
 
-interface Props {
+export interface CustomSelectProps {
   value: string;
   options: CustomSelectItem[];
   onChange: (value: string) => void;
@@ -30,6 +42,13 @@ interface Props {
   portal?: boolean;
   title?: string;
   onFocus?: () => void;
+  testId?: string;
+  /** Text and accessible label for this select instance's local filter. */
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  noResultsLabel?: string;
+  /** Optional target-specific context-menu handoff for the trigger. */
+  onContextMenu?: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }
 
 interface FlatOption extends CustomSelectOption {
@@ -69,7 +88,12 @@ export function CustomSelect({
   portal = true,
   title,
   onFocus,
-}: Props) {
+  testId,
+  searchLabel = `${ariaLabel} options`,
+  searchPlaceholder = 'Filter options',
+  noResultsLabel = 'No options match this filter.',
+  onContextMenu,
+}: CustomSelectProps) {
   const reactId = useId();
   const idBase = reactId.replace(/:/g, '');
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -79,13 +103,21 @@ export function CustomSelect({
   const [open, setOpen] = useState(false);
   const [activeValue, setActiveValue] = useState(value);
   const [position, setPosition] = useState<MenuPosition | null>(null);
+  const [query, setQuery] = useState('');
+  const search = useRegexSearch(query, setQuery);
 
   const flatOptions = useMemo(() => flattenOptions(options), [options]);
   const selected = flatOptions.find((option) => option.value === value);
   const selectedLabel = selected?.label ?? placeholder ?? value;
+  const visibleOptions = useMemo(
+    () => flatOptions.filter((option) =>
+      search.matches(`${option.label}\n${option.value}\n${option.group ?? ''}`),
+    ),
+    [flatOptions, search.matches],
+  );
   const enabledOptions = useMemo(
-    () => flatOptions.filter((option) => !option.disabled),
-    [flatOptions],
+    () => visibleOptions.filter((option) => !option.disabled),
+    [visibleOptions],
   );
   const flatOptionsRef = useRef(flatOptions);
   const enabledOptionsRef = useRef(enabledOptions);
@@ -104,8 +136,8 @@ export function CustomSelect({
     const viewportPad = 12;
     const below = window.innerHeight - rect.bottom - viewportPad;
     const above = rect.top - viewportPad;
-    const maxHeight = Math.max(160, Math.min(300, Math.max(below, above) - gap));
-    const openAbove = below < 180 && above > below;
+    const maxHeight = Math.max(160, Math.min(360, Math.max(below, above) - gap));
+    const openAbove = below < 220 && above > below;
     setPosition({
       top: openAbove ? Math.max(viewportPad, rect.top - maxHeight - gap) : rect.bottom + gap,
       left: Math.min(
@@ -116,6 +148,17 @@ export function CustomSelect({
       maxHeight,
     });
   }, []);
+
+  const restoreFocus = useCallback(() => {
+    if (!buttonRef.current?.isConnected) return;
+    buttonRef.current.focus({ preventScroll: true });
+  }, []);
+
+  const closeMenu = useCallback((shouldRestoreFocus = true) => {
+    setOpen(false);
+    setQuery('');
+    if (shouldRestoreFocus) restoreFocus();
+  }, [restoreFocus]);
 
   useEffect(() => {
     if (!portal) return;
@@ -133,7 +176,9 @@ export function CustomSelect({
       return;
     }
     if (wasOpenRef.current && activeSourceValueRef.current === value) return;
-    const selectedOption = flatOptionsRef.current.find((option) => option.value === value && !option.disabled);
+    const selectedOption = flatOptionsRef.current.find(
+      (option) => option.value === value && !option.disabled,
+    );
     setActiveValue(selectedOption?.value ?? enabledOptionsRef.current[0]?.value ?? '');
     wasOpenRef.current = true;
     activeSourceValueRef.current = value;
@@ -141,67 +186,77 @@ export function CustomSelect({
 
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
+    if (enabledOptions.some((option) => option.value === activeValue)) return;
+    setActiveValue(enabledOptions[0]?.value ?? '');
+  }, [activeValue, enabledOptions, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && (buttonRef.current?.contains(target) || menuRef.current?.contains(target))) return;
+      const opensAnotherSelect = target instanceof Element
+        && target.closest('[data-dropdown-opener]') != null;
+      closeMenu(!opensAnotherSelect);
     };
     const onScrollOrResize = () => {
       if (portal) updatePosition();
     };
-    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('resize', onScrollOrResize);
     window.addEventListener('scroll', onScrollOrResize, true);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('resize', onScrollOrResize);
       window.removeEventListener('scroll', onScrollOrResize, true);
     };
-  }, [open, portal]);
+  }, [closeMenu, open, portal, updatePosition]);
 
-  const choose = (nextValue: string) => {
+  const choose = useCallback((nextValue: string) => {
     const next = flatOptions.find((option) => option.value === nextValue);
     if (!next || next.disabled) return;
     onChange(next.value);
-    setOpen(false);
-    buttonRef.current?.focus();
-  };
+    closeMenu(true);
+  }, [closeMenu, flatOptions, onChange]);
 
-  const moveActive = (direction: 1 | -1) => {
+  const moveActive = useCallback((direction: 1 | -1, edge?: 'first' | 'last') => {
     if (!enabledOptions.length) return;
+    if (edge === 'first') {
+      setActiveValue(enabledOptions[0]!.value);
+      return;
+    }
+    if (edge === 'last') {
+      setActiveValue(enabledOptions[enabledOptions.length - 1]!.value);
+      return;
+    }
     const currentIndex = enabledOptions.findIndex((option) => option.value === activeValue);
-    const nextIndex =
-      currentIndex < 0
-        ? 0
-        : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
     setActiveValue(enabledOptions[nextIndex]!.value);
-  };
+  }, [activeValue, enabledOptions]);
 
-  const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+  const onSearchKeyDown = useCallback((event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
       event.preventDefault();
-      if (!open) {
-        setOpen(true);
-        return;
-      }
-      moveActive(event.key === 'ArrowDown' ? 1 : -1);
-      return;
-    }
-    if (event.key === 'Enter' || event.key === ' ') {
+      moveActive(1);
+    } else if (event.key === 'ArrowUp') {
       event.preventDefault();
-      if (open) {
-        choose(activeValue || value);
-      } else {
-        setOpen(true);
-      }
-      return;
-    }
-    if (event.key === 'Escape' && open) {
+      moveActive(-1);
+    } else if (event.key === 'Home') {
       event.preventDefault();
-      event.stopPropagation();
-      setOpen(false);
+      moveActive(1, 'first');
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      moveActive(-1, 'last');
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      choose(activeValue);
+    } else if (event.key === 'Escape' || event.key === 'Tab') {
+      event.preventDefault();
+      closeMenu(true);
     }
-  };
+  }, [activeValue, choose, closeMenu, moveActive]);
 
   const menu = (
     <div
@@ -214,6 +269,7 @@ export function CustomSelect({
       ].filter(Boolean).join(' ')}
       role="listbox"
       aria-label={ariaLabel}
+      aria-activedescendant={activeOptionId}
       style={
         portal && position
           ? {
@@ -224,40 +280,99 @@ export function CustomSelect({
             }
           : undefined
       }
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
-      {options.map((item) => {
-        if (isGroup(item)) {
+      <div className="od-select-search" role="none">
+        <RegexSearchField
+          search={search}
+          fieldLabel={searchLabel}
+          ariaLabel={searchLabel}
+          ariaControls={`${idBase}-options`}
+          ariaActiveDescendant={activeOptionId}
+          placeholder={searchPlaceholder}
+          testId={testId ? `${testId}-filter` : undefined}
+          autoFocus
+          onKeyDown={onSearchKeyDown}
+        />
+      </div>
+      <div id={`${idBase}-options`} className="od-select-options" role="none">
+        {visibleOptions.length === 0 ? (
+          <div className="od-select-no-results" role="status" data-testid={testId ? `${testId}-no-results` : undefined}>
+            {noResultsLabel}
+          </div>
+        ) : options.map((item) => {
+          if (isGroup(item)) {
+            const groupOptions = item.options.filter((option) =>
+              visibleOptions.some((visible) => visible.value === option.value),
+            );
+            if (groupOptions.length === 0) return null;
+            return (
+              <div className="od-select-group" key={`group:${item.label}`}>
+                <div className="od-select-group-label">{item.label}</div>
+                {groupOptions.map((option) => (
+                  <SelectOptionButton
+                    key={option.value}
+                    option={option}
+                    selected={option.value === value}
+                    active={option.value === activeValue}
+                    id={optionIdByValue.get(option.value)}
+                    onChoose={choose}
+                    onActive={setActiveValue}
+                  />
+                ))}
+              </div>
+            );
+          }
+          if (!visibleOptions.some((visible) => visible.value === item.value)) return null;
           return (
-            <div className="od-select-group" key={`group:${item.label}`}>
-              <div className="od-select-group-label">{item.label}</div>
-              {item.options.map((option) => (
-                <SelectOptionButton
-                  key={option.value}
-                  option={option}
-                  selected={option.value === value}
-                  active={option.value === activeValue}
-                  id={optionIdByValue.get(option.value)}
-                  onChoose={choose}
-                  onActive={setActiveValue}
-                />
-              ))}
-            </div>
+            <SelectOptionButton
+              key={item.value}
+              option={item}
+              selected={item.value === value}
+              active={item.value === activeValue}
+              id={optionIdByValue.get(item.value)}
+              onChoose={choose}
+              onActive={setActiveValue}
+            />
           );
-        }
-        return (
-          <SelectOptionButton
-            key={item.value}
-            option={item}
-            selected={item.value === value}
-            active={item.value === activeValue}
-            id={optionIdByValue.get(item.value)}
-            onChoose={choose}
-            onActive={setActiveValue}
-          />
-        );
-      })}
+        })}
+      </div>
     </div>
   );
+
+  const onButtonKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!open) {
+        setOpen(true);
+        return;
+      }
+      moveActive(event.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (event.key === 'Home' && open) {
+      event.preventDefault();
+      moveActive(1, 'first');
+      return;
+    }
+    if (event.key === 'End' && open) {
+      event.preventDefault();
+      moveActive(-1, 'last');
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (open) choose(activeValue || value);
+      else setOpen(true);
+      return;
+    }
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu(true);
+    }
+  };
 
   return (
     <div className={['od-select', className].filter(Boolean).join(' ')}>
@@ -275,7 +390,13 @@ export function CustomSelect({
         aria-label={`${ariaLabel}: ${selectedLabel}`}
         disabled={disabled}
         title={title}
-        onClick={() => setOpen((current) => !current)}
+        data-testid={testId}
+        data-dropdown-opener="true"
+        onClick={() => {
+          if (open) closeMenu(true);
+          else setOpen(true);
+        }}
+        onContextMenu={onContextMenu}
         onKeyDown={onButtonKeyDown}
         onFocus={onFocus}
       >
