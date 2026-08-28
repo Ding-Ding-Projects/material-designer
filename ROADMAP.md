@@ -18,6 +18,24 @@
       hosted type、package、installed interaction、帶秒同 timezone 嘅 local-time
       rendering 同真正 capture 仲未做，所以繼續留白。
 
+- [~] **Install the same offline documentation browser in the desktop app.** The
+      app source now consumes the exact generated 68-article manifest, validates
+      it at runtime, exposes `/documentation` through the navigation rail,
+      workspace tab strip, and command palette, renders articles through the
+      shared isolated Markdown renderer, keeps internal links in-app, searches
+      title/path/body content with an anchored field-owned regex builder, and
+      persists bounded recent-reading history locally. Bundle and route guards
+      are green with deliberate red-then-green regressions. Hosted build,
+      packaged runtime interaction, and per-click captures remain open, so this
+      item stays partial.
+
+      **廣東話進度：** Desktop app 而家食同 site 完全一致嘅 68 篇文章 bundle，
+      runtime 會驗證 manifest，`/documentation` 由 navigation rail、workspace
+      tab strip 同 command palette 入到，文章用共用隔離 Markdown renderer，內部
+      links 留喺 app，title/path/body 搜尋有自己貼住欄位嘅 regex builder，最近閱讀
+      亦有限量存本機。Bundle 同 route guards 先轉紅再轉綠都完成，hosted build、
+      packaged runtime interaction 同逐 click capture 仍然未有，所以保持 partial。
+
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
       `scripts/verify-public-mirror-privacy.ps1` is complete for the current

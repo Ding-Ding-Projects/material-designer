@@ -71,6 +71,21 @@ version section when a release carries them.
   [`01c2263a`](https://github.com/Ding-Ding-Projects/material-designer/commit/01c2263a9ae8d54e9fb675934fea6341a6f734f1)
   完成；hosted packaging 同真正 front-screen capture 仲係 pending。
 
+- **Add the installed application's offline documentation browser.** The app now
+  consumes the exact 68-article manifest generated for the documentation site at
+  build time. `/documentation` is available from the navigation rail, workspace
+  tab strip, and command palette, renders through the shared isolated Markdown
+  renderer, keeps internal links in-app, searches title/path/body text with its
+  own anchored regex builder, and stores a bounded recent-reading list locally.
+  Source commit: [`656c1bd7`](https://github.com/Ding-Ding-Projects/material-designer/commit/656c1bd7).
+
+  **安裝版應用程式而家有離線文件 browser。** 應用程式 build 時直接食同
+  documentation site 一樣嘅 68 篇文章 manifest，`/documentation` 由 navigation
+  rail、workspace tab strip 同 command palette 都搵到。文章用共用隔離 Markdown
+  renderer 顯示，內部 links 留喺 app 入面，title/path/body 搜尋有自己貼住欄位嘅
+  regex builder，最近閱讀清單亦只存本機有限數量。Source commit 係
+  [`656c1bd7`](https://github.com/Ding-Ding-Projects/material-designer/commit/656c1bd7)。
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.
