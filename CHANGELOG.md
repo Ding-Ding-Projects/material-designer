@@ -56,7 +56,7 @@ version section when a release carries them.
   `main`, uses its exact `head_sha`, resolves exactly one matching published
   release, verifies its installer, image metadata, front-screen provenance,
   timing, line-count, and required assets, and refuses stale checked-in facts.
-  Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91).
+  Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91). Current repair commit: [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c).
 
   **Release identity 同 Pages freshness 修好，點心相唔再玩失蹤。**
   `scripts/release-codename.sh` 而家用 `jq` 睇公開 catalog，逐個跳過 release
@@ -67,7 +67,7 @@ version section when a release carries them.
   嘅成功 Release workflow_run，用 exact `head_sha` 對返唯一 published release，
   驗 installer、image metadata、front-screen provenance、timing、line count 同
   assets，舊 facts 想混入嚟就即刻食閉門羹。Source commit 係
-  [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc)。Follow-up source commit 係 [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91)。
+  [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc)。Follow-up source commit 係 [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91)。Current repair commit 係 [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c)。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the

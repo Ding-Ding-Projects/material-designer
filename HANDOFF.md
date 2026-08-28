@@ -34,7 +34,7 @@
 > Cantonese tone variants. The JavaScript release-contract source check was
 > updated for the new boundaries but was not run locally because this lane does
 > not run Node. Hosted Release and Pages evidence at this source state remains
-> pending. Previous source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91).
+> pending. Previous source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91). Current repair commit: [`d50e1caa8feae76c72af1c1b18ba7c46f7fef19c`](https://github.com/Ding-Ding-Projects/material-designer/commit/d50e1caa8feae76c72af1c1b18ba7c46f7fef19c).
 >
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by
