@@ -583,6 +583,7 @@ export type OpenDesignHostAuthenticator = {
   reorder(ids: readonly string[]): Promise<OpenDesignAuthenticatorResult>;
   setGroup(ids: readonly string[], group: string | null): Promise<OpenDesignAuthenticatorResult>;
   remove(ids: readonly string[], confirmationToken: string): Promise<OpenDesignAuthenticatorResult>;
+  issueSuperConfirmation(action: string, ids: readonly string[]): Promise<OpenDesignAuthenticatorResult<{ confirmationToken: string }>>;
   historyList(filter?: OpenDesignAuthenticatorHistoryFilter): Promise<OpenDesignAuthenticatorResult<{ records: OpenDesignAuthenticatorHistoryRecord[] }>>;
   historyUnlock(password: string): Promise<OpenDesignAuthenticatorResult>;
   historyDiff(id: string): Promise<OpenDesignAuthenticatorResult<{ diff: string }>>;

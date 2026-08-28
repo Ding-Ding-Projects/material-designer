@@ -3,6 +3,7 @@ import { useI18n } from '../i18n';
 import type { OpenDesignHostAuthenticator } from '@open-design/host';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { RegexSearchField } from './regex/RegexSearchField';
+import { DestructiveGate } from './destructive/DestructiveGate';
 import styles from './AuthenticatorDestination.module.css';
 
 type AuthenticatorTab = 'codes' | 'register' | 'history';
@@ -44,6 +45,7 @@ export function AuthenticatorDestination() {
   const [vaultAvailable, setVaultAvailable] = useState<boolean | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [removeGateOpen, setRemoveGateOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState('General');
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [registration, setRegistration] = useState({ uri: '', issuer: '', account: '', secretBase32: '', algorithm: 'SHA-1' as const, digits: 6 as const, period: 30, confirmationCode: '' });
@@ -105,6 +107,15 @@ export function AuthenticatorDestination() {
         : await bridge.remove(selectedIds, '');
     setNotice(result.ok ? text('Authenticator list updated locally.', '驗證器清單已喺本機更新。') : result.reason);
     if (result.ok) { setSelectedIds([]); setRefreshRevision((current) => current + 1); }
+  };
+  const confirmRemove = async () => {
+    if (!bridge) return false;
+    const issued = await bridge.issueSuperConfirmation('remove authenticator entries', selectedIds);
+    if (!issued.ok) { setNotice(issued.reason); return false; }
+    const result = await bridge.remove(selectedIds, issued.confirmationToken);
+    setNotice(result.ok ? text('Authenticator entries removed locally.', '驗證器項目已喺本機移除。') : result.reason);
+    if (result.ok) { setSelectedIds([]); setRefreshRevision((current) => current + 1); }
+    return result.ok;
   };
   const submitRegistration = async (event: FormEvent) => {
     event.preventDefault();
@@ -172,7 +183,7 @@ export function AuthenticatorDestination() {
             <select aria-label={text('Group selected entries', '將選擇項目分組')} value={selectedGroup} onChange={(event) => setSelectedGroup(event.currentTarget.value)}><option>General</option><option>Work</option><option>Personal</option></select>
             <button type="button" disabled={selectedIds.length === 0} onClick={() => void runBulk('group')} title={text('Choose a group, then apply it to the selected entries.', '先選擇群組，再套用到已選項目。')}>{text('Group selected', '將選擇項目分組')}</button>
             <button type="button" disabled={selectedIds.length < 2} onClick={() => void runBulk('reorder')} title={text('At least two entries are required to reorder.', '最少需要兩個項目先可以重新排序。')}>{text('Reorder selected', '重新排列選擇項目')}</button>
-            <button type="button" disabled={selectedIds.length === 0} onClick={() => void runBulk('remove')} title={text('Remove selected entries from the local vault.', '從本機保管庫移除已選項目。')}>{text('Remove selected', '移除選擇項目')}</button>
+            <button type="button" disabled={selectedIds.length === 0} onClick={() => setRemoveGateOpen(true)} title={text('Remove selected entries from the local vault.', '從本機保管庫移除已選項目。')}>{text('Remove selected', '移除選擇項目')}</button>
           </div>
           {filtered.length === 0 ? <div className={styles.empty} role="status"><strong>{text('No authenticator entries yet', '暫時未有驗證器項目')}</strong><span>{text('Register one locally, then its current code, next code, and text countdown will appear here.', '喺本機登記之後，當前碼、下一個碼同文字倒數會喺呢度出現。')}</span><button type="button" onClick={() => selectTab('register')}>{text('Register an entry', '登記項目')}</button></div> : <div id="authenticator-entry-list" className={styles.entryList}>{filtered.map((entry) => <article className={styles.entry} key={entry.id}><label><input type="checkbox" checked={selectedIds.includes(entry.id)} onChange={(event) => setSelectedIds((current) => event.currentTarget.checked ? [...current, entry.id] : current.filter((id) => id !== entry.id))} aria-label={text(`Select ${entry.issuer}`, `選擇 ${entry.issuer}`)} /></label><div><h2>{entry.issuer}</h2><p>{entry.account} · {entry.group}</p></div><strong aria-label={text('Current code', '當前驗證碼')}>{entry.code}</strong><span>{text(`Next ${entry.nextCode}, ${entry.remaining} seconds remaining`, `下一個 ${entry.nextCode}，仲有 ${entry.remaining} 秒`)}</span><button type="button" onClick={() => void navigator.clipboard?.writeText(entry.code.replace(/\s+/g, ''))}>{text('Copy current code', '複製當前驗證碼')}</button></article>)}</div>}
         </div>
@@ -220,6 +231,7 @@ export function AuthenticatorDestination() {
         </div>
       ) : null}
       {notice ? <p className={styles.notice} role="alert">{notice}</p> : null}
+      {removeGateOpen ? <DestructiveGate action={text('Remove authenticator entries', '移除驗證器項目')} target={text('Selected local entries', '已選本機項目')} items={selectedIds} irreversible={false} onConfirm={confirmRemove} onClose={() => setRemoveGateOpen(false)} /> : null}
     </section>
   );
 }

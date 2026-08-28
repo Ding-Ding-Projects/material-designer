@@ -72,6 +72,7 @@ export function isOpenDesignHostBridge(value: unknown): value is OpenDesignHostB
       || !hasFunction(authenticator, "reorder")
       || !hasFunction(authenticator, "setGroup")
       || !hasFunction(authenticator, "remove")
+      || !hasFunction(authenticator, "issueSuperConfirmation")
       || !hasFunction(authenticator, "historyList")
       || !hasFunction(authenticator, "historyUnlock")
       || !hasFunction(authenticator, "historyDiff")

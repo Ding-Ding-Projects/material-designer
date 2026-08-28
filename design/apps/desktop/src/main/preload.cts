@@ -442,6 +442,7 @@ const authenticator: OpenDesignHostAuthenticator = {
   reorder: (ids) => invokeAuthenticator('od:authenticator:reorder', ids),
   setGroup: (ids, group) => invokeAuthenticator('od:authenticator:set-group', ids, group),
   remove: (ids, confirmationToken) => invokeAuthenticator('od:authenticator:remove', ids, confirmationToken),
+  issueSuperConfirmation: (action, ids) => invokeAuthenticator('od:authenticator:issue-confirmation', action, ids),
   historyList: (filter) => invokeAuthenticator('od:authenticator:history-list', filter ?? null),
   historyUnlock: (password) => invokeAuthenticator('od:authenticator:history-unlock', password),
   historyDiff: (id) => invokeAuthenticator('od:authenticator:history-diff', id),
