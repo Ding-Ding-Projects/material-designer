@@ -336,10 +336,10 @@ export const zhTW: Dict = {
     "在信箱裡收到產品更新、新模版、設計系統與大使活動。選填——可以跳過。",
   "settings.onboardingConnectTitle": "選擇執行方式",
   "settings.onboardingConnectBody": "",
-  "settings.onboardingCloudTitle": "登入 Open Design Cloud",
+  "settings.onboardingCloudTitle": "歡迎使用 Material Designer",
   "settings.onboardingCloudBody":
-    "登入後可直接用雲端 AI 開始設計，無需任何複雜設定。",
-  "settings.onboardingCloudSignIn": "登入 Open Design Cloud",
+    "登入 Open Design Cloud 後，即可在 Material Designer 中使用雲端 AI 開始設計，無需任何複雜設定。",
+  "settings.onboardingCloudSignIn": "登入 Open Design Cloud 以繼續",
   "settings.onboardingCloudContinue": "繼續（已登入）",
   "settings.onboardingCloudAlternative": "使用本機 CLI 或自己的 API Key",
   "settings.onboardingCloudRights": "保留所有權利。",

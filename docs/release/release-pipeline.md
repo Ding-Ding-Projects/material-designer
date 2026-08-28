@@ -203,9 +203,10 @@ because one of its own self-checks tripped, and that reason belongs in the log.
 
 **15: Choose the code name and image.** See [code-names.md](code-names.md). The
 selector reads every prior release marker, skips spent ids, and only accepts a
-published `catalog-v1*` PNG. The following validation step downloads, decodes, sizes, hashes,
-and records the exact public image metadata without staging it as a consumer
-release asset. Missing `image` or `image_dish` output fails before publication.
+published `catalog-v1*` PNG. The no-copy validation step records the exact
+public image URL, tag, filename, content type, and declared byte count without
+requesting the photo body or staging it as a consumer release asset. Missing
+`image` or `image_dish` output fails before publication.
 The no-copy policy block is explicit and is not reported as a successful release.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,

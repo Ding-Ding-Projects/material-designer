@@ -4,13 +4,14 @@
       freshness.** `scripts/release-codename.sh` now uses the public catalog and
       published `catalog-v1*` PNG assets, excludes every exact `dim-sum-id` found
       in prior release notes, and emits `image` plus `image_dish` metadata. The
-      Release workflow verifies, decodes, size-checks, and hashes the selected
-      authoritative image link without attaching copied bytes, then explicitly
+      Release workflow verifies the selected authoritative image URL and
+      published metadata without requesting or attaching copied bytes, then explicitly
       blocks at the governing downloadable-photo row. It records the block rather
       than claiming success, rejects duplicate tags, and preserves the single
       policy decision for the owner. Pages waits for a successful Release for the
-      exact checkout SHA, resolves exactly one matching published release, and
-      refuses stale facts. The local validator and its deliberate red-then-green
+      exact checkout SHA, resolves exactly one matching published release, updates
+      front-screen provenance only from that release, and refuses stale facts.
+      Pages accepts only main-ref deployments. The local validator and its deliberate red-then-green
       mutations pass. A hosted run must prove the explicit block before ticking
       this item.
 
@@ -18,10 +19,10 @@
       修好。`scripts/release-codename.sh` 而家只用 public catalog 同 published
       `catalog-v1*` PNG，見到 prior release notes 嘅 `dim-sum-id` 就跳過，仲會
       清楚傳出 `image` 同 `image_dish`。Release workflow 會經 authoritative
-      link 做 decode、signature、bytes、SHA-256 驗證，但唔會 attach copied
+      link 只驗 URL、published metadata 同 bytes 宣告，唔會請求或 attach copied
       bytes，required-photo row 會明確 block，唔扮成功；撞 tag 或無相都停。
-      Pages 會等同一個 checkout SHA 嘅成功 Release，唯一 matching release
-      先准更新，舊 facts 唔可以混入。Local validator 同故意拆線測試會先
+      Pages 只接受 main ref，main 嘅成功 Release workflow_run 會帶住 exact
+      head_sha，唯一 matching release 先准更新 front provenance，舊 facts 唔可以混入。Local validator 同故意拆線測試會先
       轉紅再還原轉綠；仲要 hosted run 證明 explicit block 先可以剔滿。
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy

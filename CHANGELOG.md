@@ -49,22 +49,24 @@ version section when a release carries them.
   `scripts/release-codename.sh` now reads the public catalog with `jq`, skips
   every exact `dim-sum-id` already recorded in published release notes, and
   selects only a non-draft, non-prerelease `catalog-v1*` PNG. The Release
-  workflow forwards `image` and `image_dish`, verifies and decodes the
-  authoritative image link, records its byte count and SHA-256 without attaching
-  copied bytes, rejects duplicate tags, and explicitly blocks publication at the
-  required-photo row. The Pages workflow waits for a successful Release run for the exact
-  checkout commit, resolves exactly one matching published release, verifies its
-  installer, image, timing, line-count, and required assets, and refuses stale
-  checked-in facts. Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91).
+  workflow forwards `image` and `image_dish`, verifies the authoritative image
+  URL and published metadata without requesting photo bytes, rejects duplicate
+  tags, and explicitly blocks publication at the required-photo row. The Pages
+  workflow accepts only a `main` ref or a completed successful Release run from
+  `main`, uses its exact `head_sha`, resolves exactly one matching published
+  release, verifies its installer, image metadata, front-screen provenance,
+  timing, line-count, and required assets, and refuses stale checked-in facts.
+  Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91).
 
   **Release identity 同 Pages freshness 修好，點心相唔再玩失蹤。**
   `scripts/release-codename.sh` 而家用 `jq` 睇公開 catalog，逐個跳過 release
   notes 已經記低嘅 `dim-sum-id`，只揀 published、唔係 draft/prerelease 嘅
-  `catalog-v1*` PNG。Release workflow 會傳出 `image` 同 `image_dish`，下載、
-  decode、驗 signature、bytes 同 SHA-256，但唔會 attach copied bytes，寫低
-  verified metadata 後喺 required-photo row 明確 block，撞 tag 都停。Pages workflow 會等同一個 commit 嘅成功 Release，
-  驗唯一 published release、installer、相、timing、line count 同 assets，
-  舊 facts 想混入嚟就即刻食閉門羹。Source commit 係
+  `catalog-v1*` PNG。Release workflow 會傳出 `image` 同 `image_dish`，只驗
+  authoritative URL、published metadata 同 bytes 宣告，唔會請求 photo body，
+  required-photo row 會明確 block，撞 tag 都停。Pages 只接受 main ref 或 main
+  嘅成功 Release workflow_run，用 exact `head_sha` 對返唯一 published release，
+  驗 installer、image metadata、front-screen provenance、timing、line count 同
+  assets，舊 facts 想混入嚟就即刻食閉門羹。Source commit 係
   [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc)。Follow-up source commit 係 [`7947018d844d614836948c79ec5f10e83edc1f91`](https://github.com/Ding-Ding-Projects/material-designer/commit/7947018d844d614836948c79ec5f10e83edc1f91)。
 
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,

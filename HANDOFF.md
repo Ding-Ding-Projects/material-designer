@@ -8,21 +8,22 @@
 > public catalog release. The selector validates bounded catalog schema, ids,
 > paths, asset metadata, control characters, and output records, and emits
 > `image` and `image_dish` together with byte count, content type, source tag,
-> and public URL. The Release workflow verifies the authoritative image link,
-> PNG signature, decoder dimensions, byte count, and SHA-256, records link
-> metadata, serializes publication project-wide, rejects duplicate tags, and
+> and public URL. The Release workflow verifies the authoritative image URL and
+> published metadata without requesting photo bytes, records link metadata,
+> serializes publication project-wide, rejects duplicate tags, and
 > then stops at the governing downloadable-photo row because the no-copy policy
 > forbids attaching copied bytes. The temporary photo-exception success path is
 > removed.
 >
-> Pages now waits for a successful Release run for the exact checkout SHA,
-> paginates the complete release inventory, resolves exactly one non-draft
+> Pages now accepts only a `main` ref or a completed successful Release run from
+> `main`, using its exact `head_sha`, paginates the complete release inventory,
+> resolves exactly one non-draft
 > published release with markers bound to tag, version, package, installer,
-> catalog, and image, verifies metadata, image content type, signature, decode,
-> bytes, hash, timing, line-count, and required assets, and refuses stale
+> catalog, and image, verifies metadata, front-screen provenance, timing,
+> line-count, and required assets, and refuses stale
 > checked-in facts. A syntax-aware page mutation parser requires every field and
 > link to occur exactly once. The release panel now exposes the current image
-> filename, hash, and immutable release link, and the stale portable-download
+> filename and immutable public-catalog link, and the stale portable-download
 > row is removed. No new release is claimed from this source state because the
 > required downloadable-photo row remains blocked.
 >

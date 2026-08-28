@@ -21,6 +21,33 @@ function Require-Literal([string]$Text, [string]$Needle, [string]$Label) {
   }
 }
 
+function Require-ExecutableLine([string]$Text, [string]$Prefix, [string]$Label) {
+  $found = ($Text -split "`r`n|`n|`r") | Where-Object {
+    $_.TrimStart().StartsWith($Prefix, [StringComparison]::Ordinal)
+  } | Select-Object -First 1
+  if ($null -eq $found) {
+    throw "$Label is missing executable line beginning with: $Prefix"
+  }
+}
+
+function Extract-Block([string]$Text, [string]$Start, [string]$End, [string]$Label) {
+  $lines = $Text -split "`r`n|`n|`r"
+  $startIndex = -1
+  $endIndex = $lines.Count
+  for ($i = 0; $i -lt $lines.Count; $i++) {
+    if ($startIndex -lt 0 -and $lines[$i].TrimStart().StartsWith($Start, [StringComparison]::Ordinal)) {
+      $startIndex = $i
+      continue
+    }
+    if ($startIndex -ge 0 -and $lines[$i].TrimStart().StartsWith($End, [StringComparison]::Ordinal)) {
+      $endIndex = $i
+      break
+    }
+  }
+  if ($startIndex -lt 0) { throw "$Label start boundary is missing: $Start" }
+  return ($lines[$startIndex..($endIndex - 1)] -join "`n")
+}
+
 function Forbid-Literal([string]$Text, [string]$Needle, [string]$Label) {
   if ($Text.IndexOf($Needle, [StringComparison]::Ordinal) -ge 0) {
     throw "$Label contains forbidden contract text: $Needle"
@@ -41,6 +68,13 @@ $site = Read-Required $SiteIndex
 $releaseExecutable = Remove-CommentOnlyLines $release
 $pagesExecutable = Remove-CommentOnlyLines $pages
 $codenameExecutable = Remove-CommentOnlyLines $codename
+$dimSumBlock = Extract-Block $release 'id: dim_sum_contract' '- name:' 'release.yml dim_sum_contract'
+$dimSumExecutable = Remove-CommentOnlyLines $dimSumBlock
+
+Require-ExecutableLine $codenameExecutable 'if grep -Fqx "$id" "$tmp/used.txt"' 'release-codename.sh'
+$imageDishOutputLine = 'printf ''image_dish=%s\n'' "$id"'
+Require-ExecutableLine $codenameExecutable $imageDishOutputLine 'release-codename.sh'
+Require-ExecutableLine $releaseExecutable 'cat "$raw" >> "$GITHUB_OUTPUT"' 'release.yml'
 
 @(
   'grep -Fqx "$id" "$tmp/used.txt"'
@@ -70,10 +104,6 @@ Forbid-Literal $codename 'assets/dim-sum/images' 'release-codename.sh'
   'Verify public catalog image metadata without copying bytes'
   'CATALOG_IMAGE: ${{ steps.codename.outputs.image }}'
   'CATALOG_IMAGE_DISH: ${{ steps.codename.outputs.image_dish }}'
-  'curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"'
-  'png_magic=$(od -An -tx1 -N8'
-  'sha256sum "$photo_path"'
-  'FromStream($stream, $true, $true)'
   'status=blocked-no-copy-policy'
   'no copied image is attached'
   "steps.codename.outcome == 'success'"
@@ -90,6 +120,8 @@ Forbid-Literal $codename 'assets/dim-sum/images' 'release-codename.sh'
   'group: material-designer-release-publisher'
   'gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA"'
   'gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest'
+  'release listing failed while claiming the unique release tag'
+  'published release read failed for $TAG'
   '<!-- release-version: ${APP_VERSION} -->'
   '<!-- release-tag: ${TAG} -->'
   '<!-- release-package: open-design-packaged-app -->'
@@ -106,12 +138,30 @@ Forbid-Literal $codename 'assets/dim-sum/images' 'release-codename.sh'
   "Status -ne 'NotSigned'"
   'image_dish does not match'
 ) | ForEach-Object { Require-Literal $releaseExecutable $_ 'release.yml' }
+@(
+  'curl -fsSL'
+  'Invoke-WebRequest'
+  'gh release download'
+  'sha256sum'
+  'FromStream'
+  'PHOTO_PATH'
+) | ForEach-Object { Forbid-Literal $dimSumExecutable $_ 'release.yml dim_sum_contract' }
 Forbid-Literal $release 'temporary dim-sum photo exception' 'release.yml'
 Forbid-Literal $release 'status=temporarily-skipped' 'release.yml'
 Forbid-Literal $release 'temporarily skipped by the repository owner' 'release.yml'
 
 @(
   'Wait for the current successful release'
+  'workflow_run:'
+  'workflows:'
+  '- Release'
+  "github.event.workflow_run.head_branch == 'main'"
+  "github.event.workflow_run.conclusion == 'success'"
+  'EXPECTED_RELEASE_SHA:'
+  'RELEASE_RUN_ID_INPUT:'
+  'ref: ${{ github.event_name == ''workflow_run'' && github.event.workflow_run.head_sha || github.sha }}'
+  "github.ref == 'refs/heads/main'"
+  'workflow_run must be the successful Release run for main and $expected_sha'
   'gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --commit "$expected_sha"'
   'gh run view "$RELEASE_RUN_ID"'
   'gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100"'
@@ -123,7 +173,7 @@ Forbid-Literal $release 'temporarily skipped by the repository owner' 'release.y
   'metadata.json'
   'FromStream($stream, $true, $true)'
   'gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern metadata.json'
-  'published metadata does not bind version, installer, unsigned state, and checksum'
+  'published metadata does not bind selected release tag, installer asset, exact checksum URL, unsigned state, and checksum'
   'image_magic=$(od -An -tx1 -N8'
   'current release is missing its verified PNG catalog image asset'
   'marker_value()'
@@ -144,6 +194,10 @@ Forbid-Literal $release 'temporarily skipped by the repository owner' 'release.y
   'published release body read failed for $tag'
   'set_field image'
   'set_field image-sha'
+  'set_front_attr()'
+  'set_front_text()'
+  'front-screen provenance is malformed or not bound to the selected release'
+  'gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern ''build-provenance.json'''
   'current release does not bind exactly one downloadable installer to its marker'
 ) | ForEach-Object { Require-Literal $pagesExecutable $_ 'pages.yml' }
 Forbid-Literal $pages 'keeping the checked-in page facts' 'pages.yml'

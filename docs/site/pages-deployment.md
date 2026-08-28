@@ -15,6 +15,12 @@ installer, tag, commit, image, or hash facts.
 > successful Release rather than deploying stale facts. The older deployed page
 > remains historical evidence only.
 
+The front-screen provenance strip is populated only after the same selected
+published release provides `build-provenance.json` whose package version,
+source commit, verification status, and timestamp all match the checkout.
+Missing or malformed provenance leaves the strip unavailable and fails the
+deployment rather than substituting a launch time or file timestamp.
+
 > [!NOTE]
 > **The site is deployed.** The workflow has run and published the site at the
 > repository-scoped Pages URL recorded in [README.md](README.md). The deployment
@@ -44,8 +50,8 @@ artifact and deploys it.
 | Checkout | Plain checkout. No submodule — the site does not read `design/`. |
 | Check the site is self-contained | Six `grep` sweeps over `site/`. Any hit fails the job. |
 | Stage the dish catalogue | Copies `assets/dim-sum/` into `site/assets/dim-sum/`. The catalogue lives at the repository root because the application and the release workflow use it too, and only `site/` is published — a page addressing `../assets/…` would 404 for every visitor. A missing catalogue warns and continues rather than failing the deployment. |
-| Wait for the current successful release | Polls `Release` for the exact checkout SHA, rejects failed or cancelled runs, and times out rather than deploying stale facts. |
-| Resolve the current published release | Requires exactly one non-draft, non-prerelease release whose machine-readable commit marker equals the checkout SHA, verifies its installer, image, timing, line-count, and required asset set, then updates `site/index.html`. |
+| Wait for the current successful release | A completed successful `workflow_run` from `main` supplies its exact `head_sha`; main pushes and main dispatches use the same bounded poll, while tag refs never reach the deployment job. |
+| Resolve the current published release | Requires exactly one non-draft, non-prerelease release whose machine-readable commit marker equals the checkout SHA, verifies its installer, public image metadata, timing, line-count, required asset set, and front-screen provenance, then updates `site/index.html`. |
 | Configure Pages | Resolves the site's base URL for the deployment. |
 | Upload site | Uploads `site/` as the Pages artifact. |
 | Deploy | Publishes it and records the resulting URL on the run. |
@@ -123,7 +129,7 @@ change without the page changing. See
 
 | Setting | Value | Why |
 | --- | --- | --- |
-| Triggers | Every push and manual dispatch | Release facts and the deployed page must be resolved for every exact checkout SHA |
+| Triggers | Every push, manual dispatch, and completed `Release` workflow run | Only a `main` ref may enter the deployment job, and a completed successful Release run supplies the exact released SHA without using a tag environment ref |
 | Runner | `windows-2022` | The workflow cleans the checkout, bootstraps `gh`, `jq`, Bash and its static-site text utilities, then waits for the matching successful Release |
 | Permissions | `contents: read`, `pages: write`, `id-token: write` | The minimum the Pages deployment action needs |
 | Concurrency | group `pages`, `cancel-in-progress: false` | A deployment cancelled midway can leave a partially published site; queue instead |
@@ -140,6 +146,7 @@ broken build and is actually one repository setting.
 | `site/ does not exist yet; nothing to deploy.`, exit 1 | The workflow ran with no `site/` directory | Deliberate. A silent success on a missing directory would publish nothing and report a green tick. |
 | `::error::site/ loads a remote script` (or stylesheet, image, CSS asset, external request) | Standard 15 violated | Bundle the asset locally. Do not weaken the pattern to let it through. |
 | The workflow is green and every page 404s | Absolute asset URLs with a repository-scoped base path | See the base-path trap above. Open a page before believing a deployment. |
+| Pages reports that a tag ref is not allowed by the `github-pages` environment | A tag-triggered deployment does not satisfy the environment's `main`-only policy | The job condition accepts only `main` pushes, `main` dispatches, or a completed successful `Release` `workflow_run` from `main`; the latter carries `workflow_run.head_sha` for exact release binding. |
 | The deployment step fails before uploading | GitHub Pages not enabled for the repository | Enable it in the repository settings; it is a setting, not a code defect. |
 | The site's root shows a directory listing or a 404 | No `index.html` at the root of `site/` | The workflow does not check for one, because uploading a partial site during development is legitimate. `site/index.html` is present, so this is a hazard to avoid reintroducing rather than a current fault. |
 | The startup dish never appears and the catalogue 404s | The staging step warned instead of copying — no `assets/dim-sum/index.json` at the repository root | Deliberate: a missing dish catalogue is a degraded surprise, not a reason to refuse to publish documentation. Restore the catalogue at the root; do not add a second copy under `site/`. |

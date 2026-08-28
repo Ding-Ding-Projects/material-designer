@@ -314,7 +314,7 @@ fallback line if it fails, so the release notes never carry a fabricated number.
 every existing release body, skips each exact `dim-sum-id` marker, and selects
 only a dish whose image is present on a published `catalog-v1*` release. The
 next validation step verifies, decodes, sizes, and hashes that exact public PNG
-through its authoritative link without attaching copied bytes. Missing `image` or
+through its authoritative URL metadata without requesting or attaching copied bytes. Missing `image` or
 `image_dish` output blocks publication, as does the unresolved required-photo row.
 
 **14: Publish.** `gh release create` with a generated notes file, `--latest`,

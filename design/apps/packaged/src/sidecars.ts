@@ -693,6 +693,9 @@ function createPackagedDaemonManagedPathEnv(
 
 export type PackagedDaemonSpawnEnvOptions = {
   appVersion: string | null;
+  buildVersion?: string | null;
+  buildSourceCommit?: string | null;
+  buildUpdatedAt?: string | null;
   amrProfile?: string | null;
   daemonCliEntry: string | null;
   desktopHandoffEnv?: NodeJS.ProcessEnv;
@@ -784,6 +787,9 @@ export function buildPackagedDaemonSpawnEnv(
       ? {}
       : { OD_VELA_WEB_URLS: JSON.stringify(options.velaWebUrls) }),
     ...(options.appVersion == null ? {} : { OD_APP_VERSION: options.appVersion }),
+    ...(options.buildVersion == null ? {} : { OD_BUILD_VERSION: options.buildVersion }),
+    ...(options.buildSourceCommit == null ? {} : { OD_BUILD_SOURCE_COMMIT: options.buildSourceCommit }),
+    ...(options.buildUpdatedAt == null ? {} : { OD_BUILD_UPDATED_AT: options.buildUpdatedAt }),
     ...(options.captureMode || options.mcpBootstrapCommand == null
       || options.mcpBootstrapCommand.length === 0
       ? {}
@@ -959,6 +965,9 @@ export async function startPackagedSidecars(
   paths: PackagedNamespacePaths,
   options: {
     appVersion: string | null;
+    buildVersion?: string | null;
+    buildSourceCommit?: string | null;
+    buildUpdatedAt?: string | null;
     amrProfile: string | null;
     daemonCliEntry: string | null;
     daemonSidecarEntry: string | null;
@@ -1043,6 +1052,9 @@ export async function startPackagedSidecars(
       entryPath: daemonSidecarEntry,
       env: buildPackagedDaemonSpawnEnv(paths, {
         appVersion: options.appVersion,
+        buildVersion: options.buildVersion,
+        buildSourceCommit: options.buildSourceCommit,
+        buildUpdatedAt: options.buildUpdatedAt,
         amrProfile: options.amrProfile,
         daemonCliEntry: options.daemonCliEntry,
         desktopHandoffEnv: process.env,

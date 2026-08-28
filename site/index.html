@@ -135,6 +135,33 @@ var s=parseInt(g('scale'),10);d.style.setProperty('--ui-scale',String((isNaN(s)?
     <span class="md-chip md-chip--mono" title="Upstream Open Design v0.16.1, pinned at commit 517f39acde402c1a7af2189167a8d6957a3dac71">upstream 517f39a</span>
   </header>
 
+  <!-- This identity strip is deliberately before the tab strip. Its facts are
+       bound to verified release provenance for the version documented by this
+       page, not to the visitor's load time or to a file timestamp. The client
+       converts the recorded UTC instant to the visitor's local timezone while
+       retaining seconds and an explicit timezone name. -->
+  <section
+    class="front-provenance"
+    data-front-screen-provenance="true"
+    data-front-version=""
+    data-front-updated-at=""
+    data-front-source-commit=""
+    aria-labelledby="front-provenance-title"
+  >
+    <h2 id="front-provenance-title" data-i18n="frontProvenance.heading">Running build</h2>
+    <dl>
+      <div>
+        <dt data-i18n="frontProvenance.version">Version</dt>
+        <dd data-front-provenance-value="version">Unavailable</dd>
+      </div>
+      <div>
+        <dt data-i18n="frontProvenance.updatedAt">Updated</dt>
+        <dd data-front-provenance-value="updated-at">Unavailable</dd>
+      </div>
+    </dl>
+    <p data-front-provenance-value="status" role="status" aria-live="polite">Unavailable</p>
+  </section>
+
   <!-- The tab strip. tabs.js owns everything inside this element: the tabs
        themselves, the overflow surface, the searchable tab list, reordering,
        pinning, and the persistence of all of it. -->

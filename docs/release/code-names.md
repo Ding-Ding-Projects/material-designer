@@ -2,9 +2,10 @@
 
 > [!IMPORTANT]
 > **Release-integrity repair, 2026-08-27.** The workflow now resolves a
-> code-name id and its image metadata from the published public catalog, checks
-> the authoritative link's PNG signature, decodes it, checks its byte count,
-> and hashes it in run-scoped storage. It does not add or attach a copied image.
+> code-name id and its image metadata from the published public catalog. In the
+> no-copy path it validates the authoritative HTTPS URL, published tag, asset
+> filename, content type, and declared byte count without requesting the photo
+> body. It does not add or attach a copied image.
 > The governing downloadable-photo row therefore remains explicitly blocked
 > until the owner resolves the conflict between that row and the public no-copy
 > rule. An unavailable code name is represented honestly in selector output.
@@ -19,8 +20,9 @@ once**.
 > **Status: source repair complete, hosted publication intentionally blocked.**
 > `scripts/release-codename.sh` uses the public catalog and published
 > `catalog-v1*` PNG assets only. The `Release` workflow records an exact
-> `dim-sum-id` marker, image asset marker, byte count, and SHA-256 in its notes,
-> and publication requires the attached image to be present and downloadable.
+> `dim-sum-id` marker, image asset marker, byte count, and an explicit
+> no-copy hash status in its notes, and publication requires the attached image
+> to be present and downloadable.
 > The no-copy path records verified public metadata but fails the required-photo
 > row rather than claiming that a copied release asset is compliant. A fresh
 > hosted run must prove that the block is visible and honest.
@@ -47,8 +49,9 @@ authoritative for release names.
 
 Photos come from that repository's published `catalog-v1*` releases, **2,928
 assets across three of them**, and the release notes link the chosen dish's
-source. The workflow stages one verified source asset for the release itself,
-without adding it to this repository or its bundled catalog.
+source. The no-copy workflow records the selected public asset metadata for
+the release, without requesting or adding its bytes to this repository or its
+bundled catalog.
 
 > [!NOTE]
 > **This used to read from 24 dishes bundled in this repository, and that is how
@@ -68,8 +71,8 @@ down rather than left implicit:
   bundled set; it may *link* the public photo.
 
 They remain a deliberate policy conflict. The **code name and source photo link**
-come from the public catalogue, and the release job may verify that authoritative
-link in run-scoped storage, but the no-copy rule forbids attaching those bytes to
+come from the public catalogue, and the release job verifies the authoritative
+URL and published asset metadata without requesting its body. The no-copy rule forbids attaching those bytes to
 the consumer release. The workflow records the verified metadata and stops at
 the required downloadable-photo row. It never tracks the image, adds it to the
 bundled catalog, or uses a stale local copy.
@@ -111,7 +114,7 @@ Three degradations, in order:
 | --- | --- |
 | Public catalogue unreachable | Emits `source=unavailable` and empty code-name and image fields; image validation blocks publication |
 | No unused dish with a published image | Emits an empty `id`; the version remains authoritative, but required image validation blocks publication |
-| Download, decode, size, signature, or hash verification fails | The workflow fails closed before publication and preserves the exact failure in the run log |
+| Public asset metadata is missing or malformed | The workflow fails closed before publication and preserves the exact failure in the run log |
 
 This is deliberate and auditable. A code name is decoration with a purpose, while
 the source image metadata is independently verified at the release boundary.
@@ -131,7 +134,7 @@ The script prints key-value lines suitable for a workflow output file:
 | `jyutping` | Romanisation. |
 | `codename` | `<English> · <Traditional Chinese>`, the display form. |
 | `photo_url` | Public asset URL for the code name's photo. |
-| `image` | Exact public catalog asset filename selected for attachment. |
+| `image` | Exact public catalog asset filename selected for the release record. |
 | `image_dish` | Stable catalog id associated with `image`; it must equal `id`. |
 | `image_bytes` | Expected public release asset byte count. |
 | `image_content_type` | Expected content type, currently `image/png`. |
@@ -179,10 +182,10 @@ local copy is not auditable.
   chain and passed through the environment convention the tooling expects. It is
   never printed, and the script itself never receives it for that purpose — the
   workflow does the listing and hands the script a list of ids.
-- **The repository does not track catalog images.** The workflow fetches only the
-  selected published public asset into run-scoped staging, verifies it, and
-  attaches that exact byteset to the release when the governing release contract
-  requires a downloadable image.
+- **The repository does not track catalog images.** In no-copy mode the workflow
+  reads only the catalog index and release metadata, records the selected public
+  asset URL and declared metadata, and stops before any photo-body request. It
+  cannot attach a copied image while the policy conflict remains unresolved.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
 - **A catalogue fetch failure is reported.** An unreachable public index leaves the
@@ -214,11 +217,11 @@ scripts/release-codename.sh --used ''
 scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-The live release workflow independently verifies the selected public image link,
-checks the PNG signature and dimensions, computes its SHA-256 and byte count, and
-then stops at the required downloadable-photo row because no copied image may be
-attached. A hosted run is the authoritative evidence for that link-only proof and
-the explicit block.
+The live release workflow independently verifies the selected public image URL,
+published catalog tag, filename, content type, and declared byte count, then
+stops at the required downloadable-photo row before requesting any photo bytes.
+A hosted run is the authoritative evidence for that metadata-only proof and the
+explicit block.
 
 ## Suggested reading
 

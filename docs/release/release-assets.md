@@ -3,12 +3,12 @@
 > [!IMPORTANT]
 > **Release-integrity repair, 2026-08-27.** A new release must contain the real
 > unsigned Squirrel `Setup.exe`, `RELEASES`, full package and delta packages when
-> produced, `metadata.json`, icon, checksum, provenance evidence, and one verified
-> PNG from a published public catalog release. The no-copy path verifies the
-> authoritative public link and records its metadata without attaching copied
-> bytes. The required downloadable-photo row remains blocked until the owner
-> resolves that policy conflict. Missing image, hash, decode, or asset evidence
-> blocks publication.
+> produced, `metadata.json`, icon, checksum, provenance evidence, and the
+> metadata for one published public catalog image. The no-copy path verifies the
+> authoritative public link, tag, filename, content type, and declared byte
+> count without requesting or attaching copied bytes. The required
+> downloadable-photo row remains blocked until the owner resolves that policy
+> conflict. Missing image metadata or required release assets blocks publication.
 
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
@@ -16,7 +16,7 @@ to the run but *not* to the release, and what is deliberately absent.
 > [!IMPORTANT]
 > **Status: source repair complete, hosted publication intentionally blocked.**
 > The release workflow stages a project-owned Squirrel.Windows feed and verifies
-> the current public catalog image metadata without attaching a copied image. It
+> the current public catalog image metadata without requesting or attaching a copied image. It
 > publishes intentionally unsigned artifacts and verifies `NotSigned` whenever
 > the required photo policy is resolved. Historical releases remain retained as
 > historical evidence. There is **no

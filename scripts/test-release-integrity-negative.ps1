@@ -59,25 +59,40 @@ try {
     param($fixture)
     $path = Join-Path $fixture 'scripts/release-codename.sh'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('grep -Fqx "$id" "$tmp/used.txt"', 'grep -F "$id" "$tmp/used.txt"'))
+    $needle = '  if grep -Fqx "$id"'
+    $replacement = '  # if grep -Fqx "$id"'
+    if (-not $text.Contains($needle)) { throw 'used-id executable line was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, $replacement))
   }
   Expect-Red 'remove-image-output' {
     param($fixture)
     $path = Join-Path $fixture 'scripts/release-codename.sh'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('printf ''image_dish=%s\n'' "$id"', 'printf ''dish=%s\n'' "$id"'))
+    $needle = '  printf ''image_dish=%s\n'' "$id"'
+    if (-not $text.Contains($needle)) { throw 'image_dish output line was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, '  # ' + $needle.TrimStart()))
   }
   Expect-Red 'remove-output-forwarding' {
     param($fixture)
     $path = Join-Path $fixture '.github/workflows/release.yml'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('cat "$raw" >> "$GITHUB_OUTPUT"', 'cat "$raw" > "$GITHUB_OUTPUT"'))
+    $needle = '          cat "$raw" >> "$GITHUB_OUTPUT"'
+    if (-not $text.Contains($needle)) { throw 'output forwarding line was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, '          # cat "$raw" >> "$GITHUB_OUTPUT"'))
   }
   Expect-Red 'remove-pages-current-release-resolution' {
     param($fixture)
     $path = Join-Path $fixture '.github/workflows/pages.yml'
     $text = [IO.File]::ReadAllText($path)
     [IO.File]::WriteAllText($path, $text.Replace('expected exactly one published release', 'expected one published release'))
+  }
+  Expect-Red 'allow-tag-ref-pages-deployment' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    $needle = "github.event.workflow_run.head_branch == 'main'"
+    if (-not $text.Contains($needle)) { throw 'main-only workflow_run policy was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, "github.event.workflow_run.head_branch == 'refs/tags/v'"))
   }
   Expect-Red 'remove-duplicate-release-check' {
     param($fixture)
@@ -107,7 +122,9 @@ try {
     param($fixture)
     $path = Join-Path $fixture '.github/workflows/release.yml'
     $text = [IO.File]::ReadAllText($path)
-    [IO.File]::WriteAllText($path, $text.Replace('          curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"', '          # curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"'))
+    $needle = '          printf ''status=blocked-no-copy-policy\n'' >> "$GITHUB_OUTPUT"'
+    if (-not $text.Contains($needle)) { throw 'no-copy status output line was not found in fixture' }
+    [IO.File]::WriteAllText($path, $text.Replace($needle, '          # ' + $needle.TrimStart()))
   }
   Expect-Red 'allow-duplicate-pages-fields' {
     param($fixture)
