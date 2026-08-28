@@ -70,6 +70,10 @@ function Assert-DocsBrowserContract([hashtable]$Text, [object]$Manifest, [object
   if ($Text.main -notmatch 'initDocsBrowser') { throw 'main.js does not initialise the documentation browser.' }
   if ($Text.main -notmatch 'Ctrl\+Shift\+F' -and $Text.ui -notmatch 'Ctrl\+Shift\+F') { throw 'The site does not document or implement Ctrl+Shift+F for its command palette.' }
   if ($Text.ui -match 'metaKey.*key.*k') { throw 'The site retains a competing Ctrl+K command-palette shortcut.' }
+  if ($Text.i18n -notmatch "DEFAULTS\s*=\s*\{\s*mode:\s*'bilingual',\s*funnyEn:\s*5,\s*funnyYue:\s*5\s*\}") { throw 'The site funny-level defaults are not 5/5.' }
+  foreach ($needle in @('data-front-screen-provenance', 'data-front-version', 'data-front-updated-at', 'data-front-source-commit')) {
+    if ($Text.index -notmatch [regex]::Escape($needle)) { throw "The site initial provenance surface is missing $needle." }
+  }
   foreach ($needle in @('--md-tabs-tab-h:48px', 'height:48px; min-width:48px', 'overflow-x:auto')) {
     if ($Text.tabs -notmatch [regex]::Escape($needle)) { throw "The site tab contract is missing $needle." }
   }
@@ -91,6 +95,7 @@ $text = @{
   browser = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/assets/js/docs-browser.js')
   ui = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/assets/js/ui.js')
   tabs = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/assets/js/tabs.js')
+  i18n = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/assets/js/i18n.js')
   social = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'scripts/generate-social-preview.ps1')
 }
 

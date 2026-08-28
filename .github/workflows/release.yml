@@ -45,7 +45,9 @@ jobs:
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-docs-manifest.ps1
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-app-docs-manifest.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-docs-browser.ps1
           powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-app-docs-bundle.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-screen-recording-evidence.ps1
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
