@@ -2109,6 +2109,11 @@ Follow-up commit
 [`5cb71765`](https://github.com/Ding-Ding-Projects/material-designer/commit/5cb7176584831e3feff07da6a1c18ccd72dbabbf)
 corrects the shell manifest count so the compiler metadata id is not counted
 as a platform tool.
+Commit
+[`88cd35e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/88cd35e362217e2ece6720260c8bbd36508e846b)
+also replaces the remaining imported release-page fallbacks in Settings and
+post-update highlights, and expands the fallback boundary check to all three
+web producers.
 
 ### Implemented source changes
 
@@ -2174,6 +2179,6 @@ imported tree, but a fresh verifier verdict for this candidate is still open.
 3. Exercise the complete packaged updater flow through the approved headless
    route and retain the required interaction evidence.
 
-The lane has made no release, tag, or external publication. Commits `d08922d3`
-and `5cb71765` are ready for independent review and integration; they have not
-been pushed to the remote repository.
+The lane has made no release, tag, or external publication. Commits `d08922d3`,
+`5cb71765`, and `88cd35e3` are ready for independent review and integration;
+they have not been pushed to the remote repository.

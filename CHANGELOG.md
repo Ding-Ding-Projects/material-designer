@@ -82,6 +82,11 @@ version section when a release carries them.
   [`5cb71765`](https://github.com/Ding-Ding-Projects/material-designer/commit/5cb7176584831e3feff07da6a1c18ccd72dbabbf)
   corrects the shell manifest entry count and its literal-safe regression
   assertion. Hosted verification remains pending.
+  Commit
+  [`88cd35e3`](https://github.com/Ding-Ding-Projects/material-designer/commit/88cd35e362217e2ece6720260c8bbd36508e846b)
+  replaces the remaining imported release-page fallbacks in Settings and
+  post-update highlights, and expands the boundary check to all three web
+  producers. Hosted verification remains pending.
 
 - **Bind the build process to verified tools and make update cancellation real.**
   The dependency helper now publishes a manifest-digest-bound resolution record,
