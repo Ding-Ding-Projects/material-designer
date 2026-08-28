@@ -18,6 +18,7 @@ import { settingsTabDef } from './settingsTabs';
 import { buildTotpOtpauthUri, isQrBase32, renderTotpQrSvg } from './totp-qr';
 import { withToyLockUiDeadline } from './toy-lock-host-call';
 import { ToyLockAuthenticationPopover, type ToyLockPolicyVerificationRequest } from '../ToyLockAuthenticationPopover';
+import { Toast } from '../Toast';
 
 export type SettingsToyLockMap = ReadonlyMap<OpenDesignSettingsToyLockTarget, OpenDesignToyLockMetadata>;
 
@@ -313,6 +314,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [pendingExistingMutation, setPendingExistingMutation] = useState<'replace' | 'remove' | null>(null);
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
   const [targetPopupQuery, setTargetPopupQuery] = useState('');
   const [policyPopupQuery, setPolicyPopupQuery] = useState('');
   const [durationPopupQuery, setDurationPopupQuery] = useState('');
@@ -557,6 +559,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
     }
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       setTicketStatus(t('settings.toyLock.supportPathCopyUnavailable'));
+      setFeedbackToast(t('settings.toyLock.supportPathCopyUnavailable'));
       return;
     }
     try {
@@ -564,6 +567,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
       setTicketStatus(t('settings.toyLock.supportPathCopied'));
     } catch {
       setTicketStatus(t('settings.toyLock.supportPathCopyUnavailable'));
+      setFeedbackToast(t('settings.toyLock.supportPathCopyUnavailable'));
     }
   };
 
@@ -639,6 +643,7 @@ export function SettingsToyLockPanel({ initialTarget, initialSupportOpen = false
         <button type="button" onClick={() => setSupportOpen(false)}>{t('settings.toyLock.supportClose')}</button>
       </section> : null}
       {pendingExistingMutation && existing ? <ToyLockAuthenticationPopover targetId={targetId} targetLabel={targetId} policy={existing.policy} anchor={anchor} attemptMaximum={existing.maximumAttempts} attemptRemaining={existing.remainingAttempts} verifyFactor={() => false} verifyPolicy={verifyExistingPolicy} onAuthenticated={() => { const action = pendingExistingMutation; setPendingExistingMutation(null); if (action === 'replace') void begin(); else void remove(); }} onCancel={() => setPendingExistingMutation(null)} onSupportTickets={() => { setPendingExistingMutation(null); setSupportOpen(true); }} /> : null}
+      {feedbackToast ? createPortal(<Toast message={feedbackToast} tone="error" role="alert" onDismiss={() => setFeedbackToast(null)} />, document.body) : null}
     </section>
   );
 }

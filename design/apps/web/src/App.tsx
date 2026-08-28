@@ -82,6 +82,7 @@ import {
   type SettingsSection,
   type SettingsHighlight,
 } from './components/SettingsDialog';
+import { SettingsTabAppearancePopover } from './components/settings/SettingsTabAppearancePopover';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -994,6 +995,7 @@ function AppInner() {
   const [settingsWelcome, setSettingsWelcome] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [settingsSupportTicketsOpen, setSettingsSupportTicketsOpen] = useState(false);
+  const [settingsTabAppearanceTarget, setSettingsTabAppearanceTarget] = useState<{ section: SettingsSection; anchor: HTMLButtonElement } | null>(null);
   const [settingsHighlight, setSettingsHighlight] = useState<SettingsHighlight>(null);
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
@@ -4914,6 +4916,7 @@ function AppInner() {
   }, []);
 
   const renderSettingsSurface = (presentation: 'modal' | 'page') => (
+    <>
     <SettingsDialog
       presentation={presentation}
       initial={config}
@@ -4924,16 +4927,7 @@ function AppInner() {
       welcome={presentation === 'modal' ? settingsWelcome : false}
       initialSection={settingsInitialSection}
       initialSupportTicketsOpen={settingsSupportTicketsOpen}
-      onEditTabAppearance={(_section, anchor) => {
-        openSettings('appearance');
-        window.setTimeout(() => {
-          const target = document.querySelector<HTMLElement>('[data-od-setting="appearance.theme"]')
-            ?? document.querySelector<HTMLElement>('[data-od-setting^="appearance."]');
-          target?.scrollIntoView({ block: 'center', inline: 'nearest' });
-          target?.focus({ preventScroll: true });
-          if (!target) anchor.focus({ preventScroll: true });
-        }, 0);
-      }}
+      onEditTabAppearance={(section, anchor) => setSettingsTabAppearanceTarget({ section, anchor })}
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'
@@ -4961,6 +4955,8 @@ function AppInner() {
       providerModelsCache={providerModelsCache}
       onProviderModelsCacheChange={setProviderModelsCache}
     />
+    {settingsTabAppearanceTarget ? <SettingsTabAppearancePopover section={settingsTabAppearanceTarget.section} anchor={settingsTabAppearanceTarget.anchor} onClose={() => setSettingsTabAppearanceTarget(null)} /> : null}
+    </>
   );
 
   // Phase 2B / spec §11.6 — marketplace deep UI dispatch. The

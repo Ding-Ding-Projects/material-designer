@@ -51,6 +51,7 @@ upstream blob ids exactly, file modes included.
 - `apps/web/src/components/settings/settings-tab-appearance-consumer.ts`
 - `apps/web/src/components/settings/SettingsTabs.module.css`
 - `apps/web/src/components/settings/SettingsTabStrip.tsx`
+- `apps/web/src/components/settings/SettingsTabAppearancePopover.tsx`
 - `apps/web/src/components/settings/SettingsToyLockPanel.tsx`
 - `apps/web/src/components/settings/totp-qr.ts`
 - `apps/web/src/components/settings/toy-lock-host-call.ts`

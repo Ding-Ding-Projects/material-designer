@@ -12,6 +12,7 @@ $railPath = Join-Path $root 'design/apps/web/src/components/EntryNavRail.tsx'
 $appPath = Join-Path $root 'design/apps/web/src/App.tsx'
 $callPath = Join-Path $root 'design/apps/web/src/components/settings/toy-lock-host-call.ts'
 $appearanceConsumerPath = Join-Path $root 'design/apps/web/src/components/settings/settings-tab-appearance-consumer.ts'
+$appearanceEditorPath = Join-Path $root 'design/apps/web/src/components/settings/SettingsTabAppearancePopover.tsx'
 
 function Require-Exact([string]$Source, [string]$Needle, [string]$Name) {
   $withoutBlocks = [regex]::Replace($Source, '/\*[\s\S]*?\*/', '')
@@ -88,12 +89,15 @@ function Test-SettingsToyLockUi([hashtable]$Sources) {
     @{ file = 'call'; needle = 'pending = operation();'; name = 'synchronous host throw cleanup' },
     @{ file = 'panel'; needle = 'ariaActiveDescendant={activeOption'; name = 'focused popup active descendant' },
     @{ file = 'panel'; needle = 'supportPathCopyUnavailable'; name = 'clipboard unavailable recovery notice' },
+    @{ file = 'panel'; needle = 'setFeedbackToast(t(''settings.toyLock.supportPathCopyUnavailable''))'; name = 'clipboard unavailable corner notification' },
     @{ file = 'consumer'; needle = 'registerSettingsTabAppearanceConsumer'; name = 'appearance consumer registration contract' },
     @{ file = 'consumer'; needle = 'emitSettingsTabAppearanceRequest'; name = 'appearance consumer event bridge' },
     @{ file = 'rail'; needle = 'data-testid="entry-help-support-tickets"'; name = 'Help Support Tickets route' },
     @{ file = 'rail'; needle = 'onOpenSupportTickets?.()'; name = 'Help route callback' },
     ,@{ file = 'app'; needle = "openSettings('general', { supportTickets: true })"; name = 'Help route opens support panel' }
-    ,@{ file = 'app'; needle = "openSettings('appearance');"; name = 'application-owned appearance destination consumer' }
+    ,@{ file = 'app'; needle = 'setSettingsTabAppearanceTarget({ section, anchor })'; name = 'application-owned exact tab appearance consumer' }
+    ,@{ file = 'appearanceEditor'; needle = 'Changes apply only to the {section} tab.'; name = 'exact-tab appearance editor target' }
+    ,@{ file = 'appearanceEditor'; needle = 'anchor.focus({ preventScroll: true })'; name = 'appearance editor focus return' }
   )
   foreach ($requirement in $script:settingsRequirements) { Require-Exact $Sources[$requirement.file] $requirement.needle $requirement.name }
 }
@@ -108,6 +112,7 @@ $sources = @{
   app = [IO.File]::ReadAllText($appPath)
   call = [IO.File]::ReadAllText($callPath)
   consumer = [IO.File]::ReadAllText($appearanceConsumerPath)
+  appearanceEditor = [IO.File]::ReadAllText($appearanceEditorPath)
 }
 Test-SettingsToyLockUi $sources
 
