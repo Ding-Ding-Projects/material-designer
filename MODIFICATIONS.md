@@ -2128,6 +2128,7 @@ unverified until CI runs them.
 - `apps/web/src/components/SettingsDialog.tsx`
 - `apps/web/src/components/history/VersionHistoryDialog.module.css`
 - `apps/web/src/components/history/VersionHistoryDialog.tsx`
+- `apps/web/src/components/notifications/notificationStore.ts`
 - `apps/web/src/components/history/open-history.ts`
 - `apps/web/src/i18n/locales/ar.ts`
 - `apps/web/src/i18n/locales/de.ts`
@@ -5575,12 +5576,15 @@ shell-free VS Code handoff request, and focused source tests for these paths.
 
 - `apps/web/src/App.tsx`
 - `apps/web/src/components/FileViewer.tsx`
+- `apps/web/src/components/history/VersionHistoryDialog.tsx`
 - `apps/web/src/components/WorkspaceTabsBar.module.css`
 - `apps/web/src/components/WorkspaceTabsBar.tsx`
 - `apps/web/src/components/command-palette/commands.ts`
 - `apps/web/src/runtime/export-adapters.ts`
+- `apps/web/src/lib/history/client.ts`
 - `apps/web/src/styles/shell.css`
 - `apps/web/src/styles/viewer/tools.css`
+- `docs/standards/notifications.md`
 - `apps/web/tests/components/SettingsTabStrip.docking.test.tsx`
 - `apps/web/tests/components/notifications/notificationStore.bulk.test.ts`
 - `apps/web/tests/runtime/export-adapters.test.ts`

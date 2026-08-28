@@ -19,6 +19,7 @@ import { createPortal } from 'react-dom';
 import { useT } from '../../i18n';
 import { Icon } from '../Icon';
 import { BulkActionBar } from '../bulk/BulkActionBar';
+import { DestructiveGate } from '../destructive/DestructiveGate';
 import {
   describeSelection,
   emptySelection,
@@ -34,7 +35,7 @@ import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { SEVERITY_ICON, SEVERITY_LABEL_KEYS } from './NotificationHost';
 import {
-  clearNotifications,
+  deleteNotifications,
   dismissNotifications,
   markAllNotificationsRead,
   markNotificationsRead,
@@ -75,6 +76,7 @@ export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selection, setSelection] = useState<SelectionState>(emptySelection);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   // This field's own controller. `useRegexSearch` is never shared between two
   // fields, so the pattern built here cannot leak into the tab search that
   // sits two buttons away in the same chrome.
@@ -137,6 +139,24 @@ export function NotificationCenter() {
 
   function selectedIdsInOrder(): string[] {
     return visibleIds.filter((id) => selection.ids.has(id));
+  }
+
+  function exportSelected(ids: readonly string[]) {
+    const payload = {
+      schema: 'material-designer.notification-export.v1',
+      omitted: ['action callbacks'],
+      records: records
+        .filter((record) => ids.includes(record.id))
+        .map(({ action: _action, ...record }) => record),
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'notifications.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
   const badge = unread > BADGE_CAP ? `${BADGE_CAP}+` : String(unread);
   const label = unread > 0
@@ -216,7 +236,7 @@ export function NotificationCenter() {
                 </button>
                 <button
                   type="button"
-                  onClick={clearNotifications}
+                  onClick={() => setPendingDeleteIds(records.map((record) => record.id))}
                   disabled={records.length === 0}
                   data-testid="notification-clear"
                 >
@@ -232,6 +252,15 @@ export function NotificationCenter() {
                   onClear={clearSelectedSelection}
                   testId="notification-bulk"
                   actions={[
+                    {
+                      id: 'export',
+                      icon: 'download',
+                      label: t('notifications.title'),
+                      onRun: () => {
+                        exportSelected(selectedIdsInOrder());
+                        clearSelectedSelection();
+                      },
+                    },
                     {
                       id: 'read',
                       icon: 'check',
@@ -249,6 +278,13 @@ export function NotificationCenter() {
                         dismissNotifications(selectedIdsInOrder());
                         clearSelectedSelection();
                       },
+                    },
+                    {
+                      id: 'delete',
+                      icon: 'trash',
+                      label: t('notifications.clear'),
+                      danger: true,
+                      onRun: () => setPendingDeleteIds(selectedIdsInOrder()),
                     },
                   ]}
                 />
@@ -277,6 +313,22 @@ export function NotificationCenter() {
             document.body,
           )
         : null}
+      {pendingDeleteIds && pendingDeleteIds.length > 0 ? (
+        <DestructiveGate
+          action={t('notifications.clear')}
+          target={t('notifications.title')}
+          items={pendingDeleteIds.map((id) => records.find((record) => record.id === id)?.title ?? id)}
+          detail={t('notifications.clear')}
+          irreversible
+          onConfirm={() => {
+            deleteNotifications(pendingDeleteIds);
+            setPendingDeleteIds(null);
+            clearSelectedSelection();
+            return true;
+          }}
+          onClose={() => setPendingDeleteIds(null)}
+        />
+      ) : null}
     </>
   );
 }

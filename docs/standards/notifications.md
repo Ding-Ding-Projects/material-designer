@@ -5,9 +5,9 @@ a decision they must make.** Everything that merely informs becomes a
 non-blocking notification; the small set of things that are genuinely
 irreversible get a gate that is deliberately hard to pass by accident.
 
-**Status:** notifications and the notification centre are **designed, not built**.
-The super-confirmation gate is **not started and not designed** — it is absent
-from the mockup entirely.
+**Status:** the notification store, non-blocking centre, persistence, bulk
+selection, export, dismissal, and destructive super-confirmation route are
+source-mounted. Hosted packaged interaction and visual evidence remain open.
 
 ## Requirement 1 — non-blocking notifications
 
@@ -85,15 +85,15 @@ display scales.
 
 | Requirement | Status |
 | --- | --- |
-| Non-blocking notification surface | **Designed, not built.** |
-| Auto-dismiss with a timeout | Designed — a 6-second dismissal. |
-| Errors and warnings persisting until dismissed | **Not designed.** The mockup shows one auto-dismissing success notification; the persistence rule for errors is unspecified. |
-| Stacking without overlap | **Not designed.** A single notification is shown. |
-| Actions and links in a notification | Designed — an undo action is present. |
-| Notification centre | **Designed, not built.** |
+| Non-blocking notification surface | **Source-mounted.** Toast records and the corner centre are separate from route content. |
+| Auto-dismiss with a timeout | **Source-mounted.** Severity-specific timers dismiss live records while preserving history. |
+| Errors and warnings persisting until dismissed | **Source-mounted.** Warning and error timers are zero and the centre retains the records. |
+| Stacking without overlap | **Source-mounted.** The live stack is bounded and overflow remains reviewable in the centre. |
+| Actions and links in a notification | **Source-mounted.** Action labels persist even when callbacks are no longer available after reload. |
+| Notification centre | **Source-mounted.** Search, local regex builder, read/dismiss actions, persistence and no-match states are present. |
 | Non-blocking settings surface | Designed — settings become a full page rather than a modal dialog, which is the rule applied correctly. |
 | No nagging | Nothing nagging appears in the design. |
-| **Super-confirmation gate** | **Not started and not designed.** |
+| **Super-confirmation gate** | **Source-mounted.** Clear and bulk delete route through the two-key plus full-range slider component. |
 
 ### The gap
 

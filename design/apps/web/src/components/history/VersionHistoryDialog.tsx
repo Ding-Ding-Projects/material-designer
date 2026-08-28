@@ -126,7 +126,10 @@ function downloadFile(name: string, body: string, mediaType: string): void {
     link.click();
     link.remove();
   } finally {
-    URL.revokeObjectURL(url);
+    // Keep the URL alive long enough for slower browsers to consume the
+    // programmatic download. Revoking in the click stack can yield a zero-byte
+    // export even though the anchor was activated successfully.
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
 
@@ -209,6 +212,35 @@ export function VersionHistoryDialog() {
       total: result.value.total,
       retention: result.value.retention,
     }));
+  }, []);
+
+  /** Resolve every matching page before selecting the every-match scope. */
+  const loadAllHistoryPages = useCallback(async (): Promise<readonly HistoryRevisionSummary[]> => {
+    setLoading(true);
+    let offset = 0;
+    let total = 0;
+    const revisions: HistoryRevisionSummary[] = [];
+    try {
+      do {
+        const response = await fetchHistoryPage(offset);
+        if (!response.ok) {
+          setLoadError(response.error);
+          return revisions;
+        }
+        total = response.value.total;
+        revisions.push(...response.value.revisions);
+        offset += response.value.revisions.length;
+        if (response.value.revisions.length === 0) break;
+      } while (offset < total);
+    } finally {
+      setLoading(false);
+    }
+    setLoad((current) => ({
+      ...current,
+      revisions,
+      total,
+    }));
+    return revisions;
   }, []);
 
   useEffect(() => {
@@ -528,7 +560,12 @@ export function VersionHistoryDialog() {
         <BulkActionBar
           summary={selectionSummary}
           onSelectPage={() => setSelection(selectAllOf(visibleRevisionIds, 'page'))}
-          onSelectEveryMatch={() => setSelection(selectAllOf(visibleRevisionIds, 'match'))}
+                  onSelectEveryMatch={() => {
+                    void loadAllHistoryPages().then((revisions) => {
+                      const matching = filterHistory(revisions, filter, regexMatches).revisions;
+                      setSelection(selectAllOf(matching.map((revision) => revision.id), 'match'));
+                    });
+                  }}
           onInvert={() => setSelection(invertWithin(
             selection,
             visibleRevisionIds,

@@ -2938,5 +2938,97 @@ a.avatar-item:visited {
 }
 
 .workspace-tabs-chrome--right {
-  order: 2;
+  order: initial;
+}
+
+/* Re-home the shell children, not just the strip's flex direction. Without
+   these grid areas a side-docked strip still consumes a top row and the body
+   remains underneath it, which is only a visual rotation of the default. */
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--bottom) {
+  grid-template-rows: 0 minmax(0, 1fr) 42px 28px;
+}
+
+.workspace-shell[data-client-type]:has(> [data-window-title-bar]):has(> .workspace-tabs-chrome--bottom) {
+  grid-template-rows: 40px minmax(0, 1fr) 42px 28px;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--bottom) > .workspace-tabs-chrome {
+  grid-row: 3;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--bottom) > .workspace-shell__body {
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--left),
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--right) {
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: 0 minmax(0, 1fr) 28px;
+}
+
+.workspace-shell[data-client-type]:has(> [data-window-title-bar]):has(> .workspace-tabs-chrome--left),
+.workspace-shell[data-client-type]:has(> [data-window-title-bar]):has(> .workspace-tabs-chrome--right) {
+  grid-template-rows: 40px minmax(0, 1fr) 28px;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--left) > [data-window-title-bar],
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--right) > [data-window-title-bar] {
+  grid-column: 1 / -1;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--left) > .workspace-tabs-chrome {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--right) > .workspace-tabs-chrome {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--left) > .workspace-shell__body {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--right) > .workspace-shell__body {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--left) > [data-app-status-bar='true'],
+.workspace-shell[data-client-type]:has(> .workspace-tabs-chrome--right) > [data-app-status-bar='true'] {
+  grid-column: 1 / -1;
+  grid-row: 3;
+}
+
+.workspace-tabs-chrome--left,
+.workspace-tabs-chrome--right {
+  align-items: stretch;
+}
+
+.workspace-tabs-chrome--left .workspace-tabs-strip,
+.workspace-tabs-chrome--right .workspace-tabs-strip {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.workspace-tabs-chrome--left .workspace-tab,
+.workspace-tabs-chrome--right .workspace-tab,
+.workspace-tabs-chrome--left .groupSection,
+.workspace-tabs-chrome--right .groupSection {
+  width: 100%;
+  max-width: none;
+}
+
+.workspace-tabs-chrome--left .groupSection,
+.workspace-tabs-chrome--right .groupSection {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.workspace-tabs-chrome--left .workspace-tabs-actions,
+.workspace-tabs-chrome--right .workspace-tabs-actions {
+  flex-direction: column;
 }
