@@ -5,6 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
+import { ELEMENT_TOY_LOCK_ACTIVATION, ELEMENT_TOY_LOCK_STATE, requestElementToyLockActivation, type ElementToyLockStateDetail } from './toyLockAdapter';
 import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
 interface ElementAppearanceBoundaryProps {
@@ -18,25 +19,11 @@ interface MenuPosition {
   left: number;
 }
 
-export const TARGET_ID_COLLISION_POLICY = 'semantic identity plus first-seen ordinal within the renderer lifetime';
+export const TARGET_ID_COLLISION_POLICY = 'explicit product-owned data-testid or id only; collisions are reported unsupported';
 
-function targetBaseFor(element: RenderedElement, index: number): string {
-  const segments: string[] = [];
-  let current: Element | null = element;
-  let depth = 0;
-  while (current && depth < 8) {
-    const stable = current.getAttribute('data-testid') || current.id || current.getAttribute('aria-label');
-    if (stable) segments.unshift(stable.replace(/[^a-zA-Z0-9_-]/g, '_'));
-    else {
-      const currentElement = current;
-      const siblings = current.parentElement ? [...current.parentElement.children].filter((child) => child.tagName === currentElement.tagName) : [];
-      const ordinal = Math.max(1, siblings.indexOf(currentElement) + 1);
-      segments.unshift(`${current.tagName.toLowerCase()}-${ordinal}`);
-    }
-    current = current.parentElement;
-    depth += 1;
-  }
-  return `appearance:${segments.join('/') || `element-${index}`}`;
+function targetBaseFor(element: RenderedElement): string | null {
+  const stable = element.getAttribute('data-testid') || element.id || (element.getAttribute('data-appearance-surface') === 'true' ? 'appearance-surface' : null);
+  return stable ? `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}` : null;
 }
 
 function labelFor(element: RenderedElement, index: number): string {
@@ -87,7 +74,6 @@ function clampMenuPosition(position: MenuPosition): MenuPosition {
 export function ElementAppearanceBoundary({ children, onLockElement }: ElementAppearanceBoundaryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const elementIdsRef = useRef(new WeakMap<RenderedElement, string>());
-  const nextIdByBaseRef = useRef(new Map<string, number>());
   const pressTimerRef = useRef<number | null>(null);
   const { register, unregister, targets, get } = useAppearanceRegistry();
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
@@ -95,8 +81,33 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
   const [editorTarget, setEditorTarget] = useState<AppearanceTarget | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
+  const [lockedTargetIds, setLockedTargetIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [unsupportedTargetCount, setUnsupportedTargetCount] = useState(0);
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const activeTarget = activeTargetId ? get(activeTargetId) : undefined;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onLockState = (event: Event) => {
+      const detail = (event as CustomEvent<ElementToyLockStateDetail>).detail;
+      if (!detail || typeof detail.targetId !== 'string' || typeof detail.locked !== 'boolean') return;
+      setLockedTargetIds((current) => {
+        const next = new Set(current);
+        if (detail.locked) next.add(detail.targetId); else next.delete(detail.targetId);
+        return next;
+      });
+    };
+    window.addEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
+    return () => window.removeEventListener(ELEMENT_TOY_LOCK_STATE, onLockState);
+  }, []);
+
+  useEffect(() => {
+    targets.forEach((target) => {
+      if (lockedTargetIds.has(target.id)) target.element?.setAttribute('aria-disabled', 'true');
+      else if (target.element?.getAttribute('data-appearance-locked') === 'true') target.element.removeAttribute('aria-disabled');
+      target.element?.toggleAttribute('data-appearance-locked', lockedTargetIds.has(target.id));
+    });
+  }, [lockedTargetIds, targets]);
 
   const scan = useCallback(() => {
     const root = rootRef.current;
@@ -104,15 +115,16 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     const observationRoot = typeof document !== 'undefined' ? document.body : root;
     const elements = [root, ...collectRenderedElements(observationRoot).filter((element) => element !== root)];
     const live = new Set<string>();
+    const identityOwners = new Map<string, RenderedElement>();
+    let unsupported = 0;
     elements.forEach((element, index) => {
-      let id = elementIdsRef.current.get(element);
-      if (!id) {
-        const base = targetBaseFor(element, index);
-        const next = nextIdByBaseRef.current.get(base) ?? 0;
-        nextIdByBaseRef.current.set(base, next + 1);
-        id = `${base}:${next}`;
-        elementIdsRef.current.set(element, id);
-      }
+      const existing = elementIdsRef.current.get(element);
+      const id = existing ?? targetBaseFor(element);
+      if (!id) { unsupported += 1; return; }
+      const owner = identityOwners.get(id);
+      if (owner && owner !== element) { unsupported += 1; live.delete(id); unregister(id); return; }
+      identityOwners.set(id, element);
+      elementIdsRef.current.set(element, id);
       const target = buildTarget(element, index, id);
       live.add(target.id);
       register(target);
@@ -124,6 +136,7 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     targets.forEach((target) => {
       if (!live.has(target.id)) unregister(target.id);
     });
+    setUnsupportedTargetCount(unsupported);
   }, [register, targets, unregister]);
 
   useEffect(() => {
@@ -213,25 +226,50 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       if (event.pointerType !== 'touch') return;
       const target = resolveEventTarget(event.target);
       if (!target) return;
+      if (lockedTargetIds.has(target.id)) {
+        event.preventDefault();
+        event.stopPropagation();
+        requestElementToyLockActivation(target);
+        return;
+      }
       if (pressTimerRef.current !== null) window.clearTimeout(pressTimerRef.current);
       pressTimerRef.current = window.setTimeout(() => {
         const rect = target.element?.getBoundingClientRect();
         openMenu(target, { top: rect?.bottom ?? event.clientY, left: rect?.left ?? event.clientX });
       }, 550);
     };
+    const onNativeClick = (event: MouseEvent) => {
+      const target = resolveEventTarget(event.target);
+      if (!target || !lockedTargetIds.has(target.id)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      requestElementToyLockActivation(target);
+    };
+    const onNativeActivationKey = (event: KeyboardEvent) => {
+      if (!(event.key === 'Enter' || event.key === ' ')) return;
+      const target = resolveEventTarget(document.activeElement);
+      if (!target || !lockedTargetIds.has(target.id)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      requestElementToyLockActivation(target);
+    };
     document.addEventListener('contextmenu', onNativeContextMenu, true);
     document.addEventListener('keydown', onNativeKeyDown, true);
     document.addEventListener('pointerdown', onNativePointerDown, true);
+    document.addEventListener('click', onNativeClick, true);
+    document.addEventListener('keydown', onNativeActivationKey, true);
     document.addEventListener('pointerup', cancelLongPress, true);
     document.addEventListener('pointercancel', cancelLongPress, true);
     return () => {
       document.removeEventListener('contextmenu', onNativeContextMenu, true);
       document.removeEventListener('keydown', onNativeKeyDown, true);
       document.removeEventListener('pointerdown', onNativePointerDown, true);
+      document.removeEventListener('click', onNativeClick, true);
+      document.removeEventListener('keydown', onNativeActivationKey, true);
       document.removeEventListener('pointerup', cancelLongPress, true);
       document.removeEventListener('pointercancel', cancelLongPress, true);
     };
-  }, [cancelLongPress, openMenu, resolveEventTarget]);
+  }, [cancelLongPress, lockedTargetIds, openMenu, resolveEventTarget]);
 
   const visibleActions = useMemo(() => [
     { id: 'edit', label: 'Edit appearance…', available: true },
@@ -290,6 +328,7 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       onPointerLeave={cancelLongPress}
     >
       {children}
+      {unsupportedTargetCount > 0 ? <div role="status" aria-live="polite" data-appearance-unsupported-targets="true">{unsupportedTargetCount} rendered elements need an explicit data-testid or id before appearance editing is available.</div> : null}
       {targets.length >= MAX_APPEARANCE_TARGETS ? <div role="status" aria-live="polite" data-appearance-target-cap="true">Appearance target limit reached: {MAX_APPEARANCE_TARGETS}. New elements remain uncustomized.</div> : null}
       {menuPosition && activeTarget && typeof document !== 'undefined' ? createPortal(
         <div

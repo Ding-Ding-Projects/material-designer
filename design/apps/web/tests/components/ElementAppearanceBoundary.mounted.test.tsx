@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ElementAppearanceBoundary } from '../../src/components/appearance/ElementAppearanceBoundary';
 import { ElementAppearanceEditor } from '../../src/components/appearance/ElementAppearanceEditor';
@@ -13,6 +13,7 @@ import {
   resetElementAppearanceStore,
   setElementAppearance,
 } from '../../src/components/appearance/elementAppearance';
+import { publishElementToyLockState, ELEMENT_TOY_LOCK_ACTIVATION } from '../../src/components/appearance/toyLockAdapter';
 
 afterEach(() => {
   cleanup();
@@ -52,7 +53,7 @@ describe('ElementAppearanceBoundary mounted behavior', () => {
   });
 
   it('applies a persisted state to a real mounted renderer target', () => {
-    const targetId = 'appearance:div-1/save-project:0';
+    const targetId = 'appearance:save-project';
     const appearance = getElementAppearance(targetId);
     appearance.states.hover = { ...defaultAppearanceStyle(), fontSize: 22, borderRadius: 24, elevation: 4 };
     appearance.activeState = 'hover';
@@ -78,5 +79,21 @@ describe('ElementAppearanceBoundary mounted behavior', () => {
     fireEvent.change(screen.getByLabelText('Font size (px)'), { target: { value: '20' } });
     expect(target.style.fontSize).toBe('20px');
     expect(JSON.parse(window.localStorage.getItem('open-design:element-appearance:v1') ?? '{}')).toBeTruthy();
+  });
+
+  it('intercepts a locked target and emits the shared toy-lock activation event', () => {
+    const { container } = render(
+      <ElementAppearanceBoundary>
+        <button type="button" data-testid="locked-target">Locked target</button>
+      </ElementAppearanceBoundary>,
+    );
+    const button = container.querySelector('[data-testid="locked-target"]') as HTMLButtonElement;
+    const activation = vi.fn();
+    window.addEventListener(ELEMENT_TOY_LOCK_ACTIVATION, activation);
+    publishElementToyLockState({ targetId: 'appearance:locked-target', locked: true, policy: 'pin' });
+    fireEvent.click(button);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(activation).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ELEMENT_TOY_LOCK_ACTIVATION, activation);
   });
 });

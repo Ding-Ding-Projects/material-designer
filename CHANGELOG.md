@@ -45,6 +45,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Add target-specific appearance editing to the documentation site.** The
+  browser-local surface now targets explicit product-owned ids, opens a
+  searchable context menu from pointer, keyboard, Shift+right-click, and touch
+  routes, and provides a bounded editor with twelve states, layered controls,
+  typography, color transfer, presets, copy/paste, reset, previews, and
+  validated local JSON transfer. Anonymous or colliding elements stay visibly
+  unsupported, and the appearance menu consumes the shared toy-lock request
+  event without handling credentials. Deployed interaction and screenshot
+  evidence remain pending. The integration commit link will be added when
+  this lane reaches the default branch.
+
+  **廣東話進度：** Documentation site 而家針對明確 product-owned id 做外觀編輯。
+  Pointer、keyboard、Shift+right-click 同 touch 都可以開 searchable context
+  menu；bounded editor 有十二種 state、layers、typography、color transfer、
+  preset、copy/paste、reset、preview 同 validated local JSON transfer。無安全
+  identity 或 identity 撞車嘅元素會老實顯示 unsupported，appearance menu 亦會
+  食 shared toy-lock request event，但唔會掂 credential。Deployed interaction
+  同 screenshot evidence 仲未完成；lane 落 default branch 後先補 integration
+  commit link。
+
 - **Tighten renderer-wide appearance targeting and portable style operations.**
   The application root now owns one body-aware target boundary covering
   portals, SVG and shadow descendants, with semantic path identities and an

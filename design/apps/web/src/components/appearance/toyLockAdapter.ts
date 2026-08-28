@@ -1,12 +1,20 @@
 import type { AppearanceTarget, RenderedElement } from './elementAppearance';
 
 export const ELEMENT_TOY_LOCK_REQUEST = 'open-design:element-toy-lock-request';
+export const ELEMENT_TOY_LOCK_STATE = 'open-design:element-toy-lock-state';
+export const ELEMENT_TOY_LOCK_ACTIVATION = 'open-design:element-toy-lock-activation';
 
 export interface ElementToyLockRequestDetail {
   targetId: string;
   targetLabel: string;
   targetRole: string;
   anchor: RenderedElement | null;
+}
+
+export interface ElementToyLockStateDetail {
+  targetId: string;
+  locked: boolean;
+  policy?: string;
 }
 
 /**
@@ -24,5 +32,17 @@ export function requestElementToyLock(target: AppearanceTarget): void {
       targetRole: target.role,
       anchor: target.element,
     },
+  }));
+}
+
+export function publishElementToyLockState(detail: ElementToyLockStateDetail): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<ElementToyLockStateDetail>(ELEMENT_TOY_LOCK_STATE, { detail }));
+}
+
+export function requestElementToyLockActivation(target: AppearanceTarget): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<ElementToyLockRequestDetail>(ELEMENT_TOY_LOCK_ACTIVATION, {
+    detail: { targetId: target.id, targetLabel: target.label, targetRole: target.role, anchor: target.element },
   }));
 }

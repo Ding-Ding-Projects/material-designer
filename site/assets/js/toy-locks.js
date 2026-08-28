@@ -349,6 +349,15 @@ export function initToyLocks({ notify } = {}) {
     if (first) first.focus();
   }
 
+  function openAppearanceLockPrompt(event) {
+    const detail = event.detail;
+    if (!detail || typeof detail.targetId !== 'string' || !(detail.anchor instanceof Element)) return;
+    // The site keeps one representative toy-lock credential store. This
+    // shared event consumer opens the same anchored prompt for appearance
+    // targets without copying or inspecting any credential material.
+    openPrompt(() => undefined, detail.anchor);
+  }
+
   function interceptProtectedActivation(event, protectedAction) {
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -411,6 +420,8 @@ export function initToyLocks({ notify } = {}) {
   prompt.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closePrompt();
   });
+  document.addEventListener('md-element-toy-lock-request', openAppearanceLockPrompt);
+  document.addEventListener('open-design:element-toy-lock-request', openAppearanceLockPrompt);
   window.addEventListener('resize', () => { if (!prompt.hidden && anchor) positionPopover(prompt, anchor); });
   window.addEventListener('scroll', () => { if (!prompt.hidden && anchor) positionPopover(prompt, anchor); }, true);
 

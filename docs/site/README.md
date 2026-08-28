@@ -51,6 +51,7 @@ a site nobody previews before publishing.
 | `site/assets/css/app.css` | The component styles, which consume those tokens rather than restating literal values. |
 | `site/assets/js/i18n.js` | Language modes (`en`, `yue`, `bilingual`, bilingual being the default), the two independent 1–5 funny levels, and the string catalogue. Voice changes with the level; facts do not. |
 | `site/assets/js/appearance.js` | Persisted theme, density, seed colour and UI scale, plus the colour translator and its contrast readout. |
+| `site/assets/js/element-appearance.js` | Browser-local every-element appearance editor. It targets explicit product-owned ids, provides context actions, local search with the existing regex builder, layered state previews, typography, transfer, presets, reset and honest unsupported-target reporting. |
 | `site/assets/js/tabs.js` | The tab strip: rendering, reordering, pinning, the overflow surface, the searchable tab list, persistence and the ARIA relationships. |
 | `site/assets/js/regex.js` | The pattern builder, mounted as a popover **anchored beside one specific field**, one instance per field. |
 | `site/assets/js/ui.js` | Toasts, the notification centre, the command palette, and the dim sum draw on load. |

@@ -7,6 +7,7 @@
     "scope": "document body descendants owned by the desktop renderer, including body-owned portals",
     "states": ["normal", "hover", "focus", "pressed", "selected", "disabled", "dragged", "validation", "loading", "success", "warning", "error"],
     "inputRoutes": ["pointer context menu", "Shift+F10 or Context Menu", "touch long press"],
+    "collisionPolicy": "explicit product-owned data-testid or id only; duplicate identities and elements without a safe identity are visibly unsupported and receive no saved-style application",
     "builtInteraction": "pending",
     "rendererConsumer": "design/apps/web/src/components/appearance/elementAppearance.ts#applyAppearanceStateToElement",
     "captureEvidence": "pending"
@@ -19,7 +20,8 @@
     { "id": "menus", "scope": "Context, dropdown and command menus", "status": "root-observed", "targetRule": "every menu item and filter control" },
     { "id": "notifications", "scope": "Toasts, notification centre and progress surfaces", "status": "root-observed", "targetRule": "every notification descendant" },
     { "id": "appearance-editor", "scope": "Editor shell, toolbar, state tabs, layers and property inspector", "status": "self-observed", "targetRule": "editor controls are themselves targets" },
-    { "id": "route-pages", "scope": "Home, project, library, design systems, integrations, handoff and other reachable pages", "status": "root-observed", "targetRule": "every body descendant" }
+    { "id": "route-pages", "scope": "Home, project, library, design systems, integrations, handoff and other reachable pages", "status": "root-observed", "targetRule": "every body descendant" },
+    { "id": "documentation-site", "scope": "Day Teet Hui pages and settings", "status": "source-partial", "targetRule": "explicit data-appearance-id or id only; anonymous nodes visibly unsupported" }
   ],
   "portableOperations": [
     "per-property reset",

@@ -187,9 +187,11 @@ DOM id, accessible label, or a deterministic fallback. Each target has an
 independent state record for normal, hover, focus, pressed, selected, disabled,
 dragged, validation, loading, success, warning and error.
 
-Target ids use semantic ancestor paths where available and a first-seen ordinal
-for genuine collisions. The ordinal is held in a `WeakMap` for the mounted
-element lifetime, so a portal re-render cannot silently retarget an open editor.
+Target ids require an explicit product-owned `data-testid`, `id`, or the
+boundary's own root marker. There is no ordinal fallback. Duplicate explicit
+identities are reported as unsupported and are not styled, while elements with
+no safe identity receive a visible unsupported-target count. This prevents a
+dynamic reorder or restart from applying one element's saved style to another.
 When an image operation has no renderer consumer, its matrix entry stays
 visible as unavailable with the exact capability reason rather than claiming
 that metadata is a working Photoshop operation.
@@ -225,9 +227,9 @@ appearance system is implemented in committed source at
 | Seed colour | **Implemented** — four named seeds plus an arbitrary colour, with the dependent roles derived in the OKLab space and recomputed on every theme change. |
 | Interface scale | **Implemented** — 50–200% in steps of 5. |
 | Colour translator | **Partial.** Shows the current colour as hex, RGB, HSL and HSV, each copyable, with a contrast readout against the current surface. **Missing**: HWB, CIELAB/LCH, OKLab/OKLCH and CMYK, alpha preservation across every representation, gamut identification and the clipping warning. |
-| Per-element **Edit appearance…** | **Not present.** |
-| Font control | **Not present.** |
-| Named presets, export/import | **Not present.** No preset concept exists in the source. |
+| Per-element **Edit appearance…** | **Partial source implementation.** `site/assets/js/element-appearance.js` now provides explicit-id target discovery, pointer, keyboard and touch context routes, an anchored browser-local editor, state previews, typography, presets, copy/paste, reset and validated transfer. Elements without a safe product-owned id and raster-only operations remain visibly unsupported. Deployed interaction evidence remains pending. |
+| Font control | **Partial source implementation.** The per-element editor offers installed-family values exposed by the browser surface plus Word-depth typography fields. |
+| Named presets, export/import | **Partial source implementation.** Named presets, copy/paste and bounded JSON transfer are local to the visitor. Full deployed evidence remains open. |
 
 > [!IMPORTANT]
 > **The site implementing a subset is not the standard being met.** Every rule
