@@ -45,6 +45,26 @@ version section when a release carries them.
 
 ### Changed
 
+- **Shared menus and dropdowns gained field-owned filtering.** `ContextMenu.tsx`
+  and `CustomSelect.tsx` now provide isolated plain-text-first queries, adjacent
+  anchored regex builders, honest no-match announcements, keyboard navigation,
+  focus restoration, viewport-bounded surfaces, and target-specific appearance
+  and lock callback seams. The explicit migration inventory keeps every remaining
+  native select, direct search field, and legacy inline context-menu adapter red
+  instead of hiding unfinished work. Focused mounted tests and an AST-backed
+  red-then-green source contract cover the shared lane.
+  See [`20c1fa4`](https://github.com/Ding-Ding-Projects/material-designer/commit/20c1fa4605417a07d8ad1d12e1923d7bf4ef667c).
+
+  **Shared menu 同 dropdown 而家有 field-owned filtering。** `ContextMenu.tsx`
+  同 `CustomSelect.tsx` 自己保留獨立 plain-text-first query、隔籬 anchored
+  regex builder、清楚 no-match announcement、鍵盤行路、focus 返位、viewport
+  邊界，同埋 appearance/lock callback 位。Migration inventory 將剩低嘅
+  native select、direct search 同 legacy inline context-menu adapter 繼續標
+  紅，唔會扮晒已經搬完。Mounted tests 同 AST red-then-green source contract
+  一齊守住呢條 shared lane。
+
+### Changed
+
 - **Refresh public-safe instruction mirrors and their privacy guard.** `AGENTS.md`,
   `README.md`, and `scripts/verify-public-mirror-privacy.ps1` now record the
   current surface contracts and the exact local red-then-green privacy proof.
