@@ -15,6 +15,8 @@ export const APPEARANCE_STATES = [
   'error',
 ] as const;
 
+export const RAINBOW_COLOR_SENTINEL = 'appearance-rainbow-sentinel';
+
 export type AppearanceState = (typeof APPEARANCE_STATES)[number];
 
 export type LayerKind =
@@ -72,6 +74,7 @@ export interface AppearanceStateStyle {
   borderRadius: number;
   elevation: number;
   motion: 'default' | 'reduced' | 'none';
+  rainbowSpeedLevel: 1 | 2 | 3 | 4 | 5;
   inheritedFrom: AppearanceState | null;
   overrides: Record<string, string | number | boolean>;
 }
@@ -86,12 +89,14 @@ export interface ElementAppearance {
   updatedAt: string;
 }
 
+export type RenderedElement = HTMLElement | SVGElement;
+
 export interface AppearanceTarget {
   id: string;
   label: string;
   role: string;
   path: string;
-  element: HTMLElement | null;
+  element: RenderedElement | null;
 }
 
 export interface AppearanceHistoryEntry {
@@ -130,14 +135,14 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
   { id: 'layer-lock', label: 'Lock layers', group: 'layers', supported: true },
   { id: 'layer-duplicate', label: 'Duplicate layers', group: 'layers', supported: true },
   { id: 'layer-reorder', label: 'Reorder layers', group: 'layers', supported: true },
-  { id: 'selections', label: 'Selections and masks', group: 'image', supported: true },
-  { id: 'channels', label: 'Channels', group: 'image', supported: true },
-  { id: 'adjustments', label: 'Adjustment layers', group: 'image', supported: true },
-  { id: 'smart-object', label: 'Smart embedded content', group: 'image', supported: true },
-  { id: 'effects', label: 'Effects, fills, strokes and glows', group: 'image', supported: true },
-  { id: 'transform', label: 'Transform, warp and perspective', group: 'image', supported: true },
-  { id: 'crop', label: 'Crop, fit, focal point and safe area', group: 'image', supported: true },
-  { id: 'filters', label: 'Filters and colour adjustments', group: 'image', supported: true },
+  { id: 'selections', label: 'Selections and masks', group: 'image', supported: false, reason: 'Selection metadata is retained, but this renderer cannot raster-edit a target selection yet.' },
+  { id: 'channels', label: 'Channels', group: 'image', supported: false, reason: 'Channel metadata is retained, but the renderer exposes no channel compositor.' },
+  { id: 'adjustments', label: 'Adjustment layers', group: 'image', supported: false, reason: 'Adjustment metadata is retained, but no image adjustment compositor is exposed.' },
+  { id: 'smart-object', label: 'Smart embedded content', group: 'image', supported: false, reason: 'Embedded content metadata is retained, but this renderer has no smart-object host.' },
+  { id: 'effects', label: 'Effects, fills, strokes and glows', group: 'image', supported: false, reason: 'Fill, stroke and blur metadata are consumed; the full non-destructive effect stack is not exposed.' },
+  { id: 'transform', label: 'Transform, warp and perspective', group: 'image', supported: false, reason: 'Affine transform values are consumed; warp and perspective are retained as unsupported metadata.' },
+  { id: 'crop', label: 'Crop, fit, focal point and safe area', group: 'image', supported: false, reason: 'Crop and focal metadata are retained, but the renderer cannot crop arbitrary target content.' },
+  { id: 'filters', label: 'Filters and colour adjustments', group: 'image', supported: false, reason: 'Filter metadata is retained; only the bounded blur projection is currently consumed.' },
   { id: 'typography', label: 'Word-depth typography', group: 'typography', supported: true },
   { id: 'variable-font-axes', label: 'Variable font axes', group: 'typography', supported: false, reason: 'This renderer exposes no variable-font axis API.' },
   { id: 'layout', label: 'Spacing, layout and elevation', group: 'layout', supported: true },
@@ -151,12 +156,15 @@ export const APPEARANCE_CAPABILITIES: readonly AppearanceCapability[] = [
 const STORAGE_KEY = 'open-design:element-appearance:v1';
 const HISTORY_KEY = 'open-design:element-appearance-history:v1';
 const PRESETS_KEY = 'open-design:element-appearance-presets:v1';
-const MAX_TARGETS = 2000;
+export const MAX_APPEARANCE_TARGETS = 2000;
 const MAX_HISTORY = 200;
 const listeners = new Set<() => void>();
 let appearances: Record<string, ElementAppearance> | null = null;
 let history: AppearanceHistoryEntry[] | null = null;
 let copiedStyle: AppearanceStateStyle | null = null;
+let persistenceFailure = false;
+const undoCursor = new Map<string, number>();
+const redoStack = new Map<string, ElementAppearance[]>();
 
 function now(): string {
   return new Date().toISOString();
@@ -205,6 +213,7 @@ export function defaultAppearanceStyle(): AppearanceStateStyle {
     borderRadius: 12,
     elevation: 0,
     motion: 'default',
+    rainbowSpeedLevel: 3,
     inheritedFrom: null,
     overrides: {},
   };
@@ -229,13 +238,24 @@ export function defaultElementAppearance(targetId: string): ElementAppearance {
 /** Apply the persisted state to the real DOM target, not only to the editor's
  * local controls. Unsupported values remain in the snapshot, while supported
  * values become renderer-visible properties immediately. */
-export function applyAppearanceStateToElement(element: HTMLElement | null, state: AppearanceStateStyle): void {
+export function resolveAppearanceState(appearance: ElementAppearance, state: AppearanceState = appearance.activeState): AppearanceStateStyle {
+  const current = appearance.states[state];
+  if (!current?.inheritedFrom || current.inheritedFrom === state) return current;
+  const parent = resolveAppearanceState(appearance, current.inheritedFrom);
+  return { ...parent, ...current, layers: current.layers.length > 0 ? current.layers : parent.layers, selections: current.selections.length > 0 ? current.selections : parent.selections, channels: current.channels.length > 0 ? current.channels : parent.channels, masks: current.masks.length > 0 ? current.masks : parent.masks };
+}
+
+export function applyAppearanceStateToElement(element: RenderedElement | null, state: AppearanceStateStyle, stateId: AppearanceState = 'normal'): void {
   if (!element) return;
   element.style.setProperty('--element-appearance-text', state.textColor);
   element.style.setProperty('--element-appearance-highlight', state.highlightColor);
   element.style.setProperty('--element-appearance-radius', `${state.borderRadius}px`);
   element.style.setProperty('--element-appearance-elevation', String(state.elevation));
-  element.style.color = state.textColor;
+  if (state.textColor === RAINBOW_COLOR_SENTINEL) element.dataset.elementAppearanceRainbow = 'true';
+  else delete element.dataset.elementAppearanceRainbow;
+  const rainbowDurations = ['30s', '15s', '8s', '4s', '2s'] as const;
+  element.style.setProperty('--element-appearance-rainbow-duration', rainbowDurations[state.rainbowSpeedLevel - 1] ?? '8s');
+  element.style.color = state.textColor === RAINBOW_COLOR_SENTINEL ? 'transparent' : state.textColor;
   element.style.fontFamily = state.fontFamily;
   element.style.fontSize = `${state.fontSize}px`;
   element.style.fontWeight = String(state.fontWeight);
@@ -251,8 +271,30 @@ export function applyAppearanceStateToElement(element: HTMLElement | null, state
   element.style.lineHeight = String(state.lineHeight);
   element.style.borderRadius = `${state.borderRadius}px`;
   element.style.boxShadow = state.elevation > 0 ? `0 ${state.elevation}px ${state.elevation * 2}px rgb(0 0 0 / 18%)` : '';
-  element.dir = state.textDirection === 'auto' ? '' : state.textDirection;
+  if ('dir' in element) (element as HTMLElement).dir = state.textDirection === 'auto' ? '' : state.textDirection;
   element.style.textAlign = state.alignment === 'start' ? '' : state.alignment;
+  const visibleLayers = state.layers.filter((layer) => layer.visible);
+  const topLayer = visibleLayers.at(-1);
+  element.style.opacity = visibleLayers.length > 0 ? String(visibleLayers.reduce((value, layer) => value * layer.opacity, 1)) : '0';
+  element.style.mixBlendMode = topLayer?.blendMode === 'normal' ? '' : topLayer?.blendMode ?? '';
+  if (topLayer?.fill && topLayer.fill !== 'transparent') element.style.background = topLayer.fill;
+  if (topLayer?.stroke && topLayer.stroke !== 'transparent') element.style.border = topLayer.stroke;
+  const effectText = visibleLayers.flatMap((layer) => layer.effects).join(' ').toLowerCase();
+  element.style.filter = effectText.includes('blur') ? 'blur(2px)' : '';
+  const transform = topLayer?.transform;
+  element.style.transform = transform ? `translate(${transform.x}px, ${transform.y}px) rotate(${transform.rotation}deg) scale(${transform.width / 100}, ${transform.height / 100})` : '';
+  element.style.setProperty('--element-appearance-selections', JSON.stringify(state.selections));
+  element.style.setProperty('--element-appearance-channels', state.channels.join(','));
+  element.style.setProperty('--element-appearance-masks', state.masks.join(','));
+  element.style.setProperty('--element-appearance-overrides', JSON.stringify(state.overrides));
+  element.dataset.elementAppearanceState = stateId;
+}
+
+export function clearAppearanceStateFromElement(element: RenderedElement | null): void {
+  if (!element) return;
+  delete element.dataset.elementAppearanceRainbow;
+  for (const property of ['--element-appearance-text', '--element-appearance-highlight', '--element-appearance-radius', '--element-appearance-elevation']) element.style.removeProperty(property);
+  for (const property of ['color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line', 'text-transform', 'letter-spacing', 'word-spacing', 'line-height', 'border-radius', 'box-shadow', 'direction', 'text-align', 'opacity', 'mix-blend-mode', 'background', 'border', 'filter', 'transform', '--element-appearance-selections', '--element-appearance-channels', '--element-appearance-masks', '--element-appearance-overrides']) element.style.removeProperty(property);
 }
 
 function cloneAppearance(value: ElementAppearance): ElementAppearance {
@@ -282,7 +324,7 @@ function ensureLoaded(): void {
   const stored = readJson<unknown>(STORAGE_KEY, {});
   const raw = stored && typeof stored === 'object' ? stored as Record<string, unknown> : {};
   appearances = {};
-  for (const [targetId, value] of Object.entries(raw).slice(0, MAX_TARGETS)) {
+  for (const [targetId, value] of Object.entries(raw).slice(0, MAX_APPEARANCE_TARGETS)) {
     if (!value || typeof value !== 'object') continue;
     const fallback = defaultElementAppearance(targetId);
     const candidate = value as Partial<ElementAppearance>;
@@ -304,9 +346,16 @@ function persist(): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(appearances ?? {}));
     window.localStorage.setItem(HISTORY_KEY, JSON.stringify(history ?? []));
+    persistenceFailure = false;
   } catch {
-    // A blocked or full browser store must not interrupt live editing.
+    // A blocked or full browser store must not interrupt live editing, but the
+    // editor exposes this state instead of claiming the change was durable.
+    persistenceFailure = true;
   }
+}
+
+export function didAppearancePersistenceFail(): boolean {
+  return persistenceFailure;
 }
 
 export function getElementAppearance(targetId: string): ElementAppearance {
@@ -314,18 +363,34 @@ export function getElementAppearance(targetId: string): ElementAppearance {
   return cloneAppearance(appearances![targetId] ?? defaultElementAppearance(targetId));
 }
 
+export function hasElementAppearanceOverride(targetId: string): boolean {
+  ensureLoaded();
+  return Object.prototype.hasOwnProperty.call(appearances, targetId);
+}
+
 export function setElementAppearance(targetId: string, next: ElementAppearance, action = 'Updated appearance'): void {
   ensureLoaded();
   const previous = appearances![targetId] ?? defaultElementAppearance(targetId);
   history!.push({ id: `${Date.now()}-${targetId}`, targetId, action, at: now(), snapshot: cloneAppearance(previous) });
   history = history!.slice(-MAX_HISTORY);
+  undoCursor.set(targetId, history!.filter((entry) => entry.targetId === targetId && !entry.action.startsWith('Undo ') && !entry.action.startsWith('Redo ')).length);
+  redoStack.delete(targetId);
   appearances![targetId] = { ...cloneAppearance(next), targetId, updatedAt: now() };
   persist();
   notify();
 }
 
 export function resetElementAppearance(targetId: string): void {
-  setElementAppearance(targetId, defaultElementAppearance(targetId), 'Reset appearance');
+  ensureLoaded();
+  const previous = appearances![targetId];
+  if (!previous) return;
+  history!.push({ id: `${Date.now()}-${targetId}-reset`, targetId, action: 'Reset appearance', at: now(), snapshot: cloneAppearance(previous) });
+  history = history!.slice(-MAX_HISTORY);
+  undoCursor.set(targetId, history!.filter((entry) => entry.targetId === targetId && !entry.action.startsWith('Undo ') && !entry.action.startsWith('Redo ')).length);
+  redoStack.delete(targetId);
+  delete appearances![targetId];
+  persist();
+  notify();
 }
 
 export function resetAppearanceProperty(targetId: string, state: AppearanceState, property: keyof AppearanceStateStyle): void {
@@ -370,12 +435,17 @@ export function serializeElementAppearance(targetId: string): string {
 export function parseElementAppearanceExport(value: unknown): ElementAppearanceExport | null {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Partial<ElementAppearanceExport>;
+  if (Object.keys(raw).some((key) => !['schema', 'version', 'targetId', 'appearance'].includes(key))) return null;
   if (raw.schema !== 'open-design.element-appearance' || raw.version !== 1 || typeof raw.targetId !== 'string' || raw.targetId.length > 200 || !raw.appearance || typeof raw.appearance !== 'object') return null;
   const appearance = raw.appearance as ElementAppearance;
+  if (Object.keys(appearance).some((key) => !['targetId', 'states', 'activeState', 'zoom', 'rulers', 'guides', 'updatedAt'].includes(key))) return null;
   if (appearance.targetId !== raw.targetId || !appearance.states || typeof appearance.states !== 'object') return null;
   if (!APPEARANCE_STATES.every((state) => {
     const value = appearance.states[state];
-    return Boolean(value && typeof value === 'object' && Array.isArray(value.layers) && value.layers.length <= 200);
+    if (!value || typeof value !== 'object' || !Array.isArray(value.layers) || value.layers.length > 200) return false;
+    const styleKeys = ['layers', 'selections', 'channels', 'masks', 'fontFamily', 'fontSize', 'fontWeight', 'italic', 'underline', 'strike', 'overline', 'capitalization', 'textColor', 'highlightColor', 'letterSpacing', 'wordSpacing', 'lineHeight', 'baselineOffset', 'textDirection', 'alignment', 'borderRadius', 'elevation', 'motion', 'rainbowSpeedLevel', 'inheritedFrom', 'overrides'];
+    if (Object.keys(value).some((key) => !styleKeys.includes(key))) return false;
+    return value.layers.every((layer) => Boolean(layer && typeof layer === 'object' && Object.keys(layer as object).every((key) => ['id', 'name', 'kind', 'visible', 'locked', 'opacity', 'blendMode', 'parentId', 'fill', 'stroke', 'shadow', 'transform', 'effects'].includes(key))));
   })) return null;
   if (!APPEARANCE_STATES.includes(appearance.activeState) || typeof appearance.zoom !== 'number' || !Number.isFinite(appearance.zoom) || appearance.zoom < 0.25 || appearance.zoom > 4) return null;
   if (JSON.stringify(appearance).length > 500_000) return null;
@@ -391,6 +461,45 @@ export function parseElementAppearanceExport(value: unknown): ElementAppearanceE
       states: { ...normalized.states, ...appearance.states },
     },
   };
+}
+
+function hasDuplicateJsonKeys(text: string): boolean {
+  const scopes: Array<Set<string>> = [];
+  let inString = false;
+  let escaped = false;
+  let stringStart = -1;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) { escaped = false; continue; }
+      if (character === '\\') { escaped = true; continue; }
+      if (character === '"') {
+        inString = false;
+        const remainder = text.slice(index + 1);
+        const keyMatch = /^\s*:/.exec(remainder);
+        if (keyMatch && scopes.length > 0) {
+          try {
+            const key = JSON.parse(text.slice(stringStart, index + 1)) as unknown;
+            if (typeof key === 'string') {
+              const scope = scopes[scopes.length - 1]!;
+              if (scope.has(key)) return true;
+              scope.add(key);
+            }
+          } catch { return true; }
+        }
+      }
+      continue;
+    }
+    if (character === '"') { inString = true; stringStart = index; continue; }
+    if (character === '{') scopes.push(new Set<string>());
+    else if (character === '}') scopes.pop();
+  }
+  return inString || scopes.length !== 0;
+}
+
+export function parseElementAppearanceExportText(text: string): ElementAppearanceExport | null {
+  if (text.length > 500_000 || hasDuplicateJsonKeys(text)) return null;
+  try { return parseElementAppearanceExport(JSON.parse(text) as unknown); } catch { return null; }
 }
 
 export function importElementAppearance(value: unknown, targetId: string): boolean {
@@ -440,11 +549,18 @@ export function readElementAppearanceHistory(): readonly AppearanceHistoryEntry[
 
 export function undoElementAppearance(targetId: string): boolean {
   ensureLoaded();
-  const index = [...history!].map((entry) => entry.targetId).lastIndexOf(targetId);
-  if (index < 0) return false;
-  const entry = history!.splice(index, 1)[0];
+  const mutations = history!.filter((entry) => entry.targetId === targetId && !entry.action.startsWith('Undo ') && !entry.action.startsWith('Redo '));
+  const cursor = undoCursor.get(targetId) ?? mutations.length;
+  if (cursor <= 0) return false;
+  const entry = mutations[cursor - 1];
+  if (!entry) return false;
   const current = appearances![targetId] ?? defaultElementAppearance(targetId);
+  const stack = redoStack.get(targetId) ?? [];
+  stack.push(cloneAppearance(current));
+  redoStack.set(targetId, stack);
   history!.push({ id: `${Date.now()}-${targetId}-undo`, targetId, action: 'Undo appearance', at: now(), snapshot: cloneAppearance(current) });
+  history = history!.slice(-MAX_HISTORY);
+  undoCursor.set(targetId, cursor - 1);
   appearances![targetId] = cloneAppearance(entry.snapshot);
   persist();
   notify();
@@ -452,9 +568,18 @@ export function undoElementAppearance(targetId: string): boolean {
 }
 
 export function redoElementAppearance(targetId: string): boolean {
-  // The append-only history intentionally keeps redo as the inverse of the
-  // last undo snapshot. This stays reversible without rewriting history.
-  return undoElementAppearance(targetId);
+  ensureLoaded();
+  const stack = redoStack.get(targetId);
+  const snapshot = stack?.pop();
+  if (!snapshot) return false;
+  const current = appearances![targetId] ?? defaultElementAppearance(targetId);
+  history!.push({ id: `${Date.now()}-${targetId}-redo`, targetId, action: 'Redo appearance', at: now(), snapshot: cloneAppearance(current) });
+  history = history!.slice(-MAX_HISTORY);
+  appearances![targetId] = cloneAppearance(snapshot);
+  undoCursor.set(targetId, (undoCursor.get(targetId) ?? 0) + 1);
+  persist();
+  notify();
+  return true;
 }
 
 export interface AppearanceRegistry {
@@ -474,6 +599,7 @@ export function useAppearanceRegistry(): AppearanceRegistry {
   }, []);
   const register = useCallback((target: AppearanceTarget) => {
     const previous = targetMap.get(target.id);
+    if (!previous && targetMap.size >= MAX_APPEARANCE_TARGETS) return;
     const changed = !previous
       || previous.element !== target.element
       || previous.label !== target.label
@@ -481,10 +607,6 @@ export function useAppearanceRegistry(): AppearanceRegistry {
       || previous.path !== target.path;
     targetMap.set(target.id, target);
     ensureLoaded();
-    if (!appearances![target.id]) {
-      appearances![target.id] = defaultElementAppearance(target.id);
-      persist();
-    }
     if (changed) rerender((value) => value + 1);
   }, [targetMap]);
   const unregister = useCallback((targetId: string) => {
@@ -507,4 +629,7 @@ export function subscribeToElementAppearance(listener: () => void): () => void {
 export function resetElementAppearanceStore(): void {
   appearances = null;
   history = null;
+  persistenceFailure = false;
+  undoCursor.clear();
+  redoStack.clear();
 }

@@ -82,6 +82,7 @@ import {
   type SettingsHighlight,
 } from './components/SettingsDialog';
 import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
+import { requestElementToyLock } from './components/appearance/toyLockAdapter';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
@@ -846,7 +847,7 @@ export function App() {
   // it they keep springing/sliding for users who asked us not to animate.
   return (
     <MotionConfig reducedMotion="user">
-      <ElementAppearanceBoundary>
+      <ElementAppearanceBoundary onLockElement={requestElementToyLock}>
         <IframeKeepAliveProvider>
           <WorkspaceMemberDirectoryPreloader />
           <AppInner />

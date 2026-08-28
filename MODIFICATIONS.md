@@ -49,7 +49,10 @@ does not claim runtime conformance.
 - `apps/web/src/components/appearance/ElementAppearanceEditor.module.css`
 - `apps/web/src/components/appearance/ElementAppearanceEditor.tsx`
 - `apps/web/src/components/appearance/elementAppearance.ts`
+- `apps/web/src/components/appearance/toyLockAdapter.ts`
+- `apps/web/src/components/appearance/copy.ts`
 - `apps/web/tests/components/ElementAppearanceEditor.contract.test.ts`
+- `apps/web/tests/components/ElementAppearanceBoundary.mounted.test.tsx`
 
 ### 2026-08-25 - Restore unsigned Squirrel executable packaging controls
 

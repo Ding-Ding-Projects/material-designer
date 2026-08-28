@@ -45,6 +45,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **Tighten renderer-wide appearance targeting and portable style operations.**
+  The application root now owns one body-aware target boundary covering
+  portals, SVG and shadow descendants, with semantic path identities and an
+  explicit duplicate policy. Neutral defaults remain inherited until a user
+  edits a target. Saved state applies to real renderer properties, while
+  unsupported image operations remain visible with exact capability reasons.
+  The editor now uses the existing continuous color translator, keeps its
+  animated-rainbow sentinel, enumerates available font faces, validates
+  duplicate-free bounded imports, and exposes reset scopes, presets,
+  copy/paste, before/after and all-state previews. Hosted type-checking,
+  packaged interaction, and capture evidence remain pending. The integration
+  commit link will be added when this lane reaches the default branch.
+
+  **廣東話進度：** Application root 而家由一個 body-aware target boundary
+  包晒 portals、SVG 同 shadow descendants，semantic path identity 同 duplicate
+  policy 都寫清楚。未有人改之前，neutral default 會繼續 inherit，唔會亂寫
+  inline style。保存咗嘅 state 會真正落 renderer properties；未支援嘅 image
+  operation 仍然顯示 exact capability reason。Editor 用返 continuous color
+  translator，同時保留 animated-rainbow sentinel，會列出可用 font faces，
+  import 會拒絕 duplicate key 同超界 payload，仲有 reset scope、preset、
+  copy/paste、before/after 同 all-state preview。Hosted type-check、packaged
+  interaction 同 capture evidence 仲未到；lane 落 default branch 後先補
+  integration commit link。
+
 - **Extend appearance targeting to the complete desktop renderer.** The
   `ElementAppearanceBoundary` now wraps the application root, observes
   body-owned portals, and applies saved state properties to real rendered

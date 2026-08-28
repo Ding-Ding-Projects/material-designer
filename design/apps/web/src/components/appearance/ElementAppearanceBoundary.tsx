@@ -5,7 +5,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
 import { ElementAppearanceEditor } from './ElementAppearanceEditor';
-import { applyAppearanceStateToElement, getElementAppearance, resetAllElementAppearances, useAppearanceRegistry, type AppearanceTarget } from './elementAppearance';
+import { applyAppearanceStateToElement, clearAppearanceStateFromElement, getElementAppearance, hasElementAppearanceOverride, MAX_APPEARANCE_TARGETS, resetAllElementAppearances, resolveAppearanceState, useAppearanceRegistry, type AppearanceTarget, type RenderedElement } from './elementAppearance';
 
 interface ElementAppearanceBoundaryProps {
   children: ReactNode;
@@ -18,27 +18,56 @@ interface MenuPosition {
   left: number;
 }
 
-function targetBaseFor(element: HTMLElement, index: number): string {
-  const stable = element.dataset.testid || element.id || element.getAttribute('aria-label');
-  if (stable) return `appearance:${stable.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-  return `appearance:${element.tagName.toLowerCase()}`;
+export const TARGET_ID_COLLISION_POLICY = 'semantic identity plus first-seen ordinal within the renderer lifetime';
+
+function targetBaseFor(element: RenderedElement, index: number): string {
+  const segments: string[] = [];
+  let current: Element | null = element;
+  let depth = 0;
+  while (current && depth < 8) {
+    const stable = current.getAttribute('data-testid') || current.id || current.getAttribute('aria-label');
+    if (stable) segments.unshift(stable.replace(/[^a-zA-Z0-9_-]/g, '_'));
+    else {
+      const currentElement = current;
+      const siblings = current.parentElement ? [...current.parentElement.children].filter((child) => child.tagName === currentElement.tagName) : [];
+      const ordinal = Math.max(1, siblings.indexOf(currentElement) + 1);
+      segments.unshift(`${current.tagName.toLowerCase()}-${ordinal}`);
+    }
+    current = current.parentElement;
+    depth += 1;
+  }
+  return `appearance:${segments.join('/') || `element-${index}`}`;
 }
 
-function labelFor(element: HTMLElement, index: number): string {
+function labelFor(element: RenderedElement, index: number): string {
   return element.getAttribute('aria-label')
     || element.getAttribute('title')
     || element.textContent?.trim().replace(/\s+/g, ' ').slice(0, 100)
     || `${element.tagName.toLowerCase()} ${index + 1}`;
 }
 
-function buildTarget(element: HTMLElement, index: number, id: string): AppearanceTarget {
+function buildTarget(element: RenderedElement, index: number, id: string): AppearanceTarget {
   return {
     id,
     label: labelFor(element, index),
     role: element.getAttribute('role') || element.tagName.toLowerCase(),
-    path: element.dataset.testid ? `[data-testid="${element.dataset.testid}"]` : element.id ? `#${element.id}` : element.tagName.toLowerCase(),
+    path: element.getAttribute('data-testid') ? `[data-testid="${element.getAttribute('data-testid')}"]` : element.id ? `#${element.id}` : element.tagName.toLowerCase(),
     element,
   };
+}
+
+function collectRenderedElements(root: ParentNode): RenderedElement[] {
+  const found: RenderedElement[] = [];
+  const visit = (parent: ParentNode) => {
+    parent.childNodes.forEach((node) => {
+      if (!(node instanceof HTMLElement) && !(node instanceof SVGElement)) return;
+      found.push(node);
+      if (node.shadowRoot) visit(node.shadowRoot);
+      visit(node);
+    });
+  };
+  visit(root);
+  return found;
 }
 
 function clampMenuPosition(position: MenuPosition): MenuPosition {
@@ -57,13 +86,14 @@ function clampMenuPosition(position: MenuPosition): MenuPosition {
  */
 export function ElementAppearanceBoundary({ children, onLockElement }: ElementAppearanceBoundaryProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const elementIdsRef = useRef(new WeakMap<HTMLElement, string>());
+  const elementIdsRef = useRef(new WeakMap<RenderedElement, string>());
   const nextIdByBaseRef = useRef(new Map<string, number>());
   const pressTimerRef = useRef<number | null>(null);
   const { register, unregister, targets, get } = useAppearanceRegistry();
   const [activeTargetId, setActiveTargetId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [editorTarget, setEditorTarget] = useState<AppearanceTarget | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuQuery, setMenuQuery] = useState('');
   const menuSearch = useRegexSearch(menuQuery, setMenuQuery);
   const activeTarget = activeTargetId ? get(activeTargetId) : undefined;
@@ -72,7 +102,7 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     const root = rootRef.current;
     if (!root) return;
     const observationRoot = typeof document !== 'undefined' ? document.body : root;
-    const elements = [root, ...Array.from(observationRoot.querySelectorAll<HTMLElement>('*')).filter((element) => element !== root)];
+    const elements = [root, ...collectRenderedElements(observationRoot).filter((element) => element !== root)];
     const live = new Set<string>();
     elements.forEach((element, index) => {
       let id = elementIdsRef.current.get(element);
@@ -86,8 +116,10 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       const target = buildTarget(element, index, id);
       live.add(target.id);
       register(target);
-      const saved = getElementAppearance(target.id);
-      applyAppearanceStateToElement(element, saved.states[saved.activeState]);
+      if (hasElementAppearanceOverride(target.id)) {
+        const saved = getElementAppearance(target.id);
+        applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState);
+      }
     });
     targets.forEach((target) => {
       if (!live.has(target.id)) unregister(target.id);
@@ -110,10 +142,10 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
   }, []);
 
   const resolveEventTarget = useCallback((eventTarget: EventTarget | null): AppearanceTarget | undefined => {
-    if (!(eventTarget instanceof HTMLElement)) return undefined;
+    if (!(eventTarget instanceof HTMLElement) && !(eventTarget instanceof SVGElement)) return undefined;
     const direct = targets.find((target) => target.element === eventTarget);
     if (direct) return direct;
-    const nearest = eventTarget.closest<HTMLElement>('[data-testid], [id], button, input, select, textarea, a, [role]');
+    const nearest = eventTarget.closest<RenderedElement>('[data-testid], [id], button, input, select, textarea, a, [role]');
     return nearest ? targets.find((target) => target.element === nearest) : undefined;
   }, [targets]);
 
@@ -122,6 +154,10 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     if (!target) return;
     event.preventDefault();
     event.stopPropagation();
+    if (event.shiftKey) {
+      setEditorTarget(target);
+      return;
+    }
     openMenu(target, { top: event.clientY, left: event.clientX });
   }, [openMenu, resolveEventTarget]);
 
@@ -158,6 +194,10 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       if (!target) return;
       event.preventDefault();
       event.stopPropagation();
+      if (event.shiftKey) {
+        setEditorTarget(target);
+        return;
+      }
       openMenu(target, { top: event.clientY, left: event.clientX });
     };
     const onNativeKeyDown = (event: KeyboardEvent) => {
@@ -200,12 +240,43 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
     { id: 'close', label: 'Close menu', available: true },
   ].filter((action) => menuSearch.matches(action.label)), [menuSearch, onLockElement, targets.length]);
 
-  const closeMenu = () => {
+  const closeMenu = useCallback(() => {
     setMenuPosition(null);
     setActiveTargetId(null);
     setMenuQuery('');
     activeTarget?.element?.focus();
-  };
+  }, [activeTarget]);
+
+  useEffect(() => {
+    if (!menuPosition) return;
+    const menu = menuRef.current;
+    const search = menu?.querySelector<HTMLInputElement>('input[type="search"]');
+    search?.focus();
+    const items = () => [...(menu?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? [])].filter((item) => !item.disabled);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); if (menuQuery) setMenuQuery(''); else closeMenu(); return; }
+      const itemList = items();
+      const index = itemList.indexOf(document.activeElement as HTMLButtonElement);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (itemList.length === 0) return;
+        itemList[(index + (event.key === 'ArrowDown' ? 1 : -1) + itemList.length) % itemList.length]?.focus();
+      } else if (event.key === 'Enter' && document.activeElement instanceof HTMLButtonElement && document.activeElement.getAttribute('role') === 'menuitem') {
+        event.preventDefault();
+        document.activeElement.click();
+      }
+    };
+    const onOutside = (event: MouseEvent) => {
+      const builder = document.querySelector('[data-testid="element-context-menu-search-regex-popover"]');
+      if (!menu?.contains(event.target as Node) && !builder?.contains(event.target as Node)) closeMenu();
+    };
+    menu?.addEventListener('keydown', onKeyDown);
+    document.addEventListener('mousedown', onOutside, true);
+    return () => {
+      menu?.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('mousedown', onOutside, true);
+    };
+  }, [closeMenu, menuPosition, menuQuery]);
 
   return (
     <div
@@ -219,8 +290,10 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
       onPointerLeave={cancelLongPress}
     >
       {children}
+      {targets.length >= MAX_APPEARANCE_TARGETS ? <div role="status" aria-live="polite" data-appearance-target-cap="true">Appearance target limit reached: {MAX_APPEARANCE_TARGETS}. New elements remain uncustomized.</div> : null}
       {menuPosition && activeTarget && typeof document !== 'undefined' ? createPortal(
         <div
+          ref={menuRef}
           data-appearance-editor="menu"
           role="menu"
           aria-label={`Actions for ${activeTarget.label}`}
@@ -246,8 +319,7 @@ export function ElementAppearanceBoundary({ children, onLockElement }: ElementAp
                 } else if (action.id === 'reset-all') {
                   resetAllElementAppearances(targets.map((target) => target.id));
                   targets.forEach((target) => {
-                    const reset = getElementAppearance(target.id);
-                    applyAppearanceStateToElement(target.element, reset.states[reset.activeState]);
+                    clearAppearanceStateFromElement(target.element);
                   });
                   closeMenu();
                 } else {

@@ -12,6 +12,7 @@ import {
   defaultElementAppearance,
   importElementAppearance,
   parseElementAppearanceExport,
+  parseElementAppearanceExportText,
   serializeElementAppearance,
 } from '../../src/components/appearance/elementAppearance';
 
@@ -21,6 +22,7 @@ const source = (path: string) => readFileSync(new URL(path, ROOT), 'utf8');
 const EDITOR = source('src/components/appearance/ElementAppearanceEditor.tsx');
 const BOUNDARY = source('src/components/appearance/ElementAppearanceBoundary.tsx');
 const APP = source('src/App.tsx');
+const LOCK_ADAPTER = source('src/components/appearance/toyLockAdapter.ts');
 
 describe('every-element appearance contract', () => {
   it('keeps a hand-written state matrix and capability matrix', () => {
@@ -59,15 +61,17 @@ describe('every-element appearance contract', () => {
 
   it('keeps the root wrapper and real renderer consumer', () => {
     expect(APP).toContain('<ElementAppearanceBoundary>');
-    expect(BOUNDARY).toContain('applyAppearanceStateToElement(element, saved.states[saved.activeState])');
+    expect(BOUNDARY).toContain('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)');
     expect(APP.replace('<ElementAppearanceBoundary>', '')).not.toContain('<ElementAppearanceBoundary>');
-    expect(BOUNDARY.replace('applyAppearanceStateToElement(element, saved.states[saved.activeState])', '')).not.toContain('applyAppearanceStateToElement(element, saved.states[saved.activeState])');
+    expect(BOUNDARY.replace('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)', '')).not.toContain('applyAppearanceStateToElement(element, resolveAppearanceState(saved), saved.activeState)');
   });
 
   it('keeps validated portable style operations in the source contract', () => {
     const exported = JSON.parse(serializeElementAppearance('appearance:button')) as unknown;
     expect(parseElementAppearanceExport(exported)?.version).toBe(1);
     expect(parseElementAppearanceExport({ schema: 'open-design.element-appearance', version: 99 })).toBeNull();
+    expect(parseElementAppearanceExportText('{"schema":"open-design.element-appearance","schema":"duplicate","version":1}')).toBeNull();
+    expect(parseElementAppearanceExport({ schema: 'open-design.element-appearance', version: 1, extra: true })).toBeNull();
     copyAppearanceStyle('appearance:button', 'normal');
     const target = document?.createElement?.('button') ?? null;
     if (target) applyAppearanceStateToElement(target, defaultAppearanceStyle());
@@ -96,5 +100,12 @@ describe('every-element appearance contract', () => {
     expect(BOUNDARY).toContain('onKeyDown={handleKeyDown}');
     expect(BOUNDARY).toContain('onPointerDown={handlePointerDown}');
     expect(BOUNDARY).toContain('new MutationObserver(scan)');
+  });
+
+  it('keeps the root toy-lock adapter seam wired without owning credentials', () => {
+    expect(APP).toContain('onLockElement={requestElementToyLock}');
+    expect(LOCK_ADAPTER).toContain("window.dispatchEvent(new CustomEvent<ElementToyLockRequestDetail>");
+    expect(LOCK_ADAPTER).toContain('targetId: target.id');
+    expect(LOCK_ADAPTER).not.toContain('password');
   });
 });

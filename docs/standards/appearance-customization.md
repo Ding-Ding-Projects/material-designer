@@ -187,15 +187,25 @@ DOM id, accessible label, or a deterministic fallback. Each target has an
 independent state record for normal, hover, focus, pressed, selected, disabled,
 dragged, validation, loading, success, warning and error.
 
+Target ids use semantic ancestor paths where available and a first-seen ordinal
+for genuine collisions. The ordinal is held in a `WeakMap` for the mounted
+element lifetime, so a portal re-render cannot silently retarget an open editor.
+When an image operation has no renderer consumer, its matrix entry stays
+visible as unavailable with the exact capability reason rather than claiming
+that metadata is a working Photoshop operation.
+
 | Contract area | Source owner | Persistence and history | Accessibility and evidence |
 | --- | --- | --- | --- |
-| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, and touch long-press routes resolve one exact target. Built-artifact drive and per-click screenshot receipts remain pending. |
+| Target registry and all states | `ElementAppearanceBoundary.tsx`, `elementAppearance.ts` | Versioned local storage, bounded to 2,000 targets; neutral defaults remain inherited until an explicit edit; each edit appends a redacted snapshot entry | Pointer context menu, Shift+F10/Context Menu, Shift+right-click direct editor, and touch long-press routes resolve one exact target. Built-artifact drive and per-click screenshot receipts remain pending. |
 | Layered workspace | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Ordered layers and groups, visibility, lock, duplicate, rename, reorder, opacity, blend mode, fill, stroke, effects and geometry are stored per target and state | Keyboard-focusable controls, live status, bounded scroll panel. Runtime and display-scale evidence remain pending. |
 | Image editing | `ElementAppearanceEditor.tsx` | Selections, channels, masks, adjustment metadata, smart embedded content, crop/focal/safe-area values, filters, paths and warp metadata are retained in the state snapshot | Unsupported capability entries remain visible with an exact reason. Actual renderer fidelity and packaged evidence are not claimed. |
 | Word-depth typography | `ElementAppearanceEditor.tsx` | Family, size, weight, style, text effects, color, highlight, spacing, line height, baseline, direction and alignment are stored per state | Installed-family choices are rendered as previews; variable axes remain visible as unavailable where the renderer lacks the API. |
 | State inheritance and preview | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Each state records an explicit parent state or overrides; updates append history | State tabs expose all twelve states and the active target remains the focus return point. |
 | Resets, undo and redo | `elementAppearance.ts` | Bounded append-only local history; reset and inverse changes create new entries rather than rewriting prior entries | Status text confirms each mutation. No built runtime claim is made until the UI drive lands. |
-| Property search | `ElementAppearanceEditor.tsx` | Query is owned by the editor instance and is not persisted with target style | Uses the existing `RegexSearchField` contract, plain text first with an anchored builder. The regex implementation is intentionally untouched in this lane. |
+| Property search | `ElementAppearanceEditor.tsx` | Query is owned by the editor instance and is not persisted with target style | Uses the existing `RegexSearchField` contract, plain text first with an anchored builder. Every editor dropdown uses its own local search and builder instance. The regex implementation is intentionally untouched in this lane. |
+| Portable style operations | `elementAppearance.ts`, `ElementAppearanceEditor.tsx` | Bounded schema version 1 rejects duplicate keys, unknown top-level or style fields, malformed JSON, oversized files, missing states, invalid zoom, and excessive layers. Named presets and copy/paste remain local. | Import refusal is announced in the editor status region. Export and import are source-integrated; packaged interaction remains pending. |
+| Toy-lock adapter | `toyLockAdapter.ts`, `App.tsx` | No credential value is stored or handled by appearance. The root dispatches a target id, label, role, and anchor to the authentication lane. | The context action remains target-specific and the authentication lane owns policy and prompt semantics. |
+| Localization and funny levels | `copy.ts`, `ElementAppearanceEditor.tsx` | Copy state is read from the shared i18n context; no private values are persisted in appearance snapshots | English, Cantonese, and bilingual labels are selected from the active language mode, while funny-level variations style surrounding copy without changing factual target or capability values. Packaged language evidence remains pending. |
 
 This matrix is a source implementation record, not a conformance claim. The
 application still needs a fresh built package, exhaustive interaction ledger,
