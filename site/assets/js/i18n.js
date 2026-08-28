@@ -1327,18 +1327,18 @@ const CATALOGUE = {
 
   'rl.intro': {
     en: [
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes what it built. A run whose tests fail publishes nothing at all, so a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly what it built. A run whose tests fail publishes nothing at all — which is why a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly what it built — not a rebuild of it later. A run whose tests fail publishes nothing at all, which is why a release existing is itself evidence that the tests before it passed.',
-      'Continuous integration builds the Windows application on every push to the default branch, tests it, and publishes exactly the file it built — not a rebuild done later on a different machine in a better mood. A run whose tests fail publishes nothing at all, which is the entire reason a release existing counts as evidence rather than as an announcement.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
+      'Continuous integration builds and publishes the Windows Squirrel installer on every push and manual dispatch. The workflow does not run tests or lint, so release evidence is limited to packaging and publication results.',
     ],
     yue: [
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後將 build 出嚟嘅嘢出版。測試唔過嗰次運行乜都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後將 build 出嚟嘅嘢出版。測試唔過嗰次運行乜都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嘅就係佢 build 出嚟嗰個。測試唔過嗰次運行一樣嘢都唔會出 — 所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嘅就係佢 build 出嚟嗰個，唔係事後再 build 過一次。測試唔過嗰次運行一樣嘢都唔會出，所以有 release 存在，本身就係之前啲測試過咗嘅證據。',
-      'Continuous integration 每次 push 上主分支都會 build 個 Windows app、測試佢，然後出版嗰個就係佢親手 build 出嚟嗰個檔案 — 唔係事後喺第二部機、心情好啲嘅時候再 build 多次。測試唔過嗰次運行真係一樣嘢都唔會出，而呢點就係點解有 release 算係證據，唔係公告。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
+      'Continuous integration 每次 push 同 manual dispatch 都會 build 同 publish Windows Squirrel installer。Workflow 唔會行 tests 或 lint，所以 release evidence 只限 packaging 同 publication 結果。',
     ],
   },
 
@@ -2113,8 +2113,8 @@ const CATALOGUE = {
   },
   'bd.pack.heading': { en: 'Build the Windows installer', yue: 'Build 個 Windows 安裝檔' },
   'bd.pack.note': {
-    en: 'The target accepts all, dir, nsis, squirrel or zip; Squirrel.Windows emits Setup.exe, RELEASES and NuGet packages, while zip produces a portable archive. The release workflow requires a verified Authenticode signature before publication. Packaging runs on electron-builder with Electron 41.',
-    yue: '個目標接受 all、dir、nsis、squirrel 或者 zip；Squirrel.Windows 會出 Setup.exe、RELEASES 同 NuGet packages，zip 就用未打包嘅 build 整個免安裝壓縮包。Release workflow 要先驗證 Authenticode signature 先可以出街，打包係行 electron-builder，配 Electron 41。',
+    en: 'The supported Windows target is genuine Squirrel.Windows. It emits Setup.exe, RELEASES and full and delta NuGet packages. The installer is intentionally unsigned, and packaging runs on the pinned Windows workflow image.',
+    yue: '支援嘅 Windows target 係 genuine Squirrel.Windows，會出 Setup.exe、RELEASES 同 full/delta NuGet packages。Installer 刻意唔簽名，packaging 喺 pinned Windows workflow image 行。',
   },
   'bd.test.heading': { en: 'Typecheck and tests', yue: '型別檢查同測試' },
   'bd.test.note': {
@@ -2475,6 +2475,22 @@ Object.assign(catalogue, {
   'bd.pack.note': {
     en: 'The supported Windows target is genuine Squirrel.Windows. It emits Setup.exe, RELEASES and full and delta NuGet packages. The installer is intentionally unsigned, and packaging runs on the pinned Windows workflow image.',
     yue: '支援嘅 Windows target 係 genuine Squirrel.Windows，會出 Setup.exe、RELEASES 同 full/delta NuGet packages。Installer 刻意唔簽名，packaging 喺 pinned Windows workflow image 行。',
+  },
+  'ov.row.release.how': {
+    en: 'With an unsigned Squirrel installer, its checksum, RELEASES feed, NuGet packages and a dim sum code name. A SmartScreen warning may appear on first run.',
+    yue: '有 unsigned Squirrel installer、checksum、RELEASES feed、NuGet packages 同點心代號。第一次開可能會見到 SmartScreen warning。',
+  },
+  'in.will.installer': {
+    en: 'A genuine unsigned Windows Squirrel installer produced by the same run that published it, together with its checksum, RELEASES feed and NuGet packages.',
+    yue: '同一次運行 build 同 publication 嘅 genuine unsigned Windows Squirrel installer，連埋 checksum、RELEASES feed 同 NuGet packages。',
+  },
+  'rl.asset.installer': {
+    en: 'The unsigned Windows Squirrel installer built and published by the same run.',
+    yue: '同一次運行 build 同 publication 嘅 unsigned Windows Squirrel installer。',
+  },
+  'rl.update.body': {
+    en: 'Stable Windows builds use this project\'s metadata feed. The release path verifies package hashes and keeps the artifact unsigned; the app downloads it in the background and waits for you to choose Restart to install update or Later.',
+    yue: 'Stable Windows builds 用呢個 project 嘅 metadata feed。Release path 會驗 package hashes，artifact 保持 unsigned；app background download 完會等你揀 Restart to install update 或 Later。',
   },
 });
 
