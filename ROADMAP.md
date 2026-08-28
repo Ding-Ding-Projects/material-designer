@@ -13,7 +13,7 @@
   lanes, so this item is not complete. The shared search API remains coordinated
   with the regex workbench for field-scoped advanced capabilities. Lifecycle receipts
   model requested, opened, completed, and cancelled states. The hardening batch is
-  recorded at [`97ef8b98`](https://github.com/Ding-Ding-Projects/material-designer/commit/97ef8b98c5a8d65df1ffb02ec424af18ff2ab0a0).
+  recorded at [`15d397b6`](https://github.com/Ding-Ding-Projects/material-designer/commit/15d397b6b6772d8d0b47444647532392f311888c).
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and

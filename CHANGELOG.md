@@ -89,7 +89,7 @@ version section when a release carries them.
   small viewports are clamped, reduced-motion chevrons stop animating, active
   options scroll into view, and the collaboration role picker keeps its shared
   dropdown route.
-  See [`97ef8b98`](https://github.com/Ding-Ding-Projects/material-designer/commit/97ef8b98c5a8d65df1ffb02ec424af18ff2ab0a0).
+  See [`15d397b6`](https://github.com/Ding-Ding-Projects/material-designer/commit/15d397b6b6772d8d0b47444647532392f311888c).
 
   **Shared menu callbacks 而家要 typed lifecycle receipts。** Appearance、lock、
   destructive confirmation 同 locked-dropdown authentication 都要對返 target

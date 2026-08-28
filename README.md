@@ -79,7 +79,7 @@ The shared `ContextMenu` has no genuine production caller in this lane, so its
 inventory row remains partial until an owning integration lane supplies real
 target receipts.
 Source implementation is recorded at
-[`97ef8b98`](https://github.com/Ding-Ding-Projects/material-designer/commit/97ef8b98c5a8d65df1ffb02ec424af18ff2ab0a0).
+[`15d397b6`](https://github.com/Ding-Ding-Projects/material-designer/commit/15d397b6b6772d8d0b47444647532392f311888c).
 
 > **M3 shell checkpoint (2026-08-10):** The bounded production Material Design 3 shell
 > geometry is integrated in [`a03c16d9`](https://github.com/Ding-Ding-Projects/material-designer/commit/a03c16d939262ddc0482c104ef1b1b6d14fc2651). It covers rail, tabs, app bars, home surfaces, overlays, focus and motion while preserving application behavior. This is source-level/static evidence only; packaged runtime and visual-matrix proof remain pending CI.
