@@ -18,7 +18,6 @@
 
 set -u -o pipefail
 
-repo_root=$(git rev-parse --show-toplevel) || exit 2
 public_index_url="https://raw.githubusercontent.com/Ding-Ding-Projects/dim-sum-photos/main/catalog/index.json"
 public_repo="Ding-Ding-Projects/dim-sum-photos"
 
@@ -40,6 +39,12 @@ emit_empty() {
   printf 'reason=%s\n' "$reason"
 }
 
+used_bytes=$(printf '%s' "$used" | wc -c | tr -d '[:space:]')
+if [ -z "$used_bytes" ] || [ "$used_bytes" -gt 1048576 ]; then
+  echo "release-codename: spent-id input exceeds the 1 MiB safety bound" >&2
+  emit_empty used-too-large
+  exit 0
+fi
 printf '%s\n' "$used" | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -v '^$' | LC_ALL=C sort -u > "$tmp/used.txt" || true
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -54,7 +59,35 @@ if ! curl -fsSL --max-time 60 "$public_index_url" -o "$tmp/public.json" 2>/dev/n
   exit 0
 fi
 
-if ! jq -e '.schemaVersion == "1.0.0" and (.dishes | type == "array")' "$tmp/public.json" >/dev/null 2>&1; then
+catalog_bytes=$(wc -c < "$tmp/public.json" | tr -d '[:space:]')
+if [ -z "$catalog_bytes" ] || [ "$catalog_bytes" -gt 12582912 ]; then
+  echo "release-codename: public catalog exceeds the 12 MiB safety bound" >&2
+  emit_empty catalog-too-large
+  exit 0
+fi
+
+if ! jq -e '
+  type == "object"
+  and .schemaVersion == "1.0.0"
+  and (.total | type == "number" and . > 0 and . <= 4000)
+  and (.dishes | type == "array" and length > 0 and length <= 4000)
+  and (.total == (.dishes | length))
+  and ((.dishes | map(.id) | unique | length) == (.dishes | length))
+  and ((.dishes | map(.image.path) | unique | length) == (.dishes | length))
+  and all(.dishes[];
+    (.id | type == "string" and test("^hk-dish-[0-9]{4}$") and (test("[[:cntrl:]]") | not))
+    and (.slug | type == "string" and length > 0 and length <= 160 and test("^[a-z0-9]+(-[a-z0-9]+)*$") and (test("[[:cntrl:]]") | not))
+    and (.name | type == "object")
+    and (.name.en | type == "string" and length > 0 and length <= 160 and (test("[[:cntrl:]]|<!--|-->") | not))
+    and (.name.zhHant | type == "string" and length > 0 and length <= 160 and (test("[[:cntrl:]]|<!--|-->") | not))
+    and (.jyutping | type == "string" and length <= 160 and (test("[[:cntrl:]]") | not))
+    and (.image | type == "object")
+    and (.image.path | type == "string" and length > 14 and length <= 240 and test("^images/hk-dish-[0-9]{4}-[a-z0-9-]+\\.png$") and (contains("..") | not) and (test("[[:cntrl:]]") | not))
+    and (.image.alt | type == "object")
+    and (.image.alt.en | type == "string" and length > 0 and length <= 320 and (test("[[:cntrl:]]") | not))
+    and (.image.alt.yue | type == "string" and length > 0 and length <= 320 and (test("[[:cntrl:]]") | not))
+  )
+' "$tmp/public.json" >/dev/null 2>&1; then
   echo "release-codename: public catalog schema is invalid" >&2
   emit_empty catalog-invalid
   exit 0
@@ -67,21 +100,55 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 0
 fi
 
+if ! gh api --paginate "repos/$public_repo/releases?per_page=100" --jq \
+  '.[] | select((.tag_name | startswith("catalog-v1")) and (.draft == false) and (.prerelease == false)) | .tag_name' \
+  > "$tmp/catalog-tags.txt" 2>/dev/null; then
+  echo "release-codename: public catalog release listing failed" >&2
+  emit_empty release-list-failed
+  exit 0
+fi
+
 while IFS= read -r tag; do
   [ -n "$tag" ] || continue
-  gh release view "$tag" --repo "$public_repo" --json assets --jq \
+  if ! printf '%s' "$tag" | grep -Eq '^catalog-v1([.-][a-z0-9]+)*$'; then
+    echo "release-codename: release listing contained an unsafe catalog tag" >&2
+    emit_empty unsafe-catalog-tag
+    exit 0
+  fi
+  asset_json="$tmp/assets-$tag.json"
+  if ! gh release view "$tag" --repo "$public_repo" --json assets > "$asset_json" 2>/dev/null; then
+    echo "release-codename: published catalog asset read failed for $tag" >&2
+    emit_empty asset-read-failed
+    exit 0
+  fi
+  if ! jq -e '.assets | type == "array"' "$asset_json" >/dev/null 2>&1; then
+    echo "release-codename: published catalog asset response is invalid for $tag" >&2
+    emit_empty asset-response-invalid
+    exit 0
+  fi
+  if ! jq -e 'all(.assets[] | select((.name | endswith(".png"))); (.name | type == "string" and length <= 240 and test("^hk-dish-[0-9]{4}-[a-z0-9-]+\\.png$") and (test("[[:cntrl:]]") | not)) and (.contentType == "image/png") and ((.size // 0) > 0 and (.size // 0) <= 16777216))' "$asset_json" >/dev/null 2>&1; then
+    echo "release-codename: published catalog asset metadata is outside its safety bounds for $tag" >&2
+    emit_empty unsafe-asset-metadata
+    exit 0
+  fi
+  jq -r \
     '.assets[] | select((.name | endswith(".png")) and (.contentType == "image/png") and ((.size // 0) > 0)) | [.name, (.size | tostring), .contentType] | @tsv' \
-    2>/dev/null | awk -v catalog_tag="$tag" '{ print $0 "\t" catalog_tag }' >> "$tmp/assets.tsv" || {
-      echo "release-codename: could not read published assets for $tag" >&2
-      emit_empty asset-inventory-failed
+    "$asset_json" | awk -v catalog_tag="$tag" '{ print $0 "\t" catalog_tag }' >> "$tmp/assets.tsv" || {
+      echo "release-codename: published catalog asset parsing failed for $tag" >&2
+      emit_empty asset-parse-failed
       exit 0
     }
-done < <(gh release list --repo "$public_repo" --limit 1000 --json tagName,isDraft,isPrerelease --jq \
-  '.[] | select((.tagName | startswith("catalog-v1")) and (.isDraft == false) and (.isPrerelease == false)) | .tagName' 2>/dev/null)
+done < "$tmp/catalog-tags.txt"
 
 if [ ! -s "$tmp/assets.tsv" ]; then
   echo "release-codename: no published catalog-v1* PNG assets were found" >&2
   emit_empty no-published-image
+  exit 0
+fi
+
+if [ "$(cut -f1 "$tmp/assets.tsv" | sort | uniq -d | wc -l | tr -d '[:space:]')" != "0" ]; then
+  echo "release-codename: duplicate published catalog asset names are ambiguous" >&2
+  emit_empty ambiguous-image
   exit 0
 fi
 
@@ -94,6 +161,10 @@ fi
 selected=0
 while IFS=$'\t' read -r id slug name_en name_zh jyutping image_path alt_en alt_yue; do
   [ -n "$id" ] || continue
+  case "$image_path" in
+    "images/$id-"*.png) ;;
+    *) continue ;;
+  esac
   if grep -Fqx "$id" "$tmp/used.txt" || grep -Fqx "$name_en · $name_zh" "$tmp/used.txt"; then
     continue
   fi

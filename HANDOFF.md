@@ -2,29 +2,38 @@
 
 > [!IMPORTANT]
 > **Release-integrity lane, source-only, 2026-08-27.** The release path now
-> reads every prior published release body, excludes exact `dim-sum-id` markers,
-> and selects only a dish whose PNG is present on a non-draft, non-prerelease
-> `catalog-v1*` public catalog release. The selector emits `image` and
-> `image_dish` together with the expected byte count, content type, source tag,
-> and public URL. The Release workflow downloads that exact public asset into
-> run-scoped staging, verifies the PNG signature and decoder dimensions, checks
-> the expected byte count, computes SHA-256, records stable release and image
-> markers, rejects an existing tag, and requires the image Chut to succeed before
-> publication. The temporary photo-exception success path is removed.
+> reads every prior published release body through paginated API responses,
+> excludes exact `dim-sum-id` markers and legacy code-name prose, and selects
+> only a dish whose PNG is present on a non-draft, non-prerelease `catalog-v1*`
+> public catalog release. The selector validates bounded catalog schema, ids,
+> paths, asset metadata, control characters, and output records, and emits
+> `image` and `image_dish` together with byte count, content type, source tag,
+> and public URL. The Release workflow verifies the authoritative image link,
+> PNG signature, decoder dimensions, byte count, and SHA-256, records link
+> metadata, serializes publication project-wide, rejects duplicate tags, and
+> then stops at the governing downloadable-photo row because the no-copy policy
+> forbids attaching copied bytes. The temporary photo-exception success path is
+> removed.
 >
 > Pages now waits for a successful Release run for the exact checkout SHA,
-> resolves exactly one non-draft published release with a matching commit marker,
-> verifies the installer, image, timing, line-count, and required assets, and
-> refuses stale checked-in facts. The release panel now exposes the current image
-> filename, hash, and immutable release link, and the stale portable-download row
-> is removed.
+> paginates the complete release inventory, resolves exactly one non-draft
+> published release with markers bound to tag, version, package, installer,
+> catalog, and image, verifies metadata, image content type, signature, decode,
+> bytes, hash, timing, line-count, and required assets, and refuses stale
+> checked-in facts. A syntax-aware page mutation parser requires every field and
+> link to occur exactly once. The release panel now exposes the current image
+> filename, hash, and immutable release link, and the stale portable-download
+> row is removed. No new release is claimed from this source state because the
+> required downloadable-photo row remains blocked.
 >
 > `scripts/verify-release-integrity.ps1` is green. Its companion
-> `scripts/test-release-integrity-negative.ps1` turns eight exact mutations red
-> and returns the restored fixture to green. The JavaScript release-contract
-> source check was updated for the new boundaries but was not run locally because
-> this lane does not run Node. Hosted Release and Pages evidence at this source
-> state remains pending. Source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc).
+> `scripts/test-release-integrity-negative.ps1` turns twelve exact mutations,
+> including comment-out and duplicate-field mutations, red and returns the
+> restored fixture to green. `rl.f.photo` now has five English and five
+> Cantonese tone variants. The JavaScript release-contract source check was
+> updated for the new boundaries but was not run locally because this lane does
+> not run Node. Hosted Release and Pages evidence at this source state remains
+> pending. Previous source commit: [`c5c36b6fb6aac8a1314d36f4f0442186764c45dc`](https://github.com/Ding-Ding-Projects/material-designer/commit/c5c36b6fb6aac8a1314d36f4f0442186764c45dc). Follow-up source commit: **to be filled after this lane commits**.
 >
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by

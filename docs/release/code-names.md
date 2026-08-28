@@ -2,12 +2,12 @@
 
 > [!IMPORTANT]
 > **Release-integrity repair, 2026-08-27.** The workflow now resolves a
-> code-name id and its image from the published public catalog, downloads that
-> exact image into run-scoped release staging, verifies its PNG signature,
-> decodes it, checks its byte count, hashes it, and attaches it to the release.
-> No image is added to this repository or to its bundled catalog. A missing
-> public image remains a release blocker, while an unavailable code name is
-> represented honestly in the selector output.
+> code-name id and its image metadata from the published public catalog, checks
+> the authoritative link's PNG signature, decodes it, checks its byte count,
+> and hashes it in run-scoped storage. It does not add or attach a copied image.
+> The governing downloadable-photo row therefore remains explicitly blocked
+> until the owner resolves the conflict between that row and the public no-copy
+> rule. An unavailable code name is represented honestly in selector output.
 
 Every build carries a dim sum code name — a dish's English and Traditional Chinese
 names together, resolved from the public catalogue at
@@ -16,12 +16,14 @@ It sits beside the version, never in place of it, and **a dish is used exactly
 once**.
 
 > [!IMPORTANT]
-> **Status: source repair complete, hosted release evidence pending.**
+> **Status: source repair complete, hosted publication intentionally blocked.**
 > `scripts/release-codename.sh` uses the public catalog and published
 > `catalog-v1*` PNG assets only. The `Release` workflow records an exact
 > `dim-sum-id` marker, image asset marker, byte count, and SHA-256 in its notes,
 > and publication requires the attached image to be present and downloadable.
-> A fresh hosted run must still prove the updated path end to end.
+> The no-copy path records verified public metadata but fails the required-photo
+> row rather than claiming that a copied release asset is compliant. A fresh
+> hosted run must prove that the block is visible and honest.
 
 ## Behaviour
 
@@ -65,11 +67,12 @@ down rather than left implicit:
 - **A consumer repository must not copy public catalogue photos** or add to its
   bundled set; it may *link* the public photo.
 
-They are resolved at different storage boundaries. The **code name and source
-photo link** come from the public catalogue, while the release job downloads the
-published source asset into run-scoped staging, verifies it, and attaches that
-verified byteset to the release. The consumer repository never tracks the image,
-adds it to its bundled catalog, or uses a stale local copy.
+They remain a deliberate policy conflict. The **code name and source photo link**
+come from the public catalogue, and the release job may verify that authoritative
+link in run-scoped storage, but the no-copy rule forbids attaching those bytes to
+the consumer release. The workflow records the verified metadata and stops at
+the required downloadable-photo row. It never tracks the image, adds it to the
+bundled catalog, or uses a stale local copy.
 
 ### How the spent dishes are found
 
@@ -106,13 +109,15 @@ Three degradations, in order:
 
 | Situation | Behaviour |
 | --- | --- |
-| Public catalogue unreachable | Emits `source=unavailable` and empty code-name and image fields; the image Chut blocks publication |
-| No unused dish with a published image | Emits an empty `id`; the version remains authoritative, but the required image Chut blocks publication |
+| Public catalogue unreachable | Emits `source=unavailable` and empty code-name and image fields; image validation blocks publication |
+| No unused dish with a published image | Emits an empty `id`; the version remains authoritative, but required image validation blocks publication |
 | Download, decode, size, signature, or hash verification fails | The workflow fails closed before publication and preserves the exact failure in the run log |
 
 This is deliberate and auditable. A code name is decoration with a purpose, while
-the required image is independently verified at the release boundary. An
-unavailable code name is not turned into a guessed name or a local fallback.
+the source image metadata is independently verified at the release boundary.
+The required downloadable-photo row remains blocked until one policy decision
+authorizes a compliant storage route. An unavailable code name is not turned
+into a guessed name or a local fallback.
 
 ### Output
 
@@ -134,9 +139,10 @@ The script prints key-value lines suitable for a workflow output file:
 | `source` | `public` when the name and image were resolved from the catalogue, otherwise `unavailable`. |
 
 The workflow uses `codename` in the release title and notes, `id` in the
-spent-marker comment, `photo_url` as the public source link, and `image` plus
-`image_dish` to stage the verified image asset. The image is never tracked in
-this repository or added to its bundled catalog.
+spent-marker comment, `photo_url` as the authoritative public source link, and
+`image` plus `image_dish` for verified metadata. The image is never tracked in
+this repository or attached to its release while the no-copy rule remains in
+force.
 
 ### The dish's names stay factual
 
@@ -163,7 +169,7 @@ local copy is not auditable.
 | The same code name on two releases | A prior release's marker comment was missing, malformed, or unreadable | The marker is what makes the pick idempotent. Check the notes template still emits it, and that the token used to read prior releases has permission to. |
 | The code name is a fragment of a description | The record flattening took a later `en` than the one under `name` | Each field is taken once per record for exactly this reason; if that guard is removed, this returns. |
 | The photo link 404s | The dish's asset is not on a `catalog-v1*` release | The script only picks dishes whose asset it found; a 404 means the public release was changed after the pick. |
-| No photo attached at all | The public catalog image was unavailable, missing, or failed verification | Publication stops before `gh release create`; inspect the image Chut and its preserved run evidence. |
+| No photo attached at all | The public catalog image was unavailable, missing, or failed verification | Publication stops before `gh release create`; inspect image validation and its preserved run evidence. |
 | Only some prior releases were consulted | The release listing was truncated or a body marker was unreadable | The selector uses a 1000-release listing and the publication path fails when the selected marker or image is absent. |
 | The script exits `2` | It could not find the repository root | It is run from outside a checkout. |
 
@@ -180,7 +186,7 @@ local copy is not auditable.
 - **The script executes nothing from the catalogue.** It reads a text index, tests
   set membership, and checks whether files exist.
 - **A catalogue fetch failure is reported.** An unreachable public index leaves the
-  code-name and image fields empty; the required image Chut prevents publication.
+  code-name and image fields empty; required image validation prevents publication.
 
 ## Verification
 
@@ -208,10 +214,11 @@ scripts/release-codename.sh --used ''
 scripts/release-codename.sh --used "$(seq -f 'hk-dish-%04g' 1 24 | paste -sd, -)"
 ```
 
-The live release workflow independently downloads the selected public image,
+The live release workflow independently verifies the selected public image link,
 checks the PNG signature and dimensions, computes its SHA-256 and byte count, and
-records those facts in the release notes before publication. A hosted run is the
-authoritative evidence for that end-to-end attachment step.
+then stops at the required downloadable-photo row because no copied image may be
+attached. A hosted run is the authoritative evidence for that link-only proof and
+the explicit block.
 
 ## Suggested reading
 

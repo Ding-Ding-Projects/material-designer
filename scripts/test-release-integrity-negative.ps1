@@ -103,6 +103,30 @@ try {
     $text = [IO.File]::ReadAllText($path)
     [IO.File]::WriteAllText($path, $text.Replace("Status -ne 'NotSigned'", "Status -ne 'Signed'"))
   }
+  Expect-Red 'comment-out-public-image-validation' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('          curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"', '          # curl -fsSL --max-time 60 "$CATALOG_IMAGE_URL" -o "$photo_path"'))
+  }
+  Expect-Red 'allow-duplicate-pages-fields' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('= "1" ] ||', '-gt "0" ] ||'))
+  }
+  Expect-Red 'comment-out-prior-release-body-read' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/release.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('            if ! gh release view "$tag"', '            # if ! gh release view "$tag"'))
+  }
+  Expect-Red 'remove-safe-pages-parser' {
+    param($fixture)
+    $path = Join-Path $fixture '.github/workflows/pages.yml'
+    $text = [IO.File]::ReadAllText($path)
+    [IO.File]::WriteAllText($path, $text.Replace('          set_link() {', '          # set_link() {'))
+  }
 
   $restored = New-Fixture
   try {
@@ -111,7 +135,7 @@ try {
   } finally {
     if (Test-Path -LiteralPath $restored) { Remove-Item -LiteralPath $restored -Recurse -Force }
   }
-  Write-Output 'PASS: eight exact release-integrity mutations turned red, then the restored contract returned green.'
+  Write-Output 'PASS: twelve exact release-integrity mutations, including comment-out, duplicate-field, and page-parser mutations, turned red, then the restored contract returned green.'
 } finally {
   if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
   Set-Location $root

@@ -13,6 +13,14 @@ How a release is produced, what proves it works, and what each published file is
 | [code-names.md](code-names.md) | How the dim sum code name is chosen from the public catalogue, why spent dishes are read out of prior releases rather than a counter, and why the unresolved photo conflict currently stops publication. |
 | [release-assets.md](release-assets.md) | What each attached file is, which uploads go to the run rather than the release, and what is deliberately absent — no signature and no non-Windows artifacts. |
 
+> [!IMPORTANT]
+> **Release-integrity update, 2026-08-27.** The selector and verification path
+> now uses exhaustive public release pagination, strict catalog and output bounds,
+> exact prior-release markers, and link-only image verification. The required
+> downloadable-photo row remains explicitly blocked because the public no-copy
+> rule forbids attaching copied catalog bytes. No release is claimed from that
+> blocked state.
+
 ## Status
 
 > [!WARNING]
@@ -47,7 +55,7 @@ How a release is produced, what proves it works, and what each published file is
 | Where does it build? | The pinned hosted `windows-2022` image, from clean checkout to publication. |
 | What is the tag? | `v<version>-r<run number>.<run attempt>` — unique and monotonic without a counter to maintain. |
 | What must pass first? | Dependency bootstrap, frozen-lockfile install, packaging, payload validation, the explicit installer-path check, unsigned-artifact evidence and publication verification. Tests, lint, typecheck, static analysis and screenshot checks run only locally/manual and never gate Actions. |
-| What gets published? | Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, a portable archive when one was built, and the code name's photograph. |
+| What gets published? | When the photo policy is resolved, Squirrel.Windows `Setup.exe`, `RELEASES`, full/delta `.nupkg` packages, `metadata.json`, a SHA-256 file, and the code name's verified photograph. Until then, publication is blocked and no incomplete release is claimed. |
 | How does the app update? | Packaged stable Windows builds read the project-owned `metadata.json` feed, download `Setup.exe` in the background, and wait for **Restart to install update**. |
 | Is it signed? | No. The notes say so, because an unsigned installer triggers the operating system's reputation screen. |
 | Who counts the lines? | The run does, using a committed script, at the released commit. Never a person. |

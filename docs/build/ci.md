@@ -310,14 +310,16 @@ failure.
 **12 — Count lines.** `node scripts/line-count.mjs` into a file, with an honest
 fallback line if it fails, so the release notes never carry a fabricated number.
 
-**13: Choose the code name and image.** `scripts/release-codename.sh` reads
+**13: Choose the code name and image metadata.** `scripts/release-codename.sh` reads
 every existing release body, skips each exact `dim-sum-id` marker, and selects
 only a dish whose image is present on a published `catalog-v1*` release. The
-next Chut downloads, decodes, sizes, hashes, and stages that exact public PNG.
-Missing `image` or `image_dish` output blocks publication.
+next validation step verifies, decodes, sizes, and hashes that exact public PNG
+through its authoritative link without attaching copied bytes. Missing `image` or
+`image_dish` output blocks publication, as does the unresolved required-photo row.
 
-**14 — Publish.** `gh release create` with a generated notes file, `--latest`,
-and every staged asset plus the code name's image.
+**14: Publish.** `gh release create` with a generated notes file, `--latest`,
+and every staged Squirrel asset. The current no-copy policy block prevents a
+successful publication when the governing downloadable-photo row cannot be met.
 
 </details>
 
@@ -430,7 +432,7 @@ run untrusted checkout content on them.
 | Smoke test fails | The built application does not install, launch, answer its health check, or uninstall cleanly | A real defect in the artifact. The installer still uploads as an artifact for inspection. |
 | A release published with no installer | Packaging succeeded, asset upload did not | Treat as a failed release. A release without its artifact is worse than none, because it looks complete. |
 | The same code name twice | The prior release's `dim-sum-id` marker was missing, malformed, or unreadable | The release workflow reads every prior body and refuses duplicate publication when the exact tag already exists. |
-| No code name chosen | Every dish with a published image is spent, or the public catalog is unavailable | The selector exits `0` with `source=unavailable`; the version remains authoritative, but the required image Chut blocks publication. |
+| No code name chosen | Every dish with a published image is spent, or the public catalog is unavailable | The selector exits `0` with `source=unavailable`; the version remains authoritative, but required image validation blocks publication. |
 | Required image missing | The selected public asset is absent, empty, not PNG, undecodable, or has a different size/hash | Publication stops before `gh release create`, with the run preserving its diagnostics. |
 | Pages shows stale release facts | Pages ran before a matching successful Release or accepted a different commit | Pages waits for the exact SHA, resolves exactly one published release, and rejects stale markers before upload. |
 
@@ -486,8 +488,10 @@ What the published runs have demonstrated:
 - [x] typecheck and the three identity suites passing
 - [x] an installer produced, its reported path present, its payload validated
 - [x] the smoke test installing, launching, health-checking and uninstalling
-- [x] a non-draft release under a fresh `v<version>-r<run>` tag with the
-      installer, its checksum file and the code name image attached
+- [x] a historical non-draft release under a fresh `v<version>-r<run>` tag with
+      the installer, its checksum file and a code name image attached
+- [ ] a current release with a verified public catalog image attached; the
+      no-copy policy currently blocks this required-photo row
 - [x] the line-count table present in the notes
 - [x] a second release picking a **different** code name
 

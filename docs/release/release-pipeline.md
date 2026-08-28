@@ -13,10 +13,11 @@ release lane.
 > release. Any successful publication still has to be exactly one unique,
 > non-draft release targeted at the workflow SHA, with timing, hashes, required
 > Squirrel files and post-publication verification. The workflow now selects an
-> unused public-catalog id, downloads the matching published PNG into run-scoped
-> staging, verifies the signature, decodes it, checks bytes and SHA-256, and
-> requires the image in the release. Code-name-only unavailability remains an
-> honest empty selector result, while missing required image evidence blocks.
+> unused public-catalog id, verifies the matching published PNG through its
+> authoritative link in run-scoped storage, records the metadata, and then stops
+> at the governing downloadable-photo row because the no-copy rule forbids
+> attaching copied bytes. Code-name-only unavailability remains an honest empty
+> selector result, while missing required image evidence blocks.
 
 How a release is produced, end to end, from a push to a published installer.
 Everything happens inside one workflow run on the pinned hosted `windows-2022`
@@ -202,15 +203,18 @@ because one of its own self-checks tripped, and that reason belongs in the log.
 
 **15: Choose the code name and image.** See [code-names.md](code-names.md). The
 selector reads every prior release marker, skips spent ids, and only accepts a
-published `catalog-v1*` PNG. The following Chut downloads, decodes, sizes, hashes,
-and stages that exact public image. Missing `image` or `image_dish` output fails
-before publication.
+published `catalog-v1*` PNG. The following validation step downloads, decodes, sizes, hashes,
+and records the exact public image metadata without staging it as a consumer
+release asset. Missing `image` or `image_dish` output fails before publication.
+The no-copy policy block is explicit and is not reported as a successful release.
 
 **16 — Publish.** A generated notes file, `--latest`, every staged Squirrel asset,
-the verified catalog image, the explicit `--target "$GITHUB_SHA"`, and
-post-publication target/hash/asset verification. The notes carry stable release,
-commit, dish-id, image-asset, image-byte, and image-SHA markers so a later run can
-prove that the same dish was not reused.
+the explicit `--target "$GITHUB_SHA"`, and post-publication target/hash/asset
+verification. The current no-copy policy block prevents publication after the
+verified public image metadata step, so no release notes are emitted as though a
+required image had been attached. If the policy is resolved later, the notes
+carry stable release, commit, dish-id, image-asset, image-byte, and image-SHA
+markers so a later run can prove that the same dish was not reused.
 
 **17 — Summarise.** Version, tag, installer name, smoke-test outcome and code name
 into the run summary.

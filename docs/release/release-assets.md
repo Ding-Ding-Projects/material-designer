@@ -4,20 +4,22 @@
 > **Release-integrity repair, 2026-08-27.** A new release must contain the real
 > unsigned Squirrel `Setup.exe`, `RELEASES`, full package and delta packages when
 > produced, `metadata.json`, icon, checksum, provenance evidence, and one verified
-> PNG downloaded from a published public catalog release. The catalog image is
-> staged only for that run and release; it is never added to this repository or
-> its bundled catalog. Missing image, hash, decode, or asset evidence blocks
-> publication.
+> PNG from a published public catalog release. The no-copy path verifies the
+> authoritative public link and records its metadata without attaching copied
+> bytes. The required downloadable-photo row remains blocked until the owner
+> resolves that policy conflict. Missing image, hash, decode, or asset evidence
+> blocks publication.
 
 What is attached to a published release, what each file is for, what is uploaded
 to the run but *not* to the release, and what is deliberately absent.
 
 > [!IMPORTANT]
-> **Status: source repair complete, hosted evidence pending.** The release workflow
-> stages a project-owned Squirrel.Windows feed and now verifies the current public
-> catalog image before publication. It publishes intentionally unsigned artifacts
-> and verifies `NotSigned`. Historical releases remain retained as historical
-> evidence. There is **no
+> **Status: source repair complete, hosted publication intentionally blocked.**
+> The release workflow stages a project-owned Squirrel.Windows feed and verifies
+> the current public catalog image metadata without attaching a copied image. It
+> publishes intentionally unsigned artifacts and verifies `NotSigned` whenever
+> the required photo policy is resolved. Historical releases remain retained as
+> historical evidence. There is **no
 > macOS or Linux artifact** — that absence is deliberate
 > and is explained below rather than left for a reader to notice.
 
@@ -31,7 +33,7 @@ to the run but *not* to the release, and what is deliberately absent.
 | `*-full.nupkg` / `*-delta.nupkg` | Squirrel.Windows' complete and delta update packages, copied from the build that produced `Setup.exe`. |
 | `metadata.json` | Material Designer's updater feed. It names the stable Windows `Setup.exe`, its immutable release URL and its SHA-256. |
 | `material-designer.ico` | The Squirrel.Windows icon asset used by the installer and shortcut lifecycle. |
-| `dim-sum-<dish id>.png` | The release's verified dim sum code-name photograph, downloaded from the matching published public catalog asset for this run. See [code-names.md](code-names.md). |
+| `dim-sum-<dish id>.png` | Reserved required release image name. It remains absent while the no-copy policy conflict blocks downloadable-photo publication. See [code-names.md](code-names.md). |
 
 Squirrel shortcuts are created by the packaged lifecycle rather than inferred
 from the unsigned executable's unchanged Electron version resource. The visible
@@ -149,7 +151,7 @@ Two mechanisms enforce it in practice:
 | The reputation screen blocks an installer | It is intentionally unsigned | Documented in the notes. **More info**, then run; the workflow verified `NotSigned` before publication. |
 | The app reports no update | The installed build is older than the feed's monotonic release version, or the published release predates the Squirrel feed | Check the stable `metadata.json` URL and the app's updater status; do not substitute an upstream feed. |
 | The update banner offers no restart action | The downloaded artifact was not identified as a Windows Squirrel installer | Confirm the feed artifact is named `Setup.exe` and the metadata `type` is `installer`. |
-| The code-name image is missing | No dish was available, or its file was absent | Never blocks a release. See [code-names.md](code-names.md). |
+| The code-name image is missing | No published public image was available, or the no-copy policy prevented attachment | The code name may be absent, but the governing downloadable-photo row blocks publication. See [code-names.md](code-names.md). |
 
 ## Security considerations
 
@@ -179,7 +181,7 @@ outcome, the commit, the run link and the provenance.
 build produces intentionally unsigned `Setup.exe` (`NotSigned`), `RELEASES`,
 full/delta `.nupkg` packages, the icon and `metadata.json`, and that the
 published stable feed is downloadable. Installed launch and updater interaction
-remain separate cheap-headless evidence rather than release-workflow Chuts.
+remain separate headless evidence rather than release-workflow checks.
 
 ```bash
 # list what a release actually carries

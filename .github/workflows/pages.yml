@@ -87,35 +87,76 @@ jobs:
 
           matches_file="${RUNNER_TEMP//\\//}/pages-release-matches-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tsv"
           : > "$matches_file"
+          release_tags_file="${RUNNER_TEMP//\\//}/pages-release-tags-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.txt"
+          if ! gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name' > "$release_tags_file"; then
+            echo "::error::published release listing failed while resolving the current checkout" >&2
+            exit 1
+          fi
           while IFS= read -r tag; do
             [ -n "$tag" ] || continue
-            body=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,body --jq '.body // ""' 2>/dev/null) || continue
+            candidate_json="${RUNNER_TEMP//\\//}/pages-release-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,body > "$candidate_json" 2>/dev/null; then
+              echo "::error::published release body read failed for $tag" >&2
+              exit 1
+            fi
+            body=$(jq -r '.body // ""' "$candidate_json")
+            candidate_draft=$(jq -r '.isDraft' "$candidate_json")
+            candidate_prerelease=$(jq -r '.isPrerelease' "$candidate_json")
             commit=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-commit: ([0-9a-f]{40}) -->$/\1/p' | head -1)
-            if [ "$commit" = "$expected_sha" ]; then
+            if [ "$commit" = "$expected_sha" ] && [ "$candidate_draft" = "false" ] && [ "$candidate_prerelease" = "false" ]; then
               printf '%s\t%s\n' "$tag" "$commit" >> "$matches_file"
             fi
-          done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --json tagName --jq '.[].tagName')
+          done < "$release_tags_file"
           match_count=$(wc -l < "$matches_file" | tr -d '[:space:]')
           [ "$match_count" = "1" ] || { echo "::error::expected exactly one published release for $expected_sha, found $match_count" >&2; exit 1; }
           release_tag=$(cut -f1 "$matches_file")
-          release_json=$(gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft,isPrerelease,assets,body)
+          if ! release_json=$(gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" --json tagName,name,isDraft,isPrerelease,assets,body); then
+            echo "::error::selected published release could not be read back" >&2
+            exit 1
+          fi
           [ "$(printf '%s' "$release_json" | jq -r '.tagName')" = "$release_tag" ] || { echo "::error::release tag identity changed during resolution" >&2; exit 1; }
           [ "$(printf '%s' "$release_json" | jq -r '.isDraft')" = "false" ] || { echo "::error::selected release is still a draft" >&2; exit 1; }
           [ "$(printf '%s' "$release_json" | jq -r '.isPrerelease')" = "false" ] || { echo "::error::selected release is a prerelease" >&2; exit 1; }
           body=$(printf '%s' "$release_json" | jq -r '.body // ""')
-          version=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-version: ([0-9][0-9.]*) -->$/\1/p' | head -1)
-          commit=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-commit: ([0-9a-f]{40}) -->$/\1/p' | head -1)
-          codename=$(printf '%s\n' "$body" | sed -nE 's/^<!-- release-codename: (.*) -->$/\1/p' | head -1)
-          image_asset=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-image-asset: ([a-z0-9-]+\.png) -->$/\1/p' | head -1)
-          image_sha=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-image-sha256: ([0-9a-f]{64}) -->$/\1/p' | head -1)
-          image_id=$(printf '%s\n' "$body" | sed -nE 's/^<!-- dim-sum-id: (hk-dish-[0-9]+) -->$/\1/p' | head -1)
-          for value in "$version" "$commit" "$codename" "$image_asset" "$image_sha" "$image_id"; do
+          marker_value() {
+            local marker=$1 line count
+            count=$(printf '%s\n' "$body" | grep -F -c "<!-- $marker: " || true)
+            [ "$count" = "1" ] || { echo "::error::release marker $marker must occur exactly once, found $count" >&2; exit 1; }
+            line=$(printf '%s\n' "$body" | grep -F "<!-- $marker: ")
+            line=${line#"<!-- $marker: "}
+            printf '%s\n' "${line% -->}"
+          }
+          release_tag_marker=$(marker_value release-tag)
+          version=$(marker_value release-version)
+          commit=$(marker_value release-commit)
+          package_id=$(marker_value release-package)
+          installer_marker=$(marker_value release-installer)
+          codename=$(marker_value release-codename)
+          image_id=$(marker_value dim-sum-id)
+          catalog_tag=$(marker_value dim-sum-catalog-tag)
+          image_source=$(marker_value dim-sum-image-source)
+          image_dish=$(marker_value dim-sum-image-dish)
+          image_asset=$(marker_value dim-sum-image-asset)
+          image_sha=$(marker_value dim-sum-image-sha256)
+          for value in "$release_tag_marker" "$version" "$commit" "$package_id" "$installer_marker" "$codename" "$image_id" "$catalog_tag" "$image_source" "$image_dish" "$image_asset" "$image_sha"; do
             [ -n "$value" ] || { echo "::error::the published release is missing a required machine-readable fact" >&2; exit 1; }
           done
+          [ "$release_tag_marker" = "$release_tag" ] || { echo "::error::release tag marker does not match the selected tag" >&2; exit 1; }
+          [ "$package_id" = "open-design-packaged-app" ] || { echo "::error::release package marker is not the expected package" >&2; exit 1; }
+          printf '%s' "$release_tag_marker" | grep -Eq '^v[0-9.]+-r[0-9]+\.[0-9]+$' || { echo "::error::release tag marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::release version marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$commit" | grep -Eq '^[0-9a-f]{40}$' || { echo "::error::release commit marker has an unsafe format" >&2; exit 1; }
           [ "$commit" = "$expected_sha" ] || { echo "::error::published release commit does not match the current checkout" >&2; exit 1; }
+          [ "$image_id" = "$image_dish" ] || { echo "::error::catalog dish markers do not match" >&2; exit 1; }
+          printf '%s' "$installer_marker" | grep -Eq '^material-designer-[0-9][0-9.]*-win-x64-setup\.exe$' || { echo "::error::release installer marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$image_asset" | grep -Eq '^hk-dish-[0-9]{4}-[a-z0-9-]+\.png$' || { echo "::error::catalog image marker has an unsafe format" >&2; exit 1; }
+          printf '%s' "$catalog_tag" | grep -Eq '^catalog-v1([.-][a-z0-9]+)*$' || { echo "::error::catalog release marker has an unsafe format" >&2; exit 1; }
+          expected_image_source="https://github.com/Ding-Ding-Projects/dim-sum-photos/releases/download/$catalog_tag/$image_asset"
+          [ "$image_source" = "$expected_image_source" ] || { echo "::error::release image source does not bind to the catalog tag and asset" >&2; exit 1; }
+          printf '%s' "$codename" | grep -Eq '^[^[:cntrl:]]{1,320}$' || { echo "::error::release code name contains unsafe characters or is too long" >&2; exit 1; }
           installer=$(printf '%s' "$release_json" | jq -r '[.assets[] | select((.name | endswith("setup.exe")) and ((.size // 0) > 0))] | if length == 1 then .[0].name else empty end')
           installer_bytes=$(printf '%s' "$release_json" | jq -r --arg n "$installer" '[.assets[] | select(.name == $n) | .size][0] // empty')
-          [ -n "$installer" ] && [ -n "$installer_bytes" ] || { echo "::error::current release does not have exactly one downloadable installer" >&2; exit 1; }
+          [ "$installer" = "$installer_marker" ] && [ -n "$installer_bytes" ] || { echo "::error::current release does not bind exactly one downloadable installer to its marker" >&2; exit 1; }
           printf '%s\n' "$body" | grep -F 'Workflow duration:' >/dev/null || { echo "::error::current release has no verified workflow duration" >&2; exit 1; }
           printf '%s\n' "$body" | grep -F 'Lines of code' >/dev/null || { echo "::error::current release has no line-count evidence" >&2; exit 1; }
           jq -e --arg n "$image_asset" '[.assets[] | select(.name == $n and .contentType == "image/png" and (.size // 0) > 0)] | length == 1' <<< "$release_json" >/dev/null || { echo "::error::current release is missing its verified PNG catalog image asset" >&2; exit 1; }
@@ -127,24 +168,138 @@ jobs:
           rm -rf "$verify_dir"
           mkdir -p "$verify_dir"
           gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern "$installer.sha256" --pattern "$image_asset" --dir "$verify_dir" --clobber
+          gh release download "$release_tag" --repo "$GITHUB_REPOSITORY" --pattern metadata.json --dir "$verify_dir" --clobber
+          installer_sha=$(cat "$verify_dir/$installer.sha256" | tr -d '\r' | awk '{print tolower($1)}')
+          [ "${#installer_sha}" = "64" ] || { echo "::error::published installer checksum is missing or malformed" >&2; exit 1; }
+          jq -e --arg version "$version" --arg installer "$installer" --arg sha "$installer_sha" '.releaseVersion == $version and .signed == false and (.platforms.win.artifacts.installer.url | endswith("/" + $installer)) and .platforms.win.artifacts.installer.sha256 == $sha' "$verify_dir/metadata.json" >/dev/null || { echo "::error::published metadata does not bind version, installer, unsigned state, and checksum" >&2; exit 1; }
           image_actual_sha=$(sha256sum "$verify_dir/$image_asset" | awk '{print tolower($1)}')
           [ "$image_actual_sha" = "$image_sha" ] || { echo "::error::published image hash does not match release notes" >&2; exit 1; }
           image_magic=$(od -An -tx1 -N8 "$verify_dir/$image_asset" | tr -d '[:space:]')
           [ "$image_magic" = "89504e470d0a1a0a" ] || { echo "::error::published image is not a PNG" >&2; exit 1; }
+          export PHOTO_PATH="$verify_dir/$image_asset"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command '$ErrorActionPreference="Stop"; Add-Type -AssemblyName System.Drawing; $stream=[IO.File]::OpenRead($env:PHOTO_PATH); try { $image=[Drawing.Image]::FromStream($stream, $true, $true); if ($image.RawFormat.Guid -ne [Drawing.Imaging.ImageFormat]::Png.Guid) { throw "published catalog image decoder did not identify PNG" }; if ($image.Width -lt 1 -or $image.Height -lt 1) { throw "published catalog image has invalid dimensions" }; Write-Host ("Decoded published catalog image {0}x{1}" -f $image.Width,$image.Height) } finally { if ($null -ne $image) { $image.Dispose() }; $stream.Dispose() }'
 
           mb=$(( (installer_bytes + 524288) / 1048576 ))
           chip="${version} · x64 · ${mb} MB"
           installer_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${installer}"
           image_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${image_asset}"
           f=site/index.html
+          escape_html() {
+            printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
           set_field() {
             local key=$1 value=$2
-            local count escaped
+            local count escaped temp_file
             count=$(grep -o "data-release=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
-            [ "$count" -gt 0 ] || { echo "::error::site is missing data-release field $key" >&2; exit 1; }
-            escaped=$(printf '%s' "$value" | sed 's/[&|\\]/\\&/g')
-            sed -i "s|\(data-release=\"$key\"[^>]*>\)[^<]*|\1$escaped|g" "$f"
-            grep -F "data-release=\"$key\">$value" "$f" >/dev/null || { echo "::error::site field $key was not updated" >&2; exit 1; }
+            [ "$count" = "1" ] || { echo "::error::site field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-mutate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 41
+                  tail = substr(line, start)
+                  gt = index(tail, ">")
+                  if (gt == 0) exit 42
+                  gt = start + gt - 1
+                  rest = substr(line, gt + 1)
+                  lt = index(rest, "<")
+                  if (lt == 0) exit 43
+                  lt = gt + lt
+                  line = substr(line, 1, gt) replacement substr(line, lt)
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 44 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "data-release=\"$key\">$escaped<" "$f" >/dev/null || { echo "::error::site field $key was not updated" >&2; exit 1; }
+          }
+
+          set_cell_field() {
+            local key=$1 value=$2
+            local count escaped temp_file
+            count=$(grep -o "data-release=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::site cell field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-cell-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; replaced = 0 }
+              {
+                line = $0
+                start = index(line, marker)
+                if (start > 0) {
+                  hits++
+                  if (hits > 1) exit 51
+                  tail = substr(line, start)
+                  gt = index(tail, ">")
+                  end_pos = index(tail, "</td>")
+                  if (gt == 0 || end_pos == 0 || end_pos <= gt) exit 52
+                  gt = start + gt - 1
+                  end_pos = start + end_pos - 1
+                  line = substr(line, 1, gt) replacement substr(line, end_pos)
+                  replaced = 1
+                }
+                print line
+              }
+              END { if (hits != 1 || replaced != 1) exit 53 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site cell field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "data-release=\"$key\">$escaped</td>" "$f" >/dev/null || { echo "::error::site cell field $key was not updated" >&2; exit 1; }
+          }
+
+          set_link() {
+            local key=$1 value=$2
+            local count escaped temp_file
+            count=$(grep -o "data-release-href=\"$key\"" "$f" | wc -l | tr -d '[:space:]')
+            [ "$count" = "1" ] || { echo "::error::site link field $key must occur exactly once, found $count" >&2; exit 1; }
+            escaped=$(escape_html "$value")
+            temp_file="${RUNNER_TEMP//\\//}/pages-link-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${key}.tmp"
+            if ! awk -v marker="data-release-href=\"$key\"" -v replacement="$escaped" '
+              BEGIN { hits = 0; inside = 0; replaced = 0 }
+              {
+                line = $0
+                if (index(line, marker) > 0) {
+                  hits++
+                  if (hits > 1) exit 61
+                  inside = 1
+                }
+                if (inside) {
+                  start = index(line, "href=\"")
+                  if (start > 0) {
+                    rest = substr(line, start + 6)
+                    close = index(rest, "\"")
+                    if (close == 0) exit 62
+                    line = substr(line, 1, start + 5) replacement substr(rest, close)
+                    inside = 0
+                    replaced = 1
+                  } else if (index(line, ">") > 0) {
+                    exit 63
+                  }
+                }
+                print line
+              }
+              END { if (hits != 1 || inside != 0 || replaced != 1) exit 64 }
+            ' "$f" > "$temp_file"; then
+              rm -f "$temp_file"
+              echo "::error::site link field $key has an unsafe or ambiguous HTML shape" >&2
+              exit 1
+            fi
+            mv "$temp_file" "$f"
+            grep -F "href=\"$value\"" "$f" >/dev/null || { echo "::error::site link field $key was not updated" >&2; exit 1; }
           }
 
           set_field tag       "$release_tag"
@@ -156,20 +311,9 @@ jobs:
           set_field image     "$image_asset"
           set_field image-sha "$image_sha"
 
-          cn=$(printf '%s' "$codename" | sed 's/[&|\\]/\\&/g')
-          codename_count=$(grep -o 'data-release="codename"' "$f" | wc -l | tr -d '[:space:]')
-          [ "$codename_count" -gt 0 ] || { echo "::error::site is missing the release code-name field" >&2; exit 1; }
-          sed -i "s|\(data-release=\"codename\"[^>]*>\).*</td>|\1$cn</td>|g" "$f"
-          grep -F "data-release=\"codename\">$codename</td>" "$f" >/dev/null || { echo "::error::site code-name field was not updated" >&2; exit 1; }
-
-          esc_url=$(printf '%s' "$installer_url" | sed 's/[&|\\]/\\&/g')
-          installer_link_count=$(grep -o 'data-release-href="installer"' "$f" | wc -l | tr -d '[:space:]')
-          [ "$installer_link_count" -gt 0 ] || { echo "::error::site is missing the installer link field" >&2; exit 1; }
-          sed -i "s|\(data-release-href=\"installer\"[^>]*href=\)\"[^\"]*\"|\1\"$esc_url\"|g" "$f"
-          grep -F "href=\"$installer_url\"" "$f" >/dev/null || { echo "::error::site installer link was not updated" >&2; exit 1; }
-          image_url_escaped=$(printf '%s' "$image_url" | sed 's/[&|\\]/\\&/g')
-          sed -i "s|\(data-release-href=\"image\"[^>]*href=\)\"[^\"]*\"|\1\"$image_url_escaped\"|g" "$f"
-          grep -F "href=\"$image_url\"" "$f" >/dev/null || { echo "::error::site image link was not updated" >&2; exit 1; }
+          set_cell_field codename "$codename"
+          set_link installer "$installer_url"
+          set_link image "$image_url"
 
           printf 'tag=%s\nversion=%s\ncommit=%s\ninstaller=%s\nimage=%s\nimage_sha=%s\n' "$release_tag" "$version" "$commit" "$installer" "$image_asset" "$image_sha" >> "$GITHUB_OUTPUT"
           echo "Published release facts refreshed from $release_tag targeting $commit"
@@ -187,3 +331,17 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Clean release-resolution evidence
+        if: ${{ always() }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $paths = @(
+            (Join-Path $env:RUNNER_TEMP "pages-release-matches-${{ github.run_id }}-${{ github.run_attempt }}.tsv"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-tags-${{ github.run_id }}-${{ github.run_attempt }}.txt"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-candidate-${{ github.run_id }}-${{ github.run_attempt }}.json"),
+            (Join-Path $env:RUNNER_TEMP "pages-release-verify-${{ github.run_id }}-${{ github.run_attempt }}")
+          )
+          foreach ($path in $paths) {
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction SilentlyContinue }
+          }

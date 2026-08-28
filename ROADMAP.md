@@ -1,25 +1,28 @@
 # Roadmap
 
-- [~] **Repair release identity, required catalog image attachment, and Pages
+- [~] **Repair release identity, required catalog image validation, and Pages
       freshness.** `scripts/release-codename.sh` now uses the public catalog and
       published `catalog-v1*` PNG assets, excludes every exact `dim-sum-id` found
       in prior release notes, and emits `image` plus `image_dish` metadata. The
-      Release workflow downloads, decodes, size-checks, hashes, and attaches the
-      selected image, records stable release markers, rejects duplicate tags,
-      and fails when the required image is missing. Pages waits for a successful
-      Release for the exact checkout SHA, resolves exactly one matching published
-      release, and refuses stale facts. The local validator and its eight
-      deliberate red-then-green mutations pass. A hosted run at this source
-      commit remains required before ticking this item.
+      Release workflow verifies, decodes, size-checks, and hashes the selected
+      authoritative image link without attaching copied bytes, then explicitly
+      blocks at the governing downloadable-photo row. It records the block rather
+      than claiming success, rejects duplicate tags, and preserves the single
+      policy decision for the owner. Pages waits for a successful Release for the
+      exact checkout SHA, resolves exactly one matching published release, and
+      refuses stale facts. The local validator and its deliberate red-then-green
+      mutations pass. A hosted run must prove the explicit block before ticking
+      this item.
 
       **廣東話進度：** Release identity、catalog 相同 Pages freshness 已經
       修好。`scripts/release-codename.sh` 而家只用 public catalog 同 published
       `catalog-v1*` PNG，見到 prior release notes 嘅 `dim-sum-id` 就跳過，仲會
-      清楚傳出 `image` 同 `image_dish`。Release workflow 會下載、decode、驗
-      signature、bytes、SHA-256 再 attach，marker 齊晒，撞 tag 或無相就停。
+      清楚傳出 `image` 同 `image_dish`。Release workflow 會經 authoritative
+      link 做 decode、signature、bytes、SHA-256 驗證，但唔會 attach copied
+      bytes，required-photo row 會明確 block，唔扮成功；撞 tag 或無相都停。
       Pages 會等同一個 checkout SHA 嘅成功 Release，唯一 matching release
-      先准更新，舊 facts 唔可以混入。Local validator 八個故意拆線全部先
-      轉紅再還原轉綠；仲要 hosted run 證明先可以剔滿。
+      先准更新，舊 facts 唔可以混入。Local validator 同故意拆線測試會先
+      轉紅再還原轉綠；仲要 hosted run 證明 explicit block 先可以剔滿。
 
 - [ ] **Complete hosted verification of the public instruction mirrors and privacy
       guard.** The source work in `AGENTS.md`, `README.md`, and
@@ -109,13 +112,13 @@
 > identify the packer root cause. Installed launch, updater, removal and parity
 > evidence remain open.
 
-The former dim-sum image policy conflict is resolved at the storage boundary:
-the workflow never adds an image to this repository or its bundled catalog, but
-it does stage the exact published public PNG for the release, verify its bytes,
-and attach it when the governing release contract requires a downloadable image.
-Missing image evidence still blocks publication. Package, unsigned, provenance,
-target-SHA, asset-hash, timing, line-count, duplicate-release, and
-publication-verification requirements remain active.
+The dim-sum image policy conflict remains explicit. The workflow never adds an
+image to this repository or its bundled catalog, verifies the authoritative
+public PNG link and metadata in run-scoped storage, and then blocks the
+governing downloadable-photo row rather than attaching copied bytes or claiming
+success. Package, unsigned, provenance, target-SHA, asset-hash, timing,
+line-count, duplicate-release, and publication-verification requirements remain
+active.
 
 The honest burn-down between where this repository is today and full conformance
 with the project's standards.
@@ -832,10 +835,12 @@ Not by a local build — local builds do not happen here.
       identical tuples, including the
       light/dark, normal/narrow, 100/125/150/200% and bilingual matrix, with immutable
       receipts, labelled comparisons, visual diffs and per-control reviews.
-- [x] **Allow the current Squirrel release to omit its dim-sum photo.** This is
-      a temporary owner-authorized exception, not a resolution of the two
-      conflicting standards. The workflow emits a warning, states the omission
-      in release notes, and does not copy or attach a catalog image.
+- [~] **Resolve the Squirrel release photo-policy conflict.** Historical releases
+      used a temporary owner-authorized omission, which is retained only as
+      historical evidence. The current workflow verifies the authoritative public
+      image link and metadata, does not copy or attach catalog bytes, and blocks
+      the governing downloadable-photo row until the owner chooses a compliant
+      route.
 - [x] **Publish exactly one release per successful run**, with a unique
       monotonic tag, the genuinely built installer attached, and no draft state.
       The publish step is gated on `success()`, so a run whose tests fail

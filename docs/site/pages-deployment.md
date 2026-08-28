@@ -7,6 +7,14 @@ the checked-out commit and reads that published release back before changing the
 release panel. A Pages run can therefore never silently reuse stale checked-in
 installer, tag, commit, image, or hash facts.
 
+> [!WARNING]
+> **Current release-integrity boundary, 2026-08-27.** The Release workflow now
+> verifies the authoritative public catalog image link, but its required-photo
+> row remains blocked because no copied image may be attached under the public
+> no-copy policy. A fresh Pages run therefore waits for or reports the missing
+> successful Release rather than deploying stale facts. The older deployed page
+> remains historical evidence only.
+
 > [!NOTE]
 > **The site is deployed.** The workflow has run and published the site at the
 > repository-scoped Pages URL recorded in [README.md](README.md). The deployment
