@@ -8,6 +8,7 @@ $ReferenceSourcePath = Join-Path $Root 'tools/design-reference-app/main.mjs'
 $Inventory = Get-Content -LiteralPath $InventoryPath -Raw | ConvertFrom-Json
 $Routes = Get-Content -LiteralPath $RoutesPath -Raw | ConvertFrom-Json
 $ReferenceSource = Get-Content -LiteralPath $ReferenceSourcePath -Raw
+$RouteContractSource = Get-Content -LiteralPath (Join-Path $Root 'tools/design-reference-app/parity-route-contract.mjs') -Raw
 
 $ExpectedIds = @('home-default-light','projects-default-light','design-systems-default-light','automations-default-light','plugins-default-light','integrations-default-light','studio-default-light','library-default-light','settings-appearance-light','handoff-default-light')
 $ExpectedPaths = @('/','/projects','/design-systems','/automations','/plugins','/integrations','/studio','/library','/settings/appearance','/handoff')
@@ -63,6 +64,7 @@ function Assert-Contract($Inv, $Reg, [string]$Source) {
   $actualHash = (Get-FileHash -LiteralPath $ReferencePath -Algorithm SHA256).Hash.ToLowerInvariant()
   Require-Contract (($actualHash) -eq $Inv.reference.sha256) 'reference.hash_stale' 'reference hash does not match on-disk bytes'
   Require-Contract ($Source -notmatch '(?m)\bMath\.random\s*\(\)|\bDate\.now\s*\(\)|new\s+Date\s*\(\s*\)') 'tuple.nondeterministic_source' 'reference route source contains an unbound clock or random draw'
+  Require-Contract (($RouteContractSource -match 'export function evaluateCaptureNetwork') -and ($RouteContractSource -match 'capture\.network_unexpected_blocked') -and ($RouteContractSource -match 'export function createObservedParityWitness') -and ($RouteContractSource -match 'export function requireParityWitnessMatch')) 'witness.contract' 'network isolation and immutable witness functions are missing'
   Require-Contract (($Inv.routeIdentity.version -eq 1) -and ($Inv.routeIdentity.surfaceId -eq 'desktop-application') -and ($Inv.routeIdentity.headlessRoute -eq 'cheap-lowlevel-headless') -and ($Inv.routeIdentity.networkPolicy -eq 'disabled') -and ($Inv.routeIdentity.blockedRequestPolicy -eq 'fail')) 'route.identity_policy' 'route identity policy is incomplete'
   Require-Contract ((Join-Exact @($Inv.routeIdentity.fields)) -eq (Join-Exact $ExpectedIdentityFields)) 'route.identity_fields' 'route identity fields drifted'
   Require-Contract (($Inv.auditContract.controlAuditRequired -eq $true) -and ((Join-Exact @($Inv.auditContract.requiredFields)) -eq (Join-Exact @('id','primitive','region','locator','status','note')))) 'audit.control_audit' 'per-control audit requirements are missing'

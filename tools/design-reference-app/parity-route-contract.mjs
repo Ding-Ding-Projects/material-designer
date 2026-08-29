@@ -51,6 +51,13 @@ export const PARITY_CAPTURE_POLICY = Object.freeze({
   captureSettledWitnessRequired: true,
 });
 
+export const PARITY_WITNESS_FIELDS = Object.freeze([
+  'surfaceId', 'featureId', 'routeId', 'screen', 'state', 'theme', 'locale',
+  'viewportWidth', 'viewportHeight', 'displayScale', 'fixtureRevision', 'frozenTime',
+  'motion', 'randomSeed', 'bundledFontRevision', 'network', 'headlessRoute',
+  'rendererWitness', 'captureSettledWitness',
+]);
+
 const SCREEN_PATHS = Object.freeze({
   home: '/',
   projects: '/projects',
@@ -87,6 +94,14 @@ export class ParityRouteContractError extends Error {
 
 function fail(code, message) {
   throw new ParityRouteContractError(code, message);
+}
+
+export function deepFreezeParityGraph(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const key of Reflect.ownKeys(value)) deepFreezeParityGraph(value[key]);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function readRegistries() {
@@ -231,6 +246,58 @@ export function createCaptureIsolation(routeId, runId) {
     sidecarNamespace: `capture-${routeId}-${runId}`,
     network: PARITY_CAPTURE_POLICY,
   });
+}
+
+export function classifyCaptureNetworkRequest(url, localSubstitutions = new Set()) {
+  if (localSubstitutions.has(url)) return Object.freeze({ allowed: true, kind: 'local-substitution', url });
+  if (url.startsWith('file:') || url.startsWith('devtools:')) return Object.freeze({ allowed: true, kind: 'local-resource', url });
+  return Object.freeze({ allowed: false, kind: 'unexpected-blocked-request', url });
+}
+
+export function evaluateCaptureNetwork(blockedRequests, localSubstitutions = new Set()) {
+  const observations = blockedRequests.map((request) => classifyCaptureNetworkRequest(request.url, localSubstitutions));
+  const unexpected = observations.filter((item) => !item.allowed);
+  return Object.freeze({
+    ready: unexpected.length === 0,
+    blockedRequests: observations,
+    unexpected,
+    reason: unexpected.length === 0 ? null : 'capture.network_unexpected_blocked',
+  });
+}
+
+export function createObservedParityWitness(route, { rendererWitness, captureSettledWitness }) {
+  if (!route || !route.tuple || !route.identity) fail('witness.route', 'route identity is missing');
+  if (!rendererWitness || !captureSettledWitness) fail('witness.missing', 'renderer and capture-settled witnesses are required');
+  return deepFreezeParityGraph({
+    surfaceId: route.identity.surfaceId,
+    featureId: route.id,
+    routeId: route.id,
+    screen: route.tuple.screen,
+    state: route.tuple.state,
+    theme: route.tuple.theme,
+    locale: route.tuple.locale,
+    viewportWidth: route.tuple.viewport.width,
+    viewportHeight: route.tuple.viewport.height,
+    displayScale: route.tuple.scale,
+    fixtureRevision: route.tuple.fixtureRevision,
+    frozenTime: route.tuple.time,
+    motion: route.tuple.motion,
+    randomSeed: route.tuple.randomSeed,
+    bundledFontRevision: route.tuple.fonts,
+    network: route.tuple.network,
+    headlessRoute: route.identity.headlessRoute,
+    rendererWitness,
+    captureSettledWitness,
+  });
+}
+
+export function parityWitnessMatches(expected, observed) {
+  return PARITY_WITNESS_FIELDS.every((field) => JSON.stringify(expected?.[field]) === JSON.stringify(observed?.[field]));
+}
+
+export function requireParityWitnessMatch(expected, observed) {
+  if (!parityWitnessMatches(expected, observed)) fail('witness.mismatch', 'observed parity witness differs from the accepted route witness');
+  return true;
 }
 
 export function routeContractIdentity(route) {

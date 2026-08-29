@@ -5,7 +5,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   PARITY_PROTOCOLS,
   buildParityRoute,
+  createObservedParityWitness,
+  evaluateCaptureNetwork,
   parseParityRoute,
+  requireParityWitnessMatch,
   validateRouteContractRegistry,
 } from './parity-route-contract.mjs';
 
@@ -16,6 +19,8 @@ const { app, BrowserWindow, session } = desktopRequire('electron');
 const routes = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/verification/design-parity/routes.json'), 'utf8'));
 const inventory = JSON.parse(readFileSync(resolve(repositoryRoot, '.codex/verification/design-parity/inventory.json'), 'utf8'));
 validateRouteContractRegistry({ inventory, routes });
+const CANONICAL_REFERENCE_PATH = 'mockups/open-design-m3/Open Design M3.dc.html';
+if (inventory.reference.path !== CANONICAL_REFERENCE_PATH) throw new Error('Reference path is not the pinned canonical path');
 
 const arg = (name, fallback) => {
   const index = process.argv.indexOf(`--${name}`);
@@ -44,7 +49,7 @@ const row = inventory.rows.find((candidate) => candidate.id === requested.id);
 app.commandLine.appendSwitch('force-device-scale-factor', String(tuple.scale));
 app.commandLine.appendSwitch('lang', tuple.locale === 'bilingual' ? 'en-US' : tuple.locale);
 
-const referencePath = resolve(repositoryRoot, inventory.reference.path);
+const referencePath = resolve(repositoryRoot, CANONICAL_REFERENCE_PATH);
 const packageRoot = (name) => dirname(desktopRequire.resolve(`${name}/package.json`));
 const fontCss = resolve(here, 'font-runtime.css');
 const localScripts = new Map([
@@ -99,7 +104,7 @@ session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
   const replacement = localScripts.get(details.url);
   if (replacement) return callback({ redirectURL: pathToFileURL(replacement).href });
   if (details.url.startsWith('file:') || details.url.startsWith('devtools:')) return callback({});
-  blockedRequests.push({ resourceType: details.resourceType });
+  blockedRequests.push({ url: details.url, resourceType: details.resourceType });
   return callback({ cancel: true });
 });
 
@@ -115,13 +120,7 @@ window.setMenuBarVisibility(false);
 window.webContents.debugger.attach('1.3');
 await window.webContents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: deterministicPrelude(tuple) });
 await window.loadFile(referencePath);
-await window.webContents.executeJavaScript(`(() => {
-  const identity = ${JSON.stringify(requested.identity)};
-  const tuple = ${JSON.stringify(tuple)};
-  Object.defineProperty(globalThis, '__MATERIAL_DESIGNER_REFERENCE_ROUTE__', { value: Object.freeze({ identity, tuple, route: ${JSON.stringify(requested.referenceRoute)} }), configurable: false, writable: false });
-  document.documentElement.dataset.parityRouteId = identity.routeId;
-  document.documentElement.dataset.parityNetworkPolicy = 'disabled';
-})()`);
+await window.webContents.executeJavaScript(`(() => { document.documentElement.dataset.parityRouteId = ${JSON.stringify(requested.id)}; document.documentElement.dataset.parityNetworkPolicy = 'disabled'; })()`);
 if (tuple.theme === 'dark') {
   const selected = await window.webContents.executeJavaScript(actionScript({ match: 'text-exact', value: 'dark_mode' }));
   if (!selected) throw new Error('Reference dark-theme control was not reachable');
@@ -147,6 +146,28 @@ const measured = await window.webContents.executeJavaScript(`(async () => {
 })()`);
 if (measured.viewport.width !== tuple.viewport.width || measured.viewport.height !== tuple.viewport.height || measured.devicePixelRatio !== tuple.scale) throw new Error('Measured viewport or device scale differs from the requested tuple');
 if (!Object.values(measured.fonts).every(Boolean) || !measured.motionStyle || JSON.stringify(measured.tuple) !== JSON.stringify(tuple)) throw new Error('Deterministic renderer controls did not apply');
+const network = evaluateCaptureNetwork(blockedRequests, new Set(localScripts.keys()));
+if (!network.ready) throw new Error(JSON.stringify({ code: network.reason, unexpected: network.unexpected }));
+const rendererWitness = await window.webContents.executeJavaScript(`(() => {
+  const root = document.documentElement;
+  return {
+    routeId: root.dataset.parityRouteId || null,
+    routePath: root.dataset.parityRouteId ? ${JSON.stringify(requested.browserPath)} : null,
+    routeState: root.dataset.parityRouteId ? ${JSON.stringify(tuple.state)} : null,
+    fixtureSource: 'checked-in-reference',
+    fixtureRevision: ${JSON.stringify(tuple.fixtureRevision)},
+  };
+})()`);
+const captureSettledWitness = { settled: true, routePath: requested.browserPath, revision: 'capture-settled-v1' };
+const observedWitness = createObservedParityWitness(requested, { rendererWitness, captureSettledWitness });
+await window.webContents.executeJavaScript(`(() => {
+  const identity = ${JSON.stringify(requested.identity)};
+  const tuple = ${JSON.stringify(tuple)};
+  const witness = ${JSON.stringify(observedWitness)};
+  Object.defineProperty(globalThis, '__MATERIAL_DESIGNER_REFERENCE_ROUTE__', { value: Object.freeze({ identity, tuple, route: ${JSON.stringify(requested.referenceRoute)}, witness: Object.freeze(witness) }), configurable: false, writable: false });
+})()`);
+const witnessAfterSettle = await window.webContents.executeJavaScript(`(async () => { await new Promise((resolve) => requestAnimationFrame(resolve)); return globalThis.__MATERIAL_DESIGNER_REFERENCE_ROUTE__; })()`);
+requireParityWitnessMatch(observedWitness, witnessAfterSettle.witness);
 window.showInactive();
 process.stdout.write(JSON.stringify({
   version: 2,
@@ -158,7 +179,8 @@ process.stdout.write(JSON.stringify({
     reference: inventory.reference,
     identity: requested.identity,
     captureIsolation: requested.captureIsolation,
-    network: { policy: tuple.network, blockedRequests, blockedRequestPolicy: 'fail' },
+    witness: observedWitness,
+    network: { policy: tuple.network, blockedRequests: network.blockedRequests, blockedRequestPolicy: 'fail', ready: network.ready },
 }) + '\n');
 
 window.on('closed', () => app.quit());
