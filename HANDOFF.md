@@ -2194,10 +2194,26 @@ witness fields. Future receipts are admitted only through
 `scripts/design-parity-evidence-contract.mjs`. Raw PNGs are admitted only after
 the strict chunk/order/transparency/filter/palette/inflate validator succeeds.
 
+Follow-up commit
+[`4896dff4`](https://github.com/Ding-Ding-Projects/material-designer/commit/4896dff47ae9c0d2ea480ae0a9d7d7382f6de875)
+closes the final future artifact-provenance gap. Every row now declares a pending
+`applicationArtifactManifest` target. Full verification requires exactly one
+`--intended-source` SHA, resolves it as a real commit object, requires it to equal
+`HEAD`, and requires row, manifest, built-from and receipt source fields to match.
+The manifest binds a canonical evidence-root application artifact by relative
+path, SHA-256 and byte count, plus `open-design-packaged-app` identity, version and
+`x64` architecture. It separately binds a provenance file by path and SHA-256.
+Both files and the manifest must be regular, reparse-safe and exact. Accepted
+provenance is version 1 and verified, names the same source and package, carries a
+valid UTC build time, reports clean output, and proves cleared signing inputs,
+disabled certificate discovery, complete process auditing, zero signer processes
+and all signing controls false. Structure mode still validates the target and
+schema without requiring any pending evidence file.
+
 Local source evidence at this commit:
 
-- Windows PowerShell 5.1: 10 rows, 6 presentations, 8 pinned inputs, 19 exact
-  registry mutations, 4 helper import/call detachments and 1 junction fixture,
+- Windows PowerShell 5.1: 10 rows, 6 presentations, 8 pinned inputs, 7 evidence
+  targets, 20 exact registry mutations, 7 helper import/call detachments and 1 junction fixture,
   all red then restored green.
 - PowerShell 7: the same result.
 - Public-mirror privacy self-test: injected sentinel red, restored mirror green.

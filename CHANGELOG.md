@@ -45,6 +45,33 @@ version section when a release carries them.
 
 ### Changed
 
+- **Bind parity captures to one reviewed packaged application artifact.** Commit
+  [`4896dff4`](https://github.com/Ding-Ding-Projects/material-designer/commit/4896dff47ae9c0d2ea480ae0a9d7d7382f6de875)
+  adds a closed version-1 application-artifact manifest target to every pending
+  parity row. Future full verification requires an explicit intended commit that
+  resolves to the exact `HEAD` commit, then binds row source, manifest source,
+  built-from source, both receipts, artifact path/hash/byte count, package
+  identity/version/x64 architecture and verified build provenance to that same
+  commit. Artifact, manifest and provenance files must be reparse-safe regular
+  files beneath the canonical evidence root. Provenance must report clean output,
+  a valid UTC build time, matching package data, cleared signing inputs, disabled
+  certificate discovery, a complete process audit, zero signer invocations and
+  all signing controls false. Hosted fixtures exercise stale sources, changed
+  hash/bytes/path, missing manifest or provenance, omitted expected receipt
+  bindings and wrong package identity. No evidence file or application binary was
+  added; all ten rows remain pending and the product route remains unimplemented.
+
+  **將 parity capture 綁實同一個 reviewed packaged application artifact。**
+  每個 pending row 而家有 strict version-1 application-artifact manifest target。
+  將來 full verification 要先證明 intended commit 真係 resolve 到同 `HEAD` 一樣，
+  再將 row、manifest、built-from、兩份 receipt、artifact path/hash/byte count、
+  package identity/version/x64 architecture 同 verified build provenance 全部對
+  同一個 commit。Manifest、artifact 同 provenance 一定要留喺 canonical evidence
+  root，唔可以經 reparse path 兜路。Hosted fixture 已經準備好專登整壞 stale
+  source、hash、bytes、path、manifest、provenance 同 package binding。今次冇加
+  evidence file 或 application binary，所以十個 row 繼續 pending，產品 route
+  亦照舊未實裝。
+
 - **Harden future design-parity evidence admission.** Commit
   [`cc7a2de0`](https://github.com/Ding-Ding-Projects/material-designer/commit/cc7a2de092455c35e0132f35eecb0f40fe48288f)
   gives the reference launcher, route contract and verifier one bounded strict
