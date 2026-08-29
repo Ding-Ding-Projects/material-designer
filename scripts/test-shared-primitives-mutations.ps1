@@ -3,7 +3,8 @@ param(
   [int]$TimeoutMilliseconds = 120000,
   [int]$MaxOutputCharacters = 24000,
   [switch]$OnlyTimeoutFixture,
-  [switch]$DisableTimeoutTreeCleanup
+  [switch]$DisableTimeoutTreeCleanup,
+  [switch]$AllowMutatedHarness
 )
 
 $ErrorActionPreference = 'Stop'
@@ -282,7 +283,7 @@ function Invoke-TimeoutFixture {
 }
 
 $baselineStatus = Invoke-GitText @('status', '--porcelain=v1')
-if (-not [string]::IsNullOrWhiteSpace($baselineStatus)) {
+if (-not [string]::IsNullOrWhiteSpace($baselineStatus) -and -not $AllowMutatedHarness) {
   throw "Mutation verifier requires a clean starting tree; refusing dirty input:`n$baselineStatus"
 }
 
@@ -511,7 +512,8 @@ $timeoutArguments = @(
   'Bypass',
   '-File',
   (Quote-ProcessArgument $scriptPath),
-  '-OnlyTimeoutFixture'
+  '-OnlyTimeoutFixture',
+  '-AllowMutatedHarness'
 ) -join ' '
 $timeoutWorkingDirectory = $repoRoot
 $timeoutGreen = Invoke-BoundedCommand -FileName $hostExecutable -Arguments $timeoutArguments -WorkingDirectory $timeoutWorkingDirectory -TimeoutMs 30000 -OutputLimit $MaxOutputCharacters
