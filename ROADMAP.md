@@ -1,5 +1,18 @@
 # Roadmap
 
+- [ ] **Finish hosted verification and installed interaction for the shared
+      Material component primitives.** The audited source slice is integrated
+      without donor history and now covers buttons, fields, native selection
+      controls, registry-backed menus, tabs, typography, structural surfaces,
+      overlays, searchable selects, one production select owner, source-alias
+      tests, and executable mutation/timeout checks. The df84 port verifier,
+      broad and focused locale checks, PowerShell 5.1/7 flag and process-tree
+      proofs, and strict 70-article offline-documentation proof are green.
+      Component and web Vitest checks plus the nine source-mutation cases remain
+      unrun because this checkout has no installed package dependencies. Hosted
+      package checks, installed keyboard and accessibility interaction, and real
+      captures keep this item open.
+
 - [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
       Source now omits the hosted namespace root from installed config and embeds
       the shipped four-image ICO through the unsigned resource editor. Hosted
@@ -583,8 +596,9 @@ smoke evidence remains historical.
 That is the machinery working, and it is worth separating from the product. What
 those runs prove is that this project can build and ship the imported application
 under its own identity. They prove almost nothing about the redesign, which has a
-token layer and a Windows title bar and no rewritten components — Phase 2 onward
-is still the great majority of the work in this document.
+  token layer, a Windows title bar, a shared component package, and one production
+  searchable-select adoption. Product-wide migration and installed visual proof
+  are still the great majority of the work in this document.
 
 <details>
 <summary><strong>What actually exists right now</strong> — tracked files, verifier output, and what is still provably absent</summary>
@@ -2192,7 +2206,7 @@ rows say so rather than counting their file size as progress.
 | # | Standard | Phase | Status |
 | --- | --- | --- | --- |
 | 1 | Language modes and two funny-level sliders | 3.1, 3.2 | **Built.** `zh-HK` ships as the twentieth locale, satisfying `Dict` by spreading `zh-TW` and overriding the namespaces rewritten into Cantonese; the persisted language mode (`single`/`bilingual`) and both per-language funny sliders intercept at `t()`, so no component participates. What is unfinished is *coverage*: how much of the dictionary is genuinely Cantonese rather than inherited, tracked at 4.13 |
-| 2 | Full Material Design 3 conformance | 2.1–2.4 | **Colour landed; anatomy did not, and a capture proved it.** The token sheet, its mapping layer and the Windows frameless title bar are real, so every component inherits M3 roles. But the mockup's defining furniture is absent from the running screen: no persistent navigation rail (the component exists and collapses to a **zero-width** track, so a fresh install shows none), no header search bar, no 28px status bar. A reader comparing the shipped capture to `mockups/` would say it is still the upstream screen in new colours, and for the anatomy they would be right |
+| 2 | Full Material Design 3 conformance | 2.1–2.4 | **Shared anatomy exists in source; product-wide migration and installed proof remain open.** The token sheet, mapping layer, Windows frameless title bar, and shared component package now cover buttons, fields, native selection controls, registry-backed menus, tabs, typography, structural surfaces, and overlays. One production plugin select uses the searchable CustomSelect boundary. Existing feature surfaces still retain legacy anatomy, the dependency-complete package checks have not run in this checkout, and no installed capture proves the new shared boundary. |
 | 3 | Runtime appearance customization | 2.5, 4.10–4.12 | **Source-reachable, runtime-unverified.** The real Appearance tab mounts the live System / Light / Dark theme control, infinite colour picker, translator, contrast readout, built-in presets, seed, density, scale and typography controls. Localized theme labels, shared roving radio behavior, a visible direct-page landmark, route-only focus, acknowledged native startup forwarding with legacy-host incompatibility, renderer recovery re-witnessing, 48px wrappers, live 2D colour values and narrow-row wrapping are covered by source contracts. A typed `/settings/appearance` route selects it before first render, while `/settings` keeps the normal first tab. Per-element appearance editing, complete appearance-search coverage, hosted build verification and installed interaction remain open. |
 | 4 | Regex builder on every search bar | 3.3 | **Partial.** The command palette and the settings tab overflow menu now have independent anchored builders with bounded local matching; the remaining search inventory, including the four tab-discovery fields, is still open. [`6f03a832`](https://github.com/Ding-Ding-Projects/material-designer/commit/6f03a832a0a7f57d0f2bf1b7f4d3aef5e6c4f5a6) is source-level evidence only |
 | 5 | Browser-style tabs everywhere | 3.7, 4.1 | **Partial, with the settings surface now tabbed.** The settings dialog has a permission-aware tab strip for its dialog-owned sections, including Workspace, Orbit and Routines, a viewport-bounded above/below overflow surface, stable hint/no-match descriptions, local search and its own regex builder; Library remains owned by the entry route. The workspace tab strip, pinning, grouping, four discovery searches and bulk-close actions remain open. **New requirement, added to the shared instructions on 2026-08-04 at the user's direction: settings surfaces are tabbed too, in every app** — the capture at `90e52d3` records the old scrolling section list, while [`34426621`](https://github.com/Ding-Ding-Projects/material-designer/commit/34426621) records the follow-up geometry repair |

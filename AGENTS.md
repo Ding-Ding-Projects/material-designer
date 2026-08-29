@@ -66,11 +66,12 @@ uninstalled the application with zero residue; multiple legacy releases are publ
 `31186802259` proved the new unsigned Squirrel package and `NotSigned` gate, then failed in
 packaged smoke before UI capture or publication.
 
-**What is emphatically not finished is the application.** The Cantonese locale, the two
-funny-level sliders, the in-app regex builder, the startup surprise and the changelog viewer
-are **in progress** — the documentation site demonstrates them, the application does not have
-them. The Material Design 3 redesign has landed its token layer and the custom Windows title
-bar and no more. Never describe any of those as shipped.
+**What is emphatically not finished is the application.** Several formerly isolated feature
+modules are now source-reachable, but product-wide coverage and built interaction remain
+incomplete. The Material Design 3 redesign has landed its token layer, custom Windows title
+bar, shared component primitives, and one production searchable-select adoption. Hosted
+package checks, installed interaction, accessibility measurements, and capture evidence are
+still pending. Never describe the source boundary as a finished redesign.
 
 Keep the distinction between a definition and a result sharp in everything you write: a
 workflow that *would* verify, build or deploy is not a verification, a build or a

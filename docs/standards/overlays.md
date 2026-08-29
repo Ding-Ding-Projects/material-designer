@@ -112,12 +112,12 @@ user will not notice until they cannot select one.
 
 | Requirement | Status |
 | --- | --- |
-| Overlays painting their own surface | **Designed correctly.** Every overlay in the mockup carries an explicit background, border or shadow. Unaudited in code. |
-| Bounded height with internal scrolling | **Partial.** The Figma import modal body now scrolls inside its bounded card; the rest of the overlay inventory is unaudited. |
+| Overlays painting their own surface | **Implemented at the shared primitive boundary.** `Menu` and `OverlaySurface` own an explicit surface, border, corner shape, and elevation. Product-wide adoption and installed inspection remain open. |
+| Bounded height with internal scrolling | **Partial in source.** The shared menu and overlay primitives are viewport-bounded and scroll internally, and searchable selects keep their option collection reachable inside nested scroll. The complete product overlay inventory is not migrated or measured. |
 | Not painting outside the card | **Not audited.** |
 | Not rendering beneath the trigger | **Not audited.** No stacking-context audit has been run. |
 | Not covering the anchor | **Not audited.** |
-| Validated at narrow widths, every scale, longest strings | **Not started.** The source fixes have focused tests, but no installed build has been rendered and measured. |
+| Validated at narrow widths, every scale, longest strings | **Source contracts only.** The cascade checker asserts bounded internal scrolling and exact winners; no installed build has been rendered and measured across the required matrix. |
 | On the documentation site | **Not audited.** The site's own overlays — the builder popover, the palette, menus — have not been checked against this list. |
 
 ## Configuration

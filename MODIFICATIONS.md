@@ -5926,7 +5926,7 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
-### 2026-08-29 — Establish the shared Material primitive package
+### 2026-08-29 - Establish the shared Material primitive package
 
 **Reason:** the component package now carries the shared Material Design 3
 primitive anatomy, token consumption, compatibility boundaries, keyboard and

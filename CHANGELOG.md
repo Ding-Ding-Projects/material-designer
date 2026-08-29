@@ -45,6 +45,30 @@ version section when a release carries them.
 
 ### Changed
 
+- **Integrate the shared Material component primitive boundary without importing
+  donor history.** Commit
+  [`65fa4fec`](https://github.com/Ding-Ding-Projects/material-designer/commit/65fa4fec2b44aea3a8d422c7a47a0829a1483dfd)
+  adds Material buttons, fields, native selection controls, registry-backed menus,
+  tabs, typography, structural surfaces, overlays, searchable select ownership,
+  and one production plugin-select adoption. Commit
+  [`61dbad9c`](https://github.com/Ding-Ding-Projects/material-designer/commit/61dbad9c05f41f74eab77ca6d611576442d3bdc5)
+  adds the focused source-alias and mutation routes. Commit
+  [`18abaaf3`](https://github.com/Ding-Ding-Projects/material-designer/commit/18abaaf3311c3b9cb9d63eec46535e7847b3baf1)
+  refreshes the offline documentation bundle to 70 articles. Port, locale,
+  PowerShell flag/process-tree, and strict offline-documentation source checks
+  are green. Dependency-complete component/web tests, the nine real source
+  mutations, installed interaction, and captures remain unrun.
+
+  **整合 shared Material component primitive boundary，唔帶 donor history 入場。**
+  `65fa4fec` 加入 Material buttons、fields、native selection controls、
+  registry-backed menus、tabs、typography、structural surfaces、overlays、
+  searchable select ownership，同一個 production plugin-select adoption。
+  `61dbad9c` 加入 focused source-alias 同 mutation routes；`18abaaf3` 將 offline
+  documentation bundle 更新到 70 篇。Port、locale、PowerShell flag/process-tree
+  同 strict offline-documentation source checks 全部綠。Dependency-complete
+  component/web tests、九個真正 source mutations、installed interaction 同
+  captures 仲未跑，唔會攞 source code 扮 runtime evidence。
+
 - **Repair installed Squirrel launch state and embed the product icon without signing.**
   Installed packages again omit the packaging machine's absolute namespace root,
   so a newer installed package can supersede stale launcher state in the user's
