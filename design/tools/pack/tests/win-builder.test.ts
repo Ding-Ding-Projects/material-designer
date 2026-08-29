@@ -9,8 +9,12 @@ import { describe, expect, it } from "vitest";
 
 import { materializeCachedUnpackedForInstaller } from "../src/win/builder.js";
 import { createLauncherRuntimeSyncPowerShellScript } from "../src/win/custom-installer.js";
+import { winResources } from "../src/resources.js";
 import type { WinPaths } from "../src/win/types.js";
-import { readWinExecutableVersionSnapshot } from "../src/win/version-resource.js";
+import {
+  readWinExecutableIconSnapshot,
+  readWinExecutableVersionSnapshot,
+} from "../src/win/version-resource.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -111,6 +115,8 @@ describe("materializeCachedUnpackedForInstaller", () => {
         `${JSON.stringify({ appVersion: "0.5.0-beta.2", namespace: "second", version: 1 })}\n`,
         "utf8",
       );
+      await mkdir(join(paths.winIconPath, ".."), { recursive: true });
+      await writeFile(paths.winIconPath, await readFile(winResources.icon));
 
       const manifest = await materializeCachedUnpackedForInstaller(cachedUnpackedRoot, paths, "0.5.0-beta.2");
 
@@ -136,6 +142,10 @@ describe("materializeCachedUnpackedForInstaller", () => {
             }),
           },
         ],
+      });
+      await expect(readWinExecutableIconSnapshot(join(paths.unpackedRoot, "Material Designer.exe"))).resolves.toEqual({
+        groupCount: 1,
+        iconCount: 4,
       });
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -181,6 +191,7 @@ describe("Windows pack artifact boundaries", () => {
     expect(builderSource).toContain("iconUrl: SQUIRREL_ICON_URL");
     expect(builderSource).toContain("artifactName: resolveWinSquirrelArtifactName(config.namespace)");
     expect(constantsSource).toMatch(/SQUIRREL_ICON_URL = \"https:\/\//);
+    expect(builderSource).toContain("rewriteWinExecutableIcon(paths.unpackedExePath, paths.winIconPath)");
     expect(builderSource).toContain('{ ...config, to: "squirrel" }');
     expect(builderSource.split('{ ...config, to: "squirrel" }').length - 1).toBe(1);
     expect(builderSource.indexOf('"squirrel-installer:build"')).toBeLessThan(

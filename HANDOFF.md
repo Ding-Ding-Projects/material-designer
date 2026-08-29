@@ -1,6 +1,18 @@
 ﻿# Handoff
 
 > [!IMPORTANT]
+> **Urgent Squirrel repair handoff, 2026-08-29.** The installed `0.20.296`
+> shortcut correctly targeted Squirrel's root launcher, but its executable used
+> the generic framework icon. Structured logs also proved the new launcher
+> delegated to a stale `0.16.1` payload. The released config still contained the
+> hosted build path even though the existing manifest regression required it to
+> be absent. Source now restores the user-local config boundary and embeds plus
+> verifies the shipped four-image ICO with `resedit`, while all signing controls
+> remain disabled. The cheap persistent headless binding was unavailable, and
+> local Node/build execution is prohibited here, so hosted packaging, reinstall,
+> shortcut launch, icon inspection, and capture remain open on issue #9.
+
+> [!IMPORTANT]
 > **Application integration closeout — 2026-08-21.** The default-branch source
 > integration is represented by
 > [`ec3cecd7b`](https://github.com/Ding-Ding-Projects/material-designer/commit/ec3cecd7b0e1766de03a559bb33933ac43e9ba19).

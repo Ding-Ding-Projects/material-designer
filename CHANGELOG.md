@@ -45,6 +45,22 @@ version section when a release carries them.
 
 ### Changed
 
+- **Repair installed Squirrel launch state and embed the product icon without signing.**
+  Installed packages again omit the packaging machine's absolute namespace root,
+  so a newer installed package can supersede stale launcher state in the user's
+  application-data directory. The project-owned resource editor now embeds the
+  shipped four-image ICO into `Material Designer.exe` and reopens the executable
+  to verify the icon group. Source inspection and the port verifier cover this
+  change; hosted packaging, reinstall, shortcut launch, and real capture remain
+  pending on issue #9.
+
+  **修返 installed Squirrel launch state，仲有 unsigned executable 個正式 icon。**
+  Installed package 唔再夾帶 build machine 個 absolute namespace root，較新版本
+  終於可以喺 user application-data 度踢走舊 launcher state。Project 自己個
+  resource editor 會將四個尺寸嘅 ICO 寫入 `Material Designer.exe`，再開返個
+  executable 驗 icon group，唔會叫 signer 出場。Source inspection 同 port verifier
+  有證據；hosted packaging、reinstall、shortcut launch 同真正 capture 留喺 issue #9。
+
 - **Show version-bound provenance before front-screen interaction.** The desktop
   shell now renders the running version and its release-provenance timestamp
   before tabs, settings, About, and onboarding authentication. Both `/api/health`

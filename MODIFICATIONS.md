@@ -29,6 +29,25 @@ upstream blob ids exactly, file modes included.
 
 ## Changes
 
+### 2026-08-29 - Repair installed launch and embed the product icon
+
+**Reason:** the unsigned Squirrel package disabled electron-builder's combined
+signing and executable-resource mutation path, so the installed executable and
+shortcuts inherited the framework's generic icon. The project-owned resource
+editor now embeds and verifies the shipped multi-resolution icon without invoking
+a signer. The existing Squirrel package identity remains unchanged so upgrades do
+not strand a second installation beside the first. The imported manifest had also
+restored the hosted packaging machine's absolute namespace root, overriding the
+per-user path and preventing the installed package from superseding a stale
+launcher payload. Installed configs omit that build-only path again.
+
+**Changed files:**
+
+> - `tools/pack/src/win/builder.ts`
+> - `tools/pack/src/win/manifest.ts`
+> - `tools/pack/src/win/version-resource.ts`
+> - `tools/pack/tests/win-builder.test.ts`
+
 ### 2026-08-27 - Show version-bound build provenance on every front screen
 
 **Reason:** The packaged onboarding surface could show upstream identity and

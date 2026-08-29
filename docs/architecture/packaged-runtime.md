@@ -9,6 +9,12 @@ lifecycle runs that deliberately own an isolated runtime create a separate
 launch configuration containing their explicit namespace-root override; that
 override is never baked into the shipped `open-design-config.json`.
 
+The unsigned packer separately embeds the shipped multi-resolution ICO through
+the existing JavaScript resource editor, then reopens the executable and requires
+one icon group containing all four source images. This resource-only step keeps
+electron-builder's combined signing/resource-editing path disabled and does not
+sign the executable.
+
 The unsigned executable intentionally keeps electron-builder's combined
 sign/edit control disabled. Its Windows version resource can therefore retain
 Electron/GitHub metadata, which Squirrel would otherwise use to create

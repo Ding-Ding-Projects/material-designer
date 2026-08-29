@@ -1,5 +1,13 @@
 # Roadmap
 
+- [ ] **Verify the repaired Squirrel install, shortcut launch, and executable icon.**
+      Source now omits the hosted namespace root from installed config and embeds
+      the shipped four-image ICO through the unsigned resource editor. Hosted
+      packaging must still prove `NotSigned`, install the new package, show that
+      the shortcut starts the current version rather than the stale `0.16.1`
+      payload, inspect the executable and shortcut icon, and capture the running
+      window before this item can be checked. Tracked by issue #9.
+
 - [ ] **Resume the emergency-preserved feature branches.** The 2026-08-28
       emergency handoff in `HANDOFF.md` records every preserved branch, exact
       commit, review state, release blocker, and missing runtime evidence. No

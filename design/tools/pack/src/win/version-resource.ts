@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 
-import { NtExecutable, NtExecutableResource, Resource } from "resedit";
+import { Data, NtExecutable, NtExecutableResource, Resource } from "resedit";
 
 import { electronBuilderVersionForAppVersion, versionCoreForAppVersion } from "../versioning/index.js";
 
@@ -16,6 +16,11 @@ export type WinExecutableVersionSnapshot = {
     translation: VersionTranslation;
     values: Record<string, string>;
   }>;
+};
+
+export type WinExecutableIconSnapshot = {
+  groupCount: number;
+  iconCount: number;
 };
 
 type WinExecutableVersionTargets = {
@@ -108,6 +113,42 @@ export async function rewriteWinExecutableVersion(executablePath: string, packag
         `expected Windows executable ProductVersion string ${targets.productVersion} in ${executablePath}, received ${JSON.stringify(stringTable.values.ProductVersion)}`,
       );
     }
+  }
+}
+
+export async function readWinExecutableIconSnapshot(executablePath: string): Promise<WinExecutableIconSnapshot> {
+  const executable = NtExecutable.from(await readFile(executablePath), { ignoreCert: true });
+  const resource = NtExecutableResource.from(executable);
+  const groups = Resource.IconGroupEntry.fromEntries(resource.entries);
+  return {
+    groupCount: groups.length,
+    iconCount: groups.reduce((count, group) => count + group.icons.length, 0),
+  };
+}
+
+export async function rewriteWinExecutableIcon(executablePath: string, iconPath: string): Promise<void> {
+  const iconFile = Data.IconFile.from(await readFile(iconPath));
+  if (iconFile.icons.length === 0) {
+    throw new Error(`expected at least one icon image in ${iconPath}`);
+  }
+
+  const executable = NtExecutable.from(await readFile(executablePath), { ignoreCert: true });
+  const resource = NtExecutableResource.from(executable);
+  const currentGroup = Resource.IconGroupEntry.fromEntries(resource.entries)[0];
+  Resource.IconGroupEntry.replaceIconsForResource(
+    resource.entries,
+    currentGroup?.id ?? 1,
+    currentGroup?.lang ?? DEFAULT_VERSION_TRANSLATION.lang,
+    iconFile.icons.map((item) => item.data),
+  );
+  resource.outputResource(executable);
+  await writeFile(executablePath, Buffer.from(executable.generate()));
+
+  const snapshot = await readWinExecutableIconSnapshot(executablePath);
+  if (snapshot.groupCount < 1 || snapshot.iconCount !== iconFile.icons.length) {
+    throw new Error(
+      `expected ${iconFile.icons.length} icon images in ${executablePath}, received ${snapshot.iconCount} across ${snapshot.groupCount} group(s)`,
+    );
   }
 }
 

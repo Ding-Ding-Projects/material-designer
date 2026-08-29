@@ -57,6 +57,7 @@ import type { ResourceTreeResult } from "./resources.js";
 import {
   readWinExecutableVersionSnapshot,
   resolveWinExecutableVersionTargets,
+  rewriteWinExecutableIcon,
   rewriteWinExecutableVersion,
 } from "./version-resource.js";
 import { buildWinPortableZip } from "./zip.js";
@@ -553,6 +554,7 @@ export async function materializeCachedUnpackedForInstaller(
   if (packagedVersion != null) {
     await rewriteUnpackedAppPackageVersion(paths.unpackedRoot, packagedVersion);
     await rewriteWinExecutableVersion(paths.unpackedExePath, packagedVersion);
+    await rewriteWinExecutableIcon(paths.unpackedExePath, paths.winIconPath);
     await assertMaterializedUnpackedVersionConsistency(paths.unpackedRoot, packagedVersion);
   }
   await assertWinUnpackedNodePtyRuntime(paths.unpackedRoot);

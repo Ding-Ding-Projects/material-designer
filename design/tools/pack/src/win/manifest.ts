@@ -36,7 +36,11 @@ function createPackagedConfig(
     ...(config.velaWebUrl == null ? {} : { velaWebUrl: config.velaWebUrl }),
     ...(config.velaWebUrls == null ? {} : { velaWebUrls: config.velaWebUrls }),
     webOutputMode: config.webOutputMode,
-    ...(config.portable ? {} : { namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot }),
+    // Never bake the packaging host's absolute runtime root into an installed
+    // application. A normal Squirrel launch must resolve writable state from
+    // Electron's per-user data directory. tools-pack lifecycle launches that
+    // intentionally own a runtime root write a separate launch config with the
+    // explicit override in writeInstalledLaunchPackagedConfig().
   };
 }
 
