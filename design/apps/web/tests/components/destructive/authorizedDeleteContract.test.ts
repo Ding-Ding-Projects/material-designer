@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   canonicalDeletePayload,
   confirmedDelete,
+  confirmedDeleteWithResult,
   createDeleteRequestSnapshot,
   deleteRequestIdentity,
   serializeDeletePayload,
@@ -90,6 +91,17 @@ describe('authorized destructive request identity', () => {
       throwOnFailure: true,
       onSuccess: () => { throw new Error('receipt rendering failed'); },
     })).rejects.toMatchObject({ phase: 'success-callback' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the result successful and carries a receipt warning with throwOnFailure', async () => {
+    const fetchMock = confirmingFetch();
+    const result = await confirmedDeleteWithResult('/api/projects/p1', undefined, {
+      throwOnFailure: true,
+      onSuccess: () => { throw new Error('receipt rendering failed'); },
+    });
+    expect(result.ok).toBe(true);
+    expect(result.warning).toMatchObject({ phase: 'success-callback', message: 'receipt rendering failed' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

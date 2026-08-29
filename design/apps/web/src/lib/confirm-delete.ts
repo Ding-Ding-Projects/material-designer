@@ -24,6 +24,17 @@ import {
 
 export type ConfirmedDeletePhase = 'confirm' | 'delete' | 'success-callback';
 
+export interface ConfirmedDeleteWarning {
+  phase: 'success-callback';
+  message: string;
+  cause: unknown;
+}
+
+export interface ConfirmedDeleteResult {
+  ok: boolean;
+  warning?: ConfirmedDeleteWarning;
+}
+
 /**
  * Opt-in detailed failure for callers that must preserve daemon authorization
  * errors. Existing callers keep the original `false`-on-failure contract.
@@ -58,6 +69,8 @@ export interface ConfirmedDeleteOptions {
   requestSnapshot?: DeleteRequestSnapshot;
   /** Non-secret authenticated context identity, never included in the hash. */
   authenticatedContextIdentity?: string;
+  /** Receives a secondary receipt warning without changing a successful DELETE. */
+  onReceiptWarning?: (warning: ConfirmedDeleteWarning) => void | Promise<void>;
 }
 
 interface DeleteConfirmationAttempt {
@@ -331,7 +344,19 @@ export async function confirmedDelete(
         // The DELETE already succeeded. Keep that fact separate from optional
         // result handling so a reporting callback cannot turn success into a
         // false retry signal or cause a duplicate destructive request.
-        if (options.throwOnFailure) throw new ConfirmedDeleteError('success-callback', resp, error);
+        const warning: ConfirmedDeleteWarning = {
+          phase: 'success-callback',
+          message: error && typeof error === 'object' && 'message' in error && typeof error.message === 'string'
+            ? error.message
+            : 'The success receipt could not be recorded.',
+          cause: error,
+        };
+        try {
+          await options.onReceiptWarning?.(warning);
+        } catch {
+          // Reporting a receipt warning must never change the DELETE result.
+        }
+        return true;
       }
     }
     return resp.ok;
@@ -340,4 +365,21 @@ export async function confirmedDelete(
     if (options.throwOnFailure) throw new ConfirmedDeleteError('delete', undefined, error);
     return false;
   }
+}
+
+/** Result-bearing variant used by surfaces that must render receipt warnings. */
+export async function confirmedDeleteWithResult(
+  resourcePath: string,
+  payload?: unknown,
+  options: ConfirmedDeleteOptions = {},
+): Promise<ConfirmedDeleteResult> {
+  let warning: ConfirmedDeleteWarning | undefined;
+  const ok = await confirmedDelete(resourcePath, payload, {
+    ...options,
+    onReceiptWarning: async (nextWarning) => {
+      warning = nextWarning;
+      await options.onReceiptWarning?.(nextWarning);
+    },
+  });
+  return warning ? { ok, warning } : { ok };
 }

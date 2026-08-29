@@ -41,7 +41,7 @@ its authorization headers or an explicit `null` public/non-auth context.
 | `handler-token` | Resource-bound single-use token | `design/apps/web/src/lib/confirm-delete.ts` | The token is sent in `x-od-confirm-token`, never in the URL |
 | `request-identity` | Canonical path and payload digest | `design/apps/web/src/components/destructive/AuthorizedDestructiveGate.tsx` | Replacing either input resets the preflight and the two-key sequence |
 | `summary-match` | Fresh summary comparison | `design/apps/web/src/lib/confirm-delete.ts` | The final request is refused when the handler summary differs from what was displayed |
-| `success-separation` | DELETE result versus receipt callback | `design/apps/web/src/lib/confirm-delete.ts` | A successful DELETE stays successful even when optional result handling throws |
+| `success-separation` | DELETE result versus receipt callback | `design/apps/web/src/lib/confirm-delete.ts` | A successful DELETE stays successful even when optional result handling throws, including with `throwOnFailure`; the result-bearing helper returns a separate warning |
 
 ## Route inventory
 

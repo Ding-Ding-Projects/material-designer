@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import type { ConfirmDeleteResponse } from '@open-design/contracts';
 
 import {
-  confirmedDelete,
+  confirmedDeleteWithResult,
   createDeleteRequestSnapshot,
   requestDeleteConfirmation,
   type ConfirmedDeleteOptions,
@@ -83,11 +83,11 @@ export function AuthorizedDestructiveGate({
         const confirmation = forcedRefreshKey !== requestKey && suppliedIsFresh && preflight
           ? preflight
           : await requestDeleteConfirmation(
-          resourcePath,
-          payload,
-          requestOptions?.headers,
-          snapshot,
-        );
+              resourcePath,
+              payload,
+              requestOptions?.headers,
+              snapshot,
+            );
         if (!hasValidSummary(confirmation)) {
           throw new Error('The handler did not provide a destructive preflight summary.');
         }
@@ -142,13 +142,16 @@ export function AuthorizedDestructiveGate({
           setPreflightError('The destructive preflight expired. Review the refreshed details before authorizing.');
           return false;
         }
-        return confirmedDelete(resourcePath, undefined, {
+        const result = await confirmedDeleteWithResult(resourcePath, undefined, {
           ...requestOptions,
           authenticatedContextIdentity: authenticatedContextIdentity ?? undefined,
           requestSnapshot: snapshot,
           expectedSummary: confirmation.summary,
           expectedRequestIdentity: requestIdentity,
         });
+        return result.ok
+          ? result.warning ? { ok: true, warning: result.warning.message } : { ok: true }
+          : false;
       }}
     />
   );

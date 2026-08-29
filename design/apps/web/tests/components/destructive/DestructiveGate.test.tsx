@@ -233,6 +233,23 @@ describe('destructive gate — what it reports on the way out', () => {
   });
 });
 
+describe('destructive gate — secondary receipt warning', () => {
+  it('keeps the action completed and renders a warning without offering retry', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({ matches: query.includes('prefers-reduced-motion') ? false : false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false }),
+    });
+    const onConfirm = vi.fn(() => ({ ok: true, warning: 'Receipt rendering failed' }));
+    render(gate({ onConfirm }));
+    turnBothKeys();
+    slideToEnd();
+
+    await waitFor(() => expect(screen.getByTestId('destructive-gate-warning')).toHaveTextContent('Receipt rendering failed'));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('destructive-gate-failure')).not.toBeInTheDocument();
+  });
+});
+
 interface HarnessProps {
   onOutcome?: (outcome: DestructiveGateOutcome) => void;
   onConfirm?: () => Promise<boolean | void> | boolean | void;

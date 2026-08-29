@@ -8,7 +8,7 @@ $scriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Par
 if ([string]::IsNullOrWhiteSpace($Root)) { $Root = Join-Path $scriptRoot '..' }
 $inventoryPath = Join-Path $scriptRoot 'destructive-action-inventory.tsv'
 $expectedIds = @(
-  'gate-state', 'gate-reentry', 'gate-copy', 'gate-cancel-focus',
+  'gate-state', 'gate-reentry', 'gate-copy', 'gate-cancel-focus', 'receipt-warning',
   'handler-bridge', 'request-identity', 'summary-display', 'preflight',
   'preflight-expiry', 'preflight-refresh', 'preflight-freshness', 'handler-token', 'summary-match', 'success-separation',
   'route-projects-single', 'route-projects-bulk', 'route-projects-recent',

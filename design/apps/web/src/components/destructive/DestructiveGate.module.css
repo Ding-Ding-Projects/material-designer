@@ -316,6 +316,17 @@
   overflow-wrap: anywhere;
 }
 
+.warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--md-sys-shape-corner-s);
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  font-size: var(--md-sys-typescale-body-small-size);
+  line-height: var(--md-sys-typescale-body-small-line-height);
+  overflow-wrap: anywhere;
+}
+
 /* The completion animation, and it is deliberately a different shape from the
    charge: the charge is a bar that fills, this is a disc that arrives. One says
    "you are authorizing", the other says "it is done", and they must not be

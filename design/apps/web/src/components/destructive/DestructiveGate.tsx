@@ -59,6 +59,11 @@ import styles from './DestructiveGate.module.css';
 /** How the gate ended. The host uses it to decide what to say afterwards. */
 export type DestructiveGateOutcome = GateOutcome;
 
+export type DestructiveGateConfirmResult = {
+  ok?: boolean;
+  warning?: string;
+};
+
 /** How long the completion animation holds the gate open once the work is done. */
 const COMPLETION_MS = 900;
 
@@ -92,7 +97,7 @@ export interface DestructiveGateProps {
    * failure that lands after the gate has closed is raised as a notification
    * instead, never dropped.
    */
-  onConfirm: () => Promise<boolean | void> | boolean | void;
+  onConfirm: () => Promise<boolean | void | DestructiveGateConfirmResult> | boolean | void | DestructiveGateConfirmResult;
   onClose: (outcome: DestructiveGateOutcome) => void;
 }
 
@@ -185,6 +190,7 @@ function GateSurface({
   const t = useT();
   const [state, setState] = useState<GateState>(initialGateState);
   const [failure, setFailure] = useState<string | null>(null);
+  const [secondaryWarning, setSecondaryWarning] = useState<string | null>(null);
   const titleId = useId();
   const listId = useId();
   const statusId = useId();
@@ -272,10 +278,11 @@ function GateSurface({
       if (!canAuthorize(armed)) return;
       runningRef.current = true;
       setFailure(null);
+      setSecondaryWarning(null);
       setState(beginAuthorizing(armed));
       try {
         const result = await onConfirm();
-        if (result === false) {
+        if (result === false || (result && typeof result === 'object' && result.ok === false)) {
           if (!aliveRef.current) {
             reportDetachedFailure(null);
             return;
@@ -285,6 +292,8 @@ function GateSurface({
           setFailure(null);
           return;
         }
+        const warning = result && typeof result === 'object' ? result.warning : undefined;
+        if (warning) setSecondaryWarning(warning);
         // It worked. A gate that is already gone has nothing left to say about
         // a success — the host owns whatever confirmation the user sees.
         if (!aliveRef.current) return;
@@ -443,6 +452,11 @@ function GateSurface({
       {failure ? (
         <p className={styles.failure} role="alert" data-testid="destructive-gate-failure">
           {failure}
+        </p>
+      ) : null}
+      {secondaryWarning ? (
+        <p className={styles.warning} role="status" data-testid="destructive-gate-warning">
+          {secondaryWarning}
         </p>
       ) : null}
 
