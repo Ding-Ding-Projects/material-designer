@@ -39,6 +39,13 @@ const DESIGN_SYSTEM_FLOW_TEST_SOURCE = readFileSync(
   new URL('./DesignSystemFlow.test.tsx', import.meta.url),
   'utf8',
 );
+const DESIGN_SYSTEM_FLOW_TEST_AST = ts.createSourceFile(
+  'DesignSystemFlow.test.tsx',
+  DESIGN_SYSTEM_FLOW_TEST_SOURCE,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TSX,
+);
 const DESIGN_SYSTEM_FLOW_AST = ts.createSourceFile(
   'DesignSystemFlow.tsx',
   DESIGN_SYSTEM_FLOW_SOURCE,
@@ -446,6 +453,10 @@ describe('design system package audit helpers', () => {
 });
 
 describe('DesignSystemCreationFlow', () => {
+  it('keeps this focused fixture suite syntactically parseable', () => {
+    expect(DESIGN_SYSTEM_FLOW_TEST_AST.parseDiagnostics).toHaveLength(0);
+  });
+
   it('keeps absolute folder fixtures fictional and rejects user-looking names', () => {
     const fictionalFolder = '/Users/example/Projects/sample-code';
     const absoluteFolders = (fixtureSource: string): string[] =>
@@ -2775,23 +2786,6 @@ describe('DesignSystemDetailView', () => {
     const project: Project = {
       id: 'ds-acme-design-system',
       name: 'Acme Design System',
-  it('keeps a fresh R2 file snapshot when an older R1 resolves afterward', async () => {
-    const system: DesignSystemDetail = {
-      id: 'user:refresh-race-design-system',
-      title: 'Refresh Race Design System',
-      category: 'Custom',
-      summary: 'Exercises file refresh ordering.',
-      swatches: [],
-      surface: 'web',
-      body: '# Refresh Race Design System\n',
-      source: 'user',
-      status: 'draft',
-      isEditable: true,
-      projectId: 'ds-refresh-race',
-    };
-    const project: Project = {
-      id: 'ds-refresh-race',
-      name: 'Refresh Race Design System',
       skillId: null,
       designSystemId: system.id,
       createdAt: 1,
@@ -2836,6 +2830,35 @@ describe('DesignSystemDetailView', () => {
     fireEvent.click(backButton);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps a fresh R2 file snapshot when an older R1 resolves afterward', async () => {
+    const system: DesignSystemDetail = {
+      id: 'user:refresh-race-design-system',
+      title: 'Refresh Race Design System',
+      category: 'Custom',
+      summary: 'Exercises file refresh ordering.',
+      swatches: [],
+      surface: 'web',
+      body: '# Refresh Race Design System\n',
+      source: 'user',
+      status: 'draft',
+      isEditable: true,
+      projectId: 'ds-refresh-race',
+    };
+    const project: Project = {
+      id: 'ds-refresh-race',
+      name: 'Refresh Race Design System',
+      skillId: null,
+      designSystemId: system.id,
+      createdAt: 1,
+      updatedAt: 1,
+      metadata: {
+        kind: 'other',
+        importedFrom: 'design-system',
+        entryFile: 'DESIGN.md',
+        sourceFileName: system.id,
+      },
+    };
     const initialFile: ProjectFile = {
       name: 'initial.html',
       size: 10,
