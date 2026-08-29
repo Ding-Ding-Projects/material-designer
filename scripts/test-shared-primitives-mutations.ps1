@@ -4,13 +4,18 @@ param(
   [int]$MaxOutputCharacters = 24000,
   [switch]$OnlyTimeoutFixture,
   [switch]$DisableTimeoutTreeCleanup,
-  [switch]$AllowMutatedHarness
+  [switch]$AllowMutatedHarness,
+  [string]$MutationTarget
 )
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptRoot
 $script:RefuseRestoration = $false
+
+if ($AllowMutatedHarness -and -not $OnlyTimeoutFixture) {
+  throw 'AllowMutatedHarness requires OnlyTimeoutFixture'
+}
 
 function Invoke-GitText {
   param([string[]]$Arguments)
@@ -293,6 +298,14 @@ if ([string]::IsNullOrWhiteSpace($hostExecutable)) {
 }
 
 if ($OnlyTimeoutFixture) {
+  $timeoutTarget = if ([string]::IsNullOrWhiteSpace($MutationTarget)) {
+    'internal-timeout-probe'
+  } else {
+    $MutationTarget
+  }
+  if ($timeoutTarget -ne 'internal-timeout-probe') {
+    throw "Timeout-only mode accepts only internal-timeout-probe; refusing target $timeoutTarget"
+  }
   Invoke-TimeoutFixture -HostExecutable $hostExecutable -DisableCleanup ([bool]$DisableTimeoutTreeCleanup)
   exit 0
 }
@@ -379,6 +392,39 @@ $pnpm = (Get-Command pnpm.cmd -ErrorAction Stop).Path
 if ([string]::IsNullOrWhiteSpace($pnpm)) {
   throw 'Could not resolve pnpm.cmd for the focused verification route'
 }
+
+$scriptPath = $MyInvocation.MyCommand.Path
+$allowAloneArguments = @(
+  '-NoProfile',
+  '-ExecutionPolicy',
+  'Bypass',
+  '-File',
+  (Quote-ProcessArgument $scriptPath),
+  '-AllowMutatedHarness'
+) -join ' '
+$allowAlone = Invoke-BoundedCommand -FileName $hostExecutable -Arguments $allowAloneArguments -WorkingDirectory $repoRoot -TimeoutMs 30000 -OutputLimit $MaxOutputCharacters
+if ($allowAlone.ExitCode -eq 0 -or -not $allowAlone.Output.Contains('AllowMutatedHarness requires OnlyTimeoutFixture')) {
+  throw "Allowance flag without timeout-only mode did not turn red with its exact diagnostic`n$($allowAlone.Output)"
+}
+Write-Output 'FLAG RED: AllowMutatedHarness alone and the full harness request were refused'
+
+$productionTarget = 'design/apps/web/src/components/PluginInputsForm.tsx'
+$allowProductionArguments = @(
+  '-NoProfile',
+  '-ExecutionPolicy',
+  'Bypass',
+  '-File',
+  (Quote-ProcessArgument $scriptPath),
+  '-OnlyTimeoutFixture',
+  '-AllowMutatedHarness',
+  '-MutationTarget',
+  (Quote-ProcessArgument $productionTarget)
+) -join ' '
+$allowProduction = Invoke-BoundedCommand -FileName $hostExecutable -Arguments $allowProductionArguments -WorkingDirectory $repoRoot -TimeoutMs 30000 -OutputLimit $MaxOutputCharacters
+if ($allowProduction.ExitCode -eq 0 -or -not $allowProduction.Output.Contains('Timeout-only mode accepts only internal-timeout-probe')) {
+  throw "Production source selection under timeout allowance did not turn red with its exact diagnostic`n$($allowProduction.Output)"
+}
+Write-Output ("FLAG RED: timeout-only mode refused production source target {0}" -f $productionTarget)
 
 $cases = @(
   [pscustomobject]@{
@@ -504,7 +550,6 @@ foreach ($case in $cases) {
   $completed++
 }
 
-$scriptPath = $MyInvocation.MyCommand.Path
 $scriptSnapshot = Get-Snapshot $scriptPath
 $timeoutArguments = @(
   '-NoProfile',
@@ -513,7 +558,9 @@ $timeoutArguments = @(
   '-File',
   (Quote-ProcessArgument $scriptPath),
   '-OnlyTimeoutFixture',
-  '-AllowMutatedHarness'
+  '-AllowMutatedHarness',
+  '-MutationTarget',
+  (Quote-ProcessArgument 'internal-timeout-probe')
 ) -join ' '
 $timeoutWorkingDirectory = $repoRoot
 $timeoutGreen = Invoke-BoundedCommand -FileName $hostExecutable -Arguments $timeoutArguments -WorkingDirectory $timeoutWorkingDirectory -TimeoutMs 30000 -OutputLimit $MaxOutputCharacters

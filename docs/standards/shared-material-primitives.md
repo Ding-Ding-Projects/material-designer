@@ -185,6 +185,10 @@ a task-owned probe open while a child reads it. The runner records both PIDs,
 stops the exact process tree from leaves upward within a bound, refuses probe
 restoration if any recorded descendant survives, and proves the disabled-cleanup
 mutation turns red before restoration and returns green afterward.
+The internal `AllowMutatedHarness` flag is accepted only together with
+`OnlyTimeoutFixture`; using it for the full mutation matrix is refused before
+status inspection. Timeout-only mode accepts exactly `internal-timeout-probe`
+and refuses production, provider, and stylesheet source targets.
 
 ## Suggested articles
 
