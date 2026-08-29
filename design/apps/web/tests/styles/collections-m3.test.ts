@@ -146,7 +146,12 @@ describe('collection segmented buttons (M3)', () => {
   for (const control of SEGMENTED) {
     it(`${control.name} is one outlined container, not a tray of inner pills`, () => {
       const container = declarations(control.css, control.container);
-      expect(value(container, 'height')).toBe('40px');
+      const minimumHeight = /(?:^|[;{\n])\s*min-height:\s*([^;]+);/g
+        .exec(container)?.[1]
+        ?.trim();
+      const height = /(?:^|[;{\n])\s*height:\s*([^;]+);/g.exec(container)?.[1]?.trim();
+      expect(minimumHeight === '40px' || height === '40px').toBe(true);
+      if (minimumHeight === '40px') expect(height).toBe('auto');
       expect(value(container, 'border')).toBe('1px solid var(--md-sys-color-outline)');
       expect(value(container, 'border-radius')).toBe('var(--md-sys-shape-corner-full)');
       expect(value(container, 'background')).toBe('transparent');
@@ -240,7 +245,7 @@ describe('collection cards (M3 outlined card)', () => {
       expect(value(block, 'box-shadow')).toBe('none');
       // The lift needs the spring curve's full period because it overshoots.
       expect(value(block, 'transition')).toContain(
-        'transform 300ms var(--md-sys-motion-spring)',
+        'transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-spring)',
       );
     });
 

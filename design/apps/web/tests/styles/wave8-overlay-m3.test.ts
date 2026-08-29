@@ -20,11 +20,26 @@ const read = (p: string) => readFileSync(new URL(`../../src/${p}`, import.meta.u
 function block(css: string, selector: string): string {
   const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const blocks: string[] = [];
-  for (const match of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const selectors = (match[1] ?? '')
-      .split(',')
-      .map((one) => one.trim().split('\n').pop()!.trim());
-    if (selectors.includes(selector)) blocks.push(match[2] ?? '');
+  let depth = 0;
+  let selectorStart = 0;
+  let bodyStart = 0;
+  let selectorText = '';
+  for (let index = 0; index < withoutComments.length; index += 1) {
+    const character = withoutComments[index];
+    if (character === '{') {
+      if (depth === 0) {
+        selectorText = withoutComments.slice(selectorStart, index).trim();
+        bodyStart = index + 1;
+      }
+      depth += 1;
+      continue;
+    }
+    if (character !== '}') continue;
+    depth -= 1;
+    if (depth !== 0) continue;
+    const selectors = selectorText.split(',').map((one) => one.trim());
+    if (selectors.includes(selector)) blocks.push(withoutComments.slice(bodyStart, index));
+    selectorStart = index + 1;
   }
   if (blocks.length === 0) throw new Error(`Missing CSS block for ${selector}`);
   return blocks.join('\n');
