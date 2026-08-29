@@ -8,13 +8,17 @@ need attention. It is a read-and-report surface, not a second source of truth.
 
 `design/apps/web/src/runtime/status-hub.ts` contains the transport client and
 the local fallback model. The client uses same-origin requests by default and
-accepts a configured HTTPS endpoint when a deployment needs one. Plain HTTP is
-refused before the access callback runs unless the caller explicitly enables a
-loopback development URL. Every request keeps one bounded deadline through
-credential resolution, headers, body parsing, and response mapping. It validates
-the response schema, limits list sizes and text lengths, and refuses a response
-for a different session. Invalid or unreachable data remains unavailable rather
-than becoming a guessed success.
+accepts a configured HTTPS endpoint when a deployment needs one. Relative values
+are resolved with URL semantics and must retain the exact current origin. Plain
+HTTP is refused before the access callback runs unless the caller explicitly
+enables a loopback development URL; protocol-relative, malformed and backslash
+authority forms are refused too. Every request keeps one bounded deadline through
+credential resolution, headers, body parsing, and response mapping. A streamed
+body is byte bounded and cancelled on timeout; a response without a stream must
+declare a bounded `Content-Length` before text is read. It validates the response
+schema, limits list traversal and text lengths, and refuses a response for a
+different session. Invalid or unreachable data remains unavailable rather than
+becoming a guessed success.
 
 The access credential is resolved by a callback for the individual request. It
 is never part of `StatusSnapshot`, `StatusLane`, `StatusEvidence`, replies,
@@ -42,7 +46,8 @@ same predicate. The result set reports an honest no-match or empty state.
 Records older than five minutes are rendered as stale waiting data with an
 age and a last-known state, never as a current verified state. Links are
 displayed only after URL validation and open with the usual external-link
-protections.
+protections. A bounded 15-second freshness timer recomputes that state while a
+card is mounted and clears itself when the card unmounts.
 
 `StatusHubPanel` reads the authenticated client first. If that read fails and a
 fallback was supplied, it renders the fallback and labels the reason. It does
@@ -59,6 +64,10 @@ explicit GitHub CLI inventory, and the build-time completeness Chut is
 available through `--check`. No hosted Status Hub endpoint or authentication
 was configured for this lane, so hosted delivery and a real built-interface
 drive remain unverified rather than being inferred from source.
+
+`scripts/verify-changelog-status.ps1` is the deterministic local aggregator for
+the release-history and status-adjacent negative Chuts. It is a source check
+ready for C0 build-script integration, not a hosted delivery proof.
 
 The component uses Material Design 3 color roles, shape, elevation and touch
 targets. It remains usable at narrow widths, wraps long evidence and commit
@@ -85,7 +94,8 @@ the answer as delivered.
 
 ## Verification
 
-Focused tests live in `design/apps/web/tests/runtime/status-hub.test.ts`, and
+Focused tests live in `design/apps/web/tests/runtime/status-hub.test.ts` and
+`design/apps/web/tests/components/StatusHubCard.test.tsx`, and
 release-history boundary checks live in `scripts/test-release-history-negative.mjs`.
 They cover session binding, malformed evidence removal, bounded arrays and response
 bytes, transport scope and credential ordering, acknowledgement refusal,

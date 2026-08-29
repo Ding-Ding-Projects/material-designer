@@ -108,6 +108,9 @@ Windows builds default to
 `https://github.com/Ding-Ding-Projects/material-designer/releases/latest/download/metadata.json`.
 The release workflow writes that `metadata.json` beside `Setup.exe`, points it
 at the same release's immutable installer asset, and includes its SHA-256. The
+integrity verifier requires absolute HTTPS GitHub URLs using the matching
+`releases/tag/<tag>` and `releases/download/<tag>/<asset>` paths, so a mutable
+`latest` feed or a URL from another release cannot pass as the published bytes.
 desktop updater downloads the installer in the background, verifies the checksum,
 and leaves the final action to the user through **Restart to install update**;
 it never launches a downloaded installer as a hidden side effect. `RELEASES`

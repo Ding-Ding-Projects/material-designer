@@ -14,6 +14,7 @@ export const STATUS_HUB_MAX_ID = 160;
 export const STATUS_HUB_MAX_LANES = 100;
 export const STATUS_HUB_MAX_EVIDENCE = 200;
 export const STATUS_HUB_MAX_NEXT_CHECKS = 100;
+export const STATUS_HUB_MAX_REPLIES = 200;
 export const STATUS_HUB_STALE_AFTER_MS = 5 * 60 * 1000;
 export const STATUS_HUB_MAX_BODY_BYTES = 512 * 1024;
 
@@ -158,7 +159,7 @@ function boundedId(value: unknown): string | null {
 
 function safeHref(value: unknown): string | undefined {
   const href = boundedString(value, 2_048);
-  if (!href) return undefined;
+  if (!href || href.includes('\\')) return undefined;
   try {
     const parsed = new URL(href, typeof window === 'undefined' ? 'http://localhost' : window.location.href);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return undefined;
@@ -180,13 +181,10 @@ function safeIso(value: unknown): string | undefined {
 function safeList(value: unknown, max: number): string[] {
   if (!Array.isArray(value)) return [];
   const list: string[] = [];
-  let traversed = 0;
-  for (const item of value) {
-    traversed += 1;
-    if (traversed > max * 4) break;
-    const text = boundedString(item);
+  const count = Math.min(value.length, max);
+  for (let index = 0; index < count; index += 1) {
+    const text = boundedString(value[index]);
     if (text != null) list.push(text);
-    if (list.length >= max) break;
   }
   return list;
 }
@@ -197,7 +195,7 @@ function freshnessFor(updatedAt: string | null, nowMs = Date.now()): {
 } {
   if (updatedAt == null) return { freshness: 'unavailable', ageSeconds: null };
   const ageSeconds = Math.max(0, Math.floor((nowMs - Date.parse(updatedAt)) / 1000));
-  return ageSeconds * 1000 > STATUS_HUB_STALE_AFTER_MS
+  return ageSeconds * 1000 >= STATUS_HUB_STALE_AFTER_MS
     ? { freshness: 'stale', ageSeconds }
     : { freshness: 'current', ageSeconds };
 }
@@ -205,13 +203,10 @@ function freshnessFor(updatedAt: string | null, nowMs = Date.now()): {
 function boundedMap<T>(value: unknown, max: number, mapper: (value: unknown) => T | null): T[] {
   if (!Array.isArray(value)) return [];
   const result: T[] = [];
-  let traversed = 0;
-  for (const item of value) {
-    traversed += 1;
-    if (traversed > max * 4) break;
-    const mapped = mapper(item);
+  const count = Math.min(value.length, max);
+  for (let index = 0; index < count; index += 1) {
+    const mapped = mapper(value[index]);
     if (mapped != null) result.push(mapped);
-    if (result.length >= max) break;
   }
   return result;
 }
@@ -248,6 +243,16 @@ function normalizeLane(value: unknown): StatusLane | null {
     evidence,
     nextChecks: safeList(value.nextChecks, STATUS_HUB_MAX_NEXT_CHECKS),
   };
+}
+
+function normalizeReply(value: unknown): StatusReply | null {
+  if (!isRecord(value)) return null;
+  const id = boundedId(value.id);
+  const body = boundedString(value.body);
+  const createdAt = safeIso(value.createdAt);
+  if (!id || !body || !createdAt) return null;
+  const questionId = boundedOptionalString(value.questionId, STATUS_HUB_MAX_ID);
+  return { id, body, createdAt, ...(questionId ? { questionId } : {}) };
 }
 
 /** Normalize server data before it can become user-visible state. */
@@ -339,19 +344,28 @@ function isLoopbackHostname(hostname: string): boolean {
 function normalizeBaseUrl(
   value: string | undefined,
   allowLoopbackHttp: boolean,
-): { url: string; scope: StatusTransportScope } {
+): { url: string; scope: StatusTransportScope; origin: string } {
   const base = (value ?? '/api/status-hub').trim();
-  if (!base || base.startsWith('/')) return { url: base || '/api/status-hub', scope: 'same-origin' };
+  const reference = typeof window === 'undefined' ? 'http://localhost/' : window.location.href;
+  const referenceUrl = new URL(reference);
+  if (base.includes('\\')) throw new Error('Status Hub endpoint must not contain backslashes');
+  if (base.startsWith('//')) throw new Error('Status Hub endpoint must not use a protocol-relative URL');
+  let parsed: URL;
   try {
-    const parsed = new URL(base, typeof window === 'undefined' ? 'http://localhost' : window.location.href);
-    if (parsed.protocol === 'https:') return { url: parsed.href.replace(/\/$/, ''), scope: 'https' };
-    if (parsed.protocol === 'http:' && allowLoopbackHttp && isLoopbackHostname(parsed.hostname)) {
-      return { url: parsed.href.replace(/\/$/, ''), scope: 'loopback-development' };
-    }
-    return { url: '/api/status-hub', scope: 'same-origin' };
+    parsed = new URL(base || '/api/status-hub', referenceUrl);
   } catch {
-    return { url: '/api/status-hub', scope: 'same-origin' };
+    throw new Error('Status Hub endpoint is malformed or outside the allowed transport scope');
   }
+  const hasExplicitScheme = /^[A-Za-z][A-Za-z\d+.-]*:/.test(base);
+  if (!hasExplicitScheme && parsed.origin === referenceUrl.origin && !parsed.search && !parsed.hash) {
+    return { url: parsed.href.replace(/\/$/, ''), scope: 'same-origin', origin: parsed.origin };
+  }
+  if (parsed.protocol === 'https:' && !parsed.search && !parsed.hash) return { url: parsed.href.replace(/\/$/, ''), scope: 'https', origin: parsed.origin };
+  if (parsed.protocol === 'http:' && allowLoopbackHttp && isLoopbackHostname(parsed.hostname)) {
+    if (parsed.search || parsed.hash) throw new Error('Status Hub endpoint must be path-only');
+    return { url: parsed.href.replace(/\/$/, ''), scope: 'loopback-development', origin: parsed.origin };
+  }
+  throw new Error('Status Hub endpoint must be same-origin, HTTPS, or explicitly enabled loopback development HTTP');
 }
 
 function failureFor(error: unknown): StatusFailure {
@@ -365,19 +379,46 @@ interface JsonResponse {
   readonly body: unknown;
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
-  if (!response.body) {
-    const text = await response.text();
-    if (new TextEncoder().encode(text).byteLength > STATUS_HUB_MAX_BODY_BYTES) {
-      throw new Error('Status response exceeds the byte limit');
+async function readTextWithDeadline(response: Response, signal: AbortSignal): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException('aborted', 'AbortError'));
+    if (signal.aborted) {
+      onAbort();
+      return;
     }
+    signal.addEventListener('abort', onAbort, { once: true });
+    void response.text().then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+async function readBoundedJson(response: Response, signal: AbortSignal): Promise<unknown> {
+  if (!response.body) {
+    if (response.status === 204 || response.status === 304) return null;
+    const declaredLength = response.headers.get('content-length');
+    const length = declaredLength == null ? NaN : Number(declaredLength);
+    if (!Number.isSafeInteger(length) || length < 0 || length > STATUS_HUB_MAX_BODY_BYTES) {
+      throw new Error('Status response without a stream must declare a bounded Content-Length');
+    }
+    const text = await readTextWithDeadline(response, signal);
+    if (new TextEncoder().encode(text).byteLength > STATUS_HUB_MAX_BODY_BYTES) throw new Error('Status response exceeds the byte limit');
     return text.trim().length === 0 ? null : JSON.parse(text);
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
   while (true) {
-    const next = await reader.read();
+    const next = await new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
+      const onAbort = () => {
+        void reader.cancel();
+        reject(new DOMException('aborted', 'AbortError'));
+      };
+      if (signal.aborted) {
+        onAbort();
+        return;
+      }
+      signal.addEventListener('abort', onAbort, { once: true });
+      void reader.read().then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+    });
     if (next.done) break;
     total += next.value.byteLength;
     if (total > STATUS_HUB_MAX_BODY_BYTES) {
@@ -399,18 +440,19 @@ async function readBoundedJson(response: Response): Promise<unknown> {
 export function createStatusHubClient(options: StatusHubClientOptions): StatusHubClient {
   const sessionId = boundedId(options.sessionId);
   if (!sessionId) throw new Error('Status session id is invalid');
-  if (options.baseUrl?.trim().startsWith('//')) {
-    throw new Error('Status Hub endpoint must not use a protocol-relative URL');
-  }
   const base = normalizeBaseUrl(options.baseUrl, options.allowLoopbackHttp === true);
-  if (options.baseUrl && base.scope === 'same-origin' && !options.baseUrl.trim().startsWith('/')) {
-    throw new Error('Status Hub endpoint must be same-origin, HTTPS, or explicitly enabled loopback development HTTP');
-  }
   const timeoutMs = Math.max(250, Math.min(options.timeoutMs ?? STATUS_HUB_DEFAULT_TIMEOUT_MS, 30_000));
   const fetchImpl = options.fetchImpl ?? fetch;
-  const endpoint = `${base.url}/sessions/${encodeURIComponent(sessionId)}`;
+  const reference = typeof window === 'undefined' ? 'http://localhost/' : window.location.href;
+  const endpoint = new URL(`sessions/${encodeURIComponent(sessionId)}/`, new URL(`${base.url}/`, reference));
+  if (endpoint.origin !== base.origin) throw new Error('Status Hub endpoint origin normalization failed');
 
   async function request(path: string, init: RequestInit = {}): Promise<JsonResponse> {
+    if (path.includes('\\') || path.startsWith('//')) throw new Error('Status Hub request path is malformed');
+    const target = new URL(path.replace(/^\/+/, ''), endpoint);
+    if (target.origin !== endpoint.origin || !target.pathname.startsWith(endpoint.pathname)) {
+      throw new Error('Status Hub request escaped its normalized endpoint');
+    }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let accessTokenTimer: ReturnType<typeof setTimeout> | null = null;
@@ -420,12 +462,13 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
         accessTokenTimer = setTimeout(() => resolve(null), timeoutMs);
       });
       const accessToken = await Promise.race([accessTokenPromise, accessTokenTimeout]);
+      if (controller.signal.aborted) throw new DOMException('aborted', 'AbortError');
       const headers = new Headers(init.headers);
       headers.set('Accept', 'application/json');
       if (init.body != null) headers.set('Content-Type', 'application/json');
       if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-      const response = await fetchImpl(`${endpoint}${path}`, { ...init, headers, signal: controller.signal });
-      return { status: response.status, ok: response.ok, body: await readBoundedJson(response) };
+      const response = await fetchImpl(target.href, { ...init, headers, signal: controller.signal });
+      return { status: response.status, ok: response.ok, body: await readBoundedJson(response, controller.signal) };
     } finally {
       clearTimeout(timer);
       if (accessTokenTimer != null) clearTimeout(accessTokenTimer);
@@ -473,15 +516,7 @@ export function createStatusHubClient(options: StatusHubClientOptions): StatusHu
         if (response.status === 401 || response.status === 403) return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: 'unauthorized' };
         if (!response.ok) return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: 'unavailable' };
         const record = isRecord(response.body) ? response.body : {};
-        const rawReplies = Array.isArray(record.replies) ? record.replies : [];
-        const replies: StatusReply[] = [];
-        for (const raw of rawReplies) {
-          if (!isRecord(raw)) continue;
-          const id = boundedId(raw.id);
-          const text = boundedString(raw.body);
-          const createdAt = safeIso(raw.createdAt);
-          if (id && text && createdAt) replies.push({ id, body: text, createdAt, ...(boundedOptionalString(raw.questionId, STATUS_HUB_MAX_ID) ? { questionId: boundedString(raw.questionId, STATUS_HUB_MAX_ID)! } : {}) });
-        }
+        const replies = boundedMap(record.replies, STATUS_HUB_MAX_REPLIES, normalizeReply);
         return { ok: true, replies, nextCursor: boundedOptionalString(record.nextCursor, STATUS_HUB_MAX_ID) ?? null, source: 'hub', pollable: true };
       } catch (error) {
         return { ok: false, replies: [], nextCursor: null, source: 'hub', pollable: true, error: failureFor(error).error };

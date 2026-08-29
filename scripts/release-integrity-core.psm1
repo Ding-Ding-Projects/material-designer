@@ -13,6 +13,54 @@ function Assert-ReleaseFile {
   return $path
 }
 
+function Assert-ImmutableReleaseUrls {
+  param(
+    [Parameter(Mandatory = $true)][string]$ReleaseNotesUrl,
+    [Parameter(Mandatory = $true)][string]$InstallerUrl,
+    [Parameter(Mandatory = $true)][string]$Sha256Url
+  )
+  $notes = [Uri]$null
+  $installer = [Uri]$null
+  $checksum = [Uri]$null
+  foreach ($value in @($ReleaseNotesUrl, $InstallerUrl, $Sha256Url)) {
+    $parsed = [Uri]$null
+    if (-not [Uri]::TryCreate($value, [UriKind]::Absolute, [ref]$parsed) -or
+        $parsed.Scheme -cne 'https' -or
+        $parsed.Host -cne 'github.com' -or
+        $parsed.UserInfo -ne '' -or
+        $parsed.Query -ne '' -or
+        $parsed.Fragment -ne '') {
+      throw 'Release metadata URLs must be absolute HTTPS GitHub release URLs without credentials or query state'
+    }
+    if ($null -eq $notes) { $notes = $parsed }
+    elseif ($null -eq $installer) { $installer = $parsed }
+    else { $checksum = $parsed }
+  }
+  $notesMatch = [regex]::Match($notes.AbsoluteUri, '^https://github[.]com/([^/]+)/([^/]+)/releases/tag/([^/?#]+)$')
+  $installerMatch = [regex]::Match($installer.AbsoluteUri, '^https://github[.]com/([^/]+)/([^/]+)/releases/download/([^/?#]+)/([^/?#]+)$')
+  $checksumMatch = [regex]::Match($checksum.AbsoluteUri, '^https://github[.]com/([^/]+)/([^/]+)/releases/download/([^/?#]+)/([^/?#]+)[.]sha256$')
+  if (-not $notesMatch.Success -or -not $installerMatch.Success -or -not $checksumMatch.Success) {
+    throw 'Release metadata URLs must use the immutable GitHub release tag/download route'
+  }
+  for ($index = 1; $index -le 2; $index += 1) {
+    if ($notesMatch.Groups[$index].Value -cne $installerMatch.Groups[$index].Value -or
+        $notesMatch.Groups[$index].Value -cne $checksumMatch.Groups[$index].Value) {
+      throw 'Release metadata URLs must identify one GitHub repository'
+    }
+  }
+  if ($notesMatch.Groups[3].Value -cne $installerMatch.Groups[3].Value -or
+      $installerMatch.Groups[3].Value -cne $checksumMatch.Groups[3].Value -or
+      $installerMatch.Groups[4].Value -cne $checksumMatch.Groups[4].Value) {
+    throw 'Release metadata URLs must identify one immutable release tag and installer checksum'
+  }
+  if ($installerMatch.Groups[4].Value -notmatch '[.]exe$') {
+    throw 'Release metadata installer URL must identify an executable release asset'
+  }
+  if ($installerMatch.Groups[3].Value -ieq 'latest') {
+    throw 'Release metadata must not use the mutable latest release route'
+  }
+}
+
 function Test-ReleaseIntegrity {
   param(
     [Parameter(Mandatory = $true)][string]$ArtifactDirectory,
@@ -62,8 +110,9 @@ function Test-ReleaseIntegrity {
   if ($installer.type -ne 'installer' -or $installer.name -ne 'Setup.exe') { throw 'Release metadata does not identify Setup.exe' }
   if ([int64]$installer.size -ne (Get-Item -LiteralPath $setup).Length -or $installer.sha256 -ne (& $hash $setup)) { throw 'Release metadata does not match Setup.exe bytes' }
   foreach ($url in @($metadata.releaseNotesUrl, $installer.url, $installer.sha256Url)) {
-    if ([string]::IsNullOrWhiteSpace($url) -or $url -notmatch '^https://') { throw 'Release metadata contains a non-HTTPS URL' }
+    if ([string]::IsNullOrWhiteSpace($url)) { throw 'Release metadata contains an empty URL' }
   }
+  Assert-ImmutableReleaseUrls -ReleaseNotesUrl ([string]$metadata.releaseNotesUrl) -InstallerUrl ([string]$installer.url) -Sha256Url ([string]$installer.sha256Url)
 
   try { $provenance = Get-Content -Raw -LiteralPath $provenancePath | ConvertFrom-Json } catch { throw 'Release provenance is not valid JSON' }
   $status = [string]$provenance.provenanceStatus

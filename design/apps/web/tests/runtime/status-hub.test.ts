@@ -6,6 +6,7 @@ import {
   normalizeStatusSnapshot,
   STATUS_HUB_MAX_BODY_BYTES,
   STATUS_HUB_MAX_EVIDENCE,
+  STATUS_HUB_MAX_REPLIES,
   type StatusSnapshot,
 } from '../../src/runtime/status-hub';
 import { STATUS_HUB_MOUNT_IDS } from '../../src/components/status/StatusHubCard';
@@ -83,10 +84,13 @@ describe('status hub client', () => {
   it('allows same-origin and HTTPS, and only allows loopback HTTP when explicitly enabled', () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
     expect(createStatusHubClient({ sessionId: 'session-1', fetchImpl }).transportScope).toBe('same-origin');
+    expect(createStatusHubClient({ sessionId: 'session-1', baseUrl: 'api/status-hub', fetchImpl }).transportScope).toBe('same-origin');
     expect(createStatusHubClient({ sessionId: 'session-1', baseUrl: 'https://status.example.invalid', fetchImpl }).transportScope).toBe('https');
     expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://127.0.0.1:8099', fetchImpl })).toThrow('same-origin, HTTPS');
     expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://status.example.invalid', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('same-origin, HTTPS');
     expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: '//status.example.invalid', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('protocol-relative');
+    expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'https:\\status.example.invalid', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('backslashes');
+    expect(() => createStatusHubClient({ sessionId: 'session-1', baseUrl: 'https://[malformed', getAccessToken: () => { throw new Error('credential callback must not run'); }, fetchImpl })).toThrow('malformed');
     expect(createStatusHubClient({ sessionId: 'session-1', baseUrl: 'http://127.0.0.1:8099', allowLoopbackHttp: true, fetchImpl }).transportScope).toBe('loopback-development');
   });
 
@@ -127,6 +131,60 @@ describe('status hub client', () => {
     );
     const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl });
     await expect(client.read()).resolves.toEqual({ ok: false, error: 'unavailable' });
+  });
+
+  it('refuses a null response body without a bounded Content-Length', async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }));
+    const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl });
+    await expect(client.read()).resolves.toEqual({ ok: false, error: 'unavailable' });
+  });
+
+  it('times out a credential callback before starting the request', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+      const client = createStatusHubClient({
+        sessionId: 'session-1',
+        getAccessToken: () => new Promise<string | null>(() => undefined),
+        fetchImpl,
+        timeoutMs: 500,
+      });
+      const pending = client.read();
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(pending).resolves.toEqual({ ok: false, error: 'timed-out' });
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancels a response stream that never yields its next chunk', async () => {
+    vi.useFakeTimers();
+    try {
+      const stream = new ReadableStream<Uint8Array>({ pull: () => new Promise(() => undefined) });
+      const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(stream, { status: 200 }));
+      const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl, timeoutMs: 500 });
+      const pending = client.read();
+      await vi.advanceTimersByTimeAsync(500);
+      await expect(pending).resolves.toEqual({ ok: false, error: 'timed-out' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bounds reply traversal before mapping the reply list', async () => {
+    const replies = Array.from({ length: STATUS_HUB_MAX_REPLIES * 3 }, (_, index) => ({
+      id: `reply-${index}`,
+      body: `Reply ${index}`,
+      createdAt: '2026-08-29T12:00:00Z',
+    }));
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ replies }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    const client = createStatusHubClient({ sessionId: 'session-1', fetchImpl });
+    const result = await client.pollReplies();
+    expect(result.ok).toBe(true);
+    expect(result.replies).toHaveLength(STATUS_HUB_MAX_REPLIES);
   });
 });
 

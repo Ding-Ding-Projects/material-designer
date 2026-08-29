@@ -1,9 +1,9 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Button } from '@open-design/components';
 import { RegexSearchField } from '../regex/RegexSearchField';
 import { useRegexSearch } from '../regex/useRegexSearch';
-import type { StatusEvidence, StatusLane, StatusSnapshot, StatusState } from '../../runtime/status-hub';
+import { STATUS_HUB_STALE_AFTER_MS, type StatusEvidence, type StatusLane, type StatusSnapshot, type StatusState } from '../../runtime/status-hub';
 import styles from './StatusHub.module.css';
 
 export const STATUS_HUB_MOUNT_IDS = ['C0', 'C2', 'C7', 'C12'] as const;
@@ -21,9 +21,9 @@ export interface StatusHubLabels {
   readonly refresh: string;
   readonly loading: string;
   readonly unavailable: string;
-  readonly timestampUnavailable?: string;
-  readonly stale?: (ageSeconds: number) => string;
-  readonly lastKnown?: (state: StatusState) => string;
+  readonly timestampUnavailable: string;
+  readonly stale: (ageSeconds: number) => string;
+  readonly lastKnown: (state: StatusState) => string;
   readonly localFallback: string;
   readonly noEvidence: string;
   readonly noChecks: string;
@@ -78,6 +78,7 @@ export function StatusHubCard({
   className,
 }: StatusHubMountProps) {
   const [query, setQuery] = useState('');
+  const [, setFreshnessTick] = useState(0);
   const search = useRegexSearch(query, setQuery);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const lanes = useMemo(() => {
@@ -93,11 +94,22 @@ export function StatusHubCard({
     return snapshot.nextChecks.filter((check) => search.matches(check));
   }, [search, snapshot]);
   const hasQuery = query.trim().length > 0;
-  const state = snapshot?.state ?? (loading ? 'waiting' : 'failed');
-  const freshnessNote = snapshot?.freshness === 'stale'
-    ? `${labels.stale?.(snapshot.ageSeconds ?? 0) ?? 'Status is stale.'}${snapshot.lastKnownState ? ` ${labels.lastKnown?.(snapshot.lastKnownState) ?? `Last known state: ${snapshot.lastKnownState}.`}` : ''}`
-    : snapshot?.freshness === 'unavailable'
-      ? labels.timestampUnavailable ?? labels.unavailable
+  useEffect(() => {
+    if (!snapshot?.updatedAt) return;
+    const timer = window.setInterval(() => setFreshnessTick((value) => value + 1), 15_000);
+    return () => window.clearInterval(timer);
+  }, [snapshot?.updatedAt]);
+  const liveAgeSeconds = snapshot?.updatedAt
+    ? Math.max(0, Math.floor((Date.now() - Date.parse(snapshot.updatedAt)) / 1000))
+    : null;
+  const stale = snapshot?.freshness === 'stale' || (liveAgeSeconds != null && liveAgeSeconds * 1000 >= STATUS_HUB_STALE_AFTER_MS);
+  const freshness = snapshot?.freshness === 'unavailable' ? 'unavailable' : stale ? 'stale' : snapshot?.freshness ?? 'unavailable';
+  const lastKnownState = snapshot?.lastKnownState ?? (stale ? snapshot?.state ?? null : null);
+  const state = stale ? 'waiting' : snapshot?.state ?? (loading ? 'waiting' : 'failed');
+  const freshnessNote = freshness === 'stale'
+    ? `${labels.stale(liveAgeSeconds ?? snapshot?.ageSeconds ?? 0)}${lastKnownState ? ` ${labels.lastKnown(lastKnownState)}` : ''}`
+    : freshness === 'unavailable'
+      ? labels.timestampUnavailable
       : snapshot?.source === 'local-fallback'
         ? labels.localFallback
         : snapshot
@@ -110,6 +122,7 @@ export function StatusHubCard({
       data-status-hub="true"
       data-status-hub-mount={mountId}
       data-status-hub-source={snapshot?.source ?? 'unavailable'}
+      data-status-hub-freshness={freshness}
       aria-busy={loading}
     >
       <header className={styles.header}>
@@ -137,7 +150,7 @@ export function StatusHubCard({
           <dl className={styles.factGrid}>
             <div className={styles.fact}>
               <dt>{labels.lastUpdated}</dt>
-              <dd><time dateTime={snapshot.updatedAt ?? undefined}>{snapshot.updatedAt ?? (labels.timestampUnavailable ?? labels.unavailable)}</time></dd>
+              <dd><time dateTime={snapshot.updatedAt ?? undefined}>{snapshot.updatedAt ?? labels.timestampUnavailable}</time></dd>
             </div>
             <div className={styles.fact}>
               <dt>{labels.baseline}</dt>

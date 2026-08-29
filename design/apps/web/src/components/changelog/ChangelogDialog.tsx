@@ -36,7 +36,7 @@ import {
   type ChangelogFilter,
   type ChangelogScope,
 } from '../../lib/changelog/filter';
-import { ChangelogDateRange } from './ChangelogDateRange';
+import { ChangelogDateRange, type ChangelogDatePreset } from './ChangelogDateRange';
 import { CHANGELOG_MOUNT_IDS, CHANGELOG_OPEN_EVENT, type ChangelogOpenDetail } from './open-changelog';
 import styles from './ChangelogDialog.module.css';
 
@@ -53,18 +53,10 @@ export interface ChangelogMountProps {
   readonly onOpenChange?: (open: boolean) => void;
   readonly releases?: readonly ChangelogRelease[];
   readonly mountId?: ChangelogMountId;
-}
-
-function emptyStateCopy(
-  base: string,
-  locale: string,
-  languageMode: string,
-  funnyLevel: number,
-): string {
-  if (funnyLevel <= 1) return base;
-  if (languageMode === 'bilingual') return `${base} · 暫時冇啱嘅記錄。`;
-  if (locale === 'zh-HK') return `${base}，呢段記錄去咗飲茶。`;
-  return `${base} The changelog is taking a small tea break.`;
+  readonly datePresets?: readonly ChangelogDatePreset[];
+  readonly datePresetsLabel?: string;
+  readonly noMatchesLabel?: string;
+  readonly emptyCopy?: { readonly title: string; readonly hint: string };
 }
 
 function downloadFile(name: string, body: string, mediaType: string): void {
@@ -87,8 +79,12 @@ export function ChangelogDialog({
   onOpenChange,
   releases: suppliedReleases,
   mountId = 'C12',
+  datePresets,
+  datePresetsLabel,
+  noMatchesLabel,
+  emptyCopy,
 }: ChangelogMountProps = {}) {
-  const { t, locale, languageMode, funnyLevels } = useI18n();
+  const { t } = useI18n();
   const [internalOpen, setInternalOpen] = useState(initialOpen);
   const [eventMountId, setEventMountId] = useState<ChangelogMountId>(mountId);
   const open = controlledOpen ?? internalOpen;
@@ -132,18 +128,8 @@ export function ChangelogDialog({
     () => filterChangelog(releases, filter, regexMatches),
     [filter, regexMatches, releases],
   );
-  const emptyTitle = emptyStateCopy(
-    t('changelog.empty'),
-    locale,
-    languageMode,
-    locale === 'zh-HK' ? funnyLevels['zh-HK'] : funnyLevels.en,
-  );
-  const emptyHint = emptyStateCopy(
-    t('changelog.emptyHint'),
-    locale,
-    languageMode,
-    locale === 'zh-HK' ? funnyLevels['zh-HK'] : funnyLevels.en,
-  );
+  const emptyTitle = emptyCopy?.title ?? t('changelog.empty');
+  const emptyHint = emptyCopy?.hint ?? t('changelog.emptyHint');
 
   const bounds = useMemo(() => {
     let first: string | null = null;
@@ -283,6 +269,9 @@ export function ChangelogDialog({
         </label>
         <ChangelogDateRange
           bounds={bounds}
+          presets={datePresets}
+          presetsLabel={datePresetsLabel}
+          noMatchesLabel={noMatchesLabel}
           value={{ from: filter.from, to: filter.to }}
           onChange={(next) => setFilter((current) => ({ ...current, ...next }))}
         />

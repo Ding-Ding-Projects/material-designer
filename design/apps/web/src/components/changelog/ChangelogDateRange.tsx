@@ -53,6 +53,7 @@ interface Props {
   /** Host-provided labels keep this control usable in every language mode. */
   readonly presets?: readonly ChangelogDatePreset[];
   readonly presetsLabel?: string;
+  readonly noMatchesLabel?: string;
 }
 
 type Field = 'from' | 'to';
@@ -61,30 +62,6 @@ type Field = 'from' | 'to';
 // plus a little room either side, so the list is short enough to be a jump
 // rather than a scroll through a century.
 const YEAR_PADDING = 2;
-
-const DEFAULT_PRESETS: readonly ChangelogDatePreset[] = [
-  { id: 'all', label: '' },
-  { id: 'last-7-days', label: '', days: 7 },
-  { id: 'last-30-days', label: '', days: 30 },
-  { id: 'last-90-days', label: '', days: 90 },
-];
-
-function defaultPresetLabel(
-  id: ChangelogDatePresetId,
-  locale: string,
-  languageMode: string,
-  funnyLevel: number,
-): string {
-  const days = id === 'all' ? '' : id.match(/^last-(\d+)-days$/)?.[1] ?? '';
-  const english = id === 'all'
-    ? funnyLevel >= 4 ? 'All time, no date left behind' : 'All time'
-    : funnyLevel >= 4 ? `Last ${days} days, history gets a breather` : `Last ${days} days`;
-  const cantonese = id === 'all'
-    ? funnyLevel >= 4 ? '全部時間，唔留低任何日期' : '全部時間'
-    : funnyLevel >= 4 ? `最近 ${days} 日，等段歷史抖吓氣` : `最近 ${days} 日`;
-  if (languageMode === 'bilingual') return `${english} · ${cantonese}`;
-  return locale === 'zh-HK' ? cantonese : english;
-}
 
 /** Resolve a named range against the newest dated record, not the host clock. */
 export function resolveChangelogDatePreset(
@@ -124,16 +101,11 @@ export function ChangelogDateRange({
   value,
   bounds,
   onChange,
-  presets,
-  presetsLabel = 'Date presets',
+  presets = [],
+  presetsLabel,
+  noMatchesLabel,
 }: Props) {
-  const { locale, t, languageMode, funnyLevels } = useI18n();
-  const effectivePresets = useMemo(
-    () => (presets ?? DEFAULT_PRESETS).map((preset) => preset.label
-      ? preset
-      : { ...preset, label: defaultPresetLabel(preset.id, locale, languageMode, locale === 'zh-HK' ? funnyLevels['zh-HK'] : funnyLevels.en) }),
-    [funnyLevels, languageMode, locale, presets],
-  );
+  const { locale, t } = useI18n();
   const order = useMemo(() => localeDateOrder(locale), [locale]);
   const [monthQuery, setMonthQuery] = useState('');
   const [yearQuery, setYearQuery] = useState('');
@@ -285,6 +257,7 @@ export function ChangelogDateRange({
     () => years.filter((year) => year === view.year || yearSearch.matches(String(year))),
     [view.year, years, yearSearch],
   );
+  const noMatches = noMatchesLabel ?? t('changelog.empty');
 
   const fromMessageKey = messageKeyFor(fromResult);
   const toMessageKey = messageKeyFor(toResult);
@@ -348,8 +321,8 @@ export function ChangelogDateRange({
         ) : null}
       </div>
       <p className={styles.hint}>{t('changelog.dateHint')}</p>
-      <div className={styles.presets} role="group" aria-label={presetsLabel}>
-        {effectivePresets.map((preset) => {
+      <div className={styles.presets} role="group" aria-label={presetsLabel ?? t('changelog.dateHint')}>
+        {presets.map((preset) => {
           let active = preset.id === 'all' && value.from == null && value.to == null;
           const range = resolveChangelogDatePreset(preset, bounds);
           if (range?.from != null && range.to != null) active = value.from === range.from && value.to === range.to;
@@ -414,7 +387,7 @@ export function ChangelogDateRange({
                 }
               >
                 {visibleMonths.length === 0 ? (
-                  <option disabled>No months match</option>
+                  <option disabled>{noMatches}</option>
                 ) : visibleMonths.map(({ label, value }) => (
                   <option key={label} value={String(value)}>
                     {label}
@@ -438,7 +411,7 @@ export function ChangelogDateRange({
                 }
               >
                 {visibleYears.length === 0 ? (
-                  <option disabled>No years match</option>
+                  <option disabled>{noMatches}</option>
                 ) : visibleYears.map((year) => (
                   <option key={year} value={String(year)}>
                     {year}

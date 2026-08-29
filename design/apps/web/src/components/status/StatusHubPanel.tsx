@@ -102,12 +102,12 @@ export function StatusHubPanel({
 }
 
 /** A safe, empty local model for hosts that have no authenticated Hub yet. */
-export function createEmptyStatusFallback(sessionId: string, title: string): StatusHubClient {
+export function createEmptyStatusFallback(sessionId: string, title: string, summary: string): StatusHubClient {
   return createLocalStatusFallback({
     sessionId,
     title,
     state: 'waiting',
-    summary: 'No authenticated status delivery is connected yet.',
+    summary,
     updatedAt: null,
     lanes: [],
     evidence: [],
