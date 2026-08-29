@@ -15,19 +15,23 @@ source-owner inventory lives at
 `.codex/verification/lang-gui/source-owners.json`. Its boundary is the complete
 set of current top-level rendered owner registrations. It does not silently
 discover new files, and it includes the native update-menu registration beside
-the web renderer owners.
+the web renderer owners. The same inventory records 203 raw interactive JSX
+descendants and 79 site runtime DOM creators; 189 accepted JSX descendants are
+checked after 14 comment-only examples are explicitly excluded.
 
 | Surface | Current source | Explicit elements |
 | --- | --- | --- |
 | Windows desktop application | `design/apps/web/src/App.tsx` plus the native update-menu registration | 27 explicit owners: the application root, update menu, and every top-level renderer component registered by `App.tsx` |
 | Documentation site | `site/index.html` and `site/assets/js/` | 15 explicit owners: top bar, front-screen provenance, tabs, content search, command palette, notification control, theme toggle, search results, overview hero, language settings, funny-level settings, appearance settings, toy-lock settings, reset settings, status bar |
 
-Each of the 42 element rows has a stable identifier, an owner, a route, and one
+Each of the 42 owner rows has a stable identifier, an owner, a route, and one
 canonical source-registration anchor. Import registrations are checked inside
 their import braces, so the validator rejects zero matches, duplicates, comments,
 renamed descendants, and anchors that are not owner registrations. Removing a
 source owner therefore turns the check red instead of silently leaving a stale
-row behind.
+row behind. Raw interactive descendants and site runtime creators are checked by
+the same source-root discovery engine and must match their hand-written
+classification in both directions.
 
 ## Required row contract
 
@@ -69,9 +73,11 @@ node scripts/verify-lang-gui-elements.mjs --negative
 The first command checks JSON shape, exact row membership, source paths and
 anchors, all required fields, all required states, the six lock policies, the
 three language modes, the responsive tuple matrix, and the honest evidence
-boundaries. The second command deliberately removes, in memory, a whole
-element row, a surface membership row, a state, a required field, and a source
-anchor. Each mutation must turn red. The untouched registry is then checked
+boundaries. The second command deliberately removes, in memory, a whole element
+row, an owner, a raw descendant, a site DOM creator, a surface membership row, a
+state, a required field, and a source anchor. It also injects duplicate,
+commented, renamed, template, semantic, schema, status, and bogus-evidence
+mutations. Each mutation must turn red. The untouched registry is then checked
 green again. No changed file is written by the negative run.
 
 This is a source and inventory check. It does not turn source presence into

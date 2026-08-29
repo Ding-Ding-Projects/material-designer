@@ -10572,5 +10572,6 @@
       }
     }
   ],
-  "ownerInventoryFile": ".codex/verification/lang-gui/source-owners.json"
+  "ownerInventoryFile": ".codex/verification/lang-gui/source-owners.json",
+  "interactiveDescendantInventoryFile": ".codex/verification/lang-gui/source-owners.json"
 }
