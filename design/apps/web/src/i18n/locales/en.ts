@@ -5949,6 +5949,7 @@ export const en: Dict = {
   'labs.optOutOtherPlaceholder': "What specifically did not work?",
   'labs.optOutSubmit': "Submit",
   'documentation.nav': 'Documentation',
+  'fileConverter.nav': 'File converter',
   'documentation.loading': 'Loading documentation…',
   'documentation.offlineDescription': 'Read the complete bundled documentation without a network connection.',
   'documentation.articleCount': '{count} articles',

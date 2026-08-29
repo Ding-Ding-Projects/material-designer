@@ -6315,6 +6315,7 @@ export const zhCN: Dict = {
   'labs.optOutOtherPlaceholder': "具体是哪里不合适？",
   'labs.optOutSubmit': "提交",
   'documentation.nav': '文档',
+  'fileConverter.nav': '文件转换器',
   'documentation.loading': '正在加载文档…',
   'documentation.offlineDescription': '无需网络即可阅读完整的内置文档。',
   'documentation.articleCount': '{count} 篇文章',

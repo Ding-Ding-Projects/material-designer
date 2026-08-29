@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -70,6 +70,18 @@ import {
 } from "./deterministic-parity-route.js";
 import { deterministicCapturePrelude } from "./deterministic-capture-prelude.js";
 import { SettingsToyLockStore } from "./toy-lock-store.js";
+import {
+  ADAPTER_CATALOG,
+  ConversionQueue,
+  ConverterAuditStore,
+  ConverterHost,
+  FileQueueStore,
+  OverwriteAuthorizationStore,
+  exportQueueToFile,
+  publicAdapterMetadata,
+  publicConversionPreview,
+  type QueueItem,
+} from "./converter/index.js";
 
 const execFileAsync = promisify(execFile);
 const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = "od:preview-navigation-failed";
@@ -80,6 +92,30 @@ const TOY_LOCK_IPC_CHANNELS = Object.freeze([
   "od:toy-locks:list",
   "od:toy-locks:remove",
   "od:toy-locks:verify",
+] as const);
+const CONVERTER_IPC_CHANNELS = Object.freeze([
+  "od:converter:catalog",
+  "od:converter:pick-source",
+  "od:converter:pick-sources",
+  "od:converter:pick-destination",
+  "od:converter:preview",
+  "od:converter:acknowledge-disclosure",
+  "od:converter:convert",
+  "od:converter:request-overwrite",
+  "od:converter:overwrite",
+  "od:converter:pdf-operation",
+  "od:converter:queue:page",
+  "od:converter:queue:enqueue",
+  "od:converter:queue:export",
+  "od:converter:queue:start",
+  "od:converter:queue:pause",
+  "od:converter:queue:resume",
+  "od:converter:queue:cancel",
+  "od:converter:queue:retry",
+  "od:converter:notifications:page",
+  "od:converter:notifications:mark-read",
+  "od:converter:notifications:dismiss",
+  "od:converter:history:page",
 ] as const);
 const ABORTED_NAVIGATION_ERROR_CODE = -3;
 let previewNavigationFailureEventSequence = 0;
@@ -2396,6 +2432,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   ipcMain.removeHandler("shell:open-path");
   ipcMain.removeHandler("browser:clear-data");
   for (const channel of TOY_LOCK_IPC_CHANNELS) ipcMain.removeHandler(channel);
+  for (const channel of CONVERTER_IPC_CHANNELS) ipcMain.removeHandler(channel);
   for (const channel of UPDATER_IPC_CHANNELS) {
     ipcMain.removeHandler(channel);
   }
@@ -2978,6 +3015,336 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       throw new Error("host IPC is only available to the main Material Designer window");
     }
   };
+  const converterFailure = (rawReason: string) => {
+    let reason = rawReason.slice(0, 2_048);
+    for (const path of converterHandles.values()) {
+      reason = reason.replaceAll(path, basename(path));
+    }
+    reason = reason
+      .replace(/[A-Za-z]:[\\/][^\r\n"']+/g, "local file")
+      .replace(/\/(?:Users|home)\/[^\s"']+/g, "local file");
+    return { ok: false as const, reason };
+  };
+  const converterRoot = join(app.getPath("userData"), "file-converter");
+  const converterHost = new ConverterHost({ adapters: ADAPTER_CATALOG });
+  const converterQueueStore = new FileQueueStore(join(converterRoot, "queue.jsonl"));
+  const converterAudit = new ConverterAuditStore(join(converterRoot, "audit"));
+  const converterOverwrite = new OverwriteAuthorizationStore();
+  const converterHandles = new Map<string, string>();
+  const converterPreviews = new Map<string, {
+    adapterId: string;
+    destinationPath: string;
+    lossy: boolean;
+    sourcePath: string;
+    targetFormat: string;
+  }>();
+  const publicQueueItem = (item: QueueItem) => ({
+    id: item.id,
+    sourceName: basename(item.sourcePath),
+    destinationName: basename(item.destinationPath),
+    targetFormat: item.targetFormat,
+    state: item.state,
+    bytesProcessed: item.bytesProcessed,
+    ...(item.totalBytes === undefined ? {} : { totalBytes: item.totalBytes }),
+    ...(item.bytesPerSecond === undefined ? {} : { bytesPerSecond: item.bytesPerSecond }),
+    ...(item.etaSeconds === undefined ? {} : { etaSeconds: item.etaSeconds }),
+    ...(item.reason === undefined ? {} : { reason: item.reason }),
+    updatedAt: item.updatedAt,
+  });
+  const registerConverterPath = async (path: string) => {
+    const details = await stat(path).catch((error: unknown) => {
+      if (typeof error === "object" && error != null && "code" in error && error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (details && !details.isFile()) throw new Error("The selected converter path is not a file.");
+    const handle = randomBytes(24).toString("hex");
+    converterHandles.set(handle, resolve(path));
+    while (converterHandles.size > 4_096) {
+      const oldest = converterHandles.keys().next().value;
+      if (typeof oldest !== "string") break;
+      converterHandles.delete(oldest);
+    }
+    return {
+      handle,
+      name: basename(path),
+      bytes: details?.size ?? 0,
+      format: extname(path).slice(1).toLowerCase() || "unknown",
+      exists: details?.isFile() === true,
+    };
+  };
+  const converterPath = (handle: unknown): string => {
+    if (typeof handle !== "string" || !/^[0-9a-f]{48}$/.test(handle)) {
+      throw new Error("The converter file handle is invalid.");
+    }
+    const path = converterHandles.get(handle);
+    if (!path) throw new Error("The converter file handle is unknown or expired.");
+    return path;
+  };
+  const converterResult = async (outcome: Awaited<ReturnType<ConverterHost["convert"]>>) => {
+    if (outcome.status !== "converted") return { ok: false as const, status: outcome.status, reason: outcome.reason };
+    const destination = await registerConverterPath(outcome.destination);
+    await converterAudit.notify({
+      severity: "success",
+      title: "Conversion completed",
+      body: `${destination.name} was validated and promoted.`,
+    });
+    await converterAudit.recordMutation({
+      action: "conversion",
+      summary: `Converted output ${destination.name} to ${outcome.format}.`,
+    });
+    return {
+      ok: true as const,
+      status: "converted" as const,
+      bytes: outcome.bytes,
+      format: outcome.format,
+      destination,
+    };
+  };
+  const converterQueue = new ConversionQueue(converterQueueStore, async (item, signal, onProgress) => {
+    let previewId: string | undefined;
+    try {
+      const replacementPreview = await converterHost.preview(
+        item.sourcePath,
+        item.destinationPath,
+        item.adapterId,
+        item.targetFormat,
+      );
+      if (replacementPreview.lossy) {
+        return {
+          status: "failed" as const,
+          source: item.sourcePath,
+          destination: item.destinationPath,
+          reason: "Lossy queued conversion requires a new interactive review; use the direct conversion flow.",
+        };
+      }
+      previewId = replacementPreview.previewId;
+      return await converterHost.convert(previewId, signal, onProgress);
+    } finally {
+      if (previewId) converterPreviews.delete(previewId);
+    }
+  });
+  if (captureRoute == null) {
+    void converterQueue.reconcileAfterRestart().catch(() => undefined);
+  }
+  const registerConverterHandler = (
+    channel: (typeof CONVERTER_IPC_CHANNELS)[number],
+    handler: (...args: unknown[]) => unknown | Promise<unknown>,
+    options: { allowCapture?: boolean } = {},
+  ) => {
+    ipcMain.handle(channel, async (event: Electron.IpcMainInvokeEvent, ...args: unknown[]) => {
+      requireMainWindowSender(event);
+      if (captureRoute != null && options.allowCapture !== true) {
+        return converterFailure("capture.side_effect_blocked: file converter access is unavailable");
+      }
+      try {
+        return await handler(...args);
+      } catch (error) {
+        return converterFailure(error instanceof Error ? error.message : String(error));
+      }
+    });
+  };
+  registerConverterHandler(
+    "od:converter:catalog",
+    () => ADAPTER_CATALOG.map(publicAdapterMetadata),
+    { allowCapture: true },
+  );
+  registerConverterHandler("od:converter:pick-source", async () => {
+    const result = await dialog.showOpenDialog(window, {
+      properties: ["openFile"],
+      title: "Choose a source file",
+    });
+    if (result.canceled || result.filePaths.length === 0) return { ok: false, canceled: true };
+    return registerConverterPath(result.filePaths[0]);
+  });
+  registerConverterHandler("od:converter:pick-sources", async () => {
+    const result = await dialog.showOpenDialog(window, {
+      properties: ["openFile", "multiSelections"],
+      title: "Choose source files",
+    });
+    if (result.canceled || result.filePaths.length === 0) return { ok: false, canceled: true };
+    return Promise.all(result.filePaths.map(registerConverterPath));
+  });
+  registerConverterHandler("od:converter:pick-destination", async (suggestedName: unknown) => {
+    const safeName = typeof suggestedName === "string" && suggestedName.length > 0
+      ? basename(suggestedName).slice(0, 255)
+      : "converted-output";
+    const result = await dialog.showSaveDialog(window, {
+      defaultPath: safeName,
+      title: "Choose a converter destination",
+    });
+    if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+    return registerConverterPath(result.filePath);
+  });
+  registerConverterHandler("od:converter:preview", async (raw: unknown) => {
+    const request = raw as Record<string, unknown>;
+    const sourcePath = converterPath(request.sourceHandle);
+    const destinationPath = converterPath(request.destinationHandle);
+    if (typeof request.adapterId !== "string" || typeof request.targetFormat !== "string") {
+      throw new Error("The conversion preview request is incomplete.");
+    }
+    const preview = await converterHost.preview(sourcePath, destinationPath, request.adapterId, request.targetFormat);
+    while (converterPreviews.size >= 1_000) {
+      const oldest = converterPreviews.keys().next().value;
+      if (typeof oldest !== "string") break;
+      converterPreviews.delete(oldest);
+    }
+    converterPreviews.set(preview.previewId, {
+      adapterId: preview.adapterId,
+      destinationPath,
+      lossy: preview.lossy,
+      sourcePath,
+      targetFormat: preview.targetFormat,
+    });
+    return publicConversionPreview(preview, String(request.destinationHandle));
+  });
+  registerConverterHandler("od:converter:acknowledge-disclosure", (previewId: unknown) => {
+    if (typeof previewId !== "string") throw new Error("The conversion preview id is invalid.");
+    return converterHost.acknowledgeDisclosure(previewId);
+  });
+  registerConverterHandler("od:converter:convert", async (raw: unknown) => {
+    const request = raw as Record<string, unknown>;
+    if (typeof request.previewId !== "string") throw new Error("The conversion preview id is invalid.");
+    try {
+      return await converterResult(await converterHost.convert(
+        request.previewId,
+        undefined,
+        undefined,
+        typeof request.acknowledgementToken === "string" ? request.acknowledgementToken : undefined,
+      ));
+    } finally {
+      converterPreviews.delete(request.previewId);
+    }
+  });
+  registerConverterHandler("od:converter:request-overwrite", async (previewId: unknown) => {
+    if (typeof previewId !== "string") throw new Error("The conversion preview id is invalid.");
+    const preview = converterPreviews.get(previewId);
+    if (!preview) throw new Error("The conversion preview is unknown or expired.");
+    const challenge = await converterOverwrite.issue({
+      sourcePath: preview.sourcePath,
+      destinationPath: preview.destinationPath,
+      adapterId: preview.adapterId,
+      targetFormat: preview.targetFormat,
+    });
+    return { ok: true, ...challenge };
+  });
+  registerConverterHandler("od:converter:overwrite", async (raw: unknown) => {
+    const request = raw as Record<string, unknown>;
+    if (typeof request.previewId !== "string" || typeof request.token !== "string") {
+      throw new Error("The overwrite request is incomplete.");
+    }
+    const preview = converterPreviews.get(request.previewId);
+    if (!preview) throw new Error("The conversion preview is unknown or expired.");
+    const authorization = await converterOverwrite.consume(request.token, {
+      sourcePath: preview.sourcePath,
+      destinationPath: preview.destinationPath,
+      adapterId: preview.adapterId,
+      targetFormat: preview.targetFormat,
+    });
+    try {
+      return await converterResult(await converterHost.convertAuthorized(
+        request.previewId,
+        authorization,
+        undefined,
+        undefined,
+        typeof request.acknowledgementToken === "string" ? request.acknowledgementToken : undefined,
+      ));
+    } finally {
+      converterPreviews.delete(request.previewId);
+    }
+  });
+  registerConverterHandler("od:converter:pdf-operation", async (raw: unknown) => {
+    const request = raw as Record<string, unknown>;
+    if (request.operation !== "inspect") {
+      return converterFailure("Content-preserving PDF edits are unavailable until a bundled rewrite engine is verified.");
+    }
+    const document = await converterHost.inspectPdf(converterPath(request.sourceHandle));
+    return {
+      ok: true,
+      operation: "inspect",
+      pages: document.pages.length,
+      metadata: document.metadata,
+    };
+  });
+  ipcMain.handle("od:converter:queue:page", async (event, cursor?: string, pageSize?: number) => {
+    requireMainWindowSender(event);
+    if (captureRoute != null) return converterFailure("capture.side_effect_blocked: converter queue access is unavailable");
+    try {
+      const page = await converterQueue.listPage(cursor, pageSize);
+      return { items: page.items.map(publicQueueItem), nextCursor: page.nextCursor };
+    } catch (error) {
+      return converterFailure(error instanceof Error ? error.message : String(error));
+    }
+  });
+  registerConverterHandler("od:converter:queue:enqueue", async (raw: unknown) => {
+    const request = raw as Record<string, unknown>;
+    if (typeof request.previewId !== "string") throw new Error("The conversion preview id is invalid.");
+    const preview = converterPreviews.get(request.previewId);
+    if (!preview) throw new Error("The conversion preview is unknown or expired.");
+    if (preview.lossy) {
+      return converterFailure("Lossy conversions require just-in-time review and cannot be added to the durable queue; use Convert now.");
+    }
+    const item = await converterQueue.enqueue(
+      preview.sourcePath,
+      preview.destinationPath,
+      preview.targetFormat,
+      preview.adapterId,
+      undefined,
+    );
+    converterPreviews.delete(request.previewId);
+    await converterAudit.notify({
+      severity: "progress",
+      title: "Conversion queued",
+      body: `${basename(preview.sourcePath)} is waiting in the durable queue.`,
+    });
+    return publicQueueItem(item);
+  });
+  registerConverterHandler("od:converter:queue:export", async (destinationHandle: unknown) => {
+    const destinationPath = converterPath(destinationHandle);
+    const result = await exportQueueToFile(converterQueueStore, destinationPath);
+    return { ok: true, ...result, destination: await registerConverterPath(result.destination) };
+  });
+  registerConverterHandler("od:converter:queue:start", () => {
+    void converterQueue.run().catch(() => undefined);
+    return { ok: true };
+  });
+  registerConverterHandler("od:converter:queue:pause", () => {
+    converterQueue.pause();
+    return { ok: true };
+  });
+  registerConverterHandler("od:converter:queue:resume", () => {
+    converterQueue.resume();
+    return { ok: true };
+  });
+  registerConverterHandler("od:converter:queue:cancel", async (ids: unknown) => {
+    const selected = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined;
+    await converterQueue.cancelSelected(selected);
+    return { ok: true };
+  });
+  registerConverterHandler("od:converter:queue:retry", () => {
+    return converterFailure("Retry requires a fresh preview and any required loss disclosure; choose the source and queue it again.");
+  });
+  registerConverterHandler("od:converter:notifications:page", async (cursor: unknown, pageSize: unknown) => {
+    const result = await converterAudit.notificationsPage(
+      typeof cursor === "string" ? cursor : undefined,
+      typeof pageSize === "number" ? pageSize : undefined,
+    );
+    return result.ok ? result.value : converterFailure(result.reason);
+  });
+  registerConverterHandler("od:converter:notifications:mark-read", async (ids: unknown) => {
+    const result = await converterAudit.markRead(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined);
+    return result.ok ? { ok: true } : converterFailure(result.reason);
+  });
+  registerConverterHandler("od:converter:notifications:dismiss", async (ids: unknown) => {
+    const result = await converterAudit.dismiss(Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : undefined);
+    return result.ok ? { ok: true } : converterFailure(result.reason);
+  });
+  registerConverterHandler("od:converter:history:page", async (cursor: unknown, pageSize: unknown) => {
+    const result = await converterAudit.historyPage(
+      typeof cursor === "string" ? cursor : undefined,
+      typeof pageSize === "number" ? pageSize : undefined,
+    );
+    return result.ok ? result.value : converterFailure(result.reason);
+  });
   const toyLockStore = new SettingsToyLockStore({
     directory: join(app.getPath("userData"), "toy-locks"),
     osProtection: {

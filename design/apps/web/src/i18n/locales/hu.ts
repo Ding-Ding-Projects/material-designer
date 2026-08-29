@@ -5866,6 +5866,7 @@ export const hu: Dict = {
   'labs.optOutOtherPlaceholder': "Pontosan mi nem volt megfelelő?",
   'labs.optOutSubmit': "Elküldés",
   'documentation.nav': 'Dokumentáció',
+  'fileConverter.nav': 'Fájlkonvertáló',
   'documentation.loading': 'Dokumentáció betöltése…',
   'documentation.offlineDescription': 'A teljes beépített dokumentáció hálózati kapcsolat nélkül is olvasható.',
   'documentation.articleCount': '{count} cikk',

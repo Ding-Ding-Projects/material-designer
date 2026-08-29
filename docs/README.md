@@ -107,6 +107,7 @@ never uses the present tense for something that does not run.
 | Path | What it is | Documented in |
 | --- | --- | --- |
 | `MODIFICATIONS.md` | The Apache-2.0 §4(b) change notice **and** the machine-read allowlist of files permitted to differ from upstream. | [porting/verification.md](porting/verification.md) |
+| `design/apps/desktop/src/main/converter/` | The source-integrated local file-converter host, bounded worker, queue, audit/history, overwrite, provenance, path-safety, and Windows native-writer boundary. Built and installed proof remains pending. | [standards/file-converter.md](standards/file-converter.md) |
 | `scripts/verify-port.sh` | The verifier that enforces the above. Pure `git` and POSIX shell, so it runs without a toolchain. | [porting/verification.md](porting/verification.md) |
 | `scripts/upstream-manifest.tsv` | The committed table of upstream blob ids the verifier falls back to when the submodule is not checked out, so continuous integration need not clone it. | [porting/verification.md](porting/verification.md) |
 | `scripts/line-count.mjs` | The committed line counter continuous integration runs at a released commit, broken down by scope and attributed per surviving line. | [release/line-count.md](release/line-count.md) |

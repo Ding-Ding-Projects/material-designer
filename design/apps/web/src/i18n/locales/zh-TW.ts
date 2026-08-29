@@ -6390,6 +6390,7 @@ export const zhTW: Dict = {
   'labs.optOutOtherPlaceholder': "具體是哪裡不合適？",
   'labs.optOutSubmit': "送出",
   'documentation.nav': '文件',
+  'fileConverter.nav': '檔案轉換器',
   'documentation.loading': '載入文件…',
   'documentation.offlineDescription': '沒有網路也可以閱讀完整內建文件。',
   'documentation.articleCount': '{count} 篇文章',

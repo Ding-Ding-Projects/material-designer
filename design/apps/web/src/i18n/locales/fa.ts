@@ -5860,6 +5860,7 @@ export const fa: Dict = {
   'labs.optOutOtherPlaceholder': "دقیقاً چه چیزی مناسب نبود؟",
   'labs.optOutSubmit': "ارسال",
   'documentation.nav': 'مستندات',
+  'fileConverter.nav': 'مبدل فایل',
   'documentation.loading': 'در حال بارگیری مستندات…',
   'documentation.offlineDescription': 'مستندات کاملِ همراه را بدون اتصال به شبکه بخوانید.',
   'documentation.articleCount': '{count} مقاله',

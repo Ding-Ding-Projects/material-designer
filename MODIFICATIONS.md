@@ -5926,6 +5926,48 @@ unsafe assertion, while preserving the existing exit and continue outcomes.
 - `apps/packaged/src/launcher-after-quit.ts`
 - `apps/packaged/tests/launcher-after-quit.test.ts`
 
+### 2026-08-29 — Integrate the bounded local file-converter foundation
+
+**Reason:** Material Designer now carries a source-integrated file-converter
+foundation with signature-first inspection, a bounded worker boundary, a
+durable paged queue, local audit/history records, one-use overwrite
+authorization, a renderer surface, a typed host bridge, and a Windows native
+atomic writer. The packaging resource tree compiles the checked-in native
+writer source and records its executable and source digests. Built,
+installed, and full-interface evidence remains pending and is not claimed by
+this notice.
+
+**Changed files:**
+
+- `apps/desktop/src/main/converter/audit.ts`
+- `apps/desktop/src/main/converter/detect.ts`
+- `apps/desktop/src/main/converter/host.ts`
+- `apps/desktop/src/main/converter/index.ts`
+- `apps/desktop/src/main/converter/overwrite.ts`
+- `apps/desktop/src/main/converter/path-safety.ts`
+- `apps/desktop/src/main/converter/pdf.ts`
+- `apps/desktop/src/main/converter/provenance.ts`
+- `apps/desktop/src/main/converter/queue.ts`
+- `apps/desktop/src/main/converter/registry.ts`
+- `apps/desktop/src/main/converter/types.ts`
+- `apps/desktop/src/main/converter/windows-writer.ts`
+- `apps/desktop/tests/main/file-converter-ipc-contract.test.ts`
+- `apps/desktop/tests/main/file-converter.test.ts`
+- `apps/web/src/components/FileConverterView.module.css`
+- `apps/web/src/components/FileConverterView.tsx`
+- `apps/web/src/components/converter/ConverterSearchableChoice.module.css`
+- `apps/web/src/components/converter/ConverterSearchableChoice.tsx`
+- `apps/web/src/components/converter/converterBridge.ts`
+- `apps/web/src/components/converter/converterCopy.ts`
+- `apps/web/src/components/converter/converterRegistration.ts`
+- `apps/web/src/components/converter/index.ts`
+- `apps/web/tests/file-converter.contract.test.ts`
+- `tools/pack/resources/win/converter-writer/converter-writer.cpp`
+- `tools/pack/src/resources/index.ts`
+- `tools/pack/src/win/converter-writer.ts`
+- `tools/pack/src/win/resources.ts`
+- `tools/pack/tests/win-converter-writer.test.ts`
+
 ## Trademarks
 
 Apache-2.0 grants no trademark rights (section 6). The "Open Design" name, its

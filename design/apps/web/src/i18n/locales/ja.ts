@@ -5866,6 +5866,7 @@ export const ja: Dict = {
   'labs.optOutOtherPlaceholder': "具体的にどこが合いませんでしたか？",
   'labs.optOutSubmit': "送信",
   'documentation.nav': 'ドキュメント',
+  'fileConverter.nav': 'ファイル変換',
   'documentation.loading': 'ドキュメントを読み込んでいます…',
   'documentation.offlineDescription': 'ネットワーク接続なしで、同梱されたすべてのドキュメントを読めます。',
   'documentation.articleCount': '{count} 件の記事',

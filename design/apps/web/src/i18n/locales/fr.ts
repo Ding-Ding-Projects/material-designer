@@ -5865,6 +5865,7 @@ export const fr: Dict = {
   'labs.optOutOtherPlaceholder': "Qu'est-ce qui n'allait pas exactement ?",
   'labs.optOutSubmit': "Envoyer",
   'documentation.nav': 'Documentation',
+  'fileConverter.nav': 'Convertisseur de fichiers',
   'documentation.loading': 'Chargement de la documentation…',
   'documentation.offlineDescription': 'Consultez toute la documentation intégrée sans connexion réseau.',
   'documentation.articleCount': '{count} articles',

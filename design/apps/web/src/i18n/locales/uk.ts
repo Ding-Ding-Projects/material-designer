@@ -5865,6 +5865,7 @@ export const uk: Dict = {
   'labs.optOutOtherPlaceholder': "Що саме не підійшло?",
   'labs.optOutSubmit': "Надіслати",
   'documentation.nav': 'Документація',
+  'fileConverter.nav': 'Конвертер файлів',
   'documentation.loading': 'Завантаження документації…',
   'documentation.offlineDescription': 'Читайте всю вбудовану документацію без підключення до мережі.',
   'documentation.articleCount': 'Статей: {count}',

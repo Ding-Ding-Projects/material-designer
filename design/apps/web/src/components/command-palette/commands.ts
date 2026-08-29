@@ -154,6 +154,13 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     route: { kind: 'home', view: 'documentation' },
     keywords: ['documentation', 'offline help', 'articles'],
   },
+  {
+    id: 'go.fileConverter',
+    labelKey: 'fileConverter.nav',
+    icon: 'file',
+    route: { kind: 'home', view: 'file-converter' },
+    keywords: ['file converter', 'convert files', 'pdf tools', 'binary encodings'],
+  },
 ];
 
 /**

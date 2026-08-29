@@ -5866,6 +5866,7 @@ export const ko: Dict = {
   'labs.optOutOtherPlaceholder': "구체적으로 어떤 점이 아쉬웠나요?",
   'labs.optOutSubmit': "제출",
   'documentation.nav': '문서',
+  'fileConverter.nav': '파일 변환기',
   'documentation.loading': '문서를 불러오는 중…',
   'documentation.offlineDescription': '네트워크 연결 없이 포함된 전체 문서를 읽을 수 있습니다.',
   'documentation.articleCount': '문서 {count}개',

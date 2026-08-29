@@ -5866,6 +5866,7 @@ export const id: Dict = {
   'labs.optOutOtherPlaceholder': "Apa yang kurang pas secara spesifik?",
   'labs.optOutSubmit': "Kirim",
   'documentation.nav': 'Dokumentasi',
+  'fileConverter.nav': 'Konverter file',
   'documentation.loading': 'Memuat dokumentasi…',
   'documentation.offlineDescription': 'Baca dokumentasi lengkap yang disertakan tanpa koneksi jaringan.',
   'documentation.articleCount': '{count} artikel',

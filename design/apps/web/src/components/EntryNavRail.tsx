@@ -1272,6 +1272,7 @@ export function EntryNavRail({
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const communityLabel = t('pluginsHome.title');
   const documentationLabel = t('documentation.nav');
+  const fileConverterLabel = t('fileConverter.nav');
   // #5517 renamed the rail's first item from 最近 (Recents) to 首页 (Home) —
   // the key keeps its historical name, the VALUE now reads Home in every
   // locale (polish round 2, ref 1db2d00c2).
@@ -1751,6 +1752,15 @@ export function EntryNavRail({
           testId="entry-nav-documentation"
         >
           <Icon name="file-text" size={16} />
+        </NavButton>
+        <NavButton
+          active={view === 'file-converter'}
+          ariaLabel={fileConverterLabel}
+          label={fileConverterLabel}
+          onClick={() => selectView('file-converter')}
+          testId="entry-nav-file-converter"
+        >
+          <Icon name="file" size={16} />
         </NavButton>
 
         {context ? (

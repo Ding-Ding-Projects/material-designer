@@ -6193,6 +6193,7 @@ export interface Dict {
   'experienceSurvey.thanksTitle': string;
   'experienceSurvey.thanksBody': string;
   'documentation.nav': string;
+  'fileConverter.nav': string;
   'documentation.loading': string;
   'documentation.offlineDescription': string;
   'documentation.articleCount': string;

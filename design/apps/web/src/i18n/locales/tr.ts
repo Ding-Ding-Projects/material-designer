@@ -5866,6 +5866,7 @@ export const tr: Dict = {
   'labs.optOutOtherPlaceholder': "Tam olarak ne uymadı?",
   'labs.optOutSubmit': "Gönder",
   'documentation.nav': 'Belgeler',
+  'fileConverter.nav': 'Dosya dönüştürücü',
   'documentation.loading': 'Belgeler yükleniyor…',
   'documentation.offlineDescription': 'Ağ bağlantısı olmadan birlikte verilen tüm belgeleri okuyun.',
   'documentation.articleCount': '{count} makale',

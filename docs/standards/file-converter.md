@@ -1,9 +1,10 @@
 # Local file converter
 
-The desktop converter modules and web surface have a bounded local foundation.
-This lane keeps adapters unavailable until a packaged proof is injected and
-verified, and records the central bridge, application mount, and documentation website
-seams as parent integration work.
+The desktop converter modules, web surface, central host bridge, application
+route, packaged native-writer producer, and documentation-page equivalent now
+have a source-integrated bounded local foundation. Adapters remain unavailable
+until a packaged proof is injected and verified. No build, installed
+interaction, or capture is claimed by this source state.
 
 ## Behaviour
 
@@ -88,6 +89,12 @@ commits it, then appends a follow-up event carrying that real commit SHA before
 reporting the revision. Complete queue export is host-owned: it
 streams bounded JSONL pages into a user-approved new destination, enforces
 record and byte ceilings, and refuses repeated cursors or existing destinations.
+Lossy conversions are deliberately refused at queue admission in this source
+state. Their one-use disclosure acknowledgement is consumed only by the direct
+just-in-time conversion flow, so the durable queue never retains one expiring
+authorization per record. A later queued-loss review surface must mint a fresh
+acknowledgement immediately before execution rather than persisting a
+capability.
 Disclosure state is pruned before issue and consume, has a hard capacity, keeps
 at most one live token for each preview, replaces a duplicate deterministically,
 and removes tokens when a preview expires or is evicted. Packaged provenance is
@@ -189,12 +196,17 @@ PE file, and verifies its SHA-256 before starting it. A development executable,
 `PATH` discovery, command string, script, network service, or environment override
 cannot enable the writer.
 
-The documentation site is a separate parent-owned integration seam in this lane.
-When its converter module is injected, it must mediate a user-selected file
-through browser storage only, show the same eight categories and per-category
-search builders, record queue actions locally, and say plainly that it cannot
-write to the desktop filesystem or call the desktop host. This lane does not
-claim that the documentation website module exists.
+The documentation page now mounts its own browser-local converter module. It
+mediates a user-selected file through browser storage only, shows the same
+eight categories and per-category search builders, records queue metadata in
+a versioned IndexedDB store, reads only bounded 50-record pages without an
+artificial total-record cap, exposes previous and next page controls, and says
+plainly that it cannot write to the desktop
+filesystem or call the desktop host. Source inspection is complete; deployed
+interaction remains unverified.
+Clearing that persistent browser-local queue shows the exact affected count and
+requires two independent keys plus a full-range slider. Escape and the
+always-available emergency exit cancel without deleting records.
 
 Every target picker and PDF operation picker is a keyboard and pointer reachable
 searchable choice. Its query, mode, flags, sample and selection persist locally,
@@ -269,8 +281,9 @@ unsupported-platform export refusal, active worker cancellation and timeout,
 late-result suppression, item and recursion limits, high-expansion HTML and
 binary output admission, combined input and workspace memory admission, and
 temporary-file cleanup. The feature contract tests exercise worker behavior
-actively rather than relying on source markers, and read source through comment-aware boundaries
-and keep central bridge and documentation website seams parent-owned. The source-level
+actively rather than relying on source markers, and read source through
+comment-aware boundaries. Central bridge and documentation-page source seams
+are now registered. The source-level
 red-then-green regression is `scripts/test-file-converter-negative.ps1`; it
 deliberately comments or mutates one exact implementation boundary at a time and
 expects each check to turn red before the original source is restored. Missing
@@ -315,13 +328,14 @@ writer on Windows. Its Windows-only hook cases rename and replace the approved
 parent between witness capture and helper launch for both generic atomic output
 and complete queue export, then require refusal with both directories untouched.
 
-The module, renderer, feature-owned bridge, and focused tests are source evidence
-only in this lane. No local toolchain or built application was run, and no
-packaged UI capture exists yet. The remaining proof must drive the packaged
-application through every state with retained captures, including invalid input,
-unavailable adapters, preview disclosure, progress, pause, cancellation,
-recovery, and PDF operations. The parent integration must add the central bridge,
-application mount, and documentation website module before those seams can be exercised.
+The module, renderer, central bridge, application route, packaging producer,
+documentation-page module, and focused tests are source evidence only. No
+local toolchain or built application was run, and no packaged UI capture exists
+yet. The remaining proof must build and drive the packaged application through
+every state with retained captures, including invalid input, unavailable
+adapters, preview disclosure, progress, pause, cancellation, recovery, and PDF
+operations. The deployed documentation page also needs direct keyboard and
+touch interaction proof.
 Each catalog row carries a source-contract digest and path. It is deliberately not
 called packaged proof until a release build records the packaged file digest.
 Target format selectors carry independent persisted search controllers and their

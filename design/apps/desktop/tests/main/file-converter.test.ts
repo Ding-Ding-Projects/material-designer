@@ -208,11 +208,14 @@ describe("paged bounded conversion queue", () => {
       const store = new FileQueueStore(join(directory, "queue.json"));
       const queue = new ConversionQueue(store, async (item) => ({ status: "converted", source: item.sourcePath, destination: item.destinationPath, bytes: 1, format: item.targetFormat }));
       const item = await queue.enqueue("C:/input.txt", "C:/output.txt", "txt");
+      const disclosureItem = await queue.enqueue("C:/lossy.txt", "C:/lossy.html", "html", "text-structured-local", 12, true);
       await store.save({ ...item, state: "running" });
       await queue.reconcileAfterRestart();
       const recovered = await queue.listPage(undefined, 10);
       expect(recovered.items[0]?.state).toBe("failed");
       expect(recovered.items[0]?.reason).toContain("previous conversion stopped");
+      expect(recovered.items.find((entry) => entry.id === disclosureItem.id)?.state).toBe("failed");
+      expect(recovered.items.find((entry) => entry.id === disclosureItem.id)?.reason).toContain("new loss disclosure review");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -658,6 +661,25 @@ describe("host conversion progress and exclusive replacement", () => {
         await appendFile(historyOrder, "\n", "utf8");
         expect((await audit.historyPage(undefined, 10)).ok).toBe(false);
       }
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
+  it("pages valid audit order journals larger than one stream chunk", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-audit-pages-"));
+    try {
+      const audit = new ConverterAuditStore(directory, { windowsWriterResourceRoot });
+      for (let index = 0; index < 40; index += 1) {
+        expect((await audit.notify({
+          severity: "info",
+          title: `Conversion event ${index}`,
+          body: "A bounded notification record crossed the journal chunk boundary.",
+        })).ok).toBe(true);
+      }
+      const page = await audit.notificationsPage(undefined, 50);
+      expect(page.ok).toBe(true);
+      if (page.ok) expect(page.value.items).toHaveLength(40);
     } finally {
       await rm(directory, { recursive: true, force: true });
     }

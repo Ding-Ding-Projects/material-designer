@@ -5866,6 +5866,7 @@ export const ptBR: Dict = {
   'labs.optOutOtherPlaceholder': "O que exatamente não funcionou?",
   'labs.optOutSubmit': "Enviar",
   'documentation.nav': 'Documentação',
+  'fileConverter.nav': 'Conversor de arquivos',
   'documentation.loading': 'Carregando documentação…',
   'documentation.offlineDescription': 'Leia toda a documentação incluída sem conexão de rede.',
   'documentation.articleCount': '{count} artigos',

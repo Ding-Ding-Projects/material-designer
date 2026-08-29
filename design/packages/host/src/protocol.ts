@@ -546,6 +546,119 @@ export type OpenDesignHostToyLocks = {
   }>>;
 };
 
+export type OpenDesignHostConverterFailure = { ok: false; reason: string };
+export type OpenDesignHostConverterAdapter = {
+  id: string;
+  category: string;
+  label: string;
+  sourceFormats: readonly string[];
+  targetFormats: readonly string[];
+  bundled: boolean;
+  unavailableReason?: string;
+  capabilities: Readonly<Record<string, boolean | string>>;
+  bounds: Readonly<Record<string, number>>;
+};
+export type OpenDesignHostConverterFile = {
+  handle: string;
+  name: string;
+  bytes: number;
+  format: string;
+  mime?: string;
+  exists?: boolean;
+};
+export type OpenDesignHostConverterPreview = {
+  previewId: string;
+  source: { format: string; category: string; bytes: number; confidence: string; mime?: string };
+  adapterId: string;
+  targetFormat: string;
+  lossy: boolean;
+  disclosure: string;
+  destinationHandle: string;
+};
+export type OpenDesignHostConverterDisclosure = {
+  token: string;
+  expiresAtMs: number;
+  previewId: string;
+};
+export type OpenDesignHostConverterOverwriteChallenge = {
+  ok: true;
+  token: string;
+  expiresAtMs: number;
+  destination: { exists: boolean; size: number; mtimeMs: number };
+};
+export type OpenDesignHostConverterResult =
+  | { ok: true; status: "converted"; bytes: number; format: string; destination: OpenDesignHostConverterFile }
+  | { ok: false; status: "cancelled" | "failed"; reason: string };
+export type OpenDesignHostConverterPdfResult =
+  | {
+      ok: true;
+      operation: string;
+      pages?: number;
+      metadata?: Readonly<Record<string, string | undefined>>;
+      destination?: OpenDesignHostConverterFile;
+    }
+  | OpenDesignHostConverterFailure;
+export type OpenDesignHostConverterQueueItem = {
+  id: string;
+  sourceName: string;
+  destinationName: string;
+  targetFormat: string;
+  state: "queued" | "running" | "paused" | "converted" | "skipped" | "cancelled" | "failed";
+  bytesProcessed: number;
+  totalBytes?: number;
+  bytesPerSecond?: number;
+  etaSeconds?: number;
+  reason?: string;
+  updatedAt: number;
+};
+export type OpenDesignHostConverterNotification = {
+  id: string;
+  severity: "info" | "success" | "progress" | "warning" | "error";
+  title: string;
+  body: string;
+  createdAt: number;
+  readAt?: number;
+  dismissedAt?: number;
+};
+export type OpenDesignHostConverterHistoryEvent = {
+  id: string;
+  action: "created" | "updated" | "deleted" | "restored" | "imported" | "settings-changed" | "conversion";
+  summary: string;
+  createdAt: number;
+  revision?: string;
+};
+export type OpenDesignHostConverterPage<T> = { items: readonly T[]; nextCursor?: string };
+export type OpenDesignHostConverterBridge = {
+  catalog(): Promise<readonly OpenDesignHostConverterAdapter[]>;
+  pickSource(): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  pickSources(): Promise<readonly OpenDesignHostConverterFile[] | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  pickDestination(suggestedName?: string): Promise<OpenDesignHostConverterFile | { ok: false; canceled: true } | OpenDesignHostConverterFailure>;
+  preview(sourceHandle: string, destinationHandle: string, adapterId: string, targetFormat: string): Promise<OpenDesignHostConverterPreview | OpenDesignHostConverterFailure>;
+  acknowledgeDisclosure(previewId: string): Promise<OpenDesignHostConverterDisclosure | OpenDesignHostConverterFailure>;
+  convert(previewId: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<OpenDesignHostConverterResult>;
+  requestOverwrite(previewId: string): Promise<OpenDesignHostConverterOverwriteChallenge | OpenDesignHostConverterFailure>;
+  overwrite(previewId: string, token: string, acknowledgementToken?: string, options?: Record<string, unknown>): Promise<OpenDesignHostConverterResult>;
+  pdfOperation(sourceHandle: string, destinationHandle: string, operation: string, options?: Record<string, unknown>, sourceHandles?: readonly string[], destinationHandles?: readonly string[]): Promise<OpenDesignHostConverterPdfResult>;
+  queue: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterQueueItem> | OpenDesignHostConverterFailure>;
+    enqueue(previewId: string, acknowledgementToken?: string): Promise<OpenDesignHostConverterQueueItem | OpenDesignHostConverterFailure>;
+    export(destinationHandle: string): Promise<{ ok: true; items: number; bytes: number; destination: OpenDesignHostConverterFile } | OpenDesignHostConverterFailure>;
+    start(): Promise<OpenDesignHostActionResult>;
+    pause(): Promise<OpenDesignHostActionResult>;
+    resume(): Promise<OpenDesignHostActionResult>;
+    cancel(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+    retry(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+  };
+  notifications: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterNotification> | OpenDesignHostConverterFailure>;
+    markRead(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+    dismiss(ids?: readonly string[]): Promise<OpenDesignHostActionResult>;
+  };
+  history: {
+    page(cursor?: string, pageSize?: number): Promise<OpenDesignHostConverterPage<OpenDesignHostConverterHistoryEvent> | OpenDesignHostConverterFailure>;
+  };
+};
+
 export type OpenDesignHostBridge = {
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
@@ -565,6 +678,8 @@ export type OpenDesignHostBridge = {
   capture: {
     page(options?: OpenDesignHostCaptureOptions): Promise<OpenDesignHostCaptureResult>;
   };
+  /** Optional on hosts predating the bounded local file converter. */
+  converter?: OpenDesignHostConverterBridge;
   client: OpenDesignHostClient;
   pdf: {
     print(html: string, nonce?: string, options?: OpenDesignHostPdfPrintOptions): Promise<OpenDesignHostActionResult>;

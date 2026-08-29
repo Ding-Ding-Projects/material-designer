@@ -5866,6 +5866,7 @@ export const th: Dict = {
   'labs.optOutOtherPlaceholder': "อะไรที่ไม่เหมาะบ้าง",
   'labs.optOutSubmit': "ส่ง",
   'documentation.nav': 'เอกสารประกอบ',
+  'fileConverter.nav': 'ตัวแปลงไฟล์',
   'documentation.loading': 'กำลังโหลดเอกสารประกอบ…',
   'documentation.offlineDescription': 'อ่านเอกสารประกอบที่รวมไว้ทั้งหมดได้โดยไม่ต้องเชื่อมต่อเครือข่าย',
   'documentation.articleCount': '{count} บทความ',

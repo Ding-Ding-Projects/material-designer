@@ -19,6 +19,7 @@ import * as ui from './ui.js';
 import { init as initElementAppearance } from './element-appearance.js';
 import { initDocsBrowser } from './docs-browser.js';
 import { initToyLocks } from './toy-locks.js';
+import { clearConverterQueue, initConverter } from './converter.js';
 
 /* ------------------------------------------------------------------ *
  * Small helpers
@@ -573,10 +574,11 @@ function wireResets() {
     // so it asks first.
     const question = label('se.reset.all.desc',
       'This clears the language, appearance, tab and notification settings this site stored in this browser.');
-    if (window.confirm(question)) clearEverything();
+    if (window.confirm(question)) void clearEverything();
   });
 
-  function clearEverything() {
+  async function clearEverything() {
+    await clearConverterQueue().catch(() => undefined);
     try {
       const doomed = [];
       for (let i = 0; i < localStorage.length; i += 1) {
@@ -662,6 +664,7 @@ function start() {
   wireAppearance();
   wireTabs();
   void initDocsBrowser({ i18n, regex, tabs, ui });
+  initConverter({ i18n, regex, ui });
   wireContentSearch();
   wireSettingsSearch();
   wirePalette();

@@ -23,6 +23,7 @@ import type {
   OpenDesignHostUpdaterStatusSnapshot,
   OpenDesignHostWindowMaximizedListener,
   OpenDesignHostToyLocks,
+  OpenDesignHostConverterBridge,
 } from '@open-design/host';
 
 const OPEN_DESIGN_HOST_GLOBAL: typeof import('@open-design/host').OPEN_DESIGN_HOST_GLOBAL = '__od__';
@@ -424,6 +425,57 @@ const toyLocks: OpenDesignHostToyLocks = {
   verify: (request) => ipcRenderer.invoke('od:toy-locks:verify', request),
 };
 
+function invokeConverter<T>(channel: string, ...args: unknown[]): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args)
+    .catch((error: unknown) => failure(reasonFromError(error)) as T);
+}
+
+const converter: OpenDesignHostConverterBridge = {
+  catalog: () => invokeConverter('od:converter:catalog'),
+  pickSource: () => invokeConverter('od:converter:pick-source'),
+  pickSources: () => invokeConverter('od:converter:pick-sources'),
+  pickDestination: (suggestedName?: string) => invokeConverter('od:converter:pick-destination', suggestedName),
+  preview: (sourceHandle, destinationHandle, adapterId, targetFormat) => invokeConverter(
+    'od:converter:preview',
+    { sourceHandle, destinationHandle, adapterId, targetFormat },
+  ),
+  acknowledgeDisclosure: (previewId) => invokeConverter('od:converter:acknowledge-disclosure', previewId),
+  convert: (previewId, acknowledgementToken, options) => invokeConverter(
+    'od:converter:convert',
+    { previewId, acknowledgementToken, options },
+  ),
+  requestOverwrite: (previewId) => invokeConverter('od:converter:request-overwrite', previewId),
+  overwrite: (previewId, token, acknowledgementToken, options) => invokeConverter(
+    'od:converter:overwrite',
+    { previewId, token, acknowledgementToken, options },
+  ),
+  pdfOperation: (sourceHandle, destinationHandle, operation, options, sourceHandles, destinationHandles) => invokeConverter(
+    'od:converter:pdf-operation',
+    { sourceHandle, destinationHandle, operation, options, sourceHandles, destinationHandles },
+  ),
+  queue: {
+    page: (cursor?: string, pageSize?: number) => ipcRenderer.invoke('od:converter:queue:page', cursor, pageSize),
+    enqueue: (previewId, acknowledgementToken) => invokeConverter(
+      'od:converter:queue:enqueue',
+      { previewId, acknowledgementToken },
+    ),
+    export: (destinationHandle) => invokeConverter('od:converter:queue:export', destinationHandle),
+    start: () => invokeConverter('od:converter:queue:start'),
+    pause: () => invokeConverter('od:converter:queue:pause'),
+    resume: () => invokeConverter('od:converter:queue:resume'),
+    cancel: (ids) => invokeConverter('od:converter:queue:cancel', ids),
+    retry: (ids) => invokeConverter('od:converter:queue:retry', ids),
+  },
+  notifications: {
+    page: (cursor, pageSize) => invokeConverter('od:converter:notifications:page', cursor, pageSize),
+    markRead: (ids) => invokeConverter('od:converter:notifications:mark-read', ids),
+    dismiss: (ids) => invokeConverter('od:converter:notifications:dismiss', ids),
+  },
+  history: {
+    page: (cursor, pageSize) => invokeConverter('od:converter:history:page', cursor, pageSize),
+  },
+};
+
 const osLocale = readOsLocaleFromArgv();
 
 ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
@@ -454,6 +506,7 @@ const hostBridge = {
   shell,
   browser,
   capture,
+  converter,
   preview,
   project,
   pdf: {

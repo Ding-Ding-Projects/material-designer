@@ -5865,6 +5865,7 @@ export const ar: Dict = {
   'labs.optOutOtherPlaceholder': "ما الذي لم يناسبك تحديداً؟",
   'labs.optOutSubmit': "إرسال",
   'documentation.nav': 'التوثيق',
+  'fileConverter.nav': 'محول الملفات',
   'documentation.loading': 'جارٍ تحميل التوثيق…',
   'documentation.offlineDescription': 'اقرأ التوثيق الكامل المضمّن دون اتصال بالشبكة.',
   'documentation.articleCount': '{count} مقالة',

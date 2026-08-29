@@ -1299,6 +1299,7 @@ export const zhHK: Dict = {
   "labs.optOutOtherPlaceholder": "具體有邊樣唔啱？",
   "labs.optOutSubmit": "送出",
   'documentation.nav': '文件',
+  'fileConverter.nav': '檔案轉換器',
   'documentation.loading': '載入文件…',
   'documentation.offlineDescription': '冇網絡都可以閱讀完整內置文件。',
   'documentation.articleCount': '{count} 篇文章',

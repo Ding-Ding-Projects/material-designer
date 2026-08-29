@@ -174,6 +174,7 @@ import {
 import { createSilentUpdatePreferenceWriter } from './state/silent-update-preference';
 import { applyAppearanceToDocument } from './state/appearance';
 import { ElementAppearanceBoundary } from './components/appearance/ElementAppearanceBoundary';
+import { FILE_CONVERTER_C0_REGISTRATION } from './components/converter/converterRegistration';
 import { isMacPlatform } from './utils/platform';
 import { randomUUID } from './utils/uuid';
 import { summarizeProjectNameFromPrompt } from './utils/projectName';
@@ -5381,6 +5382,7 @@ function AppInner() {
         className={`workspace-shell workspace-shell--${clientType}`}
         data-client-type={clientType}
         data-host-platform={hostPlatform}
+        data-file-converter-route={FILE_CONVERTER_C0_REGISTRATION.route}
         data-app-version-state={appVersionInfoSettled ? 'settled' : 'loading'}
       >
         <FrontScreenProvenance

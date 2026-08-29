@@ -24,6 +24,7 @@ export type EntryHomeView =
   | 'design-systems'
   | 'library'
   | 'documentation'
+  | 'file-converter'
   | 'brands'
   | 'integrations'
   // Team-edition navigation-shell destinations. `community` is the shared
@@ -147,6 +148,9 @@ export function parseRoute(pathname: string): Route {
   if (parts[0] === 'documentation' && !parts[1]) {
     return { kind: 'home', view: 'documentation' };
   }
+  if (parts[0] === 'file-converter' && !parts[1]) {
+    return { kind: 'home', view: 'file-converter' };
+  }
   if (parts[0] === 'integrations') {
     return { kind: 'home', view: 'integrations' };
   }
@@ -204,6 +208,7 @@ export function buildPath(route: Route): string {
     if (route.view === 'design-systems') return '/design-systems';
     if (route.view === 'library') return LIBRARY_UI_VISIBLE ? '/library' : '/';
     if (route.view === 'documentation') return '/documentation';
+    if (route.view === 'file-converter') return '/file-converter';
     if (route.view === 'brands') {
       return route.brandId ? `/brands/${encodeURIComponent(route.brandId)}` : '/brands';
     }

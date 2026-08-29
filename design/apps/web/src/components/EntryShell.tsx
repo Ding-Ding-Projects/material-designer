@@ -110,6 +110,7 @@ import {
 } from './entry-rail-account-state';
 import { LibrarySection } from './LibrarySection';
 import { DocumentationBrowserView } from './documentation/DocumentationBrowserView';
+import { FileConverterView } from './FileConverterView';
 import { UpdaterPopup } from './UpdaterPopup';
 import { WhatsNewPopup } from './WhatsNewPopup';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
@@ -1846,6 +1847,13 @@ export function EntryShell({
                   suggested: t('documentation.suggested'),
                 }}
               />
+            </div>
+            <div
+              data-testid="entry-view-file-converter"
+              data-active={view === 'file-converter' ? 'true' : 'false'}
+              {...inactiveViewProps(view === 'file-converter')}
+            >
+              <FileConverterView />
             </div>
             <div data-testid="entry-view-brands" data-active={view === 'brands' ? 'true' : 'false'} {...inactiveViewProps(view === 'brands')}>
               <BrandsTab
