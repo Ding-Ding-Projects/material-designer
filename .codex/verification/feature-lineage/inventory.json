@@ -537,8 +537,14 @@
     {
       "id": "language-modes",
       "lineageCommits": [
-        "17b00d19f81216cee8df0f8564830021f5721749",
-        "5ab199b15f1e407f4b9045ca1095894e69346282"
+        {
+          "sha": "17b00d19f81216cee8df0f8564830021f5721749",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "5ab199b15f1e407f4b9045ca1095894e69346282",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -625,7 +631,10 @@
     {
       "id": "narration",
       "lineageCommits": [
-        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+        {
+          "sha": "92ed8c6c43f9194ff6907c8ec9d1085868c10c80",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -653,10 +662,7 @@
     },
     {
       "id": "scheduled-settings",
-      "lineageCommits": [
-        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
-        "2a9c0e12ec8ac108486e98cea467daddab815c47"
-      ],
+      "lineageCommits": [],
       "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
       "apisOrStorage": [
@@ -684,7 +690,10 @@
     {
       "id": "dim-sum-surprise",
       "lineageCommits": [
-        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+        {
+          "sha": "a454a7bef99fd4082f00d03c3ce5be0f965dcdad",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -717,8 +726,14 @@
     {
       "id": "regex-builders",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -751,7 +766,10 @@
     {
       "id": "notification-centre",
       "lineageCommits": [
-        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+        {
+          "sha": "5b63b57230b97742ef2c4b78fcf44be9f7010fac",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -784,9 +802,18 @@
     {
       "id": "appearance-editors",
       "lineageCommits": [
-        "2468f4666ccce79b912da7991ad914a023ed8d13",
-        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
-        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+        {
+          "sha": "2468f4666ccce79b912da7991ad914a023ed8d13",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "fd9649d926bc99f61287111bcebed7f17b7b55d7",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -819,7 +846,10 @@
     {
       "id": "tabbed-navigation",
       "lineageCommits": [
-        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+        {
+          "sha": "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4",
+          "source": "tabs-history"
+        }
       ],
       "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -852,7 +882,10 @@
     {
       "id": "offline-documentation",
       "lineageCommits": [
-        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+        {
+          "sha": "656c1bd7d024f1936ff050a97c7ccb2b1f377193",
+          "source": "documentation-history"
+        }
       ],
       "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -883,8 +916,14 @@
     {
       "id": "command-palette",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -917,8 +956,14 @@
     {
       "id": "destructive-confirmation",
       "lineageCommits": [
-        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
-        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+        {
+          "sha": "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "ecaad9747111a8ef58545dbcd0c21fca5f333636",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -949,8 +994,14 @@
     {
       "id": "local-history",
       "lineageCommits": [
-        "b21fe83904d907e893e3409b666daa659fb27057",
-        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+        {
+          "sha": "b21fe83904d907e893e3409b666daa659fb27057",
+          "source": "tabs-history"
+        },
+        {
+          "sha": "3e87be7cab496313030e7eb0d7a3c1c1fca7b627",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -981,7 +1032,10 @@
     {
       "id": "changelog-viewer",
       "lineageCommits": [
-        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+        {
+          "sha": "bc8782b4cae2609f41e708f9ca1f0e877e02af88",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1012,7 +1066,10 @@
     {
       "id": "external-editor",
       "lineageCommits": [
-        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+        {
+          "sha": "2b1365e2419fddddac6243398c96ed76b4bc886e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1043,7 +1100,10 @@
     {
       "id": "exports",
       "lineageCommits": [
-        "5837dc318488fda5501b0a387411c785e4eeb48c"
+        {
+          "sha": "5837dc318488fda5501b0a387411c785e4eeb48c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1074,7 +1134,10 @@
     {
       "id": "bulk-actions",
       "lineageCommits": [
-        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+        {
+          "sha": "6e90fbd215063cf42cd53aea38c28527a0febf76",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1105,8 +1168,14 @@
     {
       "id": "accessibility-responsive-sizing",
       "lineageCommits": [
-        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
-        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+        {
+          "sha": "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1164,8 +1233,14 @@
     {
       "id": "toy-locks-authentication",
       "lineageCommits": [
-        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
-        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+        {
+          "sha": "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "8d0cc2724a42a32b638cc33e2e41c151c6566788",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1200,8 +1275,14 @@
     {
       "id": "unlock-ladder",
       "lineageCommits": [
-        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
-        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+        {
+          "sha": "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+          "source": "authenticator-history"
+        },
+        {
+          "sha": "0c71f1550cb503151d80405237b42e706f6f3d6b",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -1311,9 +1392,18 @@
     {
       "id": "app-logo-customization",
       "lineageCommits": [
-        "aaef710c36e34333507a079f1885863878b440cf",
-        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
-        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+        {
+          "sha": "aaef710c36e34333507a079f1885863878b440cf",
+          "source": "logo-history"
+        },
+        {
+          "sha": "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+          "source": "logo-history"
+        },
+        {
+          "sha": "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9",
+          "source": "logo-history"
+        }
       ],
       "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1373,8 +1463,14 @@
     {
       "id": "ollama-suite-manager",
       "lineageCommits": [
-        "41ef150026a0303057171bd7776d9ec69fff89a7",
-        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+        {
+          "sha": "41ef150026a0303057171bd7776d9ec69fff89a7",
+          "source": "ollama-history"
+        },
+        {
+          "sha": "d0c39b2f52bd8f382f675087a84c53f48a515913",
+          "source": "ollama-history"
+        }
       ],
       "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -1430,8 +1526,14 @@
     {
       "id": "front-screen-provenance",
       "lineageCommits": [
-        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
-        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+        {
+          "sha": "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+          "source": "front-history"
+        },
+        {
+          "sha": "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd",
+          "source": "front-history"
+        }
       ],
       "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1661,8 +1763,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "language-modes",
       "lineageCommits": [
-        "17b00d19f81216cee8df0f8564830021f5721749",
-        "5ab199b15f1e407f4b9045ca1095894e69346282"
+        {
+          "sha": "17b00d19f81216cee8df0f8564830021f5721749",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "5ab199b15f1e407f4b9045ca1095894e69346282",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1738,7 +1846,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "narration",
       "lineageCommits": [
-        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+        {
+          "sha": "92ed8c6c43f9194ff6907c8ec9d1085868c10c80",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -1763,10 +1874,7 @@
     {
       "surfaceId": "windows-desktop-application",
       "featureId": "scheduled-settings",
-      "lineageCommits": [
-        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
-        "2a9c0e12ec8ac108486e98cea467daddab815c47"
-      ],
+      "lineageCommits": [],
       "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
       "apisOrStorage": [
@@ -1791,7 +1899,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "dim-sum-surprise",
       "lineageCommits": [
-        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+        {
+          "sha": "a454a7bef99fd4082f00d03c3ce5be0f965dcdad",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1819,8 +1930,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "regex-builders",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1848,7 +1965,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "notification-centre",
       "lineageCommits": [
-        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+        {
+          "sha": "5b63b57230b97742ef2c4b78fcf44be9f7010fac",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1876,9 +1996,18 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "appearance-editors",
       "lineageCommits": [
-        "2468f4666ccce79b912da7991ad914a023ed8d13",
-        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
-        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+        {
+          "sha": "2468f4666ccce79b912da7991ad914a023ed8d13",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "fd9649d926bc99f61287111bcebed7f17b7b55d7",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1906,7 +2035,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "tabbed-navigation",
       "lineageCommits": [
-        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+        {
+          "sha": "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4",
+          "source": "tabs-history"
+        }
       ],
       "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1934,7 +2066,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "offline-documentation",
       "lineageCommits": [
-        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+        {
+          "sha": "656c1bd7d024f1936ff050a97c7ccb2b1f377193",
+          "source": "documentation-history"
+        }
       ],
       "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -1960,8 +2095,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "command-palette",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -1989,8 +2130,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "destructive-confirmation",
       "lineageCommits": [
-        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
-        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+        {
+          "sha": "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "ecaad9747111a8ef58545dbcd0c21fca5f333636",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2018,8 +2165,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "local-history",
       "lineageCommits": [
-        "b21fe83904d907e893e3409b666daa659fb27057",
-        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+        {
+          "sha": "b21fe83904d907e893e3409b666daa659fb27057",
+          "source": "tabs-history"
+        },
+        {
+          "sha": "3e87be7cab496313030e7eb0d7a3c1c1fca7b627",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2047,7 +2200,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "changelog-viewer",
       "lineageCommits": [
-        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+        {
+          "sha": "bc8782b4cae2609f41e708f9ca1f0e877e02af88",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2075,7 +2231,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "external-editor",
       "lineageCommits": [
-        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+        {
+          "sha": "2b1365e2419fddddac6243398c96ed76b4bc886e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2103,7 +2262,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "exports",
       "lineageCommits": [
-        "5837dc318488fda5501b0a387411c785e4eeb48c"
+        {
+          "sha": "5837dc318488fda5501b0a387411c785e4eeb48c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2131,7 +2293,10 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "bulk-actions",
       "lineageCommits": [
-        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+        {
+          "sha": "6e90fbd215063cf42cd53aea38c28527a0febf76",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2159,8 +2324,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "accessibility-responsive-sizing",
       "lineageCommits": [
-        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
-        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+        {
+          "sha": "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2212,8 +2383,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "toy-locks-authentication",
       "lineageCommits": [
-        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
-        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+        {
+          "sha": "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "8d0cc2724a42a32b638cc33e2e41c151c6566788",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2244,8 +2421,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "unlock-ladder",
       "lineageCommits": [
-        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
-        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+        {
+          "sha": "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+          "source": "authenticator-history"
+        },
+        {
+          "sha": "0c71f1550cb503151d80405237b42e706f6f3d6b",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -2343,9 +2526,18 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "app-logo-customization",
       "lineageCommits": [
-        "aaef710c36e34333507a079f1885863878b440cf",
-        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
-        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+        {
+          "sha": "aaef710c36e34333507a079f1885863878b440cf",
+          "source": "logo-history"
+        },
+        {
+          "sha": "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+          "source": "logo-history"
+        },
+        {
+          "sha": "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9",
+          "source": "logo-history"
+        }
       ],
       "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2400,8 +2592,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "ollama-suite-manager",
       "lineageCommits": [
-        "41ef150026a0303057171bd7776d9ec69fff89a7",
-        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+        {
+          "sha": "41ef150026a0303057171bd7776d9ec69fff89a7",
+          "source": "ollama-history"
+        },
+        {
+          "sha": "d0c39b2f52bd8f382f675087a84c53f48a515913",
+          "source": "ollama-history"
+        }
       ],
       "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -2451,8 +2649,14 @@
       "surfaceId": "windows-desktop-application",
       "featureId": "front-screen-provenance",
       "lineageCommits": [
-        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
-        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+        {
+          "sha": "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+          "source": "front-history"
+        },
+        {
+          "sha": "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd",
+          "source": "front-history"
+        }
       ],
       "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2483,8 +2687,14 @@
       "surfaceId": "documentation-site",
       "featureId": "language-modes",
       "lineageCommits": [
-        "17b00d19f81216cee8df0f8564830021f5721749",
-        "5ab199b15f1e407f4b9045ca1095894e69346282"
+        {
+          "sha": "17b00d19f81216cee8df0f8564830021f5721749",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "5ab199b15f1e407f4b9045ca1095894e69346282",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The language-modes contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2563,7 +2773,10 @@
       "surfaceId": "documentation-site",
       "featureId": "narration",
       "lineageCommits": [
-        "92ed8c6c43f9194ff6907c8ec9d1085868c10c80"
+        {
+          "sha": "92ed8c6c43f9194ff6907c8ec9d1085868c10c80",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The narration contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -2588,10 +2801,7 @@
     {
       "surfaceId": "documentation-site",
       "featureId": "scheduled-settings",
-      "lineageCommits": [
-        "cd30929bcf17a9f4c5a72f56cbdc760fa9a75b62",
-        "2a9c0e12ec8ac108486e98cea467daddab815c47"
-      ],
+      "lineageCommits": [],
       "behavior": "The scheduled-settings contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
       "apisOrStorage": [
@@ -2616,7 +2826,10 @@
       "surfaceId": "documentation-site",
       "featureId": "dim-sum-surprise",
       "lineageCommits": [
-        "a454a7bef99fd4082f00d03c3ce5be0f965dcdad"
+        {
+          "sha": "a454a7bef99fd4082f00d03c3ce5be0f965dcdad",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The dim-sum-surprise contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2647,8 +2860,14 @@
       "surfaceId": "documentation-site",
       "featureId": "regex-builders",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The regex-builders contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2679,7 +2898,10 @@
       "surfaceId": "documentation-site",
       "featureId": "notification-centre",
       "lineageCommits": [
-        "5b63b57230b97742ef2c4b78fcf44be9f7010fac"
+        {
+          "sha": "5b63b57230b97742ef2c4b78fcf44be9f7010fac",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The notification-centre contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2710,9 +2932,18 @@
       "surfaceId": "documentation-site",
       "featureId": "appearance-editors",
       "lineageCommits": [
-        "2468f4666ccce79b912da7991ad914a023ed8d13",
-        "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
-        "fd9649d926bc99f61287111bcebed7f17b7b55d7"
+        {
+          "sha": "2468f4666ccce79b912da7991ad914a023ed8d13",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "a5b058986fe6ec4b8662573fd5d8cf4ffe73f899",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "fd9649d926bc99f61287111bcebed7f17b7b55d7",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The appearance-editors contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2743,7 +2974,10 @@
       "surfaceId": "documentation-site",
       "featureId": "tabbed-navigation",
       "lineageCommits": [
-        "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4"
+        {
+          "sha": "cfe1d7b2112e7957cecf0528aeeb2867fa5227c4",
+          "source": "tabs-history"
+        }
       ],
       "behavior": "The tabbed-navigation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2774,7 +3008,10 @@
       "surfaceId": "documentation-site",
       "featureId": "offline-documentation",
       "lineageCommits": [
-        "656c1bd7d024f1936ff050a97c7ccb2b1f377193"
+        {
+          "sha": "656c1bd7d024f1936ff050a97c7ccb2b1f377193",
+          "source": "documentation-history"
+        }
       ],
       "behavior": "The offline-documentation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2804,8 +3041,14 @@
       "surfaceId": "documentation-site",
       "featureId": "command-palette",
       "lineageCommits": [
-        "8e052bec3e83b19e3bfa648913b2cd814eb42666",
-        "df66c2400e12d29b0d092e89a74dfc87fa10266e"
+        {
+          "sha": "8e052bec3e83b19e3bfa648913b2cd814eb42666",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "df66c2400e12d29b0d092e89a74dfc87fa10266e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The command-palette contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2836,8 +3079,14 @@
       "surfaceId": "documentation-site",
       "featureId": "destructive-confirmation",
       "lineageCommits": [
-        "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
-        "ecaad9747111a8ef58545dbcd0c21fca5f333636"
+        {
+          "sha": "9cb4e6c7997ddfcbfc643a7feb4185c5d1f9b629",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "ecaad9747111a8ef58545dbcd0c21fca5f333636",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The destructive-confirmation contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2865,8 +3114,14 @@
       "surfaceId": "documentation-site",
       "featureId": "local-history",
       "lineageCommits": [
-        "b21fe83904d907e893e3409b666daa659fb27057",
-        "3e87be7cab496313030e7eb0d7a3c1c1fca7b627"
+        {
+          "sha": "b21fe83904d907e893e3409b666daa659fb27057",
+          "source": "tabs-history"
+        },
+        {
+          "sha": "3e87be7cab496313030e7eb0d7a3c1c1fca7b627",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The local-history contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2894,7 +3149,10 @@
       "surfaceId": "documentation-site",
       "featureId": "changelog-viewer",
       "lineageCommits": [
-        "bc8782b4cae2609f41e708f9ca1f0e877e02af88"
+        {
+          "sha": "bc8782b4cae2609f41e708f9ca1f0e877e02af88",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The changelog-viewer contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2922,7 +3180,10 @@
       "surfaceId": "documentation-site",
       "featureId": "external-editor",
       "lineageCommits": [
-        "2b1365e2419fddddac6243398c96ed76b4bc886e"
+        {
+          "sha": "2b1365e2419fddddac6243398c96ed76b4bc886e",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The external-editor contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2950,7 +3211,10 @@
       "surfaceId": "documentation-site",
       "featureId": "exports",
       "lineageCommits": [
-        "5837dc318488fda5501b0a387411c785e4eeb48c"
+        {
+          "sha": "5837dc318488fda5501b0a387411c785e4eeb48c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The exports contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -2978,7 +3242,10 @@
       "surfaceId": "documentation-site",
       "featureId": "bulk-actions",
       "lineageCommits": [
-        "6e90fbd215063cf42cd53aea38c28527a0febf76"
+        {
+          "sha": "6e90fbd215063cf42cd53aea38c28527a0febf76",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The bulk-actions contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -3006,8 +3273,14 @@
       "surfaceId": "documentation-site",
       "featureId": "accessibility-responsive-sizing",
       "lineageCommits": [
-        "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
-        "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c"
+        {
+          "sha": "f56d3e81551ae98c9dfda8d9c26b63e96c7dc151",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "52bc5c56f76579ba3bb4f4a9b82ffe7177febd1c",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The accessibility-responsive-sizing contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -3059,8 +3332,14 @@
       "surfaceId": "documentation-site",
       "featureId": "toy-locks-authentication",
       "lineageCommits": [
-        "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
-        "8d0cc2724a42a32b638cc33e2e41c151c6566788"
+        {
+          "sha": "fa3c66fa8564947659829cda4a71fc8a77c0fdc0",
+          "source": "preservation-feature-history"
+        },
+        {
+          "sha": "8d0cc2724a42a32b638cc33e2e41c151c6566788",
+          "source": "preservation-feature-history"
+        }
       ],
       "behavior": "The toy-locks-authentication contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -3091,8 +3370,14 @@
       "surfaceId": "documentation-site",
       "featureId": "unlock-ladder",
       "lineageCommits": [
-        "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
-        "0c71f1550cb503151d80405237b42e706f6f3d6b"
+        {
+          "sha": "161cbab524ac956fbcb75a0b07a2aa669b2dea57",
+          "source": "authenticator-history"
+        },
+        {
+          "sha": "0c71f1550cb503151d80405237b42e706f6f3d6b",
+          "source": "authenticator-history"
+        }
       ],
       "behavior": "The unlock-ladder contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -3190,9 +3475,18 @@
       "surfaceId": "documentation-site",
       "featureId": "app-logo-customization",
       "lineageCommits": [
-        "aaef710c36e34333507a079f1885863878b440cf",
-        "9a269b5482c12ec09871e1259823ca4f2e96e74b",
-        "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9"
+        {
+          "sha": "aaef710c36e34333507a079f1885863878b440cf",
+          "source": "logo-history"
+        },
+        {
+          "sha": "9a269b5482c12ec09871e1259823ca4f2e96e74b",
+          "source": "logo-history"
+        },
+        {
+          "sha": "39bdf7b3a8fd8b3adcee2a6e3d2063bf74e03af9",
+          "source": "logo-history"
+        }
       ],
       "behavior": "The app-logo-customization contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -3244,8 +3538,14 @@
       "surfaceId": "documentation-site",
       "featureId": "ollama-suite-manager",
       "lineageCommits": [
-        "41ef150026a0303057171bd7776d9ec69fff89a7",
-        "d0c39b2f52bd8f382f675087a84c53f48a515913"
+        {
+          "sha": "41ef150026a0303057171bd7776d9ec69fff89a7",
+          "source": "ollama-history"
+        },
+        {
+          "sha": "d0c39b2f52bd8f382f675087a84c53f48a515913",
+          "source": "ollama-history"
+        }
       ],
       "behavior": "The ollama-suite-manager contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [],
@@ -3295,8 +3595,14 @@
       "surfaceId": "documentation-site",
       "featureId": "front-screen-provenance",
       "lineageCommits": [
-        "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
-        "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd"
+        {
+          "sha": "a8a2e1da617c8d49492d4f56cfdd2b53cfb173d3",
+          "source": "front-history"
+        },
+        {
+          "sha": "799e184b1ced32b0b6bf7cd8cc94394fb6f060fd",
+          "source": "front-history"
+        }
       ],
       "behavior": "The front-screen-provenance contract is tracked as an independent feature with explicit implementation, evidence, and completion state.",
       "paths": [
@@ -3331,5 +3637,55 @@
     "preservationBranches": 22,
     "surfaces": 60,
     "surfacesPerFeature": 2
+  },
+  "lineageSources": {
+    "root-main": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "main",
+      "boundary": "root repository commit ancestry"
+    },
+    "preservation-feature-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/appearance-source-20260828",
+      "boundary": "preserved feature commit ancestry"
+    },
+    "tabs-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/tabs-history-20260828",
+      "boundary": "preserved tab and history commit ancestry"
+    },
+    "authenticator-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/authenticator-lockout-20260828",
+      "boundary": "preserved authenticator and lockout commit ancestry"
+    },
+    "documentation-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/documentation-evidence-20260828",
+      "boundary": "preserved documentation commit ancestry"
+    },
+    "logo-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/logo-customization-20260828",
+      "boundary": "preserved logo commit ancestry"
+    },
+    "ollama-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/ollama-suite-20260828",
+      "boundary": "preserved model-suite commit ancestry"
+    },
+    "front-history": {
+      "type": "git",
+      "repository": "this-project",
+      "ref": "preservation/front-provenance-20260828",
+      "boundary": "preserved provenance commit ancestry"
+    }
   }
 }
