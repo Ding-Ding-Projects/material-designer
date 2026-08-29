@@ -73,7 +73,7 @@ export function AuthorizedDestructiveGate({
 
     void (async () => {
       try {
-        const confirmation = preflight ?? await requestDeleteConfirmation(resourcePath, payload);
+        const confirmation = preflight ?? await requestDeleteConfirmation(resourcePath, payload, requestOptions?.headers);
         if (!hasValidSummary(confirmation)) {
           throw new Error('The handler did not provide a destructive preflight summary.');
         }

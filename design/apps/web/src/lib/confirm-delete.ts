@@ -133,9 +133,10 @@ async function requestDeleteConfirmationAttempt(
 export async function requestDeleteConfirmation(
   resourcePath: string,
   payload?: unknown,
+  headers?: HeadersInit,
 ): Promise<ConfirmDeleteResponse | null> {
   try {
-    const attempt = await requestDeleteConfirmationAttempt(resourcePath, payload);
+    const attempt = await requestDeleteConfirmationAttempt(resourcePath, payload, headers);
     return attempt.confirmation;
   } catch {
     return null;
