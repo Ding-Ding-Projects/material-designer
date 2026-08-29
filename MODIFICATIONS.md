@@ -32,6 +32,56 @@ allowlist to describe real differences with zero stale entries.
 
 ## Changes
 
+### 2026-08-29 - Mount the bundled offline documentation browser
+
+**Reason:** the offline documentation reader, bounded manifest, and safe
+Markdown renderer existed only as isolated source modules. The application now
+owns a `/documentation` route, entry-shell view, navigation item, workspace tab,
+command-palette destination, activation event, and typed localized copy. The
+documentation page now carries one live reader with the exact search, list,
+article, source, and focus identities consumed by its initializer. The local
+build route runs the strict central-mount verification before obtaining a
+toolchain, so a disconnected reader fails early instead of shipping as a spare
+part in a nice box.
+
+**Changed files:**
+
+- `apps/web/src/App.tsx`
+- `apps/web/src/components/command-palette/commands.ts`
+- `apps/web/src/components/documentation/DocumentationBrowserView.module.css`
+- `apps/web/src/components/documentation/DocumentationBrowserView.tsx`
+- `apps/web/src/components/documentation/open-documentation.ts`
+- `apps/web/src/components/EntryNavRail.tsx`
+- `apps/web/src/components/EntryShell.tsx`
+- `apps/web/src/components/WorkspaceTabsBar.tsx`
+- `apps/web/src/i18n/locales/ar.ts`
+- `apps/web/src/i18n/locales/de.ts`
+- `apps/web/src/i18n/locales/en.ts`
+- `apps/web/src/i18n/locales/es-ES.ts`
+- `apps/web/src/i18n/locales/fa.ts`
+- `apps/web/src/i18n/locales/fr.ts`
+- `apps/web/src/i18n/locales/hu.ts`
+- `apps/web/src/i18n/locales/id.ts`
+- `apps/web/src/i18n/locales/it.ts`
+- `apps/web/src/i18n/locales/ja.ts`
+- `apps/web/src/i18n/locales/ko.ts`
+- `apps/web/src/i18n/locales/pl.ts`
+- `apps/web/src/i18n/locales/pt-BR.ts`
+- `apps/web/src/i18n/locales/ru.ts`
+- `apps/web/src/i18n/locales/th.ts`
+- `apps/web/src/i18n/locales/tr.ts`
+- `apps/web/src/i18n/locales/uk.ts`
+- `apps/web/src/i18n/locales/zh-CN.ts`
+- `apps/web/src/i18n/locales/zh-HK.ts`
+- `apps/web/src/i18n/locales/zh-TW.ts`
+- `apps/web/src/i18n/types.ts`
+- `apps/web/src/lib/docs/generated.ts`
+- `apps/web/src/lib/docs/manifest.ts`
+- `apps/web/src/router.ts`
+- `apps/web/src/runtime/markdown.tsx`
+- `apps/web/tests/components/DocumentationBrowserView.test.tsx`
+- `apps/web/tests/lib/docs/manifest.test.ts`
+
 ### 2026-08-29 - Mount per-element appearance on both user surfaces
 
 **Reason:** the validated per-element appearance engine existed only as an

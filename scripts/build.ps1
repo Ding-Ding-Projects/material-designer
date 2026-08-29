@@ -205,6 +205,13 @@ function Ensure-NativeCompiler {
   Write-Phase "Using MSVC compiler $($cl.Source)"
 }
 
+Invoke-Checked 'powershell.exe' @(
+  '-NoProfile',
+  '-ExecutionPolicy', 'Bypass',
+  '-File', (Join-Path $repo 'scripts\verify-offline-docs.ps1'),
+  '-RequireCentralMount'
+) 'Verifying the mounted offline documentation bundle'
+
 Ensure-Node24
 Ensure-Pnpm
 Ensure-Python312

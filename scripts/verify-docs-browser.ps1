@@ -11,6 +11,10 @@ if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
   $RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 }
 
+function Read-Utf8Text([string]$Path) {
+  return [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+}
+
 function Get-RelativeUnixPath([string]$Base, [string]$Path) {
   $baseUri = [Uri]((Resolve-Path -LiteralPath $Base).Path.TrimEnd('\') + '\')
   $pathUri = [Uri]((Resolve-Path -LiteralPath $Path).Path)
@@ -189,13 +193,14 @@ function Assert-LiveCentralSurface([hashtable]$Text) {
   $requiredIds = @('docs-search-input', 'docs-search-mode', 'docs-search-builder', 'docs-browser-status', 'docs-article-list', 'docs-reader-article', 'docs-reader-title', 'docs-reader-meta', 'docs-reader-body', 'docs-reader-source')
   $mountMatches = [regex]::Matches($index, '<[^>]+data-docs-browser(?:\s|=|>)')
   if ($mountMatches.Count -eq 0) { return $false }
-  if ($mountMatches.Count -ne 1) { throw 'Day Teet Hui has duplicate live documentation mounts.' }
+  if ($mountMatches.Count -ne 1) { throw 'Documentation site has duplicate live documentation mounts.' }
   foreach ($id in $requiredIds) {
     $count = ([regex]::Matches($index, 'id="' + [regex]::Escape($id) + '"')).Count
-    if ($count -ne 1) { throw "Day Teet Hui documentation control $id must occur exactly once in live markup." }
+    if ($count -ne 1) { throw "Documentation-site control $id must occur exactly once in live markup." }
     if ($browser.IndexOf($id, [System.StringComparison]::Ordinal) -lt 0) { throw "Reader does not consume exact documentation control $id." }
   }
-  if ($main -notmatch 'docs-browser\.js' -or $main -notmatch 'initDocsBrowser\s*\(') { throw 'Day Teet Hui wiring does not import and initialize the live reader.' }
+  if ($main -notmatch "(?m)^\s*import\s+\{\s*initDocsBrowser\s*\}\s+from\s+'\./docs-browser\.js';") { throw 'Documentation-site wiring does not import the live reader.' }
+  if ($main -notmatch 'initDocsBrowser\s*\(\s*\{\s*i18n\s*,\s*regex\s*,\s*tabs\s*,\s*ui\s*\}\s*\)') { throw 'Documentation-site wiring does not initialize the live reader with its localized search, tab, and palette boundaries.' }
   return $true
 }
 
@@ -205,14 +210,14 @@ $manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $Re
 $readerPath = Join-Path $RepoRoot 'site/assets/js/docs-browser.js'
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { throw "Manifest is missing: $manifestPath" }
 if (-not (Test-Path -LiteralPath $readerPath -PathType Leaf)) { throw "Reader is missing: $readerPath" }
-$manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+$manifest = Read-Utf8Text $manifestPath | ConvertFrom-Json
 Assert-ManifestContract $manifest $files $docsRoot $RepoRoot
-Assert-ReaderContract (Get-Content -Raw -LiteralPath $readerPath)
+Assert-ReaderContract (Read-Utf8Text $readerPath)
 
 $text = @{
-  index = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/index.html')
-  main = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot 'site/assets/js/main.js')
-  browser = Get-Content -Raw -LiteralPath $readerPath
+  index = Read-Utf8Text (Join-Path $RepoRoot 'site/index.html')
+  main = Read-Utf8Text (Join-Path $RepoRoot 'site/assets/js/main.js')
+  browser = Read-Utf8Text $readerPath
 }
 $centralMounted = Assert-LiveCentralSurface $text
 if (-not $centralMounted) {
@@ -233,8 +238,9 @@ if ($SelfTest) {
     missingFragment = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].fragments = @('missing-fragment'); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     badSourceUrl = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].sourceUrl = 'http://example.invalid/docs/README.md'; Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
     badImage = { $copy = $manifest | ConvertTo-Json -Depth 12 | ConvertFrom-Json; $copy.articles[0].images = @([pscustomobject]@{ source = '../outside.png'; path = '../outside.png'; sha256 = ('0' * 64) }); Assert-ManifestContract $copy $files $docsRoot $RepoRoot }
-    missingMount = { $fixture = @{ index = '<section data-docs-browser><input id="docs-search-input"><button id="docs-search-mode"></button><button id="docs-search-builder"></button><div id="docs-browser-status"></div><ul id="docs-article-list"></ul><article id="docs-reader-article"><h1 id="docs-reader-title"></h1><p id="docs-reader-meta"></p><div id="docs-reader-body"></div><a id="docs-reader-source"></a></article></section>'; main = 'import { initDocsBrowser } from "./docs-browser.js"; initDocsBrowser();'; browser = Get-Content -Raw -LiteralPath $readerPath }; $fixture.index = $fixture.index.Replace('data-docs-browser', 'data-docs-browser-missing'); if (-not (Assert-LiveCentralSurface $fixture)) { throw 'Missing mount was detected.' } }
-    missingReaderFocus = { $reader = (Get-Content -Raw -LiteralPath $readerPath).Replace('docs-reader-title', 'docs-reader-title-missing'); Assert-ReaderContract $reader }
+    missingMount = { $fixture = @{ index = '<section data-docs-browser><input id="docs-search-input"><button id="docs-search-mode"></button><button id="docs-search-builder"></button><div id="docs-browser-status"></div><ul id="docs-article-list"></ul><article id="docs-reader-article"><h1 id="docs-reader-title"></h1><p id="docs-reader-meta"></p><div id="docs-reader-body"></div><a id="docs-reader-source"></a></article></section>'; main = "import { initDocsBrowser } from './docs-browser.js'; initDocsBrowser({ i18n, regex, tabs, ui });"; browser = Read-Utf8Text $readerPath }; $fixture.index = $fixture.index.Replace('data-docs-browser', 'data-docs-browser-missing'); if (-not (Assert-LiveCentralSurface $fixture)) { throw 'Missing mount was detected.' } }
+    missingInitializerInputs = { $fixture = @{ index = $text.index; main = $text.main.Replace('initDocsBrowser({ i18n, regex, tabs, ui })', 'initDocsBrowser()'); browser = $text.browser }; [void](Assert-LiveCentralSurface $fixture) }
+    missingReaderFocus = { $reader = (Read-Utf8Text $readerPath).Replace('docs-reader-title', 'docs-reader-title-missing'); Assert-ReaderContract $reader }
   }
   foreach ($entry in $mutations.GetEnumerator()) {
     $red = $false
@@ -242,6 +248,6 @@ if ($SelfTest) {
     if (-not $red) { throw "Negative regression stayed green for $($entry.Key)." }
   }
   Assert-ManifestContract $manifest $files $docsRoot $RepoRoot
-  Assert-ReaderContract (Get-Content -Raw -LiteralPath $readerPath)
+  Assert-ReaderContract (Read-Utf8Text $readerPath)
   Write-Output 'PASS: documentation manifest and reader negative regressions restored green.'
 }

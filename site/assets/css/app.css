@@ -3067,3 +3067,59 @@ mark {
 .element-appearance-unsupported:empty {
   display: none;
 }
+
+.docs-browser {
+  margin-block: var(--gap);
+  padding: var(--gap);
+}
+
+.docs-browser__layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.docs-browser__index,
+.docs-browser__reader {
+  min-width: 0;
+  max-height: min(70dvh, 48rem);
+  overflow: auto;
+}
+
+.docs-browser__search {
+  display: grid;
+  gap: var(--sp);
+}
+
+.docs-browser__search > * {
+  min-height: 48px;
+}
+
+.docs-browser__articles {
+  display: grid;
+  gap: var(--sp);
+  padding: 0;
+  list-style: none;
+}
+
+.docs-article-link {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--md-sys-spacing-3);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-m);
+  color: var(--md-sys-color-on-surface);
+  background: var(--md-sys-color-surface-container);
+  text-align: start;
+}
+
+.docs-article-link > span {
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .docs-browser__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

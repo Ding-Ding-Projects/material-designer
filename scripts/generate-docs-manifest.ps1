@@ -267,7 +267,9 @@ $baseManifest = [ordered]@{
   articleCount = $articles.Count
   articles = $articles
 }
-$baseJson = [string]::Join([Environment]::NewLine, @($baseManifest | ConvertTo-Json -Depth 12))
+$canonicalNewLine = ([char]10).ToString()
+$baseJson = [string]::Join($canonicalNewLine, @($baseManifest | ConvertTo-Json -Depth 12))
+$baseJson = $baseJson.Replace([string]::Concat([char]13, [char]10), $canonicalNewLine).Replace(([char]13).ToString(), $canonicalNewLine)
 $manifest = [ordered]@{
   schemaVersion = 1
   generation = Get-TextSha256 $baseJson
@@ -295,11 +297,14 @@ foreach ($article in $articles) {
 }
 
 $jsonLines = @($manifest | ConvertTo-Json -Depth 12)
-$json = [string]::Join([Environment]::NewLine, $jsonLines)
+$json = [string]::Join($canonicalNewLine, $jsonLines)
+$json = $json.Replace([string]::Concat([char]13, [char]10), $canonicalNewLine).Replace(([char]13).ToString(), $canonicalNewLine)
 $parent = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
 Write-AtomicUtf8 $OutputPath ($json + [char]10)
-$roundTrip = Get-Content -Raw -LiteralPath $OutputPath | ConvertFrom-Json
+$writtenText = [System.IO.File]::ReadAllText($OutputPath, [System.Text.UTF8Encoding]::new($false))
+if ($writtenText.Contains(([char]13).ToString())) { throw 'Generated documentation manifest contains a carriage return; canonical output must use LF only.' }
+$roundTrip = [System.IO.File]::ReadAllText($OutputPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
 Assert-ManifestContent $roundTrip $files $docsRoot $RepoRoot
 if ($roundTrip.schemaVersion -ne $manifest.schemaVersion -or $roundTrip.generation -cne $manifest.generation -or $roundTrip.source -ne $manifest.source -or $roundTrip.articleCount -ne $manifest.articleCount) {
   throw 'Generated documentation manifest did not preserve the exact top-level object.'

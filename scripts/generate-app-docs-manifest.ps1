@@ -15,13 +15,15 @@ if ([System.IO.Path]::GetFullPath($OutputPath) -eq $canonicalOutput) {
   throw 'Direct tracked-output mutation is refused; use scripts/verify-offline-docs.ps1 -Update.'
 }
 
-$manifest = Get-Content -Raw -LiteralPath $ManifestPath | ConvertFrom-Json
+$manifest = [System.IO.File]::ReadAllText($ManifestPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
 if ($manifest.schemaVersion -ne 1 -or [string]$manifest.generation -notmatch '^[0-9a-f]{64}$' -or $manifest.articleCount -ne @($manifest.articles).Count) {
   throw 'The source documentation manifest has an unsupported or incomplete schema.'
 }
 
 $jsonLines = @($manifest | ConvertTo-Json -Depth 12)
-$json = [string]::Join([Environment]::NewLine, $jsonLines)
+$canonicalNewLine = ([char]10).ToString()
+$json = [string]::Join($canonicalNewLine, $jsonLines)
+$json = $json.Replace([string]::Concat([char]13, [char]10), $canonicalNewLine).Replace(([char]13).ToString(), $canonicalNewLine)
 $header = @'
 /* GENERATED FILE. Do not edit by hand.
  * Source: site/assets/data/docs-manifest.json, produced from docs/**/*.md.
@@ -57,7 +59,8 @@ export interface BundledDocumentationManifest {
 
 export const DOCS_MANIFEST: BundledDocumentationManifest =
 '@
-$output = $header + $json + " as const;`n"
+$canonicalHeader = $header.Replace([string]::Concat([char]13, [char]10), $canonicalNewLine).Replace(([char]13).ToString(), $canonicalNewLine)
+$output = $canonicalHeader + $json + " as const;`n"
 $parent = Split-Path -Parent $OutputPath
 if (-not (Test-Path -LiteralPath $parent -PathType Container)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
 $temporary = Join-Path $parent ('.' + [System.IO.Path]::GetFileName($OutputPath) + '.tmp-' + [Guid]::NewGuid().ToString('N'))
@@ -69,6 +72,7 @@ try {
 }
 
 $check = [System.IO.File]::ReadAllText($OutputPath, [System.Text.UTF8Encoding]::new($false))
+if ($check.Contains(([char]13).ToString())) { throw 'Generated app documentation bundle contains a carriage return; canonical output must use LF only.' }
 $jsonStart = $check.IndexOf('{', $check.IndexOf('export const DOCS_MANIFEST', [System.StringComparison]::Ordinal))
 $jsonEnd = $check.LastIndexOf(' as const;', [System.StringComparison]::Ordinal)
 if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { throw 'Generated app documentation bundle is incomplete.' }

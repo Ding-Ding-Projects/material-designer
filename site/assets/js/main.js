@@ -17,6 +17,7 @@ import * as regex from './regex.js';
 import * as tabs from './tabs.js';
 import * as ui from './ui.js';
 import { init as initElementAppearance } from './element-appearance.js';
+import { initDocsBrowser } from './docs-browser.js';
 import { initToyLocks } from './toy-locks.js';
 
 /* ------------------------------------------------------------------ *
@@ -660,6 +661,7 @@ function start() {
   wireReleaseLinks();
   wireAppearance();
   wireTabs();
+  void initDocsBrowser({ i18n, regex, tabs, ui });
   wireContentSearch();
   wireSettingsSearch();
   wirePalette();

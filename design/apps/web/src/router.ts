@@ -23,6 +23,7 @@ export type EntryHomeView =
   | 'plugins'
   | 'design-systems'
   | 'library'
+  | 'documentation'
   | 'brands'
   | 'integrations'
   // Team-edition navigation-shell destinations. `community` is the shared
@@ -143,6 +144,9 @@ export function parseRoute(pathname: string): Route {
   if (LIBRARY_UI_VISIBLE && parts[0] === 'library' && !parts[1]) {
     return { kind: 'home', view: 'library' };
   }
+  if (parts[0] === 'documentation' && !parts[1]) {
+    return { kind: 'home', view: 'documentation' };
+  }
   if (parts[0] === 'integrations') {
     return { kind: 'home', view: 'integrations' };
   }
@@ -199,6 +203,7 @@ export function buildPath(route: Route): string {
     if (route.view === 'plugins') return '/plugins';
     if (route.view === 'design-systems') return '/design-systems';
     if (route.view === 'library') return LIBRARY_UI_VISIBLE ? '/library' : '/';
+    if (route.view === 'documentation') return '/documentation';
     if (route.view === 'brands') {
       return route.brandId ? `/brands/${encodeURIComponent(route.brandId)}` : '/brands';
     }

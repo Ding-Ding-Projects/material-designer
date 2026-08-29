@@ -1665,6 +1665,27 @@ const CATALOGUE = {
     yue: ['打開文件', '打開文件', '打開文件', '入去睇', '入去由頭睇一次'],
   },
 
+  'dc.browser.overview': {
+    en: 'The complete documentation is bundled below for offline reading, with each article still linked to its source.',
+    yue: '完整文件已經內置喺下面，冇網絡都睇到；每篇文章亦照樣連返原始來源。',
+  },
+  'dc.browser.heading': { en: 'Offline documentation browser', yue: '離線文件瀏覽器' },
+  'dc.browser.intro': { en: 'Search and read every bundled article without leaving this page.', yue: '唔使離開呢版，就可以搜尋同閱讀全部內置文章。' },
+  'dc.browser.indexAria': { en: 'Documentation articles', yue: '文件文章' },
+  'dc.browser.search': { en: 'Search documentation', yue: '搜尋文件' },
+  'dc.browser.plainMode': { en: 'Plain text', yue: '純文字' },
+  'dc.browser.regexBuilder': { en: 'Regex builder', yue: '正則表達式建構器' },
+  'dc.browser.loading': { en: 'Loading documentation…', yue: '載入文件…' },
+  'dc.browser.source': { en: 'Open source article', yue: '開啟原始文章' },
+  'dc.browser.suggested': { en: 'Suggested articles', yue: '建議文章' },
+  'dc.browser.invalid': { en: 'The pattern is invalid or too risky to evaluate.', yue: '個模式無效或者風險太高，唔會執行。' },
+  'dc.browser.count': { en: '{count} articles match.', yue: '有 {count} 篇文章符合。' },
+  'dc.browser.loaded': { en: '{count} articles available offline.', yue: '有 {count} 篇文章可以離線閱讀。' },
+  'dc.browser.empty': { en: 'No bundled article matches this search.', yue: '冇任何內置文章符合呢個搜尋。' },
+  'dc.browser.failure': { en: 'The bundled documentation could not be opened offline.', yue: '開唔到內置離線文件。' },
+  'dc.browser.failure.detail': { en: 'The local article manifest is missing, invalid, or unavailable.', yue: '本機文章清單遺失、無效，或者暫時用唔到。' },
+  'palette.group.docs': { en: 'Documentation', yue: '文件' },
+
   'dc.start.heading': { en: 'Start here', yue: '由呢度開始' },
   'dc.start.sub': {
     en: [

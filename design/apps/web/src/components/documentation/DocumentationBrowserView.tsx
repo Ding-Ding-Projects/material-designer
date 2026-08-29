@@ -29,9 +29,9 @@ const DOCS_MANIFEST = assertBundledDocumentationManifest();
 type DocumentationTab = 'articles' | 'history';
 
 /**
- * The central shell supplies this adapter from its locale catalog. Keeping the
- * reader's contract local avoids making the feature depend on a global key
- * union that may not yet contain these entries while the reader is ported.
+ * The central shell supplies this adapter from its typed locale catalog. The
+ * reader keeps a narrow copy contract while every rendered label still follows
+ * the active application locale.
  */
 export interface DocumentationCopy {
   readonly navDocumentation: string;

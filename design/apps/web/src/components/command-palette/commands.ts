@@ -147,6 +147,13 @@ const DESTINATIONS: readonly DestinationSpec[] = [
     route: { kind: 'marketplace' },
     keywords: ['marketplace', 'catalog', 'browse plugins'],
   },
+  {
+    id: 'go.documentation',
+    labelKey: 'documentation.nav',
+    icon: 'file-text',
+    route: { kind: 'home', view: 'documentation' },
+    keywords: ['documentation', 'offline help', 'articles'],
+  },
 ];
 
 /**

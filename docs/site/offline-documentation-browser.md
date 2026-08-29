@@ -11,7 +11,7 @@ The committed generator enumerates the complete `docs/**/*.md` tree and writes
 `site/assets/data/docs-manifest.json`. Each entry contains its relative path,
 category, title, source link, SHA-256 of the source file, suggested reading,
 deterministically deduplicated heading fragments, bounded local image mappings,
-and the normalized Markdown body. The current manifest contains 68 entries.
+and the normalized Markdown body. The current manifest contains 69 entries.
 
 The image mapping is intentionally narrow. A Markdown image may reference one
 existing file under the repository's `assets/` tree through a bounded relative
@@ -50,12 +50,12 @@ cannot become executable site markup merely because it contains HTML-looking tex
 The installed application consumes the same manifest through a generated
 `design/apps/web/src/lib/docs/generated.ts` module. Its documentation reader
 receives a typed localized-copy adapter from the central shell, so the feature
-does not depend directly on a global key union while C0 finishes locale
-registration. `openDocumentation()` carries an activation request, an optional
-article and fragment, and a deterministic `article` or `search` focus target;
+keeps every rendered label in the active locale. `openDocumentation()` carries
+an activation request, an optional article and fragment, and a deterministic
+`article` or `search` focus target;
 the mounted reader consumes it once. Its `/documentation` route appears in the
-navigation rail, workspace tab strip, and command palette once those central
-registrations land, uses the shared application Markdown renderer, keeps
+navigation rail, workspace tab strip, and command palette, uses the shared
+application Markdown renderer, keeps
 internal links in-app, and persists a bounded recent-reading list. That
 application route is source-ready but remains unverified until a hosted build
 and real packaged interaction run provide evidence.
@@ -66,9 +66,10 @@ The generator is deterministic and has no network or package-manager input:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -SelfTest
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -RequireCentralMount
 ```
 
-This root command regenerates and reparses the Day Teet Hui manifest, regenerates
+This root command regenerates and reparses the documentation-site manifest, regenerates
 the installed bundle, then runs both source-ready validators and their red-then-
 green regressions. The individual generator remains available when a deployment
 check needs `-RepoRoot` or `-OutputPath`; it refuses checked-in outputs so only
@@ -77,11 +78,12 @@ credentials, or runs a package manager. The manifest schema is versioned at
 `schemaVersion: 1`; the validators reject missing, duplicate, unsafe, stale, or
 incomplete entries.
 
-The leaf validators remain honest while central registration is being ported: they
-report the C0/C12 mount as pending when it is absent. The integration handoff must
-enable the stricter form, `scripts/verify-offline-docs.ps1 -RequireCentralMount`, after
-the application and Day Teet Hui mounts, imports, and controls are live. That form
-fails closed until the exact mount and focus identities are present.
+The leaf validators still support a source-only pending state for isolated
+feature work. The application and documentation-page mounts are now registered,
+so the supported local build route invokes
+`scripts/verify-offline-docs.ps1 -RequireCentralMount` before toolchain setup.
+That strict form fails closed until the exact mount and focus identities are
+present.
 
 The default source is `docs/`, and the output is
 `site/assets/data/docs-manifest.json`. The root verifier writes only temporary
@@ -138,6 +140,7 @@ Run the source and metadata checks from the repository root:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -SelfTest
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-offline-docs.ps1 -RequireCentralMount
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-docs-browser.ps1 -SelfTest
 pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/verify-app-docs-bundle.ps1 -SelfTest
 ```

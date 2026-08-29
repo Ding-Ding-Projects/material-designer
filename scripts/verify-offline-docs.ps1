@@ -38,6 +38,37 @@ function Test-BytesEqual([byte[]]$Expected, [byte[]]$Actual) {
   return $true
 }
 
+function Assert-CanonicalLf([string]$Path, [string]$Label) {
+  $bytes = [IO.File]::ReadAllBytes($Path)
+  if ($bytes -contains 13) { throw "$Label contains a carriage return; canonical generated output must use LF only." }
+  if ($bytes.Length -eq 0 -or $bytes[$bytes.Length - 1] -ne 10 -or ($bytes.Length -gt 1 -and $bytes[$bytes.Length - 2] -eq 10)) {
+    throw "$Label must end with exactly one LF boundary."
+  }
+}
+
+function Invoke-CanonicalLfSelfTest([string]$Root) {
+  $fixture = Join-Path $Root 'carriage-return-fixture.txt'
+  [IO.File]::WriteAllBytes($fixture, [Text.UTF8Encoding]::new($false).GetBytes("alpha`r`nbeta`n"))
+  $red = $false
+  try {
+    Assert-CanonicalLf $fixture 'Injected carriage-return fixture'
+  } catch {
+    $red = $true
+    if ($_.Exception.Message -cne 'Injected carriage-return fixture contains a carriage return; canonical generated output must use LF only.') {
+      throw ('Carriage-return negative proof produced the wrong diagnostic: ' + $_.Exception.Message)
+    }
+    Write-Output 'PASS: carriage-return fixture turned the canonical-LF boundary red with the exact diagnostic.'
+  }
+  if (-not $red) { throw 'Carriage-return negative regression stayed green.' }
+}
+
+function Get-FreshCheckoutLfBytes([string]$Path) {
+  $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+  $lf = ([char]10).ToString()
+  $normal = $text.Replace([string]::Concat([char]13, [char]10), $lf).Replace(([char]13).ToString(), $lf)
+  return [Text.UTF8Encoding]::new($false).GetBytes($normal)
+}
+
 function Get-ManifestGeneration([string]$Path) {
   $manifest = Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
   if ([string]$manifest.generation -notmatch '^[0-9a-f]{64}$') { throw "Manifest generation is missing or invalid: $Path" }
@@ -363,12 +394,26 @@ try {
   Invoke-Step 'scripts/generate-docs-manifest.ps1 (temporary output)' 'generate-docs-manifest.ps1' $generatorArgs
   $appGeneratorArgs = @('-RepoRoot', $repoRoot, '-ManifestPath', $tempManifest, '-OutputPath', $tempBundle)
   Invoke-Step 'scripts/generate-app-docs-manifest.ps1 (temporary output)' 'generate-app-docs-manifest.ps1' $appGeneratorArgs
+  Assert-CanonicalLf $tempManifest 'Staged site documentation manifest'
+  Assert-CanonicalLf $tempBundle 'Staged app documentation bundle'
   Invoke-Step 'scripts/verify-docs-browser.ps1 (staged outputs)' 'verify-docs-browser.ps1' @('-ManifestPath', $tempManifest)
   Invoke-Step 'scripts/verify-app-docs-bundle.ps1 (staged outputs)' 'verify-app-docs-bundle.ps1' @('-ManifestPath', $tempManifest, '-BundlePath', $tempBundle)
   if ((Get-ManifestGeneration $tempManifest) -cne (Get-BundleGeneration $tempBundle)) {
     throw 'Staged manifest and app bundle generations differ; mixed documentation generations are refused.'
   }
-  if ($SelfTest) { Invoke-TransactionSelfTests $tempRoot }
+  if ($SelfTest) {
+    Invoke-TransactionSelfTests $tempRoot
+    Invoke-CanonicalLfSelfTest $tempRoot
+  }
+  if ($SelfTest -and (Test-Path -LiteralPath $manifestPath -PathType Leaf) -and (Test-Path -LiteralPath $bundlePath -PathType Leaf)) {
+    if (-not (Test-BytesEqual ([IO.File]::ReadAllBytes($tempManifest)) (Get-FreshCheckoutLfBytes $manifestPath))) {
+      throw 'Windows fresh-checkout fixture differs from the canonical staged manifest.'
+    }
+    if (-not (Test-BytesEqual ([IO.File]::ReadAllBytes($tempBundle)) (Get-FreshCheckoutLfBytes $bundlePath))) {
+      throw 'Windows fresh-checkout fixture differs from the canonical staged app bundle.'
+    }
+    Write-Output 'PASS: Windows fresh-checkout LF fixtures match both canonical generated outputs exactly.'
+  }
   if ($Update) {
     $transaction = Invoke-TwoOutputTransaction -ManifestSource $tempManifest -BundleSource $tempBundle -ManifestDestination $manifestPath -BundleDestination $bundlePath -StageRoot $tempRoot
     Write-Output "PASS: explicit -Update published one generation across both outputs (manifest retries $($transaction.ManifestRetries), bundle retries $($transaction.BundleRetries))."
@@ -385,6 +430,8 @@ try {
     if ((Get-ManifestGeneration $manifestPath) -cne (Get-BundleGeneration $bundlePath)) {
       throw 'Checked-in manifest and app bundle generations differ; mixed documentation generations are refused.'
     }
+    Assert-CanonicalLf $manifestPath 'Checked-in site documentation manifest'
+    Assert-CanonicalLf $bundlePath 'Checked-in app documentation bundle'
     Write-Output 'PASS: temporary generated outputs match checked-in documentation outputs.'
   }
   $verifyArgs = @()

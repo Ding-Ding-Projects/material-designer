@@ -1200,7 +1200,31 @@ scripts/verify-port.sh --json        # machine-readable, one line</code></pre>
       <h2 class="section__title" id="dc-title" data-i18n="dc.heading">Documentation</h2>
     </div>
 
-    <p class="prose" data-i18n="dc.intro">The reference documentation is a tree of Markdown files in the repository, organised into eight categories holding 41 articles. This panel indexes it and links every article at its source. It is not a copy: two copies of the same document drift apart, and the one nobody remembers to edit is the one a reader believes.</p>
+    <p class="prose" data-i18n="dc.browser.overview">The complete documentation is bundled below for offline reading, with each article still linked to its source.</p>
+
+    <section class="md-card docs-browser" data-docs-browser aria-labelledby="docs-browser-heading">
+      <div class="docs-browser__head">
+        <h3 id="docs-browser-heading" data-i18n="dc.browser.heading">Offline documentation browser</h3>
+        <p class="md-body-medium" data-i18n="dc.browser.intro">Search and read every bundled article without leaving this page.</p>
+      </div>
+      <div class="docs-browser__layout">
+        <aside class="docs-browser__index" aria-label="Documentation articles" data-i18n-attr="aria-label:dc.browser.indexAria">
+          <div class="docs-browser__search">
+            <input class="md-input" id="docs-search-input" type="search" autocomplete="off" data-i18n-attr="aria-label:dc.browser.search; placeholder:dc.browser.search" aria-label="Search documentation" placeholder="Search documentation">
+            <button class="md-btn md-btn--outlined" id="docs-search-mode" type="button" data-i18n="dc.browser.plainMode">Plain text</button>
+            <button class="md-btn md-btn--outlined" id="docs-search-builder" type="button" aria-label="Open regex builder" data-i18n="dc.browser.regexBuilder">Regex builder</button>
+          </div>
+          <p id="docs-browser-status" class="md-body-small" role="status" aria-live="polite"></p>
+          <ul id="docs-article-list" class="docs-browser__articles"></ul>
+        </aside>
+        <article id="docs-reader-article" class="docs-browser__reader" tabindex="-1" aria-labelledby="docs-reader-title">
+          <h3 id="docs-reader-title" tabindex="-1" data-i18n="dc.browser.loading">Loading documentation…</h3>
+          <p id="docs-reader-meta" class="md-body-small mono"></p>
+          <div id="docs-reader-body" class="prose"></div>
+          <a id="docs-reader-source" class="md-btn md-btn--text" href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs" rel="noopener noreferrer" target="_blank" data-i18n="dc.browser.source">Open source article</a>
+        </article>
+      </div>
+    </section>
 
     <p>
       <a class="md-btn md-btn--filled" href="https://github.com/Ding-Ding-Projects/material-designer/tree/main/docs" rel="noopener noreferrer" target="_blank">

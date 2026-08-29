@@ -48,6 +48,10 @@ function Remove-JavaScriptComments([string]$Source) {
   return $result.ToString()
 }
 
+function Read-Utf8Text([string]$Path) {
+  return [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+}
+
 function Read-BundleManifest([string]$Text) {
   $live = Remove-JavaScriptComments $Text
   $start = $live.IndexOf('export const DOCS_MANIFEST: BundledDocumentationManifest =', [System.StringComparison]::Ordinal)
@@ -132,16 +136,90 @@ function Assert-AppSource([string]$Component, [string]$Opener, [string]$Test) {
   }
 }
 
+function Assert-LivePattern([string]$Source, [string]$Pattern, [string]$Message) {
+  if (-not [regex]::IsMatch($Source, $Pattern, [Text.RegularExpressions.RegexOptions]::Multiline)) {
+    throw $Message
+  }
+}
+
+function Copy-CentralText([hashtable]$Text) {
+  $copy = @{}
+  foreach ($key in $Text.Keys) {
+    if ($key -eq 'locales') {
+      $localeCopy = @{}
+      foreach ($locale in $Text.locales.Keys) { $localeCopy[$locale] = $Text.locales[$locale] }
+      $copy.locales = $localeCopy
+    } else {
+      $copy[$key] = $Text[$key]
+    }
+  }
+  return $copy
+}
+
 function Assert-CentralMounts([hashtable]$Text) {
+  $app = Remove-JavaScriptComments $Text.app
   $shell = Remove-JavaScriptComments $Text.shell
   $nav = Remove-JavaScriptComments $Text.nav
+  $tabs = Remove-JavaScriptComments $Text.tabs
   $palette = Remove-JavaScriptComments $Text.palette
   $router = Remove-JavaScriptComments $Text.router
-  if ($shell -notmatch 'data-testid="entry-view-documentation"' -or $shell -notmatch 'DocumentationBrowserView') { return $false }
-  if ($nav -notmatch 'testId="entry-nav-documentation"') { return $false }
-  if ($palette -notmatch "id:\s*'go\.documentation'") { return $false }
-  if ($router -notmatch "\|\s*'documentation'") { return $false }
-  return $true
+  $types = Remove-JavaScriptComments $Text.types
+  $localeLive = @{}
+  foreach ($locale in $Text.locales.Keys) { $localeLive[$locale] = Remove-JavaScriptComments $Text.locales[$locale] }
+
+  Assert-LivePattern $shell "^\s*import\s+\{\s*DocumentationBrowserView\s*\}\s+from\s+'\./documentation/DocumentationBrowserView';" 'Entry shell does not import the documentation reader.'
+  Assert-LivePattern $shell 'data-testid="entry-view-documentation"' 'Entry shell does not own the documentation view mount.'
+  Assert-LivePattern $shell "view\s*===\s*'documentation'" 'Entry shell does not activate the documentation view.'
+  Assert-LivePattern $shell '<DocumentationBrowserView(?:\s|>)' 'Entry shell does not render the documentation reader.'
+
+  Assert-LivePattern $nav "const\s+documentationLabel\s*=\s*t\(\s*'documentation\.nav'\s*\)" 'Navigation does not resolve the localized documentation label.'
+  Assert-LivePattern $nav 'testId="entry-nav-documentation"' 'Navigation does not expose the documentation destination.'
+  Assert-LivePattern $nav "onClick=\{\(\)\s*=>\s*selectView\(\s*'documentation'\s*\)\}" 'Navigation does not activate the documentation destination.'
+
+  Assert-LivePattern $tabs "view\s*===\s*'documentation'" 'Workspace tab restoration does not accept the documentation destination.'
+  Assert-LivePattern $tabs "documentation:\s*t\(\s*'documentation\.nav'\s*\)" 'Workspace tabs do not render the localized documentation title.'
+  Assert-LivePattern $tabs "documentation:\s*'file-text'" 'Workspace tabs do not render the documentation icon.'
+
+  Assert-LivePattern $palette "id:\s*'go\.documentation'" 'Command palette does not register the documentation destination.'
+  Assert-LivePattern $palette "route:\s*\{\s*kind:\s*'home',\s*view:\s*'documentation'\s*\}" 'Command palette does not route to the documentation destination.'
+
+  Assert-LivePattern $router "^\s*\|\s*'documentation'" 'Router type does not include the documentation destination.'
+  Assert-LivePattern $router "parts\[0\]\s*===\s*'documentation'" 'Router does not parse the documentation path.'
+  Assert-LivePattern $router "return\s+\{\s*kind:\s*'home',\s*view:\s*'documentation'\s*\}" 'Router does not build the documentation route object.'
+  Assert-LivePattern $router "route\.view\s*===\s*'documentation'\)\s*return\s*'/documentation'" 'Router does not build the documentation path.'
+
+  Assert-LivePattern $app "^\s*import\s+\{\s*DOCUMENTATION_OPEN_EVENT\s*\}\s+from\s+'\./components/documentation/open-documentation';" 'Application shell does not import the documentation activation event.'
+  Assert-LivePattern $app "const\s+activateDocumentation\s*=\s*\(\)\s*=>\s*navigate\(\{\s*kind:\s*'home',\s*view:\s*'documentation'\s*\}\)" 'Application shell does not route documentation activation requests.'
+  Assert-LivePattern $app 'window\.addEventListener\(\s*DOCUMENTATION_OPEN_EVENT\s*,\s*activateDocumentation\s*\)' 'Application shell does not subscribe to documentation activation requests.'
+  Assert-LivePattern $app 'window\.removeEventListener\(\s*DOCUMENTATION_OPEN_EVENT\s*,\s*activateDocumentation\s*\)' 'Application shell does not remove the documentation activation listener.'
+
+  $copyProperties = [ordered]@{
+    navDocumentation = 'documentation.nav'
+    loading = 'documentation.loading'
+    offlineDescription = 'documentation.offlineDescription'
+    articleCount = 'documentation.articleCount'
+    articlesTab = 'documentation.articlesTab'
+    historyTab = 'documentation.historyTab'
+    articleSearch = 'documentation.articleSearch'
+    historySearch = 'documentation.historySearch'
+    invalidRegex = 'documentation.invalidRegex'
+    empty = 'documentation.empty'
+    source = 'documentation.source'
+    suggested = 'documentation.suggested'
+  }
+  foreach ($property in $copyProperties.Keys) {
+    $key = $copyProperties[$property]
+    $escapedKey = [regex]::Escape($key)
+    Assert-LivePattern $types ("^\s*'" + $escapedKey + "'\s*:\s*string;") "Typed locale catalog is missing $key."
+    if ($property -eq 'articleCount') {
+      Assert-LivePattern $shell ("articleCount:\s*\(count\)\s*=>\s*t\(\s*'" + $escapedKey + "'\s*,\s*\{\s*count\s*\}\s*\)") "Entry shell does not mount localized copy for $key."
+    } else {
+      Assert-LivePattern $shell ([regex]::Escape($property) + ":\s*t\(\s*'" + $escapedKey + "'\s*\)") "Entry shell does not mount localized copy for $key."
+    }
+    foreach ($locale in $Text.locales.Keys) {
+      Assert-LivePattern $localeLive[$locale] ("^\s*'" + $escapedKey + "'\s*:") "Locale $locale is missing $key."
+    }
+  }
 }
 
 $manifestPath = if ([string]::IsNullOrWhiteSpace($ManifestPath)) { Join-Path $RepoRoot 'site/assets/data/docs-manifest.json' } else { $ManifestPath }
@@ -152,29 +230,48 @@ $testPath = Join-Path $RepoRoot 'design/apps/web/tests/components/DocumentationB
 foreach ($path in @($manifestPath, $bundlePath, $componentPath, $openerPath, $testPath)) {
   if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Required documentation source is missing: $path" }
 }
-$manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
-$bundleText = [IO.File]::ReadAllText($bundlePath, [Text.UTF8Encoding]::new($false))
+$manifest = Read-Utf8Text $manifestPath | ConvertFrom-Json
+$bundleText = Read-Utf8Text $bundlePath
 Assert-BundleObject (Read-BundleManifest $bundleText) $manifest
-Assert-AppSource (Get-Content -Raw -LiteralPath $componentPath) (Get-Content -Raw -LiteralPath $openerPath) (Get-Content -Raw -LiteralPath $testPath)
+Assert-AppSource (Read-Utf8Text $componentPath) (Read-Utf8Text $openerPath) (Read-Utf8Text $testPath)
 Write-Output "PASS: app bundle exactly contains all $($manifest.articleCount) source articles, hashes, suggestions, fragments, and images."
 
-$centralPaths = @(
-  (Join-Path $RepoRoot 'design/apps/web/src/components/EntryShell.tsx'),
-  (Join-Path $RepoRoot 'design/apps/web/src/components/EntryNavRail.tsx'),
-  (Join-Path $RepoRoot 'design/apps/web/src/components/command-palette/commands.ts'),
-  (Join-Path $RepoRoot 'design/apps/web/src/router.ts')
-)
-$centralAvailable = $centralPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
-if ($centralAvailable.Count -eq $centralPaths.Count) {
+$centralPaths = [ordered]@{
+  app = Join-Path $RepoRoot 'design/apps/web/src/App.tsx'
+  shell = Join-Path $RepoRoot 'design/apps/web/src/components/EntryShell.tsx'
+  nav = Join-Path $RepoRoot 'design/apps/web/src/components/EntryNavRail.tsx'
+  tabs = Join-Path $RepoRoot 'design/apps/web/src/components/WorkspaceTabsBar.tsx'
+  palette = Join-Path $RepoRoot 'design/apps/web/src/components/command-palette/commands.ts'
+  router = Join-Path $RepoRoot 'design/apps/web/src/router.ts'
+  types = Join-Path $RepoRoot 'design/apps/web/src/i18n/types.ts'
+}
+$localeNames = @('ar', 'de', 'en', 'es-ES', 'fa', 'fr', 'hu', 'id', 'it', 'ja', 'ko', 'pl', 'pt-BR', 'ru', 'th', 'tr', 'uk', 'zh-CN', 'zh-HK', 'zh-TW')
+$localePaths = @{}
+foreach ($locale in $localeNames) { $localePaths[$locale] = Join-Path $RepoRoot ("design/apps/web/src/i18n/locales/$locale.ts") }
+$allCentralPaths = @($centralPaths.Values) + @($localePaths.Values)
+$centralAvailable = @($allCentralPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+$central = $null
+$centralMountLive = $false
+if ($centralAvailable.Count -eq $allCentralPaths.Count) {
   $central = @{
-    shell = Get-Content -Raw -LiteralPath $centralPaths[0]
-    nav = Get-Content -Raw -LiteralPath $centralPaths[1]
-    palette = Get-Content -Raw -LiteralPath $centralPaths[2]
-    router = Get-Content -Raw -LiteralPath $centralPaths[3]
+    app = Read-Utf8Text $centralPaths.app
+    shell = Read-Utf8Text $centralPaths.shell
+    nav = Read-Utf8Text $centralPaths.nav
+    tabs = Read-Utf8Text $centralPaths.tabs
+    palette = Read-Utf8Text $centralPaths.palette
+    router = Read-Utf8Text $centralPaths.router
+    types = Read-Utf8Text $centralPaths.types
+    locales = @{}
   }
-  if (Assert-CentralMounts $central) { Write-Output 'PASS: C0/C12 application mount, navigation, palette, and router are live.' }
-  elseif ($RequireCentralMount) { throw 'Central C0/C12 application documentation registration is not live.' }
-  else { Write-Output 'PENDING: source is ready; central C0/C12 application registration remains unmounted.' }
+  foreach ($locale in $localeNames) { $central.locales[$locale] = Read-Utf8Text $localePaths[$locale] }
+  try {
+    Assert-CentralMounts $central
+    $centralMountLive = $true
+    Write-Output 'PASS: C0/C12 application mount, navigation, tabs, palette, router, activation, and localized copy are live.'
+  } catch {
+    if ($RequireCentralMount) { throw ('Central C0/C12 application documentation registration is not live: ' + $_.Exception.Message) }
+    Write-Output ('PENDING: source is ready; central C0/C12 application registration remains incomplete: ' + $_.Exception.Message)
+  }
 } elseif ($RequireCentralMount) {
   throw 'Central C0/C12 application registration sources are unavailable.'
 } else {
@@ -187,8 +284,19 @@ if ($SelfTest) {
     missingArticle = { $copy = Read-BundleManifest $bundleText; $copy.articles[0].path = $copy.articles[1].path; Assert-BundleObject $copy $manifest }
     duplicateArticle = { $copy = Read-BundleManifest $bundleText; $copy.articles[1].id = $copy.articles[0].id; Assert-BundleObject $copy $manifest }
     missingSuggestion = { $copy = Read-BundleManifest $bundleText; $copy.articles[0].suggestedArticles = @('missing.md'); Assert-BundleObject $copy $manifest }
-    missingFocus = { $component = (Get-Content -Raw -LiteralPath $componentPath).Replace('documentation-reader-title', 'documentation-reader-title-missing'); Assert-AppSource $component (Get-Content -Raw -LiteralPath $openerPath) (Get-Content -Raw -LiteralPath $testPath) }
-    missingOpenerActivation = { $opener = (Get-Content -Raw -LiteralPath $openerPath).Replace('activation', 'activation-missing'); Assert-AppSource (Get-Content -Raw -LiteralPath $componentPath) $opener (Get-Content -Raw -LiteralPath $testPath) }
+    missingFocus = { $component = (Read-Utf8Text $componentPath).Replace('documentation-reader-title', 'documentation-reader-title-missing'); Assert-AppSource $component (Read-Utf8Text $openerPath) (Read-Utf8Text $testPath) }
+    missingOpenerActivation = { $opener = (Read-Utf8Text $openerPath).Replace('activation', 'activation-missing'); Assert-AppSource (Read-Utf8Text $componentPath) $opener (Read-Utf8Text $testPath) }
+  }
+  if ($centralMountLive) {
+    $mutations.missingCentralShell = { $copy = Copy-CentralText $central; $copy.shell = $copy.shell.Replace('entry-view-documentation', 'entry-view-documentation-missing'); Assert-CentralMounts $copy }
+    $mutations.missingCentralNavigation = { $copy = Copy-CentralText $central; $copy.nav = $copy.nav.Replace('entry-nav-documentation', 'entry-nav-documentation-missing'); Assert-CentralMounts $copy }
+    $mutations.missingCentralTab = { $copy = Copy-CentralText $central; $copy.tabs = $copy.tabs.Replace("documentation: t('documentation.nav')", "documentationMissing: t('documentation.nav')"); Assert-CentralMounts $copy }
+    $mutations.missingCentralPalette = { $copy = Copy-CentralText $central; $copy.palette = $copy.palette.Replace("id: 'go.documentation'", "id: 'go.documentation-missing'"); Assert-CentralMounts $copy }
+    $mutations.missingCentralRouter = { $copy = Copy-CentralText $central; $copy.router = $copy.router.Replace("route.view === 'documentation'", "route.view === 'documentation-missing'"); Assert-CentralMounts $copy }
+    $mutations.missingCentralActivation = { $copy = Copy-CentralText $central; $copy.app = $copy.app.Replace('window.addEventListener(DOCUMENTATION_OPEN_EVENT, activateDocumentation)', 'window.addEventListener(DOCUMENTATION_OPEN_EVENT_MISSING, activateDocumentation)'); Assert-CentralMounts $copy }
+    $mutations.missingCentralLocalizedMount = { $copy = Copy-CentralText $central; $copy.shell = $copy.shell.Replace("navDocumentation: t('documentation.nav')", "navDocumentationMissing: t('documentation.nav')"); Assert-CentralMounts $copy }
+    $mutations.missingCentralTypedCopy = { $copy = Copy-CentralText $central; $copy.types = $copy.types.Replace("'documentation.nav': string;", "'documentation.nav-missing': string;"); Assert-CentralMounts $copy }
+    $mutations.missingCentralLocaleCopy = { $copy = Copy-CentralText $central; $copy.locales.en = $copy.locales.en.Replace("'documentation.nav':", "'documentation.nav-missing':"); Assert-CentralMounts $copy }
   }
   foreach ($entry in $mutations.GetEnumerator()) {
     $red = $false
@@ -196,6 +304,7 @@ if ($SelfTest) {
     if (-not $red) { throw "Negative regression stayed green for $($entry.Key)." }
   }
   Assert-BundleObject (Read-BundleManifest $bundleText) $manifest
-  Assert-AppSource (Get-Content -Raw -LiteralPath $componentPath) (Get-Content -Raw -LiteralPath $openerPath) (Get-Content -Raw -LiteralPath $testPath)
-  Write-Output 'PASS: app documentation bundle and source seam negative regressions restored green.'
+  Assert-AppSource (Read-Utf8Text $componentPath) (Read-Utf8Text $openerPath) (Read-Utf8Text $testPath)
+  if ($centralMountLive) { Assert-CentralMounts $central }
+  Write-Output 'PASS: app documentation bundle, source seam, and available central-mount negative regressions restored green.'
 }

@@ -70,6 +70,7 @@ import {
 } from './components/WorkspaceTabsBar';
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { FrontScreenProvenance } from './components/FrontScreenProvenance';
+import { DOCUMENTATION_OPEN_EVENT } from './components/documentation/open-documentation';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
   DesignSystemCreationFlow,
@@ -1296,6 +1297,11 @@ function AppInner() {
   const route = useRoute();
   const routeRef = useRef(route);
   routeRef.current = route;
+  useEffect(() => {
+    const activateDocumentation = () => navigate({ kind: 'home', view: 'documentation' });
+    window.addEventListener(DOCUMENTATION_OPEN_EVENT, activateDocumentation);
+    return () => window.removeEventListener(DOCUMENTATION_OPEN_EVENT, activateDocumentation);
+  }, []);
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
   const workspaceProjectView = workspaceProjectListViewForRoute(route);
   // Read-only mirror for the boot effect. The boot pass needs to know which

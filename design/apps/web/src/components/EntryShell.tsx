@@ -109,6 +109,7 @@ import {
   requiresAmrReauthentication,
 } from './entry-rail-account-state';
 import { LibrarySection } from './LibrarySection';
+import { DocumentationBrowserView } from './documentation/DocumentationBrowserView';
 import { UpdaterPopup } from './UpdaterPopup';
 import { WhatsNewPopup } from './WhatsNewPopup';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
@@ -1828,6 +1829,24 @@ export function EntryShell({
                 />
               </div>
             ) : null}
+            <div data-testid="entry-view-documentation" data-active={view === 'documentation' ? 'true' : 'false'} {...inactiveViewProps(view === 'documentation')}>
+              <DocumentationBrowserView
+                copy={{
+                  navDocumentation: t('documentation.nav'),
+                  loading: t('documentation.loading'),
+                  offlineDescription: t('documentation.offlineDescription'),
+                  articleCount: (count) => t('documentation.articleCount', { count }),
+                  articlesTab: t('documentation.articlesTab'),
+                  historyTab: t('documentation.historyTab'),
+                  articleSearch: t('documentation.articleSearch'),
+                  historySearch: t('documentation.historySearch'),
+                  invalidRegex: t('documentation.invalidRegex'),
+                  empty: t('documentation.empty'),
+                  source: t('documentation.source'),
+                  suggested: t('documentation.suggested'),
+                }}
+              />
+            </div>
             <div data-testid="entry-view-brands" data-active={view === 'brands' ? 'true' : 'false'} {...inactiveViewProps(view === 'brands')}>
               <BrandsTab
                 onApplyDesignSystem={onChangeDefaultDesignSystem}

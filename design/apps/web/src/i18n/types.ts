@@ -6277,6 +6277,18 @@ export interface Dict {
   'experienceSurvey.skip': string;
   'experienceSurvey.thanksTitle': string;
   'experienceSurvey.thanksBody': string;
+  'documentation.nav': string;
+  'documentation.loading': string;
+  'documentation.offlineDescription': string;
+  'documentation.articleCount': string;
+  'documentation.articlesTab': string;
+  'documentation.historyTab': string;
+  'documentation.articleSearch': string;
+  'documentation.historySearch': string;
+  'documentation.invalidRegex': string;
+  'documentation.empty': string;
+  'documentation.source': string;
+  'documentation.suggested': string;
   'labs.title': string;
   'labs.itemAbout': string;
   'labs.navHint': string;
