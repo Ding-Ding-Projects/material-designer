@@ -115,12 +115,12 @@ no false activation fires.
 
 ### 2026-08-29 - Port upstream changes through df84ae5b9
 
-**Reason:** the imported copy now follows upstream commits 973e868ced05f6166a71ceccdc5106029c9f9d65, 7d81aa9f8a7efde6acf19a97d425111bf6c1adce, 60be43c1322fb1f24ad38e45945c4a9cde80d263, and df84ae5b9ebfb4d3cee43ed3037667503bcafe36 in order. The project overlay keeps two component sources because its tests still reference them: `ConversationsMenu.tsx` has a direct test import, while `EntryHelpMenu.tsx` is a mocked module in the navigation-rail test. Other unused component islands and their styles are removed. `DesignKitView.tsx`, the Deck Protocol files, package exports, system tests, `srcdoc.ts`, and `guard.ts` retain their project-owned behavior while receiving the upstream changes.
+**Reason:** the imported copy follows upstream commits 973e868ced05f6166a71ceccdc5106029c9f9d65, 7d81aa9f8a7efde6acf19a97d425111bf6c1adce, 60be43c1322fb1f24ad38e45945c4a9cde80d263, and df84ae5b9ebfb4d3cee43ed3037667503bcafe36 in order. The upstream-deleted component sources are now absent from the imported tree. Conversation deletion is owned by the live `ChatPane.tsx` route, which uses the existing destructive gate; its focused test is project-owned. Other unused component islands and their styles are removed. `DesignKitView.tsx`, the Deck Protocol files, package exports, system tests, `srcdoc.ts`, and `guard.ts` retain their project-owned behavior while receiving the upstream changes.
 
 **Changed files:**
 
-- `apps/web/src/components/ConversationsMenu.tsx`
-- `apps/web/src/components/EntryHelpMenu.tsx`
+- `apps/web/src/components/ChatPane.tsx`
+- `apps/web/tests/components/ChatPane.conversation-delete-gate.test.tsx`
 
 ### 2026-08-29 - Invalidate tab scope during account replacement
 
@@ -3940,7 +3940,6 @@ added across all twenty locales, with Cantonese written rather than inherited.
 - `apps/web/src/i18n/locales/zh-HK.ts`
 - `apps/web/src/i18n/locales/zh-TW.ts`
 - `apps/web/src/i18n/types.ts`
-- `apps/web/tests/components/ConversationsMenu.destructive-gate.test.tsx`
 - `apps/web/tests/components/MemorySection.test.tsx`
 - `apps/web/tests/components/RoutinesSection.test.tsx`
 - `apps/web/tests/components/SettingsDialog.execution.test.tsx`
