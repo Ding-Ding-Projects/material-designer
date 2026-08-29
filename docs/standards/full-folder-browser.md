@@ -48,6 +48,14 @@ not the path, failure, or recovery facts.
 - The desktop captures the initiating `BrowserWindow` once, revalidates it
   after every asynchronous step, and never substitutes another focused window
   if the owner disappears.
+- The desktop serializes import, replacement and pre-create folder operations
+  through one single-flight mutex; a concurrent request receives an actionable
+  busy result without opening a second native dialog.
+- The direct daemon-backed route uses its own single-flight mutex as well, so
+  raw web requests cannot race the native shell against one another.
+- The daemon repeats the folder identity and lexical-parent reparse check
+  immediately before `detectEntryFile` consumes the selected directory, so a
+  swap during an earlier authorization wait fails closed.
 - Native command failure retains the existing `null` result rather than
   returning partial stdout.
 - Packaged resource-root validation remains independent of the selected folder;
@@ -72,8 +80,10 @@ focus restoration, cancellation separation, and the absence of the legacy
 tree-only dialog identifier, main-frame sender isolation and the no path or
 credential logging boundary. It also pins the sentinel-file collision,
 lexical-parent reparse walk, guarded setup/disposal, owner assignment timing,
-post-await owner revalidation and hostile-title escaping. A complete Windows
-artifact verdict also
+post-await owner revalidation, single-flight serialization and hostile-title
+escaping. Syntax-aware source Chuts pin the exact IPC callbacks and daemon
+revalidation statements, rather than trusting comments or substring markers. A
+complete Windows artifact verdict also
 opens the real dialog through the approved hidden-desktop route, confirms the
 Explorer surface, selects a Unicode test directory using the keyboard, checks
 the exact returned path, and exercises Escape cancellation. Source-string tests

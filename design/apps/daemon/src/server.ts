@@ -2438,8 +2438,13 @@ function parseProjectPreviewAssetPath(pathname) {
   }
 }
 
-function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
-  return new Promise((resolve, reject) => {
+let nativeFolderDialogInFlight: Promise<string | null> | null = null;
+
+function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE): Promise<string | null> {
+  if (nativeFolderDialogInFlight != null) {
+    return Promise.reject(new Error('folder picker is already in progress'));
+  }
+  const operation = new Promise<string | null>((resolve, reject) => {
     const platform = process.platform;
     if (platform === 'darwin') {
       // `choose folder` is handled specially by the system: it presents a fully
@@ -2479,6 +2484,10 @@ function openNativeFolderDialog(title = DEFAULT_FOLDER_DIALOG_TITLE) {
     } else {
       resolve(null);
     }
+  });
+  nativeFolderDialogInFlight = operation;
+  return operation.finally(() => {
+    if (nativeFolderDialogInFlight === operation) nativeFolderDialogInFlight = null;
   });
 }
 

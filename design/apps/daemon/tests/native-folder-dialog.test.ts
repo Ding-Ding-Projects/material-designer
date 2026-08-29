@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
   buildWindowsFolderDialogCommand,
@@ -9,6 +13,43 @@ function dialogError(message: string, code: string | number): Error & { code: st
   const err = new Error(message) as Error & { code: string | number };
   err.code = code;
   return err;
+}
+
+const importRoutesSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../src/import-export-routes.ts'),
+  'utf8',
+);
+const importRoutesAst = ts.createSourceFile(
+  'import-export-routes.ts',
+  importRoutesSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+const serverSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../src/server.ts'),
+  'utf8',
+);
+const serverAst = ts.createSourceFile(
+  'server.ts',
+  serverSource,
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS,
+);
+
+function callName(node: ts.CallExpression): string | null {
+  return ts.isIdentifier(node.expression) ? node.expression.text : null;
+}
+
+function allNodes(root: ts.Node): ts.Node[] {
+  const nodes: ts.Node[] = [];
+  const visit = (node: ts.Node): void => {
+    nodes.push(node);
+    ts.forEachChild(node, visit);
+  };
+  visit(root);
+  return nodes;
 }
 
 describe('native folder dialog helpers', () => {
@@ -114,6 +155,132 @@ describe('native folder dialog helpers', () => {
 
     expect(script).toMatch(/-not \[IO\.File\]::Exists\(\$raw\) -and \[string\]::Equals/);
     expect(script).not.toMatch(/elseif \(\[string\]::Equals\(\[IO\.Path\]::GetFileName\(\$raw\)/);
+  });
+
+  it('turns red when the sentinel collision guard is removed', () => {
+    const script = buildWindowsFolderDialogCommand().args[3] ?? '';
+    const brokenScript = script.replace('-not [IO.File]::Exists($raw) -and ', '');
+
+    expect(brokenScript).not.toContain('-not [IO.File]::Exists($raw) -and ');
+    expect(script).toContain('-not [IO.File]::Exists($raw) -and ');
+  });
+
+  it('keeps direct daemon picker calls single-flight with an AST-visible mutex', () => {
+    expect(serverAst.parseDiagnostics).toHaveLength(0);
+    const nodes = allNodes(serverAst);
+    const mutex = nodes.find(
+      (node): node is ts.VariableDeclaration =>
+        ts.isVariableDeclaration(node)
+        && ts.isIdentifier(node.name)
+        && node.name.text === 'nativeFolderDialogInFlight',
+    );
+    expect(mutex).toBeDefined();
+    const dialogFunction = nodes.find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node)
+        && node.name?.text === 'openNativeFolderDialog',
+    );
+    expect(dialogFunction).toBeDefined();
+    const functionNodes = allNodes(dialogFunction!);
+    const rejectCall = functionNodes.find(
+      (node): node is ts.CallExpression =>
+        ts.isCallExpression(node)
+        && ts.isPropertyAccessExpression(node.expression)
+        && node.expression.expression.getText(serverAst) === 'Promise'
+        && node.expression.name.text === 'reject',
+    );
+    expect(rejectCall).toBeDefined();
+    expect(dialogFunction!.getText(serverAst)).toContain('nativeFolderDialogInFlight = operation;');
+    expect(dialogFunction!.getText(serverAst)).toContain('operation.finally');
+  });
+
+  it('turns red when the daemon busy result is removed from the AST-visible mutex', () => {
+    const brokenSource = serverSource.replace(
+      "return Promise.reject(new Error('folder picker is already in progress'));",
+      "return Promise.resolve(null);",
+    );
+    const brokenAst = ts.createSourceFile(
+      'server-broken.ts',
+      brokenSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const dialogFunction = allNodes(brokenAst).find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node)
+        && node.name?.text === 'openNativeFolderDialog',
+    );
+    expect(dialogFunction).toBeDefined();
+    const rejectCalls = allNodes(dialogFunction!).filter(
+      (node): node is ts.CallExpression =>
+        ts.isCallExpression(node)
+        && ts.isPropertyAccessExpression(node.expression)
+        && node.expression.expression.getText(brokenAst) === 'Promise'
+        && node.expression.name.text === 'reject',
+    );
+    expect(rejectCalls).toHaveLength(0);
+    expect(rejectCalls).not.toHaveLength(1);
+  });
+
+  it('keeps daemon-side revalidation syntax-aware and immediately ahead of folder consumption', () => {
+    expect(importRoutesAst.parseDiagnostics).toHaveLength(0);
+    const nodes = allNodes(importRoutesAst);
+    const helper = nodes.find(
+      (node): node is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(node)
+        && node.name?.text === 'revalidateSelectedFolder',
+    );
+    expect(helper).toBeDefined();
+    const helperText = helper!.getText(importRoutesAst);
+    expect(helperText).toContain('fs.promises.realpath(selectedPath)');
+    expect(helperText).toContain('fs.promises.lstat(current)');
+    expect(helperText).toContain('entry.isSymbolicLink()');
+    expect(helperText).toContain('path.parse(current).root');
+    expect(helperText).toContain('path.dirname(current)');
+
+    const revalidationStatements = nodes.filter(
+      (node): node is ts.VariableStatement =>
+        ts.isVariableStatement(node)
+        && node.declarationList.declarations.some(
+          (declaration) => ts.isIdentifier(declaration.name) && declaration.name.text === 'revalidationFailure',
+        ),
+    );
+    expect(revalidationStatements).toHaveLength(2);
+    for (const statement of revalidationStatements) {
+      expect(ts.isBlock(statement.parent)).toBe(true);
+      const block = statement.parent as ts.Block;
+      const index = block.statements.indexOf(statement);
+      const followUp = block.statements[index + 1];
+      const consumption = block.statements[index + 2];
+      expect(ts.isIfStatement(followUp)).toBe(true);
+      expect(ts.isVariableStatement(consumption)).toBe(true);
+      expect(consumption.getText(importRoutesAst)).toContain('entryFile');
+    }
+
+    const revalidationCalls = nodes.filter(
+      (node): node is ts.CallExpression => ts.isCallExpression(node) && callName(node) === 'revalidateSelectedFolder',
+    );
+    expect(revalidationCalls).toHaveLength(2);
+  });
+
+  it('turns red when one daemon-side revalidation call is removed', () => {
+    const brokenSource = importRoutesSource.replace(
+      'const revalidationFailure = await revalidateSelectedFolder(normalizedPath);',
+      '',
+    );
+    const brokenAst = ts.createSourceFile(
+      'import-export-routes-broken.ts',
+      brokenSource,
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const remainingCalls = allNodes(brokenAst).filter(
+      (node): node is ts.CallExpression => ts.isCallExpression(node) && callName(node) === 'revalidateSelectedFolder',
+    );
+    expect(remainingCalls).toHaveLength(1);
+    expect(remainingCalls).not.toHaveLength(2);
   });
 
   it('keeps cancellation and native failure distinct from a selected path', () => {

@@ -2446,6 +2446,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       throw new Error("folder picker IPC is only available to the main Material Designer window");
     }
   };
+  let folderOperationInFlight = false;
+  const acquireFolderOperation = (): (() => void) | null => {
+    if (folderOperationInFlight) return null;
+    folderOperationInFlight = true;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      folderOperationInFlight = false;
+    };
+  };
   ipcMain.handle("shell:open-external", async (_event, url: string) => {
     if (captureRoute != null) return false;
     // http(s) as before, plus a mailto strictly to our support address (the
@@ -2477,6 +2488,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     "dialog:pick-and-import",
     async (event, init?: OpenDesignHostProjectImportInit) => {
       requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: folder import is unavailable" };
       }
@@ -2532,6 +2548,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       });
       requireFolderPickerSender(event);
       return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Atomic counterpart to dialog:pick-and-import for replacing a
@@ -2541,6 +2560,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     "dialog:pick-and-replace-working-dir",
     async (event, init?: { projectId?: string; folderDialogTitle?: string }) => {
       requireFolderPickerSender(event);
+      const releaseFolderOperation = acquireFolderOperation();
+      if (releaseFolderOperation == null) {
+        return { ok: false, reason: "folder picker is already in progress" };
+      }
+      try {
       if (captureRoute != null) {
         return { ok: false, reason: "capture.side_effect_blocked: working-directory replacement is unavailable" };
       }
@@ -2580,6 +2604,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       });
       requireFolderPickerSender(event);
       return response;
+      } finally {
+        releaseFolderOperation();
+      }
     },
   );
   // Home-flow counterpart: the project does not exist yet, so we only show
@@ -2590,6 +2617,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // the daemon (same trust boundary as dialog:pick-and-replace-working-dir).
   ipcMain.handle("dialog:pick-working-dir", async (event, init?: { folderDialogTitle?: string }) => {
     requireFolderPickerSender(event);
+    const releaseFolderOperation = acquireFolderOperation();
+    if (releaseFolderOperation == null) {
+      return { ok: false, reason: "folder picker is already in progress" };
+    }
+    try {
     if (captureRoute != null) {
       return { ok: false, reason: "capture.side_effect_blocked: working-directory picker is unavailable" };
     }
@@ -2608,6 +2640,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     });
     requireFolderPickerSender(event);
     return response;
+    } finally {
+      releaseFolderOperation();
+    }
   });
   // shell.openPath opens an absolute filesystem path in the OS file
   // manager (Finder / Explorer / Files). It resolves to '' on success
