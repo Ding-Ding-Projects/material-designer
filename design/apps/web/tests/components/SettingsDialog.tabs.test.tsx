@@ -529,7 +529,10 @@ describe('Settings: the tab strip', () => {
     expect(Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'), (node) =>
       node.getAttribute('data-section'))).toEqual(visibleTabSections);
 
-    fireEvent.change(search, { target: { value: 'appearance' } });
+    // Search covers both each tab's visible label and its searchable hint.
+    // `appearance` also occurs in General's hint, so use the unique
+    // Appearance-owned phrase to assert the filtered result precisely.
+    fireEvent.change(search, { target: { value: 'Choose System' } });
     const filtered = menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.getAttribute('data-section')).toBe('appearance');
