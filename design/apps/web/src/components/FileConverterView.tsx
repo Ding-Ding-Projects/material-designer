@@ -1,30 +1,22 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import {
-  getOpenDesignHost,
-  type OpenDesignHostConverterAdapter,
-  type OpenDesignHostConverterFile,
-  type OpenDesignHostConverterHistoryEvent,
-  type OpenDesignHostConverterNotification,
-  type OpenDesignHostConverterPreview,
-  type OpenDesignHostConverterQueueItem,
-} from '@open-design/host';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { DestructiveGate, type DestructiveGateOutcome } from './destructive/DestructiveGate';
 import { RegexSearchField } from './regex/RegexSearchField';
 import { useRegexSearch } from './regex/useRegexSearch';
 import { ConverterSearchableChoice, usePersistedConverterSearch, type ConverterChoiceOption } from './converter/ConverterSearchableChoice';
 import { CATEGORY_COPY_KEYS, useConverterCopy } from './converter/converterCopy';
+import { getFileConverterBridge, type ConverterAdapter, type ConverterFile, type ConverterHistoryEvent, type ConverterNotification, type ConverterPreview, type ConverterQueueItem, type DisclosureAcknowledgement } from './converter/converterBridge';
 import styles from './FileConverterView.module.css';
 
 type Category = 'documents-pdf' | 'images' | 'audio' | 'video' | 'archives' | 'structured-data' | 'code-text' | 'binary-encodings';
-type QueueRow = OpenDesignHostConverterQueueItem;
+type QueueRow = ConverterQueueItem;
 
 const CATEGORIES: readonly Category[] = ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings'];
 
-const FALLBACK_CATALOG: OpenDesignHostConverterAdapter[] = [
-  { id: 'structured-data-local', category: 'structured-data', label: 'Structured data and spreadsheet adapter', sourceFormats: ['json', 'jsonl', 'csv', 'tsv', 'yaml', 'toml', 'xml'], targetFormats: ['json', 'jsonl', 'txt'], bundled: true, capabilities: { inspect: true, convert: true, preview: true, batch: true, lossless: true, metadata: false, encoding: 'UTF-8', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
-  { id: 'text-structured-local', category: 'code-text', label: 'Code and text document adapter', sourceFormats: ['txt', 'md', 'markdown', 'json', 'jsonl', 'csv', 'tsv', 'yaml', 'toml', 'xml', 'html', 'js', 'ts'], targetFormats: ['txt', 'md', 'markdown', 'json', 'jsonl', 'html', 'js', 'ts'], bundled: true, capabilities: { inspect: true, convert: true, preview: true, batch: true, lossless: true, metadata: false, encoding: 'UTF-8', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
-  { id: 'pdf-local-bounded', category: 'documents-pdf', label: 'PDF document inspector', sourceFormats: ['pdf'], targetFormats: [], bundled: true, unavailableReason: 'Content-preserving PDF rewrite is not bundled in this build; inspect is available, edits remain disabled.', capabilities: { inspect: true, convert: false, preview: true, batch: false, lossless: false, metadata: true, encoding: 'PDF object inspection only', incrementalProgress: true }, bounds: { maxInputBytes: 268435456, maxOutputBytes: 536870912 } },
-  { id: 'binary-inspector-local', category: 'binary-encodings', label: 'Binary inspection adapter', sourceFormats: ['png', 'jpeg', 'gif', 'webp', 'zip', 'gz', 'mp3', 'ogg', 'flac', 'mp4'], targetFormats: ['hex', 'base64'], bundled: true, capabilities: { inspect: true, convert: true, preview: false, batch: true, lossless: true, metadata: false, encoding: 'binary', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
+const FALLBACK_CATALOG: ConverterAdapter[] = [
+  { id: 'structured-data-local', category: 'structured-data', label: 'Structured data and spreadsheet adapter', sourceFormats: ['json', 'jsonl', 'csv', 'tsv', 'yaml', 'toml', 'xml'], targetFormats: ['txt'], bundled: false, unavailableReason: 'Awaiting verified packaged adapter proof.', capabilities: { inspect: true, convert: false, preview: true, batch: true, lossless: true, metadata: false, encoding: 'UTF-8', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
+  { id: 'text-structured-local', category: 'code-text', label: 'Code and text document adapter', sourceFormats: ['txt', 'md', 'markdown', 'json', 'jsonl', 'csv', 'tsv', 'yaml', 'toml', 'xml', 'html', 'js', 'ts'], targetFormats: ['txt', 'md', 'markdown', 'html'], bundled: false, unavailableReason: 'Awaiting verified packaged adapter proof.', capabilities: { inspect: true, convert: false, preview: true, batch: true, lossless: true, metadata: false, encoding: 'UTF-8', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
+  { id: 'pdf-local-bounded', category: 'documents-pdf', label: 'PDF document inspector', sourceFormats: ['pdf'], targetFormats: [], bundled: false, unavailableReason: 'Awaiting verified packaged adapter proof. Content-preserving PDF edits remain unavailable.', capabilities: { inspect: false, convert: false, preview: false, batch: false, lossless: false, metadata: true, encoding: 'PDF object inspection only', incrementalProgress: false }, bounds: { maxInputBytes: 268435456, maxOutputBytes: 536870912 } },
+  { id: 'binary-inspector-local', category: 'binary-encodings', label: 'Binary inspection adapter', sourceFormats: ['png', 'jpeg', 'gif', 'webp', 'zip', 'gz', 'mp3', 'ogg', 'flac', 'mp4'], targetFormats: ['hex', 'base64'], bundled: false, unavailableReason: 'Awaiting verified packaged adapter proof.', capabilities: { inspect: true, convert: false, preview: true, batch: true, lossless: true, metadata: false, encoding: 'binary', incrementalProgress: true }, bounds: { maxInputBytes: 33554432, maxOutputBytes: 67108864 } },
   { id: 'image-pixel-adapter', category: 'images', label: 'Image conversion adapter', sourceFormats: ['png', 'jpeg', 'webp'], targetFormats: ['png', 'jpeg', 'webp'], bundled: false, unavailableReason: 'Bundled pixel codec is not present in this build.', capabilities: { inspect: false, convert: false, preview: false, batch: false, lossless: false, metadata: false, encoding: 'unavailable', incrementalProgress: false }, bounds: {} },
   { id: 'audio-transcode-adapter', category: 'audio', label: 'Audio conversion adapter', sourceFormats: ['mp3', 'wav', 'flac'], targetFormats: ['mp3', 'wav', 'flac'], bundled: false, unavailableReason: 'Bundled audio codec is not present in this build.', capabilities: { inspect: false, convert: false, preview: false, batch: false, lossless: false, metadata: false, encoding: 'unavailable', incrementalProgress: false }, bounds: {} },
   { id: 'video-transcode-adapter', category: 'video', label: 'Video conversion adapter', sourceFormats: ['mp4', 'webm', 'mov'], targetFormats: ['mp4', 'webm'], bundled: false, unavailableReason: 'Bundled video codec is not present in this build.', capabilities: { inspect: false, convert: false, preview: false, batch: false, lossless: false, metadata: false, encoding: 'unavailable', incrementalProgress: false }, bounds: {} },
@@ -51,13 +43,13 @@ function writeConverterPreference(key: string, value: string): void {
   try { window.localStorage.setItem(key, value); } catch { /* local preference storage is best effort */ }
 }
 
-function AdapterTargetChoice({ category, adapter, value, onChange, source, destination, busy, copy, focusScopeId }: { category: Category; adapter: OpenDesignHostConverterAdapter; value: string; onChange: (value: string) => void; source: OpenDesignHostConverterFile | null; destination: OpenDesignHostConverterFile | null; busy: boolean; copy: ReturnType<typeof useConverterCopy>; focusScopeId: string }) {
+function AdapterTargetChoice({ category, adapter, value, onChange, source, destination, busy, copy, focusScopeId }: { category: Category; adapter: ConverterAdapter; value: string; onChange: (value: string) => void; source: ConverterFile | null; destination: ConverterFile | null; busy: boolean; copy: ReturnType<typeof useConverterCopy>; focusScopeId: string }) {
   const search = usePersistedConverterSearch(`material-designer:converter:${category}:${adapter.id}:target`);
   const options = adapter.targetFormats.map((format) => ({ value: format, label: format }));
   return <ConverterSearchableChoice id={`${adapter.id}-target`} label={copy('targetFormat')} value={value} options={options} onChange={onChange} search={search} searchLabel={copy('targetFormats', { name: adapter.label })} disabled={!source || !destination || busy} disabledReason={copy('desktopRequired')} testId={`${adapter.id}-target-choice`} focusScopeId={focusScopeId} />;
 }
 
-function CategoryPanel({ category, adapters, source, destination, onChooseDestination, onPreview, onQueue, onConvert, onPdfAction, preview, busy }: { category: Category; adapters: OpenDesignHostConverterAdapter[]; source: OpenDesignHostConverterFile | null; destination: OpenDesignHostConverterFile | null; onChooseDestination: () => void; onPreview: (adapter: OpenDesignHostConverterAdapter, target: string) => void; onQueue: (adapter: OpenDesignHostConverterAdapter, target: string) => void | Promise<void>; onConvert: (adapter: OpenDesignHostConverterAdapter, target: string) => void | Promise<void>; onPdfAction: (operation: string) => void; preview: OpenDesignHostConverterPreview | null; busy: boolean }) {
+function CategoryPanel({ category, adapters, source, destination, onChooseDestination, onPreview, onQueue, onConvert, onPdfAction, preview, busy, disclosureAcknowledgement, onAcknowledgeDisclosure }: { category: Category; adapters: ConverterAdapter[]; source: ConverterFile | null; destination: ConverterFile | null; onChooseDestination: () => void; onPreview: (adapter: ConverterAdapter, target: string) => void; onQueue: (adapter: ConverterAdapter, target: string) => void | Promise<void>; onConvert: (adapter: ConverterAdapter, target: string) => void | Promise<void>; onPdfAction: (operation: string) => void; preview: ConverterPreview | null; busy: boolean; disclosureAcknowledgement: DisclosureAcknowledgement | null; onAcknowledgeDisclosure: () => void | Promise<void> }) {
   const copy = useConverterCopy();
   const categoryLabel = copy(CATEGORY_COPY_KEYS[category]);
   const search = usePersistedConverterSearch(`material-designer:converter:${category}:adapters`);
@@ -105,13 +97,12 @@ function CategoryPanel({ category, adapters, source, destination, onChooseDestin
         </article>;
       })}
     </div>
-    {preview?.adapterId ? <div className={styles.preview} role="region" aria-label={copy('conversionPreview')}><strong>{copy('conversionPreview')}: {preview.targetFormat}</strong><span>{preview.source.format}, {preview.source.bytes} bytes</span><p>{preview.disclosure}</p></div> : null}
+    {preview?.adapterId ? <div className={styles.preview} role="region" aria-label={copy('conversionPreview')}><strong>{copy('conversionPreview')}: {preview.targetFormat}</strong><span>{preview.source.format}, {preview.source.bytes} bytes</span><p>{preview.disclosure}</p>{preview.lossy ? <button type="button" onClick={() => void onAcknowledgeDisclosure()} disabled={Boolean(disclosureAcknowledgement) || busy}>{disclosureAcknowledgement ? copy('disclosureAcknowledged') : copy('acknowledgeDisclosure')}</button> : null}</div> : null}
     <button type="button" className={styles.browseButton} onClick={onChooseDestination}>{copy('chooseDestination')}</button>
   </section>;
 }
 
-function downloadJson(value: unknown, filename: string, onDone: () => void): void {
-  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
+function downloadBlob(blob: Blob, filename: string, onDone: () => void): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -123,110 +114,168 @@ function downloadJson(value: unknown, filename: string, onDone: () => void): voi
 
 export function FileConverterView() {
   const copy = useConverterCopy();
-  const [catalog, setCatalog] = useState<OpenDesignHostConverterAdapter[]>(FALLBACK_CATALOG);
+  const [catalog, setCatalog] = useState<ConverterAdapter[]>(FALLBACK_CATALOG);
   const [activeCategory, setActiveCategory] = useState<Category>('documents-pdf');
-  const [source, setSource] = useState<OpenDesignHostConverterFile | null>(null);
-  const [sources, setSources] = useState<OpenDesignHostConverterFile[]>([]);
-  const [destination, setDestination] = useState<OpenDesignHostConverterFile | null>(null);
+  const [source, setSource] = useState<ConverterFile | null>(null);
+  const [sources, setSources] = useState<ConverterFile[]>([]);
+  const [destination, setDestination] = useState<ConverterFile | null>(null);
   const [browserFile, setBrowserFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<OpenDesignHostConverterPreview | null>(null);
+  const [preview, setPreview] = useState<ConverterPreview | null>(null);
   const [queue, setQueue] = useState<QueueRow[]>([]);
+  const [queueNextCursor, setQueueNextCursor] = useState<string | undefined>();
+  const [queuePageNumber, setQueuePageNumber] = useState(1);
+  const queueCursorRef = useRef<string | undefined>(undefined);
   const [selectedQueue, setSelectedQueue] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState(() => copy('chooseSourceNotice'));
-  const [notificationHistory, setNotificationHistory] = useState<OpenDesignHostConverterNotification[]>([]);
-  const [localHistoryEvents, setLocalHistoryEvents] = useState<OpenDesignHostConverterHistoryEvent[]>([]);
+  const [notificationHistory, setNotificationHistory] = useState<ConverterNotification[]>([]);
+  const [localHistoryEvents, setLocalHistoryEvents] = useState<ConverterHistoryEvent[]>([]);
   const [busy, setBusy] = useState(false);
-  const [overwriteGate, setOverwriteGate] = useState<{ adapterId: string; target: string; sourceHandle: string; destinationHandle: string } | null>(null);
+  const [overwriteGate, setOverwriteGate] = useState<{ adapterId: string; target: string; sourceHandle: string; destinationHandle: string; acknowledgementToken?: string } | null>(null);
+  const [disclosureAcknowledgement, setDisclosureAcknowledgement] = useState<DisclosureAcknowledgement | null>(null);
   const [contextMenu, setContextMenu] = useState(false);
   const [contextQuery, setContextQuery] = useState('');
-  const host = useMemo(() => getOpenDesignHost(), []);
+  const host = useMemo(() => getFileConverterBridge(), []);
   const contextSearch = useRegexSearch(contextQuery, setContextQuery);
   const adapters = catalog.filter((adapter) => adapter.category === activeCategory);
 
   useEffect(() => {
     let active = true;
-    void host?.converter?.catalog().then((next) => { if (active && next.length > 0) setCatalog([...next]); }).catch(() => setMessage(copy('unavailable', { reason: 'The bundled adapter catalog is unavailable, so the local fallback catalog is shown.' })));
+    void host?.catalog().then((next) => { if (active && next.length > 0) setCatalog([...next]); }).catch(() => setMessage(copy('unavailable', { reason: 'The bundled adapter catalog is unavailable, so the local fallback catalog is shown.' })));
     return () => { active = false; };
   }, [copy, host]);
 
-  const refreshQueue = async () => {
-    if (!host?.converter) return;
-    const pageMethod = (host.converter.queue as typeof host.converter.queue & { page?: (cursor?: string, pageSize?: number) => Promise<unknown> }).page;
-    const next = typeof pageMethod === 'function' ? await pageMethod(undefined, 256) : await host.converter.queue.list();
-    if (Array.isArray(next)) { setQueue([...next]); return; }
-    if (next && typeof next === 'object' && 'items' in next && Array.isArray((next as { items: unknown[] }).items)) setQueue([...(next as { items: QueueRow[] }).items]);
-    else if (next && typeof next === 'object' && 'reason' in next) setMessage(String((next as { reason: string }).reason));
+  const loadQueuePage = async (cursor: string | undefined, pageNumber: number) => {
+    if (!host) return;
+    const next = await host.queue.page(cursor, 100);
+    if ('items' in next) {
+      queueCursorRef.current = cursor;
+      setQueue([...next.items]);
+      setQueueNextCursor(next.nextCursor);
+      setQueuePageNumber(pageNumber);
+      setSelectedQueue(new Set());
+    } else setMessage(next.reason);
   };
-  useEffect(() => { void refreshQueue(); if (!host?.converter) return; const timer = window.setInterval(() => void refreshQueue(), 750); return () => window.clearInterval(timer); }, [host]);
+  const refreshQueue = async () => loadQueuePage(queueCursorRef.current, queuePageNumber);
+  const resetQueue = async () => loadQueuePage(undefined, 1);
+  const nextQueuePage = async () => {
+    if (queueNextCursor == null) return;
+    await loadQueuePage(queueNextCursor, queuePageNumber + 1);
+  };
+  useEffect(() => { void refreshQueue(); if (!host) return; const timer = window.setInterval(() => void refreshQueue(), 750); return () => window.clearInterval(timer); }, [host]);
   useEffect(() => {
-    if (!host?.converter?.notifications?.page) return;
-    void host.converter.notifications.page(undefined, 200).then((page) => { if (!('reason' in page)) setNotificationHistory([...page.items]); }).catch(() => undefined);
+    if (!host?.notifications?.page) return;
+    void host.notifications.page(undefined, 200).then((page) => { if (!('reason' in page)) setNotificationHistory([...page.items]); }).catch(() => undefined);
   }, [host, message]);
   useEffect(() => {
-    if (!host?.converter?.history?.page) return;
-    void host.converter.history.page(undefined, 200).then((page) => { if (!('reason' in page)) setLocalHistoryEvents([...page.items]); }).catch(() => undefined);
+    if (!host?.history?.page) return;
+    void host.history.page(undefined, 200).then((page) => { if (!('reason' in page)) setLocalHistoryEvents([...page.items]); }).catch(() => undefined);
   }, [host, message]);
 
   const pickSource = async () => {
-    if (!host?.converter) { setMessage(copy('desktopRequired')); return; }
-    const result = await host.converter.pickSources();
+    if (!host) { setMessage(copy('desktopRequired')); return; }
+    const result = await host.pickSources();
     if (Array.isArray(result)) { setSources([...result]); setSource(result[0] ?? null); setMessage(copy('sourcesSelected', { n: result.length })); }
     else if ('canceled' in result) setMessage(copy('cancelled', { what: 'Source' }));
     else setMessage(result.reason);
   };
   const pickDestination = async () => {
-    if (!host?.converter) { setMessage(copy('desktopRequired')); return; }
-    const result = await host.converter.pickDestination('converted-output');
+    if (!host) { setMessage(copy('desktopRequired')); return; }
+    const result = await host.pickDestination('converted-output');
     if ('handle' in result) { setDestination(result); setMessage(copy('destinationSelected', { name: result.name })); }
     else if ('canceled' in result) setMessage(copy('cancelled', { what: 'Destination' }));
     else setMessage(result.reason);
   };
   const onBrowserSource = (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0] ?? null; setBrowserFile(file); if (file) setMessage(copy('browserSourceSelected', { name: file.name, bytes: file.size })); };
-  const runPreview = async (adapter: OpenDesignHostConverterAdapter, target: string) => {
-    if (!host?.converter || !source || !destination) { setMessage(copy('desktopRequired')); return; }
+  const runPreview = async (adapter: ConverterAdapter, target: string) => {
+    if (!host || !source || !destination) { setMessage(copy('desktopRequired')); return; }
     setBusy(true);
-    try { const result = await host.converter.preview(source.handle, destination.handle, adapter.id, target); if ('reason' in result) setMessage(result.reason); else { setPreview(result); setMessage(`${copy('previewReady', { target })} ${copy('reviewDisclosure')}`); } }
+    try { const result = await host.preview(source.handle, destination.handle, adapter.id, target); if ('reason' in result) setMessage(result.reason); else { setPreview(result); setDisclosureAcknowledgement(null); setMessage(`${copy('previewReady', { target })} ${copy('reviewDisclosure')}`); } }
     finally { setBusy(false); }
   };
-  const addToQueue = async (adapter: OpenDesignHostConverterAdapter, target: string) => {
-    if (!host?.converter || !source || !destination) { setMessage(copy('desktopRequired')); return; }
-    const result = await host.converter.queue.enqueue(source.handle, destination.handle, adapter.id, target);
+  const acknowledgeDisclosure = async () => {
+    if (!host || !preview?.lossy) { setMessage(copy('disclosureRequired')); return; }
+    setBusy(true);
+    try {
+      const result = await host.acknowledgeDisclosure(preview);
+      if ('reason' in result) setMessage(result.reason);
+      else { setDisclosureAcknowledgement(result); setMessage(copy('disclosureAcknowledged')); }
+    } finally { setBusy(false); }
+  };
+  const addToQueue = async (adapter: ConverterAdapter, target: string) => {
+    if (!host || !source || !destination) { setMessage(copy('desktopRequired')); return; }
+    if (preview?.lossy && (!disclosureAcknowledgement || preview.adapterId !== adapter.id || preview.targetFormat !== target)) { setMessage(copy('disclosureRequired')); return; }
+    const result = await host.queue.enqueue(source.handle, destination.handle, adapter.id, target, disclosureAcknowledgement?.token);
     if ('reason' in result) setMessage(result.reason); else { setMessage(copy('queued', { name: result.sourceName, target })); await refreshQueue(); }
     void runPreview(adapter, target);
   };
-  const convertNow = async (adapter: OpenDesignHostConverterAdapter, target: string) => {
-    if (!host?.converter || !source || !destination) { setMessage(copy('desktopRequired')); return; }
+  const convertNow = async (adapter: ConverterAdapter, target: string) => {
+    if (!host || !source || !destination) { setMessage(copy('desktopRequired')); return; }
     setBusy(true);
     try {
-      const result = await host.converter.preview(source.handle, destination.handle, adapter.id, target);
+      const result = await host.preview(source.handle, destination.handle, adapter.id, target);
       if ('reason' in result) { setMessage(result.reason); return; }
-      if (destination.exists === true) { setOverwriteGate({ adapterId: adapter.id, target, sourceHandle: source.handle, destinationHandle: destination.handle }); return; }
-      const converted = await host.converter.convert(source.handle, destination.handle, adapter.id, target);
+      if (result.lossy && !disclosureAcknowledgement) { setMessage(copy('disclosureRequired')); return; }
+      if (destination.exists === true) { setOverwriteGate({ adapterId: adapter.id, target, sourceHandle: source.handle, destinationHandle: destination.handle, acknowledgementToken: disclosureAcknowledgement?.token }); return; }
+      const converted = await host.convert(source.handle, destination.handle, adapter.id, target, disclosureAcknowledgement?.token);
       if (converted.ok) setMessage(copy('conversionComplete')); else setMessage(converted.status === 'cancelled' ? copy('conversionCancelled') : copy('conversionFailed', { reason: converted.reason }));
     } finally { setBusy(false); }
   };
-  const startQueue = async () => { if (!host?.converter) { setMessage(copy('desktopRequired')); return; } setBusy(true); const result = await host.converter.queue.start(); setMessage(result.ok ? copy('queueStarted') : result.reason); await refreshQueue(); setBusy(false); };
-  const cancelQueue = async () => { if (!host?.converter) return; await host.converter.queue.cancel(); await refreshQueue(); setMessage(copy('queueCancelled')); };
-  const pauseQueue = async () => { if (!host?.converter) return; await host.converter.queue.pause(); await refreshQueue(); setMessage(copy('queuePaused')); };
-  const resumeQueue = async () => { if (!host?.converter) return; await host.converter.queue.resume(); await refreshQueue(); setMessage(copy('queueResumed')); };
+  const startQueue = async () => { if (!host) { setMessage(copy('desktopRequired')); return; } setBusy(true); const result = await host.queue.start(); setMessage(result.ok ? copy('queueStarted') : result.reason); await refreshQueue(); setBusy(false); };
+  const cancelQueue = async () => { if (!host) return; await host.queue.cancel(); await refreshQueue(); setMessage(copy('queueCancelled')); };
+  const pauseQueue = async () => { if (!host) return; await host.queue.pause(); await refreshQueue(); setMessage(copy('queuePaused')); };
+  const resumeQueue = async () => { if (!host) return; await host.queue.resume(); await refreshQueue(); setMessage(copy('queueResumed')); };
   const toggleAllQueue = () => setSelectedQueue((current) => current.size === queue.length ? new Set() : new Set(queue.map((item) => item.id)));
-  const cancelSelectedQueue = async () => { if (!host?.converter) return; await host.converter.queue.cancel([...selectedQueue]); setSelectedQueue(new Set()); await refreshQueue(); setMessage(copy('selectedCancelled')); };
-  const retrySelectedQueue = async () => { if (!host?.converter) return; await host.converter.queue.retry(selectedQueue.size > 0 ? [...selectedQueue] : undefined); setSelectedQueue(new Set()); await refreshQueue(); setMessage(copy('selectedRetried')); };
-  const runPdfOperation = async (operation: string) => { if (!host?.converter || !source || (operation !== 'inspect' && !destination)) { setMessage(copy('desktopRequired')); return; } setBusy(true); try { const result = await host.converter.pdfOperation(source.handle, destination?.handle ?? '', operation, {}, operation === 'merge' ? sources.map((item) => item.handle) : undefined, undefined); setMessage('reason' in result ? result.reason : `${copy('inspectPdf')} ${operation}.`); } finally { setBusy(false); } };
-  const exportQueue = () => { downloadJson({ schemaVersion: 1, encoding: 'UTF-8', lineEndings: 'LF', queue }, 'converter-queue.json', () => setMessage(copy('queueExported'))); };
+  const cancelSelectedQueue = async () => { if (!host) return; await host.queue.cancel([...selectedQueue]); setSelectedQueue(new Set()); await refreshQueue(); setMessage(copy('selectedCancelled')); };
+  const retrySelectedQueue = async () => { if (!host) return; await host.queue.retry(selectedQueue.size > 0 ? [...selectedQueue] : undefined); setSelectedQueue(new Set()); await refreshQueue(); setMessage(copy('selectedRetried')); };
+  const runPdfOperation = async (operation: string) => { if (!host || !source || (operation !== 'inspect' && !destination)) { setMessage(copy('desktopRequired')); return; } setBusy(true); try { const result = await host.pdfOperation(source.handle, destination?.handle ?? '', operation, {}, operation === 'merge' ? sources.map((item) => item.handle) : undefined, undefined); setMessage('reason' in result ? result.reason : `${copy('inspectPdf')} ${operation}.`); } finally { setBusy(false); } };
+  const exportQueue = async () => {
+    if (!host) return;
+    const encoder = new TextEncoder();
+    let cursor: string | undefined;
+    let first = true;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        void (async () => {
+          try {
+            controller.enqueue(encoder.encode('{"schemaVersion":1,"encoding":"UTF-8","lineEndings":"LF","scope":"complete-queue","queue":['));
+            do {
+              const page = await host.queue.page(cursor, 100);
+              if ('reason' in page) throw new Error(page.reason);
+              for (const item of page.items) {
+                controller.enqueue(encoder.encode(`${first ? '' : ','}${JSON.stringify(item)}`));
+                first = false;
+              }
+              cursor = page.nextCursor;
+            } while (cursor);
+            controller.enqueue(encoder.encode(']}\n'));
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        })();
+      },
+    });
+    try {
+      const blob = await new Response(stream).blob();
+      downloadBlob(blob, 'converter-queue.json', () => setMessage(copy('queueExported')));
+    } catch (error) {
+      setMessage(copy('conversionFailed', { reason: error instanceof Error ? error.message : 'The complete queue could not be exported.' }));
+    }
+  };
   const contextMatches = (label: string) => contextSearch.matches(label);
   const dispatchTargetAction = (type: 'appearance' | 'toy-lock') => {
     if (typeof window === 'undefined') return false;
     const event = new CustomEvent(type === 'appearance' ? 'od:appearance:request' : 'od:toy-lock:request', { bubbles: true, cancelable: true, detail: { targetId: 'file-converter-surface' } });
-    const delivered = window.dispatchEvent(event);
-    if (delivered) setMessage(type === 'appearance' ? copy('editAppearance') : copy('lockElement'));
-    return !delivered;
+    const handled = !window.dispatchEvent(event);
+    if (handled) setMessage(type === 'appearance' ? copy('editAppearance') : copy('lockElement'));
+    else setMessage(copy('integrationRequired'));
+    return handled;
   };
   const completeOverwrite = async (): Promise<boolean> => {
-    if (!host?.converter || !overwriteGate) return false;
-    const challenge = await host.converter.requestOverwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target);
+    if (!host || !overwriteGate) return false;
+    const challenge = await host.requestOverwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target);
     if ('reason' in challenge) { setMessage(challenge.reason); return false; }
-    const result = await host.converter.overwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target, challenge.token);
+    const result = await host.overwrite(overwriteGate.sourceHandle, overwriteGate.destinationHandle, overwriteGate.adapterId, overwriteGate.target, challenge.token, overwriteGate.acknowledgementToken);
     if (result.ok) { setMessage(copy('conversionComplete')); return true; }
     setMessage(result.status === 'cancelled' ? copy('conversionCancelled') : copy('conversionFailed', { reason: result.reason }));
     return false;
@@ -239,10 +288,10 @@ export function FileConverterView() {
     <div className={styles.notice} role="status" aria-live="polite">{message}</div>
     <nav className={styles.tabs} role="tablist" aria-label={copy('title')}>{CATEGORIES.map((category) => <button key={category} type="button" role="tab" aria-selected={activeCategory === category} aria-controls={`${category}-panel`} onClick={() => setActiveCategory(category)}>{copy(CATEGORY_COPY_KEYS[category])}</button>)}</nav>
     <div id={`${activeCategory}-panel`} role="tabpanel" aria-label={activeLabel}>
-      <CategoryPanel category={activeCategory} adapters={adapters} source={source} destination={destination} onChooseDestination={() => void pickDestination()} onPreview={(adapter, target) => void runPreview(adapter, target)} onQueue={addToQueue} onConvert={convertNow} onPdfAction={(operation) => void runPdfOperation(operation)} preview={preview} busy={busy} />
+      <CategoryPanel category={activeCategory} adapters={adapters} source={source} destination={destination} onChooseDestination={() => void pickDestination()} onPreview={(adapter, target) => void runPreview(adapter, target)} onQueue={addToQueue} onConvert={convertNow} onPdfAction={(operation) => void runPdfOperation(operation)} preview={preview} busy={busy} disclosureAcknowledgement={disclosureAcknowledgement} onAcknowledgeDisclosure={acknowledgeDisclosure} />
     </div>
-    <section className={styles.queue} aria-labelledby="converter-queue-title"><div className={styles.queueHeader}><h2 id="converter-queue-title">{copy('queueTitle')}</h2><span role="status">{copy('queueRecords', { n: queue.length })}</span><div><button type="button" onClick={() => void startQueue()} disabled={busy || queue.every((item) => item.state !== 'queued')}>{copy('start')}</button><button type="button" onClick={() => void pauseQueue()} disabled={busy || queue.every((item) => item.state !== 'queued')}>{copy('pause')}</button><button type="button" onClick={() => void resumeQueue()} disabled={busy || queue.every((item) => item.state !== 'paused')}>{copy('resume')}</button><button type="button" onClick={() => void cancelQueue()} disabled={busy || queue.every((item) => item.state !== 'queued' && item.state !== 'paused')}>{copy('cancel')}</button><button type="button" onClick={() => void cancelSelectedQueue()} disabled={selectedQueue.size === 0}>{copy('cancelSelected')}</button><button type="button" onClick={() => void retrySelectedQueue()} disabled={selectedQueue.size === 0}>{copy('retrySelected')}</button><button type="button" onClick={exportQueue} disabled={queue.length === 0}>{copy('exportQueue')}</button></div></div>{queue.length === 0 ? <p className={styles.empty}>{copy('emptyQueue')}</p> : <><label className={styles.selectAll}><input type="checkbox" checked={selectedQueue.size === queue.length} onChange={toggleAllQueue} /> {copy('selectAll')}</label><ul>{queue.map((item) => <li key={item.id}><label><input type="checkbox" checked={selectedQueue.has(item.id)} onChange={() => setSelectedQueue((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} aria-label={item.sourceName} /> <span>{item.sourceName} → {item.destinationName}</span></label><progress max={item.totalBytes ?? 1} value={item.totalBytes && item.totalBytes > 0 ? Math.min(item.totalBytes, item.bytesProcessed) : item.state === 'converted' ? 1 : 0}>{item.totalBytes && item.totalBytes > 0 ? Math.round((item.bytesProcessed / item.totalBytes) * 100) : 0}%</progress><strong>{item.state}</strong>{item.bytesPerSecond ? <small>{item.bytesPerSecond} bytes/s</small> : null}{item.reason ? <small>{item.reason}</small> : null}</li>)}</ul></>}</section>
-    <section className={styles.auditColumns} aria-label={copy('historyDisclosure')}><div data-converter-notification-history><h2>{copy('notificationHistory')}</h2><ul>{notificationHistory.map((entry) => <li key={entry.id}><button type="button" onClick={() => void host?.converter?.notifications?.markRead([entry.id])}>{entry.title}: {entry.body}</button></li>)}</ul></div><div data-converter-local-history><h2>{copy('localHistory')}</h2><p>{copy('historyDisclosure')}</p><ul>{localHistoryEvents.map((entry) => <li key={entry.id}>{entry.summary} ({entry.createdAt})</li>)}</ul></div></section>
+    <section className={styles.queue} aria-labelledby="converter-queue-title" data-converter-queue-page={queuePageNumber}><div className={styles.queueHeader}><h2 id="converter-queue-title">{copy('queueTitle')}</h2><span role="status">{copy('queuePageRecords', { n: queue.length, page: queuePageNumber })}</span><div><button type="button" onClick={() => void startQueue()} disabled={busy || queue.every((item) => item.state !== 'queued')}>{copy('start')}</button><button type="button" onClick={() => void pauseQueue()} disabled={busy || queue.every((item) => item.state !== 'queued')}>{copy('pause')}</button><button type="button" onClick={() => void resumeQueue()} disabled={busy || queue.every((item) => item.state !== 'paused')}>{copy('resume')}</button><button type="button" onClick={() => void cancelQueue()} disabled={busy || queue.every((item) => item.state !== 'queued' && item.state !== 'paused')}>{copy('cancel')}</button><button type="button" onClick={() => void cancelSelectedQueue()} disabled={selectedQueue.size === 0}>{copy('cancelSelected')}</button><button type="button" onClick={() => void retrySelectedQueue()} disabled={selectedQueue.size === 0}>{copy('retrySelected')}</button><button type="button" onClick={exportQueue} disabled={!host}>{copy('exportQueue')}</button><button type="button" onClick={() => void resetQueue()} disabled={!host || queuePageNumber === 1}>{copy('firstQueuePage')}</button><button type="button" onClick={() => void nextQueuePage()} disabled={!host || !queueNextCursor}>{copy('nextQueuePage')}</button></div></div>{queue.length === 0 ? <p className={styles.empty}>{copy('emptyQueue')}</p> : <><label className={styles.selectAll}><input type="checkbox" checked={selectedQueue.size === queue.length} onChange={toggleAllQueue} /> {copy('selectAllPage')}</label><ul>{queue.map((item) => <li key={item.id}><label><input type="checkbox" checked={selectedQueue.has(item.id)} onChange={() => setSelectedQueue((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} aria-label={item.sourceName} /> <span>{item.sourceName} → {item.destinationName}</span></label><progress max={item.totalBytes ?? 1} value={item.totalBytes && item.totalBytes > 0 ? Math.min(item.totalBytes, item.bytesProcessed) : item.state === 'converted' ? 1 : 0}>{item.totalBytes && item.totalBytes > 0 ? Math.round((item.bytesProcessed / item.totalBytes) * 100) : 0}%</progress><strong>{item.state}</strong>{item.bytesPerSecond ? <small>{item.bytesPerSecond} bytes/s</small> : null}{item.reason ? <small>{item.reason}</small> : null}</li>)}</ul></>}</section>
+    <section className={styles.auditColumns} aria-label={copy('historyDisclosure')}><div data-converter-notification-history><h2>{copy('notificationHistory')}</h2><ul>{notificationHistory.map((entry) => <li key={entry.id}><button type="button" onClick={() => void host?.notifications?.markRead([entry.id])}>{entry.title}: {entry.body}</button></li>)}</ul></div><div data-converter-local-history><h2>{copy('localHistory')}</h2><p>{copy('historyDisclosure')}</p><ul>{localHistoryEvents.map((entry) => <li key={entry.id}>{entry.summary} ({entry.createdAt})</li>)}</ul></div></section>
     {contextMenu ? <aside className={styles.contextMenu} role="menu" aria-label={copy('contextActions')}><RegexSearchField search={contextSearch} fieldLabel={copy('contextActions')} ariaLabel={copy('contextActions')} placeholder={copy('contextActions')} testId="converter-context-search" focusScopeId="converter-context-menu" />{contextMatches(copy('editAppearance')) ? <button type="button" role="menuitem" onClick={() => { setContextMenu(false); dispatchTargetAction('appearance'); }}>{copy('editAppearance')}</button> : null}{contextMatches(copy('lockElement')) ? <button type="button" role="menuitem" onClick={() => { setContextMenu(false); dispatchTargetAction('toy-lock'); }}>{copy('lockElement')}</button> : null}{contextMatches(copy('closeMenu')) ? <button type="button" role="menuitem" onClick={() => setContextMenu(false)}>{copy('closeMenu')}</button> : null}</aside> : null}
     {overwriteGate ? <DestructiveGate action={copy('overwriteAction')} target={copy('overwriteTarget', { name: destination?.name ?? copy('noDestination') })} items={[copy('overwriteItem', { name: destination?.name ?? copy('noDestination') })]} detail={copy('overwriteDetail')} irreversible onConfirm={completeOverwrite} onClose={closeOverwrite} /> : null}
   </main>;

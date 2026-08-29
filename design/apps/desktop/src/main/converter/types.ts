@@ -8,6 +8,8 @@ export const CONVERTER_SCHEMA_VERSION = 1 as const;
 export const MAX_SOURCE_BYTES = 256 * 1024 * 1024;
 export const MAX_OUTPUT_BYTES = 512 * 1024 * 1024;
 export const MAX_QUEUE_ITEMS = Number.MAX_SAFE_INTEGER;
+export const MAX_PDF_PAGES = 10_000;
+export const DISCLOSURE_TTL_MS = 5 * 60_000;
 
 export type ConverterCategory =
   | "documents-pdf"
@@ -67,6 +69,21 @@ export interface ConverterAdapter {
   /** Validate output bytes before the destination is promoted. */
   validateOutput: (bytes: Uint8Array, targetFormat: string) => OutputValidation;
   convert?: (input: Uint8Array, targetFormat: string, options?: Record<string, unknown>, onProgress?: (progress: ByteProgress) => void) => Promise<Uint8Array>;
+}
+
+export interface PackagedAdapterProof {
+  kind: "packaged";
+  path: string;
+  version: string;
+  digest: string;
+}
+
+export interface DisclosureAcknowledgement {
+  token: string;
+  expiresAtMs: number;
+  adapterId: string;
+  targetFormat: string;
+  sourcePath: string;
 }
 
 export interface OutputValidation {

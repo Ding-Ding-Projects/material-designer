@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import {
-  appendFile,
   mkdir,
+  open,
   readFile,
   rename,
   rm,
@@ -52,8 +52,7 @@ export class MemoryQueueStore implements QueueStore {
     // below is the production path and never materializes the complete queue.
     const values = [...this.#items.values()].sort((a, b) => a.id.localeCompare(b.id));
     const offset = parseOffsetCursor(cursor);
-    const boundedPageSize = Math.max(1, Math.min(MAX_PAGE_SIZE, Math.floor(pageSize)));
-    const items = values.slice(offset, offset + boundedPageSize);
+    const items = values.slice(offset, offset + boundedPageSize(pageSize));
     return {
       items,
       nextCursor:
@@ -70,6 +69,7 @@ type QueueIndexMeta = {
   schemaVersion: typeof INDEX_SCHEMA_VERSION;
   nextSequence: number;
   totalItems: number;
+  journalSize: number;
 };
 
 type QueueOrderEntry = { id: string; sequence: number };
@@ -84,6 +84,11 @@ function parseOffsetCursor(cursor: string | undefined): number {
   const value = Number.parseInt(cursor, 10);
   if (!Number.isSafeInteger(value) || value < 0) throw new Error("The converter queue cursor is invalid.");
   return value;
+}
+
+function boundedPageSize(pageSize: number): number {
+  if (!Number.isFinite(pageSize) || !Number.isSafeInteger(pageSize) || pageSize < 1) throw new Error("The converter queue page size is invalid.");
+  return Math.min(MAX_PAGE_SIZE, pageSize);
 }
 
 function parseIndexedCursor(cursor: string | undefined): { chunk: number; offset: number } {
@@ -211,6 +216,16 @@ async function renameReplacing(source: string, destination: string): Promise<voi
   }
 }
 
+async function appendAndFlush(path: string, text: string): Promise<void> {
+  const handle = await open(path, "a", 0o600);
+  try {
+    await handle.write(text, undefined, "utf8");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
 /**
  * Durable queue records. Payload bytes never enter this store, only bounded
  * metadata and paths. The journal is retained for recovery, while the order
@@ -227,14 +242,16 @@ export class FileQueueStore implements QueueStore {
   readonly #metaPath: string;
   #writeChain: Promise<void> = Promise.resolve();
   #indexReady: Promise<void> | null = null;
+  readonly #afterJournal?: () => Promise<void>;
 
-  constructor(path: string, legacyPath?: string) {
+  constructor(path: string, legacyPath?: string, options: { afterJournal?: () => Promise<void> } = {}) {
     this.#path = path;
     this.#legacyPath = legacyPath;
     this.#indexRoot = `${path}.index`;
     this.#itemsRoot = join(this.#indexRoot, "items");
     this.#orderRoot = join(this.#indexRoot, "order");
     this.#metaPath = join(this.#indexRoot, "meta.json");
+    this.#afterJournal = options.afterJournal;
   }
 
   #itemPath(id: string): string {
@@ -250,6 +267,7 @@ export class FileQueueStore implements QueueStore {
       const parsed = JSON.parse(await readUtf8Bounded(this.#metaPath, 1024)) as Partial<QueueIndexMeta>;
       const nextSequence = parsed.nextSequence;
       const totalItems = parsed.totalItems;
+      const journalSize = parsed.journalSize;
       if (
         parsed.schemaVersion !== INDEX_SCHEMA_VERSION ||
         typeof nextSequence !== "number" ||
@@ -258,9 +276,12 @@ export class FileQueueStore implements QueueStore {
         typeof totalItems !== "number" ||
         !Number.isSafeInteger(totalItems) ||
         totalItems < 0 ||
-        totalItems !== nextSequence
+        totalItems !== nextSequence ||
+        typeof journalSize !== "number" ||
+        !Number.isSafeInteger(journalSize) ||
+        journalSize < 0
       ) return null;
-      return { schemaVersion: INDEX_SCHEMA_VERSION, nextSequence, totalItems };
+      return { schemaVersion: INDEX_SCHEMA_VERSION, nextSequence, totalItems, journalSize };
     } catch {
       return null;
     }
@@ -295,11 +316,11 @@ export class FileQueueStore implements QueueStore {
     const chunk = Math.floor(entry.sequence / ORDER_CHUNK_ITEMS);
     const serialized = `${JSON.stringify(entry)}\n`;
     if (Buffer.byteLength(serialized, "utf8") > MAX_ORDER_LINE_BYTES) throw new Error("The converter queue index record exceeds its write bound.");
-    await appendFile(this.#orderPath(chunk), serialized, { encoding: "utf8", mode: 0o600 });
+    await appendAndFlush(this.#orderPath(chunk), serialized);
   }
 
   async #existingItem(id: string): Promise<boolean> {
-    return statFile(this.#itemPath(id)).then((info) => info.isFile()).catch(() => false);
+    return statFile(this.#itemPath(id)).then((info: { isFile(): boolean }) => info.isFile()).catch(() => false);
   }
 
   async #readSourcePath(): Promise<string | undefined> {
@@ -381,7 +402,8 @@ export class FileQueueStore implements QueueStore {
 
   async #buildIndex(): Promise<void> {
     const currentMeta = await this.#readMeta();
-    if (currentMeta) return;
+    const journal = await statFile(this.#path).catch(() => undefined);
+    if (currentMeta && (journal?.size ?? 0) === currentMeta.journalSize) return;
 
     // A crash before the completion marker leaves partial generated index
     // files. Rebuild that generated index from the append-only journal, never
@@ -428,7 +450,8 @@ export class FileQueueStore implements QueueStore {
         }
       }
     }
-    await this.#writeMeta({ schemaVersion: INDEX_SCHEMA_VERSION, nextSequence: sequence, totalItems });
+    const journalSize = (await statFile(this.#path).catch(() => ({ size: 0 }))).size;
+    await this.#writeMeta({ schemaVersion: INDEX_SCHEMA_VERSION, nextSequence: sequence, totalItems, journalSize });
   }
 
   async #ensureIndex(): Promise<void> {
@@ -445,13 +468,13 @@ export class FileQueueStore implements QueueStore {
     const meta = await this.#readMeta();
     if (!meta) throw new Error("The converter queue index is unavailable or corrupt.");
     const parsed = parseIndexedCursor(cursor);
-    const boundedPageSize = Math.max(1, Math.min(MAX_PAGE_SIZE, Math.floor(pageSize)));
+    const pageLimit = boundedPageSize(pageSize);
     if (parsed.chunk * ORDER_CHUNK_ITEMS + parsed.offset >= meta.nextSequence) return { items: [] };
 
     const items: QueueItem[] = [];
     let nextChunk = parsed.chunk;
     let nextOffset = parsed.offset;
-    while (items.length < boundedPageSize && nextChunk * ORDER_CHUNK_ITEMS + nextOffset < meta.nextSequence) {
+    while (items.length < pageLimit && nextChunk * ORDER_CHUNK_ITEMS + nextOffset < meta.nextSequence) {
       const orderPath = this.#orderPath(nextChunk);
       let opened = false;
       try {
@@ -481,12 +504,12 @@ export class FileQueueStore implements QueueStore {
           items.push(snapshot);
           lineNumber += 1;
           nextOffset = lineNumber;
-          if (items.length >= boundedPageSize) break;
+          if (items.length >= pageLimit) break;
         }
       } catch (error) {
         if (opened || (error instanceof Error && !error.message.includes("ENOENT"))) throw error;
       }
-      if (items.length >= boundedPageSize) break;
+      if (items.length >= pageLimit) break;
       nextChunk += 1;
       nextOffset = 0;
     }
@@ -504,6 +527,9 @@ export class FileQueueStore implements QueueStore {
     const operation = this.#writeChain.then(async () => {
       await this.#ensureIndex();
       const existed = await this.#existingItem(normalized.id);
+      await mkdir(dirname(this.#path), { recursive: true });
+      await appendAndFlush(this.#path, `${JSON.stringify(normalized)}\n`);
+      await this.#afterJournal?.();
       await this.#writeSnapshot(normalized);
       if (!existed) {
         const meta = await this.#readMeta();
@@ -513,10 +539,13 @@ export class FileQueueStore implements QueueStore {
           schemaVersion: INDEX_SCHEMA_VERSION,
           nextSequence: meta.nextSequence + 1,
           totalItems: meta.totalItems + 1,
+          journalSize: (await statFile(this.#path)).size,
         });
+      } else {
+        const meta = await this.#readMeta();
+        if (!meta) throw new Error("The converter queue index is unavailable or corrupt.");
+        await this.#writeMeta({ ...meta, journalSize: (await statFile(this.#path)).size });
       }
-      await mkdir(dirname(this.#path), { recursive: true });
-      await appendFile(this.#path, `${JSON.stringify(normalized)}\n`, { encoding: "utf8", mode: 0o600 });
     });
     this.#writeChain = operation.catch(() => undefined);
     await operation;
@@ -536,20 +565,26 @@ export class FileQueueStore implements QueueStore {
       const temporary = `${this.#path}.${process.pid}.${randomUUID()}.compact.tmp`;
       await writeFile(temporary, "", { flag: "wx", mode: 0o600 });
       try {
-        for (let chunk = 0; chunk * ORDER_CHUNK_ITEMS < meta.nextSequence; chunk += 1) {
-          const input = createReadStream(this.#orderPath(chunk), { encoding: "utf8" });
-          let lineNumber = 0;
-          for await (const line of createInterface({ input, crlfDelay: Infinity })) {
-            if (Buffer.byteLength(line, "utf8") > MAX_ORDER_LINE_BYTES) throw new Error(`The converter queue index contains an overlong order record at chunk ${chunk}.`);
-            if (!line.trim()) continue;
-            const entry = JSON.parse(line) as QueueOrderEntry;
-            if (typeof entry.id !== "string" || entry.id.length === 0 || entry.id.length > MAX_QUEUE_ID_LENGTH || !Number.isSafeInteger(entry.sequence) || entry.sequence !== chunk * ORDER_CHUNK_ITEMS + lineNumber) throw new Error(`The converter queue index contains incomplete order state at chunk ${chunk}.`);
-            const item = normalizeQueueItem(JSON.parse(await readUtf8Bounded(this.#itemPath(entry.id), MAX_QUEUE_RECORD_BYTES)));
-            await appendFile(temporary, `${JSON.stringify(item)}\n`, { encoding: "utf8" });
-            lineNumber += 1;
+        const output = await open(temporary, "a");
+        try {
+          for (let chunk = 0; chunk * ORDER_CHUNK_ITEMS < meta.nextSequence; chunk += 1) {
+            const input = createReadStream(this.#orderPath(chunk), { encoding: "utf8" });
+            let lineNumber = 0;
+            for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+              if (Buffer.byteLength(line, "utf8") > MAX_ORDER_LINE_BYTES) throw new Error(`The converter queue index contains an overlong order record at chunk ${chunk}.`);
+              if (!line.trim()) continue;
+              const entry = JSON.parse(line) as QueueOrderEntry;
+              if (typeof entry.id !== "string" || entry.id.length === 0 || entry.id.length > MAX_QUEUE_ID_LENGTH || !Number.isSafeInteger(entry.sequence) || entry.sequence !== chunk * ORDER_CHUNK_ITEMS + lineNumber) throw new Error(`The converter queue index contains incomplete order state at chunk ${chunk}.`);
+              const item = normalizeQueueItem(JSON.parse(await readUtf8Bounded(this.#itemPath(entry.id), MAX_QUEUE_RECORD_BYTES)));
+              await output.write(`${JSON.stringify(item)}\n`, undefined, "utf8");
+              lineNumber += 1;
+            }
           }
-        }
+          await output.sync();
+        } finally { await output.close(); }
         await renameReplacing(temporary, this.#path);
+        const refreshed = await this.#readMeta();
+        if (refreshed) await this.#writeMeta({ ...refreshed, journalSize: (await statFile(this.#path)).size });
       } finally {
         await unlink(temporary).catch(() => undefined);
       }

@@ -1,61 +1,52 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const read = (relative: string) => readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8');
 
-function assertConverterMount(source: string): void {
-  if (!source.includes("import { FileConverterView } from './components/FileConverterView';")) throw new Error('File converter component import is missing.');
-  if (!source.includes("route.kind === 'home' && route.view === 'file-converter'")) throw new Error('File converter route mount is missing.');
-}
-
-function assertBridgeConsumption(source: string): void {
-  for (const channel of ['od:converter:catalog', 'od:converter:pick-source', 'od:converter:pick-sources', 'od:converter:pick-destination', 'od:converter:preview', 'od:converter:convert', 'od:converter:pdf-operation', 'od:converter:queue:list', 'od:converter:queue:enqueue', 'od:converter:queue:start', 'od:converter:queue:pause', 'od:converter:queue:resume', 'od:converter:queue:cancel', 'od:converter:queue:retry']) {
-    if (!source.includes(channel)) throw new Error(`Converter bridge channel is missing: ${channel}`);
+function assertConverterSurface(source: string): void {
+  for (const category of ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings']) {
+    if (!source.includes(`'${category}'`)) throw new Error(`Converter category is missing: ${category}`);
+  }
+  for (const needle of ['RegexSearchField', 'DestructiveGate', 'host.queue.page(', 'host.queue.enqueue(', 'pdfOperation(', 'data-converter-notification-history', 'data-converter-local-history', 'acknowledgeDisclosure']) {
+    if (!source.includes(needle)) throw new Error(`Converter surface contract is missing: ${needle}`);
   }
 }
 
-function assertDurableRenderer(source: string): void {
-  if (source.includes('material-designer.converter.queue')) throw new Error('Renderer queue must not fall back to transient local storage.');
-  for (const needle of ['converter.queue.enqueue(', 'converter.queue.list()', 'converter.queue.start()', 'converter.queue.pause()', 'converter.queue.resume()', 'converter.queue.cancel(', 'converter.queue.retry(', 'pdfOperation(']) if (!source.includes(needle)) throw new Error(`Renderer host operation is missing: ${needle}`);
-}
-
-function assertSiteEquivalent(source: string, script: string): void {
-  for (const category of ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings']) if (!source.includes(`data-converter-category="${category}"`)) throw new Error(`Site converter category is missing: ${category}`);
-  if (!source.includes('data-converter-queue') || !source.includes('data-converter-queue-export') || !script.includes('attachRegexBuilder') || !script.includes('data-converter-queue')) throw new Error('Site converter wiring is missing its local builders or queue.');
+function assertFeatureBridgeContract(source: string): void {
+  for (const needle of ['export type ConverterBridge', 'acknowledgeDisclosure', 'queue:', 'page(cursor?: string', 'export function getFileConverterBridge']) {
+    if (!source.includes(needle)) throw new Error(`Feature-owned bridge contract is missing: ${needle}`);
+  }
 }
 
 describe('file converter renderer wiring', () => {
-  it('mounts the destination and consumes every host channel', () => {
-    assertConverterMount(read('App.tsx'));
-    const view = read('components/FileConverterView.tsx');
-    expect(view).toContain('RegexSearchField');
-    for (const category of ['documents-pdf', 'images', 'audio', 'video', 'archives', 'structured-data', 'code-text', 'binary-encodings']) expect(view).toContain(`'${category}'`);
-    assertBridgeConsumption(read('../../desktop/src/main/preload.cts'));
-    assertBridgeConsumption(read('../../desktop/src/main/runtime.ts'));
-    assertDurableRenderer(view);
-    assertSiteEquivalent(read('../../../../site/index.html'), read('../../../../site/assets/js/converter.js'));
+  it('keeps the feature surface and bridge contract independently typed', () => {
+    assertConverterSurface(read('components/FileConverterView.tsx'));
+    assertFeatureBridgeContract(read('components/converter/converterBridge.ts'));
+    expect(read('components/FileConverterView.tsx')).not.toContain('OpenDesignHostConverter');
+    expect(read('components/converter/converterBridge.ts')).not.toContain('OpenDesignHostConverter');
+    const registration = read('components/converter/converterRegistration.ts');
+    expect(registration).toContain("route: FILE_CONVERTER_ROUTE");
+    expect(registration).toContain("surfaceId: FILE_CONVERTER_SURFACE_ID");
+    expect(registration).toContain("componentExport: 'FileConverterView'");
   });
 
-  it('turns red when the renderer mount disappears, then returns green', () => {
-    const source = read('App.tsx');
-    expect(() => assertConverterMount(source.replace("import { FileConverterView } from './components/FileConverterView';", ''))).toThrow('component import');
-    expect(() => assertConverterMount(source)).not.toThrow();
+  it('records missing central and Day Teet Hui seams without claiming they exist', () => {
+    const registration = read('components/converter/converterRegistration.ts');
+    const required = ['design/apps/web/src/App.tsx', 'design/apps/desktop/src/main/preload.cts', 'design/apps/desktop/src/main/runtime.ts', 'design/packages/host/src/protocol.ts', 'site/index.html', 'site/assets/js/converter.js'];
+    for (const path of required) expect(registration).toContain(path);
+    const siteScript = new URL('../../../../site/assets/js/converter.js', import.meta.url);
+    if (!existsSync(siteScript)) expect(registration).toContain("'site/assets/js/converter.js'");
   });
 
-  it('turns red when one bridge operation disappears, then returns green', () => {
-    const source = read('../../desktop/src/main/runtime.ts');
-    expect(() => assertBridgeConsumption(source.replaceAll("od:converter:convert", 'od:converter:convert_removed'))).toThrow('od:converter:convert');
-    expect(() => assertBridgeConsumption(source)).not.toThrow();
+  it('turns red when a feature-owned surface boundary disappears, then returns green', () => {
+    const source = read('components/FileConverterView.tsx');
+    expect(() => assertConverterSurface(source.replace('host.queue.page(', 'host.queue.page_removed('))).toThrow('host.queue.page(');
+    expect(() => assertConverterSurface(source)).not.toThrow();
   });
 
-  it('turns red when the durable queue, PDF controls, history/notifications/export hooks, or site equivalent disappears', () => {
-    const view = read('components/FileConverterView.tsx');
-    expect(() => assertDurableRenderer(view.replace('converter.queue.enqueue', 'converter.queue.enqueue_removed'))).toThrow('transient');
-    expect(() => assertDurableRenderer(view)).not.toThrow();
-    expect(() => assertConverterMount(read('App.tsx').replace('FileConverterView', 'FileConverterViewRemoved'))).toThrow('component import');
-    expect(() => assertSiteEquivalent(read('../../../../site/index.html').replace('data-converter-category="audio"', ''), read('../../../../site/assets/js/converter.js'))).toThrow('audio');
-    expect(() => assertSiteEquivalent(read('../../../../site/index.html'), read('../../../../site/assets/js/converter.js'))).not.toThrow();
-    expect(view).toContain('data-converter-notification-history');
-    expect(view).toContain('data-converter-local-history');
+  it('turns red when the feature-owned bridge acknowledgement seam disappears, then returns green', () => {
+    const source = read('components/converter/converterBridge.ts');
+    expect(() => assertFeatureBridgeContract(source.replace('acknowledgeDisclosure(preview:', 'acknowledgeDisclosure_removed(preview:'))).toThrow('acknowledgeDisclosure');
+    expect(() => assertFeatureBridgeContract(source)).not.toThrow();
   });
 });

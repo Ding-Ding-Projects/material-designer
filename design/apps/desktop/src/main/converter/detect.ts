@@ -42,10 +42,18 @@ function signatureFormat(bytes: Uint8Array): { format: string; mime?: string } |
 
 function isText(bytes: Uint8Array): boolean {
   const sample = bytes.subarray(0, Math.min(bytes.length, 8192));
-  if (sample.includes(0)) return false;
-  let printable = 0;
-  for (const byte of sample) if (byte === 9 || byte === 10 || byte === 13 || (byte >= 32 && byte < 127)) printable += 1;
-  return sample.length > 0 && printable / sample.length >= 0.95;
+  if (sample.length === 0 || sample.includes(0)) return false;
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(sample);
+  } catch {
+    return false;
+  }
+  for (const character of text) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint === 0 || (codePoint < 0x20 && codePoint !== 9 && codePoint !== 10 && codePoint !== 13) || codePoint === 0x7f) return false;
+  }
+  return true;
 }
 
 /** Detect by bytes first. The extension is only a hint for text formats. */

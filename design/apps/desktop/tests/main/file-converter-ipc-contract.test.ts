@@ -30,66 +30,39 @@ function codeLines(path: string): string[] {
   return lines;
 }
 
-function hasCall(lines: readonly string[], channel: string): boolean {
-  const needle = `ipcMain.handle("${channel}"`;
-  return lines.some((line) => line.trimStart().startsWith(needle));
-}
-
 function hasExactLine(lines: readonly string[], text: string): boolean {
   return lines.some((line) => line.trim() === text);
 }
 
 describe("converter host and IPC contract", () => {
-  it("registers overwrite, paged queue, notification, and history handlers and tears them down", () => {
-    const runtime = codeLines("src/main/runtime.ts");
-    for (const channel of [
-      "od:converter:request-overwrite",
-      "od:converter:overwrite",
-      "od:converter:queue:page",
-      "od:converter:notifications:page",
-      "od:converter:notifications:mark-read",
-      "od:converter:notifications:dismiss",
-      "od:converter:history:page",
-    ]) expect(hasCall(runtime, channel), channel).toBe(true);
-    expect(runtime.some((line) => line.includes("for (const channel of CONVERTER_IPC_CHANNELS) ipcMain.removeHandler(channel);"))).toBe(true);
-    const preload = codeLines("src/main/preload.cts");
-    expect(preload.some((line) => line.includes("requestOverwrite:") && line.includes("od:converter:request-overwrite"))).toBe(true);
-    expect(preload.some((line) => line.includes("overwrite:") && line.includes("od:converter:overwrite"))).toBe(true);
-    expect(preload.some((line) => line.includes("notifications:") && line.includes("od:converter:notifications:page"))).toBe(true);
-    expect(preload.some((line) => line.includes("history:") && line.includes("od:converter:history:page"))).toBe(true);
-  });
-
-  it("keeps queue paging and overwrite promotion at exact source boundaries", () => {
+  it("keeps queue paging, worker isolation, disclosure acknowledgement, and promotion at exact source boundaries", () => {
     const queue = codeLines("src/main/converter/queue.ts");
     expect(queue.some((line) => line.includes("ORDER_CHUNK_ITEMS"))).toBe(true);
     expect(queue.some((line) => line.trimStart().startsWith("async loadPage("))).toBe(true);
     expect(hasExactLine(queue, "const pending: QueueItem[] = [];" )).toBe(true);
+    expect(queue.some((line) => line.includes("appendAndFlush(this.#path"))).toBe(true);
     const host = codeLines("src/main/converter/host.ts");
-    expect(host.some((line) => line.includes("withPromotionLock"))).toBe(true);
+    expect(host.some((line) => line.includes("new Worker(CONVERSION_WORKER_SOURCE"))).toBe(true);
+    expect(host.some((line) => line.includes("#consumeDisclosure"))).toBe(true);
+    expect(host.some((line) => line.includes("withPromotionLock(destination"))).toBe(true);
     expect(host.some((line) => line.includes("sameDestinationSnapshot"))).toBe(true);
-    expect(host.some((line) => line.includes("The destination changed after confirmation"))).toBe(true);
   });
 
-  it("turns red when an exact handler, paging boundary, or promotion check is commented out, then turns green after restoration", () => {
-    const runtime = codeLines("src/main/runtime.ts");
-    const overwriteLine = runtime.find((line) => line.trimStart().startsWith('ipcMain.handle("od:converter:overwrite"'));
-    expect(overwriteLine).toBeDefined();
-    const brokenRuntime = runtime.map((line) => line === overwriteLine ? `// ${line}` : line);
-    expect(hasCall(brokenRuntime, "od:converter:overwrite")).toBe(false);
-    expect(hasCall(runtime, "od:converter:overwrite")).toBe(true);
+  it("records the central bridge and Day Teet Hui seam as parent-owned until C0 injects it", () => {
+    const registration = readFileSync(new URL("../../../web/src/components/converter/converterRegistration.ts", import.meta.url), "utf8");
+    expect(registration).toContain("FILE_CONVERTER_C0_REGISTRATION");
+    expect(registration).toContain("design/apps/desktop/src/main/preload.cts");
+    expect(registration).toContain("site/assets/js/converter.js");
+  });
 
-    const queue = codeLines("src/main/converter/queue.ts");
-    const pendingLine = queue.find((line) => line.trim() === "const pending: QueueItem[] = [];");
-    expect(pendingLine).toBeDefined();
-    const brokenQueue = queue.map((line) => line === pendingLine ? "const pending: QueueItem[] = await this.#store.listAll();" : line);
-    expect(hasExactLine(brokenQueue, "const pending: QueueItem[] = [];" )).toBe(false);
-    expect(hasExactLine(queue, "const pending: QueueItem[] = [];" )).toBe(true);
-
-    const host = codeLines("src/main/converter/host.ts");
-    const lockLine = host.find((line) => line.includes("withPromotionLock(destination"));
-    expect(lockLine).toBeDefined();
-    const brokenHost = host.map((line) => line === lockLine ? `// ${line}` : line);
-    expect(brokenHost.some((line) => line.includes("withPromotionLock(destination"))).toBe(false);
-    expect(host.some((line) => line.includes("withPromotionLock(destination"))).toBe(true);
+  it("turns red when an exact queue journal or worker boundary is removed, then returns green after restoration", () => {
+    const queueSource = readFileSync(new URL("../../src/main/converter/queue.ts", import.meta.url), "utf8");
+    const brokenQueue = queueSource.replace("await appendAndFlush(this.#path, `${JSON.stringify(normalized)}\\n`);", "await appendFile(this.#path, `${JSON.stringify(normalized)}\\n`);");
+    expect(brokenQueue).not.toContain("await appendAndFlush(this.#path");
+    expect(queueSource).toContain("await appendAndFlush(this.#path");
+    const hostSource = readFileSync(new URL("../../src/main/converter/host.ts", import.meta.url), "utf8");
+    const brokenHost = hostSource.replace("const output = this.#isolate", "const output = adapter.convert");
+    expect(brokenHost).not.toContain("const output = this.#isolate");
+    expect(hostSource).toContain("const output = this.#isolate");
   });
 });

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { execFile } from "node:child_process";
 import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { adaptersForCategory, ADAPTER_CATALOG } from "../../src/main/converter/registry.js";
+import { promisify } from "node:util";
+import { adapterFor, adaptersForCategory, ADAPTER_CATALOG, withPackagedProof } from "../../src/main/converter/registry.js";
 import { detectSource } from "../../src/main/converter/detect.js";
 import { inspectPdf } from "../../src/main/converter/pdf.js";
 import { ConversionQueue, FileQueueStore, MemoryQueueStore } from "../../src/main/converter/queue.js";
@@ -11,6 +13,13 @@ import { OverwriteAuthorizationStore } from "../../src/main/converter/overwrite.
 import { ConverterAuditStore } from "../../src/main/converter/audit.js";
 
 const encoder = new TextEncoder();
+const execFileAsync = promisify(execFile);
+const TEST_PACKAGE_PROOF = { kind: "packaged" as const, path: "resources/converter/test-adapter", version: "test", digest: "a".repeat(64) };
+const verifiedTextAdapter = withPackagedProof(adapterFor("text-structured-local")!, TEST_PACKAGE_PROOF);
+
+function testHost(): ConverterHost {
+  return new ConverterHost({ adapters: [verifiedTextAdapter], isolate: false });
+}
 
 describe("local converter registry", () => {
   it("keeps every required category visible", () => {
@@ -20,10 +29,15 @@ describe("local converter registry", () => {
     expect(adaptersForCategory("audio").some((adapter) => adapter.unavailableReason != null)).toBe(true);
   });
   it("does not enable an adapter without bundled proof", () => {
-    for (const adapter of ADAPTER_CATALOG) {
-      if (!adapter.bundled) expect(adapter.capabilities.convert).toBe(false);
-      if (adapter.bundled) expect(adapter.sandbox).not.toBe("unavailable");
-    }
+    for (const adapter of ADAPTER_CATALOG) expect(adapter.bundled).toBe(false);
+    expect(verifiedTextAdapter.bundled).toBe(true);
+    expect(verifiedTextAdapter.packageProof?.kind).toBe("packaged");
+  });
+  it("advertises only targets implemented by the bounded text adapters", () => {
+    expect(adapterFor("structured-data-local")?.targetFormats).toEqual(["txt"]);
+    expect(adapterFor("text-structured-local")?.targetFormats).toEqual(["txt", "md", "markdown", "html"]);
+    expect(adapterFor("structured-data-local")?.targetFormats).not.toContain("json");
+    expect(adapterFor("text-structured-local")?.targetFormats).not.toContain("jsonl");
   });
 });
 
@@ -35,6 +49,7 @@ describe("bounded byte detection", () => {
   });
   it("uses a text extension only after UTF-8 text inspection", () => {
     expect(detectSource(encoder.encode('{"ok":true}'), "data.json").format).toBe("json");
+    expect(detectSource(encoder.encode("廣東話文件"), "notes.txt").format).toBe("txt");
     expect(detectSource(new Uint8Array([0, 1, 2]), "data.json").format).toBe("unknown");
   });
 });
@@ -51,6 +66,10 @@ describe("PDF inspection", () => {
     const base = "%PDF-1.7\n/Type /Page\n%%EOF\n";
     expect(() => inspectPdf(encoder.encode(`${base.replace("%%EOF", "")}/Encrypt 1 0 R\n%%EOF`))).toThrow("Encrypted");
     expect(() => inspectPdf(encoder.encode(`${base.replace("%%EOF", "")}/ByteRange [0 1 2 3]\n%%EOF`))).toThrow("Signed");
+  });
+  it("caps page records before allocating the page list", () => {
+    const source = `%PDF-1.7\n${"/Type /Page\n".repeat(10_001)}%%EOF\n`;
+    expect(() => inspectPdf(encoder.encode(source))).toThrow("bounded converter limit");
   });
 });
 
@@ -75,9 +94,9 @@ describe("paged bounded conversion queue", () => {
       const item = await queue.enqueue("C:/input.txt", "C:/output.txt", "txt");
       await store.save({ ...item, state: "running" });
       await queue.reconcileAfterRestart();
-      const recovered = await queue.list();
-      expect(recovered[0]?.state).toBe("failed");
-      expect(recovered[0]?.reason).toContain("previous conversion stopped");
+      const recovered = await queue.listPage(undefined, 10);
+      expect(recovered.items[0]?.state).toBe("failed");
+      expect(recovered.items[0]?.reason).toContain("previous conversion stopped");
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
@@ -115,16 +134,66 @@ describe("paged bounded conversion queue", () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+
+  it("rebuilds derived index state from the flushed journal after a crash point", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-crash-"));
+    try {
+      let crash = true;
+      const store = new FileQueueStore(join(directory, "queue.jsonl"), undefined, {
+        afterJournal: async () => {
+          if (crash) {
+            crash = false;
+            throw new Error("simulated derived-state interruption");
+          }
+        },
+      });
+      const item = {
+        id: "crash-item",
+        adapterId: "text-structured-local",
+        sourcePath: "C:/input.txt",
+        destinationPath: "C:/output.txt",
+        targetFormat: "txt",
+        state: "queued" as const,
+        bytesProcessed: 0,
+        updatedAt: 1,
+      };
+      await expect(store.save(item)).rejects.toThrow("simulated derived-state interruption");
+      const recovered = await new FileQueueStore(join(directory, "queue.jsonl")).loadPage(undefined, 10);
+      expect(recovered.items).toHaveLength(1);
+      expect(recovered.items[0]?.id).toBe(item.id);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("host conversion progress and exclusive replacement", () => {
+  it("requires a current one-use loss disclosure acknowledgement", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-disclosure-"));
+    try {
+      const sourcePath = join(directory, "input.txt");
+      const destinationPath = join(directory, "output.html");
+      await writeFile(sourcePath, "lossy input", "utf8");
+      const host = testHost();
+      const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "html");
+      expect(preview.lossy).toBe(true);
+      expect((await host.convert(preview)).status).toBe("failed");
+      const acknowledgement = host.acknowledgeDisclosure(preview, 10_000);
+      const converted = await host.convert(preview, undefined, undefined, acknowledgement.token);
+      expect(converted.status).toBe("converted");
+      expect((await host.convert(preview, undefined, undefined, acknowledgement.token)).status).toBe("failed");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reports incremental source-byte progress for an enabled adapter", async () => {
     const directory = await mkdtemp(join(tmpdir(), "material-designer-converter-progress-"));
     try {
       const sourcePath = join(directory, "input.txt");
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "a".repeat(256 * 1024), "utf8");
-      const host = new ConverterHost();
+      const host = testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const progress: number[] = [];
       const result = await host.convert(preview, undefined, (value) => progress.push(value.bytesProcessed));
@@ -145,7 +214,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "new bytes", "utf8");
       await writeFile(destinationPath, "old bytes", "utf8");
-      const host = new ConverterHost();
+      const host = testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const authorizer = new OverwriteAuthorizationStore({ now: () => 10_000, ttlMs: 60_000 });
       const challenge = await authorizer.issue({ sourcePath, destinationPath, adapterId: preview.adapterId, targetFormat: preview.targetFormat });
@@ -170,7 +239,7 @@ describe("host conversion progress and exclusive replacement", () => {
     try {
       const sourcePath = join(directory, "input.txt");
       await writeFile(sourcePath, "source", "utf8");
-      const host = new ConverterHost({ allowedRoot: directory });
+      const host = new ConverterHost({ allowedRoot: directory, adapters: [verifiedTextAdapter], isolate: false });
       await expect(host.preview(sourcePath, sourcePath, "text-structured-local", "txt")).rejects.toThrow("different files");
       await expect(host.preview(join(outside, "input.txt"), join(directory, "output.txt"), "text-structured-local", "txt")).rejects.toThrow("outside the converter's selected folder");
     } finally {
@@ -185,7 +254,7 @@ describe("host conversion progress and exclusive replacement", () => {
       const sourcePath = join(directory, "input.txt");
       const destinationPath = join(directory, "output.txt");
       await writeFile(sourcePath, "cancel me", "utf8");
-      const host = new ConverterHost();
+      const host = testHost();
       const preview = await host.preview(sourcePath, destinationPath, "text-structured-local", "txt");
       const controller = new AbortController();
       controller.abort();
@@ -234,6 +303,12 @@ describe("host conversion progress and exclusive replacement", () => {
         const page = await audit.historyPage(undefined, 10);
         expect(page.ok).toBe(true);
         if (page.ok) expect(page.value.items[0]?.summary).not.toContain("bytes:");
+        const gitRoot = join(directory, "history", "git");
+        const workTree = await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: gitRoot, windowsHide: true });
+        expect(workTree.stdout.trim()).toBe("true");
+        const tracked = await execFileAsync("git", ["ls-tree", "-r", "--name-only", "HEAD"], { cwd: gitRoot, windowsHide: true });
+        expect(tracked.stdout).toContain("items/");
+        expect(tracked.stdout).toContain("order.jsonl");
       }
     } finally {
       await rm(directory, { recursive: true, force: true });

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ByteProgress, ConverterAdapter, ConverterCategory, OutputValidation } from "./types.js";
+import type { ByteProgress, ConverterAdapter, ConverterCategory, OutputValidation, PackagedAdapterProof } from "./types.js";
 
 const utf8 = new TextEncoder();
 
@@ -44,7 +44,7 @@ async function textConvert(input: Uint8Array, targetFormat: string, options?: Re
 }
 
 const textFormats = ["txt", "md", "markdown", "json", "jsonl", "csv", "tsv", "yaml", "toml", "xml", "html", "js", "ts"] as const;
-const textTargets = ["txt", "md", "markdown", "json", "jsonl", "html", "js", "ts"] as const;
+const textTargets = ["txt", "md", "markdown", "html"] as const;
 
 export const CONVERTER_ADAPTERS: readonly ConverterAdapter[] = [
   {
@@ -52,11 +52,12 @@ export const CONVERTER_ADAPTERS: readonly ConverterAdapter[] = [
     category: "structured-data",
     label: "Structured data and spreadsheet adapter",
     sourceFormats: ["json", "jsonl", "csv", "tsv", "yaml", "toml", "xml"],
-    targetFormats: ["json", "jsonl", "txt"],
+    targetFormats: ["txt"],
     sourceSignatures: ["UTF-8 text", "JSON", "CSV/TSV"],
-    bundled: true,
-    capabilities: { inspect: true, convert: true, preview: true, batch: true, lossless: true, metadata: false, encoding: "UTF-8", incrementalProgress: true },
-    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: Number.MAX_SAFE_INTEGER, maxRecursionDepth: 64 },
+    bundled: false,
+    unavailableReason: "Awaiting verified packaged adapter proof.",
+    capabilities: { inspect: true, convert: false, preview: false, batch: false, lossless: true, metadata: false, encoding: "UTF-8", incrementalProgress: true },
+    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: 100_000, maxRecursionDepth: 64 },
     sandbox: "in-process-bounded",
     validateOutput: validateText,
     convert: textConvert,
@@ -68,9 +69,10 @@ export const CONVERTER_ADAPTERS: readonly ConverterAdapter[] = [
     sourceFormats: textFormats,
     targetFormats: textTargets,
     sourceSignatures: ["UTF-8 text", "JSON", "CSV/TSV"],
-    bundled: true,
-    capabilities: { inspect: true, convert: true, preview: true, batch: true, lossless: true, metadata: false, encoding: "UTF-8", incrementalProgress: true },
-    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: Number.MAX_SAFE_INTEGER, maxRecursionDepth: 64 },
+    bundled: false,
+    unavailableReason: "Awaiting verified packaged adapter proof.",
+    capabilities: { inspect: true, convert: false, preview: false, batch: false, lossless: true, metadata: false, encoding: "UTF-8", incrementalProgress: true },
+    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: 100_000, maxRecursionDepth: 64 },
     sandbox: "in-process-bounded",
     validateOutput: validateText,
     convert: textConvert,
@@ -82,9 +84,9 @@ export const CONVERTER_ADAPTERS: readonly ConverterAdapter[] = [
     sourceFormats: ["pdf"],
     targetFormats: [],
     sourceSignatures: ["%PDF-"],
-    bundled: true,
+    bundled: false,
     unavailableReason: "Content-preserving PDF rewrite is not bundled in this build; inspect is available, edits remain disabled.",
-    capabilities: { inspect: true, convert: false, preview: true, batch: false, lossless: false, metadata: true, encoding: "PDF object inspection only", incrementalProgress: true },
+    capabilities: { inspect: false, convert: false, preview: false, batch: false, lossless: false, metadata: true, encoding: "PDF object inspection only", incrementalProgress: false },
     bounds: { maxInputBytes: 256 * 1024 * 1024, maxOutputBytes: 512 * 1024 * 1024, maxCpuMs: 30_000, maxMemoryBytes: 256 * 1024 * 1024, maxItems: 10_000, maxRecursionDepth: 64 },
     sandbox: "in-process-bounded",
     validateOutput: validatePdf,
@@ -96,9 +98,10 @@ export const CONVERTER_ADAPTERS: readonly ConverterAdapter[] = [
     sourceFormats: ["png", "jpeg", "gif", "webp", "zip", "gz", "mp3", "ogg", "flac", "mp4"],
     targetFormats: ["hex", "base64"],
     sourceSignatures: ["PNG", "JPEG", "GIF", "WebP", "ZIP", "GZIP", "MP3", "Ogg", "FLAC", "ISO BMFF"],
-    bundled: true,
-    capabilities: { inspect: true, convert: true, preview: false, batch: true, lossless: true, metadata: false, encoding: "binary", incrementalProgress: true },
-    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: Number.MAX_SAFE_INTEGER, maxRecursionDepth: 8 },
+    bundled: false,
+    unavailableReason: "Awaiting verified packaged adapter proof.",
+    capabilities: { inspect: true, convert: false, preview: false, batch: false, lossless: true, metadata: false, encoding: "binary", incrementalProgress: true },
+    bounds: { maxInputBytes: 32 * 1024 * 1024, maxOutputBytes: 64 * 1024 * 1024, maxCpuMs: 10_000, maxMemoryBytes: 128 * 1024 * 1024, maxItems: 100_000, maxRecursionDepth: 8 },
     sandbox: "in-process-bounded",
     validateOutput: validatePassthrough,
     convert: async (input, targetFormat) => targetFormat === "hex" ? utf8.encode(Buffer.from(input).toString("hex")) : utf8.encode(Buffer.from(input).toString("base64")),
@@ -128,6 +131,26 @@ function addSourceProof(adapter: ConverterAdapter): ConverterAdapter {
 
 export const ADAPTER_CATALOG: readonly ConverterAdapter[] = [...CONVERTER_ADAPTERS, ...UNAVAILABLE].map(addSourceProof);
 
-export function adapterFor(id: string): ConverterAdapter | undefined { return ADAPTER_CATALOG.find((adapter) => adapter.id === id); }
-export function adaptersForCategory(category: ConverterCategory): readonly ConverterAdapter[] { return ADAPTER_CATALOG.filter((adapter) => adapter.category === category); }
+export function withPackagedProof(adapter: ConverterAdapter, proof: PackagedAdapterProof): ConverterAdapter {
+  if (proof.kind !== "packaged" || !proof.path || !proof.version || !/^[0-9a-f]{64}$/i.test(proof.digest)) {
+    throw new Error("Packaged converter proof is incomplete or has an invalid digest.");
+  }
+  if (!adapter.convert || adapter.category === "documents-pdf") {
+    return { ...adapter, packageProof: proof };
+  }
+  return {
+    ...adapter,
+    bundled: true,
+    unavailableReason: undefined,
+    capabilities: { ...adapter.capabilities, convert: true, preview: true, batch: true },
+    packageProof: proof,
+  };
+}
+
+export function adapterFor(id: string, catalog: readonly ConverterAdapter[] = ADAPTER_CATALOG): ConverterAdapter | undefined {
+  return catalog.find((adapter) => adapter.id === id);
+}
+export function adaptersForCategory(category: ConverterCategory, catalog: readonly ConverterAdapter[] = ADAPTER_CATALOG): readonly ConverterAdapter[] {
+  return catalog.filter((adapter) => adapter.category === category);
+}
 export function adapterFingerprint(adapter: ConverterAdapter): string { return createHash("sha256").update(JSON.stringify({ id: adapter.id, sourceFormats: adapter.sourceFormats, targetFormats: adapter.targetFormats, bundled: adapter.bundled, incrementalProgress: adapter.capabilities.incrementalProgress, bounds: adapter.bounds })).digest("hex"); }
