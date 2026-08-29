@@ -141,12 +141,13 @@ import {
 import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
+import { HandoffView } from './components/handoff/HandoffView';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
   stashHomePromptHandoff,
 } from './components/home-hero/plugin-authoring';
-import { goBack, navigate, useRoute, type Route } from './router';
+import { buildPath, goBack, navigate, useRoute, type Route } from './router';
 import {
   fetchDaemonConfig,
   DEFAULT_CONFIG,
@@ -268,6 +269,23 @@ const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
 const AMR_AGENT_ID = 'amr';
 const AMR_PROFILE_ENV_KEY = 'OPEN_DESIGN_AMR_PROFILE';
 const AGENT_FOCUS_REFRESH_THROTTLE_MS = 10_000;
+
+type DeterministicCaptureTuple = {
+  screen?: unknown;
+  state?: unknown;
+  theme?: unknown;
+  fixtureRevision?: unknown;
+};
+
+type DeterministicCaptureGlobals = typeof globalThis & {
+  __MATERIAL_DESIGNER_CAPTURE_TUPLE__?: DeterministicCaptureTuple;
+};
+
+function deterministicCaptureTupleFromGlobal(): DeterministicCaptureTuple | null {
+  if (typeof globalThis === 'undefined') return null;
+  const value = (globalThis as DeterministicCaptureGlobals).__MATERIAL_DESIGNER_CAPTURE_TUPLE__;
+  return value && typeof value === 'object' ? value : null;
+}
 
 /**
  * Whether this launch should hand the user to the first-run onboarding flow.
@@ -861,6 +879,14 @@ function AppInner() {
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   const clientType = useMemo(() => detectClientType(), []);
   const hostPlatform = useMemo(() => getOpenDesignHost()?.client.platform, []);
+  const deterministicCaptureTuple = useMemo(
+    () => deterministicCaptureTupleFromGlobal(),
+    [],
+  );
+  const deterministicCaptureTupleTheme = deterministicCaptureTuple?.theme === 'light'
+    || deterministicCaptureTuple?.theme === 'dark'
+    ? deterministicCaptureTuple.theme
+    : undefined;
   useModalWindowDragGuard();
   const workspaceContextState = useWorkspaceContext();
   const {
@@ -926,6 +952,39 @@ function AppInner() {
       document.querySelectorAll('.od-loading-shell').forEach((node) => node.remove());
     }
   }, []);
+  const captureSettled = deterministicCaptureTuple != null && daemonLive;
+  useEffect(() => {
+    if (!captureSettled || deterministicCaptureTuple == null || typeof document === 'undefined') return undefined;
+    if (!['library', 'settings', 'handoff'].includes(String(deterministicCaptureTuple.screen))) return undefined;
+    const root = document.documentElement;
+    const routePath = buildPath(route);
+    let currentPath: string;
+    try {
+      currentPath = new URL(window.location.href).pathname;
+    } catch {
+      return undefined;
+    }
+    if (currentPath !== routePath) return undefined;
+    const rendererState = deterministicCaptureTuple.screen === 'settings'
+      ? 'settings'
+      : String(deterministicCaptureTuple.screen);
+    root.setAttribute('data-od-renderer-route-path', routePath);
+    root.setAttribute('data-od-renderer-route-state', rendererState);
+    root.setAttribute('data-od-fixture-source', 'capture-provider');
+    root.setAttribute('data-od-fixture-revision', String(deterministicCaptureTuple.fixtureRevision ?? ''));
+    root.setAttribute('data-od-capture-settled', '1');
+    root.setAttribute('data-od-capture-settled-route', routePath);
+    root.setAttribute('data-od-capture-settled-revision', 'capture-settled-v1');
+    return () => {
+      root.removeAttribute('data-od-renderer-route-path');
+      root.removeAttribute('data-od-renderer-route-state');
+      root.removeAttribute('data-od-fixture-source');
+      root.removeAttribute('data-od-fixture-revision');
+      root.removeAttribute('data-od-capture-settled');
+      root.removeAttribute('data-od-capture-settled-route');
+      root.removeAttribute('data-od-capture-settled-revision');
+    };
+  }, [captureSettled, deterministicCaptureTuple, route]);
   // Desktop vibrancy focus response: an unfocused window drops the cream
   // scrim to let the wallpaper show through more clearly; on focus the scrim
   // returns to full strength (app-wash.css keys off this class).
@@ -1816,13 +1875,16 @@ function AppInner() {
   ]);
 
   // Stamp the app appearance onto the <html> element so CSS variables pick it
-  // up. The theme itself is a constant (light-only), but the accent still comes
-  // from config, and the stamp must be re-applied whenever that changes.
+  // up. Capture launches own the theme in their deterministic tuple; ordinary
+  // launches retain the persisted config theme and accent.
   // useLayoutEffect (vs useEffect) fires before the browser paints, so no
   // 1-frame flash. Safe here because the component tree is ssr:false.
   useLayoutEffect(() => {
-    applyAppearanceToDocument({ accentColor: config.accentColor });
-  }, [config.accentColor]);
+    applyAppearanceToDocument({
+      theme: deterministicCaptureTupleTheme ?? config.theme,
+      accentColor: config.accentColor,
+    });
+  }, [config.accentColor, config.theme, deterministicCaptureTupleTheme]);
 
   // Tell the daemon what the user is currently looking at, so the MCP
   // server can surface it as `get_active_context` to a coding agent in
@@ -4921,7 +4983,14 @@ function AppInner() {
       daemonLive={daemonLive}
       appVersionInfo={appVersionInfo}
       welcome={presentation === 'modal' ? settingsWelcome : false}
-      initialSection={settingsInitialSection}
+      initialSection={
+        presentation === 'page'
+        && route.kind === 'home'
+        && route.view === 'settings'
+        && route.settingsSection === 'appearance'
+          ? 'appearance'
+          : settingsInitialSection
+      }
       initialHighlight={settingsHighlight}
       persistedProjectWorkspaceId={
         route.kind === 'project'
@@ -5093,6 +5162,10 @@ function AppInner() {
     );
   } else if (route.kind === 'home' && route.view === 'settings') {
     appMain = renderSettingsSurface('page');
+  } else if (route.kind === 'home' && route.view === 'handoff') {
+    appMain = (
+      <HandoffView onBack={() => navigate({ kind: 'home', view: 'settings', settingsSection: 'appearance' })} />
+    );
   } else if (route.kind === 'project') {
     const pendingCreation =
       activeProject && pendingProjectCreation?.projectId === activeProject.id
